@@ -10,7 +10,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/viper v1.7.1
-	github.com/tdex-network/tdex-protobuf v0.0.0-20200820140301-2e9c481cd0ca
+	github.com/tdex-network/tdex-protobuf v0.0.0-20200824154827-e29804d0b579
 	github.com/thanhpk/randstr v1.0.4
 	google.golang.org/grpc v1.27.0
 	google.golang.org/protobuf v1.25.0 // indirect

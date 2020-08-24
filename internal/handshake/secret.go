@@ -1,10 +1,9 @@
-package tradeservice
+package handshakeservice
 
 import (
 	"context"
 
 	pbhandshake "github.com/tdex-network/tdex-protobuf/generated/go/handshake"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 )
 
 //UnarySecret is the domain controller for the UnarySecret RPC
@@ -13,7 +12,7 @@ func (s *Server) UnarySecret(ctx context.Context, req *pbhandshake.SecretMessage
 }
 
 // StreamSecret is the domain controller for the StreamSecret RPC
-func (s *Server) StreamSecret(req *pbhandshake.SecretMessage, stream pb.Trade_StreamSecretServer) error {
+func (s *Server) StreamSecret(req *pbhandshake.SecretMessage, stream pbhandshake.Handshake_StreamSecretServer) error {
 	if err := stream.Send(&pbhandshake.SecretMessage{}); err != nil {
 		return err
 	}
