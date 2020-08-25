@@ -10,12 +10,12 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
-//Core defines the initial parameter
-type Core struct {
+//Swap defines the initial parameter
+type Swap struct {
 	Verbose bool
 }
 
-func (*Core) compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccept) error {
+func (*Swap) compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccept) error {
 	decodedFromRequest, err := pset.NewPsetFromBase64(request.GetTransaction())
 	if err != nil {
 		return err

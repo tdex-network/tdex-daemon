@@ -15,7 +15,7 @@ type AcceptOpts struct {
 }
 
 //Accept takes a AcceptOpts and returns a serialized SwapAccept message
-func (c *Core) Accept(accept AcceptOpts) ([]byte, error) {
+func (c *Swap) Accept(accept AcceptOpts) ([]byte, error) {
 	var msgRequest pb.SwapRequest
 	err := proto.Unmarshal(accept.message, &msgRequest)
 	if err != nil {

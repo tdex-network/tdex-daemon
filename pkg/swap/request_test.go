@@ -38,7 +38,7 @@ func TestCore_Request(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &Core{
+			c := &Swap{
 				Verbose: tt.fields.Verbose,
 			}
 			got, err := c.Request(tt.args.opts)

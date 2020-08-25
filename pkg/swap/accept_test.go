@@ -15,7 +15,7 @@ func TestCore_Accept(t *testing.T) {
 	}
 	t.Run("Bob can import a SwapRequest and create a SwapAccept message", func(t *testing.T) {
 
-		c := &Core{
+		c := &Swap{
 			Verbose: true,
 		}
 		t.Log("we are here")

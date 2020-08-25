@@ -16,7 +16,7 @@ type RequestOpts struct {
 }
 
 // Request takes a RequestOpts struct and returns a serialized protobuf message.
-func (c *Core) Request(opts RequestOpts) ([]byte, error) {
+func (c *Swap) Request(opts RequestOpts) ([]byte, error) {
 	randomID := randstr.Hex(8)
 	msg := &pb.SwapRequest{
 		Id: randomID,
