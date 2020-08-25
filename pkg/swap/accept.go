@@ -10,14 +10,14 @@ import (
 
 //AcceptOpts is the struct given to Accept method
 type AcceptOpts struct {
-	message    []byte
-	psetBase64 string
+	Message    []byte
+	PsetBase64 string
 }
 
 //Accept takes a AcceptOpts and returns a serialized SwapAccept message
 func (c *Swap) Accept(accept AcceptOpts) ([]byte, error) {
 	var msgRequest pb.SwapRequest
-	err := proto.Unmarshal(accept.message, &msgRequest)
+	err := proto.Unmarshal(accept.Message, &msgRequest)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal swap request %w", err)
 	}
@@ -26,7 +26,7 @@ func (c *Swap) Accept(accept AcceptOpts) ([]byte, error) {
 	msgAccept := &pb.SwapAccept{
 		Id:          randomID,
 		RequestId:   msgRequest.GetId(),
-		Transaction: accept.psetBase64,
+		Transaction: accept.PsetBase64,
 	}
 
 	if err := c.compareMessagesAndTransaction(&msgRequest, msgAccept); err != nil {
