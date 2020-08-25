@@ -11,7 +11,8 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/grpcutil"
 	"google.golang.org/grpc"
 
-	tradeservice "github.com/tdex-network/tdex-daemon/internal/trader"
+	tradeservice "github.com/tdex-network/tdex-daemon/internal/service/trader"
+	pbhandshake "github.com/tdex-network/tdex-protobuf/generated/go/handshake"
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtrader "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	pbwallet "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
@@ -28,9 +29,11 @@ func main() {
 	traderGrpcServer := grpc.NewServer(grpcutil.UnaryLoggerInterceptor(), grpcutil.StreamLoggerInterceptor())
 	operatorGrpcServer := grpc.NewServer(grpcutil.UnaryLoggerInterceptor(), grpcutil.StreamLoggerInterceptor())
 
-	// Register proto implementations
+	// Register proto implementations on Trader interface
 	tradeSvc := tradeservice.NewServer()
 	pbtrader.RegisterTradeServer(traderGrpcServer, tradeSvc)
+	pbhandshake.RegisterHandshakeServer(traderGrpcServer, &pbhandshake.UnimplementedHandshakeServer{})
+	// Register proto implementations on Operator interface
 	pbwallet.RegisterWalletServer(operatorGrpcServer, &pbwallet.UnimplementedWalletServer{})
 	pboperator.RegisterOperatorServer(operatorGrpcServer, &pboperator.UnimplementedOperatorServer{})
 

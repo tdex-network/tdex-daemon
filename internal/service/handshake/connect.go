@@ -1,4 +1,4 @@
-package tradeservice
+package handshakeservice
 
 import (
 	"context"
