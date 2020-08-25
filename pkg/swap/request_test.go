@@ -23,7 +23,7 @@ func TestCore_Request(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			"Swap request",
+			"Alice can create a Swap Request message",
 			fields{false},
 			args{RequestOpts{
 				AssetToBeSent:   USDT,
