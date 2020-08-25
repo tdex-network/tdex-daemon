@@ -1,6 +1,7 @@
 package swap
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -21,7 +22,7 @@ func (*Swap) compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.S
 		return err
 	}
 
-	totalP, err := countCumulativeAmount(decodedFromRequest.Inputs, request.GetAssetP())
+	totalP, err := countCumulativeAmount(decodedFromRequest.Inputs, request.GetAssetP(), request.GetInputBlindingKey())
 	if err != nil {
 		return err
 	}
@@ -33,6 +34,7 @@ func (*Swap) compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.S
 		decodedFromRequest.UnsignedTx.Outputs,
 		request.GetAmountR(),
 		request.GetAssetR(),
+		request.GetOutputBlindingKey(),
 	)
 	if err != nil {
 		return err
@@ -51,7 +53,7 @@ func (*Swap) compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.S
 			return errors.New("id mismatch: SwapRequest.id and SwapAccept.request_id are not the same")
 		}
 
-		totalR, err := countCumulativeAmount(decodedFromAccept.Inputs, request.GetAssetR())
+		totalR, err := countCumulativeAmount(decodedFromAccept.Inputs, request.GetAssetR(), accept.GetInputBlindingKey())
 		if err != nil {
 			return err
 		}
@@ -63,6 +65,7 @@ func (*Swap) compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.S
 			decodedFromAccept.UnsignedTx.Outputs,
 			request.GetAmountP(),
 			request.GetAssetP(),
+			accept.GetOutputBlindingKey(),
 		)
 		if !outputPFound {
 			return errors.New("either SwapRequest.amount_p or SwapRequest.asset_p do not match the provided pset")
@@ -72,9 +75,24 @@ func (*Swap) compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.S
 	return nil
 }
 
-func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset string) (bool, error) {
+func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset string, ouptutBlindKeys map[string][]byte) (bool, error) {
 	found, err := gubrak.From(outs).
 		Find(func(each *transaction.TxOutput) bool {
+
+			if each.IsConfidential() {
+				blindKey, ok := ouptutBlindKeys[hex.EncodeToString(each.Script)]
+				if !ok {
+					return false
+				}
+
+				unblinded, ok := unblindPrevOut(each, blindKey)
+				if !ok {
+					return false
+				}
+
+				return unblinded.value == value && unblinded.assetHash == asset
+			}
+
 			return valueFromBytes(each.Value) == value && assetHashFromBytes(each.Asset) == asset
 		}).ResultAndError()
 
@@ -85,18 +103,44 @@ func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset 
 	return found != nil, nil
 }
 
-func countCumulativeAmount(utxos []pset.PInput, asset string) (uint64, error) {
+func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) (uint64, error) {
 	result, err := gubrak.From(utxos).
 		Filter(func(each pset.PInput) bool {
-			// TODO check if nonWitnessUtxo is given
+			// TODO check if a nonWitnessUtxo is given
+
+			if each.WitnessUtxo.IsConfidential() {
+
+				blindKey, ok := inputBlindKeys[hex.EncodeToString(each.WitnessUtxo.Script)]
+				if !ok {
+					return false
+				}
+
+				unblinded, ok := unblindPrevOut(each.WitnessUtxo, blindKey)
+				if !ok {
+					return false
+				}
+
+				return unblinded.assetHash == asset
+			}
+
 			return assetHashFromBytes(each.WitnessUtxo.Asset) == asset
 		}).
 		Map(func(each pset.PInput) uint64 {
+
+			if each.WitnessUtxo.IsConfidential() {
+
+				blindKey, _ := inputBlindKeys[hex.EncodeToString(each.WitnessUtxo.Script)]
+				unblinded, _ := unblindPrevOut(each.WitnessUtxo, blindKey)
+
+				return unblinded.value
+			}
+
 			return valueFromBytes(each.WitnessUtxo.Value)
 		}).
 		Reduce(func(accumulator, value uint64) uint64 {
 			return accumulator + value
-		}, uint64(0)).ResultAndError()
+		}, uint64(0)).
+		ResultAndError()
 
 	if err != nil {
 		return 0, fmt.Errorf("gubrak: %w", err)
