@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/tdex-network/tdex-daemon/pkg/util"
 
 	"github.com/novalagung/gubrak/v2"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
@@ -85,15 +86,15 @@ func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset 
 					return false
 				}
 
-				unblinded, ok := unblindPrevOut(each, blindKey)
+				unblinded, ok := util.UnblindOutput(each, blindKey)
 				if !ok {
 					return false
 				}
 
-				return unblinded.value == value && unblinded.assetHash == asset
+				return unblinded.Value == value && unblinded.AssetHash == asset
 			}
 
-			return valueFromBytes(each.Value) == value && assetHashFromBytes(each.Asset) == asset
+			return util.ValueFromBytes(each.Value) == value && util.AssetHashFromBytes(each.Asset) == asset
 		}).ResultAndError()
 
 	if err != nil {
@@ -115,27 +116,27 @@ func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map
 					return false
 				}
 
-				unblinded, ok := unblindPrevOut(each.WitnessUtxo, blindKey)
+				unblinded, ok := util.UnblindOutput(each.WitnessUtxo, blindKey)
 				if !ok {
 					return false
 				}
 
-				return unblinded.assetHash == asset
+				return unblinded.AssetHash == asset
 			}
 
-			return assetHashFromBytes(each.WitnessUtxo.Asset) == asset
+			return util.AssetHashFromBytes(each.WitnessUtxo.Asset) == asset
 		}).
 		Map(func(each pset.PInput) uint64 {
 
 			if each.WitnessUtxo.IsConfidential() {
 
 				blindKey, _ := inputBlindKeys[hex.EncodeToString(each.WitnessUtxo.Script)]
-				unblinded, _ := unblindPrevOut(each.WitnessUtxo, blindKey)
+				unblinded, _ := util.UnblindOutput(each.WitnessUtxo, blindKey)
 
-				return unblinded.value
+				return unblinded.Value
 			}
 
-			return valueFromBytes(each.WitnessUtxo.Value)
+			return util.ValueFromBytes(each.WitnessUtxo.Value)
 		}).
 		Reduce(func(accumulator, value uint64) uint64 {
 			return accumulator + value
