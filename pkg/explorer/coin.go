@@ -81,24 +81,30 @@ func SelectUnSpents(
 	return
 }
 
-func GetUnSpents(addr string) ([]Utxo, error) {
+func GetUnSpents(addr string) (coins []Utxo, err error) {
 	url := fmt.Sprintf(
 		"%s/address/%s/utxo",
 		config.GetString(config.ExplorerEndpointKey),
 		addr,
 	)
-	status, resp, err := util.NewHTTPRequest("GET", url, "", nil)
-	if err != nil {
-		return nil, fmt.Errorf("error on retrieving utxos: %s", err)
+	status, resp, err1 := util.NewHTTPRequest("GET", url, "", nil)
+	if err1 != nil {
+		coins = nil
+		err = fmt.Errorf("error on retrieving utxos: %s", err)
+		return
 	}
 	if status != http.StatusOK {
-		return nil, fmt.Errorf(resp)
+		coins = nil
+		err = fmt.Errorf(resp)
+		return
 	}
 
 	var witnessOuts []witnessUtxo
-	err = json.Unmarshal([]byte(resp), &witnessOuts)
-	if err != nil {
-		return nil, fmt.Errorf("error on retrieving utxos: %s", err)
+	err1 = json.Unmarshal([]byte(resp), &witnessOuts)
+	if err1 != nil {
+		coins = nil
+		err = fmt.Errorf("error on retrieving utxos: %s", err)
+		return
 	}
 
 	unspents := make([]Utxo, len(witnessOuts))
@@ -109,16 +115,19 @@ func GetUnSpents(addr string) ([]Utxo, error) {
 		out := witnessOuts[i]
 		go getUtxoDetails(out, chUnspents, chErr)
 		select {
-		case err := <-chErr:
-			if err != nil {
+		case err1 := <-chErr:
+			if err1 != nil {
 				close(chErr)
 				close(chUnspents)
-				return nil, fmt.Errorf("error on retrieving utxos: %s", err)
+				coins = nil
+				err = fmt.Errorf("error on retrieving utxos: %s", err1)
+				return
 			}
 		case unspent := <-chUnspents:
 			unspents[i] = unspent
 		}
 	}
+	coins = unspents
 
-	return unspents, nil
+	return
 }
