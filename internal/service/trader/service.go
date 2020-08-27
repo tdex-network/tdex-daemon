@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
-	"github.com/tdex-network/tdex-daemon/internal/storage"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	"github.com/thanhpk/randstr"
 )
@@ -16,10 +15,10 @@ type Service struct {
 	pb.UnimplementedTradeServer
 }
 
-// NewServer returns a Trade Server
-func NewServer() *Service {
+// NewService returns a Trade Service
+func NewService(marketRepo market.Repository) *Service {
 	return &Service{
-		marketRepository: storage.NewInMemoryMarketRepository(),
+		marketRepository: marketRepo,
 	}
 }
 
@@ -46,7 +45,7 @@ func (s *Service) AddTestMarket() {
 			return nil, err
 		}
 
-		if err := m.MakeTradable(); err != nil {
+		if err := m.MakeNotTradable(); err != nil {
 			return nil, err
 		}
 

@@ -10,3 +10,10 @@ type Service struct {
 	marketRepository market.Repository
 	pb.UnimplementedOperatorServer
 }
+
+// NewService returns a Operator Service
+func NewService(marketRepo market.Repository) *Service {
+	return &Service{
+		marketRepository: marketRepo,
+	}
+}

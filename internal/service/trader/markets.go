@@ -24,7 +24,10 @@ func (s *Service) Markets(ctx context.Context, req *pbtrade.MarketsRequest) (res
 				BaseAsset:  mkt.BaseAssetHash(),
 				QuoteAsset: mkt.QuoteAssetHash(),
 			},
-			Fee: mkt.Fee(),
+			Fee: &pbtypes.Fee{
+				Asset:      mkt.FeeAsset(),
+				BasisPoint: mkt.Fee(),
+			},
 		})
 	}
 
