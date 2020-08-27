@@ -61,9 +61,9 @@ func main() {
 
 	// TODO: to be removed.
 	// Add a sample market
-	tradeSvc.AddTestMarket()
+	tradeSvc.AddTestMarket(true)
 	// Add anothet right away
-	tradeSvc.AddTestMarket()
+	tradeSvc.AddTestMarket(false)
 
 	defer traderGrpcServer.Stop()
 	defer operatorGrpcServer.Stop()

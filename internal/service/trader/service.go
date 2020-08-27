@@ -3,6 +3,7 @@ package tradeservice
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
@@ -23,7 +24,7 @@ func NewService(marketRepo market.Repository) *Service {
 }
 
 //AddTestMarket ...
-func (s *Service) AddTestMarket() {
+func (s *Service) AddTestMarket(makeItTradable bool) {
 	_, latestAccountIndex, err := s.marketRepository.GetLatestMarket(context.Background())
 	if err != nil {
 		println("latest market")
@@ -45,7 +46,12 @@ func (s *Service) AddTestMarket() {
 			return nil, err
 		}
 
-		if err := m.MakeNotTradable(); err != nil {
+		if makeItTradable {
+			err = m.MakeTradable()
+		} else {
+			err = m.MakeNotTradable()
+		}
+		if err != nil {
 			return nil, err
 		}
 
@@ -54,5 +60,5 @@ func (s *Service) AddTestMarket() {
 		panic(fmt.Errorf("update market: %w", err))
 	}
 
-	println("Created, funded and opened a market " + randAssetHash)
+	println("Created market | tradable: " + strconv.FormatBool(makeItTradable) + " | " + randAssetHash)
 }
