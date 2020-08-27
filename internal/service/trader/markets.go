@@ -11,7 +11,7 @@ import (
 )
 
 // Markets is the domain controller for the Markets RPC
-func (s *Server) Markets(ctx context.Context, req *pbtrade.MarketsRequest) (res *pbtrade.MarketsReply, err error) {
+func (s *Service) Markets(ctx context.Context, req *pbtrade.MarketsRequest) (res *pbtrade.MarketsReply, err error) {
 	tradableMarkets, err := s.marketRepository.GetTradableMarkets(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

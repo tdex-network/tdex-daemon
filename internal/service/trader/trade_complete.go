@@ -5,7 +5,7 @@ import (
 )
 
 // TradeComplete is the domain controller for the TradeComplete RPC
-func (*Server) TradeComplete(req *pb.TradeCompleteRequest, stream pb.Trade_TradeCompleteServer) error {
+func (*Service) TradeComplete(req *pb.TradeCompleteRequest, stream pb.Trade_TradeCompleteServer) error {
 	if err := stream.Send(&pb.TradeCompleteReply{}); err != nil {
 		return err
 	}

@@ -10,21 +10,21 @@ import (
 	"github.com/thanhpk/randstr"
 )
 
-// Server is used to implement Trader service.
-type Server struct {
+// Service is used to implement Trader service.
+type Service struct {
 	marketRepository market.Repository
 	pb.UnimplementedTradeServer
 }
 
 // NewServer returns a Trade Server
-func NewServer() *Server {
-	return &Server{
+func NewServer() *Service {
+	return &Service{
 		marketRepository: storage.NewInMemoryMarketRepository(),
 	}
 }
 
 //AddTestMarket ...
-func (s *Server) AddTestMarket() {
+func (s *Service) AddTestMarket() {
 	_, latestAccountIndex, err := s.marketRepository.GetLatestMarket(context.Background())
 	if err != nil {
 		println("latest market")

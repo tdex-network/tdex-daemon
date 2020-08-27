@@ -1,8 +1,12 @@
 package operatorservice
 
-import pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
+import (
+	"github.com/tdex-network/tdex-daemon/internal/domain/market"
+	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
+)
 
-// Server is used to implement Trader service.
-type Server struct {
-	pb.OperatorServer
+// Service is used to implement Operator service.
+type Service struct {
+	marketRepository market.Repository
+	pb.UnimplementedOperatorServer
 }
