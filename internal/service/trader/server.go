@@ -32,9 +32,9 @@ func (s *Server) AddTestMarket() {
 	}
 
 	nextAccountIndex := latestAccountIndex + 1
+	randAssetHash := randstr.Hex(32)
 
 	if err := s.marketRepository.UpdateMarket(context.Background(), nextAccountIndex, func(m *market.Market) (*market.Market, error) {
-		randAssetHash := randstr.Hex(32)
 		fundingTxs := []market.OutpointWithAsset{
 			{"5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225", "abc", 1},
 			{"5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225", "def", 1},
@@ -55,5 +55,5 @@ func (s *Server) AddTestMarket() {
 		panic(fmt.Errorf("update market: %w", err))
 	}
 
-	println("Created, funded and opened a market")
+	println("Created, funded and opened a market " + randAssetHash)
 }

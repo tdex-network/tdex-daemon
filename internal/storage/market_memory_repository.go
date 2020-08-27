@@ -56,10 +56,10 @@ func (r InMemoryMarketRepository) GetLatestMarket(_ context.Context) (market *ma
 }
 
 //GetTradableMarkets returns all the markets available for trading
-func (r InMemoryMarketRepository) GetTradableMarkets(_ context.Context) (tradableMarkets []*market.Market, err error) {
+func (r InMemoryMarketRepository) GetTradableMarkets(_ context.Context) (tradableMarkets []market.Market, err error) {
 	for _, mkt := range r.markets {
 		if mkt.IsTradable() {
-			tradableMarkets = append(tradableMarkets, &mkt)
+			tradableMarkets = append(tradableMarkets, mkt)
 		}
 	}
 
