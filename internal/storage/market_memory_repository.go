@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	// ErrMarketNotExist is thrown when a market with given quote asset is not found
-	ErrMarketNotExist = errors.New("given quote asset does not exists")
+	// ErrMarketNotExist is thrown when a market is not found
+	ErrMarketNotExist = errors.New("Market does not exists")
 )
 
 // InMemoryMarketRepository represents an in memory storage
