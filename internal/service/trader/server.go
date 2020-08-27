@@ -2,6 +2,7 @@ package tradeservice
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
 	"github.com/tdex-network/tdex-daemon/internal/storage"
@@ -24,7 +25,15 @@ func NewServer() *Server {
 
 //AddTestMarket ...
 func (s *Server) AddTestMarket() {
-	if err := s.marketRepository.UpdateMarket(context.Background(), 0, func(m *market.Market) (*market.Market, error) {
+	_, latestAccountIndex, err := s.marketRepository.GetLatestMarket(context.Background())
+	if err != nil {
+		println("latest market")
+		panic(fmt.Errorf("latest market: %w", err))
+	}
+
+	nextAccountIndex := latestAccountIndex + 1
+
+	if err := s.marketRepository.UpdateMarket(context.Background(), nextAccountIndex, func(m *market.Market) (*market.Market, error) {
 		randAssetHash := randstr.Hex(32)
 		fundingTxs := []market.OutpointWithAsset{
 			{"5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225", "abc", 1},
@@ -43,7 +52,7 @@ func (s *Server) AddTestMarket() {
 
 		return m, nil
 	}); err != nil {
-		panic(err)
+		panic(fmt.Errorf("update market: %w", err))
 	}
 
 	println("Created, funded and opened a market")

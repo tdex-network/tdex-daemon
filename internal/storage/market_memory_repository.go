@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
@@ -44,6 +45,14 @@ func (r InMemoryMarketRepository) GetMarketByAsset(_ context.Context, quoteAsset
 	defer r.lock.RUnlock()
 
 	return r.getMarketByAsset(quoteAsset)
+}
+
+//GetLatestMarket returns the latest stored market (either funded or not)
+func (r InMemoryMarketRepository) GetLatestMarket(_ context.Context) (market *market.Market, accountIndex int, err error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.getLatestMarket()
 }
 
 //GetTradableMarkets returns all the markets available for trading
@@ -143,4 +152,31 @@ func (r InMemoryMarketRepository) getMarketByAsset(quoteAsset string) (*market.M
 		return nil, -1, ErrMarketNotExist
 	}
 	return &currentMarket, selectedAccountIndex, nil
+}
+
+func (r InMemoryMarketRepository) getLatestMarket() (*market.Market, int, error) {
+	// In case we never created any markets yet, first account index usable should be the 5th,
+	// becuase accounts 0-4 are reserved for other internal daemon purposes.
+	// We returns 4th account index as the latest, so other code will increment and does not need to know of this reserved thing.
+	//
+	// TODO move in separated constant type mapping
+	if len(r.markets) == 0 {
+		return nil, 4, nil
+	}
+
+	accountIndexes := make([]int, 0, len(r.markets))
+	for k := range r.markets {
+		accountIndexes = append(accountIndexes, k)
+	}
+
+	sort.Ints(accountIndexes)
+
+	latestAccountIndex := accountIndexes[len(accountIndexes)-1]
+
+	currentMarket, ok := r.markets[latestAccountIndex]
+	if !ok {
+		return nil, -1, ErrMarketNotExist
+	}
+
+	return &currentMarket, latestAccountIndex, nil
 }
