@@ -48,6 +48,11 @@ func (m *Market) IsTradable() bool {
 	return m.tradable
 }
 
+// AccountIndex returns the account index
+func (m *Market) AccountIndex() int {
+	return m.accountIndex
+}
+
 // BaseAssetHash returns the base asset hash
 func (m *Market) BaseAssetHash() string {
 	return m.baseAsset.assetHash
