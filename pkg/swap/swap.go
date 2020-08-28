@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/tdex-network/tdex-daemon/pkg/util"
-
 	"github.com/novalagung/gubrak/v2"
+	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -86,7 +86,7 @@ func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset 
 					return false
 				}
 
-				unblinded, ok := util.UnblindOutput(each, blindKey)
+				unblinded, ok := transactionutil.UnblindOutput(each, blindKey)
 				if !ok {
 					return false
 				}
@@ -94,7 +94,7 @@ func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset 
 				return unblinded.Value == value && unblinded.AssetHash == asset
 			}
 
-			return util.ValueFromBytes(each.Value) == value && util.AssetHashFromBytes(each.Asset) == asset
+			return bufferutil.ValueFromBytes(each.Value) == value && bufferutil.AssetHashFromBytes(each.Asset) == asset
 		}).ResultAndError()
 
 	if err != nil {
@@ -116,7 +116,7 @@ func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map
 					return false
 				}
 
-				unblinded, ok := util.UnblindOutput(each.WitnessUtxo, blindKey)
+				unblinded, ok := transactionutil.UnblindOutput(each.WitnessUtxo, blindKey)
 				if !ok {
 					return false
 				}
@@ -124,19 +124,19 @@ func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map
 				return unblinded.AssetHash == asset
 			}
 
-			return util.AssetHashFromBytes(each.WitnessUtxo.Asset) == asset
+			return bufferutil.AssetHashFromBytes(each.WitnessUtxo.Asset) == asset
 		}).
 		Map(func(each pset.PInput) uint64 {
 
 			if each.WitnessUtxo.IsConfidential() {
 
 				blindKey, _ := inputBlindKeys[hex.EncodeToString(each.WitnessUtxo.Script)]
-				unblinded, _ := util.UnblindOutput(each.WitnessUtxo, blindKey)
+				unblinded, _ := transactionutil.UnblindOutput(each.WitnessUtxo, blindKey)
 
 				return unblinded.Value
 			}
 
-			return util.ValueFromBytes(each.WitnessUtxo.Value)
+			return bufferutil.ValueFromBytes(each.WitnessUtxo.Value)
 		}).
 		Reduce(func(accumulator, value uint64) uint64 {
 			return accumulator + value

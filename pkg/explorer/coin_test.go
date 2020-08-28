@@ -7,6 +7,7 @@ import (
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
 	"math"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -127,4 +128,56 @@ func TestFailingSelectUtxos(t *testing.T) {
 		network.Regtest.AssetID,
 	)
 	assert.Equal(t, true, err != nil)
+}
+
+func TestGetBestPairs(t *testing.T) {
+	type args struct {
+		items  []uint64
+		target uint64
+	}
+	tests := []struct {
+		name string
+		args args
+		want []uint64
+	}{
+		{
+			name: "1",
+			args: args{
+				items:  []uint64{61, 61, 61, 38, 61, 61, 61, 1, 1, 1, 3},
+				target: 6,
+			},
+			want: []uint64{38},
+		},
+		{
+			name: "2",
+			args: args{
+				items:  []uint64{61, 61, 61, 61, 61, 61, 1, 1, 1, 3},
+				target: 6,
+			},
+			want: []uint64{1, 1, 1, 3},
+		},
+		{
+			name: "3",
+			args: args{
+				items:  []uint64{61, 61},
+				target: 6,
+			},
+			want: []uint64{61},
+		},
+		{
+			name: "4",
+			args: args{
+				items:  []uint64{2, 2},
+				target: 6,
+			},
+			want: []uint64{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getBestPairs(tt.args.items, tt.args.target); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getBestPairs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

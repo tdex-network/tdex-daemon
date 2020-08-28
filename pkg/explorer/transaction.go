@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/pkg/util"
+	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 	"io/ioutil"
 	"net/http"
 )
@@ -16,7 +16,7 @@ func GetTransactionHex(hash string) (string, error) {
 		config.GetString(config.ExplorerEndpointKey),
 		hash,
 	)
-	status, resp, err := util.NewHTTPRequest("GET", url, "", nil)
+	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +33,7 @@ func BroadcastTransaction(txHex string) (string, error) {
 		"Content-Type": "text/plain",
 	}
 
-	status, resp, err := util.NewHTTPRequest("POST", url, txHex, headers)
+	status, resp, err := httputil.NewHTTPRequest("POST", url, txHex, headers)
 	if err != nil {
 		return "", err
 	}

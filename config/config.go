@@ -35,7 +35,7 @@ func init() {
 
 	vip.SetDefault(TraderListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
-	vip.SetDefault(ExplorerEndpointKey, "http://127.0.0.1:3001")
+	vip.SetDefault(ExplorerEndpointKey, "https://nigiri.network/liquid/api")
 	vip.SetDefault(DataDirPathKey, btcutil.AppDataDir("tdex-daemon", false))
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)

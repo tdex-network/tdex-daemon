@@ -1,7 +1,8 @@
-package util
+package transactionutil
 
 import (
 	"encoding/hex"
+	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/vulpemventures/go-elements/confidential"
 	"github.com/vulpemventures/go-elements/transaction"
 )
@@ -30,7 +31,7 @@ func UnblindOutput(
 	revealed, err := confidential.UnblindOutput(arg)
 	if err == nil {
 		return &UnblindedResult{
-			AssetHash: hex.EncodeToString(ReverseBytes(revealed.Asset)),
+			AssetHash: hex.EncodeToString(bufferutil.ReverseBytes(revealed.Asset)),
 			Value:     revealed.Value,
 		}, true
 	}

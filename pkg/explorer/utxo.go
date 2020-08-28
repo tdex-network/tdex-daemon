@@ -3,7 +3,7 @@ package explorer
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/tdex-network/tdex-daemon/pkg/util"
+	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/vulpemventures/go-elements/confidential"
 	"github.com/vulpemventures/go-elements/transaction"
 )
@@ -140,7 +140,7 @@ func (wu witnessUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, erro
 	if err != nil {
 		return nil, nil, err
 	}
-	input := transaction.NewTxInput(util.ReverseBytes(inHash), wu.UIndex)
+	input := transaction.NewTxInput(bufferutil.ReverseBytes(inHash), wu.UIndex)
 
 	var witnessUtxo *transaction.TxOutput
 	if len(wu.URangeProof) != 0 && len(wu.USurjectionProof) != 0 {
@@ -169,7 +169,7 @@ func (wu witnessUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, erro
 		if err != nil {
 			return nil, nil, err
 		}
-		asset = append([]byte{0x01}, util.ReverseBytes(asset)...)
+		asset = append([]byte{0x01}, bufferutil.ReverseBytes(asset)...)
 
 		witnessUtxo = transaction.NewTxOutput(asset, value[:], wu.UScript)
 	}
@@ -202,7 +202,7 @@ func unblindUtxo(
 		}
 		revealed, err := confidential.UnblindOutput(arg)
 		if err == nil {
-			asset := hex.EncodeToString(util.ReverseBytes(revealed.Asset))
+			asset := hex.EncodeToString(bufferutil.ReverseBytes(revealed.Asset))
 			unspent.UAsset = asset
 			unspent.UValue = revealed.Value
 			chUnspents <- unspent
