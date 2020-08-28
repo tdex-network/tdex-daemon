@@ -135,7 +135,7 @@ func getCoinsIndexes(targetAmount uint64, unblindedUtxos []Utxo) []int {
 		unblindedUtxosValues = append(unblindedUtxosValues, v.Value())
 	}
 
-	list := getBestPairs(unblindedUtxosValues, targetAmount)
+	list := getBestCombination(unblindedUtxosValues, targetAmount)
 
 	indexes := []int{}
 
@@ -187,7 +187,7 @@ func sum(items []uint64) uint64 {
 	}
 	return total
 }
-func getBestPairs(items []uint64, target uint64) []uint64 {
+func getBestCombination(items []uint64, target uint64) []uint64 {
 	result := [][]uint64{}
 	for i := 1; i < len(items)+1; i++ {
 		// get all possible combinations for 1 -> len(items) elements of Array=items

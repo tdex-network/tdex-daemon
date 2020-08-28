@@ -187,7 +187,7 @@ func TestGetBestPairs(t *testing.T) {
 			sort.Slice(tt.args.items, func(i, j int) bool {
 				return tt.args.items[i] > tt.args.items[j]
 			})
-			if got := getBestPairs(tt.args.items, tt.args.target); !reflect.DeepEqual(got, tt.want) {
+			if got := getBestCombination(tt.args.items, tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getBestPairs() = %v, want %v", got, tt.want)
 			}
 		})
