@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
+	"github.com/tdex-network/tdex-daemon/internal/storage"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	"github.com/thanhpk/randstr"
 )
@@ -21,6 +23,14 @@ func NewService(marketRepo market.Repository) *Service {
 	return &Service{
 		marketRepository: marketRepo,
 	}
+}
+
+func validateBaseAsset(baseAsset string) error {
+	if baseAsset != config.GetString(config.BaseAssetKey) {
+		return storage.ErrMarketNotExist
+	}
+
+	return nil
 }
 
 //AddTestMarket ...
@@ -47,6 +57,13 @@ func (s *Service) AddTestMarket(makeItTradable bool) {
 		}
 
 		if makeItTradable {
+			if err := m.ChangeBasePrice(10000); err != nil {
+				return nil, err
+			}
+
+			if err := m.ChangeQuotePrice(0.00008693); err != nil {
+				return nil, err
+			}
 			err = m.MakeTradable()
 		} else {
 			err = m.MakeNotTradable()

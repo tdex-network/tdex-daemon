@@ -6,6 +6,13 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 )
 
+var (
+	//ErrNotFunded is thrown when a market requires being funded for a change
+	ErrNotFunded = errors.New("Market must be funded")
+	//ErrNotTradable is thrown when a market requires being tradable for a change
+	ErrNotTradable = errors.New("Market must be tradable")
+)
+
 //Market defines the Market entity data structure for holding an asset pair state
 type Market struct {
 	// AccountIndex links a market to a HD wallet account derivation.
@@ -19,6 +26,10 @@ type Market struct {
 	feeAsset string
 	// if curretly open for trades
 	tradable bool
+	// how much 1 base asset is valued in quote asset
+	basePrice float32
+	// how much 1 quote asset is valued in base asset
+	quotePrice float32
 }
 
 //NewMarket returns an empty market with a reference to an account index
@@ -38,6 +49,8 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 		accountIndex: positiveAccountIndex,
 		baseAsset:    &depositedAsset{},
 		quoteAsset:   &depositedAsset{},
+		basePrice:    0,
+		quotePrice:   0,
 		fee:          defaultFeeInBasisPoint,
 		feeAsset:     defaultFeeAsset,
 		tradable:     false,
@@ -69,6 +82,16 @@ func (m *Market) QuoteAssetHash() string {
 	return m.quoteAsset.assetHash
 }
 
+// BaseAssetPrice returns the base asset hash
+func (m *Market) BaseAssetPrice() float32 {
+	return m.basePrice
+}
+
+// QuoteAssetPrice returns the quote asset hash
+func (m *Market) QuoteAssetPrice() float32 {
+	return m.quotePrice
+}
+
 // Fee returns the selected fee
 func (m *Market) Fee() int64 {
 	return m.fee
@@ -82,7 +105,7 @@ func (m *Market) FeeAsset() string {
 // MakeTradable ...
 func (m *Market) MakeTradable() error {
 	if !m.IsFunded() {
-		return errors.New("Market must be funded before change the status")
+		return ErrNotFunded
 	}
 
 	m.tradable = true
@@ -92,10 +115,34 @@ func (m *Market) MakeTradable() error {
 // MakeNotTradable ...
 func (m *Market) MakeNotTradable() error {
 	if !m.IsFunded() {
-		return errors.New("Market must be funded before change the trading status")
+		return ErrNotFunded
 	}
 
 	m.tradable = false
+	return nil
+}
+
+// ChangeBasePrice ...
+func (m *Market) ChangeBasePrice(price float32) error {
+	if !m.IsFunded() {
+		return ErrNotFunded
+	}
+
+	//TODO check if the previous price is changing too much as security measure
+
+	m.basePrice = price
+	return nil
+}
+
+// ChangeQuotePrice ...
+func (m *Market) ChangeQuotePrice(price float32) error {
+	if !m.IsFunded() {
+		return ErrNotFunded
+	}
+
+	//TODO check if the previous price is changing too much as security measure
+
+	m.quotePrice = price
 	return nil
 }
 
@@ -103,11 +150,11 @@ func (m *Market) MakeNotTradable() error {
 func (m *Market) ChangeFee(fee int64) error {
 
 	if !m.IsFunded() {
-		return errors.New("Market must be funded before change the fee")
+		return ErrNotFunded
 	}
 
 	if m.IsTradable() {
-		return errors.New("Cannot change the fee when market is open for trading")
+		return ErrNotTradable
 	}
 
 	if err := validateFee(fee); err != nil {
@@ -126,11 +173,11 @@ func (m *Market) ChangeFeeAsset(asset string) error {
 	}
 
 	if !m.IsFunded() {
-		return errors.New("Market must be funded before change the fee asset")
+		return ErrNotFunded
 	}
 
 	if m.IsTradable() {
-		return errors.New("Cannot change the fee asset when market is open for trading")
+		return ErrNotTradable
 	}
 
 	if asset != m.BaseAssetHash() && asset != m.QuoteAssetHash() {

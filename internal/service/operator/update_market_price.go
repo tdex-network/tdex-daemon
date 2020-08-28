@@ -5,27 +5,34 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// CloseMarket makes the given market NOT tradable
-func (s *Service) CloseMarket(ctx context.Context, req *pb.CloseMarketRequest) (*pb.CloseMarketReply, error) {
+// UpdateMarketPrice rpc updates the price for the given market
+func (s *Service) UpdateMarketPrice(ctx context.Context, req *pb.UpdateMarketPriceRequest) (*pb.UpdateMarketPriceReply, error) {
 
+	requestMkt := req.GetMarket()
 	// Checks if base asset is correct
-	if err := validateBaseAsset(req.GetMarket().GetBaseAsset()); err != nil {
+	if err := validateBaseAsset(requestMkt.GetBaseAsset()); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	//Checks if market exist
-	_, accountIndex, err := s.marketRepository.GetMarketByAsset(ctx, req.GetMarket().GetQuoteAsset())
+	_, accountIndex, err := s.marketRepository.GetMarketByAsset(ctx, requestMkt.GetQuoteAsset())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	//Updates the base price and the quote price
 	if err := s.marketRepository.UpdateMarket(context.Background(), accountIndex, func(m *market.Market) (*market.Market, error) {
 
-		if err := m.MakeNotTradable(); err != nil {
+		price := req.GetPrice()
+
+		if err := m.ChangeBasePrice(price.GetBasePrice()); err != nil {
+			return nil, err
+		}
+
+		if err := m.ChangeQuotePrice(price.GetQuotePrice()); err != nil {
 			return nil, err
 		}
 
@@ -34,5 +41,5 @@ func (s *Service) CloseMarket(ctx context.Context, req *pb.CloseMarketRequest) (
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.CloseMarketReply{}, nil
+	return &pb.UpdateMarketPriceReply{}, nil
 }
