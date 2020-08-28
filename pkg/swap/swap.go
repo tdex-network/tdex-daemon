@@ -4,8 +4,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-
 	"github.com/novalagung/gubrak/v2"
+	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -85,15 +86,15 @@ func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset 
 					return false
 				}
 
-				unblinded, ok := unblindPrevOut(each, blindKey)
+				unblinded, ok := transactionutil.UnblindOutput(each, blindKey)
 				if !ok {
 					return false
 				}
 
-				return unblinded.value == value && unblinded.assetHash == asset
+				return unblinded.Value == value && unblinded.AssetHash == asset
 			}
 
-			return valueFromBytes(each.Value) == value && assetHashFromBytes(each.Asset) == asset
+			return bufferutil.ValueFromBytes(each.Value) == value && bufferutil.AssetHashFromBytes(each.Asset) == asset
 		}).ResultAndError()
 
 	if err != nil {
@@ -115,27 +116,27 @@ func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map
 					return false
 				}
 
-				unblinded, ok := unblindPrevOut(each.WitnessUtxo, blindKey)
+				unblinded, ok := transactionutil.UnblindOutput(each.WitnessUtxo, blindKey)
 				if !ok {
 					return false
 				}
 
-				return unblinded.assetHash == asset
+				return unblinded.AssetHash == asset
 			}
 
-			return assetHashFromBytes(each.WitnessUtxo.Asset) == asset
+			return bufferutil.AssetHashFromBytes(each.WitnessUtxo.Asset) == asset
 		}).
 		Map(func(each pset.PInput) uint64 {
 
 			if each.WitnessUtxo.IsConfidential() {
 
 				blindKey, _ := inputBlindKeys[hex.EncodeToString(each.WitnessUtxo.Script)]
-				unblinded, _ := unblindPrevOut(each.WitnessUtxo, blindKey)
+				unblinded, _ := transactionutil.UnblindOutput(each.WitnessUtxo, blindKey)
 
-				return unblinded.value
+				return unblinded.Value
 			}
 
-			return valueFromBytes(each.WitnessUtxo.Value)
+			return bufferutil.ValueFromBytes(each.WitnessUtxo.Value)
 		}).
 		Reduce(func(accumulator, value uint64) uint64 {
 			return accumulator + value
