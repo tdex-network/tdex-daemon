@@ -206,6 +206,8 @@ func getBestPairs(items []uint64, target uint64) []uint64 {
 			}
 		}
 	}
+
+	//if there is no good combination just return first which is greater
 	for _, v := range items {
 		if v > target {
 			return []uint64{v}
