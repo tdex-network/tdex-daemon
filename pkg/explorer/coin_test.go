@@ -8,6 +8,7 @@ import (
 	"github.com/vulpemventures/go-elements/payment"
 	"math"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 )
@@ -154,7 +155,7 @@ func TestGetBestPairs(t *testing.T) {
 				items:  []uint64{61, 61, 61, 61, 61, 61, 1, 1, 1, 3},
 				target: 6,
 			},
-			want: []uint64{1, 1, 1, 3},
+			want: []uint64{3, 1, 1, 1},
 		},
 		{
 			name: "3",
@@ -172,9 +173,20 @@ func TestGetBestPairs(t *testing.T) {
 			},
 			want: []uint64{},
 		},
+		{
+			name: "5",
+			args: args{
+				items:  []uint64{61, 1, 1, 1, 3, 56},
+				target: 6,
+			},
+			want: []uint64{56},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			sort.Slice(tt.args.items, func(i, j int) bool {
+				return tt.args.items[i] > tt.args.items[j]
+			})
 			if got := getBestPairs(tt.args.items, tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getBestPairs() = %v, want %v", got, tt.want)
 			}

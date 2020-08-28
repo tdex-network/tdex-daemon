@@ -192,7 +192,6 @@ func getBestPairs(items []uint64, target uint64) []uint64 {
 	for i := 1; i < len(items)+1; i++ {
 		// get all possible combinations for 1 -> len(items) elements of Array=items
 		result = append(result, getCombination(items, i, 0)...)
-		// fmt.Println("Combinations for ", i, " elements:", result)
 		for j := 0; j < len(result); j++ {
 			total := sum(result[j])
 			if total < target {

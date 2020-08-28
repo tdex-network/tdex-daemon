@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/vulpemventures/go-elements/confidential"
 	"github.com/vulpemventures/go-elements/transaction"
 )
@@ -192,19 +193,20 @@ func unblindUtxo(
 		// secrets of the output.
 		assetCommitment, _ := hex.DecodeString(utxo.AssetCommitment())
 		valueCommitment, _ := hex.DecodeString(utxo.ValueCommitment())
-		nonce, _ := confidential.NonceHash(utxo.Nonce(), blindKey)
-		arg := confidential.UnblindOutputArg{
-			Nonce:           nonce,
-			AssetCommitment: assetCommitment,
-			ValueCommitment: valueCommitment,
-			ScriptPubkey:    utxo.Script(),
-			Rangeproof:      utxo.RangeProof(),
+
+		txOut := &transaction.TxOutput{
+			Nonce:      utxo.Nonce(),
+			Asset:      assetCommitment,
+			Value:      valueCommitment,
+			Script:     utxo.Script(),
+			RangeProof: utxo.RangeProof(),
 		}
-		revealed, err := confidential.UnblindOutput(arg)
-		if err == nil {
-			asset := hex.EncodeToString(bufferutil.ReverseBytes(revealed.Asset))
+		unBlinded, ok := transactionutil.UnblindOutput(txOut, blindKey)
+
+		if ok {
+			asset := unBlinded.AssetHash
 			unspent.UAsset = asset
-			unspent.UValue = revealed.Value
+			unspent.UValue = unBlinded.Value
 			chUnspents <- unspent
 			return
 		}
