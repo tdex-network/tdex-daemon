@@ -3,28 +3,28 @@ package tradeservice
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
-	"github.com/tdex-network/tdex-daemon/internal/storage"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	"github.com/thanhpk/randstr"
 )
 
-// Server is used to implement Trader service.
-type Server struct {
+// Service is used to implement Trader service.
+type Service struct {
 	marketRepository market.Repository
 	pb.UnimplementedTradeServer
 }
 
-// NewServer returns a Trade Server
-func NewServer() *Server {
-	return &Server{
-		marketRepository: storage.NewInMemoryMarketRepository(),
+// NewService returns a Trade Service
+func NewService(marketRepo market.Repository) *Service {
+	return &Service{
+		marketRepository: marketRepo,
 	}
 }
 
 //AddTestMarket ...
-func (s *Server) AddTestMarket() {
+func (s *Service) AddTestMarket(makeItTradable bool) {
 	_, latestAccountIndex, err := s.marketRepository.GetLatestMarket(context.Background())
 	if err != nil {
 		println("latest market")
@@ -46,7 +46,12 @@ func (s *Server) AddTestMarket() {
 			return nil, err
 		}
 
-		if err := m.MakeTradable(); err != nil {
+		if makeItTradable {
+			err = m.MakeTradable()
+		} else {
+			err = m.MakeNotTradable()
+		}
+		if err != nil {
 			return nil, err
 		}
 
@@ -55,5 +60,5 @@ func (s *Server) AddTestMarket() {
 		panic(fmt.Errorf("update market: %w", err))
 	}
 
-	println("Created, funded and opened a market " + randAssetHash)
+	println("Created market | tradable: " + strconv.FormatBool(makeItTradable) + " | " + randAssetHash)
 }
