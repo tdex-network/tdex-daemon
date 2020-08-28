@@ -32,11 +32,13 @@ func (s *Service) UpdateMarketFee(ctx context.Context, req *pb.UpdateMarketFeeRe
 	//Updates the fee and the fee asset
 	if err := s.marketRepository.UpdateMarket(context.Background(), accountIndex, func(m *market.Market) (*market.Market, error) {
 
-		if err := m.ChangeFee(req.GetMarketWithFee().GetFee().GetBasisPoint()); err != nil {
+		feeWithAsset := req.GetMarketWithFee().GetFee()
+
+		if err := m.ChangeFee(feeWithAsset.GetBasisPoint()); err != nil {
 			return nil, err
 		}
 
-		if err := m.ChangeFeeAsset(req.GetMarketWithFee().GetFee().GetAsset()); err != nil {
+		if err := m.ChangeFeeAsset(feeWithAsset.GetAsset()); err != nil {
 			return nil, err
 		}
 
