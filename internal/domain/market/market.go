@@ -13,8 +13,11 @@ type Market struct {
 	accountIndex int
 	baseAsset    *depositedAsset
 	quoteAsset   *depositedAsset
-	// Each Market could have a different fee expressed in percentage of each swap
-	fee      int64
+	// Each Market has a different fee expressed in basis point of each swap
+	fee int64
+	// The asset hash should be used to take a cut
+	feeAsset string
+	// if curretly open for trades
 	tradable bool
 }
 
@@ -28,12 +31,15 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 	// Here we convert the float to integer indicating basis point to take from each swap
 	defaultFeeInDecimals := config.GetFloat(config.DefaultFeeKey)
 	defaultFeeInBasisPoint := int64(defaultFeeInDecimals * 100)
+	// Default asset fee is the base asset
+	defaultFeeAsset := config.GetString(config.BaseAssetKey)
 
 	return &Market{
 		accountIndex: positiveAccountIndex,
 		baseAsset:    &depositedAsset{},
 		quoteAsset:   &depositedAsset{},
 		fee:          defaultFeeInBasisPoint,
+		feeAsset:     defaultFeeAsset,
 		tradable:     false,
 	}, nil
 }
@@ -68,6 +74,11 @@ func (m *Market) Fee() int64 {
 	return m.fee
 }
 
+// FeeAsset returns the selected asset to be used for market fee collection
+func (m *Market) FeeAsset() string {
+	return m.feeAsset
+}
+
 // MakeTradable ...
 func (m *Market) MakeTradable() error {
 	if !m.IsFunded() {
@@ -85,6 +96,48 @@ func (m *Market) MakeNotTradable() error {
 	}
 
 	m.tradable = false
+	return nil
+}
+
+// ChangeFee ...
+func (m *Market) ChangeFee(fee int64) error {
+
+	if !m.IsFunded() {
+		return errors.New("Market must be funded before change the fee")
+	}
+
+	if m.IsTradable() {
+		return errors.New("Cannot change the fee when market is open for trading")
+	}
+
+	if err := validateFee(fee); err != nil {
+		return err
+	}
+
+	m.fee = fee
+	return nil
+}
+
+// ChangeFeeAsset ...
+func (m *Market) ChangeFeeAsset(asset string) error {
+	// In case of empty asset hash, no updates happens and therefore it exit without error
+	if asset == "" {
+		return nil
+	}
+
+	if !m.IsFunded() {
+		return errors.New("Market must be funded before change the fee asset")
+	}
+
+	if m.IsTradable() {
+		return errors.New("Cannot change the fee asset when market is open for trading")
+	}
+
+	if asset != m.BaseAssetHash() && asset != m.QuoteAssetHash() {
+		return errors.New("The given asset must be either the base or quote asset in the pair")
+	}
+
+	m.feeAsset = asset
 	return nil
 }
 
@@ -150,6 +203,14 @@ func (d depositedAsset) IsNotZero() bool {
 func validateAccountIndex(accIndex int) error {
 	if accIndex < 0 {
 		return errors.New("Account index must be a positive integer number")
+	}
+
+	return nil
+}
+
+func validateFee(basisPoint int64) error {
+	if basisPoint < 1 || basisPoint > 9999 {
+		return errors.New("percentage of the fee on each swap must be > 0.01 and < 99")
 	}
 
 	return nil

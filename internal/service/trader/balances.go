@@ -7,6 +7,6 @@ import (
 )
 
 // Balances is the domain controller for the Balances RPC
-func (s *Server) Balances(ctx context.Context, req *pb.BalancesRequest) (res *pb.BalancesReply, err error) {
+func (s *Service) Balances(ctx context.Context, req *pb.BalancesRequest) (res *pb.BalancesReply, err error) {
 	return &pb.BalancesReply{}, nil
 }

@@ -7,12 +7,12 @@ import (
 )
 
 //UnarySecret is the domain controller for the UnarySecret RPC
-func (s *Server) UnarySecret(ctx context.Context, req *pbhandshake.SecretMessage) (res *pbhandshake.SecretMessage, err error) {
+func (s *Service) UnarySecret(ctx context.Context, req *pbhandshake.SecretMessage) (res *pbhandshake.SecretMessage, err error) {
 	return &pbhandshake.SecretMessage{}, nil
 }
 
 // StreamSecret is the domain controller for the StreamSecret RPC
-func (s *Server) StreamSecret(req *pbhandshake.SecretMessage, stream pbhandshake.Handshake_StreamSecretServer) error {
+func (s *Service) StreamSecret(req *pbhandshake.SecretMessage, stream pbhandshake.Handshake_StreamSecretServer) error {
 	if err := stream.Send(&pbhandshake.SecretMessage{}); err != nil {
 		return err
 	}
