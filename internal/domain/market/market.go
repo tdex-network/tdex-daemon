@@ -30,6 +30,11 @@ type Market struct {
 	feeAsset string
 	// if curretly open for trades
 	tradable bool
+	// Market Making strategy
+	usePriceFeed      bool
+	priceFeedProvider string
+	// AMM formula
+	formula string
 	// how much 1 base asset is valued in quote asset.
 	// It's a map  timestamp -> price, so it's easier to do historical price change.
 	basePrice map[uint64]float32
@@ -52,14 +57,17 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 	defaultFeeAsset := config.GetString(config.BaseAssetKey)
 
 	return &Market{
-		accountIndex: positiveAccountIndex,
-		baseAsset:    &depositedAsset{},
-		quoteAsset:   &depositedAsset{},
-		basePrice:    map[uint64]float32{},
-		quotePrice:   map[uint64]float32{},
-		fee:          defaultFeeInBasisPoint,
-		feeAsset:     defaultFeeAsset,
-		tradable:     false,
+		accountIndex:      positiveAccountIndex,
+		baseAsset:         &depositedAsset{},
+		quoteAsset:        &depositedAsset{},
+		basePrice:         map[uint64]float32{},
+		quotePrice:        map[uint64]float32{},
+		fee:               defaultFeeInBasisPoint,
+		feeAsset:          defaultFeeAsset,
+		tradable:          false,
+		usePriceFeed:      false,
+		priceFeedProvider: "",
+		formula:           "x*y=k",
 	}, nil
 }
 
@@ -129,6 +137,11 @@ func (m *Market) MakeNotTradable() error {
 	}
 
 	m.tradable = false
+	return nil
+}
+
+// ChangeStrategy ...
+func (m *Market) ChangeStrategy(strategy int) error {
 	return nil
 }
 

@@ -18,20 +18,24 @@ func (s *Service) OpenMarket(ctx context.Context, req *pb.OpenMarketRequest) (*p
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	//Checks if market exist
-	_, accountIndex, err := s.marketRepository.GetMarketByAsset(ctx, req.GetMarket().GetQuoteAsset())
+	currentMarket, accountIndex, err := s.marketRepository.GetMarketByAsset(ctx, req.GetMarket().GetQuoteAsset())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := s.marketRepository.UpdateMarket(context.Background(), accountIndex, func(m *market.Market) (*market.Market, error) {
+	if !currentMarket.IsTradable() {
+		// We update the market status only if the market is closed.
+		if err := s.marketRepository.UpdateMarket(context.Background(), accountIndex, func(m *market.Market) (*market.Market, error) {
 
-		if err := m.MakeTradable(); err != nil {
-			return nil, err
+			if err := m.MakeTradable(); err != nil {
+				return nil, err
+			}
+
+			return m, nil
+		}); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		return m, nil
-	}); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &pb.OpenMarketReply{}, nil
