@@ -2,6 +2,8 @@ package market
 
 import (
 	"errors"
+	"sort"
+	"time"
 
 	"github.com/tdex-network/tdex-daemon/config"
 )
@@ -11,6 +13,8 @@ var (
 	ErrNotFunded = errors.New("Market must be funded")
 	//ErrNotTradable is thrown when a market requires being tradable for a change
 	ErrNotTradable = errors.New("Market must be tradable")
+	//ErrPriceExists is thrown when a price for that given timestamp already exists
+	ErrPriceExists = errors.New("A price has been inserted already")
 )
 
 //Market defines the Market entity data structure for holding an asset pair state
@@ -26,10 +30,12 @@ type Market struct {
 	feeAsset string
 	// if curretly open for trades
 	tradable bool
-	// how much 1 base asset is valued in quote asset
-	basePrice float32
+	// how much 1 base asset is valued in quote asset.
+	// It's a map  timestamp -> price, so it's easier to do historical price change.
+	basePrice map[uint64]float32
 	// how much 1 quote asset is valued in base asset
-	quotePrice float32
+	// It's a map  timestamp -> price, so it's easier to do historical price change.
+	quotePrice map[uint64]float32
 }
 
 //NewMarket returns an empty market with a reference to an account index
@@ -49,8 +55,8 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 		accountIndex: positiveAccountIndex,
 		baseAsset:    &depositedAsset{},
 		quoteAsset:   &depositedAsset{},
-		basePrice:    0,
-		quotePrice:   0,
+		basePrice:    map[uint64]float32{},
+		quotePrice:   map[uint64]float32{},
 		fee:          defaultFeeInBasisPoint,
 		feeAsset:     defaultFeeAsset,
 		tradable:     false,
@@ -82,14 +88,18 @@ func (m *Market) QuoteAssetHash() string {
 	return m.quoteAsset.assetHash
 }
 
-// BaseAssetPrice returns the base asset hash
+// BaseAssetPrice returns the latest price for the base asset
 func (m *Market) BaseAssetPrice() float32 {
-	return m.basePrice
+	_, price := getLatestPrice(m.basePrice)
+
+	return price
 }
 
-// QuoteAssetPrice returns the quote asset hash
+// QuoteAssetPrice returns the latest price for the quote asset
 func (m *Market) QuoteAssetPrice() float32 {
-	return m.quotePrice
+	_, price := getLatestPrice(m.quotePrice)
+
+	return price
 }
 
 // Fee returns the selected fee
@@ -128,9 +138,14 @@ func (m *Market) ChangeBasePrice(price float32) error {
 		return ErrNotFunded
 	}
 
-	//TODO check if the previous price is changing too much as security measure
+	// TODO add logic to be sure that the price do not change to much from the latest one
 
-	m.basePrice = price
+	timestamp := uint64(time.Now().Unix())
+	if _, ok := m.basePrice[timestamp]; ok {
+		return ErrPriceExists
+	}
+
+	m.basePrice[timestamp] = price
 	return nil
 }
 
@@ -142,7 +157,12 @@ func (m *Market) ChangeQuotePrice(price float32) error {
 
 	//TODO check if the previous price is changing too much as security measure
 
-	m.quotePrice = price
+	timestamp := uint64(time.Now().Unix())
+	if _, ok := m.quotePrice[timestamp]; ok {
+		return ErrPriceExists
+	}
+
+	m.quotePrice[timestamp] = price
 	return nil
 }
 
@@ -245,6 +265,23 @@ type OutpointWithAsset struct {
 // IsNotZero ...
 func (d depositedAsset) IsNotZero() bool {
 	return len(d.assetHash) > 0 && len(d.fundingTxs) > 0
+}
+
+func getLatestPrice(keyValue map[uint64]float32) (uint64, float32) {
+	if len(keyValue) == 0 {
+		return 0, 0
+	}
+
+	keys := make([]uint64, 0, len(keyValue))
+	for k := range keyValue {
+		keys = append(keys, k)
+	}
+
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+	latestKey := keys[len(keys)-1]
+	latestValue := keyValue[latestKey]
+	return latestKey, latestValue
 }
 
 func validateAccountIndex(accIndex int) error {
