@@ -3,9 +3,7 @@ package operatorservice
 import (
 	"context"
 
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
-	"github.com/tdex-network/tdex-daemon/internal/storage"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 
@@ -19,12 +17,13 @@ import (
 // The Market MUST be closed before doing this change.
 func (s *Service) UpdateMarketFee(ctx context.Context, req *pb.UpdateMarketFeeRequest) (res *pb.UpdateMarketFeeReply, err error) {
 
+	requestMkt := req.GetMarketWithFee().GetMarket()
 	// Checks if base asset is correct
-	if req.GetMarketWithFee().GetMarket().GetBaseAsset() != config.GetString(config.BaseAssetKey) {
-		return nil, status.Error(codes.InvalidArgument, storage.ErrMarketNotExist.Error())
+	if err := validateBaseAsset(requestMkt.GetBaseAsset()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	//Checks if market exist
-	_, accountIndex, err := s.marketRepository.GetMarketByAsset(ctx, req.GetMarketWithFee().GetMarket().GetQuoteAsset())
+	_, accountIndex, err := s.marketRepository.GetMarketByAsset(ctx, requestMkt.GetQuoteAsset())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

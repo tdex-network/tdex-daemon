@@ -3,9 +3,7 @@ package operatorservice
 import (
 	"context"
 
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
-	"github.com/tdex-network/tdex-daemon/internal/storage"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 
 	"google.golang.org/grpc/codes"
@@ -16,8 +14,8 @@ import (
 func (s *Service) OpenMarket(ctx context.Context, req *pb.OpenMarketRequest) (*pb.OpenMarketReply, error) {
 
 	// Checks if base asset is correct
-	if req.GetMarket().GetBaseAsset() != config.GetString(config.BaseAssetKey) {
-		return nil, status.Error(codes.InvalidArgument, storage.ErrMarketNotExist.Error())
+	if err := validateBaseAsset(req.GetMarket().GetBaseAsset()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	//Checks if market exist
 	_, accountIndex, err := s.marketRepository.GetMarketByAsset(ctx, req.GetMarket().GetQuoteAsset())
