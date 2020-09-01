@@ -2,19 +2,19 @@ package market
 
 import (
 	"errors"
-	"sort"
-	"time"
 
 	"github.com/tdex-network/tdex-daemon/config"
 )
 
 var (
 	//ErrNotFunded is thrown when a market requires being funded for a change
-	ErrNotFunded = errors.New("Market must be funded")
+	ErrNotFunded = errors.New("market must be funded")
 	//ErrNotTradable is thrown when a market requires being tradable for a change
-	ErrNotTradable = errors.New("Market must be tradable")
+	ErrNotTradable = errors.New("market must be tradable")
 	//ErrPriceExists is thrown when a price for that given timestamp already exists
-	ErrPriceExists = errors.New("A price has been inserted already")
+	ErrPriceExists = errors.New("price has been inserted already")
+	//ErrNotPriced is thrown when the price is still 0 (ie. not initialized)
+	ErrNotPriced = errors.New("price must be inserted")
 )
 
 //Market defines the Market entity data structure for holding an asset pair state
@@ -31,16 +31,13 @@ type Market struct {
 	// if curretly open for trades
 	tradable bool
 	// Market Making strategy
-	usePriceFeed      bool
-	priceFeedProvider string
-	// AMM formula
-	formula string
+	strategy MakingStrategy
 	// how much 1 base asset is valued in quote asset.
 	// It's a map  timestamp -> price, so it's easier to do historical price change.
-	basePrice map[uint64]float32
+	basePrice PriceByTime
 	// how much 1 quote asset is valued in base asset
 	// It's a map  timestamp -> price, so it's easier to do historical price change.
-	quotePrice map[uint64]float32
+	quotePrice PriceByTime
 }
 
 //NewMarket returns an empty market with a reference to an account index
@@ -57,28 +54,20 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 	defaultFeeAsset := config.GetString(config.BaseAssetKey)
 
 	return &Market{
-		accountIndex:      positiveAccountIndex,
-		baseAsset:         &depositedAsset{},
-		quoteAsset:        &depositedAsset{},
-		basePrice:         map[uint64]float32{},
-		quotePrice:        map[uint64]float32{},
-		fee:               defaultFeeInBasisPoint,
-		feeAsset:          defaultFeeAsset,
-		tradable:          false,
-		usePriceFeed:      false,
-		priceFeedProvider: "",
-		formula:           "x*y=k",
+		accountIndex: positiveAccountIndex,
+		baseAsset:    &depositedAsset{},
+		quoteAsset:   &depositedAsset{},
+
+		basePrice:  map[uint64]Price{},
+		quotePrice: map[uint64]Price{},
+
+		fee:      defaultFeeInBasisPoint,
+		feeAsset: defaultFeeAsset,
+
+		tradable: false,
+
+		strategy: MakingStrategy{},
 	}, nil
-}
-
-// IsFunded method returns true if the market contains a non empty funding tx outpoint for each asset
-func (m *Market) IsFunded() bool {
-	return m.baseAsset.IsNotZero() && m.quoteAsset.IsNotZero()
-}
-
-// IsTradable returns true if the market is available for trading
-func (m *Market) IsTradable() bool {
-	return m.tradable
 }
 
 // AccountIndex returns the account index
@@ -97,14 +86,14 @@ func (m *Market) QuoteAssetHash() string {
 }
 
 // BaseAssetPrice returns the latest price for the base asset
-func (m *Market) BaseAssetPrice() float32 {
+func (m *Market) BaseAssetPrice() Price {
 	_, price := getLatestPrice(m.basePrice)
 
 	return price
 }
 
 // QuoteAssetPrice returns the latest price for the quote asset
-func (m *Market) QuoteAssetPrice() float32 {
+func (m *Market) QuoteAssetPrice() Price {
 	_, price := getLatestPrice(m.quotePrice)
 
 	return price
@@ -126,6 +115,10 @@ func (m *Market) MakeTradable() error {
 		return ErrNotFunded
 	}
 
+	if m.strategy.IsZero() && m.basePrice.IsZero() {
+		return ErrNotPriced
+	}
+
 	m.tradable = true
 	return nil
 }
@@ -137,45 +130,6 @@ func (m *Market) MakeNotTradable() error {
 	}
 
 	m.tradable = false
-	return nil
-}
-
-// ChangeStrategy ...
-func (m *Market) ChangeStrategy(strategy int) error {
-	return nil
-}
-
-// ChangeBasePrice ...
-func (m *Market) ChangeBasePrice(price float32) error {
-	if !m.IsFunded() {
-		return ErrNotFunded
-	}
-
-	// TODO add logic to be sure that the price do not change to much from the latest one
-
-	timestamp := uint64(time.Now().Unix())
-	if _, ok := m.basePrice[timestamp]; ok {
-		return ErrPriceExists
-	}
-
-	m.basePrice[timestamp] = price
-	return nil
-}
-
-// ChangeQuotePrice ...
-func (m *Market) ChangeQuotePrice(price float32) error {
-	if !m.IsFunded() {
-		return ErrNotFunded
-	}
-
-	//TODO check if the previous price is changing too much as security measure
-
-	timestamp := uint64(time.Now().Unix())
-	if _, ok := m.quotePrice[timestamp]; ok {
-		return ErrPriceExists
-	}
-
-	m.quotePrice[timestamp] = price
 	return nil
 }
 
@@ -263,38 +217,14 @@ func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 	return nil
 }
 
-type depositedAsset struct {
-	assetHash  string
-	fundingTxs []OutpointWithAsset
+// IsFunded method returns true if the market contains a non empty funding tx outpoint for each asset
+func (m *Market) IsFunded() bool {
+	return m.baseAsset.IsNotZero() && m.quoteAsset.IsNotZero()
 }
 
-// OutpointWithAsset contains the transaction outpoint (tx hash and vout) along with the asset hash
-type OutpointWithAsset struct {
-	Asset string
-	Txid  string
-	Vout  int
-}
-
-// IsNotZero ...
-func (d depositedAsset) IsNotZero() bool {
-	return len(d.assetHash) > 0 && len(d.fundingTxs) > 0
-}
-
-func getLatestPrice(keyValue map[uint64]float32) (uint64, float32) {
-	if len(keyValue) == 0 {
-		return 0, 0
-	}
-
-	keys := make([]uint64, 0, len(keyValue))
-	for k := range keyValue {
-		keys = append(keys, k)
-	}
-
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-
-	latestKey := keys[len(keys)-1]
-	latestValue := keyValue[latestKey]
-	return latestKey, latestValue
+// IsTradable returns true if the market is available for trading
+func (m *Market) IsTradable() bool {
+	return m.tradable
 }
 
 func validateAccountIndex(accIndex int) error {

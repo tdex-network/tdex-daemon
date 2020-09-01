@@ -8,6 +8,7 @@ require (
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/novalagung/gubrak/v2 v2.0.1
+	github.com/pkg/errors v0.8.1
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/soheilhy/cmux v0.1.4
