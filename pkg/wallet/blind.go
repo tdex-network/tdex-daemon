@@ -34,6 +34,9 @@ func (w *Wallet) BlindTransaction(opts BlindTransactionOpts) (string, error) {
 	if err := w.validate(); err != nil {
 		return "", err
 	}
+	if !w.IsConfidential() {
+		return "", ErrNotConfidentialWallet
+	}
 
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 

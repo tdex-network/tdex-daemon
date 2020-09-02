@@ -77,6 +77,11 @@ var (
 	// ErrEmptyInputs ...
 	ErrEmptyInputs = errors.New("input list must not be empty")
 
+	// ErrNotConfidentialWallet ...
+	ErrNotConfidentialWallet = errors.New(
+		"wallet must have valid blinding mnemonic and master key for operations " +
+			"such blinding a transaction",
+	)
 	// ErrMalformedDerivationPath ...
 	ErrMalformedDerivationPath = errors.New(
 		"path must not start or end with a '/' and " +
@@ -240,4 +245,10 @@ func (w *Wallet) BlindingMnemonic() (string, error) {
 		return "", ErrNullBlindingMnemonic
 	}
 	return w.blindingMnemonic, nil
+}
+
+// IsConfidential returns whether the blinding mnemonic/master key are set
+// for the current wallet
+func (w *Wallet) IsConfidential() bool {
+	return len(w.blindingMnemonic) > 0 && len(w.blindingMasterKey) > 0
 }
