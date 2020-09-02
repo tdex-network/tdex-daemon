@@ -32,8 +32,8 @@ func (s *Service) MarketPrice(ctx context.Context, req *pb.MarketPriceRequest) (
 		Prices: []*pbtypes.PriceWithFee{
 			{
 				Price: &pbtypes.Price{
-					BasePrice:  float32(mkt.BaseAssetPrice()),
-					QuotePrice: float32(mkt.QuoteAssetPrice()),
+					BasePrice:  mkt.BaseAssetPrice(),
+					QuotePrice: mkt.QuoteAssetPrice(),
 				},
 				Fee: &pbtypes.Fee{
 					Asset:      mkt.FeeAsset(),

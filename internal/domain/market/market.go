@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/tdex-network/tdex-daemon/config"
+	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 )
 
 var (
@@ -31,7 +32,7 @@ type Market struct {
 	// if curretly open for trades
 	tradable bool
 	// Market Making strategy
-	strategy MakingStrategy
+	strategy mm.MakingStrategy
 	// how much 1 base asset is valued in quote asset.
 	// It's a map  timestamp -> price, so it's easier to do historical price change.
 	basePrice PriceByTime
@@ -66,7 +67,7 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 
 		tradable: false,
 
-		strategy: MakingStrategy{},
+		strategy: mm.MakingStrategy{},
 	}, nil
 }
 
@@ -86,17 +87,17 @@ func (m *Market) QuoteAssetHash() string {
 }
 
 // BaseAssetPrice returns the latest price for the base asset
-func (m *Market) BaseAssetPrice() Price {
+func (m *Market) BaseAssetPrice() float32 {
 	_, price := getLatestPrice(m.basePrice)
 
-	return price
+	return float32(price)
 }
 
 // QuoteAssetPrice returns the latest price for the quote asset
-func (m *Market) QuoteAssetPrice() Price {
+func (m *Market) QuoteAssetPrice() float32 {
 	_, price := getLatestPrice(m.quotePrice)
 
-	return price
+	return float32(price)
 }
 
 // Fee returns the selected fee
@@ -115,7 +116,7 @@ func (m *Market) MakeTradable() error {
 		return ErrNotFunded
 	}
 
-	if m.strategy.IsZero() && m.basePrice.IsZero() {
+	if m.strategy.IsZero() && (m.basePrice.IsZero() || m.quotePrice.IsZero()) {
 		return ErrNotPriced
 	}
 
@@ -174,6 +175,13 @@ func (m *Market) ChangeFeeAsset(asset string) error {
 	m.feeAsset = asset
 	return nil
 }
+
+// Strategy ...
+func (m *Market) Strategy() mm.MakingStrategy {
+	return m.strategy
+}
+
+// ChangeStrategyWith
 
 // FundMarket adds funding details given an array of outpoints and recognize quote asset
 func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
