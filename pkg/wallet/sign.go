@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/vulpemventures/go-elements/payment"
 	"github.com/vulpemventures/go-elements/pset"
 )
 
@@ -151,7 +152,12 @@ func (w *Wallet) signInput(ptx *pset.Pset, inIndex int, derivationPath string) e
 		return err
 	}
 
-	script := legacyP2PKHScript(ptx.Inputs[inIndex].WitnessUtxo.Script)
+	pay, err := payment.FromScript(ptx.Inputs[inIndex].WitnessUtxo.Script, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	script := pay.Script
 	hashForSignature := ptx.UnsignedTx.HashForWitnessV0(
 		inIndex,
 		script,
@@ -183,14 +189,4 @@ func (w *Wallet) signInput(ptx *pset.Pset, inIndex int, derivationPath string) e
 		return err
 	}
 	return nil
-}
-
-func legacyP2PKHScript(witnessScript []byte) []byte {
-	scriptHash := witnessScript[2:]
-	builder := txscript.NewScriptBuilder()
-	builder.AddOp(txscript.OP_DUP).AddOp(txscript.OP_HASH160)
-	builder.AddData(scriptHash)
-	builder.AddOp(txscript.OP_EQUALVERIFY).AddOp(txscript.OP_CHECKSIG)
-	script, _ := builder.Script()
-	return script
 }
