@@ -1,13 +1,10 @@
 package wallet
 
 import (
-	"encoding/hex"
-
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/tyler-smith/go-bip39"
-	"github.com/vulpemventures/go-elements/confidential"
 	"github.com/vulpemventures/go-elements/slip77"
 )
 
@@ -59,36 +56,4 @@ func generateBlindingMasterKey(seed []byte) ([]byte, error) {
 		return nil, err
 	}
 	return slip77Node.MasterKey, nil
-}
-
-// reverseBytes returns a copy of the given byte slice with elems in reverse order.
-func reverseBytes(buf []byte) []byte {
-	if len(buf) < 1 {
-		return buf
-	}
-	tmp := make([]byte, len(buf))
-	copy(tmp, buf)
-	for i := len(tmp)/2 - 1; i >= 0; i-- {
-		j := len(tmp) - 1 - i
-		tmp[i], tmp[j] = tmp[j], tmp[i]
-	}
-	return tmp
-}
-
-func assetHashToBytes(str string) ([]byte, error) {
-	buffer, err := hex.DecodeString(str)
-	if err != nil {
-		return nil, err
-	}
-	buffer = reverseBytes(buffer)
-	buffer = append([]byte{0x01}, buffer...)
-	return buffer, nil
-}
-
-func valueToBytes(val uint64) ([]byte, error) {
-	buffer, err := confidential.SatoshiToElementsValue(val)
-	if err != nil {
-		return nil, err
-	}
-	return buffer[:], nil
 }

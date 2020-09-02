@@ -2,6 +2,7 @@ package bufferutil
 
 import (
 	"encoding/hex"
+
 	"github.com/vulpemventures/go-elements/confidential"
 )
 
@@ -29,4 +30,22 @@ func ValueFromBytes(buffer []byte) uint64 {
 	copy(elementsValue[:], buffer[0:9])
 	value, _ := confidential.ElementsToSatoshiValue(elementsValue)
 	return value
+}
+
+func AssetHashToBytes(str string) ([]byte, error) {
+	buffer, err := hex.DecodeString(str)
+	if err != nil {
+		return nil, err
+	}
+	buffer = ReverseBytes(buffer)
+	buffer = append([]byte{0x01}, buffer...)
+	return buffer, nil
+}
+
+func ValueToBytes(val uint64) ([]byte, error) {
+	buffer, err := confidential.SatoshiToElementsValue(val)
+	if err != nil {
+		return nil, err
+	}
+	return buffer[:], nil
 }

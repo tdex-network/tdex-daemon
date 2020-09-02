@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
@@ -42,13 +43,13 @@ func (o UpdateTxOpts) validate() error {
 	if o.InputAmount == 0 {
 		return ErrZeroInputAmount
 	}
-	if _, err := valueToBytes(o.InputAmount); err != nil {
+	if _, err := bufferutil.ValueToBytes(o.InputAmount); err != nil {
 		return err
 	}
 	if len(o.InputAsset)/2 != 32 {
 		return ErrInvalidInputAsset
 	}
-	if _, err := assetHashToBytes(o.InputAsset); err != nil {
+	if _, err := bufferutil.AssetHashToBytes(o.InputAsset); err != nil {
 		return ErrInvalidInputAsset
 	}
 
@@ -67,13 +68,13 @@ func (o UpdateTxOpts) validate() error {
 	if o.OutputAmount == 0 {
 		return ErrZeroOutputAmount
 	}
-	if _, err := valueToBytes(o.OutputAmount); err != nil {
+	if _, err := bufferutil.ValueToBytes(o.OutputAmount); err != nil {
 		return err
 	}
 	if len(o.OutputAsset)/2 != 32 {
 		return ErrInvalidOutputAsset
 	}
-	if _, err := assetHashToBytes(o.OutputAsset); err != nil {
+	if _, err := bufferutil.AssetHashToBytes(o.OutputAsset); err != nil {
 		return ErrInvalidOutputAsset
 	}
 
@@ -150,8 +151,8 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (string, []explorer.Utxo, error) {
 		}
 	}
 
-	outAsset, _ := assetHashToBytes(opts.OutputAsset)
-	outValue, _ := valueToBytes(opts.OutputAmount)
+	outAsset, _ := bufferutil.AssetHashToBytes(opts.OutputAsset)
+	outValue, _ := bufferutil.ValueToBytes(opts.OutputAmount)
 	_, pubkey, _ := w.DeriveSigningKeyPair(DeriveSigningKeyPairOpts{
 		DerivationPath: opts.OutputDerivationPath,
 	})
@@ -161,13 +162,13 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (string, []explorer.Utxo, error) {
 	updater.AddOutput(output)
 
 	if change > 0 {
-		changeValue, _ := valueToBytes(change)
+		changeValue, _ := bufferutil.ValueToBytes(change)
 		_, pubkey, _ := w.DeriveSigningKeyPair(DeriveSigningKeyPairOpts{
 			DerivationPath: opts.ChangeDerivationPath,
 		})
 		changeScript :=
 			payment.FromPublicKey(pubkey, &network.Liquid, nil).WitnessScript
-		inAsset, _ := assetHashToBytes(opts.InputAsset)
+		inAsset, _ := bufferutil.AssetHashToBytes(opts.InputAsset)
 
 		changeOutput := transaction.NewTxOutput(inAsset, changeValue, changeScript)
 		updater.AddOutput(changeOutput)
