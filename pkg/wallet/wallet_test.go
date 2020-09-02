@@ -7,15 +7,48 @@ import (
 )
 
 func TestNewWallet(t *testing.T) {
-	wallet, err := newTestWallet()
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		opts         NewWalletOpts
+		sameMnemonic bool
+	}{
+		{
+			opts:         NewWalletOpts{},
+			sameMnemonic: true,
+		},
+		{
+			opts:         NewWalletOpts{EntropySize: 256},
+			sameMnemonic: true,
+		},
+		{
+			opts:         NewWalletOpts{ExtraMnemonic: true},
+			sameMnemonic: false,
+		},
+		{
+			opts:         NewWalletOpts{EntropySize: 256, ExtraMnemonic: true},
+			sameMnemonic: false,
+		},
 	}
-	assert.NotNil(t, wallet)
+	for _, tt := range tests {
+		wallet, err := NewWallet(tt.opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		signingMnemonic, err := wallet.SigningMnemonic()
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, true, isMnemonicValid(signingMnemonic))
+		blindingMnemonic, err := wallet.BlindingMnemonic()
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, true, isMnemonicValid(blindingMnemonic))
+		assert.Equal(t, tt.sameMnemonic, signingMnemonic == blindingMnemonic)
+	}
 }
 
 func TestFailingNewWallet(t *testing.T) {
-	tests := []int{-1, 0, 127, 257, 130}
+	tests := []int{-1, 127, 257, 130}
 	for _, tt := range tests {
 		opts := NewWalletOpts{
 			EntropySize: tt,
@@ -31,10 +64,8 @@ func TestNewWalletFromMnemonic(t *testing.T) {
 		t.Fatal(err)
 	}
 	signingMnemonic, _ := wallet.SigningMnemonic()
-	blindingMnemonic, _ := wallet.BlindingMnemonic()
 	opts := NewWalletFromMnemonicOpts{
-		SigningMnemonic:  signingMnemonic,
-		BlindingMnemonic: blindingMnemonic,
+		SigningMnemonic: signingMnemonic,
 	}
 	otherWallet, err := NewWalletFromMnemonic(opts)
 	if err != nil {

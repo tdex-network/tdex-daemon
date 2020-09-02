@@ -77,11 +77,6 @@ var (
 	// ErrEmptyInputs ...
 	ErrEmptyInputs = errors.New("input list must not be empty")
 
-	// ErrNotConfidentialWallet ...
-	ErrNotConfidentialWallet = errors.New(
-		"wallet must have valid blinding mnemonic and master key for operations " +
-			"such blinding a transaction",
-	)
 	// ErrMalformedDerivationPath ...
 	ErrMalformedDerivationPath = errors.New(
 		"path must not start or end with a '/' and " +
@@ -105,12 +100,15 @@ type Wallet struct {
 
 // NewWalletOpts is the struct given to the NewWallet method
 type NewWalletOpts struct {
-	EntropySize int
+	EntropySize   int
+	ExtraMnemonic bool
 }
 
 func (o NewWalletOpts) validate() error {
-	if o.EntropySize < 128 || o.EntropySize > 256 || o.EntropySize%32 != 0 {
-		return ErrInvalidEntropySize
+	if o.EntropySize > 0 {
+		if o.EntropySize < 128 || o.EntropySize > 256 || o.EntropySize%32 != 0 {
+			return ErrInvalidEntropySize
+		}
 	}
 	return nil
 }
@@ -119,6 +117,9 @@ func (o NewWalletOpts) validate() error {
 func NewWallet(opts NewWalletOpts) (*Wallet, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
+	}
+	if opts.EntropySize == 0 {
+		opts.EntropySize = 128
 	}
 
 	signingMnemonic, signingSeed, err :=
@@ -134,9 +135,13 @@ func NewWallet(opts NewWalletOpts) (*Wallet, error) {
 		return nil, err
 	}
 
-	blindingMnemonic, blindingSeed, err := generateMnemonicSeedAndMasterKey(opts.EntropySize)
-	if err != nil {
-		return nil, err
+	blindingMnemonic := signingMnemonic
+	blindingSeed := signingSeed
+	if opts.ExtraMnemonic {
+		blindingMnemonic, blindingSeed, err = generateMnemonicSeedAndMasterKey(opts.EntropySize)
+		if err != nil {
+			return nil, err
+		}
 	}
 	blindingMasterKey, err := generateBlindingMasterKey(blindingSeed)
 	if err != nil {
@@ -190,18 +195,21 @@ func NewWalletFromMnemonic(opts NewWalletFromMnemonicOpts) (*Wallet, error) {
 
 	blindingSeed := make([]byte, 0)
 	blindingMasterKey := make([]byte, 0)
+	blindingMnemonic := opts.SigningMnemonic
 	if len(opts.BlindingMnemonic) > 0 {
-		blindingSeed = generateSeedFromMnemonic(opts.BlindingMnemonic)
-		blindingMasterKey, err = generateBlindingMasterKey(blindingSeed)
-		if err != nil {
-			return nil, err
-		}
+		blindingMnemonic = opts.BlindingMnemonic
+	}
+
+	blindingSeed = generateSeedFromMnemonic(blindingMnemonic)
+	blindingMasterKey, err = generateBlindingMasterKey(blindingSeed)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Wallet{
 		signingMnemonic:   opts.SigningMnemonic,
 		signingMasterKey:  signingMasterKey,
-		blindingMnemonic:  opts.BlindingMnemonic,
+		blindingMnemonic:  blindingMnemonic,
 		blindingMasterKey: blindingMasterKey,
 	}, nil
 }
@@ -245,10 +253,4 @@ func (w *Wallet) BlindingMnemonic() (string, error) {
 		return "", ErrNullBlindingMnemonic
 	}
 	return w.blindingMnemonic, nil
-}
-
-// IsConfidential returns whether the blinding mnemonic/master key are set
-// for the current wallet
-func (w *Wallet) IsConfidential() bool {
-	return len(w.blindingMnemonic) > 0 && len(w.blindingMasterKey) > 0
 }
