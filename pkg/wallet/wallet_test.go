@@ -30,9 +30,11 @@ func TestNewWalletFromMnemonic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	signingMnemonic, _ := wallet.SigningMnemonic()
+	blindingMnemonic, _ := wallet.BlindingMnemonic()
 	opts := NewWalletFromMnemonicOpts{
-		SigningMnemonic:  wallet.SigningMnemonic,
-		BlindingMnemonic: wallet.BlindingMnemonic,
+		SigningMnemonic:  signingMnemonic,
+		BlindingMnemonic: blindingMnemonic,
 	}
 	otherWallet, err := NewWalletFromMnemonic(opts)
 	if err != nil {
