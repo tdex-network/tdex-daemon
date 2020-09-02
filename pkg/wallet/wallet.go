@@ -110,6 +110,9 @@ func (o NewWalletOpts) validate() error {
 			return ErrInvalidEntropySize
 		}
 	}
+	if o.EntropySize < 0 {
+		return ErrInvalidEntropySize
+	}
 	return nil
 }
 
