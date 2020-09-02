@@ -31,6 +31,10 @@ func (w *Wallet) BlindTransaction(opts BlindTransactionOpts) (string, error) {
 	if err := opts.validate(); err != nil {
 		return "", err
 	}
+	if err := w.validate(); err != nil {
+		return "", err
+	}
+
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
 	inputBlindingKeys := make([][]byte, 0, len(ptx.Inputs))

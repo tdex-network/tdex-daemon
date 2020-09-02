@@ -122,10 +122,10 @@ func (o SignInputOpts) validate() error {
 // SignInput takes care of producing (and verifying) a signature for a
 // specific input of a partial transaction with the provided private key
 func (w *Wallet) SignInput(opts SignInputOpts) (string, error) {
-	if err := w.validate(); err != nil {
+	if err := opts.validate(); err != nil {
 		return "", err
 	}
-	if err := opts.validate(); err != nil {
+	if err := w.validate(); err != nil {
 		return "", err
 	}
 

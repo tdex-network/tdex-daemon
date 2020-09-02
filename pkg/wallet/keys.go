@@ -9,6 +9,14 @@ import (
 	"github.com/vulpemventures/go-elements/slip77"
 )
 
+// MasterPrivateKey returns the signing master private key in base58 format
+func (w *Wallet) MasterPrivateKey() (string, error) {
+	if err := w.validate(); err != nil {
+		return "", err
+	}
+	return base58.Encode(w.signingMasterKey), nil
+}
+
 // MasterPublicKey returns the signing master public key in base58 format
 func (w *Wallet) MasterPublicKey() (string, error) {
 	if err := w.validate(); err != nil {
@@ -16,7 +24,7 @@ func (w *Wallet) MasterPublicKey() (string, error) {
 	}
 
 	xprv, err := hdkeychain.NewKeyFromString(
-		base58.Encode(w.SigningMasterKey),
+		base58.Encode(w.signingMasterKey),
 	)
 	if err != nil {
 		return "", err
@@ -62,7 +70,7 @@ func (w *Wallet) DeriveSigningKeyPair(opts DeriveSigningKeyPairOpts) (
 	}
 
 	hdNode, err := hdkeychain.NewKeyFromString(
-		base58.Encode(w.SigningMasterKey),
+		base58.Encode(w.signingMasterKey),
 	)
 	if err != nil {
 		return nil, nil, err
@@ -113,10 +121,10 @@ func (w *Wallet) DeriveBlindingKeyPair(opts DeriveBlindingKeyPairOpts) (
 	if err := w.validate(); err != nil {
 		return nil, nil, err
 	}
-	if len(w.BlindingMasterKey) <= 0 {
+	if len(w.blindingMasterKey) <= 0 {
 		return nil, nil, ErrNullBlindingMasterKey
 	}
-	slip77Node, err := slip77.FromMasterKey(w.BlindingMasterKey)
+	slip77Node, err := slip77.FromMasterKey(w.blindingMasterKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -153,6 +161,9 @@ func (w *Wallet) DeriveConfidentialAddress(
 	opts DeriveConfidentialAddressOpts,
 ) (string, error) {
 	if err := opts.validate(); err != nil {
+		return "", err
+	}
+	if err := w.validate(); err != nil {
 		return "", err
 	}
 

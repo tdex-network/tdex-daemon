@@ -111,6 +111,9 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (string, []explorer.Utxo, error) {
 	if err := opts.validate(); err != nil {
 		return "", nil, err
 	}
+	if err := w.validate(); err != nil {
+		return "", nil, err
+	}
 
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 

@@ -12,6 +12,8 @@ var (
 	ErrNullInputWitnessUtxo = errors.New("input witness utxo must not be null")
 	// ErrNullSigningMnemonic ...
 	ErrNullSigningMnemonic = errors.New("signing mnemonic is null")
+	// ErrNullBlindingMnemonic ...
+	ErrNullBlindingMnemonic = errors.New("blinding mnemonic is null")
 	// ErrNullSigningSeed ...
 	ErrNullSigningSeed = errors.New("signing seed is null")
 	// ErrNullSigningMasterKey ...
@@ -90,12 +92,10 @@ var (
 // derive signing and blinding key pairs, and manage those keys to blind and
 // sign transactions
 type Wallet struct {
-	SigningMnemonic   string
-	SigningSeed       []byte
-	SigningMasterKey  []byte
-	BlindingMnemonic  string
-	BlindingSeed      []byte
-	BlindingMasterKey []byte
+	signingMnemonic   string
+	signingMasterKey  []byte
+	blindingMnemonic  string
+	blindingMasterKey []byte
 }
 
 // NewWalletOpts is the struct given to the NewWallet method
@@ -139,12 +139,10 @@ func NewWallet(opts NewWalletOpts) (*Wallet, error) {
 	}
 
 	return &Wallet{
-		SigningMnemonic:   signingMnemonic,
-		SigningSeed:       signingSeed,
-		SigningMasterKey:  signingMasterKey,
-		BlindingMnemonic:  blindingMnemonic,
-		BlindingSeed:      blindingSeed,
-		BlindingMasterKey: blindingMasterKey,
+		signingMnemonic:   signingMnemonic,
+		signingMasterKey:  signingMasterKey,
+		blindingMnemonic:  blindingMnemonic,
+		blindingMasterKey: blindingMasterKey,
 	}, nil
 }
 
@@ -196,39 +194,50 @@ func NewWalletFromMnemonic(opts NewWalletFromMnemonicOpts) (*Wallet, error) {
 	}
 
 	return &Wallet{
-		SigningMnemonic:   opts.SigningMnemonic,
-		SigningSeed:       signingSeed,
-		SigningMasterKey:  signingMasterKey,
-		BlindingMnemonic:  opts.BlindingMnemonic,
-		BlindingSeed:      blindingSeed,
-		BlindingMasterKey: blindingMasterKey,
+		signingMnemonic:   opts.SigningMnemonic,
+		signingMasterKey:  signingMasterKey,
+		blindingMnemonic:  opts.BlindingMnemonic,
+		blindingMasterKey: blindingMasterKey,
 	}, nil
 }
 
 func (w *Wallet) validate() error {
-	if len(w.SigningSeed) <= 0 {
-		return ErrNullSigningSeed
-	}
-	if len(w.SigningMasterKey) <= 0 {
+	if len(w.signingMasterKey) <= 0 {
 		return ErrNullSigningMasterKey
 	}
-	if len(w.SigningMnemonic) <= 0 {
+	if len(w.signingMnemonic) <= 0 {
 		return ErrNullSigningMnemonic
 	}
-	if !isMnemonicValid(w.SigningMnemonic) {
+	if !isMnemonicValid(w.signingMnemonic) {
 		return ErrInvalidSigningMnemonic
 	}
 
-	if len(w.BlindingMnemonic) > 0 {
-		if !isMnemonicValid(w.BlindingMnemonic) {
+	if len(w.blindingMnemonic) > 0 {
+		if !isMnemonicValid(w.blindingMnemonic) {
 			return ErrInvalidBlindingMnemonic
 		}
-		if len(w.BlindingSeed) <= 0 {
-			return ErrNullBlindingSeed
-		}
-		if len(w.BlindingMasterKey) <= 0 {
+		if len(w.blindingMasterKey) <= 0 {
 			return ErrNullBlindingMasterKey
 		}
 	}
 	return nil
+}
+
+// SigningMnemonic is getter for signing mnemonic
+func (w *Wallet) SigningMnemonic() (string, error) {
+	if err := w.validate(); err != nil {
+		return "", err
+	}
+	return w.signingMnemonic, nil
+}
+
+// BlindingMnemonic is getter for blinding mnemonic
+func (w *Wallet) BlindingMnemonic() (string, error) {
+	if err := w.validate(); err != nil {
+		return "", err
+	}
+	if len(w.blindingMnemonic) <= 0 {
+		return "", ErrNullBlindingMnemonic
+	}
+	return w.blindingMnemonic, nil
 }
