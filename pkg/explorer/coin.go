@@ -10,6 +10,20 @@ import (
 	"sort"
 )
 
+type Service interface {
+	GetUnSpents(addr string) (coins []Utxo, err error)
+}
+
+type explorer struct {
+	apiUrl string
+}
+
+func NewService() Service {
+	return &explorer{
+		apiUrl: config.GetString(config.ExplorerEndpointKey),
+	}
+}
+
 func SelectUnSpents(
 	utxos []Utxo,
 	blindKeys [][]byte,
@@ -73,10 +87,10 @@ func SelectUnSpents(
 	return
 }
 
-func GetUnSpents(addr string) (coins []Utxo, err error) {
+func (e *explorer) GetUnSpents(addr string) (coins []Utxo, err error) {
 	url := fmt.Sprintf(
 		"%s/address/%s/utxo",
-		config.GetString(config.ExplorerEndpointKey),
+		e.apiUrl,
 		addr,
 	)
 	status, resp, err1 := httputil.NewHTTPRequest("GET", url, "", nil)

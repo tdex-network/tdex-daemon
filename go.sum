@@ -232,14 +232,6 @@ github.com/stretchr/testify v1.5.1 h1:nOGnQDM7FYENwehXlg/kFVnos3rEvtKTjRvOWSzb6H
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 github.com/subosito/gotenv v1.2.0 h1:Slr1R9HxAlEKefgq5jn9U+DnETlIUa6HfgEzj0g5d7s=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200824154827-e29804d0b579 h1:XyPahbeKbmlKWaeuKkGD7ToNPSoXpOSY+R8p9yUWFoU=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200824154827-e29804d0b579/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200826180031-9082c7e31290 h1:KdMp/05Akej0igPElLqxZWp8M6ila9lhp2VorQdYIhw=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200826180031-9082c7e31290/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200827164216-19f250d1d73b h1:ObAvKz6vr9SOej1UZcz1WkG6WWtNKxi9zwhmkOGYfDE=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200827164216-19f250d1d73b/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200827170733-aeb85ca46f56 h1:yLjDEXp2kA9qHvySIcinD418NJDsm0zWBx4gsWQdl0k=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200827170733-aeb85ca46f56/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/tdex-network/tdex-protobuf v0.0.0-20200828131925-0b198e9d3d2d h1:7r+aeMEBaoJ9JmniJXItUydYtGDO9ZfJV5lbS2ixcYM=
 github.com/tdex-network/tdex-protobuf v0.0.0-20200828131925-0b198e9d3d2d/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/thanhpk/randstr v1.0.4 h1:IN78qu/bR+My+gHCvMEXhR/i5oriVHcTB/BJJIRTsNo=

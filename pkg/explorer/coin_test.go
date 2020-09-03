@@ -56,7 +56,9 @@ func TestGetUnspents(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 
-	utxos, err := GetUnSpents(address)
+	explorerSvc := NewService()
+
+	utxos, err := explorerSvc.GetUnSpents(address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +81,8 @@ func TestSelectUtxos(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 
-	utxos, err := GetUnSpents(address)
+	explorerSvc := NewService()
+	utxos, err := explorerSvc.GetUnSpents(address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +114,8 @@ func TestFailingSelectUtxos(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	utxos, err := GetUnSpents(address)
+	explorerSvc := NewService()
+	utxos, err := explorerSvc.GetUnSpents(address)
 	if err != nil {
 		t.Fatal(err)
 	}

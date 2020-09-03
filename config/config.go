@@ -24,6 +24,8 @@ const (
 	DefaultFeeKey = "DEFAULT_FEE"
 	// BaseAssetKey ...
 	BaseAssetKey = "BASE_ASSET"
+	//CrawlInterval
+	CrawlIntervalKey = "CRAWL_INTERVAL"
 )
 
 var vip *viper.Viper
@@ -40,6 +42,7 @@ func init() {
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)
 	vip.SetDefault(BaseAssetKey, "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225")
+	vip.SetDefault(CrawlIntervalKey, 1)
 
 }
 
