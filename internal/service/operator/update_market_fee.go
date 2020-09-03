@@ -43,7 +43,7 @@ func (s *Service) UpdateMarketFee(ctx context.Context, req *pb.UpdateMarketFeeRe
 
 		return m, nil
 	}); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// Ignore errors. If we reached this point it must exists.

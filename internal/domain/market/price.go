@@ -11,6 +11,20 @@ type Price float32
 //PriceByTime ...
 type PriceByTime map[uint64]Price
 
+// BaseAssetPrice returns the latest price for the base asset
+func (m *Market) BaseAssetPrice() float32 {
+	_, price := getLatestPrice(m.basePrice)
+
+	return float32(price)
+}
+
+// QuoteAssetPrice returns the latest price for the quote asset
+func (m *Market) QuoteAssetPrice() float32 {
+	_, price := getLatestPrice(m.quotePrice)
+
+	return float32(price)
+}
+
 // ChangeBasePrice ...
 func (m *Market) ChangeBasePrice(price float32) error {
 	if !m.IsFunded() {

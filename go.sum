@@ -247,6 +247,12 @@ github.com/tdex-network/tdex-protobuf v0.0.0-20200831144355-0ceafd7da180 h1:32Xu
 github.com/tdex-network/tdex-protobuf v0.0.0-20200831144355-0ceafd7da180/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/tdex-network/tdex-protobuf v0.0.0-20200831164652-76c691b9a266 h1:alwmJU+78XbDi/PTIur+BQhMO+KVSVivHHfV2W2yEts=
 github.com/tdex-network/tdex-protobuf v0.0.0-20200831164652-76c691b9a266/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200903141707-9887c90bfa53 h1:oz9INHlZR7MaRdlvMiMGXaCEdnf/6rKglvYZtI60xLs=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200903141707-9887c90bfa53/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200903192950-989e2668cfa3 h1:Cw4OVb27sL8lqBNHHTDCnSlZEaDnoeHCvH6X/bJw9Hw=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200903192950-989e2668cfa3/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200903194015-79476343ff84 h1:HzuIhdPMDhUSFhmaU4Ko7PsXDUsnpOhfduusLMlCOBM=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200903194015-79476343ff84/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/thanhpk/randstr v1.0.4 h1:IN78qu/bR+My+gHCvMEXhR/i5oriVHcTB/BJJIRTsNo=
 github.com/thanhpk/randstr v1.0.4/go.mod h1:M/H2P1eNLZzlDwAzpkkkUvoyNNMbzRGhESZuEQk3r0U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=

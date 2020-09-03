@@ -5,13 +5,16 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/config"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
+	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 )
 
 var (
 	//ErrNotFunded is thrown when a market requires being funded for a change
 	ErrNotFunded = errors.New("market must be funded")
 	//ErrNotTradable is thrown when a market requires being tradable for a change
-	ErrNotTradable = errors.New("market must be tradable")
+	ErrNotTradable = errors.New("market must be opened")
+	//ErrTradable is thrown when a market requires being NOT tradable for a change
+	ErrTradable = errors.New("market must be closed")
 	//ErrPriceExists is thrown when a price for that given timestamp already exists
 	ErrPriceExists = errors.New("price has been inserted already")
 	//ErrNotPriced is thrown when the price is still 0 (ie. not initialized)
@@ -32,7 +35,7 @@ type Market struct {
 	// if curretly open for trades
 	tradable bool
 	// Market Making strategy
-	strategy mm.MakingStrategy
+	strategy *mm.MakingStrategy
 	// how much 1 base asset is valued in quote asset.
 	// It's a map  timestamp -> price, so it's easier to do historical price change.
 	basePrice PriceByTime
@@ -67,7 +70,7 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 
 		tradable: false,
 
-		strategy: mm.MakingStrategy{},
+		strategy: mm.NewStrategyFromFormula("balanced", "50/50 asset reserves", formula.BalancedReserves{}),
 	}, nil
 }
 
@@ -86,20 +89,6 @@ func (m *Market) QuoteAssetHash() string {
 	return m.quoteAsset.assetHash
 }
 
-// BaseAssetPrice returns the latest price for the base asset
-func (m *Market) BaseAssetPrice() float32 {
-	_, price := getLatestPrice(m.basePrice)
-
-	return float32(price)
-}
-
-// QuoteAssetPrice returns the latest price for the quote asset
-func (m *Market) QuoteAssetPrice() float32 {
-	_, price := getLatestPrice(m.quotePrice)
-
-	return float32(price)
-}
-
 // Fee returns the selected fee
 func (m *Market) Fee() int64 {
 	return m.fee
@@ -116,7 +105,7 @@ func (m *Market) MakeTradable() error {
 		return ErrNotFunded
 	}
 
-	if m.strategy.IsZero() && (m.basePrice.IsZero() || m.quotePrice.IsZero()) {
+	if m.IsStrategyPluggable() && !m.IsStrategyPluggableInitialized() {
 		return ErrNotPriced
 	}
 
@@ -131,97 +120,6 @@ func (m *Market) MakeNotTradable() error {
 	}
 
 	m.tradable = false
-	return nil
-}
-
-// ChangeFee ...
-func (m *Market) ChangeFee(fee int64) error {
-
-	if !m.IsFunded() {
-		return ErrNotFunded
-	}
-
-	if m.IsTradable() {
-		return ErrNotTradable
-	}
-
-	if err := validateFee(fee); err != nil {
-		return err
-	}
-
-	m.fee = fee
-	return nil
-}
-
-// ChangeFeeAsset ...
-func (m *Market) ChangeFeeAsset(asset string) error {
-	// In case of empty asset hash, no updates happens and therefore it exit without error
-	if asset == "" {
-		return nil
-	}
-
-	if !m.IsFunded() {
-		return ErrNotFunded
-	}
-
-	if m.IsTradable() {
-		return ErrNotTradable
-	}
-
-	if asset != m.BaseAssetHash() && asset != m.QuoteAssetHash() {
-		return errors.New("The given asset must be either the base or quote asset in the pair")
-	}
-
-	m.feeAsset = asset
-	return nil
-}
-
-// Strategy ...
-func (m *Market) Strategy() mm.MakingStrategy {
-	return m.strategy
-}
-
-// ChangeStrategyWith
-
-// FundMarket adds funding details given an array of outpoints and recognize quote asset
-func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
-	var baseAssetHash string = config.GetString(config.BaseAssetKey)
-	var otherAssetHash string
-
-	var baseAssetTxs []OutpointWithAsset
-	var otherAssetTxs []OutpointWithAsset
-
-	assetCount := make(map[string]int)
-	for _, o := range fundingTxs {
-		assetCount[o.Asset]++
-		if o.Asset == baseAssetHash {
-			baseAssetTxs = append(baseAssetTxs, o)
-		} else {
-			// Potentially here could be different assets mixed
-			// We chek if unique quote asset later after the loop
-			otherAssetTxs = append(otherAssetTxs, o)
-			otherAssetHash = o.Asset
-		}
-	}
-
-	if _, ok := assetCount[baseAssetHash]; !ok {
-		return errors.New("base asset is missing")
-	}
-
-	if keysNumber := len(assetCount); keysNumber != 2 {
-		return errors.New("must be deposited 2 unique assets")
-	}
-
-	m.baseAsset = &depositedAsset{
-		assetHash:  baseAssetHash,
-		fundingTxs: baseAssetTxs,
-	}
-
-	m.quoteAsset = &depositedAsset{
-		assetHash:  otherAssetHash,
-		fundingTxs: otherAssetTxs,
-	}
-
 	return nil
 }
 
