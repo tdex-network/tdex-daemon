@@ -8,12 +8,22 @@ import (
 	"github.com/vulpemventures/go-elements/network"
 )
 
-func TestMasterPublicKey(t *testing.T) {
+func TestExtendedKey(t *testing.T) {
 	wallet, err := newTestWallet()
 	if err != nil {
 		t.Fatal(err)
 	}
-	xpub, err := wallet.MasterPublicKey()
+	opts := ExtendedKeyOpts{
+		Account: 0,
+	}
+
+	xprv, err := wallet.ExtendedPrivateKey(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotEmpty(t, xprv)
+
+	xpub, err := wallet.ExtendedPublicKey(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,6 +61,32 @@ func TestDeriveBlindingKeyPair(t *testing.T) {
 	}
 	assert.NotNil(t, blindingPrvkey)
 	assert.NotNil(t, blindingPubkey)
+}
+
+func TestFailingExtendedKey(t *testing.T) {
+	wallet, err := newTestWallet()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		opts ExtendedKeyOpts
+		err  error
+	}{
+		{
+			opts: ExtendedKeyOpts{
+				Account: MaxHardenedValue + 1,
+			},
+			err: ErrOutOfRangeDerivationPathAccount,
+		},
+	}
+
+	for _, tt := range tests {
+		_, err := wallet.ExtendedPrivateKey(tt.opts)
+		assert.Equal(t, tt.err, err)
+		_, err = wallet.ExtendedPublicKey(tt.opts)
+		assert.Equal(t, tt.err, err)
+	}
 }
 
 func TestFailingDeriveSigningKeyPair(t *testing.T) {

@@ -1,11 +1,17 @@
 package wallet
 
 import (
+	"math"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/tyler-smith/go-bip39"
 	"github.com/vulpemventures/go-elements/slip77"
+)
+
+const (
+	MaxHardenedValue = math.MaxUint32 - hdkeychain.HardenedKeyStart
 )
 
 func generateMnemonicSeedAndMasterKey(entropySize int) (

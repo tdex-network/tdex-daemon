@@ -82,6 +82,11 @@ var (
 		"path must not start or end with a '/' and " +
 			"can optionally start with 'm/' for absolute paths",
 	)
+	// ErrOutOfRangeDerivationPathAccount ...
+	ErrOutOfRangeDerivationPathAccount = fmt.Errorf(
+		"account index must be in hardened range [0, %d]",
+		MaxHardenedValue,
+	)
 	// ErrZeroInputAmount ...
 	ErrZeroInputAmount = errors.New("input amount must not be zero")
 	// ErrZeroOutputAmount ...

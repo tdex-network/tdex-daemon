@@ -9,23 +9,62 @@ import (
 	"github.com/vulpemventures/go-elements/slip77"
 )
 
-// MasterPrivateKey returns the signing master private key in base58 format
-func (w *Wallet) MasterPrivateKey() (string, error) {
-	if err := w.validate(); err != nil {
-		return "", err
-	}
-	return base58.Encode(w.signingMasterKey), nil
+// ExtendedKeyOpts is the struct given to
+// ExtendedPrivateKey and ExtendedPublicKey methods
+type ExtendedKeyOpts struct {
+	Account uint32
 }
 
-// MasterPublicKey returns the signing master public key in base58 format
-func (w *Wallet) MasterPublicKey() (string, error) {
+func (o ExtendedKeyOpts) validate() error {
+	if o.Account > (MaxHardenedValue) {
+		return ErrOutOfRangeDerivationPathAccount
+	}
+	return nil
+}
+
+// ExtendedPrivateKey returns the signing extended private key in base58 format
+// for the provided account index
+func (w *Wallet) ExtendedPrivateKey(opts ExtendedKeyOpts) (string, error) {
+	if err := opts.validate(); err != nil {
+		return "", err
+	}
 	if err := w.validate(); err != nil {
 		return "", err
 	}
 
-	xprv, err := hdkeychain.NewKeyFromString(
+	masterKey, err := hdkeychain.NewKeyFromString(
 		base58.Encode(w.signingMasterKey),
 	)
+	if err != nil {
+		return "", err
+	}
+
+	xprv, err := masterKey.Child(opts.Account)
+	if err != nil {
+		return "", err
+	}
+
+	return xprv.String(), nil
+}
+
+// ExtendedPublicKey returns the signing extended public key in base58 format
+// for the provided account index
+func (w *Wallet) ExtendedPublicKey(opts ExtendedKeyOpts) (string, error) {
+	if err := opts.validate(); err != nil {
+		return "", err
+	}
+	if err := w.validate(); err != nil {
+		return "", err
+	}
+
+	masterKey, err := hdkeychain.NewKeyFromString(
+		base58.Encode(w.signingMasterKey),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	xprv, err := masterKey.Child(opts.Account)
 	if err != nil {
 		return "", err
 	}
