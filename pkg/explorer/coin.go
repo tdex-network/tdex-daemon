@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 	"net/http"
 	"sort"
+
+	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
 type Service interface {

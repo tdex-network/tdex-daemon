@@ -20,7 +20,6 @@ var (
 //Market defines the Market entity data structure for holding an asset pair state
 type Market struct {
 	// AccountIndex links a market to a HD wallet account derivation.
-	// Each Market could receive assets on any of those child addresses
 	accountIndex int
 	baseAsset    *depositedAsset
 	quoteAsset   *depositedAsset

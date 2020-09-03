@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
 func GetTransactionHex(hash string) (string, error) {
@@ -63,4 +64,25 @@ func Faucet(address string) (string, error) {
 	}
 
 	return respBody["txId"], nil
+}
+
+func Mint(address string, amount int) (string, string, error) {
+	url := config.GetString(config.ExplorerEndpointKey) + "/mint"
+	payload := map[string]interface{}{"address": address, "quantity": amount}
+	body, _ := json.Marshal(payload)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return "", "", err
+	}
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", err
+	}
+	respBody := map[string]interface{}{}
+	err = json.Unmarshal(data, &respBody)
+	if err != nil {
+		return "", "", err
+	}
+
+	return respBody["txId"].(string), respBody["asset"].(string), nil
 }
