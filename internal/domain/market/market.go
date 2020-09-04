@@ -209,7 +209,7 @@ func (m *Market) ChangeFeeAsset(asset string) error {
 
 // FundMarket adds funding details given an array of outpoints and recognize quote asset
 func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
-	var baseAssetHash string = config.GetString(config.BaseAssetKey)
+	var baseAssetHash = config.GetString(config.BaseAssetKey)
 	var otherAssetHash string
 
 	var baseAssetTxs []OutpointWithAsset

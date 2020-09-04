@@ -14,8 +14,8 @@ func TestCrawler(t *testing.T) {
 	observables := make([]Observable, 0)
 	for i := 0; i < 100; i++ {
 		observable := Observable{
-			accountType: 1,
-			address:     strconv.Itoa(i),
+			AccountType: 1,
+			Address:     strconv.Itoa(i),
 		}
 		observables = append(observables, observable)
 	}
@@ -31,7 +31,9 @@ func TestCrawler(t *testing.T) {
 	go stopCrawlerAfterTimeout(crawlSvc)
 
 	for event := range crawlSvc.GetEventChannel() {
-		t.Log(event.utxo)
+		for _, u := range event.Utxos {
+			t.Log(u.Value())
+		}
 	}
 
 	t.Log("finished")
@@ -46,16 +48,16 @@ func stopCrawlerAfterTimeout(crawler Service) {
 func removeObservableAfterTimeout(crawler Service) {
 	time.Sleep(2 * time.Second)
 	crawler.RemoveObservable(Observable{
-		accountType: 0,
-		address:     "2",
+		AccountType: 0,
+		Address:     "2",
 	})
 }
 
 func addObservableAfterTimeout(crawler Service) {
 	time.Sleep(5 * time.Second)
 	crawler.AddObservable(Observable{
-		accountType: 0,
-		address:     "101",
+		AccountType: 0,
+		Address:     "101",
 	})
 }
 

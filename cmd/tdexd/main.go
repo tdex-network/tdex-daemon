@@ -1,7 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/tdex-network/tdex-daemon/internal/domain/market"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/network"
 	"os"
 	"os/signal"
 	"syscall"
@@ -34,9 +40,24 @@ func main() {
 
 	// Init market in-memory storage
 	mktStore := storage.NewInMemoryMarketRepository()
+	unspentRepo := storage.NewInMemoryUnspentRepository()
+
+	explorerSvc := explorer.NewService()
+	observables, err := getObjectsToObserv(mktStore)
+	crawlerSvc := crawler.NewService(explorerSvc, observables)
+
 	// Init services
 	tradeSvc := tradeservice.NewService(mktStore)
-	operatorSvc := operatorservice.NewService(mktStore)
+	operatorSvc, err := operatorservice.NewService(
+		mktStore,
+		unspentRepo,
+		crawlerSvc,
+	)
+	if err != nil {
+		log.WithError(err).Panic(err)
+	}
+	operatorSvc.ObserveBlockChain()
+
 	// Register proto implementations on Trader interface
 	pbtrader.RegisterTradeServer(traderGrpcServer, tradeSvc)
 	pbhandshake.RegisterHandshakeServer(traderGrpcServer, &pbhandshake.UnimplementedHandshakeServer{})
@@ -47,7 +68,7 @@ func main() {
 	log.Debug("starting daemon")
 
 	// Serve grpc and grpc-web multiplexed on the same port
-	err := grpcutil.ServeMux(traderAddress, traderGrpcServer)
+	err = grpcutil.ServeMux(traderAddress, traderGrpcServer)
 	if err != nil {
 		log.WithError(err).Panic("error listening on trader interface")
 	}
@@ -73,4 +94,37 @@ func main() {
 	<-sigChan
 
 	log.Debug("exiting")
+}
+
+//TODO fetch all addresses to be observed - dummy implementation below
+func getObjectsToObserv(marketRepo market.Repository) (
+	[]crawler.Observable, error) {
+	markets, err := marketRepo.GetAllMarkets(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	w, err := wallet.NewWallet(wallet.NewWalletOpts{
+		EntropySize:   128,
+		ExtraMnemonic: false,
+	})
+
+	observables := make([]crawler.Observable, 0)
+	for _, m := range markets {
+		opts := wallet.DeriveConfidentialAddressOpts{
+			DerivationPath: fmt.Sprintf("%v'/0/0", m.AccountIndex()),
+			Network:        &network.Liquid,
+		}
+		ctAddress, err := w.DeriveConfidentialAddress(opts)
+		if err != nil {
+			return nil, err
+		}
+		observables = append(observables, crawler.Observable{
+			AccountType: wallet.FeeAccount,
+			AssetHash:   config.GetString(config.BaseAssetKey),
+			Address:     ctAddress,
+		})
+	}
+
+	return observables, nil
 }

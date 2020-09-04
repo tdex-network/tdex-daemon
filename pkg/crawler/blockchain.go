@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"time"
 )
 
@@ -15,17 +16,23 @@ type Service interface {
 	GetEventChannel() chan event
 }
 
+const (
+	FeeAccountDeposit = iota
+	MarketAccountDeposit
+)
+
 type event struct {
-	eventType      int
-	accuntType     int
-	address        int
-	derivationPath int
-	utxo           explorer.Utxo
+	EventType  int
+	AccuntType int
+	Address    string
+	AssetHash  string
+	Utxos      []explorer.Utxo
 }
 
 type Observable struct {
-	accountType int
-	address     string
+	AccountType int
+	AssetHash   string
+	Address     string
 }
 
 type utxoCrawler struct {
@@ -85,7 +92,7 @@ func (u *utxoCrawler) AddObservable(observable Observable) {
 func (u *utxoCrawler) RemoveObservable(observable Observable) {
 	newObservableList := make([]Observable, 0)
 	for _, o := range u.observables {
-		if o.address != observable.address {
+		if o.Address != observable.Address {
 			newObservableList = append(newObservableList, o)
 		}
 	}
@@ -103,18 +110,23 @@ func (u *utxoCrawler) observeAll(observables []Observable) {
 }
 
 func (u *utxoCrawler) observe(observe Observable) {
-	unspents, err := u.explorerSvc.GetUnSpents(observe.address)
+	unspents, err := u.explorerSvc.GetUnSpents(observe.Address)
 	if err != nil {
 		u.errChan <- err
 	}
-	for _, utxo := range unspents {
-		event := event{
-			eventType:      0,
-			accuntType:     0,
-			address:        0,
-			derivationPath: 0,
-			utxo:           utxo,
-		}
-		u.eventChan <- event
+	var eventType int
+	switch observe.AccountType {
+	case wallet.FeeAccount:
+		eventType = FeeAccountDeposit
+	default:
+		eventType = MarketAccountDeposit
 	}
+	event := event{
+		EventType:  eventType,
+		AccuntType: observe.AccountType,
+		Address:    observe.Address,
+		AssetHash:  observe.AssetHash,
+		Utxos:      unspents,
+	}
+	u.eventChan <- event
 }
