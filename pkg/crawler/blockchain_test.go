@@ -20,7 +20,7 @@ func TestCrawler(t *testing.T) {
 		observables = append(observables, observable)
 	}
 
-	crawlSvc := NewService(mockExplorerSvc, observables)
+	crawlSvc := NewService(mockExplorerSvc, observables, nil)
 
 	go crawlSvc.Start()
 
@@ -41,7 +41,7 @@ func TestCrawler(t *testing.T) {
 }
 
 func stopCrawlerAfterTimeout(crawler Service) {
-	time.Sleep(8 * time.Second)
+	time.Sleep(7 * time.Second)
 	crawler.Stop()
 }
 
@@ -65,7 +65,10 @@ func addObservableAfterTimeout(crawler Service) {
 
 type MockExplorer struct{}
 
-func (m MockExplorer) GetUnSpents(addr string) ([]explorer.Utxo, error) {
+func (m MockExplorer) GetUnSpents(addr string, blindKeys [][]byte) (
+	[]explorer.Utxo,
+	error,
+) {
 	if addr == "1" {
 		return []explorer.Utxo{MockUtxo{value: 1}}, nil
 	} else if addr == "2" {

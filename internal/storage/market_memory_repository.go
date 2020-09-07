@@ -70,10 +70,9 @@ func (r InMemoryMarketRepository) GetAllMarkets(_ context.Context) (
 	markets []market.Market, err error,
 ) {
 	for _, mkt := range r.markets {
-		if mkt.IsTradable() {
-			markets = append(markets, mkt)
-		}
+		markets = append(markets, mkt)
 	}
+
 	return
 }
 

@@ -86,12 +86,6 @@ var (
 	ErrZeroInputAmount = errors.New("input amount must not be zero")
 	// ErrZeroOutputAmount ...
 	ErrZeroOutputAmount = errors.New("output amount must not be zero")
-
-	//TODO check below values
-	FeeAccount        = 0
-	WalletAccount     = 1
-	MarketAccountUSDT = 5
-	MarketAccountLCAD = 6
 )
 
 // Wallet data structure allows to create a new wallet from seed/mnemonic,

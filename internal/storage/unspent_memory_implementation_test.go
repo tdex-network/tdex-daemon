@@ -9,78 +9,85 @@ import (
 func TestAddUnspentAndBalance(t *testing.T) {
 	repo := NewInMemoryUnspentRepository()
 
-	u1 := unspent.Unspent{
-		Txid:      "1",
-		Vout:      0,
-		Value:     1,
-		AssetHash: "lbtc",
-		Address:   "adr",
-		Spent:     false,
-		Locked:    false,
-	}
-	u2 := unspent.Unspent{
-		Txid:      "2",
-		Vout:      0,
-		Value:     0,
-		AssetHash: "lbtc",
-		Address:   "adr",
-		Spent:     false,
-		Locked:    false,
-	}
+	u1 := unspent.NewUnspent(
+		"1",
+		"lbtc",
+		"adr",
+		0,
+		1,
+		false,
+		false,
+		nil,
+	)
+
+	u2 := unspent.NewUnspent(
+		"2",
+		"lbtc",
+		"adr",
+		0,
+		0,
+		false,
+		false,
+		nil,
+	)
+
 	unspents := []unspent.Unspent{u1, u2}
 	repo.AddUnspent(unspents)
 
 	allUnspent := repo.GetAllUnspent()
+	allSpent := repo.GetAllSpent()
 	assert.Equal(t, len(allUnspent), 2)
+	assert.Equal(t, len(allSpent), 0)
 
 	unspents = []unspent.Unspent{u2}
 	repo.AddUnspent(unspents)
 
 	allUnspent = repo.GetAllUnspent()
-	assert.Equal(t, len(allUnspent), 2)
+	allSpent = repo.GetAllSpent()
+	assert.Equal(t, len(allUnspent), 1)
+	assert.Equal(t, len(allSpent), 1)
 
-	assert.Equal(t, allUnspent[0].Spent, true)
-	assert.Equal(t, allUnspent[1].Spent, false)
+	u3 := unspent.NewUnspent(
+		"3",
+		"lbtc",
+		"adr",
+		0,
+		3,
+		false,
+		false,
+		nil,
+	)
 
-	u3 := unspent.Unspent{
-		Txid:      "3",
-		Vout:      0,
-		Value:     3,
-		AssetHash: "lbtc",
-		Address:   "adr",
-		Spent:     false,
-		Locked:    false,
-	}
-	u4 := unspent.Unspent{
-		Txid:      "4",
-		Vout:      0,
-		Value:     2,
-		AssetHash: "lbtc",
-		Address:   "adr",
-		Spent:     false,
-		Locked:    false,
-	}
-	u5 := unspent.Unspent{
-		Txid:      "5",
-		Vout:      0,
-		Value:     2,
-		AssetHash: "lbtc",
-		Address:   "adr",
-		Spent:     false,
-		Locked:    false,
-	}
+	u4 := unspent.NewUnspent(
+		"4",
+		"lbtc",
+		"adr",
+		0,
+		2,
+		false,
+		false,
+		nil,
+	)
+
+	u5 := unspent.NewUnspent(
+		"5",
+		"lbtc",
+		"adr",
+		0,
+		2,
+		false,
+		false,
+		nil,
+	)
+
 	unspents = []unspent.Unspent{u3, u4, u5}
 	repo.AddUnspent(unspents)
 
 	allUnspent = repo.GetAllUnspent()
+	allSpent = repo.GetAllSpent()
 
-	assert.Equal(t, len(allUnspent), 5)
-
-	assert.Equal(t, allUnspent[0].Spent, true)
-	assert.Equal(t, allUnspent[1].Spent, true)
-	assert.Equal(t, allUnspent[2].Spent, false)
-	assert.Equal(t, allUnspent[3].Spent, false)
-	assert.Equal(t, allUnspent[4].Spent, false)
+	assert.Equal(t, len(allUnspent), 3)
+	assert.Equal(t, len(allSpent), 2)
 
 	balance := repo.GetBalance("adr", "lbtc")
 

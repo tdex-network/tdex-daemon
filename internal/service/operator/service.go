@@ -3,38 +3,40 @@ package operatorservice
 import (
 	"context"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
 	"github.com/tdex-network/tdex-daemon/internal/domain/unspent"
 	"github.com/tdex-network/tdex-daemon/internal/storage"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 )
 
 // Service is used to implement Operator service.
 type Service struct {
-	marketRepository market.Repository
-	unspentRepo      unspent.Repository
+	marketRepository  market.Repository
+	unspentRepository unspent.Repository
 	pb.UnimplementedOperatorServer
 	crawlerSvc crawler.Service
 }
 
 // NewService returns a Operator Service
 func NewService(
-	marketRepo market.Repository,
-	unspentRepo unspent.Repository,
+	marketRepository market.Repository,
+	unspentRepository unspent.Repository,
 	crawlerSvc crawler.Service,
 ) (*Service, error) {
 	svc := &Service{
-		marketRepository: marketRepo,
-		unspentRepo:      unspentRepo,
-		crawlerSvc:       crawlerSvc,
+		marketRepository:  marketRepository,
+		unspentRepository: unspentRepository,
+		crawlerSvc:        crawlerSvc,
 	}
 
 	return svc, nil
 }
 
-func (s *Service) ObserveBlockChain() {
+func (s *Service) ObserveBlockchain() {
 	go s.crawlerSvc.Start()
 	go s.handleBlockChainEvents()
 }
@@ -45,26 +47,38 @@ events:
 		switch event.EventType {
 		case crawler.FeeAccountDeposit:
 			unspents := make([]unspent.Unspent, 0)
+		utxoLoop:
 			for _, utxo := range event.Utxos {
-				u := unspent.Unspent{
-					Txid:      utxo.Hash(),
-					Vout:      utxo.Index(),
-					Value:     utxo.Value(),
-					AssetHash: utxo.Asset(),
-					Address:   event.Address,
-					Spent:     false,
+				isTrxConfirmed, err := explorer.IsTransactionConfirmed(
+					utxo.Hash(),
+				)
+				if err != nil {
+					log.Error(err)
+					continue utxoLoop
 				}
-				unspents = append(unspents, u)
+				if isTrxConfirmed {
+					u := unspent.NewUnspent(
+						utxo.Hash(),
+						utxo.Asset(),
+						event.Address,
+						utxo.Index(),
+						utxo.Value(),
+						false,
+						false,
+						nil, //TODO populate this
+					)
+					unspents = append(unspents, u)
+				}
 			}
-			s.unspentRepo.AddUnspent(unspents)
+			s.unspentRepository.AddUnspent(unspents)
 			markets, err := s.marketRepository.GetTradableMarkets(context.Background())
 			if err != nil {
 				fmt.Println(err)
 				continue events
 			}
 
-			balance := s.unspentRepo.GetBalance(event.Address, event.AssetHash)
-			if balance < uint64(config.GetInt(config.FeeAccountBalanceTresholdKey)) {
+			balance := s.unspentRepository.GetBalance(event.Address, event.AssetHash)
+			if balance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
 				fmt.Println("fee account balance too low - Trades and" +
 					" deposits will be disabled")
 				for _, m := range markets {
@@ -88,18 +102,30 @@ events:
 
 		case crawler.MarketAccountDeposit:
 			unspents := make([]unspent.Unspent, 0)
+		utxoLoop1:
 			for _, utxo := range event.Utxos {
-				u := unspent.Unspent{
-					Txid:      utxo.Hash(),
-					Vout:      utxo.Index(),
-					Value:     utxo.Value(),
-					AssetHash: utxo.Asset(),
-					Address:   event.Address,
-					Spent:     false,
+				isTrxConfirmed, err := explorer.IsTransactionConfirmed(
+					utxo.Hash(),
+				)
+				if err != nil {
+					log.Error(err)
+					continue utxoLoop1
 				}
-				unspents = append(unspents, u)
+				if isTrxConfirmed {
+					u := unspent.NewUnspent(
+						utxo.Hash(),
+						utxo.Asset(),
+						event.Address,
+						utxo.Index(),
+						utxo.Value(),
+						false,
+						false,
+						nil, //TODO populate this
+					)
+					unspents = append(unspents, u)
+				}
 			}
-			s.unspentRepo.AddUnspent(unspents)
+			s.unspentRepository.AddUnspent(unspents)
 
 			m, _, err := s.marketRepository.GetMarketByAsset(
 				context.Background(),

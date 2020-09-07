@@ -12,7 +12,7 @@ import (
 )
 
 type Service interface {
-	GetUnSpents(addr string) (coins []Utxo, err error)
+	GetUnSpents(addr string, blindKeys [][]byte) (coins []Utxo, err error)
 }
 
 type explorer struct {
@@ -88,7 +88,7 @@ func SelectUnSpents(
 	return
 }
 
-func (e *explorer) GetUnSpents(addr string) (coins []Utxo, err error) {
+func (e *explorer) GetUnSpents(addr string, blindKeys [][]byte) (coins []Utxo, err error) {
 	url := fmt.Sprintf(
 		"%s/address/%s/utxo",
 		e.apiUrl,
@@ -119,7 +119,25 @@ func (e *explorer) GetUnSpents(addr string) (coins []Utxo, err error) {
 	chErr := make(chan error, 1)
 
 	for i := range witnessOuts {
+
 		out := witnessOuts[i]
+		//TODO test confidential utxo
+		if out.IsConfidential() {
+			go unblindUtxo(out, blindKeys, chUnspents, chErr)
+			select {
+
+			case err1 := <-chErr:
+				close(chErr)
+				close(chUnspents)
+				coins = nil
+				err = fmt.Errorf("error on unblinding utxos: %s", err1)
+				return
+
+			case unspent := <-chUnspents:
+				unspents[i] = unspent
+			}
+
+		}
 		go getUtxoDetails(out, chUnspents, chErr)
 		select {
 		case err1 := <-chErr:

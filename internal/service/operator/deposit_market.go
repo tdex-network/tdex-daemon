@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/tdex-network/tdex-daemon/internal/constant"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 )
 
@@ -19,13 +19,13 @@ func (s *Service) DepositMarket(
 	//generate fee account address
 	feeAccountAddress := "dummy"
 	//fetch fee account balance
-	feeAccountBalance := s.unspentRepo.GetBalance(
+	feeAccountBalance := s.unspentRepository.GetBalance(
 		feeAccountAddress,
 		config.GetString(config.BaseAssetKey),
 	)
 
 	//if fee account balance > FEE_ACCOUNT_BALANCE_LIMIT
-	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceTresholdKey)) {
+	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
 		fmt.Println("fee account balance too low, cant deposit market")
 		return nil, errors.New("fee account balance too low, " +
 			"cant deposit market")
@@ -48,8 +48,8 @@ func (s *Service) DepositMarket(
 	marketAddress := "dummy"
 	//Add newly created address to crawler
 	s.crawlerSvc.AddObservable(crawler.Observable{
-		AccountType: wallet.MarketAccountUSDT, //TODO update
-		AssetHash:   depositMarketReq.Market.QuoteAsset,
+		AccountType: constant.MarketAccountStart, //TODO update
+		AssetHash:   depositMarketReq.GetMarket().GetQuoteAsset(),
 		Address:     marketAddress,
 	})
 

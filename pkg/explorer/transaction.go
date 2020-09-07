@@ -28,6 +28,44 @@ func GetTransactionHex(hash string) (string, error) {
 	return resp, nil
 }
 
+func IsTransactionConfirmed(txID string) (bool, error) {
+	trxStatus, err := GetTransactionStatus(txID)
+	if err != nil {
+		return false, err
+	}
+
+	var isConfirmed bool
+	switch confirmed := trxStatus["confirmed"].(type) {
+	case bool:
+		isConfirmed = confirmed
+	}
+
+	return isConfirmed, nil
+}
+
+func GetTransactionStatus(txID string) (map[string]interface{}, error) {
+	url := fmt.Sprintf(
+		"%s/tx/%s/status",
+		config.GetString(config.ExplorerEndpointKey),
+		txID,
+	)
+	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, err
+	}
+
+	var trxStatus map[string]interface{}
+	err = json.Unmarshal([]byte(resp), &trxStatus)
+	if err != nil {
+		return nil, err
+	}
+
+	return trxStatus, nil
+}
+
 func BroadcastTransaction(txHex string) (string, error) {
 	url := fmt.Sprintf("%s/tx", config.GetString(config.ExplorerEndpointKey))
 	headers := map[string]string{

@@ -26,8 +26,8 @@ const (
 	BaseAssetKey = "BASE_ASSET"
 	//CrawlInterval ...
 	CrawlIntervalKey = "CRAWL_INTERVAL"
-	//FeeAccountBalanceTreshold ...
-	FeeAccountBalanceTresholdKey = "FEE_ACCOUN_BALANCE_TRESHOLD"
+	//FeeAccountBalanceThreshold ...
+	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
 )
 
 var vip *viper.Viper
@@ -44,8 +44,8 @@ func init() {
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)
 	vip.SetDefault(BaseAssetKey, "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225")
-	vip.SetDefault(CrawlIntervalKey, 1)                //TODO check this value
-	vip.SetDefault(FeeAccountBalanceTresholdKey, 1000) //TODO check this value
+	vip.SetDefault(CrawlIntervalKey, 1)                 //TODO check this value
+	vip.SetDefault(FeeAccountBalanceThresholdKey, 1000) //TODO check this value
 
 }
 

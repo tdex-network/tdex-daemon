@@ -39,24 +39,24 @@ func main() {
 	operatorGrpcServer := grpc.NewServer(grpcutil.UnaryLoggerInterceptor(), grpcutil.StreamLoggerInterceptor())
 
 	// Init market in-memory storage
-	mktStore := storage.NewInMemoryMarketRepository()
-	unspentRepo := storage.NewInMemoryUnspentRepository()
+	marketRepository := storage.NewInMemoryMarketRepository()
+	unspentRepository := storage.NewInMemoryUnspentRepository()
 
 	explorerSvc := explorer.NewService()
-	observables, err := getObjectsToObserv(mktStore)
-	crawlerSvc := crawler.NewService(explorerSvc, observables)
+	observables, err := getObjectsToObserv(marketRepository)
+	crawlerSvc := crawler.NewService(explorerSvc, observables, nil)
 
 	// Init services
-	tradeSvc := tradeservice.NewService(mktStore)
+	tradeSvc := tradeservice.NewService(marketRepository)
 	operatorSvc, err := operatorservice.NewService(
-		mktStore,
-		unspentRepo,
+		marketRepository,
+		unspentRepository,
 		crawlerSvc,
 	)
 	if err != nil {
 		log.WithError(err).Panic(err)
 	}
-	operatorSvc.ObserveBlockChain()
+	operatorSvc.ObserveBlockchain()
 
 	// Register proto implementations on Trader interface
 	pbtrader.RegisterTradeServer(traderGrpcServer, tradeSvc)

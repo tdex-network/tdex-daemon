@@ -1,10 +1,10 @@
 package crawler
 
 import (
-	"fmt"
+	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/tdex-network/tdex-daemon/internal/constant"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"time"
 )
 
@@ -22,11 +22,11 @@ const (
 )
 
 type event struct {
-	EventType  int
-	AccuntType int
-	Address    string
-	AssetHash  string
-	Utxos      []explorer.Utxo
+	EventType   int
+	AccountType int
+	Address     string
+	AssetHash   string
+	Utxos       []explorer.Utxo
 }
 
 type Observable struct {
@@ -43,11 +43,14 @@ type utxoCrawler struct {
 	quitChan       chan int
 	eventChan      chan event
 	observables    []Observable
+	errorHandler   func(err error)
+	chanClosed     bool
 }
 
 func NewService(
 	explorerSvc explorer.Service,
 	observables []Observable,
+	errorHandler func(err error),
 ) Service {
 
 	intervalInSeconds := config.GetInt(config.CrawlIntervalKey)
@@ -61,20 +64,23 @@ func NewService(
 		quitChan:       make(chan int),
 		eventChan:      make(chan event),
 		observables:    observables,
+		errorHandler:   errorHandler,
+		chanClosed:     false,
 	}
 }
 
 func (u *utxoCrawler) Start() {
-	fmt.Println("start observe")
+	log.Debug("start observe")
 	for {
 		select {
 		case <-u.interval.C:
-			fmt.Println("observe interval")
+			log.Debug("observe interval")
 			go u.observeAll(u.observables)
 		case err := <-u.errChan:
-			fmt.Println(err)
+			u.errorHandler(err)
 		case <-u.quitChan:
-			fmt.Println("stop observe")
+			log.Debug("stop observe")
+			u.chanClosed = true
 			close(u.eventChan)
 			return
 		}
@@ -110,23 +116,26 @@ func (u *utxoCrawler) observeAll(observables []Observable) {
 }
 
 func (u *utxoCrawler) observe(observe Observable) {
-	unspents, err := u.explorerSvc.GetUnSpents(observe.Address)
+	//TODO update blinding key
+	unspents, err := u.explorerSvc.GetUnSpents(observe.Address, nil)
 	if err != nil {
 		u.errChan <- err
 	}
 	var eventType int
 	switch observe.AccountType {
-	case wallet.FeeAccount:
+	case constant.FeeAccount:
 		eventType = FeeAccountDeposit
 	default:
 		eventType = MarketAccountDeposit
 	}
 	event := event{
-		EventType:  eventType,
-		AccuntType: observe.AccountType,
-		Address:    observe.Address,
-		AssetHash:  observe.AssetHash,
-		Utxos:      unspents,
+		EventType:   eventType,
+		AccountType: observe.AccountType,
+		Address:     observe.Address,
+		AssetHash:   observe.AssetHash,
+		Utxos:       unspents,
 	}
-	u.eventChan <- event
+	if !u.chanClosed {
+		u.eventChan <- event
+	}
 }
