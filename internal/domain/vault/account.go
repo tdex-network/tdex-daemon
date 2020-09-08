@@ -1,8 +1,6 @@
 package vault
 
 import (
-	"fmt"
-
 	"github.com/btcsuite/btcutil/hdkeychain"
 )
 
@@ -42,12 +40,9 @@ func (a *Account) LastInternalIndex() uint32 {
 
 // DerivationPathByScript returns the derivation path that generates the
 // provided output script
-func (a *Account) DerivationPathByScript(outputScript string) (string, error) {
+func (a *Account) DerivationPathByScript(outputScript string) (string, bool) {
 	derivationPath, ok := a.derivationPathByScript[outputScript]
-	if !ok {
-		return "", fmt.Errorf("derivation path not found for output script '%s'", outputScript)
-	}
-	return derivationPath, nil
+	return derivationPath, ok
 }
 
 // NextExternalIndex increments the last external index by one and returns the new last
