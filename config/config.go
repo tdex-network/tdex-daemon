@@ -7,6 +7,7 @@ import (
 	"github.com/btcsuite/btcutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 const (
@@ -22,6 +23,8 @@ const (
 	LogLevelKey = "LOG_LEVEL"
 	// DefaultFeeKey ...
 	DefaultFeeKey = "DEFAULT_FEE"
+	// NetworkKey ...
+	NetworkKey = "NETWORK"
 	// BaseAssetKey ...
 	BaseAssetKey = "BASE_ASSET"
 	//CrawlInterval ...
@@ -43,9 +46,10 @@ func init() {
 	vip.SetDefault(DataDirPathKey, btcutil.AppDataDir("tdex-daemon", false))
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)
-	vip.SetDefault(BaseAssetKey, "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225")
 	vip.SetDefault(CrawlIntervalKey, 1)                 //TODO check this value
 	vip.SetDefault(FeeAccountBalanceThresholdKey, 1000) //TODO check this value
+	vip.SetDefault(NetworkKey, network.Regtest.Name)
+	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
 
 }
 
