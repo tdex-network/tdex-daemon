@@ -1,10 +1,15 @@
 package vault
 
 import (
+	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
-	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcutil"
+	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/tdex-network/tdex-daemon/internal/constant"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 )
 
 const (
@@ -21,74 +26,204 @@ const (
 )
 
 var (
-	// ErrEmptyKeyDerivationMap ...
-	ErrEmptyKeyDerivationMap = errors.New("no keys derived")
-	// ErrAccountIndexOutOfRange ...
-	ErrAccountIndexOutOfRange = errors.New("index is out of range of derived accounts")
+	// ErrMustBeLocked is thrown when trying to change the passphrase with an unlocked wallet
+	ErrMustBeLocked = errors.New("wallet must be locked to perform this operation")
+	// ErrMustBeUnlocked is thrown when trying to make an operation that requires the wallet to be unlocked
+	ErrMustBeUnlocked = errors.New("wallet must be unlocked to perform this operation")
+	// ErrInvalidPassphrase ...
+	ErrInvalidPassphrase = errors.New("passphrase is not valid")
 )
 
-// Account defines the entity data struture for a derived account of the
-// daemon's HD wallet
-type Account struct {
-	lastExternalIndex      uint32
-	lastInternalIndex      uint32
-	derivationPathByScript map[string]string
+type Vault struct {
+	mnemonic          string
+	encryptedMnemonic string
+	passphraseHash    []byte
+	accounts          map[uint32]*Account
+	accountsByAddress map[string]uint32
 }
 
-// NewAccount returns an empty Account instance
-func NewAccount() *Account {
-	return &Account{
-		derivationPathByScript: map[string]string{},
-		lastExternalIndex:      0,
-		lastInternalIndex:      0,
+// NewVault returns a new empty vault
+func NewVault() *Vault {
+	return &Vault{
+		accounts:          map[uint32]*Account{},
+		accountsByAddress: map[string]uint32{},
 	}
 }
 
-// LastExternalIndex returns the last address index of external chain (0)
-func (a *Account) LastExternalIndex() uint32 {
-	return a.lastExternalIndex
-}
-
-// LastInternalIndex returns the last address index of internal chain (1)
-func (a *Account) LastInternalIndex() uint32 {
-	return a.lastInternalIndex
-}
-
-// NextExternalIndex increments the last external index by one and returns the new last
-func (a *Account) NextExternalIndex() uint32 {
-	// restart from 0 if index has reached the its max value
-	if a.lastExternalIndex == hdkeychain.HardenedKeyStart-1 {
-		a.lastExternalIndex = 0
-	} else {
-		a.lastExternalIndex++
+// GenSeed generates a new mnemonic for the vault
+func (v *Vault) GenSeed() (string, error) {
+	w, err := wallet.NewWallet(wallet.NewWalletOpts{EntropySize: 256})
+	if err != nil {
+		return "", err
 	}
-	return a.lastExternalIndex
+	mnemonic, _ := w.SigningMnemonic()
+	v.mnemonic = mnemonic
+	return mnemonic, nil
 }
 
-// NextInternalIndex increments the last internal index by one and returns the new last
-func (a *Account) NextInternalIndex() uint32 {
-	if a.lastInternalIndex == hdkeychain.HardenedKeyStart-1 {
-		a.lastInternalIndex = 0
-	} else {
-		a.lastInternalIndex++
+// RestoreFromMnemonic validates the provided mnemonic and sets it as the Vault's mnemonic
+func (v *Vault) RestoreFromMnemonic(mnemonic string) error {
+	_, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: mnemonic,
+	})
+	if err != nil {
+		return err
 	}
-	return a.lastInternalIndex
+	v.mnemonic = mnemonic
+	return nil
 }
 
-// AddDerivationPath adds an entry outputScript-derivationPath to the inner to
-// the inner derivationPathByScript map
-func (a *Account) AddDerivationPath(outputScript, derivationPath string) {
-	if _, ok := a.derivationPathByScript[outputScript]; !ok {
-		a.derivationPathByScript[outputScript] = derivationPath
+// Lock encrypts the mnemonic with the provided passphrase
+func (v *Vault) Lock(passphrase string) error {
+	// check if the passphrase is correct in case this is not the first time
+	// Vault is being locked
+	if v.isPassphraseSet() && !v.isValidPassphrase(passphrase) {
+		return ErrInvalidPassphrase
 	}
+	if v.IsLocked() {
+		return nil
+	}
+
+	mnemonic, err := wallet.Encrypt(wallet.EncryptOpts{
+		PlainText:  v.mnemonic,
+		Passphrase: passphrase,
+	})
+	if err != nil {
+		return err
+	}
+
+	// save the hash of the passphrase if it's the first time Vault is locked
+	if !v.isPassphraseSet() {
+		v.passphraseHash = btcutil.Hash160([]byte(passphrase))
+		v.encryptedMnemonic = mnemonic
+	}
+	// flush mnemonic in plain text
+	v.mnemonic = ""
+	return nil
 }
 
-// DerivationPathForScript returns the derivation path that generates the
-// provided output script
-func (a *Account) DerivationPathForScript(outputScript string) (string, error) {
-	derivationPath, ok := a.derivationPathByScript[outputScript]
+// Unlock attempts to decrypt the mnemonic with the provided passphrase
+func (v *Vault) Unlock(passphrase string) error {
+	if !v.IsLocked() {
+		return nil
+	}
+
+	mnemonic, err := wallet.Decrypt(wallet.DecryptOpts{
+		CypherText: v.encryptedMnemonic,
+		Passphrase: passphrase,
+	})
+	if err != nil {
+		return err
+	}
+
+	v.mnemonic = mnemonic
+	return nil
+}
+
+// ChangePassphrase attempts to unlock the
+func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error {
+	if !v.isPassphraseSet() {
+		return v.Lock(newPassphrase)
+	}
+
+	if !v.isValidPassphrase(currentPassphrase) {
+		return ErrInvalidPassphrase
+	}
+	if !v.IsLocked() {
+		return ErrMustBeLocked
+	}
+
+	mnemonic, err := wallet.Decrypt(wallet.DecryptOpts{
+		CypherText: v.encryptedMnemonic,
+		Passphrase: currentPassphrase,
+	})
+	if err != nil {
+		return err
+	}
+
+	encryptedMnemonic, err := wallet.Encrypt(wallet.EncryptOpts{
+		PlainText:  mnemonic,
+		Passphrase: newPassphrase,
+	})
+	if err != nil {
+		return err
+	}
+
+	v.encryptedMnemonic = encryptedMnemonic
+	v.passphraseHash = btcutil.Hash160([]byte(newPassphrase))
+	return nil
+}
+
+// IsLocked returns whether the Vault is locked
+func (v *Vault) IsLocked() bool {
+	return len(v.mnemonic) == 0 && len(v.encryptedMnemonic) > 0
+}
+
+// IsZero returns whether the Vault is initialized without holding any data
+func (v *Vault) IsZero() bool {
+	return len(v.mnemonic) <= 0 &&
+		len(v.encryptedMnemonic) <= 0 &&
+		len(v.passphraseHash) <= 0 &&
+		len(v.accounts) <= 0 &&
+		len(v.accountsByAddress) <= 0
+}
+
+// DeriveNextExternalAddressForAccount returns the next unused address for the
+// provided account identified by its index
+func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex uint32) (string, string, error) {
+	if v.IsLocked() {
+		return "", "", ErrMustBeUnlocked
+	}
+
+	return v.deriveNextAddressForAccount(accountIndex, constant.ExternalChain)
+}
+
+// DeriveNextInternalAddressForAccount returns the next unused change address for the
+// provided account identified by its index
+func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex uint32) (string, string, error) {
+	if v.IsLocked() {
+		return "", "", ErrMustBeUnlocked
+	}
+
+	return v.deriveNextAddressForAccount(accountIndex, constant.InternalChain)
+}
+
+func (v *Vault) isValidPassphrase(passphrase string) bool {
+	return bytes.Equal(v.passphraseHash, btcutil.Hash160([]byte(passphrase)))
+}
+
+func (v *Vault) isPassphraseSet() bool {
+	return len(v.passphraseHash) > 0
+}
+
+func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex uint32) (string, string, error) {
+	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: v.mnemonic,
+	})
+	if err != nil {
+		return "", "", err
+	}
+
+	account, ok := v.accounts[accountIndex]
 	if !ok {
-		return "", fmt.Errorf("derivation path not found for output script '%s'", outputScript)
+		account = NewAccount(accountIndex)
+		v.accounts[accountIndex] = account
 	}
-	return derivationPath, nil
+
+	derivationPath := fmt.Sprintf(
+		"%d'/%d/%d",
+		account.Index(), chainIndex, account.LastExternalIndex(),
+	)
+	addr, script, err := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
+		DerivationPath: derivationPath,
+		Network:        config.GetNetwork(),
+	})
+	if err != nil {
+		return "", "", err
+	}
+	account.addDerivationPath(hex.EncodeToString(script), derivationPath)
+	account.nextExternalIndex()
+	v.accountsByAddress[addr] = account.Index()
+
+	return addr, hex.EncodeToString(script), err
 }
