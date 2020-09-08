@@ -23,19 +23,10 @@ func (i *InMemoryUnspentRepository) AddUnspent(unspents []unspent.Unspent) {
 
 	//add new unspent
 	for _, newUnspent := range unspents {
-		//exist := false
-		//for _, oldUnspent := range i.unspents {
-		//	if newUnspent.IsKeyEqual(oldUnspent.GetKey()) {
-		//		exist = true
-		//	}
-		//}
-		//if !exist {
-		//	i.unspents = append(i.unspents, newUnspent)
-		//}
 		if _, ok := i.unspents[newUnspent.GetKey()]; !ok {
 			i.unspents[unspent.UnspentKey{
-				TxID: newUnspent.GetTxID(),
-				VOut: newUnspent.GetVOut(),
+				TxID: newUnspent.TxID(),
+				VOut: newUnspent.VOut(),
 			}] = newUnspent
 		}
 	}
@@ -82,8 +73,8 @@ func (i *InMemoryUnspentRepository) GetBalance(
 	var balance uint64
 
 	for _, u := range i.unspents {
-		if u.GetAddress() == address && u.GetAssetHash() == assetHash && !u.IsSpent() {
-			balance += u.GetValue()
+		if u.Address() == address && u.AssetHash() == assetHash && !u.IsSpent() {
+			balance += u.Value()
 		}
 	}
 

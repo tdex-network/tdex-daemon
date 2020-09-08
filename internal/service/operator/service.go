@@ -2,7 +2,6 @@ package operatorservice
 
 import (
 	"context"
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
@@ -73,18 +72,18 @@ events:
 			s.unspentRepository.AddUnspent(unspents)
 			markets, err := s.marketRepository.GetTradableMarkets(context.Background())
 			if err != nil {
-				fmt.Println(err)
+				log.Error(err)
 				continue events
 			}
 
 			balance := s.unspentRepository.GetBalance(event.Address, event.AssetHash)
 			if balance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-				fmt.Println("fee account balance too low - Trades and" +
+				log.Debug("fee account balance too low - Trades and" +
 					" deposits will be disabled")
 				for _, m := range markets {
 					err := s.marketRepository.CloseMarket(context.Background(), m.QuoteAssetHash())
 					if err != nil {
-						fmt.Println(err)
+						log.Error(err)
 						continue events
 					}
 				}
@@ -95,7 +94,7 @@ events:
 				err := s.marketRepository.OpenMarket(context.Background(),
 					m.QuoteAssetHash())
 				if err != nil {
-					fmt.Println(err)
+					log.Error(err)
 					continue events
 				}
 			}
@@ -132,7 +131,7 @@ events:
 				event.AssetHash,
 			)
 			if err != nil {
-				fmt.Println(err)
+				log.Error(err)
 				continue events
 			}
 
@@ -148,7 +147,7 @@ events:
 
 			err = m.FundMarket(fundingTxs)
 			if err != nil {
-				fmt.Println(err)
+				log.Error(err)
 				continue events
 			}
 		}

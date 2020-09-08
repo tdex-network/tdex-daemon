@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/constant"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -26,21 +27,21 @@ func (s *Service) DepositMarket(
 
 	//if fee account balance > FEE_ACCOUNT_BALANCE_LIMIT
 	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-		fmt.Println("fee account balance too low, cant deposit market")
+		log.Debug("fee account balance too low, cant deposit market")
 		return nil, errors.New("fee account balance too low, " +
 			"cant deposit market")
 	}
 	//create market
 	_, latestAccountIndex, err := s.marketRepository.GetLatestMarket(context.Background())
 	if err != nil {
-		println("latest market")
+		log.Debug("latest market")
 		panic(fmt.Errorf("latest market: %w", err))
 	}
 
 	nextAccountIndex := latestAccountIndex + 1
 	_, err = s.marketRepository.GetOrCreateMarket(ctx, nextAccountIndex)
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 		return nil, err
 	}
 

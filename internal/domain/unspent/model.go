@@ -35,23 +35,23 @@ func NewUnspent(
 	}
 }
 
-func (u *Unspent) GetAddress() string {
+func (u *Unspent) Address() string {
 	return u.address
 }
 
-func (u *Unspent) GetAssetHash() string {
+func (u *Unspent) AssetHash() string {
 	return u.assetHash
 }
 
-func (u *Unspent) GetValue() uint64 {
+func (u *Unspent) Value() uint64 {
 	return u.value
 }
 
-func (u *Unspent) GetTxID() string {
+func (u *Unspent) TxID() string {
 	return u.txID
 }
 
-func (u *Unspent) GetVOut() uint32 {
+func (u *Unspent) VOut() uint32 {
 	return u.vOut
 }
 
