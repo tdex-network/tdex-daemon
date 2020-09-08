@@ -65,6 +65,22 @@ func (r *InMemoryVaultRepository) UpdateVault(
 	return nil
 }
 
+// GetAccountByIndex returns the account with the given index if it exists
+func (r *InMemoryVaultRepository) GetAccountByIndex(_ context.Context, accountIndex uint32) (*vault.Account, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.vault.AccountByIndex(accountIndex)
+}
+
+// GetAccountByAddress returns the account with the given index if it exists
+func (r *InMemoryVaultRepository) GetAccountByAddress(_ context.Context, addr string) (*vault.Account, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.vault.AccountByAddress(addr)
+}
+
 func (r *InMemoryVaultRepository) createOrRestoreVault(mnemonic string) (*vault.Vault, string, error) {
 	if len(mnemonic) > 0 {
 		err := r.vault.RestoreFromMnemonic(mnemonic)

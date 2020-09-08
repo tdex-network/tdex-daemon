@@ -188,6 +188,24 @@ func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex uint32) (string
 	return v.deriveNextAddressForAccount(accountIndex, constant.InternalChain)
 }
 
+// AccountByIndex returns the account with the given index
+func (v *Vault) AccountByIndex(accountIndex uint32) (*Account, error) {
+	account, ok := v.accounts[accountIndex]
+	if !ok {
+		return nil, fmt.Errorf("account not found with index %d", accountIndex)
+	}
+	return account, nil
+}
+
+// AccountByAddress returns the account to which the provided address belongs
+func (v *Vault) AccountByAddress(addr string) (*Account, error) {
+	accountIndex, ok := v.accountsByAddress[addr]
+	if !ok {
+		return nil, fmt.Errorf("account not found for address '%s", addr)
+	}
+	return v.AccountByIndex(accountIndex)
+}
+
 func (v *Vault) isValidPassphrase(passphrase string) bool {
 	return bytes.Equal(v.passphraseHash, btcutil.Hash160([]byte(passphrase)))
 }

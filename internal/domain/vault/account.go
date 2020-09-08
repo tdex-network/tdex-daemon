@@ -40,9 +40,9 @@ func (a *Account) LastInternalIndex() uint32 {
 	return a.lastInternalIndex
 }
 
-// DerivationPathForScript returns the derivation path that generates the
+// DerivationPathByScript returns the derivation path that generates the
 // provided output script
-func (a *Account) DerivationPathForScript(outputScript string) (string, error) {
+func (a *Account) DerivationPathByScript(outputScript string) (string, error) {
 	derivationPath, ok := a.derivationPathByScript[outputScript]
 	if !ok {
 		return "", fmt.Errorf("derivation path not found for output script '%s'", outputScript)
