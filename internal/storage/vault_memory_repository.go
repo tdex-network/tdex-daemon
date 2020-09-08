@@ -74,7 +74,7 @@ func (r *InMemoryVaultRepository) GetAccountByIndex(_ context.Context, accountIn
 }
 
 // GetAccountByAddress returns the account with the given index if it exists
-func (r *InMemoryVaultRepository) GetAccountByAddress(_ context.Context, addr string) (*vault.Account, error) {
+func (r *InMemoryVaultRepository) GetAccountByAddress(_ context.Context, addr string) (*vault.Account, int, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 

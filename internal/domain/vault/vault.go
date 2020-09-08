@@ -32,6 +32,8 @@ var (
 	ErrMustBeUnlocked = errors.New("wallet must be unlocked to perform this operation")
 	// ErrInvalidPassphrase ...
 	ErrInvalidPassphrase = errors.New("passphrase is not valid")
+	// ErrVaultAlreadyInitialized ...
+	ErrVaultAlreadyInitialized = errors.New("vault is already initialized")
 )
 
 type Vault struct {
@@ -52,6 +54,9 @@ func NewVault() *Vault {
 
 // GenSeed generates a new mnemonic for the vault
 func (v *Vault) GenSeed() (string, error) {
+	if !v.IsZero() {
+		return "", ErrVaultAlreadyInitialized
+	}
 	w, err := wallet.NewWallet(wallet.NewWalletOpts{EntropySize: 256})
 	if err != nil {
 		return "", err
@@ -63,6 +68,9 @@ func (v *Vault) GenSeed() (string, error) {
 
 // RestoreFromMnemonic validates the provided mnemonic and sets it as the Vault's mnemonic
 func (v *Vault) RestoreFromMnemonic(mnemonic string) error {
+	if !v.IsZero() {
+		return ErrVaultAlreadyInitialized
+	}
 	_, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: mnemonic,
 	})
@@ -198,12 +206,16 @@ func (v *Vault) AccountByIndex(accountIndex uint32) (*Account, error) {
 }
 
 // AccountByAddress returns the account to which the provided address belongs
-func (v *Vault) AccountByAddress(addr string) (*Account, error) {
+func (v *Vault) AccountByAddress(addr string) (*Account, int, error) {
 	accountIndex, ok := v.accountsByAddress[addr]
 	if !ok {
-		return nil, fmt.Errorf("account not found for address '%s", addr)
+		return nil, -1, fmt.Errorf("account not found for address '%s", addr)
 	}
-	return v.AccountByIndex(accountIndex)
+	account, err := v.AccountByIndex(accountIndex)
+	if err != nil {
+		return nil, -1, err
+	}
+	return account, int(accountIndex), nil
 }
 
 func (v *Vault) isValidPassphrase(passphrase string) bool {
