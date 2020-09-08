@@ -66,7 +66,7 @@ func (r *InMemoryVaultRepository) UpdateVault(
 }
 
 // GetAccountByIndex returns the account with the given index if it exists
-func (r *InMemoryVaultRepository) GetAccountByIndex(_ context.Context, accountIndex uint32) (*vault.Account, error) {
+func (r *InMemoryVaultRepository) GetAccountByIndex(_ context.Context, accountIndex int) (*vault.Account, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 

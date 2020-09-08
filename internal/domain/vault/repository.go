@@ -8,6 +8,6 @@ type Repository interface {
 		ctx context.Context,
 		updateFn func(v *Vault) (*Vault, error),
 	) error
-	GetAccountByIndex(ctx context.Context, accountIndex uint32) (*Account, error)
+	GetAccountByIndex(ctx context.Context, accountIndex int) (*Account, error)
 	GetAccountByAddress(ctx context.Context, addr string) (*Account, int, error)
 }

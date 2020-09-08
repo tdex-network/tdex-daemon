@@ -40,15 +40,15 @@ type Vault struct {
 	mnemonic          string
 	encryptedMnemonic string
 	passphraseHash    []byte
-	accounts          map[uint32]*Account
-	accountsByAddress map[string]uint32
+	accounts          map[int]*Account
+	accountsByAddress map[string]int
 }
 
 // NewVault returns a new empty vault
 func NewVault() *Vault {
 	return &Vault{
-		accounts:          map[uint32]*Account{},
-		accountsByAddress: map[string]uint32{},
+		accounts:          map[int]*Account{},
+		accountsByAddress: map[string]int{},
 	}
 }
 
@@ -178,7 +178,7 @@ func (v *Vault) IsZero() bool {
 
 // DeriveNextExternalAddressForAccount returns the next unused address for the
 // provided account identified by its index
-func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex uint32) (string, string, error) {
+func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, string, error) {
 	if v.IsLocked() {
 		return "", "", ErrMustBeUnlocked
 	}
@@ -188,7 +188,7 @@ func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex uint32) (string
 
 // DeriveNextInternalAddressForAccount returns the next unused change address for the
 // provided account identified by its index
-func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex uint32) (string, string, error) {
+func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (string, string, error) {
 	if v.IsLocked() {
 		return "", "", ErrMustBeUnlocked
 	}
@@ -197,7 +197,7 @@ func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex uint32) (string
 }
 
 // AccountByIndex returns the account with the given index
-func (v *Vault) AccountByIndex(accountIndex uint32) (*Account, error) {
+func (v *Vault) AccountByIndex(accountIndex int) (*Account, error) {
 	account, ok := v.accounts[accountIndex]
 	if !ok {
 		return nil, fmt.Errorf("account not found with index %d", accountIndex)
@@ -226,7 +226,7 @@ func (v *Vault) isPassphraseSet() bool {
 	return len(v.passphraseHash) > 0
 }
 
-func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex uint32) (string, string, error) {
+func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (string, string, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: v.mnemonic,
 	})
@@ -236,7 +236,10 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex uint32) (st
 
 	account, ok := v.accounts[accountIndex]
 	if !ok {
-		account = NewAccount(accountIndex)
+		account, err = NewAccount(accountIndex)
+		if err != nil {
+			return "", "", err
+		}
 		v.accounts[accountIndex] = account
 	}
 
