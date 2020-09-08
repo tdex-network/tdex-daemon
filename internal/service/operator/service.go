@@ -2,10 +2,12 @@ package operatorservice
 
 import (
 	"context"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
 	"github.com/tdex-network/tdex-daemon/internal/domain/unspent"
+	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/internal/storage"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -16,6 +18,7 @@ import (
 type Service struct {
 	marketRepository  market.Repository
 	unspentRepository unspent.Repository
+	vaultRepository   vault.Repository
 	pb.UnimplementedOperatorServer
 	crawlerSvc crawler.Service
 }
@@ -24,11 +27,13 @@ type Service struct {
 func NewService(
 	marketRepository market.Repository,
 	unspentRepository unspent.Repository,
+	vaultRepository vault.Repository,
 	crawlerSvc crawler.Service,
 ) (*Service, error) {
 	svc := &Service{
 		marketRepository:  marketRepository,
 		unspentRepository: unspentRepository,
+		vaultRepository:   vaultRepository,
 		crawlerSvc:        crawlerSvc,
 	}
 
