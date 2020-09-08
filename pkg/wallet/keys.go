@@ -198,19 +198,19 @@ func (o DeriveConfidentialAddressOpts) validate() error {
 // then generate the corresponding confidential address
 func (w *Wallet) DeriveConfidentialAddress(
 	opts DeriveConfidentialAddressOpts,
-) (string, error) {
+) (string, []byte, error) {
 	if err := opts.validate(); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if err := w.validate(); err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	_, pubkey, err := w.DeriveSigningKeyPair(DeriveSigningKeyPairOpts{
 		DerivationPath: opts.DerivationPath,
 	})
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	script := payment.FromPublicKey(pubkey, opts.Network, nil).WitnessScript
@@ -219,12 +219,15 @@ func (w *Wallet) DeriveConfidentialAddress(
 		Script: script,
 	})
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	p2wpkh := payment.FromPublicKey(pubkey, opts.Network, blindingPubkey)
-
-	return p2wpkh.ConfidentialWitnessPubKeyHash()
+	addr, err := p2wpkh.ConfidentialWitnessPubKeyHash()
+	if err != nil {
+		return "", nil, err
+	}
+	return addr, p2wpkh.WitnessScript, nil
 }
 
 func checkDerivationPath(path DerivationPath) error {

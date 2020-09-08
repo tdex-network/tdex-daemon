@@ -155,11 +155,12 @@ func TestDeriveConfidentialAddress(t *testing.T) {
 		DerivationPath: "0'/0/0",
 		Network:        &network.Liquid,
 	}
-	ctAddress, err := wallet.DeriveConfidentialAddress(opts)
+	ctAddress, script, err := wallet.DeriveConfidentialAddress(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, true, len(ctAddress) > 0)
+	assert.Equal(t, true, len(script) > 0)
 }
 
 func TestFailingDeriveConfidentialAddress(t *testing.T) {
@@ -189,7 +190,7 @@ func TestFailingDeriveConfidentialAddress(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		_, err := wallet.DeriveConfidentialAddress(tt.opts)
+		_, _, err := wallet.DeriveConfidentialAddress(tt.opts)
 		assert.Equal(t, tt.err, err)
 	}
 }
