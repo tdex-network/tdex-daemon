@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/tdex-network/tdex-daemon/internal/constant"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -120,7 +121,7 @@ func getObjectsToObserv(marketRepo market.Repository) (
 			return nil, err
 		}
 		observables = append(observables, crawler.Observable{
-			AccountType: wallet.FeeAccount,
+			AccountType: constant.FeeAccount,
 			AssetHash:   config.GetString(config.BaseAssetKey),
 			Address:     ctAddress,
 		})

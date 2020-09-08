@@ -121,26 +121,11 @@ func (e *explorer) GetUnSpents(addr string, blindKeys [][]byte) (coins []Utxo, e
 	for i := range witnessOuts {
 
 		out := witnessOuts[i]
-		//TODO test confidential utxo
-		if out.IsConfidential() {
-			go unblindUtxo(out, blindKeys, chUnspents, chErr)
-			select {
-
-			case err1 := <-chErr:
-				close(chErr)
-				close(chUnspents)
-				coins = nil
-				err = fmt.Errorf("error on unblinding utxos: %s", err1)
-				return
-
-			case unspent := <-chUnspents:
-				unspents[i] = unspent
-			}
-
-		}
 		go getUtxoDetails(out, chUnspents, chErr)
 		select {
+
 		case err1 := <-chErr:
+
 			if err1 != nil {
 				close(chErr)
 				close(chUnspents)
@@ -148,8 +133,28 @@ func (e *explorer) GetUnSpents(addr string, blindKeys [][]byte) (coins []Utxo, e
 				err = fmt.Errorf("error on retrieving utxos: %s", err1)
 				return
 			}
+
 		case unspent := <-chUnspents:
-			unspents[i] = unspent
+
+			if out.IsConfidential() {
+				go unblindUtxo(unspent, blindKeys, chUnspents, chErr)
+				select {
+
+				case err1 := <-chErr:
+					close(chErr)
+					close(chUnspents)
+					coins = nil
+					err = fmt.Errorf("error on unblinding utxos: %s", err1)
+					return
+
+				case u := <-chUnspents:
+					unspents[i] = u
+				}
+
+			} else {
+				unspents[i] = unspent
+			}
+
 		}
 	}
 	coins = unspents
