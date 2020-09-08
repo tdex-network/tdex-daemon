@@ -78,6 +78,13 @@ func GetBool(key string) bool {
 	return vip.GetBool(key)
 }
 
+func GetNetwork() *network.Network {
+	if vip.GetString(NetworkKey) == network.Regtest.Name {
+		return &network.Regtest
+	}
+	return &network.Liquid
+}
+
 // Validate method of config will panic
 func Validate() {
 	if err := validateDefaultFee(vip.GetFloat64(DefaultFeeKey)); err != nil {
