@@ -23,7 +23,7 @@ func (o SignTransactionOpts) validate() error {
 	if len(o.DerivationPathMap) <= 0 {
 		return ErrEmptyDerivationPaths
 	}
-	if len(ptx.Inputs) != len(o.DerivationPathMap) {
+	if len(ptx.Inputs) > len(o.DerivationPathMap) {
 		return ErrInvalidDerivationPathsLength
 	}
 
