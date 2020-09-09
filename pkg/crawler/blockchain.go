@@ -132,6 +132,7 @@ func (u *utxoCrawler) observeAll(w *sync.WaitGroup) {
 }
 
 func (u *utxoCrawler) observe(observe Observable, w *sync.WaitGroup) {
+	defer w.Done()
 	unspents, err := u.explorerSvc.GetUnSpents(observe.Address, observe.BlindingKey)
 	if err != nil {
 		u.errChan <- err
@@ -151,5 +152,4 @@ func (u *utxoCrawler) observe(observe Observable, w *sync.WaitGroup) {
 		Utxos:       unspents,
 	}
 	u.eventChan <- event
-	w.Done()
 }
