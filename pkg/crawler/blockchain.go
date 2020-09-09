@@ -5,6 +5,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/constant"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"sync"
 	"time"
 )
 
@@ -33,6 +34,7 @@ type Observable struct {
 	AccountType int
 	AssetHash   string
 	Address     string
+	BlindingKey [][]byte
 }
 
 type utxoCrawler struct {
@@ -44,7 +46,7 @@ type utxoCrawler struct {
 	eventChan      chan event
 	observables    []Observable
 	errorHandler   func(err error)
-	chanClosed     bool
+	mutex          *sync.RWMutex
 }
 
 func NewService(
@@ -65,22 +67,24 @@ func NewService(
 		eventChan:      make(chan event),
 		observables:    observables,
 		errorHandler:   errorHandler,
-		chanClosed:     false,
+		mutex:          &sync.RWMutex{},
 	}
 }
 
 func (u *utxoCrawler) Start() {
+	var wg sync.WaitGroup
 	log.Debug("start observe")
 	for {
 		select {
 		case <-u.interval.C:
 			log.Debug("observe interval")
-			go u.observeAll(u.observables)
+			u.observeAll(&wg)
 		case err := <-u.errChan:
 			u.errorHandler(err)
 		case <-u.quitChan:
 			log.Debug("stop observe")
-			u.chanClosed = true
+			u.interval.Stop()
+			wg.Wait()
 			close(u.eventChan)
 			return
 		}
@@ -91,11 +95,21 @@ func (u *utxoCrawler) Stop() {
 	u.quitChan <- 1
 }
 
+func (u *utxoCrawler) getObservable() []Observable {
+	u.mutex.Lock()
+	defer u.mutex.Unlock()
+	return u.observables
+}
+
 func (u *utxoCrawler) AddObservable(observable Observable) {
+	u.mutex.Lock()
+	defer u.mutex.Unlock()
 	u.observables = append(u.observables, observable)
 }
 
 func (u *utxoCrawler) RemoveObservable(observable Observable) {
+	u.mutex.Lock()
+	defer u.mutex.Unlock()
 	newObservableList := make([]Observable, 0)
 	for _, o := range u.observables {
 		if o.Address != observable.Address {
@@ -109,15 +123,16 @@ func (u *utxoCrawler) GetEventChannel() chan event {
 	return u.eventChan
 }
 
-func (u *utxoCrawler) observeAll(observables []Observable) {
+func (u *utxoCrawler) observeAll(w *sync.WaitGroup) {
+	observables := u.getObservable()
 	for _, a := range observables {
-		go u.observe(a)
+		w.Add(1)
+		go u.observe(a, w)
 	}
 }
 
-func (u *utxoCrawler) observe(observe Observable) {
-	//TODO update blinding key
-	unspents, err := u.explorerSvc.GetUnSpents(observe.Address, nil)
+func (u *utxoCrawler) observe(observe Observable, w *sync.WaitGroup) {
+	unspents, err := u.explorerSvc.GetUnSpents(observe.Address, observe.BlindingKey)
 	if err != nil {
 		u.errChan <- err
 	}
@@ -135,7 +150,6 @@ func (u *utxoCrawler) observe(observe Observable) {
 		AssetHash:   observe.AssetHash,
 		Utxos:       unspents,
 	}
-	if !u.chanClosed {
-		u.eventChan <- event
-	}
+	u.eventChan <- event
+	w.Done()
 }

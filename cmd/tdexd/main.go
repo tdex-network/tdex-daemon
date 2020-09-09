@@ -124,6 +124,7 @@ func getObjectsToObserv(marketRepo market.Repository) (
 			AccountType: constant.FeeAccount,
 			AssetHash:   config.GetString(config.BaseAssetKey),
 			Address:     ctAddress,
+			BlindingKey: nil,
 		})
 	}
 
