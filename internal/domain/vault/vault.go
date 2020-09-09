@@ -9,7 +9,9 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/constant"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/transaction"
 )
 
 const (
@@ -218,6 +220,36 @@ func (v *Vault) AccountByAddress(addr string) (*Account, int, error) {
 	return account, int(accountIndex), nil
 }
 
+// AllDerivedAddressesForAccount returns all the external and internal
+// addresses derived for the provided account
+func (v *Vault) AllDerivedAddressesForAccount(accountIndex int) ([]string, error) {
+	if v.IsLocked() {
+		return nil, ErrMustBeUnlocked
+	}
+
+	return v.allDerivedAddressesForAccount(accountIndex)
+}
+
+func (v *Vault) SendToMany(
+	accountIndex int,
+	unspents []explorer.Utxo,
+	outputs []*transaction.TxOutput,
+	outputsBlindingKeys [][]byte,
+	satsPerBytes int,
+) (string, error) {
+	if v.IsLocked() {
+		return "", ErrMustBeUnlocked
+	}
+
+	return v.sendToMany(
+		accountIndex,
+		unspents,
+		outputs,
+		outputsBlindingKeys,
+		satsPerBytes,
+	)
+}
+
 func (v *Vault) isValidPassphrase(passphrase string) bool {
 	return bytes.Equal(v.passphraseHash, btcutil.Hash160([]byte(passphrase)))
 }
@@ -259,4 +291,106 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 	v.accountsByAddress[addr] = account.Index()
 
 	return addr, hex.EncodeToString(script), err
+}
+
+func (v *Vault) allDerivedAddressesForAccount(accountIndex int) ([]string, error) {
+	account, err := v.AccountByIndex(accountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: v.mnemonic,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	addresses := make([]string, 0, account.lastExternalIndex+account.lastInternalIndex)
+	externalAddresses := deriveAddressesInRange(
+		w,
+		accountIndex,
+		constant.ExternalChain,
+		0,
+		account.lastExternalIndex-1,
+	)
+	internalAddresses := deriveAddressesInRange(
+		w,
+		accountIndex,
+		constant.InternalChain,
+		0,
+		account.lastExternalIndex-1,
+	)
+	addresses = append(addresses, externalAddresses...)
+	addresses = append(addresses, internalAddresses...)
+
+	return addresses, nil
+}
+
+func (v *Vault) sendToMany(
+	accountIndex int,
+	unspents []explorer.Utxo,
+	outputs []*transaction.TxOutput,
+	outputsBlindingKeys [][]byte,
+	satsPerBytes int,
+) (string, error) {
+	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: v.mnemonic,
+	})
+	if err != nil {
+		return "", nil
+	}
+
+	newPset, err := w.CreateTx()
+	if err != nil {
+		return "", err
+	}
+
+	account := v.accounts[accountIndex]
+
+	changePathsByAsset := map[string]string{}
+	for _, asset := range getOutputsAssets(outputs) {
+		_, script, err := v.DeriveNextInternalAddressForAccount(accountIndex)
+		if err != nil {
+			return "", err
+		}
+		derivationPath, _ := account.DerivationPathByScript(script)
+		changePathsByAsset[asset] = derivationPath
+	}
+
+	updateResult, err := w.UpdateTx(wallet.UpdateTxOpts{
+		PsetBase64:         newPset,
+		Unspents:           unspents,
+		Outputs:            outputs,
+		ChangePathsByAsset: changePathsByAsset,
+		SatsPerBytes:       satsPerBytes,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	outputsPlusChangesBlindingKeys := append(
+		outputsBlindingKeys,
+		updateResult.ChangeOutputsBlindingKeys...,
+	)
+
+	blindedPset, err := w.BlindTransaction(wallet.BlindTransactionOpts{
+		PsetBase64:         updateResult.PsetBase64,
+		OutputBlindingKeys: outputsPlusChangesBlindingKeys,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
+		PsetBase64: blindedPset,
+		Outputs:    createFeeOutput(updateResult.FeeAmount),
+	})
+
+	signedPset, err := w.SignTransaction(wallet.SignTransactionOpts{
+		PsetBase64:        blindedPlusFees.PsetBase64,
+		DerivationPathMap: account.derivationPathByScript,
+	})
+
+	return wallet.FinalizeAndExtractTransaction(signedPset)
 }

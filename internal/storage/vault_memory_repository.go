@@ -81,6 +81,15 @@ func (r *InMemoryVaultRepository) GetAccountByAddress(_ context.Context, addr st
 	return r.vault.AccountByAddress(addr)
 }
 
+// GetAllDerivedAddressesForAccount returns the list of all external and
+// internal (change) addresses  derived for the provided account
+func (r *InMemoryVaultRepository) GetAllDerivedAddressesForAccount(_ context.Context, accountIndex int) ([]string, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.vault.AllDerivedAddressesForAccount(accountIndex)
+}
+
 func (r *InMemoryVaultRepository) createOrRestoreVault(mnemonic string) (*vault.Vault, string, error) {
 	if len(mnemonic) > 0 {
 		err := r.vault.RestoreFromMnemonic(mnemonic)
