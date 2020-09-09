@@ -45,7 +45,7 @@ func newTestData() (string, []byte, error) {
 }
 
 func TestGetUnspents(t *testing.T) {
-	address, _, err := newTestData()
+	address, blindKey, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,9 @@ func TestGetUnspents(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 
-	utxos, err := GetUnSpents(address)
+	explorerSvc := NewService()
+
+	utxos, err := explorerSvc.GetUnSpents(address, [][]byte{blindKey})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +81,8 @@ func TestSelectUtxos(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 
-	utxos, err := GetUnSpents(address)
+	explorerSvc := NewService()
+	utxos, err := explorerSvc.GetUnSpents(address, [][]byte{key1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,12 +109,13 @@ func TestSelectUtxos(t *testing.T) {
 }
 
 func TestFailingSelectUtxos(t *testing.T) {
-	address, _, err := newTestData()
+	address, blindKey, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	utxos, err := GetUnSpents(address)
+	explorerSvc := NewService()
+	utxos, err := explorerSvc.GetUnSpents(address, [][]byte{blindKey})
 	if err != nil {
 		t.Fatal(err)
 	}

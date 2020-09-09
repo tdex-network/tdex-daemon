@@ -17,6 +17,9 @@ type Repository interface {
 	// Retrieves all the markets that are open for trading
 	GetTradableMarkets(ctx context.Context) ([]Market, error)
 
+	// Retrieves all the markets
+	GetAllMarkets(ctx context.Context) ([]Market, error)
+
 	// Updates the state of a market. In order to be flexible for many use case and to manage
 	// at an higher level the possible errors, an update closure function shall be passed
 	UpdateMarket(

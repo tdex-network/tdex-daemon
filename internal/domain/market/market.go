@@ -20,7 +20,6 @@ var (
 //Market defines the Market entity data structure for holding an asset pair state
 type Market struct {
 	// AccountIndex links a market to a HD wallet account derivation.
-	// Each Market could receive assets on any of those child addresses
 	accountIndex int
 	baseAsset    *depositedAsset
 	quoteAsset   *depositedAsset
@@ -210,7 +209,7 @@ func (m *Market) ChangeFeeAsset(asset string) error {
 
 // FundMarket adds funding details given an array of outpoints and recognize quote asset
 func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
-	var baseAssetHash string = config.GetString(config.BaseAssetKey)
+	var baseAssetHash = config.GetString(config.BaseAssetKey)
 	var otherAssetHash string
 
 	var baseAssetTxs []OutpointWithAsset

@@ -11,6 +11,20 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
+type Service interface {
+	GetUnSpents(addr string, blindKeys [][]byte) (coins []Utxo, err error)
+}
+
+type explorer struct {
+	apiUrl string
+}
+
+func NewService() Service {
+	return &explorer{
+		apiUrl: config.GetString(config.ExplorerEndpointKey),
+	}
+}
+
 func SelectUnSpents(
 	utxos []Utxo,
 	blindKeys [][]byte,
@@ -74,10 +88,10 @@ func SelectUnSpents(
 	return
 }
 
-func GetUnSpents(addr string) (coins []Utxo, err error) {
+func (e *explorer) GetUnSpents(addr string, blindKeys [][]byte) (coins []Utxo, err error) {
 	url := fmt.Sprintf(
 		"%s/address/%s/utxo",
-		config.GetString(config.ExplorerEndpointKey),
+		e.apiUrl,
 		addr,
 	)
 	status, resp, err1 := httputil.NewHTTPRequest("GET", url, "", nil)
@@ -105,10 +119,13 @@ func GetUnSpents(addr string) (coins []Utxo, err error) {
 	chErr := make(chan error, 1)
 
 	for i := range witnessOuts {
+
 		out := witnessOuts[i]
 		go getUtxoDetails(out, chUnspents, chErr)
 		select {
+
 		case err1 := <-chErr:
+
 			if err1 != nil {
 				close(chErr)
 				close(chUnspents)
@@ -116,8 +133,28 @@ func GetUnSpents(addr string) (coins []Utxo, err error) {
 				err = fmt.Errorf("error on retrieving utxos: %s", err1)
 				return
 			}
+
 		case unspent := <-chUnspents:
-			unspents[i] = unspent
+
+			if out.IsConfidential() {
+				go unblindUtxo(unspent, blindKeys, chUnspents, chErr)
+				select {
+
+				case err1 := <-chErr:
+					close(chErr)
+					close(chUnspents)
+					coins = nil
+					err = fmt.Errorf("error on unblinding utxos: %s", err1)
+					return
+
+				case u := <-chUnspents:
+					unspents[i] = u
+				}
+
+			} else {
+				unspents[i] = unspent
+			}
+
 		}
 	}
 	coins = unspents
@@ -125,6 +162,9 @@ func GetUnSpents(addr string) (coins []Utxo, err error) {
 	return
 }
 
+//getCoinsIndexes method returns utxo indexes that are going to be selected
+//the goal of the selection strategy is to select as less as possible utxo's
+//until a 10x ratio
 func getCoinsIndexes(targetAmount uint64, unblindedUtxos []Utxo) []int {
 	sort.Slice(unblindedUtxos, func(i, j int) bool {
 		return unblindedUtxos[i].Value() > unblindedUtxos[j].Value()
@@ -136,10 +176,13 @@ func getCoinsIndexes(targetAmount uint64, unblindedUtxos []Utxo) []int {
 		unblindedUtxosValues = append(unblindedUtxosValues, v.Value())
 	}
 
+	//actual strategy calculation output
 	list := getBestCombination(unblindedUtxosValues, targetAmount)
 
 	indexes := []int{}
 
+	//since list variable contains values,
+	//indexes holding those values needs to be calculated
 	for _, v := range list {
 		for i, v1 := range unblindedUtxosValues {
 			if v == v1 {
@@ -165,8 +208,9 @@ func isIndexOccupied(i int, list []int) bool {
 
 var combination = []uint64{}
 
-func getCombination(src []uint64, size int, offset int) [][]uint64 { // get all combinations for **size** elements in
-	// the elements of src array
+//getCombination is calculating all combinations for 'size' the elements of src array
+// number of combination formula -> len(src)! / size! * (len(src) - size)!
+func getCombination(src []uint64, size int, offset int) [][]uint64 {
 	result := [][]uint64{}
 	if size == 0 {
 		temp := make([]uint64, len(combination))
@@ -188,10 +232,18 @@ func sum(items []uint64) uint64 {
 	}
 	return total
 }
+
+//getBestCombination method implement strategy of selecting as less as possible
+//elements from items slice so that sum of elements is equal or greater than
+//target, with 10x ratio
+//It uses bellow logic:
+//1. set size = 1
+//2. uses Recursion (getCombination) to get all combinations for size elements in the input Array.
+//3. check each combination if meet the requirements from 0 -> i, if yes, return it (finish)
+//4. if none of combination matches, then size++ and go to Step 2.
 func getBestCombination(items []uint64, target uint64) []uint64 {
 	result := [][]uint64{}
 	for i := 1; i < len(items)+1; i++ {
-		// get all possible combinations for 1 -> len(items) elements of Array=items
 		result = append(result, getCombination(items, i, 0)...)
 		for j := 0; j < len(result); j++ {
 			total := sum(result[j])
