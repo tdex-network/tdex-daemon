@@ -1,8 +1,6 @@
 package vault
 
 import (
-	"errors"
-
 	"github.com/btcsuite/btcutil/hdkeychain"
 )
 
@@ -78,12 +76,4 @@ func (a *Account) addDerivationPath(outputScript, derivationPath string) {
 	if _, ok := a.derivationPathByScript[outputScript]; !ok {
 		a.derivationPathByScript[outputScript] = derivationPath
 	}
-}
-
-func validateAccountIndex(accIndex int) error {
-	if accIndex < 0 {
-		return errors.New("Account index must be a positive integer number")
-	}
-
-	return nil
 }
