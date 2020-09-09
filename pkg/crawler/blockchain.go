@@ -97,7 +97,7 @@ func (u *utxoCrawler) Stop() {
 
 func (u *utxoCrawler) getObservable() []Observable {
 	u.mutex.RLock()
-	defer u.mutex.Unlock()
+	defer u.mutex.RUnlock()
 	return u.observables
 }
 
