@@ -66,6 +66,7 @@ func (r InMemoryMarketRepository) GetTradableMarkets(_ context.Context) (tradabl
 	return tradableMarkets, nil
 }
 
+// GetAllMarkets returns all the markets either tradable or not.
 func (r InMemoryMarketRepository) GetAllMarkets(_ context.Context) (
 	markets []market.Market, err error,
 ) {
