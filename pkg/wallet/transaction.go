@@ -1,6 +1,8 @@
 package wallet
 
 import (
+	"fmt"
+
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -170,4 +172,298 @@ func (w *Wallet) UpdateSwapTx(opts UpdateSwapTxOpts) (string, []explorer.Utxo, e
 	}
 
 	return psetBase64, selectedUnspents, nil
+}
+
+// UpdateTxOpts is the struct given to UpdateTx method
+type UpdateTxOpts struct {
+	PsetBase64         string
+	Unspents           []explorer.Utxo
+	Outputs            []*transaction.TxOutput
+	ChangePathsByAsset map[string]string
+	SatsPerBytes       int
+}
+
+func (o UpdateTxOpts) validate() error {
+	if len(o.PsetBase64) <= 0 {
+		return ErrNullPset
+	}
+	_, err := pset.NewPsetFromBase64(o.PsetBase64)
+	if err != nil {
+		return err
+	}
+
+	if len(o.Outputs) <= 0 {
+		return ErrEmptyOutputs
+	}
+
+	if len(o.Unspents) > 0 {
+		for _, in := range o.Unspents {
+			_, _, err := in.Parse()
+			if err != nil {
+				return err
+			}
+		}
+
+		if len(o.ChangePathsByAsset) <= 0 {
+			return ErrNullChangePathByAsset
+		}
+
+		for _, out := range o.Outputs {
+			asset := bufferutil.AssetHashFromBytes(out.Asset)
+			if _, ok := o.ChangePathsByAsset[asset]; !ok {
+				return fmt.Errorf("missing derivation path for eventual change of asset '%s'", asset)
+			}
+		}
+
+		// make sure that a change path for LBTC exists. It will be used for both an
+		// an eventual change and for fee change (summed together)
+		lbtcAsset := config.GetNetwork().AssetID
+		if _, ok := o.ChangePathsByAsset[lbtcAsset]; !ok {
+			return fmt.Errorf("missing derivation path for eventual change of asset '%s'", lbtcAsset)
+		}
+
+		if o.SatsPerBytes <= 0 {
+			return ErrInvalidSatsPerBytes
+		}
+	}
+
+	return nil
+}
+
+func (o UpdateTxOpts) getOutputsTotalAmountsByAsset() map[string]uint64 {
+	totalAmountsByAsset := map[string]uint64{}
+	for _, out := range o.Outputs {
+		asset := bufferutil.AssetHashFromBytes(out.Asset)
+		totalAmountsByAsset[asset] += bufferutil.ValueFromBytes(out.Value)
+	}
+	return totalAmountsByAsset
+}
+
+func (o UpdateTxOpts) getUnspentsUnblindingKeys(w *Wallet) [][]byte {
+	keys := make([][]byte, 0, len(o.Unspents))
+	for _, u := range o.Unspents {
+		blindingPrvkey, _, _ := w.DeriveBlindingKeyPair(
+			DeriveBlindingKeyPairOpts{
+				Script: u.Script(),
+			},
+		)
+		keys = append(keys, blindingPrvkey.Serialize())
+	}
+	return keys
+}
+
+func (o UpdateTxOpts) getInputAssets() []string {
+	assets := make([]string, 0, len(o.ChangePathsByAsset))
+	for asset := range o.ChangePathsByAsset {
+		assets = append(assets, asset)
+	}
+	return assets
+}
+
+// UpdateTxResult is the struct returned by UpdateTx method.
+// PsetBase64: the updated partial transaction with new inputs and outputs
+// SelectedUnspents: the list of unspents added as inputs to the pset
+// ChangeOutptusBlindingKeys: the list of blinding keys for the evnutal
+// 														change(s) added to the pset
+// FeeAmount: the amount in satoshi of the fee amount that can added in a
+//						second moment giving the user the possibility to eventually blind
+//						the pset first
+type UpdateTxResult struct {
+	PsetBase64                string
+	SelectedUnspents          []explorer.Utxo
+	ChangeOutputsBlindingKeys [][]byte
+	FeeAmount                 uint64
+}
+
+// UpdateTx adds the provided outputs and eventual inputs to the provided
+// partial transaction. The assets of the inputs to add is determined by the
+// assets of the provided outputs. For each assset type a derivation path for
+// an eventual change must be provided.
+// Its also mandatory to provide a derivation path for the LBTC asset type
+// since this method takes care of adding inputs (if necessary) for covering
+// the fee amount.
+// While the list of outputs is required, the list of unspents is optional.
+// In case it's not empty, a coin selection is performed for each type of
+// asset, adding the eventual change output to the list of outputs to add to
+// the tx. In the other case, only the outputs are added to the provided
+// partial transaction.
+func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
+	if err := opts.validate(); err != nil {
+		return nil, err
+	}
+	if err := w.validate(); err != nil {
+		return nil, err
+	}
+
+	inputsToAdd := make([]explorer.Utxo, 0)
+	outputsToAdd := make([]*transaction.TxOutput, len(opts.Outputs))
+	changeOutputsBlindingKeys := make([][]byte, 0)
+	feeAmount := uint64(0)
+	copy(outputsToAdd, opts.Outputs)
+
+	if len(opts.Unspents) > 0 {
+		// retrieve all the asset hashes of input to add to the pset
+		inAssets := opts.getInputAssets()
+		// calculate target amount of each asset for coin selection
+		totalAmountsByAsset := opts.getOutputsTotalAmountsByAsset()
+		// retrieve input prv blinding keys
+		unspentsBlinidingKeys := opts.getUnspentsUnblindingKeys(w)
+
+		// select unspents and update the list of inputs to add and eventually the
+		// list of outputs to add by adding the change output if necessary
+		for _, asset := range inAssets {
+			if totalAmountsByAsset[asset] > 0 {
+				selectedUnspents, change, err := explorer.SelectUnSpents(
+					opts.Unspents,
+					unspentsBlinidingKeys,
+					totalAmountsByAsset[asset],
+					asset,
+				)
+				if err != nil {
+					return nil, err
+				}
+				inputsToAdd = append(inputsToAdd, selectedUnspents...)
+
+				if change > 0 {
+					_, script, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
+						DerivationPath: opts.ChangePathsByAsset[asset],
+						Network:        config.GetNetwork(),
+					})
+
+					changeOutput, _ := newTxOutput(asset, change, script)
+					outputsToAdd = append(outputsToAdd, changeOutput)
+
+					_, blindingKey, err := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
+						Script: script,
+					})
+					if err != nil {
+						return nil, err
+					}
+					changeOutputsBlindingKeys = append(
+						changeOutputsBlindingKeys,
+						blindingKey.SerializeCompressed(),
+					)
+				}
+			}
+		}
+
+		_, lbtcChangeScript, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
+			DerivationPath: opts.ChangePathsByAsset[config.GetNetwork().AssetID],
+			Network:        config.GetNetwork(),
+		})
+
+		feeAmount = estimateTxSize(
+			len(inputsToAdd),
+			len(outputsToAdd),
+			!anyOutputWithScript(outputsToAdd, lbtcChangeScript),
+			opts.SatsPerBytes,
+		)
+
+		// if a LBTC change output already exists and its value covers the
+		// estimated fee amount, it's enough to add the fee output and updating
+		// the change output's value by subtracting the fee amount.
+		// Otherwise, another coin selection over those LBTC utxos not already
+		// included is necessary and the already existing change output's value
+		// will be eventually updated by adding the change amount returned by the
+		// coin selection
+		if anyOutputWithScript(outputsToAdd, lbtcChangeScript) {
+			changeOutputIndex := outputIndexByScript(outputsToAdd, lbtcChangeScript)
+			changeAmount := bufferutil.ValueFromBytes(outputsToAdd[changeOutputIndex].Value)
+			if feeAmount < changeAmount {
+				outputsToAdd[changeOutputIndex].Value, _ = bufferutil.ValueToBytes(changeAmount - feeAmount)
+			} else {
+				unspents := getRemainingUnspents(opts.Unspents, inputsToAdd)
+				selectedUnspents, change, err := explorer.SelectUnSpents(
+					unspents,
+					unspentsBlinidingKeys,
+					feeAmount,
+					config.GetNetwork().AssetID,
+				)
+				if err != nil {
+					return nil, err
+				}
+				inputsToAdd = append(inputsToAdd, selectedUnspents...)
+
+				if change > 0 {
+					outputsToAdd[changeOutputIndex].Value, _ = bufferutil.ValueToBytes(changeAmount + change)
+				}
+			}
+		} else {
+			// In case there's no LBTC change, it's necessary to choose some other
+			// unspents from those not yet selected, add it/them to the list of
+			// inputs to add to the tx and add another output for the eventual change
+			// returned by the coin selection
+			unspents := getRemainingUnspents(opts.Unspents, inputsToAdd)
+			selectedUnspents, change, err := explorer.SelectUnSpents(
+				unspents,
+				unspentsBlinidingKeys,
+				feeAmount,
+				config.GetNetwork().AssetID,
+			)
+			if err != nil {
+				return nil, err
+			}
+			inputsToAdd = append(inputsToAdd, selectedUnspents...)
+
+			if change > 0 {
+				lbtcChangeOutput, _ := newTxOutput(
+					config.GetNetwork().AssetID,
+					change,
+					lbtcChangeScript,
+				)
+				outputsToAdd = append(outputsToAdd, lbtcChangeOutput)
+
+				_, lbtcChangeBlindingKey, _ := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
+					Script: lbtcChangeScript,
+				})
+
+				changeOutputsBlindingKeys = append(
+					changeOutputsBlindingKeys,
+					lbtcChangeBlindingKey.SerializeCompressed(),
+				)
+			}
+		}
+	}
+
+	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
+	psetBase64, err := addInsAndOutsToPset(ptx, inputsToAdd, outputsToAdd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &UpdateTxResult{
+		PsetBase64:                psetBase64,
+		SelectedUnspents:          inputsToAdd,
+		ChangeOutputsBlindingKeys: changeOutputsBlindingKeys,
+		FeeAmount:                 feeAmount,
+	}, nil
+}
+
+// FinalizeAndExtractTransactionOpts is the struct given to FinalizeAndExtractTransaction method
+type FinalizeAndExtractTransactionOpts struct {
+	PsetBase64 string
+}
+
+func (o FinalizeAndExtractTransactionOpts) validate() error {
+	if _, err := pset.NewPsetFromBase64(o.PsetBase64); err != nil {
+		return err
+	}
+	return nil
+}
+
+// FinalizeAndExtractTransaction attempts to finalize the provided partial
+// transaction and eventually extracts the final transaction and returns
+// it in hex string format
+func FinalizeAndExtractTransaction(opts FinalizeAndExtractTransactionOpts) (string, error) {
+	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
+
+	if err := pset.FinalizeAll(ptx); err != nil {
+		return "", err
+	}
+
+	tx, err := pset.Extract(ptx)
+	if err != nil {
+		return "", err
+	}
+	return tx.ToHex()
 }
