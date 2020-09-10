@@ -10,7 +10,7 @@ import (
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tyler-smith/go-bip39"
+	"github.com/vulpemventures/go-bip39"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/slip77"
 	"github.com/vulpemventures/go-elements/transaction"

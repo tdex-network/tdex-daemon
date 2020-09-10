@@ -16,7 +16,8 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/tdex-network/tdex-protobuf v0.0.0-20200910125132-ec6511a58a9a
 	github.com/thanhpk/randstr v1.0.4
-	github.com/tyler-smith/go-bip39 v1.0.2
+	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
+	github.com/vulpemventures/go-bip39 v1.0.2
 	github.com/vulpemventures/go-elements v0.0.4-0.20200901152827-3e772f50e0dc
 	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
 	google.golang.org/grpc v1.27.0
