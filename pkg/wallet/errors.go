@@ -34,8 +34,8 @@ var (
 	ErrNullOutputScript = errors.New("output script must not be null")
 	// ErrNullPset ...
 	ErrNullPset = errors.New("pset base64 must not be null")
-	// ErrNullChangePathByAsset ...
-	ErrNullChangePathByAsset = errors.New(
+	// ErrNullChangePathsByAsset ...
+	ErrNullChangePathsByAsset = errors.New(
 		"derivation paths for eventual change(s) must not be null",
 	)
 

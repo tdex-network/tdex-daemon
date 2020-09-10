@@ -205,7 +205,7 @@ func (o UpdateTxOpts) validate() error {
 		}
 
 		if len(o.ChangePathsByAsset) <= 0 {
-			return ErrNullChangePathByAsset
+			return ErrNullChangePathsByAsset
 		}
 
 		for _, out := range o.Outputs {
