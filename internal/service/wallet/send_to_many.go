@@ -22,7 +22,7 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 		return
 	}
 
-	walletDerivedAddresses, err := s.vaultRepository.GetAllDerivedAddressesForAccount(ctx, vault.WalletAccount)
+	walletDerivedAddresses, _, err := s.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, vault.WalletAccount)
 	if err != nil {
 		err = status.Error(codes.Internal, err.Error())
 		return

@@ -90,13 +90,14 @@ func (r *InMemoryVaultRepository) GetAccountByAddress(_ context.Context, addr st
 	return r.vault.AccountByAddress(addr)
 }
 
-// GetAllDerivedAddressesForAccount returns the list of all external and
-// internal (change) addresses  derived for the provided account
-func (r *InMemoryVaultRepository) GetAllDerivedAddressesForAccount(_ context.Context, accountIndex int) ([]string, error) {
+// GetAllDerivedAddressesAndBlindingKeysForAccount returns the list of all
+// external and internal (change) addresses derived for the provided account
+// along with the respective private blinding keys
+func (r *InMemoryVaultRepository) GetAllDerivedAddressesAndBlindingKeysForAccount(_ context.Context, accountIndex int) ([]string, [][]byte, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return r.vault.AllDerivedAddressesForAccount(accountIndex)
+	return r.vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
 func (r *InMemoryVaultRepository) getOrCreateVault(mnemonic []string, passphrase string) (*vault.Vault, error) {

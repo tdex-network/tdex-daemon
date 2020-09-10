@@ -12,6 +12,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -185,14 +186,15 @@ func (v *Vault) AccountByAddress(addr string) (*Account, int, error) {
 	return account, int(accountIndex), nil
 }
 
-// AllDerivedAddressesForAccount returns all the external and internal
-// addresses derived for the provided account
-func (v *Vault) AllDerivedAddressesForAccount(accountIndex int) ([]string, error) {
+// AllDerivedAddressesAndBlindingKeysForAccount returns all the external and
+// internal addresses derived for the provided account along with the
+// respective private blinding keys
+func (v *Vault) AllDerivedAddressesAndBlindingKeysForAccount(accountIndex int) ([]string, [][]byte, error) {
 	if v.IsLocked() {
-		return nil, ErrMustBeUnlocked
+		return nil, nil, ErrMustBeUnlocked
 	}
 
-	return v.allDerivedAddressesForAccount(accountIndex)
+	return v.allDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
 // SendToMany creates, blinds and signs a partial transaction for sending
@@ -270,17 +272,17 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 	return addr, hex.EncodeToString(script), err
 }
 
-func (v *Vault) allDerivedAddressesForAccount(accountIndex int) ([]string, error) {
+func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) ([]string, [][]byte, error) {
 	account, err := v.AccountByIndex(accountIndex)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: v.mnemonic,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	addresses := make([]string, 0, account.lastExternalIndex+account.lastInternalIndex)
@@ -301,7 +303,16 @@ func (v *Vault) allDerivedAddressesForAccount(accountIndex int) ([]string, error
 	addresses = append(addresses, externalAddresses...)
 	addresses = append(addresses, internalAddresses...)
 
-	return addresses, nil
+	blindingKeys := make([][]byte, 0, len(addresses))
+	for _, addr := range addresses {
+		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
+		key, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
+			Script: script,
+		})
+		blindingKeys = append(blindingKeys, key.Serialize())
+	}
+
+	return addresses, blindingKeys, nil
 }
 
 func (v *Vault) sendToMany(

@@ -12,5 +12,8 @@ type Repository interface {
 	) error
 	GetAccountByIndex(ctx context.Context, accountIndex int) (*Account, error)
 	GetAccountByAddress(ctx context.Context, addr string) (*Account, int, error)
-	GetAllDerivedAddressesForAccount(ctx context.Context, accountIndex int) ([]string, error)
+	GetAllDerivedAddressesAndBlindingKeysForAccount(
+		ctx context.Context,
+		accountIndex int,
+	) ([]string, [][]byte, error)
 }
