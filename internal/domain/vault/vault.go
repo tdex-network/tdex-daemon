@@ -279,9 +279,13 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 		v.accounts[accountIndex] = account
 	}
 
+	addressIndex := account.LastExternalIndex()
+	if chainIndex == constant.InternalChain {
+		addressIndex = account.LastInternalIndex()
+	}
 	derivationPath := fmt.Sprintf(
 		"%d'/%d/%d",
-		account.Index(), chainIndex, account.LastExternalIndex(),
+		account.Index(), chainIndex, addressIndex,
 	)
 	addr, script, err := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 		DerivationPath: derivationPath,
@@ -291,7 +295,11 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 		return "", "", err
 	}
 	account.addDerivationPath(hex.EncodeToString(script), derivationPath)
-	account.nextExternalIndex()
+	if chainIndex == constant.InternalChain {
+		account.nextInternalIndex()
+	} else {
+		account.nextExternalIndex()
+	}
 	v.accountsByAddress[addr] = account.Index()
 
 	return addr, hex.EncodeToString(script), err
