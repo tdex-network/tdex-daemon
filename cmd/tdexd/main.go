@@ -3,20 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/tdex-network/tdex-daemon/internal/constant"
-	"github.com/tdex-network/tdex-daemon/internal/domain/market"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	"github.com/vulpemventures/go-elements/network"
 	"os"
 	"os/signal"
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/tdex-network/tdex-daemon/internal/constant"
+	"github.com/tdex-network/tdex-daemon/internal/domain/market"
 	"github.com/tdex-network/tdex-daemon/internal/grpcutil"
 	"github.com/tdex-network/tdex-daemon/internal/storage"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/grpc"
 
 	operatorservice "github.com/tdex-network/tdex-daemon/internal/service/operator"
@@ -42,6 +42,7 @@ func main() {
 	// Init market in-memory storage
 	marketRepository := storage.NewInMemoryMarketRepository()
 	unspentRepository := storage.NewInMemoryUnspentRepository()
+	vaultRepository := storage.NewInMemoryVaultRepository()
 
 	explorerSvc := explorer.NewService()
 	observables, err := getObjectsToObserv(marketRepository)
@@ -52,6 +53,7 @@ func main() {
 	operatorSvc, err := operatorservice.NewService(
 		marketRepository,
 		unspentRepository,
+		vaultRepository,
 		crawlerSvc,
 	)
 	if err != nil {
@@ -106,7 +108,6 @@ func getObjectsToObserv(marketRepo market.Repository) (
 	}
 
 	w, err := wallet.NewWallet(wallet.NewWalletOpts{
-		EntropySize:   128,
 		ExtraMnemonic: false,
 	})
 
@@ -116,7 +117,7 @@ func getObjectsToObserv(marketRepo market.Repository) (
 			DerivationPath: fmt.Sprintf("%v'/0/0", m.AccountIndex()),
 			Network:        &network.Liquid,
 		}
-		ctAddress, err := w.DeriveConfidentialAddress(opts)
+		ctAddress, _, err := w.DeriveConfidentialAddress(opts)
 		if err != nil {
 			return nil, err
 		}
