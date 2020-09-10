@@ -179,7 +179,7 @@ func (v *Vault) IsZero() bool {
 }
 
 // DeriveNextExternalAddressForAccount returns the next unused address for the
-// provided account identified by its index
+// provided account and the corresponding output script
 func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, string, error) {
 	if v.IsLocked() {
 		return "", "", ErrMustBeUnlocked
@@ -189,7 +189,7 @@ func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, s
 }
 
 // DeriveNextInternalAddressForAccount returns the next unused change address for the
-// provided account identified by its index
+// provided account and the corresponding output script
 func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (string, string, error) {
 	if v.IsLocked() {
 		return "", "", ErrMustBeUnlocked
@@ -230,6 +230,10 @@ func (v *Vault) AllDerivedAddressesForAccount(accountIndex int) ([]string, error
 	return v.allDerivedAddressesForAccount(accountIndex)
 }
 
+// SendToMany creates, blinds and signs a partial transaction for sending
+// different type of assets and amounts to various receivers.
+// After signing the transaction, this is finalized and the final transaction
+// is extracted and returned in its hex string format
 func (v *Vault) SendToMany(
 	accountIndex int,
 	unspents []explorer.Utxo,
