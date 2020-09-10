@@ -32,31 +32,40 @@ type InMemoryVaultRepository struct {
 	lock *sync.RWMutex
 }
 
-// NewInMemoryRepository returns a new empty NewInMemoryRepository
-func NewInMemoryRepository() (*InMemoryVaultRepository, error) {
+// NewInMemoryVaultRepository returns a new empty InMemoryVaultRepository
+func NewInMemoryVaultRepository() *InMemoryVaultRepository {
 	return &InMemoryVaultRepository{
-		vault: vault.NewVault(),
+		vault: &vault.Vault{},
 		lock:  &sync.RWMutex{},
-	}, nil
+	}
 }
 
-// CreateOrRestoreVault actually creates a new seed for the Vault or uses the one provided
-func (r *InMemoryVaultRepository) CreateOrRestoreVault(mnemonic string) (*vault.Vault, string, error) {
+// GetOrCreateVault returns the current Vault.
+// If not yet initialized, it creates a new Vault, initialized with the
+// mnemonic encrypted with the passphrase
+func (r *InMemoryVaultRepository) GetOrCreateVault(mnemonic []string, passphrase string) (*vault.Vault, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return r.createOrRestoreVault(mnemonic)
+	return r.getOrCreateVault(mnemonic, passphrase)
 }
 
 // UpdateVault updates data to the Vault passing an update function
 func (r *InMemoryVaultRepository) UpdateVault(
 	_ context.Context,
+	mnemonic []string,
+	passphrase string,
 	updateFn func(*vault.Vault) (*vault.Vault, error),
 ) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	updatedVault, err := updateFn(r.vault)
+	v, err := r.GetOrCreateVault(mnemonic, passphrase)
+	if err != nil {
+		return err
+	}
+
+	updatedVault, err := updateFn(v)
 	if err != nil {
 		return err
 	}
@@ -90,18 +99,9 @@ func (r *InMemoryVaultRepository) GetAllDerivedAddressesForAccount(_ context.Con
 	return r.vault.AllDerivedAddressesForAccount(accountIndex)
 }
 
-func (r *InMemoryVaultRepository) createOrRestoreVault(mnemonic string) (*vault.Vault, string, error) {
-	if len(mnemonic) > 0 {
-		err := r.vault.RestoreFromMnemonic(mnemonic)
-		if err != nil {
-			return nil, "", err
-		}
-		return r.vault, mnemonic, nil
+func (r *InMemoryVaultRepository) getOrCreateVault(mnemonic []string, passphrase string) (*vault.Vault, error) {
+	if r.vault.IsZero() {
+		return vault.NewVault(mnemonic, passphrase)
 	}
-
-	mnemonic, err := r.vault.GenSeed()
-	if err != nil {
-		return nil, "", err
-	}
-	return r.vault, mnemonic, nil
+	return r.vault, nil
 }

@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -39,76 +41,41 @@ var (
 )
 
 type Vault struct {
-	mnemonic          string
+	mnemonic          []string
 	encryptedMnemonic string
 	passphraseHash    []byte
 	accounts          map[int]*Account
 	accountsByAddress map[string]int
 }
 
-// NewVault returns a new empty vault
-func NewVault() *Vault {
-	return &Vault{
-		accounts:          map[int]*Account{},
-		accountsByAddress: map[string]int{},
-	}
-}
-
-// GenSeed generates a new mnemonic for the vault
-func (v *Vault) GenSeed() (string, error) {
-	if !v.IsZero() {
-		return "", ErrVaultAlreadyInitialized
-	}
-	w, err := wallet.NewWallet(wallet.NewWalletOpts{EntropySize: 256})
-	if err != nil {
-		return "", err
-	}
-	mnemonic, _ := w.SigningMnemonic()
-	v.mnemonic = mnemonic
-	return mnemonic, nil
-}
-
-// RestoreFromMnemonic validates the provided mnemonic and sets it as the Vault's mnemonic
-func (v *Vault) RestoreFromMnemonic(mnemonic string) error {
-	if !v.IsZero() {
-		return ErrVaultAlreadyInitialized
-	}
-	_, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: mnemonic,
-	})
-	if err != nil {
-		return err
-	}
-	v.mnemonic = mnemonic
-	return nil
-}
-
-// Lock encrypts the mnemonic with the provided passphrase
-func (v *Vault) Lock(passphrase string) error {
-	// check if the passphrase is correct in case this is not the first time
-	// Vault is being locked
-	if v.isPassphraseSet() && !v.isValidPassphrase(passphrase) {
-		return ErrInvalidPassphrase
-	}
-	if v.IsLocked() {
-		return nil
-	}
-
-	mnemonic, err := wallet.Encrypt(wallet.EncryptOpts{
-		PlainText:  v.mnemonic,
+// NewVault encrypts the provided mnemonic with the passhrase and returns a new
+// Vault initialized with the encrypted mnemonic and the hash of the passphrase.
+// The Vault is locked by default since it is initialized without the mnemonic
+// in plain text
+func NewVault(mnemonic []string, passphrase string) (*Vault, error) {
+	encryptedMnemonic, err := wallet.Encrypt(wallet.EncryptOpts{
+		PlainText:  strings.Join(mnemonic, " "),
 		Passphrase: passphrase,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// save the hash of the passphrase if it's the first time Vault is locked
-	if !v.isPassphraseSet() {
-		v.passphraseHash = btcutil.Hash160([]byte(passphrase))
-		v.encryptedMnemonic = mnemonic
+	return &Vault{
+		encryptedMnemonic: encryptedMnemonic,
+		passphraseHash:    btcutil.Hash160([]byte(passphrase)),
+		accounts:          map[int]*Account{},
+		accountsByAddress: map[string]int{},
+	}, nil
+}
+
+// Lock locks the Vault by wiping its mnemonic field
+func (v *Vault) Lock() error {
+	if v.IsLocked() {
+		return nil
 	}
 	// flush mnemonic in plain text
-	v.mnemonic = ""
+	v.mnemonic = nil
 	return nil
 }
 
@@ -126,21 +93,17 @@ func (v *Vault) Unlock(passphrase string) error {
 		return err
 	}
 
-	v.mnemonic = mnemonic
+	v.mnemonic = strings.Split(mnemonic, " ")
 	return nil
 }
 
 // ChangePassphrase attempts to unlock the
 func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error {
-	if !v.isPassphraseSet() {
-		return v.Lock(newPassphrase)
-	}
-
-	if !v.isValidPassphrase(currentPassphrase) {
-		return ErrInvalidPassphrase
-	}
 	if !v.IsLocked() {
 		return ErrMustBeLocked
+	}
+	if !v.isValidPassphrase(currentPassphrase) {
+		return ErrInvalidPassphrase
 	}
 
 	mnemonic, err := wallet.Decrypt(wallet.DecryptOpts{
@@ -164,18 +127,21 @@ func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error 
 	return nil
 }
 
-// IsLocked returns whether the Vault is locked
-func (v *Vault) IsLocked() bool {
-	return len(v.mnemonic) == 0 && len(v.encryptedMnemonic) > 0
-}
-
 // IsZero returns whether the Vault is initialized without holding any data
 func (v *Vault) IsZero() bool {
-	return len(v.mnemonic) <= 0 &&
-		len(v.encryptedMnemonic) <= 0 &&
-		len(v.passphraseHash) <= 0 &&
-		len(v.accounts) <= 0 &&
-		len(v.accountsByAddress) <= 0
+	return reflect.DeepEqual(*v, Vault{})
+}
+
+// IsInitialized returnes whether the Vault has been inizitialized by checking
+// if the mnemonic has been encrypted, its plain text version has been wiped
+// and a passphrase (hash) has been set
+func (v *Vault) IsInitialized() bool {
+	return len(v.encryptedMnemonic) > 0
+}
+
+// IsLocked returns whether the Vault is initialized and locked
+func (v *Vault) IsLocked() bool {
+	return v.IsInitialized() && len(v.mnemonic) == 0
 }
 
 // DeriveNextExternalAddressForAccount returns the next unused address for the

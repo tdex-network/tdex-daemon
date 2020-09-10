@@ -3,9 +3,11 @@ package vault
 import "context"
 
 type Repository interface {
-	CreateOrRestoreVault(ctx context.Context, mnemonic string) (*Vault, string, error)
+	GetOrCreateVault(mnemonic []string, passphrase string) (*Vault, error)
 	UpdateVault(
 		ctx context.Context,
+		mnemonic []string,
+		passphrase string,
 		updateFn func(v *Vault) (*Vault, error),
 	) error
 	GetAccountByIndex(ctx context.Context, accountIndex int) (*Account, error)
