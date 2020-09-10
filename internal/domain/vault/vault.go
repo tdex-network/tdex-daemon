@@ -392,5 +392,9 @@ func (v *Vault) sendToMany(
 		DerivationPathMap: account.derivationPathByScript,
 	})
 
-	return wallet.FinalizeAndExtractTransaction(signedPset)
+	return wallet.FinalizeAndExtractTransaction(
+		wallet.FinalizeAndExtractTransactionOpts{
+			PsetBase64: signedPset,
+		},
+	)
 }
