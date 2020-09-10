@@ -1,10 +1,9 @@
 package wallet
 
 import (
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/vulpemventures/go-elements/network"
-	"github.com/vulpemventures/go-elements/payment"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
 )
@@ -18,10 +17,10 @@ func (w *Wallet) CreateTx() (string, error) {
 	return ptx.ToBase64()
 }
 
-// UpdateTxOpts is the struct given to UpdateTx method
-type UpdateTxOpts struct {
+// UpdateSwapTxOpts is the struct given to UpdateTx method
+type UpdateSwapTxOpts struct {
 	PsetBase64           string
-	Inputs               []explorer.Utxo
+	Unspents             []explorer.Utxo
 	InputAmount          uint64
 	InputAsset           string
 	OutputAmount         uint64
@@ -30,7 +29,7 @@ type UpdateTxOpts struct {
 	ChangeDerivationPath string
 }
 
-func (o UpdateTxOpts) validate() error {
+func (o UpdateSwapTxOpts) validate() error {
 	if len(o.PsetBase64) <= 0 {
 		return ErrNullPset
 	}
@@ -54,10 +53,10 @@ func (o UpdateTxOpts) validate() error {
 	}
 
 	// check input list
-	if len(o.Inputs) <= 0 {
-		return ErrEmptyInputs
+	if len(o.Unspents) <= 0 {
+		return ErrEmptyUnspents
 	}
-	for _, in := range o.Inputs {
+	for _, in := range o.Unspents {
 		_, _, err := in.Parse()
 		if err != nil {
 			return err
@@ -103,11 +102,27 @@ func (o UpdateTxOpts) validate() error {
 	return nil
 }
 
-// UpdateTx takes care of adding inputs and output(s) to the provided partial
+func (o UpdateSwapTxOpts) getUnspentsUnblindingKeys(w *Wallet) ([][]byte, error) {
+	keys := make([][]byte, 0, len(o.Unspents))
+	for _, u := range o.Unspents {
+		blindingPrvkey, _, err := w.DeriveBlindingKeyPair(
+			DeriveBlindingKeyPairOpts{
+				Script: u.Script(),
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, blindingPrvkey.Serialize())
+	}
+	return keys, nil
+}
+
+// UpdateSwapTx takes care of adding inputs and output(s) to the provided partial
 // transaction. Inputs are selected so that the minimum number of them is used
 // to reach the target InputAmount. The subset of selected inputs is returned
 // along with the updated partial transaction
-func (w *Wallet) UpdateTx(opts UpdateTxOpts) (string, []explorer.Utxo, error) {
+func (w *Wallet) UpdateSwapTx(opts UpdateSwapTxOpts) (string, []explorer.Utxo, error) {
 	if err := opts.validate(); err != nil {
 		return "", nil, err
 	}
@@ -117,21 +132,13 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (string, []explorer.Utxo, error) {
 
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
-	unspentsBlinidingKeys := make([][]byte, 0, len(opts.Inputs))
-	for _, u := range opts.Inputs {
-		blindingPrvkey, _, err := w.DeriveBlindingKeyPair(
-			DeriveBlindingKeyPairOpts{
-				Script: u.Script(),
-			},
-		)
-		if err != nil {
-			return "", nil, err
-		}
-		unspentsBlinidingKeys = append(unspentsBlinidingKeys, blindingPrvkey.Serialize())
+	unspentsBlinidingKeys, err := opts.getUnspentsUnblindingKeys(w)
+	if err != nil {
+		return "", nil, err
 	}
 
 	selectedUnspents, change, err := explorer.SelectUnSpents(
-		opts.Inputs,
+		opts.Unspents,
 		unspentsBlinidingKeys,
 		opts.InputAmount,
 		opts.InputAsset,
@@ -140,44 +147,24 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (string, []explorer.Utxo, error) {
 		return "", nil, err
 	}
 
-	updater, err := pset.NewUpdater(ptx)
-	if err != nil {
-		return "", nil, err
-	}
-
-	for i, unspent := range selectedUnspents {
-		in, out, _ := unspent.Parse()
-		updater.AddInput(in)
-		err := updater.AddInWitnessUtxo(out, i)
-		if err != nil {
-			return "", nil, err
-		}
-	}
-
-	outAsset, _ := bufferutil.AssetHashToBytes(opts.OutputAsset)
-	outValue, _ := bufferutil.ValueToBytes(opts.OutputAmount)
-	_, pubkey, _ := w.DeriveSigningKeyPair(DeriveSigningKeyPairOpts{
+	_, script, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
 		DerivationPath: opts.OutputDerivationPath,
+		Network:        config.GetNetwork(),
 	})
-	script := payment.FromPublicKey(pubkey, &network.Liquid, nil).WitnessScript
+	output, _ := newTxOutput(opts.OutputAsset, opts.OutputAmount, script)
 
-	output := transaction.NewTxOutput(outAsset, outValue, script)
-	updater.AddOutput(output)
-
+	outputsToAdd := []*transaction.TxOutput{output}
 	if change > 0 {
-		changeValue, _ := bufferutil.ValueToBytes(change)
-		_, pubkey, _ := w.DeriveSigningKeyPair(DeriveSigningKeyPairOpts{
+		_, script, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
 			DerivationPath: opts.ChangeDerivationPath,
+			Network:        config.GetNetwork(),
 		})
-		changeScript :=
-			payment.FromPublicKey(pubkey, &network.Liquid, nil).WitnessScript
-		inAsset, _ := bufferutil.AssetHashToBytes(opts.InputAsset)
 
-		changeOutput := transaction.NewTxOutput(inAsset, changeValue, changeScript)
-		updater.AddOutput(changeOutput)
+		changeOutput, _ := newTxOutput(opts.InputAsset, change, script)
+		outputsToAdd = append(outputsToAdd, changeOutput)
 	}
 
-	psetBase64, err := ptx.ToBase64()
+	psetBase64, err := addInsAndOutsToPset(ptx, selectedUnspents, outputsToAdd)
 	if err != nil {
 		return "", nil, err
 	}
