@@ -100,7 +100,8 @@ func getRemainingUnspents(unspents, unspentsToRemove []explorer.Utxo) []explorer
 	return remainingUnspents
 }
 
-func estimateTxSize(numInputs, numOutputs int, withChange bool, satsPerBytes int) uint64 {
+func estimateTxSize(numInputs, numOutputs int, withChange bool, milliSatsPerBytes int) uint64 {
+	satsPerBytes := float64(milliSatsPerBytes) / 1000
 	baseSize := calcTxSize(
 		false, withChange,
 		numInputs, numOutputs,
@@ -111,7 +112,7 @@ func estimateTxSize(numInputs, numOutputs int, withChange bool, satsPerBytes int
 	)
 	weight := baseSize*3 + totalSize
 	vsize := (weight + 3) / 4
-	return uint64(vsize * satsPerBytes)
+	return uint64(float64(vsize) * satsPerBytes)
 }
 
 func calcTxSize(withWitness, withChange bool, numInputs, numOutputs int) int {

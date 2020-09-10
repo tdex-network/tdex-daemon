@@ -40,7 +40,7 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 			unspents,
 			outputs,
 			outputsBlindingKeys,
-			int(req.GetSatPerKw()),
+			int(req.GetMillisatPerByte()),
 		)
 		if err != nil {
 			return nil, err

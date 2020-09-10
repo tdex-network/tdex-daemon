@@ -180,7 +180,7 @@ type UpdateTxOpts struct {
 	Unspents           []explorer.Utxo
 	Outputs            []*transaction.TxOutput
 	ChangePathsByAsset map[string]string
-	SatsPerBytes       int
+	MilliSatsPerBytes  int
 }
 
 func (o UpdateTxOpts) validate() error {
@@ -222,8 +222,8 @@ func (o UpdateTxOpts) validate() error {
 			return fmt.Errorf("missing derivation path for eventual change of asset '%s'", lbtcAsset)
 		}
 
-		if o.SatsPerBytes <= 0 {
-			return ErrInvalidSatsPerBytes
+		if o.MilliSatsPerBytes < 100 {
+			return ErrInvalidMilliSatsPerBytes
 		}
 	}
 
@@ -356,7 +356,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 			len(inputsToAdd),
 			len(outputsToAdd),
 			!anyOutputWithScript(outputsToAdd, lbtcChangeScript),
-			opts.SatsPerBytes,
+			opts.MilliSatsPerBytes,
 		)
 
 		// if a LBTC change output already exists and its value covers the

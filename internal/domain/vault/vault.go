@@ -309,7 +309,7 @@ func (v *Vault) sendToMany(
 	unspents []explorer.Utxo,
 	outputs []*transaction.TxOutput,
 	outputsBlindingKeys [][]byte,
-	satsPerBytes int,
+	milliSatsPerBytes int,
 ) (string, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: v.mnemonic,
@@ -340,7 +340,7 @@ func (v *Vault) sendToMany(
 		Unspents:           unspents,
 		Outputs:            outputs,
 		ChangePathsByAsset: changePathsByAsset,
-		SatsPerBytes:       satsPerBytes,
+		MilliSatsPerBytes:  milliSatsPerBytes,
 	})
 	if err != nil {
 		return "", err

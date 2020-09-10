@@ -327,7 +327,7 @@ func TestUpdateTx(t *testing.T) {
 			Unspents:           tt.unspents,
 			Outputs:            tt.outputs.TxOutputs(),
 			ChangePathsByAsset: tt.changePathsByAsset,
-			SatsPerBytes:       1,
+			MilliSatsPerBytes:  100,
 		}
 		res, err := wallet.UpdateTx(opts)
 		if err != nil {
@@ -351,7 +351,7 @@ func TestFailingUpdateTx(t *testing.T) {
 		unspents           []explorer.Utxo
 		outputs            outputList
 		changePathsByAsset map[string]string
-		satsPerByte        int
+		milliSatsPerByte   int
 		err                error
 	}{
 		{
@@ -362,8 +362,8 @@ func TestFailingUpdateTx(t *testing.T) {
 				"3be6cc6330799ea0a1ae2b7a950ba983e88f41b75a0cb36342e7a039903e7d55": "0'/1/1",
 				network.Regtest.AssetID: "0'/1/2",
 			},
-			satsPerByte: 1,
-			err:         ErrEmptyOutputs,
+			milliSatsPerByte: 100,
+			err:              ErrEmptyOutputs,
 		},
 		{
 			unspents: mockUnspentsForUpdateTx(),
@@ -375,7 +375,7 @@ func TestFailingUpdateTx(t *testing.T) {
 				},
 			},
 			changePathsByAsset: nil,
-			satsPerByte:        1,
+			milliSatsPerByte:   100,
 			err:                ErrNullChangePathsByAsset,
 		},
 		{
@@ -391,8 +391,8 @@ func TestFailingUpdateTx(t *testing.T) {
 				"3be6cc6330799ea0a1ae2b7a950ba983e88f41b75a0cb36342e7a039903e7d55": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			satsPerByte: 1,
-			err:         nil,
+			milliSatsPerByte: 100,
+			err:              nil,
 		},
 		{
 			unspents: mockUnspentsForUpdateTx(),
@@ -406,8 +406,8 @@ func TestFailingUpdateTx(t *testing.T) {
 			changePathsByAsset: map[string]string{
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 			},
-			satsPerByte: 1,
-			err:         nil,
+			milliSatsPerByte: 100,
+			err:              nil,
 		},
 		{
 			unspents: mockUnspentsForUpdateTx(),
@@ -422,8 +422,8 @@ func TestFailingUpdateTx(t *testing.T) {
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			satsPerByte: 0,
-			err:         ErrInvalidSatsPerBytes,
+			milliSatsPerByte: 50,
+			err:              ErrInvalidMilliSatsPerBytes,
 		},
 	}
 
@@ -445,7 +445,7 @@ func TestFailingUpdateTx(t *testing.T) {
 			Unspents:           tt.unspents,
 			Outputs:            tt.outputs.TxOutputs(),
 			ChangePathsByAsset: tt.changePathsByAsset,
-			SatsPerBytes:       tt.satsPerByte,
+			MilliSatsPerBytes:  tt.milliSatsPerByte,
 		}
 		_, err := wallet.UpdateTx(opts)
 		if tt.err != nil {
