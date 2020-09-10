@@ -3,9 +3,9 @@ package wallet
 import (
 	"fmt"
 
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
 )
@@ -29,6 +29,7 @@ type UpdateSwapTxOpts struct {
 	OutputAsset          string
 	OutputDerivationPath string
 	ChangeDerivationPath string
+	Network              *network.Network
 }
 
 func (o UpdateSwapTxOpts) validate() error {
@@ -38,6 +39,10 @@ func (o UpdateSwapTxOpts) validate() error {
 	_, err := pset.NewPsetFromBase64(o.PsetBase64)
 	if err != nil {
 		return err
+	}
+
+	if o.Network == nil {
+		return ErrNullNetwork
 	}
 
 	// check input args
@@ -151,7 +156,7 @@ func (w *Wallet) UpdateSwapTx(opts UpdateSwapTxOpts) (string, []explorer.Utxo, e
 
 	_, script, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
 		DerivationPath: opts.OutputDerivationPath,
-		Network:        config.GetNetwork(),
+		Network:        opts.Network,
 	})
 	output, _ := newTxOutput(opts.OutputAsset, opts.OutputAmount, script)
 
@@ -159,7 +164,7 @@ func (w *Wallet) UpdateSwapTx(opts UpdateSwapTxOpts) (string, []explorer.Utxo, e
 	if change > 0 {
 		_, script, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
 			DerivationPath: opts.ChangeDerivationPath,
-			Network:        config.GetNetwork(),
+			Network:        opts.Network,
 		})
 
 		changeOutput, _ := newTxOutput(opts.InputAsset, change, script)
@@ -181,6 +186,7 @@ type UpdateTxOpts struct {
 	Outputs            []*transaction.TxOutput
 	ChangePathsByAsset map[string]string
 	MilliSatsPerBytes  int
+	Network            *network.Network
 }
 
 func (o UpdateTxOpts) validate() error {
@@ -190,6 +196,10 @@ func (o UpdateTxOpts) validate() error {
 	_, err := pset.NewPsetFromBase64(o.PsetBase64)
 	if err != nil {
 		return err
+	}
+
+	if o.Network == nil {
+		return ErrNullNetwork
 	}
 
 	if len(o.Outputs) <= 0 {
@@ -217,7 +227,7 @@ func (o UpdateTxOpts) validate() error {
 
 		// make sure that a change path for LBTC exists. It will be used for both an
 		// an eventual change and for fee change (summed together)
-		lbtcAsset := config.GetNetwork().AssetID
+		lbtcAsset := o.Network.AssetID
 		if _, ok := o.ChangePathsByAsset[lbtcAsset]; !ok {
 			return fmt.Errorf("missing derivation path for eventual change of asset '%s'", lbtcAsset)
 		}
@@ -327,7 +337,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				if change > 0 {
 					_, script, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
 						DerivationPath: opts.ChangePathsByAsset[asset],
-						Network:        config.GetNetwork(),
+						Network:        opts.Network,
 					})
 
 					changeOutput, _ := newTxOutput(asset, change, script)
@@ -348,8 +358,8 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 		}
 
 		_, lbtcChangeScript, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
-			DerivationPath: opts.ChangePathsByAsset[config.GetNetwork().AssetID],
-			Network:        config.GetNetwork(),
+			DerivationPath: opts.ChangePathsByAsset[opts.Network.AssetID],
+			Network:        opts.Network,
 		})
 
 		feeAmount = estimateTxSize(
@@ -377,7 +387,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					unspents,
 					unspentsBlinidingKeys,
 					feeAmount,
-					config.GetNetwork().AssetID,
+					opts.Network.AssetID,
 				)
 				if err != nil {
 					return nil, err
@@ -398,7 +408,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				unspents,
 				unspentsBlinidingKeys,
 				feeAmount,
-				config.GetNetwork().AssetID,
+				opts.Network.AssetID,
 			)
 			if err != nil {
 				return nil, err
@@ -407,7 +417,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 
 			if change > 0 {
 				lbtcChangeOutput, _ := newTxOutput(
-					config.GetNetwork().AssetID,
+					opts.Network.AssetID,
 					change,
 					lbtcChangeScript,
 				)

@@ -42,6 +42,7 @@ func TestCreateAndUpdateSwapTx(t *testing.T) {
 		OutputAsset:          network.Regtest.AssetID,
 		OutputDerivationPath: "0'/0/1",
 		ChangeDerivationPath: "0'/1/0",
+		Network:              &network.Regtest,
 	}
 
 	updatedPsetBase64, selectedUnspents, err := wallet.UpdateSwapTx(opts)
@@ -81,6 +82,7 @@ func TestFailingUpdateSwapTx(t *testing.T) {
 				OutputAsset:          network.Regtest.AssetID,
 				OutputDerivationPath: "0'/0/1",
 				ChangeDerivationPath: "0'/1/0",
+				Network:              &network.Regtest,
 			},
 			err: ErrNullPset,
 		},
@@ -94,6 +96,7 @@ func TestFailingUpdateSwapTx(t *testing.T) {
 				OutputAsset:          network.Regtest.AssetID,
 				OutputDerivationPath: "0'/0/1",
 				ChangeDerivationPath: "0'/1/0",
+				Network:              &network.Regtest,
 			},
 			err: ErrEmptyUnspents,
 		},
@@ -107,6 +110,7 @@ func TestFailingUpdateSwapTx(t *testing.T) {
 				OutputAsset:          network.Regtest.AssetID,
 				OutputDerivationPath: "0'/0/1",
 				ChangeDerivationPath: "0'/1/0",
+				Network:              &network.Regtest,
 			},
 			err: ErrZeroInputAmount,
 		},
@@ -120,6 +124,7 @@ func TestFailingUpdateSwapTx(t *testing.T) {
 				OutputAsset:          network.Regtest.AssetID,
 				OutputDerivationPath: "0'/0/1",
 				ChangeDerivationPath: "0'/1/0",
+				Network:              &network.Regtest,
 			},
 			err: ErrInvalidInputAsset,
 		},
@@ -133,6 +138,7 @@ func TestFailingUpdateSwapTx(t *testing.T) {
 				OutputAsset:          network.Regtest.AssetID,
 				OutputDerivationPath: "0'/0/1",
 				ChangeDerivationPath: "0'/1/0",
+				Network:              &network.Regtest,
 			},
 			err: ErrZeroOutputAmount,
 		},
@@ -146,6 +152,7 @@ func TestFailingUpdateSwapTx(t *testing.T) {
 				OutputAsset:          "",
 				OutputDerivationPath: "0'/0/1",
 				ChangeDerivationPath: "0'/1/0",
+				Network:              &network.Regtest,
 			},
 			err: ErrInvalidOutputAsset,
 		},
@@ -159,6 +166,7 @@ func TestFailingUpdateSwapTx(t *testing.T) {
 				OutputAsset:          network.Regtest.AssetID,
 				OutputDerivationPath: "",
 				ChangeDerivationPath: "0'/1/0",
+				Network:              &network.Regtest,
 			},
 			err: ErrNullOutputDerivationPath,
 		},
@@ -172,8 +180,22 @@ func TestFailingUpdateSwapTx(t *testing.T) {
 				OutputAsset:          network.Regtest.AssetID,
 				OutputDerivationPath: "0'/0/1",
 				ChangeDerivationPath: "",
+				Network:              &network.Regtest,
 			},
 			err: ErrNullChangeDerivationPath,
+		},
+		{
+			opts: UpdateSwapTxOpts{
+				PsetBase64:           psetBase64,
+				Unspents:             mockUnspents(),
+				InputAmount:          6000000000,
+				InputAsset:           "1adcc1e8564a6f01c957a0f7fcb8badce9c126d790550e6d6817aa752369ae5f",
+				OutputAmount:         100000000000,
+				OutputAsset:          network.Regtest.AssetID,
+				OutputDerivationPath: "0'/0/1",
+				ChangeDerivationPath: "0'/1/0",
+			},
+			err: ErrNullNetwork,
 		},
 	}
 
@@ -328,6 +350,7 @@ func TestUpdateTx(t *testing.T) {
 			Outputs:            tt.outputs.TxOutputs(),
 			ChangePathsByAsset: tt.changePathsByAsset,
 			MilliSatsPerBytes:  100,
+			Network:            &network.Regtest,
 		}
 		res, err := wallet.UpdateTx(opts)
 		if err != nil {
@@ -352,6 +375,7 @@ func TestFailingUpdateTx(t *testing.T) {
 		outputs            outputList
 		changePathsByAsset map[string]string
 		milliSatsPerByte   int
+		network            *network.Network
 		err                error
 	}{
 		{
@@ -363,6 +387,7 @@ func TestFailingUpdateTx(t *testing.T) {
 				network.Regtest.AssetID: "0'/1/2",
 			},
 			milliSatsPerByte: 100,
+			network:          &network.Regtest,
 			err:              ErrEmptyOutputs,
 		},
 		{
@@ -376,6 +401,7 @@ func TestFailingUpdateTx(t *testing.T) {
 			},
 			changePathsByAsset: nil,
 			milliSatsPerByte:   100,
+			network:            &network.Regtest,
 			err:                ErrNullChangePathsByAsset,
 		},
 		{
@@ -392,6 +418,7 @@ func TestFailingUpdateTx(t *testing.T) {
 				network.Regtest.AssetID: "0'/1/1",
 			},
 			milliSatsPerByte: 100,
+			network:          &network.Regtest,
 			err:              nil,
 		},
 		{
@@ -407,6 +434,7 @@ func TestFailingUpdateTx(t *testing.T) {
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 			},
 			milliSatsPerByte: 100,
+			network:          &network.Regtest,
 			err:              nil,
 		},
 		{
@@ -423,7 +451,24 @@ func TestFailingUpdateTx(t *testing.T) {
 				network.Regtest.AssetID: "0'/1/1",
 			},
 			milliSatsPerByte: 50,
+			network:          &network.Regtest,
 			err:              ErrInvalidMilliSatsPerBytes,
+		},
+		{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
+				{
+					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
+					500,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+			},
+			changePathsByAsset: map[string]string{
+				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
+				network.Regtest.AssetID: "0'/1/1",
+			},
+			milliSatsPerByte: 100,
+			err:              ErrNullNetwork,
 		},
 	}
 
@@ -446,6 +491,7 @@ func TestFailingUpdateTx(t *testing.T) {
 			Outputs:            tt.outputs.TxOutputs(),
 			ChangePathsByAsset: tt.changePathsByAsset,
 			MilliSatsPerBytes:  tt.milliSatsPerByte,
+			Network:            tt.network,
 		}
 		_, err := wallet.UpdateTx(opts)
 		if tt.err != nil {
