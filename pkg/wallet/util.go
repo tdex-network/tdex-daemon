@@ -3,6 +3,7 @@ package wallet
 import (
 	"bytes"
 	"math"
+	"strings"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/base58"
@@ -16,32 +17,31 @@ import (
 )
 
 const (
+	// MaxHardenedValue is the max value for hardened indexes of BIP32
+	// derivation paths
 	MaxHardenedValue = math.MaxUint32 - hdkeychain.HardenedKeyStart
 )
 
-func generateMnemonicSeedAndMasterKey(entropySize int) (
-	mnemonic string,
-	seed []byte,
-	err error,
-) {
+func generateMnemonic(entropySize int) ([]string, error) {
 	entropy, err := bip39.NewEntropy(entropySize)
 	if err != nil {
-		return
+		return nil, err
 	}
-	mnemonic, err = bip39.NewMnemonic(entropy)
+	mnemonic, err := bip39.NewMnemonic(entropy)
 	if err != nil {
-		return
+		return nil, err
 	}
-	seed = bip39.NewSeed(mnemonic, "")
-	return
+	return strings.Split(mnemonic, " "), nil
 }
 
-func generateSeedFromMnemonic(mnemonic string) []byte {
-	return bip39.NewSeed(mnemonic, "")
+func generateSeedFromMnemonic(mnemonic []string) []byte {
+	m := strings.Join(mnemonic, " ")
+	return bip39.NewSeed(m, "")
 }
 
-func isMnemonicValid(mnemonic string) bool {
-	return bip39.IsMnemonicValid(mnemonic)
+func isMnemonicValid(mnemonic []string) bool {
+	m := strings.Join(mnemonic, " ")
+	return bip39.IsMnemonicValid(m)
 }
 
 func generateSigningMasterKey(

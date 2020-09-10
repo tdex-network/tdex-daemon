@@ -4,44 +4,24 @@ package wallet
 // derive signing and blinding key pairs, and manage those keys to blind and
 // sign transactions
 type Wallet struct {
-	signingMnemonic   string
+	signingMnemonic   []string
 	signingMasterKey  []byte
-	blindingMnemonic  string
+	blindingMnemonic  []string
 	blindingMasterKey []byte
 }
 
 // NewWalletOpts is the struct given to the NewWallet method
 type NewWalletOpts struct {
-	EntropySize   int
 	ExtraMnemonic bool
-}
-
-func (o NewWalletOpts) validate() error {
-	if o.EntropySize > 0 {
-		if o.EntropySize < 128 || o.EntropySize > 256 || o.EntropySize%32 != 0 {
-			return ErrInvalidEntropySize
-		}
-	}
-	if o.EntropySize < 0 {
-		return ErrInvalidEntropySize
-	}
-	return nil
 }
 
 // NewWallet creates a new wallet holding signing/blinding mnemonic and seed
 func NewWallet(opts NewWalletOpts) (*Wallet, error) {
-	if err := opts.validate(); err != nil {
-		return nil, err
-	}
-	if opts.EntropySize == 0 {
-		opts.EntropySize = 128
-	}
-
-	signingMnemonic, signingSeed, err :=
-		generateMnemonicSeedAndMasterKey(opts.EntropySize)
+	signingMnemonic, err := NewMnemonic(NewMnemonicOpts{EntropySize: 256})
 	if err != nil {
 		return nil, err
 	}
+	signingSeed := generateSeedFromMnemonic(signingMnemonic)
 	signingMasterKey, err := generateSigningMasterKey(
 		signingSeed,
 		DefaultBaseDerivationPath,
@@ -51,13 +31,13 @@ func NewWallet(opts NewWalletOpts) (*Wallet, error) {
 	}
 
 	blindingMnemonic := signingMnemonic
-	blindingSeed := signingSeed
 	if opts.ExtraMnemonic {
-		blindingMnemonic, blindingSeed, err = generateMnemonicSeedAndMasterKey(opts.EntropySize)
+		blindingMnemonic, err = NewMnemonic(NewMnemonicOpts{EntropySize: 256})
 		if err != nil {
 			return nil, err
 		}
 	}
+	blindingSeed := generateSeedFromMnemonic(blindingMnemonic)
 	blindingMasterKey, err := generateBlindingMasterKey(blindingSeed)
 	if err != nil {
 		return nil, err
@@ -73,8 +53,8 @@ func NewWallet(opts NewWalletOpts) (*Wallet, error) {
 
 // NewWalletFromMnemonicOpts is the struct given to the NewWalletFromMnemonicOpts method
 type NewWalletFromMnemonicOpts struct {
-	SigningMnemonic  string
-	BlindingMnemonic string
+	SigningMnemonic  []string
+	BlindingMnemonic []string
 }
 
 func (o NewWalletFromMnemonicOpts) validate() error {
@@ -152,20 +132,17 @@ func (w *Wallet) validate() error {
 }
 
 // SigningMnemonic is getter for signing mnemonic
-func (w *Wallet) SigningMnemonic() (string, error) {
+func (w *Wallet) SigningMnemonic() ([]string, error) {
 	if err := w.validate(); err != nil {
-		return "", err
+		return nil, err
 	}
 	return w.signingMnemonic, nil
 }
 
 // BlindingMnemonic is getter for blinding mnemonic
-func (w *Wallet) BlindingMnemonic() (string, error) {
+func (w *Wallet) BlindingMnemonic() ([]string, error) {
 	if err := w.validate(); err != nil {
-		return "", err
-	}
-	if len(w.blindingMnemonic) <= 0 {
-		return "", ErrNullBlindingMnemonic
+		return nil, err
 	}
 	return w.blindingMnemonic, nil
 }

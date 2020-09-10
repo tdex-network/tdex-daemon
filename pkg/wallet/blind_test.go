@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"encoding/hex"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,8 +10,8 @@ import (
 
 func TestBlindTransaction(t *testing.T) {
 	wallet, err := NewWalletFromMnemonic(NewWalletFromMnemonicOpts{
-		SigningMnemonic:  "quarter multiply swarm depth slice security flight glad arrow express worth legend wasp mobile anchor dinner mutual six sure wear section delay initial thank",
-		BlindingMnemonic: "okay door hammer betray reason zero fiction rigid vivid scorpion thunder crucial focus riot cancel wear autumn rely kangaroo rug raven mystery ability stem",
+		SigningMnemonic:  strings.Split("quarter multiply swarm depth slice security flight glad arrow express worth legend wasp mobile anchor dinner mutual six sure wear section delay initial thank", " "),
+		BlindingMnemonic: strings.Split("okay door hammer betray reason zero fiction rigid vivid scorpion thunder crucial focus riot cancel wear autumn rely kangaroo rug raven mystery ability stem", " "),
 	})
 	if err != nil {
 		t.Fatal(err)
