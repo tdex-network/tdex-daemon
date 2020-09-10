@@ -9,8 +9,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/internal/constant"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
+	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/internal/grpcutil"
 	"github.com/tdex-network/tdex-daemon/internal/storage"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -122,7 +122,7 @@ func getObjectsToObserv(marketRepo market.Repository) (
 			return nil, err
 		}
 		observables = append(observables, crawler.Observable{
-			AccountType: constant.FeeAccount,
+			AccountType: vault.FeeAccount,
 			AssetHash:   config.GetString(config.BaseAssetKey),
 			Address:     ctAddress,
 			BlindingKey: nil,

@@ -4,6 +4,18 @@ import (
 	"github.com/btcsuite/btcutil/hdkeychain"
 )
 
+const (
+	FeeAccount = iota
+	WalletAccount
+	UnusedAccount1
+	UnusedAccount2
+	UnusedAccount3
+	MarketAccountStart
+
+	ExternalChain = 0
+	InternalChain = 1
+)
+
 // Account defines the entity data struture for a derived account of the
 // daemon's HD wallet
 type Account struct {

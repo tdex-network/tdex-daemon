@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 
-	"github.com/tdex-network/tdex-daemon/internal/constant"
 	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -23,7 +22,7 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 		return
 	}
 
-	walletDerivedAddresses, err := s.vaultRepository.GetAllDerivedAddressesForAccount(ctx, constant.WalletAccount)
+	walletDerivedAddresses, err := s.vaultRepository.GetAllDerivedAddressesForAccount(ctx, vault.WalletAccount)
 	if err != nil {
 		err = status.Error(codes.Internal, err.Error())
 		return
@@ -37,7 +36,7 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 
 	if err = s.vaultRepository.UpdateVault(ctx, nil, "", func(v *vault.Vault) (*vault.Vault, error) {
 		txHex, err := v.SendToMany(
-			constant.WalletAccount,
+			vault.WalletAccount,
 			unspents,
 			outputs,
 			outputsBlindingKeys,

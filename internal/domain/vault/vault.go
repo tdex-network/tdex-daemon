@@ -10,7 +10,6 @@ import (
 
 	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/internal/constant"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -151,7 +150,7 @@ func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, s
 		return "", "", ErrMustBeUnlocked
 	}
 
-	return v.deriveNextAddressForAccount(accountIndex, constant.ExternalChain)
+	return v.deriveNextAddressForAccount(accountIndex, ExternalChain)
 }
 
 // DeriveNextInternalAddressForAccount returns the next unused change address for the
@@ -161,7 +160,7 @@ func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (string, s
 		return "", "", ErrMustBeUnlocked
 	}
 
-	return v.deriveNextAddressForAccount(accountIndex, constant.InternalChain)
+	return v.deriveNextAddressForAccount(accountIndex, InternalChain)
 }
 
 // AccountByIndex returns the account with the given index
@@ -246,7 +245,7 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 	}
 
 	addressIndex := account.LastExternalIndex()
-	if chainIndex == constant.InternalChain {
+	if chainIndex == InternalChain {
 		addressIndex = account.LastInternalIndex()
 	}
 	derivationPath := fmt.Sprintf(
@@ -261,7 +260,7 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 		return "", "", err
 	}
 	account.addDerivationPath(hex.EncodeToString(script), derivationPath)
-	if chainIndex == constant.InternalChain {
+	if chainIndex == InternalChain {
 		account.nextInternalIndex()
 	} else {
 		account.nextExternalIndex()
@@ -288,14 +287,14 @@ func (v *Vault) allDerivedAddressesForAccount(accountIndex int) ([]string, error
 	externalAddresses := deriveAddressesInRange(
 		w,
 		accountIndex,
-		constant.ExternalChain,
+		ExternalChain,
 		0,
 		account.lastExternalIndex-1,
 	)
 	internalAddresses := deriveAddressesInRange(
 		w,
 		accountIndex,
-		constant.InternalChain,
+		InternalChain,
 		0,
 		account.lastExternalIndex-1,
 	)

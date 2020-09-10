@@ -1,12 +1,13 @@
 package crawler
 
 import (
-	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/internal/constant"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
 type Service interface {
@@ -139,7 +140,7 @@ func (u *utxoCrawler) observe(observe Observable, w *sync.WaitGroup) {
 	}
 	var eventType int
 	switch observe.AccountType {
-	case constant.FeeAccount:
+	case vault.FeeAccount:
 		eventType = FeeAccountDeposit
 	default:
 		eventType = MarketAccountDeposit
