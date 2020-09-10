@@ -35,12 +35,33 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 	}
 
 	if err = s.vaultRepository.UpdateVault(ctx, nil, "", func(v *vault.Vault) (*vault.Vault, error) {
-		txHex, err := v.SendToMany(
-			vault.WalletAccount,
+		mnemonic, err := v.Mnemonic()
+		if err != nil {
+			return nil, err
+		}
+		account, err := v.AccountByIndex(vault.WalletAccount)
+		if err != nil {
+			return nil, err
+		}
+
+		changePathsByAsset := map[string]string{}
+		for _, asset := range getAssetsOfOutputs(outputs) {
+			_, script, err := v.DeriveNextInternalAddressForAccount(vault.WalletAccount)
+			if err != nil {
+				return nil, err
+			}
+			derivationPath, _ := account.DerivationPathByScript(script)
+			changePathsByAsset[asset] = derivationPath
+		}
+
+		txHex, err := sendToMany(
+			mnemonic,
+			account,
 			unspents,
 			outputs,
 			outputsBlindingKeys,
 			int(req.GetMillisatPerByte()),
+			changePathsByAsset,
 		)
 		if err != nil {
 			return nil, err
