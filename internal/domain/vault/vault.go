@@ -16,19 +16,6 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
-const (
-	// FeeAccountPath ...
-	FeeAccountPath = iota
-	// WalletAccountPath ...
-	WalletAccountPath
-	// FirstUnusedAccountPath ...
-	FirstUnusedAccountPath
-	// SecondUnusedAccountPath ...
-	SecondUnusedAccountPath
-	// FirstMarketAccountPath ...
-	FirstMarketAccountPath
-)
-
 var (
 	// ErrMustBeLocked is thrown when trying to change the passphrase with an unlocked wallet
 	ErrMustBeLocked = errors.New("wallet must be locked to perform this operation")
