@@ -50,24 +50,24 @@ func (a *Account) DerivationPathByScript(outputScript string) (string, bool) {
 }
 
 // NextExternalIndex increments the last external index by one and returns the new last
-func (a *Account) nextExternalIndex() int {
+func (a *Account) nextExternalIndex() (next int) {
 	// restart from 0 if index has reached the its max value
-	if a.lastExternalIndex == hdkeychain.HardenedKeyStart-1 {
-		a.lastExternalIndex = 0
-	} else {
-		a.lastExternalIndex++
+	next = 0
+	if a.lastExternalIndex != hdkeychain.HardenedKeyStart-1 {
+		next = a.lastExternalIndex + 1
 	}
-	return a.lastExternalIndex
+	a.lastExternalIndex = next
+	return
 }
 
 // NextInternalIndex increments the last internal index by one and returns the new last
-func (a *Account) nextInternalIndex() int {
-	if a.lastInternalIndex == hdkeychain.HardenedKeyStart-1 {
-		a.lastInternalIndex = 0
-	} else {
-		a.lastInternalIndex++
+func (a *Account) nextInternalIndex() (next int) {
+	next = 0
+	if a.lastInternalIndex != hdkeychain.HardenedKeyStart-1 {
+		next = a.lastInternalIndex + 1
 	}
-	return a.lastInternalIndex
+	a.lastInternalIndex = next
+	return
 }
 
 // AddDerivationPath adds an entry outputScript-derivationPath to the inner to
