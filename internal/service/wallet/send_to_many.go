@@ -16,25 +16,27 @@ import (
 
 // SendToMany creates, signs and eventually broadcasts a transaction sending the
 // amounts of the assets to the receiving addresses listed in the request
-func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (*pb.SendToManyReply, error) {
+func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (reply *pb.SendToManyReply, err error) {
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(req.GetOutputs())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		err = status.Error(codes.InvalidArgument, err.Error())
+		return
 	}
 
 	walletDerivedAddresses, err := s.vaultRepository.GetAllDerivedAddressesForAccount(ctx, constant.WalletAccount)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		err = status.Error(codes.Internal, err.Error())
+		return
 	}
 
-	unspents, err := getUnspents(walletDerivedAddresses)
+	unspents, err := s.getUnspents(walletDerivedAddresses, nil)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		err = status.Error(codes.Internal, err.Error())
+		return
 	}
 
-	var txHex string
-	err = s.vaultRepository.UpdateVault(ctx, func(v *vault.Vault) (*vault.Vault, error) {
-		txHex, err = v.SendToMany(
+	if err = s.vaultRepository.UpdateVault(ctx, func(v *vault.Vault) (*vault.Vault, error) {
+		txHex, err := v.SendToMany(
 			constant.WalletAccount,
 			unspents,
 			outputs,
@@ -46,19 +48,53 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (*p
 		}
 
 		if req.GetPush() {
-			explorer.BroadcastTransaction(txHex)
+			if _, err := explorer.BroadcastTransaction(txHex); err != nil {
+				return nil, err
+			}
+		}
+
+		rawTx, _ := hex.DecodeString(txHex)
+		reply = &pb.SendToManyReply{
+			RawTx: rawTx,
 		}
 
 		return v, nil
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	}); err != nil {
+		err = status.Error(codes.Internal, err.Error())
+		return
 	}
 
-	rawTx, _ := hex.DecodeString(txHex)
-	return &pb.SendToManyReply{
-		RawTx: rawTx,
-	}, nil
+	return
+}
+
+func (s *Service) getUnspents(addresses []string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
+	chUnspents := make(chan []explorer.Utxo)
+	chErr := make(chan error, 1)
+	unspents := make([]explorer.Utxo, 0)
+
+	for _, addr := range addresses {
+		go s.getUnspentsForAddress(addr, blindingKeys, chUnspents, chErr)
+
+		select {
+		case err := <-chErr:
+			close(chErr)
+			close(chUnspents)
+			return nil, err
+		case unspentsForAddress := <-chUnspents:
+			unspents = append(unspents, unspentsForAddress...)
+		}
+	}
+
+	return unspents, nil
+}
+
+func (s *Service) getUnspentsForAddress(addr string, blindingKeys [][]byte, chUnspents chan []explorer.Utxo, chErr chan error) {
+	unspents, err := s.explorerService.GetUnSpents(addr, blindingKeys)
+	if err != nil {
+		chErr <- err
+		return
+	}
+	chUnspents <- unspents
 }
 
 func parseRequestOutputs(reqOutputs []*pb.TxOut) ([]*transaction.TxOutput, [][]byte, error) {

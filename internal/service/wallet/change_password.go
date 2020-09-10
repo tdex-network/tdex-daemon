@@ -15,8 +15,7 @@ func (s *Service) ChangePassword(ctx context.Context, req *pb.ChangePasswordRequ
 	newPassphrase := string(req.GetNewPassword())
 
 	if err := s.vaultRepository.UpdateVault(ctx, func(v *vault.Vault) (*vault.Vault, error) {
-		err := v.ChangePassphrase(currentPassphrase, newPassphrase)
-		if err != nil {
+		if err := v.ChangePassphrase(currentPassphrase, newPassphrase); err != nil {
 			return nil, err
 		}
 		return v, nil

@@ -4,39 +4,8 @@ import (
 	"fmt"
 
 	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/address"
 )
-
-func getUnspents(addresses []string) ([]explorer.Utxo, error) {
-	chUnspents := make(chan []explorer.Utxo)
-	chErr := make(chan error, 1)
-	unspents := make([]explorer.Utxo, 0)
-
-	for _, addr := range addresses {
-		go getUnspentsForAddress(addr, chUnspents, chErr)
-
-		select {
-		case err := <-chErr:
-			close(chErr)
-			close(chUnspents)
-			return nil, err
-		case unspentsForAddress := <-chUnspents:
-			unspents = append(unspents, unspentsForAddress...)
-		}
-	}
-
-	return unspents, nil
-}
-
-func getUnspentsForAddress(address string, chUnspents chan []explorer.Utxo, chErr chan error) {
-	unspents, err := explorer.GetUnSpents(address)
-	if err != nil {
-		chErr <- err
-		return
-	}
-	chUnspents <- unspents
-}
 
 func parseConfidentialAddress(addr string) ([]byte, []byte, error) {
 	script, err := address.ToOutputScript(addr, *config.GetNetwork())

@@ -11,25 +11,16 @@ import (
 
 // InitWallet creates or restores a wallet for the daemon
 func (s *Service) InitWallet(ctx context.Context, req *pb.InitWalletRequest) (*pb.InitWalletResponse, error) {
-
-	if mnemonics := req.GetSeedMnemonic(); len(mnemonics) > 0 {
-		_, _, err := s.vaultRepository.CreateOrRestoreVault(ctx, mnemonics[0])
+	mnemonic := req.GetSeedMnemonic()
+	passphrase := string(req.GetWalletPassword())
+	if err := s.vaultRepository.UpdateVault(ctx, func(v *vault.Vault) (*vault.Vault, error) {
+		err := v.Init(mnemonic, passphrase)
 		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
+			return nil, err
 		}
-	}
-
-	if passphrase := string(req.GetWalletPassword()); len(passphrase) > 0 {
-		err := s.vaultRepository.UpdateVault(ctx, func(v *vault.Vault) (*vault.Vault, error) {
-			err := v.Lock(passphrase)
-			if err != nil {
-				return nil, err
-			}
-			return v, nil
-		})
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+		return v, nil
+	}); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &pb.InitWalletResponse{}, nil
