@@ -13,11 +13,7 @@ import (
 func (s *Service) InitWallet(ctx context.Context, req *pb.InitWalletRequest) (*pb.InitWalletResponse, error) {
 	mnemonic := req.GetSeedMnemonic()
 	passphrase := string(req.GetWalletPassword())
-	if err := s.vaultRepository.UpdateVault(ctx, func(v *vault.Vault) (*vault.Vault, error) {
-		err := v.Init(mnemonic, passphrase)
-		if err != nil {
-			return nil, err
-		}
+	if err := s.vaultRepository.UpdateVault(ctx, mnemonic, passphrase, func(v *vault.Vault) (*vault.Vault, error) {
 		return v, nil
 	}); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

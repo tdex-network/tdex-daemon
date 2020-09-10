@@ -35,7 +35,7 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 		return
 	}
 
-	if err = s.vaultRepository.UpdateVault(ctx, func(v *vault.Vault) (*vault.Vault, error) {
+	if err = s.vaultRepository.UpdateVault(ctx, nil, "", func(v *vault.Vault) (*vault.Vault, error) {
 		txHex, err := v.SendToMany(
 			constant.WalletAccount,
 			unspents,
