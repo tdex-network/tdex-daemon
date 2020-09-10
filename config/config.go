@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/btcsuite/btcutil"
@@ -78,6 +79,7 @@ func GetBool(key string) bool {
 	return vip.GetBool(key)
 }
 
+//GetNetwork ...
 func GetNetwork() *network.Network {
 	if vip.GetString(NetworkKey) == network.Regtest.Name {
 		return &network.Regtest
@@ -90,6 +92,9 @@ func Validate() {
 	if err := validateDefaultFee(vip.GetFloat64(DefaultFeeKey)); err != nil {
 		log.Fatalln(err)
 	}
+	if err := validateDefaultNetwork(vip.GetString(NetworkKey)); err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func validateDefaultFee(fee float64) error {
@@ -97,5 +102,16 @@ func validateDefaultFee(fee float64) error {
 		return errors.New("percentage of the fee on each swap must be > 0.01 and < 99")
 	}
 
+	return nil
+}
+
+func validateDefaultNetwork(net string) error {
+	if net != network.Liquid.Name && net != network.Regtest.Name {
+		return fmt.Errorf(
+			"network must be either '%s' or '%s'",
+			network.Liquid.Name,
+			network.Regtest.Name,
+		)
+	}
 	return nil
 }
