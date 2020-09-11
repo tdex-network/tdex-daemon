@@ -85,7 +85,6 @@ func main() {
 
 	log.Debug("trader interface is listening on " + traderAddress)
 	log.Debug("operator interface is listening on " + operatorAddress)
-	log.Debug("wallet interface is listening on " + operatorAddress)
 
 	// TODO: to be removed.
 	// Add a sample market
