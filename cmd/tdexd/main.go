@@ -36,11 +36,9 @@ func main() {
 	// Ports
 	var traderAddress = fmt.Sprintf(":%+v", config.GetInt(config.TraderListeningPortKey))
 	var operatorAddress = fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
-	var walletAddress = fmt.Sprintf(":%+v", config.GetInt(config.WalletListeningPortKey))
 	// Grpc Server
 	traderGrpcServer := grpc.NewServer(grpcutil.UnaryLoggerInterceptor(), grpcutil.StreamLoggerInterceptor())
 	operatorGrpcServer := grpc.NewServer(grpcutil.UnaryLoggerInterceptor(), grpcutil.StreamLoggerInterceptor())
-	walletGrpcServer := grpc.NewServer(grpcutil.UnaryLoggerInterceptor(), grpcutil.StreamLoggerInterceptor())
 
 	// Init market in-memory storage
 	marketRepository := storage.NewInMemoryMarketRepository()
@@ -73,7 +71,7 @@ func main() {
 	pbhandshake.RegisterHandshakeServer(traderGrpcServer, &pbhandshake.UnimplementedHandshakeServer{})
 	// Register proto implementations on Operator interface
 	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorSvc)
-	pbwallet.RegisterWalletServer(walletGrpcServer, walletSvc)
+	pbwallet.RegisterWalletServer(operatorGrpcServer, walletSvc)
 
 	log.Debug("starting daemon")
 
@@ -84,13 +82,10 @@ func main() {
 	if err := grpcutil.ServeMux(operatorAddress, operatorGrpcServer); err != nil {
 		log.WithError(err).Panic("error listening on operator interface")
 	}
-	if err := grpcutil.ServeMux(walletAddress, walletGrpcServer); err != nil {
-		log.WithError(err).Panic("error listening on wallet interface")
-	}
 
 	log.Debug("trader interface is listening on " + traderAddress)
 	log.Debug("operator interface is listening on " + operatorAddress)
-	log.Debug("wallet interface is listening on " + walletAddress)
+	log.Debug("wallet interface is listening on " + operatorAddress)
 
 	// TODO: to be removed.
 	// Add a sample market
@@ -99,7 +94,6 @@ func main() {
 	tradeSvc.AddTestMarket(false)
 
 	defer traderGrpcServer.Stop()
-	defer walletGrpcServer.Stop()
 	defer operatorGrpcServer.Stop()
 
 	sigChan := make(chan os.Signal, 1)

@@ -16,8 +16,6 @@ const (
 	TraderListeningPortKey = "TRADER_LISTENING_PORT"
 	// OperatorListeningPortKey ...
 	OperatorListeningPortKey = "OPERATOR_LISTENING_PORT"
-	// WalletListeningPortKey ...
-	WalletListeningPortKey = "WALLET_LISTENING_PORT"
 	// ExplorerEndpointKey ...
 	ExplorerEndpointKey = "EXPLORER_ENDPOINT"
 	// DataDirPathKey ...
@@ -45,7 +43,6 @@ func init() {
 
 	vip.SetDefault(TraderListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
-	vip.SetDefault(WalletListeningPortKey, 9010)
 	vip.SetDefault(ExplorerEndpointKey, "http://127.0.0.1:3001")
 	vip.SetDefault(DataDirPathKey, btcutil.AppDataDir("tdex-daemon", false))
 	vip.SetDefault(LogLevelKey, 5)
