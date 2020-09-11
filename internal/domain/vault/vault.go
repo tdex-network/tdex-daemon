@@ -54,9 +54,14 @@ func NewVault(mnemonic []string, passphrase string) (*Vault, error) {
 	}, nil
 }
 
+// IsZero returns whether the Vault is initialized without holding any data
+func (v *Vault) IsZero() bool {
+	return reflect.DeepEqual(*v, Vault{})
+}
+
 // Mnemonic is getter for Vault's mnemonic in plain text
 func (v *Vault) Mnemonic() ([]string, error) {
-	if v.IsLocked() {
+	if v.isLocked() {
 		return nil, ErrMustBeUnlocked
 	}
 
@@ -65,7 +70,7 @@ func (v *Vault) Mnemonic() ([]string, error) {
 
 // Lock locks the Vault by wiping its mnemonic field
 func (v *Vault) Lock() error {
-	if v.IsLocked() {
+	if v.isLocked() {
 		return nil
 	}
 	// flush mnemonic in plain text
@@ -75,7 +80,7 @@ func (v *Vault) Lock() error {
 
 // Unlock attempts to decrypt the mnemonic with the provided passphrase
 func (v *Vault) Unlock(passphrase string) error {
-	if !v.IsLocked() {
+	if !v.isLocked() {
 		return nil
 	}
 
@@ -93,7 +98,7 @@ func (v *Vault) Unlock(passphrase string) error {
 
 // ChangePassphrase attempts to unlock the
 func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error {
-	if !v.IsLocked() {
+	if !v.isLocked() {
 		return ErrMustBeLocked
 	}
 	if !v.isValidPassphrase(currentPassphrase) {
@@ -121,27 +126,10 @@ func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error 
 	return nil
 }
 
-// IsZero returns whether the Vault is initialized without holding any data
-func (v *Vault) IsZero() bool {
-	return reflect.DeepEqual(*v, Vault{})
-}
-
-// IsInitialized returnes whether the Vault has been inizitialized by checking
-// if the mnemonic has been encrypted, its plain text version has been wiped
-// and a passphrase (hash) has been set
-func (v *Vault) IsInitialized() bool {
-	return len(v.encryptedMnemonic) > 0
-}
-
-// IsLocked returns whether the Vault is initialized and locked
-func (v *Vault) IsLocked() bool {
-	return v.IsInitialized() && len(v.mnemonic) == 0
-}
-
 // DeriveNextExternalAddressForAccount returns the next unused address for the
 // provided account and the corresponding output script
 func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, string, error) {
-	if v.IsLocked() {
+	if v.isLocked() {
 		return "", "", ErrMustBeUnlocked
 	}
 
@@ -151,7 +139,7 @@ func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, s
 // DeriveNextInternalAddressForAccount returns the next unused change address for the
 // provided account and the corresponding output script
 func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (string, string, error) {
-	if v.IsLocked() {
+	if v.isLocked() {
 		return "", "", ErrMustBeUnlocked
 	}
 
@@ -184,11 +172,23 @@ func (v *Vault) AccountByAddress(addr string) (*Account, int, error) {
 // internal addresses derived for the provided account along with the
 // respective private blinding keys
 func (v *Vault) AllDerivedAddressesAndBlindingKeysForAccount(accountIndex int) ([]string, [][]byte, error) {
-	if v.IsLocked() {
+	if v.isLocked() {
 		return nil, nil, ErrMustBeUnlocked
 	}
 
 	return v.allDerivedAddressesAndBlindingKeysForAccount(accountIndex)
+}
+
+// isInitialized returnes whether the Vault has been inizitialized by checking
+// if the mnemonic has been encrypted, its plain text version has been wiped
+// and a passphrase (hash) has been set
+func (v *Vault) isInitialized() bool {
+	return len(v.encryptedMnemonic) > 0
+}
+
+// isLocked returns whether the Vault is initialized and locked
+func (v *Vault) isLocked() bool {
+	return v.isInitialized() && len(v.mnemonic) == 0
 }
 
 func (v *Vault) isValidPassphrase(passphrase string) bool {
