@@ -6,7 +6,8 @@ import (
 
 // BlindTransactionOpts is the struct given to BlindTransaction method
 type BlindTransactionOpts struct {
-	PsetBase64 string
+	PsetBase64         string
+	OutputBlindingKeys [][]byte
 }
 
 func (o BlindTransactionOpts) validate() error {
@@ -21,6 +22,10 @@ func (o BlindTransactionOpts) validate() error {
 		if in.WitnessUtxo == nil {
 			return ErrNullInputWitnessUtxo
 		}
+	}
+
+	if len(o.OutputBlindingKeys) != len(ptx.Outputs) {
+		return ErrInvalidOutputBlindingKeysLen
 	}
 	return nil
 }
@@ -38,7 +43,6 @@ func (w *Wallet) BlindTransaction(opts BlindTransactionOpts) (string, error) {
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
 	inputBlindingKeys := make([][]byte, 0, len(ptx.Inputs))
-	outputBlindingKeys := make([][]byte, 0, len(ptx.Outputs))
 
 	for _, in := range ptx.Inputs {
 		blindingPrvkey, _, _ := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
@@ -47,20 +51,10 @@ func (w *Wallet) BlindTransaction(opts BlindTransactionOpts) (string, error) {
 		inputBlindingKeys = append(inputBlindingKeys, blindingPrvkey.Serialize())
 	}
 
-	for _, out := range ptx.UnsignedTx.Outputs {
-		_, blindingPubkey, _ := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
-			Script: out.Script,
-		})
-		outputBlindingKeys = append(
-			outputBlindingKeys,
-			blindingPubkey.SerializeCompressed(),
-		)
-	}
-
 	blinder, err := pset.NewBlinder(
 		ptx,
 		inputBlindingKeys,
-		outputBlindingKeys,
+		opts.OutputBlindingKeys,
 		nil,
 		nil,
 	)

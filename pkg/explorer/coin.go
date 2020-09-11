@@ -88,7 +88,7 @@ func SelectUnSpents(
 	return
 }
 
-func (e *explorer) GetUnSpents(addr string, blindKeys [][]byte) (coins []Utxo, err error) {
+func (e *explorer) GetUnSpents(addr string, blindingKeys [][]byte) (coins []Utxo, err error) {
 	url := fmt.Sprintf(
 		"%s/address/%s/utxo",
 		e.apiUrl,
@@ -136,8 +136,8 @@ func (e *explorer) GetUnSpents(addr string, blindKeys [][]byte) (coins []Utxo, e
 
 		case unspent := <-chUnspents:
 
-			if out.IsConfidential() {
-				go unblindUtxo(unspent, blindKeys, chUnspents, chErr)
+			if out.IsConfidential() && len(blindingKeys) > 0 {
+				go unblindUtxo(unspent, blindingKeys, chUnspents, chErr)
 				select {
 
 				case err1 := <-chErr:

@@ -1,135 +1,27 @@
 package wallet
 
-import (
-	"errors"
-	"fmt"
-)
-
-var (
-	// ErrNullNetwork ...
-	ErrNullNetwork = errors.New("network params are null")
-	// ErrNullInputWitnessUtxo ...
-	ErrNullInputWitnessUtxo = errors.New("input witness utxo must not be null")
-	// ErrNullSigningMnemonic ...
-	ErrNullSigningMnemonic = errors.New("signing mnemonic is null")
-	// ErrNullBlindingMnemonic ...
-	ErrNullBlindingMnemonic = errors.New("blinding mnemonic is null")
-	// ErrNullSigningSeed ...
-	ErrNullSigningSeed = errors.New("signing seed is null")
-	// ErrNullSigningMasterKey ...
-	ErrNullSigningMasterKey = errors.New("signing master key is null")
-	// ErrNullBlindingMasterKey ...
-	ErrNullBlindingMasterKey = errors.New("blinding master key is null")
-	// ErrNullBlindingSeed ...
-	ErrNullBlindingSeed = errors.New("blinding seed is null")
-	// ErrNullPassphrase ...
-	ErrNullPassphrase = errors.New("passphrase must not be null")
-	// ErrNullPlainText ...
-	ErrNullPlainText = errors.New("text to encrypt must not be null")
-	// ErrNullCypherText ...
-	ErrNullCypherText = errors.New("cypher to decrypt must not be null")
-	// ErrNullDerivationPath ...
-	ErrNullDerivationPath = errors.New("derivation path must not be null")
-	// ErrNullOutputDerivationPath ...
-	ErrNullOutputDerivationPath = fmt.Errorf("output %v", ErrNullDerivationPath)
-	// ErrNullChangeDerivationPath ...
-	ErrNullChangeDerivationPath = fmt.Errorf("change %v", ErrNullDerivationPath)
-	// ErrNullOutputScript ...
-	ErrNullOutputScript = errors.New("output script must not be null")
-	// ErrNullPset ...
-	ErrNullPset = errors.New("pset base64 must not be null")
-
-	// ErrInvalidSigningMnemonic ...
-	ErrInvalidSigningMnemonic = errors.New("signing mnemonic is invalid")
-	// ErrInvalidEntropySize ...
-	ErrInvalidEntropySize = errors.New(
-		"entropy size must be a multiple of 32 in the range [128,256]",
-	)
-	// ErrInvalidBlindingMnemonic ...
-	ErrInvalidBlindingMnemonic = errors.New("blinding mnemonic is invalid")
-	// ErrInvalidDerivationPathsLength ...
-	ErrInvalidDerivationPathsLength = errors.New(
-		"length of tx inputs and derivation paths must match",
-	)
-	// ErrInvalidCypherText ...
-	ErrInvalidCypherText = errors.New("cypher must be in base64 format")
-	// ErrInvalidDerivationPath ...
-	ErrInvalidDerivationPath = errors.New("invalid derivation path")
-	// ErrInvalidDerivationPathLength ...
-	ErrInvalidDerivationPathLength = errors.New(
-		"derivation path must be a relative path in the form \"account'/branch/index\"",
-	)
-	// ErrInvalidDerivationPathAccount ...
-	ErrInvalidDerivationPathAccount = errors.New(
-		"derivation path's account (first elem) must be hardened (suffix \"'\")",
-	)
-	// ErrInvalidInputAsset ...
-	ErrInvalidInputAsset = errors.New("input asset must be a 32 byte array in hex format")
-	// ErrInvalidOutputAsset ...
-	ErrInvalidOutputAsset = errors.New("output asset must be a 32 byte array in hex format")
-	// ErrInvalidOutputAddress ...
-	ErrInvalidOutputAddress = errors.New("output address must be a valid address")
-	// ErrInvalidChangeAddress ...
-	ErrInvalidChangeAddress = errors.New("change address must be a valid address")
-
-	// ErrEmptyDerivationPaths ...
-	ErrEmptyDerivationPaths = errors.New("derivation path list must not be empty")
-	// ErrEmptyInputs ...
-	ErrEmptyInputs = errors.New("input list must not be empty")
-
-	// ErrMalformedDerivationPath ...
-	ErrMalformedDerivationPath = errors.New(
-		"path must not start or end with a '/' and " +
-			"can optionally start with 'm/' for absolute paths",
-	)
-	// ErrZeroInputAmount ...
-	ErrZeroInputAmount = errors.New("input amount must not be zero")
-	// ErrZeroOutputAmount ...
-	ErrZeroOutputAmount = errors.New("output amount must not be zero")
-)
-
 // Wallet data structure allows to create a new wallet from seed/mnemonic,
 // derive signing and blinding key pairs, and manage those keys to blind and
 // sign transactions
 type Wallet struct {
-	signingMnemonic   string
+	signingMnemonic   []string
 	signingMasterKey  []byte
-	blindingMnemonic  string
+	blindingMnemonic  []string
 	blindingMasterKey []byte
 }
 
 // NewWalletOpts is the struct given to the NewWallet method
 type NewWalletOpts struct {
-	EntropySize   int
 	ExtraMnemonic bool
-}
-
-func (o NewWalletOpts) validate() error {
-	if o.EntropySize > 0 {
-		if o.EntropySize < 128 || o.EntropySize > 256 || o.EntropySize%32 != 0 {
-			return ErrInvalidEntropySize
-		}
-	}
-	if o.EntropySize < 0 {
-		return ErrInvalidEntropySize
-	}
-	return nil
 }
 
 // NewWallet creates a new wallet holding signing/blinding mnemonic and seed
 func NewWallet(opts NewWalletOpts) (*Wallet, error) {
-	if err := opts.validate(); err != nil {
-		return nil, err
-	}
-	if opts.EntropySize == 0 {
-		opts.EntropySize = 128
-	}
-
-	signingMnemonic, signingSeed, err :=
-		generateMnemonicSeedAndMasterKey(opts.EntropySize)
+	signingMnemonic, err := NewMnemonic(NewMnemonicOpts{EntropySize: 256})
 	if err != nil {
 		return nil, err
 	}
+	signingSeed := generateSeedFromMnemonic(signingMnemonic)
 	signingMasterKey, err := generateSigningMasterKey(
 		signingSeed,
 		DefaultBaseDerivationPath,
@@ -139,13 +31,13 @@ func NewWallet(opts NewWalletOpts) (*Wallet, error) {
 	}
 
 	blindingMnemonic := signingMnemonic
-	blindingSeed := signingSeed
 	if opts.ExtraMnemonic {
-		blindingMnemonic, blindingSeed, err = generateMnemonicSeedAndMasterKey(opts.EntropySize)
+		blindingMnemonic, err = NewMnemonic(NewMnemonicOpts{EntropySize: 256})
 		if err != nil {
 			return nil, err
 		}
 	}
+	blindingSeed := generateSeedFromMnemonic(blindingMnemonic)
 	blindingMasterKey, err := generateBlindingMasterKey(blindingSeed)
 	if err != nil {
 		return nil, err
@@ -161,8 +53,8 @@ func NewWallet(opts NewWalletOpts) (*Wallet, error) {
 
 // NewWalletFromMnemonicOpts is the struct given to the NewWalletFromMnemonicOpts method
 type NewWalletFromMnemonicOpts struct {
-	SigningMnemonic  string
-	BlindingMnemonic string
+	SigningMnemonic  []string
+	BlindingMnemonic []string
 }
 
 func (o NewWalletFromMnemonicOpts) validate() error {
@@ -240,20 +132,17 @@ func (w *Wallet) validate() error {
 }
 
 // SigningMnemonic is getter for signing mnemonic
-func (w *Wallet) SigningMnemonic() (string, error) {
+func (w *Wallet) SigningMnemonic() ([]string, error) {
 	if err := w.validate(); err != nil {
-		return "", err
+		return nil, err
 	}
 	return w.signingMnemonic, nil
 }
 
 // BlindingMnemonic is getter for blinding mnemonic
-func (w *Wallet) BlindingMnemonic() (string, error) {
+func (w *Wallet) BlindingMnemonic() ([]string, error) {
 	if err := w.validate(); err != nil {
-		return "", err
-	}
-	if len(w.blindingMnemonic) <= 0 {
-		return "", ErrNullBlindingMnemonic
+		return nil, err
 	}
 	return w.blindingMnemonic, nil
 }

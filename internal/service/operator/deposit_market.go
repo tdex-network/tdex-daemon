@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/internal/constant"
+	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 )
@@ -49,7 +50,7 @@ func (s *Service) DepositMarket(
 	marketAddress := "dummy"
 	//Add newly created address to crawler
 	s.crawlerSvc.AddObservable(crawler.Observable{
-		AccountType: constant.MarketAccountStart, //TODO update
+		AccountType: vault.MarketAccountStart, //TODO update
 		AssetHash:   depositMarketReq.GetMarket().GetQuoteAsset(),
 		Address:     marketAddress,
 	})

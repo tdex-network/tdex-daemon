@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,15 +17,7 @@ func TestNewWallet(t *testing.T) {
 			sameMnemonic: true,
 		},
 		{
-			opts:         NewWalletOpts{EntropySize: 256},
-			sameMnemonic: true,
-		},
-		{
 			opts:         NewWalletOpts{ExtraMnemonic: true},
-			sameMnemonic: false,
-		},
-		{
-			opts:         NewWalletOpts{EntropySize: 256, ExtraMnemonic: true},
 			sameMnemonic: false,
 		},
 	}
@@ -43,17 +36,21 @@ func TestNewWallet(t *testing.T) {
 			t.Fatal(err)
 		}
 		assert.Equal(t, true, isMnemonicValid(blindingMnemonic))
-		assert.Equal(t, tt.sameMnemonic, signingMnemonic == blindingMnemonic)
+		if tt.sameMnemonic {
+			assert.Equal(t, signingMnemonic, blindingMnemonic)
+		} else {
+			assert.NotEqual(t, signingMnemonic, blindingMnemonic)
+		}
 	}
 }
 
-func TestFailingNewWallet(t *testing.T) {
+func TestFailingNewMnemonic(t *testing.T) {
 	tests := []int{-1, 127, 257, 130}
 	for _, tt := range tests {
-		opts := NewWalletOpts{
+		opts := NewMnemonicOpts{
 			EntropySize: tt,
 		}
-		_, err := NewWallet(opts)
+		_, err := NewMnemonic(opts)
 		assert.NotNil(t, err)
 	}
 }
@@ -81,20 +78,20 @@ func TestFailingNewWalletFromMnemonic(t *testing.T) {
 	}{
 		{
 			opts: NewWalletFromMnemonicOpts{
-				SigningMnemonic: "",
+				SigningMnemonic: nil,
 			},
 			err: ErrNullSigningMnemonic,
 		},
 		{
 			opts: NewWalletFromMnemonicOpts{
-				SigningMnemonic: "legal winner thank year wave sausage worth useful legal winner thank yellow yellow",
+				SigningMnemonic: strings.Split("legal winner thank year wave sausage worth useful legal winner thank yellow yellow", " "),
 			},
 			err: ErrInvalidSigningMnemonic,
 		},
 		{
 			opts: NewWalletFromMnemonicOpts{
-				SigningMnemonic:  "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter always",
-				BlindingMnemonic: "legal winner thank year wave sausage worth useful legal winner thank yellow yellow",
+				SigningMnemonic:  strings.Split("letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter always", " "),
+				BlindingMnemonic: strings.Split("legal winner thank year wave sausage worth useful legal winner thank yellow yellow", " "),
 			},
 			err: ErrInvalidBlindingMnemonic,
 		},
@@ -106,8 +103,5 @@ func TestFailingNewWalletFromMnemonic(t *testing.T) {
 }
 
 func newTestWallet() (*Wallet, error) {
-	opts := NewWalletOpts{
-		EntropySize: 256,
-	}
-	return NewWallet(opts)
+	return NewWallet(NewWalletOpts{})
 }

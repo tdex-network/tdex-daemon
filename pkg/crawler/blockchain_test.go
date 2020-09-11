@@ -1,11 +1,12 @@
 package crawler
 
 import (
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/vulpemventures/go-elements/transaction"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/vulpemventures/go-elements/transaction"
 )
 
 func TestCrawler(t *testing.T) {
@@ -142,5 +143,9 @@ func (m MockUtxo) SetConfidential(nonce, rangeProof, surjectionProof []byte) {
 }
 
 func (m MockUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, error) {
+	panic("implement me")
+}
+
+func (m MockUtxo) IsConfirmed() bool {
 	panic("implement me")
 }

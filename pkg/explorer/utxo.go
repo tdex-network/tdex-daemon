@@ -3,6 +3,7 @@ package explorer
 import (
 	"encoding/hex"
 	"errors"
+
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/vulpemventures/go-elements/confidential"
@@ -16,11 +17,12 @@ type Utxo interface {
 	Asset() string
 	ValueCommitment() string
 	AssetCommitment() string
-	Nonce() []byte
 	Script() []byte
+	Nonce() []byte
 	RangeProof() []byte
 	SurjectionProof() []byte
 	IsConfidential() bool
+	IsConfirmed() bool
 	SetScript(script []byte)
 	SetUnconfidential(asset string, value uint64)
 	SetConfidential(nonce, rangeProof, surjectionProof []byte)
@@ -61,6 +63,10 @@ func NewConfidentialWitnessUtxo(
 	}
 }
 
+type status struct {
+	Confirmed bool `json:"confirmed"`
+}
+
 type witnessUtxo struct {
 	UHash            string `json:"txid"`
 	UIndex           uint32 `json:"vout"`
@@ -68,6 +74,7 @@ type witnessUtxo struct {
 	UAsset           string `json:"asset"`
 	UValueCommitment string `json:"valuecommitment"`
 	UAssetCommitment string `json:"assetcommitment"`
+	UStatus          status `json:"status"`
 	UScript          []byte
 	UNonce           []byte
 	URangeProof      []byte
@@ -116,6 +123,10 @@ func (wu witnessUtxo) SurjectionProof() []byte {
 
 func (wu witnessUtxo) IsConfidential() bool {
 	return len(wu.UValueCommitment) > 0 && len(wu.UAssetCommitment) > 0
+}
+
+func (wu witnessUtxo) IsConfirmed() bool {
+	return wu.UStatus.Confirmed
 }
 
 func (wu witnessUtxo) SetScript(script []byte) {

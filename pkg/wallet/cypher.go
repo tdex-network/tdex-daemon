@@ -99,7 +99,7 @@ func Decrypt(opts DecryptOpts) (string, error) {
 	nonce, text := data[:gcm.NonceSize()], data[gcm.NonceSize():]
 	plaintext, err := gcm.Open(nil, nonce, text, nil)
 	if err != nil {
-		return "", err
+		return "", ErrInvalidPassphrase
 	}
 	return string(plaintext), nil
 }

@@ -233,8 +233,12 @@ github.com/stretchr/testify v1.5.1 h1:nOGnQDM7FYENwehXlg/kFVnos3rEvtKTjRvOWSzb6H
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 github.com/subosito/gotenv v1.2.0 h1:Slr1R9HxAlEKefgq5jn9U+DnETlIUa6HfgEzj0g5d7s=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200831164652-76c691b9a266 h1:alwmJU+78XbDi/PTIur+BQhMO+KVSVivHHfV2W2yEts=
-github.com/tdex-network/tdex-protobuf v0.0.0-20200831164652-76c691b9a266/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200910125132-ec6511a58a9a h1:z6b0SR6hhdGINUF3Z3xIjeqkTNK4YbCruPVwyzBHEkQ=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200910125132-ec6511a58a9a/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200911162201-7331a5609ac0 h1:866JxDo7fisaJOk3EnYKaYmkx6tIiwCL9qyIran5fjM=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200911162201-7331a5609ac0/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200911162845-a1849107cebe h1:q59NAkgbS9xlZnBWrzfhQzyfdxFqLnlBCU0osDIrSRI=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200911162845-a1849107cebe/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/thanhpk/randstr v1.0.4 h1:IN78qu/bR+My+gHCvMEXhR/i5oriVHcTB/BJJIRTsNo=
 github.com/thanhpk/randstr v1.0.4/go.mod h1:M/H2P1eNLZzlDwAzpkkkUvoyNNMbzRGhESZuEQk3r0U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
@@ -242,6 +246,8 @@ github.com/tyler-smith/go-bip39 v1.0.2 h1:+t3w+KwLXO6154GNJY+qUtIxLTmFjfUmpguQT1
 github.com/tyler-smith/go-bip39 v1.0.2/go.mod h1:sJ5fKU0s6JVwZjjcUEX2zFOnvq0ASQ2K9Zr6cf67kNs=
 github.com/vulpemventures/fastsha256 v0.0.0-20160815193821-637e65642941 h1:CTcw80hz/Sw8hqlKX5ZYvBUF5gAHSHwdjXxRf/cjDcI=
 github.com/vulpemventures/fastsha256 v0.0.0-20160815193821-637e65642941/go.mod h1:GXBJykxW2kUcktGdsgyay7uwwWvkljASfljNcT0mbh8=
+github.com/vulpemventures/go-bip39 v1.0.2 h1:+BgKOVo04okKf1wA4Fhv8ccvql+qFyzVUdVJKkb48r0=
+github.com/vulpemventures/go-bip39 v1.0.2/go.mod h1:mjFmuv9D6BtANI6iscMmbHhmBOwjMCFfny3mxHnuDrk=
 github.com/vulpemventures/go-elements v0.0.4-0.20200901152827-3e772f50e0dc h1:kydqLEuoFrijcDY+akX0syl14dUiMvWCWR3ib1KI01M=
 github.com/vulpemventures/go-elements v0.0.4-0.20200901152827-3e772f50e0dc/go.mod h1:fqCaLizJz7kopPsW8jetD2FgKQGm1bM2ON9/5rZskOc=
 github.com/vulpemventures/go-secp256k1-zkp v1.0.1 h1:myxKDZRR9CEj7Tz262lb6CIsmROFnYIZz7ySt79WtVw=

@@ -3,24 +3,25 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/tdex-network/tdex-daemon/internal/constant"
-	"github.com/tdex-network/tdex-daemon/internal/domain/market"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	"github.com/vulpemventures/go-elements/network"
 	"os"
 	"os/signal"
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/tdex-network/tdex-daemon/internal/domain/market"
+	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/internal/grpcutil"
 	"github.com/tdex-network/tdex-daemon/internal/storage"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/grpc"
 
 	operatorservice "github.com/tdex-network/tdex-daemon/internal/service/operator"
 	tradeservice "github.com/tdex-network/tdex-daemon/internal/service/trader"
+	walletservice "github.com/tdex-network/tdex-daemon/internal/service/wallet"
 
 	pbhandshake "github.com/tdex-network/tdex-protobuf/generated/go/handshake"
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -42,6 +43,7 @@ func main() {
 	// Init market in-memory storage
 	marketRepository := storage.NewInMemoryMarketRepository()
 	unspentRepository := storage.NewInMemoryUnspentRepository()
+	vaultRepository := storage.NewInMemoryVaultRepository()
 
 	explorerSvc := explorer.NewService()
 	observables, err := getObjectsToObserv(marketRepository)
@@ -49,9 +51,14 @@ func main() {
 
 	// Init services
 	tradeSvc := tradeservice.NewService(marketRepository)
+	walletSvc := walletservice.NewService(
+		vaultRepository,
+		explorerSvc,
+	)
 	operatorSvc, err := operatorservice.NewService(
 		marketRepository,
 		unspentRepository,
+		vaultRepository,
 		crawlerSvc,
 	)
 	if err != nil {
@@ -64,17 +71,15 @@ func main() {
 	pbhandshake.RegisterHandshakeServer(traderGrpcServer, &pbhandshake.UnimplementedHandshakeServer{})
 	// Register proto implementations on Operator interface
 	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorSvc)
-	pbwallet.RegisterWalletServer(operatorGrpcServer, &pbwallet.UnimplementedWalletServer{})
+	pbwallet.RegisterWalletServer(operatorGrpcServer, walletSvc)
 
 	log.Debug("starting daemon")
 
 	// Serve grpc and grpc-web multiplexed on the same port
-	err = grpcutil.ServeMux(traderAddress, traderGrpcServer)
-	if err != nil {
+	if err := grpcutil.ServeMux(traderAddress, traderGrpcServer); err != nil {
 		log.WithError(err).Panic("error listening on trader interface")
 	}
-	err = grpcutil.ServeMux(operatorAddress, operatorGrpcServer)
-	if err != nil {
+	if err := grpcutil.ServeMux(operatorAddress, operatorGrpcServer); err != nil {
 		log.WithError(err).Panic("error listening on operator interface")
 	}
 
@@ -106,7 +111,6 @@ func getObjectsToObserv(marketRepo market.Repository) (
 	}
 
 	w, err := wallet.NewWallet(wallet.NewWalletOpts{
-		EntropySize:   128,
 		ExtraMnemonic: false,
 	})
 
@@ -116,12 +120,12 @@ func getObjectsToObserv(marketRepo market.Repository) (
 			DerivationPath: fmt.Sprintf("%v'/0/0", m.AccountIndex()),
 			Network:        &network.Liquid,
 		}
-		ctAddress, err := w.DeriveConfidentialAddress(opts)
+		ctAddress, _, err := w.DeriveConfidentialAddress(opts)
 		if err != nil {
 			return nil, err
 		}
 		observables = append(observables, crawler.Observable{
-			AccountType: constant.FeeAccount,
+			AccountType: vault.FeeAccount,
 			AssetHash:   config.GetString(config.BaseAssetKey),
 			Address:     ctAddress,
 			BlindingKey: nil,
