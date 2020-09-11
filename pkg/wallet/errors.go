@@ -73,6 +73,8 @@ var (
 	ErrInvalidOutputBlindingKeysLen = errors.New(
 		"number of output blinding keys must match number of outputs",
 	)
+	// ErrInvalidPassphrase ...
+	ErrInvalidPassphrase = errors.New("passphrase provided is not correct")
 
 	// ErrEmptyDerivationPaths ...
 	ErrEmptyDerivationPaths = errors.New("derivation path list must not be empty")
