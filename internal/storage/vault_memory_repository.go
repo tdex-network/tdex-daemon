@@ -60,7 +60,7 @@ func (r *InMemoryVaultRepository) UpdateVault(
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	v, err := r.GetOrCreateVault(mnemonic, passphrase)
+	v, err := r.getOrCreateVault(mnemonic, passphrase)
 	if err != nil {
 		return err
 	}

@@ -20,6 +20,9 @@ const (
 	// MaxHardenedValue is the max value for hardened indexes of BIP32
 	// derivation paths
 	MaxHardenedValue = math.MaxUint32 - hdkeychain.HardenedKeyStart
+	// MinRelayFee is the minimum fee amount that the Liquid miners accept to
+	// broadcast the transaction
+	MinRelayFee = 257
 )
 
 func generateMnemonic(entropySize int) ([]string, error) {
@@ -112,7 +115,12 @@ func estimateTxSize(numInputs, numOutputs int, withChange bool, milliSatsPerByte
 	)
 	weight := baseSize*3 + totalSize
 	vsize := (weight + 3) / 4
-	return uint64(float64(vsize) * satsPerBytes)
+
+	size := uint64(float64(vsize) * satsPerBytes)
+	if size < MinRelayFee {
+		return MinRelayFee
+	}
+	return size
 }
 
 func calcTxSize(withWitness, withChange bool, numInputs, numOutputs int) int {

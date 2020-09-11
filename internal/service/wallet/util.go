@@ -85,6 +85,7 @@ func sendToMany(
 		Outputs:            outputs,
 		ChangePathsByAsset: changePathsByAsset,
 		MilliSatsPerBytes:  milliSatsPerBytes,
+		Network:            config.GetNetwork(),
 	})
 	if err != nil {
 		return "", err
@@ -104,13 +105,20 @@ func sendToMany(
 	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64: blindedPset,
 		Outputs:    newFeeOutput(updateResult.FeeAmount),
+		Network:    config.GetNetwork(),
 	})
+	if err != nil {
+		return "", err
+	}
 
 	inputPathsByScript := getDerivationPathsForUnspents(account, unspents)
 	signedPset, err := w.SignTransaction(wallet.SignTransactionOpts{
 		PsetBase64:        blindedPlusFees.PsetBase64,
 		DerivationPathMap: inputPathsByScript,
 	})
+	if err != nil {
+		return "", err
+	}
 
 	return wallet.FinalizeAndExtractTransaction(
 		wallet.FinalizeAndExtractTransactionOpts{

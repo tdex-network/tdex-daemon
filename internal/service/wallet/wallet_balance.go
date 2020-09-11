@@ -31,15 +31,21 @@ func (s *Service) WalletBalance(ctx context.Context, req *pb.WalletBalanceReques
 	}, nil
 }
 
-func getBalancesByAsset(unspents []explorer.Utxo) (balance map[string]*pb.BalanceInfo) {
+func getBalancesByAsset(unspents []explorer.Utxo) map[string]*pb.BalanceInfo {
+	balances := map[string]*pb.BalanceInfo{}
 	for _, unspent := range unspents {
-		balance[unspent.Asset()].TotalBalance += unspent.Value()
-		if unspent.IsConfirmed() {
-			balance[unspent.Asset()].ConfirmedBalance += unspent.Value()
-		} else {
-			balance[unspent.Asset()].UnconfirmedBalance += unspent.Value()
+		if _, ok := balances[unspent.Asset()]; !ok {
+			balances[unspent.Asset()] = &pb.BalanceInfo{}
 		}
-	}
 
-	return
+		balance := balances[unspent.Asset()]
+		balance.TotalBalance += unspent.Value()
+		if unspent.IsConfirmed() {
+			balance.ConfirmedBalance += unspent.Value()
+		} else {
+			balance.UnconfirmedBalance += unspent.Value()
+		}
+		balances[unspent.Asset()] = balance
+	}
+	return balances
 }
