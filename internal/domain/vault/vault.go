@@ -23,6 +23,8 @@ var (
 	ErrInvalidPassphrase = errors.New("passphrase is not valid")
 	// ErrVaultAlreadyInitialized ...
 	ErrVaultAlreadyInitialized = errors.New("vault is already initialized")
+	// ErrNullMnemonicOrPassphrase ...
+	ErrNullMnemonicOrPassphrase = errors.New("mnemonic and passphrase must not be null")
 )
 
 type Vault struct {
@@ -38,6 +40,9 @@ type Vault struct {
 // The Vault is locked by default since it is initialized without the mnemonic
 // in plain text
 func NewVault(mnemonic []string, passphrase string) (*Vault, error) {
+	if len(mnemonic) <= 0 || len(passphrase) <= 0 {
+		return nil, ErrNullMnemonicOrPassphrase
+	}
 	encryptedMnemonic, err := wallet.Encrypt(wallet.EncryptOpts{
 		PlainText:  strings.Join(mnemonic, " "),
 		Passphrase: passphrase,
@@ -188,7 +193,7 @@ func (v *Vault) isInitialized() bool {
 
 // isLocked returns whether the Vault is initialized and locked
 func (v *Vault) isLocked() bool {
-	return v.isInitialized() && len(v.mnemonic) == 0
+	return v.isInitialized() || len(v.mnemonic) == 0
 }
 
 func (v *Vault) isValidPassphrase(passphrase string) bool {

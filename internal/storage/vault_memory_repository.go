@@ -101,6 +101,11 @@ func (r *InMemoryVaultRepository) GetAllDerivedAddressesAndBlindingKeysForAccoun
 }
 
 func (r *InMemoryVaultRepository) getOrCreateVault(mnemonic []string, passphrase string) (*vault.Vault, error) {
+	if len(mnemonic) <= 0 || len(passphrase) <= 0 {
+		return nil, errors.New(
+			"vault must be initialized with mnemonic and passphrase",
+		)
+	}
 	if r.vault.IsZero() {
 		return vault.NewVault(mnemonic, passphrase)
 	}
