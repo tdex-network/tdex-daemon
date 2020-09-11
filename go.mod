@@ -14,7 +14,7 @@ require (
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.5.1
-	github.com/tdex-network/tdex-protobuf v0.0.0-20200910125132-ec6511a58a9a
+	github.com/tdex-network/tdex-protobuf v0.0.0-20200911162845-a1849107cebe
 	github.com/thanhpk/randstr v1.0.4
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
 	github.com/vulpemventures/go-bip39 v1.0.2

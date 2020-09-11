@@ -133,9 +133,9 @@ func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error 
 
 // DeriveNextExternalAddressForAccount returns the next unused address for the
 // provided account and the corresponding output script
-func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, string, error) {
+func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, string, []byte, error) {
 	if v.isLocked() {
-		return "", "", ErrMustBeUnlocked
+		return "", "", nil, ErrMustBeUnlocked
 	}
 
 	return v.deriveNextAddressForAccount(accountIndex, ExternalChain)
@@ -143,9 +143,9 @@ func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, s
 
 // DeriveNextInternalAddressForAccount returns the next unused change address for the
 // provided account and the corresponding output script
-func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (string, string, error) {
+func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (string, string, []byte, error) {
 	if v.isLocked() {
-		return "", "", ErrMustBeUnlocked
+		return "", "", nil, ErrMustBeUnlocked
 	}
 
 	return v.deriveNextAddressForAccount(accountIndex, InternalChain)
@@ -204,19 +204,19 @@ func (v *Vault) isPassphraseSet() bool {
 	return len(v.passphraseHash) > 0
 }
 
-func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (string, string, error) {
+func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (string, string, []byte, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: v.mnemonic,
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	account, ok := v.accounts[accountIndex]
 	if !ok {
 		account, err = NewAccount(accountIndex)
 		if err != nil {
-			return "", "", err
+			return "", "", nil, err
 		}
 		v.accounts[accountIndex] = account
 	}
@@ -234,8 +234,13 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 		Network:        config.GetNetwork(),
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
+
+	blindingKey, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
+		Script: script,
+	})
+
 	account.addDerivationPath(hex.EncodeToString(script), derivationPath)
 	if chainIndex == InternalChain {
 		account.nextInternalIndex()
@@ -244,7 +249,7 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 	}
 	v.accountsByAddress[addr] = account.Index()
 
-	return addr, hex.EncodeToString(script), err
+	return addr, hex.EncodeToString(script), blindingKey.Serialize(), err
 }
 
 func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) ([]string, [][]byte, error) {

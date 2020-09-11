@@ -46,7 +46,7 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 
 		changePathsByAsset := map[string]string{}
 		for _, asset := range getAssetsOfOutputs(outputs) {
-			_, script, err := v.DeriveNextInternalAddressForAccount(vault.WalletAccount)
+			_, script, _, err := v.DeriveNextInternalAddressForAccount(vault.WalletAccount)
 			if err != nil {
 				return nil, err
 			}
