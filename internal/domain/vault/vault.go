@@ -193,7 +193,7 @@ func (v *Vault) isInitialized() bool {
 
 // isLocked returns whether the Vault is initialized and locked
 func (v *Vault) isLocked() bool {
-	return v.isInitialized() && len(v.mnemonic) == 0
+	return !v.isInitialized() || len(v.mnemonic) == 0
 }
 
 func (v *Vault) isValidPassphrase(passphrase string) bool {
