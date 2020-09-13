@@ -22,10 +22,6 @@ func (m *Market) IsStrategyPluggableInitialized() bool {
 
 // MakeStrategyPluggable makes the current market using a given price (ie. set via UpdateMarketPrice rpc either manually or a price feed plugin)
 func (m *Market) MakeStrategyPluggable() error {
-	if !m.IsFunded() {
-		return ErrNotFunded
-	}
-
 	if m.IsTradable() {
 		// We need the market be switched off before making this change
 		return ErrTradable
@@ -38,16 +34,12 @@ func (m *Market) MakeStrategyPluggable() error {
 
 // MakeStrategyBalanced makes the current market using a balanced AMM formula 50/50
 func (m *Market) MakeStrategyBalanced() error {
-	if !m.IsFunded() {
-		return ErrNotFunded
-	}
-
 	if m.IsTradable() {
 		// We need the market be switched off before making this change
 		return ErrTradable
 	}
 
-	m.strategy = mm.NewStrategyFromFormula("balanced", "50/50 asset reserves", formula.BalancedReserves{})
+	m.strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})
 
 	return nil
 }

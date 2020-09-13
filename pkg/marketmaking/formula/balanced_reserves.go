@@ -1,51 +1,60 @@
+// Package formula defines the formulas that implements the MarketFormula interface
 package formula
 
 import (
-	"math/big"
+	"math"
 
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
+)
+
+const (
+	weightIn  = 50
+	weightOut = 50
+)
+
+var (
+	//BigOne represents a single unit of an asset with precision 8
+	BigOne = int64(math.Pow10(8))
+	//BigOneDecimal represents a single unit of an asset with precision 8 as decimal.Decimal
+	BigOneDecimal = decimal.NewFromInt(BigOne)
 )
 
 //BalancedReserves defines an AMM strategy with fixed 50/50 reserves
 type BalancedReserves struct{}
 
-// SpotPrice calculates the spot price given the balances
-func (BalancedReserves) SpotPrice(opts *marketmaking.SpotPriceOpts) (spotPrice int64) {
-	BalanceIn := big.NewInt(opts.BalanceIn)
-	WeightIn := big.NewInt(opts.WeightIn)
-	Numer := big.NewInt(0)
-	Numer.Div(BalanceIn, WeightIn)
+// SpotPrice calculates the spot price without fee given the balances. The weight reserve ratio is fixed at 50/50
+func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice int64) {
+	// TODO sanitize numbers
+	numer := Div(opts.BalanceIn, weightIn)
+	denom := Div(opts.BalanceOut, weightOut)
 
-	BalanceOut := big.NewInt(opts.BalanceOut)
-	WeightOut := big.NewInt(opts.WeightOut)
-	Denom := big.NewInt(0)
-	Denom.Div(BalanceOut, WeightOut)
+	ratio := DivDecimal(numer, denom)
+	scale := Div(BigOne, BigOne-opts.Fee)
 
-	ratio := big.NewInt(0)
-	ratio.Div(Numer, Denom)
-
-	withFee, _ := plusFee(big.NewInt(100000000), big.NewInt(opts.Fee))
-	return withFee.Int64()
+	spotPrice = MulDecimal(MulDecimal(ratio, scale), BigOneDecimal).IntPart()
+	return
 }
 
-func (BalancedReserves) OutGivenIn(opts *marketmaking.SpotPriceOpts, amountIn int64) int64 {
+// OutGivenIn returns the amountOut of asset that will be exchanged for the given amountIn
+func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn int64) (amountOut int64) {
+	weightRatio := Div(weightIn, weightOut)
+
+	if opts.ChargeFeeOnTheWayIn {
+		adjustedIn := amountIn * (BigOne - opts.Fee)
+
+		y := Div(opts.BalanceIn, (opts.BalanceIn + adjustedIn))
+		foo := y.Pow(weightRatio)
+		bar := SubDecimal(BigOneDecimal, foo)
+
+		amountOut = MulDecimal(Mul(opts.BalanceOut, 1), bar).IntPart()
+		return
+	}
+
+	return
+}
+
+// InGivenOut returns the amountIn of assets that will be needed for the exchanging the desired amountOut of asset
+func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut int64) int64 {
 	return 0
-}
-
-func (BalancedReserves) InGivenOut(opts *marketmaking.SpotPriceOpts, amountOut int64) int64 {
-	return 0
-}
-
-func plusFee(amount *big.Int, fee *big.Int) (withFee *big.Int, calculatedFee *big.Int) {
-	amountDividedByTenThousands := big.NewInt(0)
-	amountDividedByTenThousands.Div(amount, big.NewInt(10000))
-
-	calculatedFee = big.NewInt(0)
-	calculatedFee.Mul(amountDividedByTenThousands, fee)
-
-	withFee = big.NewInt(0)
-	withFee.Add(amount, calculatedFee)
-
-	return withFee, calculatedFee
-
 }

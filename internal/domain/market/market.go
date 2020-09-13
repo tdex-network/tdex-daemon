@@ -70,7 +70,7 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 
 		tradable: false,
 
-		strategy: mm.NewStrategyFromFormula("balanced", "50/50 asset reserves", formula.BalancedReserves{}),
+		strategy: mm.NewStrategyFromFormula(formula.BalancedReserves{}),
 	}, nil
 }
 
@@ -101,6 +101,7 @@ func (m *Market) FeeAsset() string {
 
 // MakeTradable ...
 func (m *Market) MakeTradable() error {
+	println(m.IsFunded())
 	if !m.IsFunded() {
 		return ErrNotFunded
 	}
