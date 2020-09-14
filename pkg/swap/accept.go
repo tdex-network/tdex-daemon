@@ -15,7 +15,7 @@ type AcceptOpts struct {
 }
 
 //Accept takes a AcceptOpts and returns a serialized SwapAccept message
-func (c *Swap) Accept(accept AcceptOpts) ([]byte, error) {
+func Accept(accept AcceptOpts) ([]byte, error) {
 	var msgRequest pb.SwapRequest
 	err := proto.Unmarshal(accept.Message, &msgRequest)
 	if err != nil {
@@ -29,7 +29,7 @@ func (c *Swap) Accept(accept AcceptOpts) ([]byte, error) {
 		Transaction: accept.PsetBase64,
 	}
 
-	if err := c.compareMessagesAndTransaction(&msgRequest, msgAccept); err != nil {
+	if err := compareMessagesAndTransaction(&msgRequest, msgAccept); err != nil {
 		return nil, err
 	}
 

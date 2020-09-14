@@ -16,7 +16,7 @@ type CompleteOpts struct {
 }
 
 //Complete takes a CompleteOpts and returns a serialized SwapComplete message
-func (*Swap) Complete(complete CompleteOpts) ([]byte, error) {
+func Complete(complete CompleteOpts) ([]byte, error) {
 	var msgAccept pb.SwapAccept
 	err := proto.Unmarshal(complete.Message, &msgAccept)
 	if err != nil {

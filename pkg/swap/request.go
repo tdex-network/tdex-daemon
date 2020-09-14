@@ -15,8 +15,17 @@ type RequestOpts struct {
 	PsetBase64      string
 }
 
+// ParseSwapRequest checks whether the given swap request is well formed and
+// returns its byte serialization
+func ParseSwapRequest(request *pb.SwapRequest) ([]byte, error) {
+	if err := compareMessagesAndTransaction(request, nil); err != nil {
+		return nil, err
+	}
+	return proto.Marshal(request)
+}
+
 // Request takes a RequestOpts struct and returns a serialized protobuf message.
-func (c *Swap) Request(opts RequestOpts) ([]byte, error) {
+func Request(opts RequestOpts) ([]byte, error) {
 	randomID := randstr.Hex(8)
 	msg := &pb.SwapRequest{
 		Id: randomID,
@@ -30,9 +39,5 @@ func (c *Swap) Request(opts RequestOpts) ([]byte, error) {
 		Transaction: opts.PsetBase64,
 	}
 
-	if err := c.compareMessagesAndTransaction(msg, nil); err != nil {
-		return nil, err
-	}
-
-	return proto.Marshal(msg)
+	return ParseSwapRequest(msg)
 }
