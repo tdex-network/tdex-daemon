@@ -179,10 +179,16 @@ func getCoinsIndexes(targetAmount uint64, unblindedUtxos []Utxo) []int {
 	//actual strategy calculation output
 	list := getBestCombination(unblindedUtxosValues, targetAmount)
 
-	indexes := []int{}
-
 	//since list variable contains values,
 	//indexes holding those values needs to be calculated
+	indexes := findIndexes(list, unblindedUtxosValues)
+
+	return indexes
+}
+
+func findIndexes(list []uint64, unblindedUtxosValues []uint64) []int {
+	var indexes []int
+loop:
 	for _, v := range list {
 		for i, v1 := range unblindedUtxosValues {
 			if v == v1 {
@@ -190,6 +196,7 @@ func getCoinsIndexes(targetAmount uint64, unblindedUtxos []Utxo) []int {
 					continue
 				} else {
 					indexes = append(indexes, i)
+					continue loop
 				}
 			}
 		}

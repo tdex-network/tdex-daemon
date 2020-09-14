@@ -253,7 +253,7 @@ func TestUpdateTx(t *testing.T) {
 			map[string]string{
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			3,
+			2,
 			2, // outputs + LBTC change
 			1,
 		},
@@ -270,7 +270,7 @@ func TestUpdateTx(t *testing.T) {
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			4,
+			2,
 			2, // outputs + LBTC change
 			1,
 		},
@@ -287,7 +287,7 @@ func TestUpdateTx(t *testing.T) {
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			4,
+			2,
 			3, // outputs + asset change + lbtc change
 			2,
 		},
@@ -309,7 +309,7 @@ func TestUpdateTx(t *testing.T) {
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			4,
+			2,
 			3, // outputs + lbtc change
 			1,
 		},
@@ -337,7 +337,7 @@ func TestUpdateTx(t *testing.T) {
 				"3be6cc6330799ea0a1ae2b7a950ba983e88f41b75a0cb36342e7a039903e7d55": "0'/1/1",
 				network.Regtest.AssetID: "0'/1/2",
 			},
-			5,
+			3,
 			6, // outputs + asset1 change + asset2 change + lbtc change
 			3,
 		},
