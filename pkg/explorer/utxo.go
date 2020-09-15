@@ -226,7 +226,11 @@ func unblindUtxo(
 	chErr <- errors.New("unable to unblind utxo with provided keys")
 }
 
-func getUtxoDetails(out Utxo, chUnspents chan Utxo, chErr chan error) {
+func getUtxoDetails(
+	out Utxo,
+	chUnspents chan Utxo,
+	chErr chan error,
+) {
 	unspent := out.(witnessUtxo)
 
 	prevoutTxHex, err := GetTransactionHex(unspent.Hash())

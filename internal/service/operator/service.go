@@ -20,7 +20,8 @@ type Service struct {
 	unspentRepository unspent.Repository
 	vaultRepository   vault.Repository
 	pb.UnimplementedOperatorServer
-	crawlerSvc crawler.Service
+	crawlerSvc  crawler.Service
+	explorerSvc explorer.Service
 }
 
 // NewService returns a Operator Service
@@ -29,12 +30,14 @@ func NewService(
 	unspentRepository unspent.Repository,
 	vaultRepository vault.Repository,
 	crawlerSvc crawler.Service,
+	explorerSvc explorer.Service,
 ) (*Service, error) {
 	svc := &Service{
 		marketRepository:  marketRepository,
 		unspentRepository: unspentRepository,
 		vaultRepository:   vaultRepository,
 		crawlerSvc:        crawlerSvc,
+		explorerSvc:       explorerSvc,
 	}
 
 	return svc, nil
@@ -48,12 +51,13 @@ func (s *Service) ObserveBlockchain() {
 func (s *Service) handleBlockChainEvents() {
 events:
 	for event := range s.crawlerSvc.GetEventChannel() {
-		switch event.EventType {
+		switch event.Type() {
 		case crawler.FeeAccountDeposit:
+			e := event.(crawler.AddressEvent)
 			unspents := make([]unspent.Unspent, 0)
 		utxoLoop:
-			for _, utxo := range event.Utxos {
-				isTrxConfirmed, err := explorer.IsTransactionConfirmed(
+			for _, utxo := range e.Utxos {
+				isTrxConfirmed, err := s.explorerSvc.IsTransactionConfirmed(
 					utxo.Hash(),
 				)
 				if err != nil {
@@ -64,7 +68,7 @@ events:
 					u := unspent.NewUnspent(
 						utxo.Hash(),
 						utxo.Asset(),
-						event.Address,
+						e.Address,
 						utxo.Index(),
 						utxo.Value(),
 						false,
@@ -81,7 +85,7 @@ events:
 				continue events
 			}
 
-			balance := s.unspentRepository.GetBalance(event.Address, event.AssetHash)
+			balance := s.unspentRepository.GetBalance(e.Address, e.AssetHash)
 			if balance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
 				log.Debug("fee account balance too low - Trades and" +
 					" deposits will be disabled")
@@ -105,10 +109,11 @@ events:
 			}
 
 		case crawler.MarketAccountDeposit:
+			e := event.(crawler.AddressEvent)
 			unspents := make([]unspent.Unspent, 0)
 		utxoLoop1:
-			for _, utxo := range event.Utxos {
-				isTrxConfirmed, err := explorer.IsTransactionConfirmed(
+			for _, utxo := range e.Utxos {
+				isTrxConfirmed, err := s.explorerSvc.IsTransactionConfirmed(
 					utxo.Hash(),
 				)
 				if err != nil {
@@ -119,7 +124,7 @@ events:
 					u := unspent.NewUnspent(
 						utxo.Hash(),
 						utxo.Asset(),
-						event.Address,
+						e.Address,
 						utxo.Index(),
 						utxo.Value(),
 						false,
@@ -133,7 +138,7 @@ events:
 
 			m, _, err := s.marketRepository.GetMarketByAsset(
 				context.Background(),
-				event.AssetHash,
+				e.AssetHash,
 			)
 			if err != nil {
 				log.Error(err)
@@ -141,7 +146,7 @@ events:
 			}
 
 			fundingTxs := make([]market.OutpointWithAsset, 0)
-			for _, u := range event.Utxos {
+			for _, u := range e.Utxos {
 				tx := market.OutpointWithAsset{
 					Asset: u.Asset(),
 					Txid:  u.Hash(),
@@ -155,6 +160,9 @@ events:
 				log.Error(err)
 				continue events
 			}
+
+		case crawler.TransactionConfirmed:
+			//TODO
 		}
 	}
 }

@@ -26,14 +26,16 @@ func TestGetTransactionStatus(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	trxStatus, err := GetTransactionStatus(txID)
+	explorerSvc := NewService()
+
+	trxStatus, err := explorerSvc.GetTransactionStatus(txID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	assert.Equal(t, trxStatus["confirmed"], true)
 
-	isConfirmed, err := IsTransactionConfirmed(txID)
+	isConfirmed, err := explorerSvc.IsTransactionConfirmed(txID)
 	if err != nil {
 		t.Fatal(err)
 	}

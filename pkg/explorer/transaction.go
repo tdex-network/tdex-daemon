@@ -28,8 +28,10 @@ func GetTransactionHex(hash string) (string, error) {
 	return resp, nil
 }
 
-func IsTransactionConfirmed(txID string) (bool, error) {
-	trxStatus, err := GetTransactionStatus(txID)
+func (e *explorer) IsTransactionConfirmed(
+	txID string,
+) (bool, error) {
+	trxStatus, err := e.GetTransactionStatus(txID)
 	if err != nil {
 		return false, err
 	}
@@ -43,7 +45,9 @@ func IsTransactionConfirmed(txID string) (bool, error) {
 	return isConfirmed, nil
 }
 
-func GetTransactionStatus(txID string) (map[string]interface{}, error) {
+func (e *explorer) GetTransactionStatus(
+	txID string,
+) (map[string]interface{}, error) {
 	url := fmt.Sprintf(
 		"%s/tx/%s/status",
 		config.GetString(config.ExplorerEndpointKey),
@@ -72,7 +76,12 @@ func BroadcastTransaction(txHex string) (string, error) {
 		"Content-Type": "text/plain",
 	}
 
-	status, resp, err := httputil.NewHTTPRequest("POST", url, txHex, headers)
+	status, resp, err := httputil.NewHTTPRequest(
+		"POST",
+		url,
+		txHex,
+		headers,
+	)
 	if err != nil {
 		return "", err
 	}
@@ -84,7 +93,7 @@ func BroadcastTransaction(txHex string) (string, error) {
 }
 
 func Faucet(address string) (string, error) {
-	url := config.GetString(config.ExplorerEndpointKey) + "/faucet"
+	url := fmt.Sprintf("%s/faucet", config.GetString(config.ExplorerEndpointKey))
 	payload := map[string]string{"address": address}
 	body, _ := json.Marshal(payload)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
@@ -105,7 +114,7 @@ func Faucet(address string) (string, error) {
 }
 
 func Mint(address string, amount int) (string, string, error) {
-	url := config.GetString(config.ExplorerEndpointKey) + "/mint"
+	url := fmt.Sprintf("%s/mint", config.GetString(config.ExplorerEndpointKey))
 	payload := map[string]interface{}{"address": address, "quantity": amount}
 	body, _ := json.Marshal(payload)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
