@@ -60,6 +60,7 @@ func main() {
 		unspentRepository,
 		vaultRepository,
 		crawlerSvc,
+		explorerSvc,
 	)
 	if err != nil {
 		log.WithError(err).Panic(err)
@@ -124,7 +125,7 @@ func getObjectsToObserv(marketRepo market.Repository) (
 		if err != nil {
 			return nil, err
 		}
-		observables = append(observables, crawler.Observable{
+		observables = append(observables, &crawler.AddressObservable{
 			AccountType: vault.FeeAccount,
 			AssetHash:   config.GetString(config.BaseAssetKey),
 			Address:     ctAddress,

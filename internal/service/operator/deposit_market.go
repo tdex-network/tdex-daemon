@@ -49,7 +49,7 @@ func (s *Service) DepositMarket(
 	//Create new address for market
 	marketAddress := "dummy"
 	//Add newly created address to crawler
-	s.crawlerSvc.AddObservable(crawler.Observable{
+	s.crawlerSvc.AddObservable(&crawler.AddressObservable{
 		AccountType: vault.MarketAccountStart, //TODO update
 		AssetHash:   depositMarketReq.GetMarket().GetQuoteAsset(),
 		Address:     marketAddress,

@@ -12,7 +12,13 @@ import (
 )
 
 type Service interface {
-	GetUnSpents(addr string, blindKeys [][]byte) (coins []Utxo, err error)
+	GetUnSpents(
+		addr string,
+		blindKeys [][]byte,
+	) (coins []Utxo,
+		err error)
+	IsTransactionConfirmed(txID string) (bool, error)
+	GetTransactionStatus(txID string) (map[string]interface{}, error)
 }
 
 type explorer struct {
