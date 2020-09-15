@@ -44,6 +44,8 @@ func (a AddressEvent) Type() int {
 type TransactionEvent struct {
 	TxID      string
 	EventType int
+	BlockHash string
+	BlockTime float64
 }
 
 func (t TransactionEvent) Type() int {
@@ -158,7 +160,6 @@ func (u *utxoCrawler) removeAddressObservable(
 	observable AddressObservable,
 	observables []Observable) {
 	newObservableList := make([]Observable, 0)
-	//observables := u.getObservable()
 	for _, obs := range observables {
 		if o, ok := obs.(*AddressObservable); ok {
 			if o.Address != observable.Address {
@@ -175,7 +176,6 @@ func (u *utxoCrawler) removeTransactionObservable(
 	observable TransactionObservable,
 	observables []Observable) {
 	newObservableList := make([]Observable, 0)
-	//observables := u.getObservable()
 	for _, obs := range observables {
 		if o, ok := obs.(*TransactionObservable); ok {
 			if o.TxID != observable.TxID {
@@ -245,9 +245,31 @@ func (a *TransactionObservable) observe(
 		return
 	}
 
-	confirmed, err := explorerSvc.IsTransactionConfirmed(a.TxID)
+	txStatus, err := explorerSvc.GetTransactionStatus(a.TxID)
 	if err != nil {
 		errChan <- err
+	}
+
+	var confirmed bool
+	var blockHash string
+	var blockTime float64
+
+	for k, v := range txStatus {
+		switch value := v.(type) {
+		case bool:
+			if k == "confirmed" {
+				confirmed = value
+			}
+		case string:
+			if k == "block_hash" {
+				blockHash = value
+			}
+		case float64:
+			if k == "block_time" {
+				blockTime = value
+			}
+		}
+
 	}
 
 	trxStatus := TransactionUnConfirmed
@@ -258,6 +280,8 @@ func (a *TransactionObservable) observe(
 	event := TransactionEvent{
 		TxID:      a.TxID,
 		EventType: trxStatus,
+		BlockHash: blockHash,
+		BlockTime: blockTime,
 	}
 
 	eventChan <- event

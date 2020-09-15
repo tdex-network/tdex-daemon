@@ -86,26 +86,29 @@ func addObservableAfterTimeout(crawler Service) {
 
 type MockExplorer struct{}
 
-func (m MockExplorer) IsTransactionConfirmed(
-	txID string,
-) (bool,
-	error) {
-	if txID == "4" {
-		return true, nil
-	} else if txID == "5" {
-		return true, nil
-	} else if txID == "6" {
-		return true, nil
-	} else if txID == "102" {
-		return true, nil
-	}
+func (m MockExplorer) IsTransactionConfirmed(txID string) (bool, error) {
 	return false, nil
 }
 
-func (m MockExplorer) GetTransactionStatus(
-	txID string,
-) (map[string]interface{}, error) {
-	panic("implement me")
+func (m MockExplorer) GetTransactionStatus(txID string) (
+	map[string]interface{},
+	error,
+) {
+	status := make(map[string]interface{}, 0)
+	status["confirmed"] = true
+	status["block_hash"] = "afbd0d4e3db10be68371b3fee107397297e9c057e3c52ee9e9a76fd62fc069a6"
+	status["block_time"] = 1600178119
+
+	if txID == "4" {
+		return status, nil
+	} else if txID == "5" {
+		return status, nil
+	} else if txID == "6" {
+		return status, nil
+	} else if txID == "102" {
+		return status, nil
+	}
+	return nil, nil
 }
 
 func (m MockExplorer) GetUnSpents(
