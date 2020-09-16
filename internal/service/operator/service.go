@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
+	"github.com/tdex-network/tdex-daemon/internal/domain/trade"
 	"github.com/tdex-network/tdex-daemon/internal/domain/unspent"
 	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/internal/storage"
@@ -19,6 +20,7 @@ type Service struct {
 	marketRepository  market.Repository
 	unspentRepository unspent.Repository
 	vaultRepository   vault.Repository
+	tradeRepository   trade.Repository
 	pb.UnimplementedOperatorServer
 	crawlerSvc  crawler.Service
 	explorerSvc explorer.Service
@@ -29,6 +31,7 @@ func NewService(
 	marketRepository market.Repository,
 	unspentRepository unspent.Repository,
 	vaultRepository vault.Repository,
+	tradeRepository trade.Repository,
 	crawlerSvc crawler.Service,
 	explorerSvc explorer.Service,
 ) (*Service, error) {
@@ -36,6 +39,7 @@ func NewService(
 		marketRepository:  marketRepository,
 		unspentRepository: unspentRepository,
 		vaultRepository:   vaultRepository,
+		tradeRepository:   tradeRepository,
 		crawlerSvc:        crawlerSvc,
 		explorerSvc:       explorerSvc,
 	}
