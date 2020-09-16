@@ -81,6 +81,22 @@ func (i *InMemoryUnspentRepository) GetBalance(
 	return balance
 }
 
+func (i *InMemoryUnspentRepository) GetUnlockedBalance(
+	address string,
+	assetHash string,
+) uint64 {
+	var balance uint64
+
+	for _, u := range i.unspents {
+		if u.Address() == address && u.AssetHash() == assetHash &&
+			!u.IsSpent() && !u.IsLocked() {
+			balance += u.Value()
+		}
+	}
+
+	return balance
+}
+
 func (i *InMemoryUnspentRepository) GetAvailableUnspent() []unspent.Unspent {
 	unspents := make([]unspent.Unspent, 0)
 	for _, u := range i.unspents {

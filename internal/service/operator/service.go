@@ -73,7 +73,7 @@ events:
 						utxo.Value(),
 						false,
 						false,
-						nil, //TODO populate this
+						nil, //TODO should this be populated
 					)
 					unspents = append(unspents, u)
 				}
@@ -85,8 +85,24 @@ events:
 				continue events
 			}
 
-			balance := s.unspentRepository.GetBalance(e.Address, e.AssetHash)
-			if balance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
+			addresses, _, err := s.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
+				context.Background(),
+				vault.FeeAccount,
+			)
+			if err != nil {
+				log.Error(err)
+				continue utxoLoop
+			}
+
+			var feeAccountBalance uint64
+			for _, a := range addresses {
+				feeAccountBalance += s.unspentRepository.GetBalance(
+					a,
+					config.GetString(config.BaseAssetKey),
+				)
+			}
+
+			if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
 				log.Debug("fee account balance too low - Trades and" +
 					" deposits will be disabled")
 				for _, m := range markets {
@@ -100,8 +116,10 @@ events:
 			}
 
 			for _, m := range markets {
-				err := s.marketRepository.OpenMarket(context.Background(),
-					m.QuoteAssetHash())
+				err := s.marketRepository.OpenMarket(
+					context.Background(),
+					m.QuoteAssetHash(),
+				)
 				if err != nil {
 					log.Error(err)
 					continue events
@@ -129,7 +147,7 @@ events:
 						utxo.Value(),
 						false,
 						false,
-						nil, //TODO populate this
+						nil, //TODO should this be populated
 					)
 					unspents = append(unspents, u)
 				}

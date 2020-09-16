@@ -106,6 +106,7 @@ func NewService(
 	}
 }
 
+//Starts crawler which periodically "scans" blockchain for specific events/Observable object
 func (u *utxoCrawler) Start() {
 	var wg sync.WaitGroup
 	log.Debug("start observe")
@@ -126,6 +127,7 @@ func (u *utxoCrawler) Start() {
 	}
 }
 
+//Stops crawler
 func (u *utxoCrawler) Stop() {
 	u.quitChan <- 1
 }
@@ -136,12 +138,14 @@ func (u *utxoCrawler) getObservable() []Observable {
 	return u.observables
 }
 
+//Adds new Observable to the list of Observables to be "watched over"
 func (u *utxoCrawler) AddObservable(observable Observable) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 	u.observables = append(u.observables, observable)
 }
 
+//Stop "watching" given Observable
 func (u *utxoCrawler) RemoveObservable(observable Observable) {
 	observables := u.getObservable()
 
@@ -188,6 +192,7 @@ func (u *utxoCrawler) removeTransactionObservable(
 	u.observables = newObservableList
 }
 
+//Returns Event channel which can be used to "listen" to blockchain events
 func (u *utxoCrawler) GetEventChannel() chan Event {
 	return u.eventChan
 }

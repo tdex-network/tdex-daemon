@@ -15,8 +15,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/storage"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/grpc"
 
 	operatorservice "github.com/tdex-network/tdex-daemon/internal/service/operator"
@@ -46,7 +44,7 @@ func main() {
 	vaultRepository := storage.NewInMemoryVaultRepository()
 
 	explorerSvc := explorer.NewService()
-	observables, err := getObjectsToObserv(marketRepository)
+	observables, err := getObjectsToObserve(marketRepository, vaultRepository)
 	crawlerSvc := crawler.NewService(explorerSvc, observables, nil)
 
 	// Init services
@@ -103,33 +101,51 @@ func main() {
 	log.Debug("exiting")
 }
 
-//TODO fetch all addresses to be observed - dummy implementation below
-func getObjectsToObserv(marketRepo market.Repository) (
-	[]crawler.Observable, error) {
-	markets, err := marketRepo.GetAllMarkets(context.Background())
+func getObjectsToObserve(
+	marketRepository market.Repository,
+	vaultRepository vault.Repository,
+) ([]crawler.Observable, error) {
+
+	//get all market addresses to observe
+	markets, err := marketRepository.GetAllMarkets(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	w, err := wallet.NewWallet(wallet.NewWalletOpts{
-		ExtraMnemonic: false,
-	})
-
 	observables := make([]crawler.Observable, 0)
 	for _, m := range markets {
-		opts := wallet.DeriveConfidentialAddressOpts{
-			DerivationPath: fmt.Sprintf("%v'/0/0", m.AccountIndex()),
-			Network:        &network.Liquid,
-		}
-		ctAddress, _, err := w.DeriveConfidentialAddress(opts)
+		addresses, blindingKeys, err := vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
+			context.Background(),
+			m.AccountIndex(),
+		)
 		if err != nil {
 			return nil, err
 		}
+
+		for _, a := range addresses {
+			observables = append(observables, &crawler.AddressObservable{
+				AccountType: m.AccountIndex(),
+				AssetHash:   m.QuoteAssetHash(),
+				Address:     a,
+				BlindingKey: blindingKeys,
+			})
+		}
+	}
+
+	//get fee account addresses to observe
+	addresses, blindingKeys, err := vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
+		context.Background(),
+		vault.FeeAccount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	for _, a := range addresses {
 		observables = append(observables, &crawler.AddressObservable{
 			AccountType: vault.FeeAccount,
 			AssetHash:   config.GetString(config.BaseAssetKey),
-			Address:     ctAddress,
-			BlindingKey: nil,
+			Address:     a,
+			BlindingKey: blindingKeys,
 		})
 	}
 

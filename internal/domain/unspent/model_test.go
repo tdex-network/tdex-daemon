@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestT(t *testing.T) {
+func TestLockUnlockUnSpents(t *testing.T) {
 	u := Unspent{
 		spent:  false,
 		locked: false,
