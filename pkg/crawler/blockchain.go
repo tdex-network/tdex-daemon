@@ -33,7 +33,6 @@ type AddressEvent struct {
 	EventType   int
 	AccountType int
 	Address     string
-	AssetHash   string
 	Utxos       []explorer.Utxo
 }
 
@@ -65,7 +64,7 @@ type AddressObservable struct {
 	AccountType int
 	AssetHash   string
 	Address     string
-	BlindingKey [][]byte
+	BlindingKey []byte
 }
 
 type TransactionObservable struct {
@@ -106,7 +105,8 @@ func NewService(
 	}
 }
 
-//Starts crawler which periodically "scans" blockchain for specific events/Observable object
+//Start starts crawler which periodically "scans" blockchain for specific
+//events/Observable object
 func (u *utxoCrawler) Start() {
 	var wg sync.WaitGroup
 	log.Debug("start observe")
@@ -127,7 +127,7 @@ func (u *utxoCrawler) Start() {
 	}
 }
 
-//Stops crawler
+//Stop stops crawler
 func (u *utxoCrawler) Stop() {
 	u.quitChan <- 1
 }
@@ -138,14 +138,15 @@ func (u *utxoCrawler) getObservable() []Observable {
 	return u.observables
 }
 
-//Adds new Observable to the list of Observables to be "watched over"
+//AddObservable adds new Observable to the list of Observables to be "watched
+//over"
 func (u *utxoCrawler) AddObservable(observable Observable) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 	u.observables = append(u.observables, observable)
 }
 
-//Stop "watching" given Observable
+//RemoveObservable stops "watching" given Observable
 func (u *utxoCrawler) RemoveObservable(observable Observable) {
 	observables := u.getObservable()
 
@@ -192,7 +193,8 @@ func (u *utxoCrawler) removeTransactionObservable(
 	u.observables = newObservableList
 }
 
-//Returns Event channel which can be used to "listen" to blockchain events
+//GetEventChannel returns Event channel which can be used to "listen" to
+//blockchain events
 func (u *utxoCrawler) GetEventChannel() chan Event {
 	return u.eventChan
 }
@@ -217,7 +219,7 @@ func (a *AddressObservable) observe(
 		return
 	}
 
-	unspents, err := explorerSvc.GetUnSpents(a.Address, a.BlindingKey)
+	unspents, err := explorerSvc.GetUnSpents(a.Address, [][]byte{a.BlindingKey})
 	if err != nil {
 		errChan <- err
 	}
@@ -232,7 +234,6 @@ func (a *AddressObservable) observe(
 		EventType:   eventType,
 		AccountType: a.AccountType,
 		Address:     a.Address,
-		AssetHash:   a.AssetHash,
 		Utxos:       unspents,
 	}
 	eventChan <- event

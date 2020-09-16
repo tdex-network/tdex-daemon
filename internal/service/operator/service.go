@@ -91,7 +91,7 @@ events:
 			)
 			if err != nil {
 				log.Error(err)
-				continue utxoLoop
+				continue events
 			}
 
 			var feeAccountBalance uint64
@@ -154,23 +154,27 @@ events:
 			}
 			s.unspentRepository.AddUnspent(unspents)
 
-			m, _, err := s.marketRepository.GetMarketByAsset(
-				context.Background(),
-				e.AssetHash,
-			)
-			if err != nil {
-				log.Error(err)
-				continue events
-			}
-
+			var quoteAsset string
 			fundingTxs := make([]market.OutpointWithAsset, 0)
 			for _, u := range e.Utxos {
+				if u.Asset() != config.GetString(config.BaseAssetKey) {
+					quoteAsset = u.Asset()
+				}
 				tx := market.OutpointWithAsset{
 					Asset: u.Asset(),
 					Txid:  u.Hash(),
 					Vout:  int(u.Index()),
 				}
 				fundingTxs = append(fundingTxs, tx)
+			}
+
+			m, _, err := s.marketRepository.GetMarketByAsset(
+				context.Background(),
+				quoteAsset,
+			)
+			if err != nil {
+				log.Error(err)
+				continue events
 			}
 
 			err = m.FundMarket(fundingTxs)

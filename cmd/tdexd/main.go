@@ -122,12 +122,11 @@ func getObjectsToObserve(
 			return nil, err
 		}
 
-		for _, a := range addresses {
+		for i, a := range addresses {
 			observables = append(observables, &crawler.AddressObservable{
 				AccountType: m.AccountIndex(),
-				AssetHash:   m.QuoteAssetHash(),
 				Address:     a,
-				BlindingKey: blindingKeys,
+				BlindingKey: blindingKeys[i],
 			})
 		}
 	}
@@ -140,12 +139,11 @@ func getObjectsToObserve(
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range addresses {
+	for i, a := range addresses {
 		observables = append(observables, &crawler.AddressObservable{
 			AccountType: vault.FeeAccount,
-			AssetHash:   config.GetString(config.BaseAssetKey),
 			Address:     a,
-			BlindingKey: blindingKeys,
+			BlindingKey: blindingKeys[i],
 		})
 	}
 

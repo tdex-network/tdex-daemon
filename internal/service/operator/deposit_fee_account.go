@@ -3,7 +3,6 @@ package operatorservice
 import (
 	"context"
 	"encoding/hex"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
@@ -27,9 +26,8 @@ func (s *Service) DepositFeeAccount(ctx context.Context, req *pb.DepositFeeAccou
 
 		s.crawlerSvc.AddObservable(&crawler.AddressObservable{
 			AccountType: vault.FeeAccount,
-			AssetHash:   config.GetString(config.BaseAssetKey),
 			Address:     addr,
-			BlindingKey: [][]byte{blindingKey},
+			BlindingKey: blindingKey,
 		})
 
 		return v, nil

@@ -3,7 +3,6 @@ package operatorservice
 import (
 	"context"
 	"fmt"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -43,9 +42,8 @@ func (s *Service) DepositMarket(
 
 		s.crawlerSvc.AddObservable(&crawler.AddressObservable{
 			AccountType: accountIndex,
-			AssetHash:   config.GetString(config.BaseAssetKey),
 			Address:     addr,
-			BlindingKey: [][]byte{blindingKey},
+			BlindingKey: blindingKey,
 		})
 
 		return v, nil
