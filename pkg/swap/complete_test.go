@@ -15,11 +15,11 @@ func TestSwap_Complete(t *testing.T) {
 			AmountToReceive: 5000000,
 			PsetBase64:      initialPsbtOfAlice,
 		})
-		messageAccept, _ := Accept(AcceptOpts{
+		_, messageAccept, _ := Accept(AcceptOpts{
 			Message:    messageRequest,
 			PsetBase64: initialPsbtOfBob,
 		})
-		got, err := Complete(CompleteOpts{
+		_, got, err := Complete(CompleteOpts{
 			Message:    messageAccept,
 			PsetBase64: finalPsbtOfAlice,
 		})

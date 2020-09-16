@@ -15,17 +15,18 @@ type CompleteOpts struct {
 	PsetBase64 string
 }
 
-//Complete takes a CompleteOpts and returns a serialized SwapComplete message
-func Complete(complete CompleteOpts) ([]byte, error) {
+// Complete takes a CompleteOpts and returns the id of the SwapComplete entity
+// and its serialized version
+func Complete(complete CompleteOpts) (string, []byte, error) {
 	var msgAccept pb.SwapAccept
 	err := proto.Unmarshal(complete.Message, &msgAccept)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal swap accept %w", err)
+		return "", nil, fmt.Errorf("unmarshal swap accept %w", err)
 	}
 
 	_, err = pset.NewPsetFromBase64(complete.PsetBase64)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	//TODO check if signatures of the inputs are valid
@@ -37,5 +38,10 @@ func Complete(complete CompleteOpts) ([]byte, error) {
 		Transaction: complete.PsetBase64,
 	}
 
-	return proto.Marshal(msgComplete)
+	msgCompleteSerialized, err := proto.Marshal(msgComplete)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return randomID, msgCompleteSerialized, nil
 }

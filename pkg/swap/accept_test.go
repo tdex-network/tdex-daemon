@@ -20,7 +20,7 @@ func TestCore_Accept(t *testing.T) {
 			return
 		}
 
-		got, err := Accept(AcceptOpts{
+		_, got, err := Accept(AcceptOpts{
 			Message:    messageRequest,
 			PsetBase64: initialPsbtOfBob,
 		})

@@ -8,18 +8,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-//AcceptOpts is the struct given to Accept method
+// AcceptOpts is the struct given to Accept method
 type AcceptOpts struct {
 	Message    []byte
 	PsetBase64 string
 }
 
-//Accept takes a AcceptOpts and returns a serialized SwapAccept message
-func Accept(accept AcceptOpts) ([]byte, error) {
+// Accept takes a AcceptOpts and returns the id of the SwapAccept entity and
+//its serialized version
+func Accept(accept AcceptOpts) (string, []byte, error) {
 	var msgRequest pb.SwapRequest
 	err := proto.Unmarshal(accept.Message, &msgRequest)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal swap request %w", err)
+		return "", nil, fmt.Errorf("unmarshal swap request %w", err)
 	}
 
 	randomID := randstr.Hex(8)
@@ -30,8 +31,12 @@ func Accept(accept AcceptOpts) ([]byte, error) {
 	}
 
 	if err := compareMessagesAndTransaction(&msgRequest, msgAccept); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	return proto.Marshal(msgAccept)
+	msgAcceptSerialized, err := proto.Marshal(msgAccept)
+	if err != nil {
+		return "", nil, err
+	}
+	return randomID, msgAcceptSerialized, nil
 }
