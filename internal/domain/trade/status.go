@@ -25,13 +25,6 @@ var (
 	AcceptedStatus = Status{
 		code: pb.SwapStatus_ACCEPT,
 	}
-	// AcceptedAndExpiredStatus represents the status of a trade that has been
-	// accepted by the daemon but hasn't been completed by the trader within a
-	// certain expiration date
-	AcceptedAndExpiredStatus = Status{
-		code:    pb.SwapStatus_ACCEPT,
-		expired: true,
-	}
 	// FailedToCompleteStatus represents the status of a trade that failed to be
 	// be completed for some reason
 	FailedToCompleteStatus = Status{
@@ -49,7 +42,6 @@ var (
 // a provider can assume
 type Status struct {
 	code    pb.SwapStatus
-	expired bool
 	failed  bool
 }
 

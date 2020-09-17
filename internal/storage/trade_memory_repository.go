@@ -18,7 +18,7 @@ var (
 type InMemoryTradeRepository struct {
 	trades         map[string]*trade.Trade
 	tradesByTrader map[string]ids
-	tradesByMarket map[int]ids
+	tradesByMarket map[string]ids
 
 	lock *sync.RWMutex
 }
@@ -28,7 +28,7 @@ func NewInMemoryTradeRepository() *InMemoryTradeRepository {
 	return &InMemoryTradeRepository{
 		trades:         map[string]*trade.Trade{},
 		tradesByTrader: map[string]ids{},
-		tradesByMarket: map[int]ids{},
+		tradesByMarket: map[string]ids{},
 		lock:           &sync.RWMutex{},
 	}
 }
@@ -52,11 +52,11 @@ func (r InMemoryTradeRepository) GetAllTrades(_ context.Context) ([]*trade.Trade
 }
 
 // GetAllTradesByMarket returns all the trades processed for the given market
-func (r InMemoryTradeRepository) GetAllTradesByMarket(_ context.Context, marketIndex int) ([]*trade.Trade, error) {
+func (r InMemoryTradeRepository) GetAllTradesByMarket(_ context.Context, marketQuoteAsset string) ([]*trade.Trade, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return r.getAllTradesByMarket(marketIndex)
+	return r.getAllTradesByMarket(marketQuoteAsset)
 }
 
 // GetAllTradesByTrader returns all the trades processed for the given trader
@@ -91,7 +91,7 @@ func (r InMemoryTradeRepository) UpdateTrade(
 		r.trades[tradeID] = updatedTrade
 	}
 
-	r.addTradeByMarket(updatedTrade.MarketIndex(), tradeIDs[0])
+	r.addTradeByMarket(updatedTrade.MarketQuoteAsset(), tradeIDs[0])
 	r.addTradeByTrader(hex.EncodeToString(updatedTrade.TraderID()), tradeIDs[0])
 	return nil
 }
@@ -126,8 +126,8 @@ func (r InMemoryTradeRepository) getAllTrades() ([]*trade.Trade, error) {
 	return trades, nil
 }
 
-func (r InMemoryTradeRepository) getAllTradesByMarket(marketIndex int) ([]*trade.Trade, error) {
-	swapIDs, ok := r.tradesByMarket[marketIndex]
+func (r InMemoryTradeRepository) getAllTradesByMarket(marketQuoteAsset string) ([]*trade.Trade, error) {
+	swapIDs, ok := r.tradesByMarket[marketQuoteAsset]
 	if !ok {
 		return nil, ErrEmptyTradesByMarket
 	}
@@ -154,16 +154,16 @@ func (r InMemoryTradeRepository) tradesFromSwapIDs(swapIDs []string) []*trade.Tr
 	return trades
 }
 
-func (r InMemoryTradeRepository) addTradeByMarket(marketIndex int, tradeID string) {
-	trades, ok := r.tradesByMarket[marketIndex]
+func (r InMemoryTradeRepository) addTradeByMarket(marketQuoteAsset string, tradeID string) {
+	trades, ok := r.tradesByMarket[marketQuoteAsset]
 	if !ok {
-		r.tradesByMarket[marketIndex] = ids{tradeID}
+		r.tradesByMarket[marketQuoteAsset] = ids{tradeID}
 		return
 	}
 
 	if !trades.contain(tradeID) {
-		r.tradesByMarket[marketIndex] = append(
-			r.tradesByMarket[marketIndex],
+		r.tradesByMarket[marketQuoteAsset] = append(
+			r.tradesByMarket[marketQuoteAsset],
 			tradeID,
 		)
 	}

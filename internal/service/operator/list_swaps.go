@@ -19,7 +19,7 @@ func (s *Service) ListSwaps(ctx context.Context, req *pb.ListSwapsRequest) (*pb.
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	markets, err :=s.getMarketsForTrades(ctx, trades)
+	markets, err := s.getMarketsForTrades(ctx, trades)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -33,7 +33,7 @@ func (s *Service) ListSwaps(ctx context.Context, req *pb.ListSwapsRequest) (*pb.
 func (s *Service) getMarketsForTrades(ctx context.Context, trades []*trade.Trade) ([]*market.Market, error) {
 	markets := make([]*market.Market, 0, len(trades))
 	for _, trade := range trades {
-		market, err := s.marketRepository.GetOrCreateMarket(ctx, trade.MarketIndex())
+		market, _, err := s.marketRepository.GetMarketByAsset(ctx, trade.MarketQuoteAsset())
 		if err != nil {
 			return nil, err
 		}

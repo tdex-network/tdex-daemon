@@ -41,8 +41,8 @@ type timestamp struct {
 // Trade defines the Trade entity data structure for holding swap transactions
 type Trade struct {
 	id          id
-	marketIndex int
-	traderID    []byte
+	marketQuoteAsset string
+	traderPubkey    []byte
 	status      Status
 	psetBase64  string
 	txID        string
@@ -56,14 +56,14 @@ func NewTrade() *Trade {
 	return &Trade{}
 }
 
-// Proposal returns a new trade proposal for the given trader and market
-func (t *Trade) Proposal(swapRequest *pb.SwapRequest, marketIndex int, traderID []byte) error {
+// Propose returns a new trade proposal for the given trader and market
+func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, traderPubkey []byte) error {
 	if !t.IsEmpty() {
 		return ErrMustBeEmpty
 	}
 
-	t.traderID = traderID
-	t.marketIndex = marketIndex
+	t.traderPubkey = traderPubkey
+	t.marketQuoteAsset = marketQuoteAsset
 	t.id.request = swapRequest.GetId()
 	t.timestamp.request = uint64(time.Now().Unix())
 	t.psetBase64 = swapRequest.GetTransaction()
@@ -129,28 +129,15 @@ func (t *Trade) Complete(psetBase64 string) error {
 	return nil
 }
 
-// Published adds the txId of the swap transaction included in the blockchain
+// Publish adds the txId of the swap transaction included in the blockchain
 // to the trade. The trade must be in Completed status to set it as Published,
 // otherwise an error is thrown
-func (t *Trade) Published(txID string) error {
+func (t *Trade) Publish(txID string) error {
 	if !t.IsCompleted() {
 		return ErrMustBeCompleted
 	}
 
 	t.txID = txID
-	return nil
-}
-
-// Expired sets the status of the trade to AcceptedAndExpired. The trade must
-// be in Accepted or FailedToComplete status for expiring, otherwise an error
-// is thrown
-func (t *Trade) Expired() error {
-	if t.status != AcceptedStatus && t.status == FailedToCompleteStatus {
-		return ErrMustBeAccepted
-	}
-
-	// TODO: check that now is actually after expiration date.
-	t.status = AcceptedAndExpiredStatus
 	return nil
 }
 
@@ -176,7 +163,8 @@ func (t *Trade) IsCompleted() bool {
 
 // IsExpired returns whether the trade has reached the expiration date
 func (t *Trade) IsExpired() bool {
-	return t.status == AcceptedAndExpiredStatus
+	now := uint64(time.Now().Unix())
+	return t.IsAccepted() && now >= t.timestamp.expiry
 }
 
 // ID returns the ids by witch a trade is univoquely identified.
@@ -186,14 +174,16 @@ func (t *Trade) ID() []string {
 	return t.id.id()
 }
 
-// MarketIndex returns the market that the trade is referring to
-func (t *Trade) MarketIndex() int {
-	return t.marketIndex
+// MarketQuoteAsset returns the quote asset of the market that the trade is
+// referring to
+func (t *Trade) MarketQuoteAsset() string {
+	return t.marketQuoteAsset
 }
 
-// TraderID returns the id of the trader who proposed the current trade
-func (t *Trade) TraderID() []byte {
-	return t.traderID
+// TraderPubkey returns the EC pubkey (check BOTD#2) of the trader who proposed
+// the current trade
+func (t *Trade) TraderPubkey() []byte {
+	return t.traderPubkey
 }
 
 // Status returns the current status of the trade
