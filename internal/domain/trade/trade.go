@@ -3,9 +3,13 @@ package trade
 import (
 	"errors"
 	"time"
-
-	"github.com/tdex-network/tdex-daemon/pkg/swap"
+	
+	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
+
+	"github.com/google/uuid"
+	"github.com/tdex-network/tdex-daemon/config"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -38,9 +42,14 @@ type timestamp struct {
 	expiry uint64
 }
 
+type swap struct {
+	id string
+	message []byte
+}
+
 // Trade defines the Trade entity data structure for holding swap transactions
 type Trade struct {
-	id          id
+	id          uuid.UUID
 	marketQuoteAsset string
 	traderPubkey    []byte
 	status      Status
@@ -48,12 +57,14 @@ type Trade struct {
 	txID        string
 	price       float32
 	timestamp   timestamp
-	swapMessage swapMessage
+	swapRequest swap
+	swapAccept swap
+	swapComplete swap
 }
 
 // NewTrade returns an empty trade
 func NewTrade() *Trade {
-	return &Trade{}
+	return &Trade{id: uuid.New()}
 }
 
 // Propose returns a new trade proposal for the given trader and market
@@ -64,13 +75,12 @@ func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 
 	t.traderPubkey = traderPubkey
 	t.marketQuoteAsset = marketQuoteAsset
-	t.id.request = swapRequest.GetId()
+	t.swapRequest.id = swapRequest.GetId()
 	t.timestamp.request = uint64(time.Now().Unix())
+	t.timestamp.expiry = t.timestamp.request + uint64(config.GetInt(config.TradeExpirationIntervalKey))
 	t.psetBase64 = swapRequest.GetTransaction()
-	// TODO: set the expiration date to t.timestamp.request + expiry_time for
-	// for keeping consistency of data presented to traders and operators
 
-	msg, err := swap.ParseSwapRequest(swapRequest)
+	msg, err := pkgswap.ParseSwapRequest(swapRequest)
 	if err != nil {
 		t.status = ProposalRejectedStatus
 		return err
@@ -78,7 +88,7 @@ func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 	// TODO: check price
 
 	t.status = ProposalStatus
-	t.swapMessage.request = msg
+	t.swapRequest.message = msg
 	return nil
 }
 
@@ -89,8 +99,8 @@ func (t *Trade) Accept(psetBase64 string) error {
 		return ErrMustBeProposal
 	}
 
-	swapAcceptID, swapAcceptMsg, err := swap.Accept(swap.AcceptOpts{
-		Message:    t.swapMessage.request,
+	swapAcceptID, swapAcceptMsg, err := pkgswap.Accept(pkgswap.AcceptOpts{
+		Message:    t.swapRequest.message,
 		PsetBase64: psetBase64,
 	})
 	if err != nil {
@@ -99,22 +109,24 @@ func (t *Trade) Accept(psetBase64 string) error {
 	}
 
 	t.status = AcceptedStatus
-	t.id.accept = swapAcceptID
-	t.swapMessage.accept = swapAcceptMsg
+	t.swapAccept.id = swapAcceptID
+	t.swapAccept.message = swapAcceptMsg
+	t.timestamp.accept = uint64(time.Now().Unix())
 	t.psetBase64 = psetBase64
 	return nil
 }
 
-// Complete checks the signatures and finalizes the trade. The trade must be in
-// Accepted or FailedToComplete status for being completed, otherwise an
-// error is thrown
-func (t *Trade) Complete(psetBase64 string) error {
+// Complete sets the status of the trade to Complete by adding the txID
+// of the tx in the blockchain and the blocktime of the block in which it's
+// included. The trade must be in Accepted or FailedToComplete status for being
+//  completed, otherwise an error is thrown
+func (t *Trade) Complete(psetBase64 string, blocktime uint64,  txID string) error {
 	if !t.IsAccepted() {
 		return ErrMustBeAccepted
 	}
 
-	swapCompleteID, swapCompleteMsg, err := swap.Complete(swap.CompleteOpts{
-		Message:    t.swapMessage.accept,
+	swapCompleteID, swapCompleteMsg, err := pkgswap.Complete(pkgswap.CompleteOpts{
+		Message:    t.swapAccept.message,
 		PsetBase64: psetBase64,
 	})
 	if err != nil {
@@ -123,20 +135,10 @@ func (t *Trade) Complete(psetBase64 string) error {
 	}
 
 	t.status = CompletedStatus
-	t.id.complete = swapCompleteID
-	t.swapMessage.complete = swapCompleteMsg
+	t.swapComplete.id = swapCompleteID
+	t.swapComplete.message = swapCompleteMsg
+	t.timestamp.complete = blocktime
 	t.psetBase64 = psetBase64
-	return nil
-}
-
-// Publish adds the txId of the swap transaction included in the blockchain
-// to the trade. The trade must be in Completed status to set it as Published,
-// otherwise an error is thrown
-func (t *Trade) Publish(txID string) error {
-	if !t.IsCompleted() {
-		return ErrMustBeCompleted
-	}
-
 	t.txID = txID
 	return nil
 }
@@ -161,17 +163,24 @@ func (t *Trade) IsCompleted() bool {
 	return t.status == CompletedStatus
 }
 
-// IsExpired returns whether the trade has reached the expiration date
+// IsExpired returns whether the trade has reached the expiration date, ie if
+// now is after the expriation date and the trade is not in Complete status
 func (t *Trade) IsExpired() bool {
 	now := uint64(time.Now().Unix())
-	return t.IsAccepted() && now >= t.timestamp.expiry
+	return now >= t.timestamp.expiry && !t.IsCompleted()
+}
+
+// ContainsSwap returns whether some swap identified by an id belongs to the
+// current trade
+func (t *Trade) ContainsSwap(swapID string) bool {
+	return swapID == t.swapRequest.id || swapID == t.swapAccept.id || swapID == t.swapComplete.id
 }
 
 // ID returns the ids by witch a trade is univoquely identified.
 // At the very list a trade is identified by swapRequestID and swapAcceptID.
 // If present, also the swapCompleteID is added to the returned list of ids.
-func (t *Trade) ID() []string {
-	return t.id.id()
+func (t *Trade) ID() uuid.UUID {
+	return t.id
 }
 
 // MarketQuoteAsset returns the quote asset of the market that the trade is
@@ -196,7 +205,9 @@ func (t *Trade) SwapRequestMessage() *pb.SwapRequest {
 	if t.IsEmpty() {
 		return nil
 	}
-	return t.swapMessage.Request()
+	s := &pb.SwapRequest{}
+	proto.Unmarshal(t.swapRequest.message, s)
+	return s
 }
 
 // SwapAcceptMessage returns the swap accept made for the trade
@@ -204,7 +215,10 @@ func (t *Trade) SwapAcceptMessage() *pb.SwapAccept {
 	if t.IsEmpty() || t.IsProposal() {
 		return nil
 	}
-	return t.swapMessage.Accept()
+
+	s := &pb.SwapAccept{}
+	proto.Unmarshal(t.swapAccept.message, s)
+	return s
 }
 
 // SwapCompleteMessage returns the swap complete message for the trade if existing
@@ -212,7 +226,10 @@ func (t *Trade) SwapCompleteMessage() *pb.SwapComplete {
 	if !t.IsCompleted() {
 		return nil
 	}
-	return t.swapMessage.Complete()
+
+	s := &pb.SwapComplete{}
+	proto.Unmarshal(t.swapComplete.message, s)
+	return s
 }
 
 // SwapRequestTime returns the timestamp of the proposal of the current trade

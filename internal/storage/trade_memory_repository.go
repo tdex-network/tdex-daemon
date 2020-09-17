@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/domain/trade"
 )
 
@@ -16,9 +17,10 @@ var (
 
 // InMemoryTradeRepository represents an in memory storage
 type InMemoryTradeRepository struct {
-	trades         map[string]*trade.Trade
-	tradesByTrader map[string]ids
-	tradesByMarket map[string]ids
+	trades         map[uuid.UUID]*trade.Trade
+	tradesBySwapAcceptID map[string]uuid.UUID
+	tradesByTrader map[string][]uuid.UUID
+	tradesByMarket map[string][]uuid.UUID
 
 	lock *sync.RWMutex
 }
@@ -26,9 +28,10 @@ type InMemoryTradeRepository struct {
 // NewInMemoryTradeRepository returns a new empty InMemoryTradeRepository
 func NewInMemoryTradeRepository() *InMemoryTradeRepository {
 	return &InMemoryTradeRepository{
-		trades:         map[string]*trade.Trade{},
-		tradesByTrader: map[string]ids{},
-		tradesByMarket: map[string]ids{},
+		trades:         map[uuid.UUID]*trade.Trade{},
+		tradesBySwapAcceptID: map[string]uuid.UUID{},
+		tradesByTrader: map[string][]uuid.UUID{},
+		tradesByMarket: map[string][]uuid.UUID{},
 		lock:           &sync.RWMutex{},
 	}
 }
@@ -36,11 +39,11 @@ func NewInMemoryTradeRepository() *InMemoryTradeRepository {
 // GetOrCreateTrade gets a trade with a given swapID that can be either a
 // request, accept, or complete ID. They all identify the same Trade.
 // If not found, a new entry is inserted
-func (r InMemoryTradeRepository) GetOrCreateTrade(_ context.Context, swapID string) (*trade.Trade, error) {
+func (r InMemoryTradeRepository) GetOrCreateTrade(_ context.Context, tradeID *uuid.UUID) (*trade.Trade, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return r.getOrCreateTrade(swapID)
+	return r.getOrCreateTrade(tradeID)
 }
 
 // GetAllTrades returns all the trades processed by the daemon
@@ -70,7 +73,7 @@ func (r InMemoryTradeRepository) GetAllTradesByTrader(_ context.Context, traderI
 // UpdateTrade updates data to a trade identified by any of its swap ids (request, accept, complete) passing an update function
 func (r InMemoryTradeRepository) UpdateTrade(
 	_ context.Context,
-	tradeID string,
+	tradeID *uuid.UUID,
 	updateFn func(t *trade.Trade) (*trade.Trade, error),
 ) error {
 	r.lock.Lock()
@@ -86,82 +89,78 @@ func (r InMemoryTradeRepository) UpdateTrade(
 		return err
 	}
 
-	tradeIDs := updatedTrade.ID()
-	for _, tradeID := range tradeIDs {
-		r.trades[tradeID] = updatedTrade
+	if swapAccept := updatedTrade.SwapAcceptMessage(); swapAccept != nil {
+		if _, ok := r.tradesBySwapAcceptID[swapAccept.GetId()]; !ok {
+			r.tradesBySwapAcceptID[swapAccept.GetId()] = currentTrade.ID()
+		}
 	}
 
-	r.addTradeByMarket(updatedTrade.MarketQuoteAsset(), tradeIDs[0])
-	r.addTradeByTrader(hex.EncodeToString(updatedTrade.TraderID()), tradeIDs[0])
+	r.addTradeByMarket(updatedTrade.MarketQuoteAsset(), currentTrade.ID())
+	r.addTradeByTrader(hex.EncodeToString(updatedTrade.TraderPubkey()), currentTrade.ID())
 	return nil
 }
 
-func (r InMemoryTradeRepository) getOrCreateTrade(swapID string) (*trade.Trade, error) {
-	currentTrade, ok := r.trades[swapID]
+func (r InMemoryTradeRepository) getOrCreateTrade(tradeID *uuid.UUID) (*trade.Trade, error) {
+	if tradeID == nil {
+		t := trade.NewTrade()
+		r.trades[t.ID()] = t
+		return t, nil
+	}
+
+	currentTrade, ok := r.trades[*tradeID]
 	if !ok {
 		t := trade.NewTrade()
-		r.trades[swapID] = t
-		return t, nil
+		r.trades[t.ID()] = t
+		return t, nil	
 	}
 
 	return currentTrade, nil
 }
 
 func (r InMemoryTradeRepository) getAllTrades() ([]*trade.Trade, error) {
-	contain := func(trades []*trade.Trade, tradeID string) bool {
-		for _, trade := range trades {
-			if ids(trade.ID()).contain(tradeID) {
-				return true
-			}
-		}
-		return false
-	}
-
-	trades := make([]*trade.Trade, 0)
-	for tradeID, trade := range r.trades {
-		if !contain(trades, tradeID) {
-			trades = append(trades, trade)
-		}
+	trades := make([]*trade.Trade, 0, len(r.trades))
+	for _, trade := range r.trades {
+		trades = append(trades, trade)
 	}
 	return trades, nil
 }
 
 func (r InMemoryTradeRepository) getAllTradesByMarket(marketQuoteAsset string) ([]*trade.Trade, error) {
-	swapIDs, ok := r.tradesByMarket[marketQuoteAsset]
+	tradeIDs, ok := r.tradesByMarket[marketQuoteAsset]
 	if !ok {
 		return nil, ErrEmptyTradesByMarket
 	}
 
-	trades := r.tradesFromSwapIDs(swapIDs)
+	trades := r.tradesFromIDs(tradeIDs)
 	return trades, nil
 }
 
 func (r InMemoryTradeRepository) getAllTradesByTrader(traderID string) ([]*trade.Trade, error) {
-	swapIDs, ok := r.tradesByTrader[traderID]
+	tradeIDs, ok := r.tradesByTrader[traderID]
 	if !ok {
 		return nil, nil
 	}
 
-	trades := r.tradesFromSwapIDs(swapIDs)
+	trades := r.tradesFromIDs(tradeIDs)
 	return trades, nil
 }
 
-func (r InMemoryTradeRepository) tradesFromSwapIDs(swapIDs []string) []*trade.Trade {
-	trades := make([]*trade.Trade, 0, len(swapIDs))
-	for _, swapID := range swapIDs {
-		trades = append(trades, r.trades[swapID])
+func (r InMemoryTradeRepository) tradesFromIDs(tradeIDs []uuid.UUID) []*trade.Trade {
+	trades := make([]*trade.Trade, 0, len(tradeIDs))
+	for _, tradeID := range tradeIDs {
+		trades = append(trades, r.trades[tradeID])
 	}
 	return trades
 }
 
-func (r InMemoryTradeRepository) addTradeByMarket(marketQuoteAsset string, tradeID string) {
+func (r InMemoryTradeRepository) addTradeByMarket(marketQuoteAsset string, tradeID uuid.UUID) {
 	trades, ok := r.tradesByMarket[marketQuoteAsset]
 	if !ok {
-		r.tradesByMarket[marketQuoteAsset] = ids{tradeID}
+		r.tradesByMarket[marketQuoteAsset] = []uuid.UUID{tradeID}
 		return
 	}
 
-	if !trades.contain(tradeID) {
+	if !contain(trades, tradeID) {
 		r.tradesByMarket[marketQuoteAsset] = append(
 			r.tradesByMarket[marketQuoteAsset],
 			tradeID,
@@ -169,14 +168,14 @@ func (r InMemoryTradeRepository) addTradeByMarket(marketQuoteAsset string, trade
 	}
 }
 
-func (r InMemoryTradeRepository) addTradeByTrader(traderID string, tradeID string) {
+func (r InMemoryTradeRepository) addTradeByTrader(traderID string, tradeID uuid.UUID) {
 	trades, ok := r.tradesByTrader[traderID]
 	if !ok {
-		r.tradesByTrader[traderID] = ids{tradeID}
+		r.tradesByTrader[traderID] = []uuid.UUID{tradeID}
 		return
 	}
 
-	if !trades.contain(tradeID) {
+	if !contain(trades, tradeID) {
 		r.tradesByTrader[traderID] = append(
 			r.tradesByTrader[traderID],
 			tradeID,
@@ -184,11 +183,9 @@ func (r InMemoryTradeRepository) addTradeByTrader(traderID string, tradeID strin
 	}
 }
 
-type ids []string
-
-func (i ids) contain(str string) bool {
-	for _, s := range i {
-		if s == str {
+func contain(list []uuid.UUID, id uuid.UUID) bool {
+	for _, l := range list {
+		if id == l {
 			return true
 		}
 	}
