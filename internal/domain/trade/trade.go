@@ -77,7 +77,7 @@ func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 	t.marketQuoteAsset = marketQuoteAsset
 	t.swapRequest.id = swapRequest.GetId()
 	t.timestamp.request = uint64(time.Now().Unix())
-	t.timestamp.expiry = t.timestamp.request + uint64(config.GetInt(config.TradeExpirationIntervalKey))
+	t.timestamp.expiry = t.timestamp.request + uint64(config.GetInt(config.TradeExpiryTimeKey))
 	t.psetBase64 = swapRequest.GetTransaction()
 
 	msg, err := pkgswap.ParseSwapRequest(swapRequest)
