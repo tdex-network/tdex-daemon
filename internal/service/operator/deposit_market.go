@@ -41,9 +41,9 @@ func (s *Service) DepositMarket(
 		}
 
 		s.crawlerSvc.AddObservable(&crawler.AddressObservable{
-			AccountType: accountIndex,
-			Address:     addr,
-			BlindingKey: blindingKey,
+			AccountIndex: accountIndex,
+			Address:      addr,
+			BlindingKey:  blindingKey,
 		})
 
 		return v, nil

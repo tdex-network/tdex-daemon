@@ -124,9 +124,9 @@ func getObjectsToObserve(
 
 		for i, a := range addresses {
 			observables = append(observables, &crawler.AddressObservable{
-				AccountType: m.AccountIndex(),
-				Address:     a,
-				BlindingKey: blindingKeys[i],
+				AccountIndex: m.AccountIndex(),
+				Address:      a,
+				BlindingKey:  blindingKeys[i],
 			})
 		}
 	}
@@ -141,9 +141,9 @@ func getObjectsToObserve(
 	}
 	for i, a := range addresses {
 		observables = append(observables, &crawler.AddressObservable{
-			AccountType: vault.FeeAccount,
-			Address:     a,
-			BlindingKey: blindingKeys[i],
+			AccountIndex: vault.FeeAccount,
+			Address:      a,
+			BlindingKey:  blindingKeys[i],
 		})
 	}
 

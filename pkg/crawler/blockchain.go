@@ -61,10 +61,10 @@ type Observable interface {
 }
 
 type AddressObservable struct {
-	AccountType int
-	AssetHash   string
-	Address     string
-	BlindingKey []byte
+	AccountIndex int
+	AssetHash    string
+	Address      string
+	BlindingKey  []byte
 }
 
 type TransactionObservable struct {
@@ -224,7 +224,7 @@ func (a *AddressObservable) observe(
 		errChan <- err
 	}
 	var eventType int
-	switch a.AccountType {
+	switch a.AccountIndex {
 	case vault.FeeAccount:
 		eventType = FeeAccountDeposit
 	default:
@@ -232,7 +232,7 @@ func (a *AddressObservable) observe(
 	}
 	event := AddressEvent{
 		EventType:   eventType,
-		AccountType: a.AccountType,
+		AccountType: a.AccountIndex,
 		Address:     a.Address,
 		Utxos:       unspents,
 	}

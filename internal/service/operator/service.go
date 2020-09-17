@@ -154,12 +154,8 @@ events:
 			}
 			s.unspentRepository.AddUnspent(unspents)
 
-			var quoteAsset string
 			fundingTxs := make([]market.OutpointWithAsset, 0)
 			for _, u := range e.Utxos {
-				if u.Asset() != config.GetString(config.BaseAssetKey) {
-					quoteAsset = u.Asset()
-				}
 				tx := market.OutpointWithAsset{
 					Asset: u.Asset(),
 					Txid:  u.Hash(),
@@ -168,9 +164,9 @@ events:
 				fundingTxs = append(fundingTxs, tx)
 			}
 
-			m, _, err := s.marketRepository.GetMarketByAsset(
+			m, err := s.marketRepository.GetOrCreateMarket(
 				context.Background(),
-				quoteAsset,
+				e.AccountType,
 			)
 			if err != nil {
 				log.Error(err)
