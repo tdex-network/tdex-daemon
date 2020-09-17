@@ -30,10 +30,10 @@ type Event interface {
 }
 
 type AddressEvent struct {
-	EventType   int
-	AccountType int
-	Address     string
-	Utxos       []explorer.Utxo
+	EventType    int
+	AccountIndex int
+	Address      string
+	Utxos        []explorer.Utxo
 }
 
 func (a AddressEvent) Type() int {
@@ -231,10 +231,10 @@ func (a *AddressObservable) observe(
 		eventType = MarketAccountDeposit
 	}
 	event := AddressEvent{
-		EventType:   eventType,
-		AccountType: a.AccountIndex,
-		Address:     a.Address,
-		Utxos:       unspents,
+		EventType:    eventType,
+		AccountIndex: a.AccountIndex,
+		Address:      a.Address,
+		Utxos:        unspents,
 	}
 	eventChan <- event
 }

@@ -166,7 +166,7 @@ events:
 
 			m, err := s.marketRepository.GetOrCreateMarket(
 				context.Background(),
-				e.AccountType,
+				e.AccountIndex,
 			)
 			if err != nil {
 				log.Error(err)
