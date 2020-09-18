@@ -49,7 +49,7 @@ func init() {
 	vip.SetDefault(DataDirPathKey, btcutil.AppDataDir("tdex-daemon", false))
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)
-	vip.SetDefault(CrawlIntervalKey, 1)                 //TODO check this value
+	vip.SetDefault(CrawlIntervalKey, 5)                 //TODO check this value
 	vip.SetDefault(FeeAccountBalanceThresholdKey, 1000) //TODO check this value
 	vip.SetDefault(NetworkKey, network.Regtest.Name)
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)

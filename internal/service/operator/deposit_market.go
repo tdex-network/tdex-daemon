@@ -2,12 +2,11 @@ package operatorservice
 
 import (
 	"context"
-	"errors"
-	"fmt"
+	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 )
@@ -15,47 +14,64 @@ import (
 func (s *Service) DepositMarket(
 	ctx context.Context,
 	depositMarketReq *pb.DepositMarketRequest,
-) (*pb.DepositMarketReply, error) {
+) (reply *pb.DepositMarketReply, errResp error) {
 
-	//TODO
-	//generate fee account address
-	feeAccountAddress := "dummy"
-	//fetch fee account balance
-	feeAccountBalance := s.unspentRepository.GetBalance(
-		feeAccountAddress,
-		config.GetString(config.BaseAssetKey),
-	)
-
-	//if fee account balance > FEE_ACCOUNT_BALANCE_LIMIT
-	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-		log.Debug("fee account balance too low, cant deposit market")
-		return nil, errors.New("fee account balance too low, " +
-			"cant deposit market")
-	}
-	//create market
-	_, latestAccountIndex, err := s.marketRepository.GetLatestMarket(context.Background())
-	if err != nil {
-		log.Debug("latest market")
-		panic(fmt.Errorf("latest market: %w", err))
+	var accountIndex int
+	if depositMarketReq.GetMarket().GetQuoteAsset() != "" {
+		log.Debug("existing market")
+		_, a, err := s.marketRepository.GetMarketByAsset(
+			ctx,
+			depositMarketReq.GetMarket().GetQuoteAsset(),
+		)
+		if err != nil {
+			log.Error(err)
+			errResp = err
+			return
+		}
+		accountIndex = a
 	}
 
-	nextAccountIndex := latestAccountIndex + 1
-	_, err = s.marketRepository.GetOrCreateMarket(ctx, nextAccountIndex)
-	if err != nil {
+	if accountIndex == 0 {
+		log.Debug("new market")
+		_, latestAccountIndex, err := s.marketRepository.GetLatestMarket(context.Background())
+		if err != nil {
+			log.Error(err)
+			errResp = err
+			return
+		}
+
+		accountIndex = latestAccountIndex + 1
+		_, err = s.marketRepository.GetOrCreateMarket(ctx, accountIndex)
+		if err != nil {
+			log.Error(err)
+			errResp = err
+			return
+		}
+	}
+
+	if err := s.vaultRepository.UpdateVault(ctx, nil, "",
+		func(v *vault.Vault) (*vault.Vault, error) {
+			addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+			if err != nil {
+				return nil, err
+			}
+
+			reply = &pb.DepositMarketReply{
+				Address: addr,
+			}
+
+			s.crawlerSvc.AddObservable(&crawler.AddressObservable{
+				AccountIndex: accountIndex,
+				Address:      addr,
+				BlindingKey:  blindingKey,
+			})
+
+			return v, nil
+		}); err != nil {
 		log.Error(err)
-		return nil, err
+		errResp = status.Error(codes.Internal, err.Error())
+		return
 	}
 
-	//Create new address for market
-	marketAddress := "dummy"
-	//Add newly created address to crawler
-	s.crawlerSvc.AddObservable(&crawler.AddressObservable{
-		AccountType: vault.MarketAccountStart, //TODO update
-		AssetHash:   depositMarketReq.GetMarket().GetQuoteAsset(),
-		Address:     marketAddress,
-	})
-
-	return &pb.DepositMarketReply{
-		Address: marketAddress,
-	}, nil
+	return
 }

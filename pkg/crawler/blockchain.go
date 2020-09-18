@@ -30,11 +30,10 @@ type Event interface {
 }
 
 type AddressEvent struct {
-	EventType   int
-	AccountType int
-	Address     string
-	AssetHash   string
-	Utxos       []explorer.Utxo
+	EventType    int
+	AccountIndex int
+	Address      string
+	Utxos        []explorer.Utxo
 }
 
 func (a AddressEvent) Type() int {
@@ -62,10 +61,10 @@ type Observable interface {
 }
 
 type AddressObservable struct {
-	AccountType int
-	AssetHash   string
-	Address     string
-	BlindingKey [][]byte
+	AccountIndex int
+	AssetHash    string
+	Address      string
+	BlindingKey  []byte
 }
 
 type TransactionObservable struct {
@@ -106,6 +105,8 @@ func NewService(
 	}
 }
 
+//Start starts crawler which periodically "scans" blockchain for specific
+//events/Observable object
 func (u *utxoCrawler) Start() {
 	var wg sync.WaitGroup
 	log.Debug("start observe")
@@ -126,6 +127,7 @@ func (u *utxoCrawler) Start() {
 	}
 }
 
+//Stop stops crawler
 func (u *utxoCrawler) Stop() {
 	u.quitChan <- 1
 }
@@ -136,12 +138,15 @@ func (u *utxoCrawler) getObservable() []Observable {
 	return u.observables
 }
 
+//AddObservable adds new Observable to the list of Observables to be "watched
+//over"
 func (u *utxoCrawler) AddObservable(observable Observable) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 	u.observables = append(u.observables, observable)
 }
 
+//RemoveObservable stops "watching" given Observable
 func (u *utxoCrawler) RemoveObservable(observable Observable) {
 	observables := u.getObservable()
 
@@ -188,6 +193,8 @@ func (u *utxoCrawler) removeTransactionObservable(
 	u.observables = newObservableList
 }
 
+//GetEventChannel returns Event channel which can be used to "listen" to
+//blockchain events
 func (u *utxoCrawler) GetEventChannel() chan Event {
 	return u.eventChan
 }
@@ -212,23 +219,22 @@ func (a *AddressObservable) observe(
 		return
 	}
 
-	unspents, err := explorerSvc.GetUnSpents(a.Address, a.BlindingKey)
+	unspents, err := explorerSvc.GetUnSpents(a.Address, [][]byte{a.BlindingKey})
 	if err != nil {
 		errChan <- err
 	}
 	var eventType int
-	switch a.AccountType {
+	switch a.AccountIndex {
 	case vault.FeeAccount:
 		eventType = FeeAccountDeposit
 	default:
 		eventType = MarketAccountDeposit
 	}
 	event := AddressEvent{
-		EventType:   eventType,
-		AccountType: a.AccountType,
-		Address:     a.Address,
-		AssetHash:   a.AssetHash,
-		Utxos:       unspents,
+		EventType:    eventType,
+		AccountIndex: a.AccountIndex,
+		Address:      a.Address,
+		Utxos:        unspents,
 	}
 	eventChan <- event
 }
