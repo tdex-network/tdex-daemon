@@ -66,6 +66,17 @@ func (r InMemoryMarketRepository) GetTradableMarkets(_ context.Context) (tradabl
 	return tradableMarkets, nil
 }
 
+// GetAllMarkets returns all the markets either tradable or not.
+func (r InMemoryMarketRepository) GetAllMarkets(_ context.Context) (
+	markets []market.Market, err error,
+) {
+	for _, mkt := range r.markets {
+		markets = append(markets, mkt)
+	}
+
+	return
+}
+
 //UpdateMarket updates data to a market identified by the account index passing an update function
 func (r InMemoryMarketRepository) UpdateMarket(
 	_ context.Context,

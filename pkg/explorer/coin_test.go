@@ -45,7 +45,7 @@ func newTestData() (string, []byte, error) {
 }
 
 func TestGetUnspents(t *testing.T) {
-	address, _, err := newTestData()
+	address, blindKey, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,9 @@ func TestGetUnspents(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 
-	utxos, err := GetUnSpents(address)
+	explorerSvc := NewService()
+
+	utxos, err := explorerSvc.GetUnSpents(address, [][]byte{blindKey})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +81,8 @@ func TestSelectUtxos(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 
-	utxos, err := GetUnSpents(address)
+	explorerSvc := NewService()
+	utxos, err := explorerSvc.GetUnSpents(address, [][]byte{key1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,12 +109,13 @@ func TestSelectUtxos(t *testing.T) {
 }
 
 func TestFailingSelectUtxos(t *testing.T) {
-	address, _, err := newTestData()
+	address, blindKey, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	utxos, err := GetUnSpents(address)
+	explorerSvc := NewService()
+	utxos, err := explorerSvc.GetUnSpents(address, [][]byte{blindKey})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,6 +193,51 @@ func TestGetBestPairs(t *testing.T) {
 			})
 			if got := getBestCombination(tt.args.items, tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getBestPairs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFindIndexes(t *testing.T) {
+	type args struct {
+		list                 []uint64
+		unblindedUtxosValues []uint64
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{
+			name: "1",
+			args: args{
+				list:                 []uint64{1000},
+				unblindedUtxosValues: []uint64{1000, 1000, 1000},
+			},
+			want: []int{0},
+		},
+		{
+			name: "2",
+			args: args{
+				list:                 []uint64{1000, 1000},
+				unblindedUtxosValues: []uint64{1000, 2000, 1000},
+			},
+			want: []int{0, 2},
+		},
+		{
+			name: "3",
+			args: args{
+				list: []uint64{2000, 2000},
+				unblindedUtxosValues: []uint64{1000, 2000, 1000, 2000, 2000,
+					2000},
+			},
+			want: []int{1, 3},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := findIndexes(tt.args.list, tt.args.unblindedUtxosValues); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("findIndexes() = %v, want %v", got, tt.want)
 			}
 		})
 	}

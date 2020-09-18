@@ -255,6 +255,8 @@ github.com/tdex-network/tdex-protobuf v0.0.0-20200903192950-989e2668cfa3 h1:Cw4O
 github.com/tdex-network/tdex-protobuf v0.0.0-20200903192950-989e2668cfa3/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/tdex-network/tdex-protobuf v0.0.0-20200903194015-79476343ff84 h1:HzuIhdPMDhUSFhmaU4Ko7PsXDUsnpOhfduusLMlCOBM=
 github.com/tdex-network/tdex-protobuf v0.0.0-20200903194015-79476343ff84/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200911162845-a1849107cebe h1:q59NAkgbS9xlZnBWrzfhQzyfdxFqLnlBCU0osDIrSRI=
+github.com/tdex-network/tdex-protobuf v0.0.0-20200911162845-a1849107cebe/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/tdex-network/tdex-protobuf v0.0.0-20200914144918-7049f983d474 h1:8W2Z8+6t6m9UtvH8oxO9+b2gWHwV/3yTAIcy7k83URg=
 github.com/tdex-network/tdex-protobuf v0.0.0-20200914144918-7049f983d474/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/tdex-network/tdex-protobuf v0.0.0-20200915162213-fc06399d7707 h1:2XFhpn1npzRKjKHwHw6+gZmpzNOVIRDAuoIF7ozFXuA=
@@ -262,10 +264,14 @@ github.com/tdex-network/tdex-protobuf v0.0.0-20200915162213-fc06399d7707/go.mod 
 github.com/thanhpk/randstr v1.0.4 h1:IN78qu/bR+My+gHCvMEXhR/i5oriVHcTB/BJJIRTsNo=
 github.com/thanhpk/randstr v1.0.4/go.mod h1:M/H2P1eNLZzlDwAzpkkkUvoyNNMbzRGhESZuEQk3r0U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
+github.com/tyler-smith/go-bip39 v1.0.2 h1:+t3w+KwLXO6154GNJY+qUtIxLTmFjfUmpguQT1OlOT8=
+github.com/tyler-smith/go-bip39 v1.0.2/go.mod h1:sJ5fKU0s6JVwZjjcUEX2zFOnvq0ASQ2K9Zr6cf67kNs=
 github.com/vulpemventures/fastsha256 v0.0.0-20160815193821-637e65642941 h1:CTcw80hz/Sw8hqlKX5ZYvBUF5gAHSHwdjXxRf/cjDcI=
 github.com/vulpemventures/fastsha256 v0.0.0-20160815193821-637e65642941/go.mod h1:GXBJykxW2kUcktGdsgyay7uwwWvkljASfljNcT0mbh8=
-github.com/vulpemventures/go-elements v0.0.3 h1:nuJ1B/xAOS0sElOypR27VAEJx1dmdembn6Mxf1rfxUk=
-github.com/vulpemventures/go-elements v0.0.3/go.mod h1:fqCaLizJz7kopPsW8jetD2FgKQGm1bM2ON9/5rZskOc=
+github.com/vulpemventures/go-bip39 v1.0.2 h1:+BgKOVo04okKf1wA4Fhv8ccvql+qFyzVUdVJKkb48r0=
+github.com/vulpemventures/go-bip39 v1.0.2/go.mod h1:mjFmuv9D6BtANI6iscMmbHhmBOwjMCFfny3mxHnuDrk=
+github.com/vulpemventures/go-elements v0.0.4-0.20200901152827-3e772f50e0dc h1:kydqLEuoFrijcDY+akX0syl14dUiMvWCWR3ib1KI01M=
+github.com/vulpemventures/go-elements v0.0.4-0.20200901152827-3e772f50e0dc/go.mod h1:fqCaLizJz7kopPsW8jetD2FgKQGm1bM2ON9/5rZskOc=
 github.com/vulpemventures/go-secp256k1-zkp v1.0.1 h1:myxKDZRR9CEj7Tz262lb6CIsmROFnYIZz7ySt79WtVw=
 github.com/vulpemventures/go-secp256k1-zkp v1.0.1/go.mod h1:zo7CpgkuPgoe7fAV+inyxsI9IhGmcoFgyD8nqZaPSOM=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=

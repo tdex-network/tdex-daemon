@@ -2,11 +2,13 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/btcsuite/btcutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 const (
@@ -22,8 +24,14 @@ const (
 	LogLevelKey = "LOG_LEVEL"
 	// DefaultFeeKey ...
 	DefaultFeeKey = "DEFAULT_FEE"
+	// NetworkKey ...
+	NetworkKey = "NETWORK"
 	// BaseAssetKey ...
 	BaseAssetKey = "BASE_ASSET"
+	// CrawlIntervalKey ...
+	CrawlIntervalKey = "CRAWL_INTERVAL"
+	// FeeAccountBalanceThresholdKey ...
+	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
 )
 
 var vip *viper.Viper
@@ -39,7 +47,10 @@ func init() {
 	vip.SetDefault(DataDirPathKey, btcutil.AppDataDir("tdex-daemon", false))
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)
-	vip.SetDefault(BaseAssetKey, "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225")
+	vip.SetDefault(CrawlIntervalKey, 5)                 //TODO check this value
+	vip.SetDefault(FeeAccountBalanceThresholdKey, 1000) //TODO check this value
+	vip.SetDefault(NetworkKey, network.Regtest.Name)
+	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
 
 }
 
@@ -68,9 +79,20 @@ func GetBool(key string) bool {
 	return vip.GetBool(key)
 }
 
+//GetNetwork ...
+func GetNetwork() *network.Network {
+	if vip.GetString(NetworkKey) == network.Regtest.Name {
+		return &network.Regtest
+	}
+	return &network.Liquid
+}
+
 // Validate method of config will panic
 func Validate() {
 	if err := validateDefaultFee(vip.GetFloat64(DefaultFeeKey)); err != nil {
+		log.Fatalln(err)
+	}
+	if err := validateDefaultNetwork(vip.GetString(NetworkKey)); err != nil {
 		log.Fatalln(err)
 	}
 }
@@ -80,5 +102,16 @@ func validateDefaultFee(fee float64) error {
 		return errors.New("percentage of the fee on each swap must be > 0.01 and < 99")
 	}
 
+	return nil
+}
+
+func validateDefaultNetwork(net string) error {
+	if net != network.Liquid.Name && net != network.Regtest.Name {
+		return fmt.Errorf(
+			"network must be either '%s' or '%s'",
+			network.Liquid.Name,
+			network.Regtest.Name,
+		)
+	}
 	return nil
 }
