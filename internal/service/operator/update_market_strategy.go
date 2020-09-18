@@ -26,18 +26,18 @@ func (s *Service) UpdateMarketStrategy(ctx context.Context, req *pb.UpdateMarket
 	}
 
 	//For now we support only BALANCED or PLUGGABLE (ie. price feed)
-	requestStrategy := req.GetStrategy()
+	requestStrategy := req.GetStrategyType()
 	//Updates the strategy
 	if err := s.marketRepository.UpdateMarket(context.Background(), accountIndex, func(m *market.Market) (*market.Market, error) {
 
 		switch requestStrategy {
 
-		case pb.Strategy_PLUGGABLE:
+		case pb.StrategyType_PLUGGABLE:
 			if err := m.MakeStrategyPluggable(); err != nil {
 				return nil, err
 			}
 
-		case pb.Strategy_BALANCED:
+		case pb.StrategyType_BALANCED:
 			if err := m.MakeStrategyBalanced(); err != nil {
 				return nil, err
 			}

@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	weightIn  = 50
-	weightOut = 50
+	balancedWeightIn  = 50
+	balancedWeightOut = 50
 )
 
 var (
@@ -23,38 +23,46 @@ var (
 //BalancedReserves defines an AMM strategy with fixed 50/50 reserves
 type BalancedReserves struct{}
 
-// SpotPrice calculates the spot price without fee given the balances. The weight reserve ratio is fixed at 50/50
-func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice int64) {
-	// TODO sanitize numbers
-	numer := Div(opts.BalanceIn, weightIn)
-	denom := Div(opts.BalanceOut, weightOut)
-
+// SpotPrice calculates the spot price (without fees) given the balances fo the two reserves. The weight reserve ratio is fixed at 50/50
+func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice uint64) {
+	// 2 : 20k = 1 : x
+	// BI : BO = OneInput : SpotPrice
+	numer := Div(opts.BalanceOut, balancedWeightOut)
+	denom := Div(opts.BalanceIn, balancedWeightIn)
 	ratio := DivDecimal(numer, denom)
-	scale := Div(BigOne, BigOne-opts.Fee)
-
-	spotPrice = MulDecimal(MulDecimal(ratio, scale), BigOneDecimal).IntPart()
-	return
+	return ratio.BigInt().Uint64()
 }
 
 // OutGivenIn returns the amountOut of asset that will be exchanged for the given amountIn
-func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn int64) (amountOut int64) {
-	weightRatio := Div(weightIn, weightOut)
+func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn uint64) (amountOut uint64) {
+
+	invariant := Mul(opts.BalanceIn, opts.BalanceOut)
+	nextInBalance := Add(opts.BalanceIn, amountIn)
+	nextOutBalance := DivDecimal(invariant, nextInBalance)
+	amountOutWithoutFees := Sub(opts.BalanceOut, nextOutBalance.BigInt().Uint64()).BigInt().Uint64()
 
 	if opts.ChargeFeeOnTheWayIn {
-		adjustedIn := amountIn * (BigOne - opts.Fee)
-
-		y := Div(opts.BalanceIn, (opts.BalanceIn + adjustedIn))
-		foo := y.Pow(weightRatio)
-		bar := SubDecimal(BigOneDecimal, foo)
-
-		amountOut = MulDecimal(Mul(opts.BalanceOut, 1), bar).IntPart()
-		return
+		amountOut, _ = LessFee(amountOutWithoutFees, opts.Fee)
+	} else {
+		amountOut, _ = PlusFee(amountOutWithoutFees, opts.Fee)
 	}
 
 	return
 }
 
-// InGivenOut returns the amountIn of assets that will be needed for the exchanging the desired amountOut of asset
-func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut int64) int64 {
-	return 0
+// InGivenOut returns the amountIn of assets that will be needed for having the desired amountOut in return
+func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut uint64) (amountIn uint64) {
+
+	invariant := Mul(opts.BalanceIn, opts.BalanceOut)
+	nextOutBalance := Sub(opts.BalanceOut, amountOut)
+	nextInBalance := DivDecimal(invariant, nextOutBalance)
+	amountInWithoutFees := Sub(nextInBalance.BigInt().Uint64(), opts.BalanceIn).BigInt().Uint64()
+
+	if opts.ChargeFeeOnTheWayIn {
+		amountIn, _ = PlusFee(amountInWithoutFees, opts.Fee)
+	} else {
+		amountIn, _ = LessFee(amountInWithoutFees, opts.Fee)
+	}
+
+	return
 }

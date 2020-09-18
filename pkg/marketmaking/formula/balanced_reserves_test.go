@@ -6,7 +6,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 )
 
-func TestBalancedReserves_SpotPrice(t *testing.T) {
+/* func TestBalancedReserves_SpotPrice(t *testing.T) {
 	type args struct {
 		opts *marketmaking.FormulaOpts
 	}
@@ -17,16 +17,15 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 		wantSpotPrice int64
 	}{
 		{
-			"Spot Price",
+			"OutGivenIn",
 			BalancedReserves{},
 			args{
 				opts: &marketmaking.FormulaOpts{
-					BalanceIn:  8000 * BigOne,
-					BalanceOut: BigOne,
-					Fee:        250000,
+					BalanceIn:  2 * BigOne,
+					BalanceOut: 2 * 9760 * BigOne,
 				},
 			},
-			802005016000,
+			9760,
 		},
 	}
 	for _, tt := range tests {
@@ -38,39 +37,102 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 		})
 	}
 }
-
+*/
 func TestBalancedReserves_OutGivenIn(t *testing.T) {
 	type args struct {
 		opts     *marketmaking.FormulaOpts
-		amountIn int64
+		amountIn uint64
 	}
 	tests := []struct {
 		name          string
 		b             BalancedReserves
 		args          args
-		wantAmountOut int64
+		wantAmountOut uint64
 	}{
 		{
-			"OutGivenIn",
+			"OutGivenIn with fee taken on the input",
 			BalancedReserves{},
 			args{
 				opts: &marketmaking.FormulaOpts{
-					BalanceIn:           8000 * BigOne,
-					BalanceOut:          BigOne,
-					Fee:                 1,
+					BalanceIn:           100000000,
+					BalanceOut:          650000000000,
+					Fee:                 25,
 					ChargeFeeOnTheWayIn: true,
 				},
-				amountIn: 8000 * BigOne,
+				amountIn: 10000,
 			},
-			9999999999999987,
+			64831026,
+		},
+		{
+			"OutGivenIn with the fee taken on the output",
+			BalancedReserves{},
+			args{
+				opts: &marketmaking.FormulaOpts{
+					BalanceIn:           100000000,
+					BalanceOut:          650000000000,
+					Fee:                 25,
+					ChargeFeeOnTheWayIn: false,
+				},
+				amountIn: 10000,
+			},
+			65155976,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := BalancedReserves{}
 			if gotAmountOut := b.OutGivenIn(tt.args.opts, tt.args.amountIn); gotAmountOut != tt.wantAmountOut {
-				println("got amount ", gotAmountOut/BigOne)
 				t.Errorf("BalancedReserves.OutGivenIn() = %v, want %v", gotAmountOut, tt.wantAmountOut)
+			}
+		})
+	}
+}
+
+func TestBalancedReserves_InGivenOut(t *testing.T) {
+	type args struct {
+		opts      *marketmaking.FormulaOpts
+		amountOut uint64
+	}
+	tests := []struct {
+		name         string
+		b            BalancedReserves
+		args         args
+		wantAmountIn uint64
+	}{
+		{
+			"InGivenOut with fee taken on the input",
+			BalancedReserves{},
+			args{
+				opts: &marketmaking.FormulaOpts{
+					BalanceIn:           650000000000,
+					BalanceOut:          100000000,
+					Fee:                 25,
+					ChargeFeeOnTheWayIn: true,
+				},
+				amountOut: 10000,
+			},
+			65169000,
+		},
+		{
+			"InGivenOut with fee taken on the output",
+			BalancedReserves{},
+			args{
+				opts: &marketmaking.FormulaOpts{
+					BalanceIn:           650000000000,
+					BalanceOut:          100000000,
+					Fee:                 25,
+					ChargeFeeOnTheWayIn: false,
+				},
+				amountOut: 10000,
+			},
+			64844000,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := BalancedReserves{}
+			if gotAmountIn := b.InGivenOut(tt.args.opts, tt.args.amountOut); gotAmountIn != tt.wantAmountIn {
+				t.Errorf("BalancedReserves.InGivenOut() = %v, want %v", gotAmountIn, tt.wantAmountIn)
 			}
 		})
 	}

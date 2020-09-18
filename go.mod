@@ -15,7 +15,7 @@ require (
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.5.1
-	github.com/tdex-network/tdex-protobuf v0.0.0-20200903194015-79476343ff84
+	github.com/tdex-network/tdex-protobuf v0.0.0-20200915162213-fc06399d7707
 	github.com/thanhpk/randstr v1.0.4
 	github.com/vulpemventures/go-elements v0.0.3
 	google.golang.org/grpc v1.27.0

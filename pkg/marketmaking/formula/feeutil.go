@@ -1,34 +1,31 @@
 package formula
 
-import "math/big"
+import (
+	"github.com/shopspring/decimal"
+)
 
-// PlusFee calculates an amount with a fee added given a bigInt amount and a fee expressed in basis point (ie. 0.25 = 25)
-func PlusFee(amount *big.Int, feeAsBasisPoint *big.Int) (withFee *big.Int, calculatedFee *big.Int) {
-	amountDividedByTenThousands := big.NewInt(0)
-	amountDividedByTenThousands.Div(amount, big.NewInt(10000))
+// TenThousands ...
+var TenThousands = 10000
 
-	calculatedFee = big.NewInt(0)
-	calculatedFee.Mul(amountDividedByTenThousands, feeAsBasisPoint)
+// TenThousandsDecimal ...
+var TenThousandsDecimal = decimal.NewFromInt(int64(TenThousands))
 
-	withFee = big.NewInt(0)
-	withFee.Add(amount, calculatedFee)
+// PlusFee calculates an amount with a fee added given a int64 amount and a fee expressed in basis point (ie. 0.25 = 25)
+func PlusFee(amount, feeAsBasisPoint uint64) (withFee, calculatedFee uint64) {
+
+	amountDividedByTenThousands := amount / uint64(TenThousands)
+	calculatedFee = amountDividedByTenThousands * feeAsBasisPoint
+	withFee = amount + calculatedFee
 
 	return withFee, calculatedFee
-
 }
 
-// LessFee calculates an amount with a fee subtracted given a bigInt amount and a bigInt fee expressed in basis point (ie. 0.25 = 25)
-func LessFee(amount *big.Int, feeAsBasisPoint *big.Int) (withFee *big.Int, calculatedFee *big.Int) {
+// LessFee calculates an amount with a subtracted given a int64 amount and a fee expressed in basis point (ie. 0.25 = 25)
+func LessFee(amount, feeAsBasisPoint uint64) (withFee, calculatedFee uint64) {
 
-	amountDividedByTenThousands := big.NewInt(0)
-	amountDividedByTenThousands.Div(amount, big.NewInt(10000))
-
-	calculatedFee = big.NewInt(0)
-	calculatedFee.Mul(amountDividedByTenThousands, feeAsBasisPoint)
-
-	withFee = big.NewInt(0)
-	withFee.Sub(amount, calculatedFee)
+	amountDividedByTenThousands := amount / uint64(TenThousands)
+	calculatedFee = amountDividedByTenThousands * feeAsBasisPoint
+	withFee = amount - calculatedFee
 
 	return withFee, calculatedFee
-
 }
