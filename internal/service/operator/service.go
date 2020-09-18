@@ -81,11 +81,12 @@ events:
 							false,
 							false,
 							nil, //TODO should this be populated
+							nil,
 						)
 						unspents = append(unspents, u)
 					}
 				}
-				err := s.unspentRepository.AddUnspent(unspents)
+				err := s.unspentRepository.AddUnspents(context.Background(), unspents)
 				if err != nil {
 					log.Warn(err)
 					continue events
@@ -109,6 +110,7 @@ events:
 				var feeAccountBalance uint64
 				for _, a := range addresses {
 					feeAccountBalance += s.unspentRepository.GetBalance(
+						context.Background(),
 						a,
 						config.GetString(config.BaseAssetKey),
 					)
@@ -166,11 +168,12 @@ events:
 							false,
 							false,
 							nil, //TODO should this be populated
+							nil,
 						)
 						unspents = append(unspents, u)
 					}
 				}
-				err := s.unspentRepository.AddUnspent(unspents)
+				err := s.unspentRepository.AddUnspents(context.Background(), unspents)
 				if err != nil {
 					log.Warn(err)
 					continue events

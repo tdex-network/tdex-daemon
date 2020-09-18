@@ -1,8 +1,10 @@
 package unspent
 
 import (
-	"github.com/magiconair/properties/assert"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/magiconair/properties/assert"
 )
 
 func TestLockUnlockUnSpents(t *testing.T) {
@@ -10,11 +12,12 @@ func TestLockUnlockUnSpents(t *testing.T) {
 		spent:  false,
 		locked: false,
 	}
+	tradeID := uuid.New()
 
 	u.Spend()
 	assert.Equal(t, u.spent, true)
 	u.UnLock()
 	assert.Equal(t, u.locked, false)
-	u.Lock()
+	u.Lock(&tradeID)
 	assert.Equal(t, u.locked, true)
 }
