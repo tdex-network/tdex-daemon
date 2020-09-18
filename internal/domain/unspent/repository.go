@@ -1,7 +1,7 @@
 package unspent
 
 type Repository interface {
-	AddUnspent(unspent []Unspent)
+	AddUnspent(unspent []Unspent) error
 	GetAllUnspent() []Unspent
 	GetBalance(address string, assetHash string) uint64
 	GetAvailableUnspent() []Unspent

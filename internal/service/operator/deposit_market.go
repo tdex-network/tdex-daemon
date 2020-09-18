@@ -2,7 +2,6 @@ package operatorservice
 
 import (
 	"context"
-	"fmt"
 	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -15,42 +14,64 @@ import (
 func (s *Service) DepositMarket(
 	ctx context.Context,
 	depositMarketReq *pb.DepositMarketRequest,
-) (reply *pb.DepositMarketReply, err error) {
+) (reply *pb.DepositMarketReply, errResp error) {
 
-	_, latestAccountIndex, err := s.marketRepository.GetLatestMarket(context.Background())
-	if err != nil {
-		log.Debug("latest market")
-		panic(fmt.Errorf("latest market: %w", err))
-	}
-
-	accountIndex := latestAccountIndex + 1
-	_, err = s.marketRepository.GetOrCreateMarket(ctx, accountIndex)
-	if err != nil {
-		log.Error(err)
-		return nil, err
-	}
-
-	if err = s.vaultRepository.UpdateVault(ctx, nil, "", func(v *vault.Vault) (*vault.Vault, error) {
-		addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+	var accountIndex int
+	if depositMarketReq.GetMarket().GetQuoteAsset() != "" {
+		log.Debug("existing market")
+		_, a, err := s.marketRepository.GetMarketByAsset(
+			ctx,
+			depositMarketReq.GetMarket().GetQuoteAsset(),
+		)
 		if err != nil {
-			return nil, err
+			log.Error(err)
+			errResp = err
+			return
+		}
+		accountIndex = a
+	}
+
+	if accountIndex == 0 {
+		log.Debug("new market")
+		_, latestAccountIndex, err := s.marketRepository.GetLatestMarket(context.Background())
+		if err != nil {
+			log.Error(err)
+			errResp = err
+			return
 		}
 
-		reply = &pb.DepositMarketReply{
-			Address: addr,
+		accountIndex = latestAccountIndex + 1
+		_, err = s.marketRepository.GetOrCreateMarket(ctx, accountIndex)
+		if err != nil {
+			log.Error(err)
+			errResp = err
+			return
 		}
+	}
 
-		s.crawlerSvc.AddObservable(&crawler.AddressObservable{
-			AccountIndex: accountIndex,
-			Address:      addr,
-			BlindingKey:  blindingKey,
-		})
+	if err := s.vaultRepository.UpdateVault(ctx, nil, "",
+		func(v *vault.Vault) (*vault.Vault, error) {
+			addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+			if err != nil {
+				return nil, err
+			}
 
-		return v, nil
-	}); err != nil {
-		err = status.Error(codes.Internal, err.Error())
+			reply = &pb.DepositMarketReply{
+				Address: addr,
+			}
+
+			s.crawlerSvc.AddObservable(&crawler.AddressObservable{
+				AccountIndex: accountIndex,
+				Address:      addr,
+				BlindingKey:  blindingKey,
+			})
+
+			return v, nil
+		}); err != nil {
+		log.Error(err)
+		errResp = status.Error(codes.Internal, err.Error())
 		return
 	}
 
-	return nil, nil
+	return
 }
