@@ -45,7 +45,11 @@ func main() {
 
 	explorerSvc := explorer.NewService()
 	observables, err := getObjectsToObserve(marketRepository, vaultRepository)
-	crawlerSvc := crawler.NewService(explorerSvc, observables, nil)
+
+	errorHandler := func(err error) {
+		log.Warn(err)
+	}
+	crawlerSvc := crawler.NewService(explorerSvc, observables, errorHandler)
 
 	// Init services
 	tradeSvc := tradeservice.NewService(marketRepository)
@@ -84,12 +88,6 @@ func main() {
 
 	log.Debug("trader interface is listening on " + traderAddress)
 	log.Debug("operator interface is listening on " + operatorAddress)
-
-	// TODO: to be removed.
-	// Add a sample market
-	tradeSvc.AddTestMarket(true)
-	// Add anothet right away
-	tradeSvc.AddTestMarket(false)
 
 	defer traderGrpcServer.Stop()
 	defer operatorGrpcServer.Stop()
