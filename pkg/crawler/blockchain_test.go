@@ -16,8 +16,8 @@ func TestCrawler(t *testing.T) {
 	observables := make([]Observable, 0)
 	for i := 0; i < 100; i++ {
 		adrObservable := AddressObservable{
-			AccountType: 1,
-			Address:     strconv.Itoa(i),
+			AccountIndex: 1,
+			Address:      strconv.Itoa(i),
 		}
 		trxObservable := TransactionObservable{
 			TxID: strconv.Itoa(i),
@@ -63,8 +63,8 @@ func stopCrawlerAfterTimeout(crawler Service) {
 func removeObservableAfterTimeout(crawler Service) {
 	time.Sleep(2 * time.Second)
 	crawler.RemoveObservable(&AddressObservable{
-		AccountType: 0,
-		Address:     "2",
+		AccountIndex: 0,
+		Address:      "2",
 	})
 	crawler.RemoveObservable(&TransactionObservable{
 		TxID: "5",
@@ -74,8 +74,8 @@ func removeObservableAfterTimeout(crawler Service) {
 func addObservableAfterTimeout(crawler Service) {
 	time.Sleep(5 * time.Second)
 	crawler.AddObservable(&AddressObservable{
-		AccountType: 0,
-		Address:     "101",
+		AccountIndex: 0,
+		Address:      "101",
 	})
 	crawler.AddObservable(&TransactionObservable{
 		TxID: "102",

@@ -3,6 +3,7 @@ package operatorservice
 import (
 	"context"
 	"encoding/hex"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -22,6 +23,12 @@ func (s *Service) DepositFeeAccount(ctx context.Context, req *pb.DepositFeeAccou
 			Address:  addr,
 			Blinding: hex.EncodeToString(blindingKey),
 		}
+
+		s.crawlerSvc.AddObservable(&crawler.AddressObservable{
+			AccountIndex: vault.FeeAccount,
+			Address:      addr,
+			BlindingKey:  blindingKey,
+		})
 
 		return v, nil
 	}); err != nil {

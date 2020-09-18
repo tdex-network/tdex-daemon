@@ -15,8 +15,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/storage"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/grpc"
 
 	operatorservice "github.com/tdex-network/tdex-daemon/internal/service/operator"
@@ -46,8 +44,12 @@ func main() {
 	vaultRepository := storage.NewInMemoryVaultRepository()
 
 	explorerSvc := explorer.NewService()
-	observables, err := getObjectsToObserv(marketRepository)
-	crawlerSvc := crawler.NewService(explorerSvc, observables, nil)
+	observables, err := getObjectsToObserve(marketRepository, vaultRepository)
+
+	errorHandler := func(err error) {
+		log.Warn(err)
+	}
+	crawlerSvc := crawler.NewService(explorerSvc, observables, errorHandler)
 
 	// Init services
 	tradeSvc := tradeservice.NewService(marketRepository)
@@ -87,12 +89,6 @@ func main() {
 	log.Debug("trader interface is listening on " + traderAddress)
 	log.Debug("operator interface is listening on " + operatorAddress)
 
-	// TODO: to be removed.
-	// Add a sample market
-	tradeSvc.AddTestMarket(true)
-	// Add anothet right away
-	tradeSvc.AddTestMarket(false)
-
 	defer traderGrpcServer.Stop()
 	defer operatorGrpcServer.Stop()
 
@@ -103,33 +99,49 @@ func main() {
 	log.Debug("exiting")
 }
 
-//TODO fetch all addresses to be observed - dummy implementation below
-func getObjectsToObserv(marketRepo market.Repository) (
-	[]crawler.Observable, error) {
-	markets, err := marketRepo.GetAllMarkets(context.Background())
+func getObjectsToObserve(
+	marketRepository market.Repository,
+	vaultRepository vault.Repository,
+) ([]crawler.Observable, error) {
+
+	//get all market addresses to observe
+	markets, err := marketRepository.GetAllMarkets(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	w, err := wallet.NewWallet(wallet.NewWalletOpts{
-		ExtraMnemonic: false,
-	})
-
 	observables := make([]crawler.Observable, 0)
 	for _, m := range markets {
-		opts := wallet.DeriveConfidentialAddressOpts{
-			DerivationPath: fmt.Sprintf("%v'/0/0", m.AccountIndex()),
-			Network:        &network.Liquid,
-		}
-		ctAddress, _, err := w.DeriveConfidentialAddress(opts)
+		addresses, blindingKeys, err := vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
+			context.Background(),
+			m.AccountIndex(),
+		)
 		if err != nil {
 			return nil, err
 		}
+
+		for i, a := range addresses {
+			observables = append(observables, &crawler.AddressObservable{
+				AccountIndex: m.AccountIndex(),
+				Address:      a,
+				BlindingKey:  blindingKeys[i],
+			})
+		}
+	}
+
+	//get fee account addresses to observe
+	addresses, blindingKeys, err := vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
+		context.Background(),
+		vault.FeeAccount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	for i, a := range addresses {
 		observables = append(observables, &crawler.AddressObservable{
-			AccountType: vault.FeeAccount,
-			AssetHash:   config.GetString(config.BaseAssetKey),
-			Address:     ctAddress,
-			BlindingKey: nil,
+			AccountIndex: vault.FeeAccount,
+			Address:      a,
+			BlindingKey:  blindingKeys[i],
 		})
 	}
 
