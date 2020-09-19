@@ -15,9 +15,9 @@ const (
 
 var (
 	//BigOne represents a single unit of an asset with precision 8
-	BigOne = int64(math.Pow10(8))
+	BigOne = uint64(math.Pow10(8))
 	//BigOneDecimal represents a single unit of an asset with precision 8 as decimal.Decimal
-	BigOneDecimal = decimal.NewFromInt(BigOne)
+	BigOneDecimal = decimal.NewFromInt(int64(BigOne))
 )
 
 //BalancedReserves defines an AMM strategy with fixed 50/50 reserves

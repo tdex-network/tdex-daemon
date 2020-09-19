@@ -6,7 +6,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 )
 
-/* func TestBalancedReserves_SpotPrice(t *testing.T) {
+func TestBalancedReserves_SpotPrice(t *testing.T) {
 	type args struct {
 		opts *marketmaking.FormulaOpts
 	}
@@ -14,7 +14,7 @@ import (
 		name          string
 		b             BalancedReserves
 		args          args
-		wantSpotPrice int64
+		wantSpotPrice uint64
 	}{
 		{
 			"OutGivenIn",
@@ -37,7 +37,7 @@ import (
 		})
 	}
 }
-*/
+
 func TestBalancedReserves_OutGivenIn(t *testing.T) {
 	type args struct {
 		opts     *marketmaking.FormulaOpts
