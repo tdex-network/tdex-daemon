@@ -82,7 +82,16 @@ func (r InMemoryUnspentRepository) GetAvailableUnspents(ctx context.Context) []u
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return getAvailableUnspents(r.storageByContext(ctx))
+	return getAvailableUnspents(r.storageByContext(ctx), nil)
+}
+
+// GetAvailableUnspentsForAddresses returns the list of unlocked unspents for
+// the given list of addresses
+func (r InMemoryUnspentRepository) GetAvailableUnspentsForAddresses(ctx context.Context, addresses []string) []unspent.Unspent {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return getAvailableUnspents(r.storageByContext(ctx), addresses)
 }
 
 // LockUnspents locks the given unspents associating them with the trade where
@@ -206,11 +215,20 @@ func getUnlockedBalance(storage map[unspent.UnspentKey]unspent.Unspent, address,
 	return balance
 }
 
-func getAvailableUnspents(storage map[unspent.UnspentKey]unspent.Unspent) []unspent.Unspent {
+func getAvailableUnspents(storage map[unspent.UnspentKey]unspent.Unspent, addresses []string) []unspent.Unspent {
 	unspents := make([]unspent.Unspent, 0)
 	for _, u := range storage {
 		if u.IsSpent() == false && u.IsLocked() == false {
-			unspents = append(unspents, u)
+			if len(addresses) == 0 {
+				unspents = append(unspents, u)
+			} else {
+				for _, addr := range addresses {
+					if addr == u.Address() {
+						unspents = append(unspents, u)
+						break
+					}
+				}
+			}
 		}
 	}
 	return unspents
