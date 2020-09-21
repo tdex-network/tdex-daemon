@@ -35,7 +35,7 @@ func (r InMemoryUnspentRepository) AddUnspents(ctx context.Context, unspents []u
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	return r.addUnspents(r.storageByContext(ctx), unspents)
+	return addUnspents(r.storageByContext(ctx), unspents)
 }
 
 // GetAllUnspents returns all the unspents stored
@@ -43,7 +43,7 @@ func (r InMemoryUnspentRepository) GetAllUnspents(ctx context.Context) []unspent
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return r.getAllUnspents(r.storageByContext(ctx), false)
+	return getAllUnspents(r.storageByContext(ctx), false)
 }
 
 // GetAllSpents returns all the unspents that have been spent
@@ -51,7 +51,7 @@ func (r InMemoryUnspentRepository) GetAllSpents(ctx context.Context) []unspent.U
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return r.getAllUnspents(r.storageByContext(ctx), true)
+	return getAllUnspents(r.storageByContext(ctx), true)
 }
 
 // GetBalance returns the balance of the given asset for the given address
@@ -62,7 +62,7 @@ func (r InMemoryUnspentRepository) GetBalance(
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return r.getBalance(r.storageByContext(ctx), address, assetHash)
+	return getBalance(r.storageByContext(ctx), address, assetHash)
 }
 
 // GetUnlockedBalance returns the total amount of unlocked unspents for the
@@ -74,7 +74,7 @@ func (r InMemoryUnspentRepository) GetUnlockedBalance(
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return r.getUnlockedBalance(r.storageByContext(ctx), address, assetHash)
+	return getUnlockedBalance(r.storageByContext(ctx), address, assetHash)
 }
 
 // GetAvailableUnspents returns the list of unlocked unspents
@@ -82,7 +82,7 @@ func (r InMemoryUnspentRepository) GetAvailableUnspents(ctx context.Context) []u
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return r.getAvailableUnspents(r.storageByContext(ctx))
+	return getAvailableUnspents(r.storageByContext(ctx))
 }
 
 // LockUnspents locks the given unspents associating them with the trade where
@@ -95,7 +95,7 @@ func (r InMemoryUnspentRepository) LockUnspents(
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	return r.lockUnspents(r.storageByContext(ctx), unspentKeys, tradeID)
+	return lockUnspents(r.storageByContext(ctx), unspentKeys, tradeID)
 }
 
 // UnlockUnspents unlocks the given locked unspents
@@ -106,7 +106,7 @@ func (r InMemoryUnspentRepository) UnlockUnspents(
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	return r.unlockUnspents(r.storageByContext(ctx), unspentKeys)
+	return unlockUnspents(r.storageByContext(ctx), unspentKeys)
 }
 
 // Begin returns a new InMemoryUnspentRepositoryTx
@@ -138,7 +138,7 @@ func (r InMemoryUnspentRepository) storageByContext(ctx context.Context) (
 	return
 }
 
-func (r InMemoryUnspentRepository) addUnspents(storage map[unspent.UnspentKey]unspent.Unspent, unspents []unspent.Unspent) error {
+func addUnspents(storage map[unspent.UnspentKey]unspent.Unspent, unspents []unspent.Unspent) error {
 	addr := unspents[0].Address()
 	for _, u := range unspents {
 		if u.Address() != addr {
@@ -175,7 +175,7 @@ func (r InMemoryUnspentRepository) addUnspents(storage map[unspent.UnspentKey]un
 	return nil
 }
 
-func (r InMemoryUnspentRepository) getAllUnspents(storage map[unspent.UnspentKey]unspent.Unspent, spent bool) []unspent.Unspent {
+func getAllUnspents(storage map[unspent.UnspentKey]unspent.Unspent, spent bool) []unspent.Unspent {
 	unspents := make([]unspent.Unspent, 0)
 	for _, u := range storage {
 		if u.IsSpent() == spent {
@@ -185,7 +185,7 @@ func (r InMemoryUnspentRepository) getAllUnspents(storage map[unspent.UnspentKey
 	return unspents
 }
 
-func (r InMemoryUnspentRepository) getBalance(storage map[unspent.UnspentKey]unspent.Unspent, address, assetHash string) uint64 {
+func getBalance(storage map[unspent.UnspentKey]unspent.Unspent, address, assetHash string) uint64 {
 	var balance uint64
 	for _, u := range storage {
 		if u.Address() == address && u.AssetHash() == assetHash && !u.IsSpent() {
@@ -195,7 +195,7 @@ func (r InMemoryUnspentRepository) getBalance(storage map[unspent.UnspentKey]uns
 	return balance
 }
 
-func (r InMemoryUnspentRepository) getUnlockedBalance(storage map[unspent.UnspentKey]unspent.Unspent, address, assetHash string) uint64 {
+func getUnlockedBalance(storage map[unspent.UnspentKey]unspent.Unspent, address, assetHash string) uint64 {
 	var balance uint64
 	for _, u := range storage {
 		if u.Address() == address && u.AssetHash() == assetHash &&
@@ -206,7 +206,7 @@ func (r InMemoryUnspentRepository) getUnlockedBalance(storage map[unspent.Unspen
 	return balance
 }
 
-func (r InMemoryUnspentRepository) getAvailableUnspents(storage map[unspent.UnspentKey]unspent.Unspent) []unspent.Unspent {
+func getAvailableUnspents(storage map[unspent.UnspentKey]unspent.Unspent) []unspent.Unspent {
 	unspents := make([]unspent.Unspent, 0)
 	for _, u := range storage {
 		if u.IsSpent() == false && u.IsLocked() == false {
@@ -216,7 +216,7 @@ func (r InMemoryUnspentRepository) getAvailableUnspents(storage map[unspent.Unsp
 	return unspents
 }
 
-func (r InMemoryUnspentRepository) lockUnspents(
+func lockUnspents(
 	storage map[unspent.UnspentKey]unspent.Unspent,
 	unspentKeys []unspent.UnspentKey,
 	tradeID uuid.UUID,
@@ -235,7 +235,7 @@ func (r InMemoryUnspentRepository) lockUnspents(
 	return nil
 }
 
-func (r InMemoryUnspentRepository) unlockUnspents(
+func unlockUnspents(
 	storage map[unspent.UnspentKey]unspent.Unspent,
 	unspentKeys []unspent.UnspentKey,
 ) error {
@@ -269,7 +269,7 @@ func (tx *InMemoryUnspentRepositoryTx) Commit() error {
 }
 
 // Rollback resets the state of the transaction to the state of its root
-func (tx InMemoryUnspentRepositoryTx) Rollback() error {
+func (tx *InMemoryUnspentRepositoryTx) Rollback() error {
 	tx.unspents = map[unspent.UnspentKey]unspent.Unspent{}
 	for k, v := range tx.root.unspents {
 		tx.unspents[k] = v

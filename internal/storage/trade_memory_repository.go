@@ -303,7 +303,7 @@ func (tx *InMemoryTradeRepositoryTx) Commit() error {
 }
 
 // Rollback resets the state of the transaction to the state of its root
-func (tx InMemoryTradeRepositoryTx) Rollback() error {
+func (tx *InMemoryTradeRepositoryTx) Rollback() error {
 	tx.trades = map[uuid.UUID]*trade.Trade{}
 	for k, v := range tx.root.trades {
 		tx.trades[k] = v
