@@ -100,7 +100,6 @@ func (m *Market) FeeAsset() string {
 
 // MakeTradable ...
 func (m *Market) MakeTradable() error {
-	println(m.IsFunded())
 	if !m.IsFunded() {
 		return ErrNotFunded
 	}
