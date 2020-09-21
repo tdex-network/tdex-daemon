@@ -2,99 +2,14 @@ package explorer
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"sort"
 
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
-type Service interface {
-	GetUnSpents(
-		addr string,
-		blindKeys [][]byte,
-	) (coins []Utxo,
-		err error)
-	IsTransactionConfirmed(txID string) (bool, error)
-	GetTransactionStatus(txID string) (map[string]interface{}, error)
-}
-
-type explorer struct {
-	apiUrl string
-}
-
-func NewService() Service {
-	return &explorer{
-		apiUrl: config.GetString(config.ExplorerEndpointKey),
-	}
-}
-
-func SelectUnSpents(
-	utxos []Utxo,
-	blindKeys [][]byte,
-	targetAmount uint64,
-	targetAsset string,
-) (coins []Utxo, change uint64, err error) {
-	chUnspents := make(chan Utxo, len(utxos))
-	chErr := make(chan error, 1)
-
-	unblindedUtxos := make([]Utxo, 0)
-	totalAmount := uint64(0)
-
-	for i := range utxos {
-		utxo := utxos[i]
-		if utxo.IsConfidential() {
-			go unblindUtxo(utxo, blindKeys, chUnspents, chErr)
-			select {
-
-			case err1 := <-chErr:
-				close(chErr)
-				close(chUnspents)
-				coins = nil
-				change = 0
-				err = fmt.Errorf("error on unblinding utxos: %s", err1)
-				return
-
-			case unspent := <-chUnspents:
-				if unspent.Asset() == targetAsset {
-					unblindedUtxos = append(unblindedUtxos, unspent)
-				}
-			}
-
-		} else {
-			if utxo.Asset() == targetAsset {
-				unblindedUtxos = append(unblindedUtxos, utxo)
-			}
-		}
-	}
-
-	indexes := getCoinsIndexes(targetAmount, unblindedUtxos)
-
-	selectedUtxos := make([]Utxo, 0)
-	if len(indexes) > 0 {
-		for _, v := range indexes {
-			totalAmount += unblindedUtxos[v].Value()
-			selectedUtxos = append(selectedUtxos, unblindedUtxos[v])
-		}
-	} else {
-		coins = nil
-		change = 0
-		err = errors.New(
-			"error on target amount: total utxo amount does not cover target amount",
-		)
-		return
-	}
-
-	changeAmount := totalAmount - targetAmount
-	coins = selectedUtxos
-	change = changeAmount
-
-	return
-}
-
-func (e *explorer) GetUnSpents(addr string, blindingKeys [][]byte) (coins []Utxo, err error) {
+func (e *explorer) GetUnspents(addr string, blindingKeys [][]byte) (coins []Utxo, err error) {
 	url := fmt.Sprintf(
 		"%s/address/%s/utxo",
 		e.apiUrl,
@@ -127,7 +42,7 @@ func (e *explorer) GetUnSpents(addr string, blindingKeys [][]byte) (coins []Utxo
 	for i := range witnessOuts {
 
 		out := witnessOuts[i]
-		go getUtxoDetails(out, chUnspents, chErr)
+		go e.getUtxoDetails(out, chUnspents, chErr)
 		select {
 
 		case err1 := <-chErr:

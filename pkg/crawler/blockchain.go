@@ -219,7 +219,7 @@ func (a *AddressObservable) observe(
 		return
 	}
 
-	unspents, err := explorerSvc.GetUnSpents(a.Address, [][]byte{a.BlindingKey})
+	unspents, err := explorerSvc.GetUnspents(a.Address, [][]byte{a.BlindingKey})
 	if err != nil {
 		errChan <- err
 	}
