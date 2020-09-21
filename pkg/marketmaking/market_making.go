@@ -25,8 +25,8 @@ type MakingFormula interface {
 }
 
 // NewStrategyFromFormula returns the strategy struct with the name
-func NewStrategyFromFormula(formula MakingFormula) *MakingStrategy {
-	strategy := &MakingStrategy{
+func NewStrategyFromFormula(formula MakingFormula) MakingStrategy {
+	strategy := MakingStrategy{
 		formula: formula,
 	}
 
@@ -39,6 +39,6 @@ func (ms MakingStrategy) IsZero() bool {
 }
 
 // Formula returns the mathematical formula of the MM strategy
-func (ms *MakingStrategy) Formula() MakingFormula {
+func (ms MakingStrategy) Formula() MakingFormula {
 	return ms.formula
 }

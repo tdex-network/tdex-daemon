@@ -6,7 +6,7 @@ import (
 )
 
 // Strategy ...
-func (m *Market) Strategy() *mm.MakingStrategy {
+func (m *Market) Strategy() mm.MakingStrategy {
 	return m.strategy
 }
 
@@ -27,7 +27,7 @@ func (m *Market) MakeStrategyPluggable() error {
 		return ErrMarketMustBeClose
 	}
 
-	m.strategy = &mm.MakingStrategy{}
+	m.strategy = mm.MakingStrategy{}
 
 	return nil
 }

@@ -34,7 +34,7 @@ type Market struct {
 	// if curretly open for trades
 	tradable bool
 	// Market Making strategy
-	strategy *mm.MakingStrategy
+	strategy mm.MakingStrategy
 	// how much 1 base asset is valued in quote asset.
 	// It's a map  timestamp -> price, so it's easier to do historical price change.
 	basePrice PriceByTime
