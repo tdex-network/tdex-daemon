@@ -19,7 +19,7 @@ type depositedAsset struct {
 
 // IsNotZero ...
 func (d depositedAsset) IsNotZero() bool {
-	return len(d.assetHash) > 0
+	return d != depositedAsset{}
 }
 
 // IsFunded method returns true if the market contains a non empty funding tx outpoint for each asset
