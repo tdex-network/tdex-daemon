@@ -56,6 +56,7 @@ func main() {
 	tradeSvc := tradeservice.NewService(
 		marketRepository,
 		unspentRepository,
+		vaultRepository,
 		tradeRepository,
 		explorerSvc,
 	)
