@@ -122,11 +122,6 @@ func (m *Market) MakeNotTradable() error {
 	return nil
 }
 
-// IsFunded method returns true if the market contains a non empty funding tx outpoint for each asset
-func (m *Market) IsFunded() bool {
-	return m.baseAsset.IsNotZero() && m.quoteAsset.IsNotZero()
-}
-
 // IsTradable returns true if the market is available for trading
 func (m *Market) IsTradable() bool {
 	return m.tradable

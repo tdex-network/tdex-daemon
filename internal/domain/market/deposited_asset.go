@@ -14,17 +14,25 @@ type OutpointWithAsset struct {
 }
 
 type depositedAsset struct {
-	assetHash  string
-	fundingTxs []OutpointWithAsset
+	assetHash string
 }
 
 // IsNotZero ...
 func (d depositedAsset) IsNotZero() bool {
-	return len(d.assetHash) > 0 && len(d.fundingTxs) > 0
+	return len(d.assetHash) > 0
+}
+
+// IsFunded method returns true if the market contains a non empty funding tx outpoint for each asset
+func (m *Market) IsFunded() bool {
+	return m.baseAsset.IsNotZero() && m.quoteAsset.IsNotZero()
 }
 
 // FundMarket adds funding details given an array of outpoints and recognize quote asset
 func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
+	if m.IsFunded() {
+		return nil
+	}
+
 	var baseAssetHash string = config.GetString(config.BaseAssetKey)
 	var otherAssetHash string
 
@@ -53,13 +61,11 @@ func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 	}
 
 	m.baseAsset = &depositedAsset{
-		assetHash:  baseAssetHash,
-		fundingTxs: baseAssetTxs,
+		assetHash: baseAssetHash,
 	}
 
 	m.quoteAsset = &depositedAsset{
-		assetHash:  otherAssetHash,
-		fundingTxs: otherAssetTxs,
+		assetHash: otherAssetHash,
 	}
 
 	return nil
