@@ -53,7 +53,12 @@ func main() {
 	crawlerSvc := crawler.NewService(explorerSvc, observables, errorHandler)
 
 	// Init services
-	tradeSvc := tradeservice.NewService(marketRepository)
+	tradeSvc := tradeservice.NewService(
+		marketRepository,
+		unspentRepository,
+		tradeRepository,
+		explorerSvc,
+	)
 	walletSvc := walletservice.NewService(
 		vaultRepository,
 		explorerSvc,
