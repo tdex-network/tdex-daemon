@@ -1,4 +1,4 @@
-package formula
+package mathutil
 
 import (
 	"math/big"

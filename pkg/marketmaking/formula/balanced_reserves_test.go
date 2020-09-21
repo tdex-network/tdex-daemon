@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
+	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
 func TestBalancedReserves_SpotPrice(t *testing.T) {
@@ -21,8 +22,8 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 			BalancedReserves{},
 			args{
 				opts: &marketmaking.FormulaOpts{
-					BalanceIn:  2 * BigOne,
-					BalanceOut: 2 * 9760 * BigOne,
+					BalanceIn:  2 * mathutil.BigOne,
+					BalanceOut: 2 * 9760 * mathutil.BigOne,
 				},
 			},
 			9760,

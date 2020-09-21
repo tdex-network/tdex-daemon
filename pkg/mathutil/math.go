@@ -1,9 +1,17 @@
-package formula
+package mathutil
 
 import (
+	"math"
 	"math/big"
 
 	"github.com/shopspring/decimal"
+)
+
+var (
+	//BigOne represents a single unit of an asset with precision 8
+	BigOne = uint64(math.Pow10(8))
+	//BigOneDecimal represents a single unit of an asset with precision 8 as decimal.Decimal
+	BigOneDecimal = decimal.NewFromInt(int64(BigOne))
 )
 
 func init() {
