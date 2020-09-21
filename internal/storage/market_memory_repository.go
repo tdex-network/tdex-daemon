@@ -23,8 +23,8 @@ type InMemoryMarketRepository struct {
 }
 
 //NewInMemoryMarketRepository returns a new empty InMemoryMarketRepository
-func NewInMemoryMarketRepository() *InMemoryMarketRepository {
-	return &InMemoryMarketRepository{
+func NewInMemoryMarketRepository() InMemoryMarketRepository {
+	return InMemoryMarketRepository{
 		markets:         map[int]market.Market{},
 		accountsByAsset: map[string]int{},
 		lock:            &sync.RWMutex{},

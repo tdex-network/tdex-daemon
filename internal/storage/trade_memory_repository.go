@@ -22,8 +22,8 @@ type InMemoryTradeRepository struct {
 }
 
 // NewInMemoryTradeRepository returns a new empty InMemoryTradeRepository
-func NewInMemoryTradeRepository() *InMemoryTradeRepository {
-	return &InMemoryTradeRepository{
+func NewInMemoryTradeRepository() InMemoryTradeRepository {
+	return InMemoryTradeRepository{
 		trades:               map[uuid.UUID]*trade.Trade{},
 		tradesBySwapAcceptID: map[string]uuid.UUID{},
 		tradesByTrader:       map[string][]uuid.UUID{},
@@ -103,7 +103,7 @@ func (r InMemoryTradeRepository) UpdateTrade(
 }
 
 // Begin returns a new InMemoryTradeRepositoryTx
-func (r InMemoryTradeRepository) Begin() (*InMemoryTradeRepositoryTx, error) {
+func (r InMemoryTradeRepository) Begin() (uow.Tx, error) {
 	tx := &InMemoryTradeRepositoryTx{
 		root:                 r,
 		trades:               map[uuid.UUID]*trade.Trade{},

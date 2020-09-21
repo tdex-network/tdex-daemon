@@ -42,6 +42,7 @@ func main() {
 	marketRepository := storage.NewInMemoryMarketRepository()
 	unspentRepository := storage.NewInMemoryUnspentRepository()
 	vaultRepository := storage.NewInMemoryVaultRepository()
+	tradeRepository := storage.NewInMemoryTradeRepository()
 
 	explorerSvc := explorer.NewService()
 	observables, err := getObjectsToObserve(marketRepository, vaultRepository)
@@ -61,6 +62,7 @@ func main() {
 		marketRepository,
 		unspentRepository,
 		vaultRepository,
+		tradeRepository,
 		crawlerSvc,
 		explorerSvc,
 	)

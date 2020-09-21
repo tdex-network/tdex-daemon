@@ -34,8 +34,8 @@ type InMemoryVaultRepository struct {
 }
 
 // NewInMemoryVaultRepository returns a new empty InMemoryVaultRepository
-func NewInMemoryVaultRepository() *InMemoryVaultRepository {
-	return &InMemoryVaultRepository{
+func NewInMemoryVaultRepository() InMemoryVaultRepository {
+	return InMemoryVaultRepository{
 		vault: &vault.Vault{},
 		lock:  &sync.RWMutex{},
 	}
@@ -106,8 +106,8 @@ func (r InMemoryVaultRepository) GetAllDerivedAddressesAndBlindingKeysForAccount
 	return storage.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
-// Begin returns a new InMemoryUnspentRepositoryTx
-func (r InMemoryVaultRepository) Begin() (*InMemoryVaultRepositoryTx, error) {
+// Begin returns a new InMemoryVaultRepositoryTx
+func (r InMemoryVaultRepository) Begin() (uow.Tx, error) {
 	tx := &InMemoryVaultRepositoryTx{
 		root:  r,
 		vault: &vault.Vault{},

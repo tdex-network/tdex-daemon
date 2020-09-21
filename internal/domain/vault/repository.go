@@ -7,7 +7,7 @@ import (
 )
 
 type Repository interface {
-	GetOrCreateVault(mnemonic []string, passphrase string) (*Vault, error)
+	GetOrCreateVault(ctx context.Context, mnemonic []string, passphrase string) (*Vault, error)
 	UpdateVault(
 		ctx context.Context,
 		mnemonic []string,
