@@ -61,7 +61,7 @@ func TestBalancedReserves_OutGivenIn(t *testing.T) {
 				},
 				amountIn: 10000,
 			},
-			64831026,
+			64831017,
 		},
 		{
 			"OutGivenIn with the fee taken on the output",
@@ -75,7 +75,7 @@ func TestBalancedReserves_OutGivenIn(t *testing.T) {
 				},
 				amountIn: 10000,
 			},
-			65155976,
+			65155984,
 		},
 	}
 	for _, tt := range tests {
@@ -111,7 +111,7 @@ func TestBalancedReserves_InGivenOut(t *testing.T) {
 				},
 				amountOut: 10000,
 			},
-			65169000,
+			65169016,
 		},
 		{
 			"InGivenOut with fee taken on the output",
@@ -125,7 +125,7 @@ func TestBalancedReserves_InGivenOut(t *testing.T) {
 				},
 				amountOut: 10000,
 			},
-			64844000,
+			64843983,
 		},
 	}
 	for _, tt := range tests {

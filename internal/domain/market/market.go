@@ -11,10 +11,10 @@ import (
 var (
 	//ErrNotFunded is thrown when a market requires being funded for a change
 	ErrNotFunded = errors.New("market must be funded")
-	//ErrNotTradable is thrown when a market requires being tradable for a change
-	ErrNotTradable = errors.New("market must be opened")
-	//ErrTradable is thrown when a market requires being NOT tradable for a change
-	ErrTradable = errors.New("market must be closed")
+	//ErrMarketMustBeOpen is thrown when a market requires being tradable for a change
+	ErrMarketMustBeOpen = errors.New("market must be opened")
+	//ErrMarketMustBeClose is thrown when a market requires being NOT tradable for a change
+	ErrMarketMustBeClose = errors.New("market must be closed")
 	//ErrPriceExists is thrown when a price for that given timestamp already exists
 	ErrPriceExists = errors.New("price has been inserted already")
 	//ErrNotPriced is thrown when the price is still 0 (ie. not initialized)
@@ -104,7 +104,7 @@ func (m *Market) MakeTradable() error {
 		return ErrNotFunded
 	}
 
-	if m.IsStrategyPluggable() && !m.IsStrategyPluggableInitialized() {
+	if !m.IsStrategyPluggableInitialized() {
 		return ErrNotPriced
 	}
 

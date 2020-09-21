@@ -24,7 +24,7 @@ func (m *Market) IsStrategyPluggableInitialized() bool {
 func (m *Market) MakeStrategyPluggable() error {
 	if m.IsTradable() {
 		// We need the market be switched off before making this change
-		return ErrTradable
+		return ErrMarketMustBeClose
 	}
 
 	m.strategy = &mm.MakingStrategy{}
@@ -36,7 +36,7 @@ func (m *Market) MakeStrategyPluggable() error {
 func (m *Market) MakeStrategyBalanced() error {
 	if m.IsTradable() {
 		// We need the market be switched off before making this change
-		return ErrTradable
+		return ErrMarketMustBeClose
 	}
 
 	m.strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})

@@ -10,7 +10,7 @@ func (m *Market) ChangeFee(fee int64) error {
 	}
 
 	if m.IsTradable() {
-		return ErrTradable
+		return ErrMarketMustBeClose
 	}
 
 	if err := validateFee(fee); err != nil {
@@ -33,7 +33,7 @@ func (m *Market) ChangeFeeAsset(asset string) error {
 	}
 
 	if m.IsTradable() {
-		return ErrTradable
+		return ErrMarketMustBeClose
 	}
 
 	if asset != m.BaseAssetHash() && asset != m.QuoteAssetHash() {
