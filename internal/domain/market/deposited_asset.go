@@ -18,6 +18,11 @@ type depositedAsset struct {
 	fundingTxs []OutpointWithAsset
 }
 
+// IsNotZero ...
+func (d depositedAsset) IsNotZero() bool {
+	return len(d.assetHash) > 0 && len(d.fundingTxs) > 0
+}
+
 // FundMarket adds funding details given an array of outpoints and recognize quote asset
 func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 	var baseAssetHash string = config.GetString(config.BaseAssetKey)
@@ -58,9 +63,4 @@ func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 	}
 
 	return nil
-}
-
-// IsNotZero ...
-func (d depositedAsset) IsNotZero() bool {
-	return len(d.assetHash) > 0 && len(d.fundingTxs) > 0
 }
