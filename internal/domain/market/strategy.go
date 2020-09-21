@@ -15,9 +15,9 @@ func (m *Market) IsStrategyPluggable() bool {
 	return m.strategy.IsZero()
 }
 
-// IsStrategyPluggableInitialized returns true if the the startegy isn't automated and the prices have been set.
+// IsStrategyPluggableInitialized returns true if the prices have been set.
 func (m *Market) IsStrategyPluggableInitialized() bool {
-	return m.IsStrategyPluggable() && !m.basePrice.IsZero() && !m.quotePrice.IsZero()
+	return !m.basePrice.IsZero() && !m.quotePrice.IsZero()
 }
 
 // MakeStrategyPluggable makes the current market using a given price (ie. set via UpdateMarketPrice rpc either manually or a price feed plugin)

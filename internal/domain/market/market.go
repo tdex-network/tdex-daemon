@@ -104,7 +104,7 @@ func (m *Market) MakeTradable() error {
 		return ErrNotFunded
 	}
 
-	if !m.IsStrategyPluggableInitialized() {
+	if m.IsStrategyPluggable() && !m.IsStrategyPluggableInitialized() {
 		return ErrNotPriced
 	}
 
