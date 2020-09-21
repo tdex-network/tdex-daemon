@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/domain/unspent"
+	"github.com/tdex-network/tdex-daemon/internal/storageutil/uow"
 )
 
 // InMemoryUnspentRepository represents an in memory storage
@@ -30,10 +31,114 @@ func NewInMemoryUnspentRepository() *InMemoryUnspentRepository {
 //it adds non exiting unspent's to the memory
 //in case that unspent's, passed to the function, are not already in memory
 //it will mark unspent in memory, as spent
-func (r InMemoryUnspentRepository) AddUnspents(_ context.Context, unspents []unspent.Unspent) error {
+func (r InMemoryUnspentRepository) AddUnspents(ctx context.Context, unspents []unspent.Unspent) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	return r.addUnspents(r.storageByContext(ctx), unspents)
+}
+
+// GetAllUnspents returns all the unspents stored
+func (r InMemoryUnspentRepository) GetAllUnspents(ctx context.Context) []unspent.Unspent {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.getAllUnspents(r.storageByContext(ctx), false)
+}
+
+// GetAllSpents returns all the unspents that have been spent
+func (r InMemoryUnspentRepository) GetAllSpents(ctx context.Context) []unspent.Unspent {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.getAllUnspents(r.storageByContext(ctx), true)
+}
+
+// GetBalance returns the balance of the given asset for the given address
+func (r InMemoryUnspentRepository) GetBalance(
+	ctx context.Context,
+	address, assetHash string,
+) uint64 {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.getBalance(r.storageByContext(ctx), address, assetHash)
+}
+
+// GetUnlockedBalance returns the total amount of unlocked unspents for the
+// given asset and address
+func (r InMemoryUnspentRepository) GetUnlockedBalance(
+	ctx context.Context,
+	address, assetHash string,
+) uint64 {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.getUnlockedBalance(r.storageByContext(ctx), address, assetHash)
+}
+
+// GetAvailableUnspents returns the list of unlocked unspents
+func (r InMemoryUnspentRepository) GetAvailableUnspents(ctx context.Context) []unspent.Unspent {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.getAvailableUnspents(r.storageByContext(ctx))
+}
+
+// LockUnspents locks the given unspents associating them with the trade where
+// they'are currently used as inputs
+func (r InMemoryUnspentRepository) LockUnspents(
+	ctx context.Context,
+	unspentKeys []unspent.UnspentKey,
+	tradeID uuid.UUID,
+) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	return r.lockUnspents(r.storageByContext(ctx), unspentKeys, tradeID)
+}
+
+// UnlockUnspents unlocks the given locked unspents
+func (r InMemoryUnspentRepository) UnlockUnspents(
+	ctx context.Context,
+	unspentKeys []unspent.UnspentKey,
+) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	return r.unlockUnspents(r.storageByContext(ctx), unspentKeys)
+}
+
+// Begin returns a new InMemoryUnspentRepositoryTx
+func (r InMemoryUnspentRepository) Begin() (*InMemoryUnspentRepositoryTx, error) {
+	tx := &InMemoryUnspentRepositoryTx{
+		root:     r,
+		unspents: map[unspent.UnspentKey]unspent.Unspent{},
+	}
+
+	// copy the current state of the repo into the transaction
+	for k, v := range r.unspents {
+		tx.unspents[k] = v
+	}
+	return tx, nil
+}
+
+// ContextKey returns the context key shared between in-memory repositories
+func (r InMemoryUnspentRepository) ContextKey() interface{} {
+	return uow.InMemoryContextKey
+}
+
+func (r InMemoryUnspentRepository) storageByContext(ctx context.Context) (
+	unspents map[unspent.UnspentKey]unspent.Unspent,
+) {
+	unspents = r.unspents
+	if tx, ok := ctx.Value(r).(*InMemoryUnspentRepositoryTx); ok {
+		unspents = tx.unspents
+	}
+	return
+}
+
+func (r InMemoryUnspentRepository) addUnspents(storage map[unspent.UnspentKey]unspent.Unspent, unspents []unspent.Unspent) error {
 	addr := unspents[0].Address()
 	for _, u := range unspents {
 		if u.Address() != addr {
@@ -43,8 +148,8 @@ func (r InMemoryUnspentRepository) AddUnspents(_ context.Context, unspents []uns
 
 	//add new unspent
 	for _, newUnspent := range unspents {
-		if _, ok := r.unspents[newUnspent.GetKey()]; !ok {
-			r.unspents[unspent.UnspentKey{
+		if _, ok := storage[newUnspent.GetKey()]; !ok {
+			storage[unspent.UnspentKey{
 				TxID: newUnspent.TxID(),
 				VOut: newUnspent.VOut(),
 			}] = newUnspent
@@ -52,7 +157,7 @@ func (r InMemoryUnspentRepository) AddUnspents(_ context.Context, unspents []uns
 	}
 
 	//update spent
-	for key, oldUnspent := range r.unspents {
+	for key, oldUnspent := range storage {
 		if oldUnspent.Address() == addr {
 			exist := false
 			for _, newUnspent := range unspents {
@@ -62,7 +167,7 @@ func (r InMemoryUnspentRepository) AddUnspents(_ context.Context, unspents []uns
 			}
 			if !exist {
 				oldUnspent.Spend()
-				r.unspents[key] = oldUnspent
+				storage[key] = oldUnspent
 			}
 		}
 	}
@@ -70,83 +175,40 @@ func (r InMemoryUnspentRepository) AddUnspents(_ context.Context, unspents []uns
 	return nil
 }
 
-// GetAllUnspents returns all the unspents stored
-func (r InMemoryUnspentRepository) GetAllUnspents(_ context.Context) []unspent.Unspent {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
+func (r InMemoryUnspentRepository) getAllUnspents(storage map[unspent.UnspentKey]unspent.Unspent, spent bool) []unspent.Unspent {
 	unspents := make([]unspent.Unspent, 0)
-	for _, u := range r.unspents {
-		if u.IsSpent() == false {
+	for _, u := range storage {
+		if u.IsSpent() == spent {
 			unspents = append(unspents, u)
 		}
 	}
 	return unspents
 }
 
-// GetAllSpents returns all the unspents that have been spent
-func (r InMemoryUnspentRepository) GetAllSpents(_ context.Context) []unspent.Unspent {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
-	unspents := make([]unspent.Unspent, 0)
-	for _, u := range r.unspents {
-		if u.IsSpent() == true {
-			unspents = append(unspents, u)
-		}
-	}
-	return unspents
-}
-
-// GetBalance returns the balance of the given asset for the given address
-func (r InMemoryUnspentRepository) GetBalance(
-	_ context.Context,
-	address string,
-	assetHash string,
-) uint64 {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
+func (r InMemoryUnspentRepository) getBalance(storage map[unspent.UnspentKey]unspent.Unspent, address, assetHash string) uint64 {
 	var balance uint64
-
-	for _, u := range r.unspents {
+	for _, u := range storage {
 		if u.Address() == address && u.AssetHash() == assetHash && !u.IsSpent() {
 			balance += u.Value()
 		}
 	}
-
 	return balance
 }
 
-// GetUnlockedBalance returns the total amount of unlocked unspents for the
-// given asset and address
-func (r InMemoryUnspentRepository) GetUnlockedBalance(
-	_ context.Context,
-	address string,
-	assetHash string,
-) uint64 {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
+func (r InMemoryUnspentRepository) getUnlockedBalance(storage map[unspent.UnspentKey]unspent.Unspent, address, assetHash string) uint64 {
 	var balance uint64
-
-	for _, u := range r.unspents {
+	for _, u := range storage {
 		if u.Address() == address && u.AssetHash() == assetHash &&
 			!u.IsSpent() && !u.IsLocked() {
 			balance += u.Value()
 		}
 	}
-
 	return balance
 }
 
-// GetAvailableUnspents returns the list of unlocked unspents
-func (r InMemoryUnspentRepository) GetAvailableUnspents(_ context.Context) []unspent.Unspent {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
+func (r InMemoryUnspentRepository) getAvailableUnspents(storage map[unspent.UnspentKey]unspent.Unspent) []unspent.Unspent {
 	unspents := make([]unspent.Unspent, 0)
-	for _, u := range r.unspents {
+	for _, u := range storage {
 		if u.IsSpent() == false && u.IsLocked() == false {
 			unspents = append(unspents, u)
 		}
@@ -154,48 +216,63 @@ func (r InMemoryUnspentRepository) GetAvailableUnspents(_ context.Context) []uns
 	return unspents
 }
 
-// LockUnspents locks the given unspents associating them with the trade where
-// they'are currently used as inputs
-func (r InMemoryUnspentRepository) LockUnspents(
-	_ context.Context,
+func (r InMemoryUnspentRepository) lockUnspents(
+	storage map[unspent.UnspentKey]unspent.Unspent,
 	unspentKeys []unspent.UnspentKey,
 	tradeID uuid.UUID,
 ) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	for _, key := range unspentKeys {
-		if _, ok := r.unspents[key]; !ok {
+		if _, ok := storage[key]; !ok {
 			return fmt.Errorf("unspent not found for key %v", key)
 		}
 	}
 
 	for _, key := range unspentKeys {
-		unspent := r.unspents[key]
+		unspent := storage[key]
 		unspent.Lock(&tradeID)
-		r.unspents[key] = unspent
+		storage[key] = unspent
 	}
 	return nil
 }
 
-// UnlockUnspents unlocks the given locked unspents
-func (r InMemoryUnspentRepository) UnlockUnspents(
-	_ context.Context,
+func (r InMemoryUnspentRepository) unlockUnspents(
+	storage map[unspent.UnspentKey]unspent.Unspent,
 	unspentKeys []unspent.UnspentKey,
 ) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	for _, key := range unspentKeys {
-		if _, ok := r.unspents[key]; !ok {
+		if _, ok := storage[key]; !ok {
 			return fmt.Errorf("unspent not found for key %v", key)
 		}
 	}
 
 	for _, key := range unspentKeys {
-		unspent := r.unspents[key]
+		unspent := storage[key]
 		unspent.UnLock()
-		r.unspents[key] = unspent
+		storage[key] = unspent
+	}
+	return nil
+}
+
+// InMemoryUnspentRepositoryTx allows to make transactional read/write operation
+// on the in-memory repository
+type InMemoryUnspentRepositoryTx struct {
+	root     InMemoryUnspentRepository
+	unspents map[unspent.UnspentKey]unspent.Unspent
+}
+
+// Commit applies the updates made to the state of the transaction to its root
+func (tx *InMemoryUnspentRepositoryTx) Commit() error {
+	for k, v := range tx.unspents {
+		tx.root.unspents[k] = v
+	}
+	return nil
+}
+
+// Rollback resets the state of the transaction to the state of its root
+func (tx InMemoryUnspentRepositoryTx) Rollback() error {
+	tx.unspents = map[unspent.UnspentKey]unspent.Unspent{}
+	for k, v := range tx.root.unspents {
+		tx.unspents[k] = v
 	}
 	return nil
 }
