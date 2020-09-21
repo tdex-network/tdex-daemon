@@ -3,7 +3,7 @@ package trade
 import (
 	"errors"
 	"time"
-	
+
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 
@@ -36,30 +36,30 @@ var (
 )
 
 type timestamp struct {
-	request    uint64
-	accept     uint64
-	complete   uint64
-	expiry uint64
+	request  uint64
+	accept   uint64
+	complete uint64
+	expiry   uint64
 }
 
 type swap struct {
-	id string
+	id      string
 	message []byte
 }
 
 // Trade defines the Trade entity data structure for holding swap transactions
 type Trade struct {
-	id          uuid.UUID
+	id               uuid.UUID
 	marketQuoteAsset string
-	traderPubkey    []byte
-	status      Status
-	psetBase64  string
-	txID        string
-	price       float32
-	timestamp   timestamp
-	swapRequest swap
-	swapAccept swap
-	swapComplete swap
+	traderPubkey     []byte
+	status           Status
+	psetBase64       string
+	txID             string
+	price            float32
+	timestamp        timestamp
+	swapRequest      swap
+	swapAccept       swap
+	swapComplete     swap
 }
 
 // NewTrade returns an empty trade
@@ -120,7 +120,7 @@ func (t *Trade) Accept(psetBase64 string) error {
 // of the tx in the blockchain and the blocktime of the block in which it's
 // included. The trade must be in Accepted or FailedToComplete status for being
 //  completed, otherwise an error is thrown
-func (t *Trade) Complete(psetBase64 string, blocktime uint64,  txID string) error {
+func (t *Trade) Complete(psetBase64 string, blocktime uint64, txID string) error {
 	if !t.IsAccepted() {
 		return ErrMustBeAccepted
 	}
