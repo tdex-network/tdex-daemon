@@ -70,6 +70,15 @@ func (r InMemoryTradeRepository) GetAllTradesByTrader(ctx context.Context, trade
 	return getAllTradesByTrader(trades, tradesByTrader, traderID)
 }
 
+// GetTradeBySwapAcceptID returns the trade idetified by the swap accept message's id
+func (r InMemoryTradeRepository) GetTradeBySwapAcceptID(ctx context.Context, swapAcceptID string) (*trade.Trade, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	trades, tradesBySwapAcceptID, _, _ := r.storageByContext(ctx)
+	return getTradeBySwapAcceptID(trades, tradesBySwapAcceptID, swapAcceptID)
+}
+
 // UpdateTrade updates data to a trade identified by any of its swap ids (request, accept, complete) passing an update function
 func (r InMemoryTradeRepository) UpdateTrade(
 	ctx context.Context,
@@ -212,6 +221,20 @@ func getAllTradesByTrader(
 
 	tradeList := tradesFromIDs(trades, tradeIDs)
 	return tradeList, nil
+}
+
+func getTradeBySwapAcceptID(
+	trades map[uuid.UUID]*trade.Trade,
+	tradesBySwapAcceptID map[string]uuid.UUID,
+	swapAcceptID string,
+) (*trade.Trade, error) {
+	tradeID, ok := tradesBySwapAcceptID[swapAcceptID]
+	if !ok {
+		return nil, fmt.Errorf(
+			"trade not found for swap accept message with id '%s'", swapAcceptID,
+		)
+	}
+	return trades[tradeID], nil
 }
 
 func tradesFromIDs(trades map[uuid.UUID]*trade.Trade, tradeIDs []uuid.UUID) []*trade.Trade {

@@ -13,6 +13,7 @@ type Repository interface {
 	GetAllTrades(ctx context.Context) ([]*Trade, error)
 	GetAllTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*Trade, error)
 	GetAllTradesByTrader(ctx context.Context, traderID string) ([]*Trade, error)
+	GetTradeBySwapAcceptID(ctx context.Context, swapAcceptID string) (*Trade, error)
 	UpdateTrade(
 		ctx context.Context,
 		tradeID *uuid.UUID,
