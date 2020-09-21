@@ -1,12 +1,14 @@
 package explorer
 
 import (
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/magiconair/properties/assert"
-	"github.com/vulpemventures/go-elements/network"
-	"github.com/vulpemventures/go-elements/payment"
 	"testing"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/magiconair/properties/assert"
+	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/vulpemventures/go-elements/network"
+	"github.com/vulpemventures/go-elements/payment"
 )
 
 func TestGetTransactionStatus(t *testing.T) {
@@ -18,15 +20,15 @@ func TestGetTransactionStatus(t *testing.T) {
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
 
+	explorerSvc := NewService(config.GetString(config.ExplorerEndpointKey))
+
 	// Fund sender address.
-	txID, err := Faucet(address)
+	txID, err := explorerSvc.Faucet(address)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	time.Sleep(5 * time.Second)
-
-	explorerSvc := NewService()
 
 	trxStatus, err := explorerSvc.GetTransactionStatus(txID)
 	if err != nil {

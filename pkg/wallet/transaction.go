@@ -144,7 +144,7 @@ func (w *Wallet) UpdateSwapTx(opts UpdateSwapTxOpts) (string, []explorer.Utxo, e
 		return "", nil, err
 	}
 
-	selectedUnspents, change, err := explorer.SelectUnSpents(
+	selectedUnspents, change, err := explorer.SelectUnspents(
 		opts.Unspents,
 		unspentsBlinidingKeys,
 		opts.InputAmount,
@@ -323,7 +323,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 		// list of outputs to add by adding the change output if necessary
 		for _, asset := range inAssets {
 			if totalAmountsByAsset[asset] > 0 {
-				selectedUnspents, change, err := explorer.SelectUnSpents(
+				selectedUnspents, change, err := explorer.SelectUnspents(
 					opts.Unspents,
 					unspentsBlinidingKeys,
 					totalAmountsByAsset[asset],
@@ -383,7 +383,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				outputsToAdd[changeOutputIndex].Value, _ = bufferutil.ValueToBytes(changeAmount - feeAmount)
 			} else {
 				unspents := getRemainingUnspents(opts.Unspents, inputsToAdd)
-				selectedUnspents, change, err := explorer.SelectUnSpents(
+				selectedUnspents, change, err := explorer.SelectUnspents(
 					unspents,
 					unspentsBlinidingKeys,
 					feeAmount,
@@ -404,7 +404,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 			// inputs to add to the tx and add another output for the eventual change
 			// returned by the coin selection
 			unspents := getRemainingUnspents(opts.Unspents, inputsToAdd)
-			selectedUnspents, change, err := explorer.SelectUnSpents(
+			selectedUnspents, change, err := explorer.SelectUnspents(
 				unspents,
 				unspentsBlinidingKeys,
 				feeAmount,

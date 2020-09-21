@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"testing"
@@ -111,10 +112,7 @@ func (m MockExplorer) GetTransactionStatus(txID string) (
 	return nil, nil
 }
 
-func (m MockExplorer) GetUnSpents(
-	addr string,
-	blindKeys [][]byte,
-) (
+func (m MockExplorer) GetUnspents(addr string, blindKeys [][]byte) (
 	[]explorer.Utxo,
 	error,
 ) {
@@ -128,6 +126,19 @@ func (m MockExplorer) GetUnSpents(
 		return []explorer.Utxo{MockUtxo{value: 101}}, nil
 	}
 	return nil, nil
+}
+
+func (m MockExplorer) GetTransactionHex(txID string) (string, error) {
+	return "", errors.New("implement me")
+}
+func (m MockExplorer) BroadcastTransaction(txHex string) (string, error) {
+	return "", errors.New("implement me")
+}
+func (m MockExplorer) Faucet(addr string) (string, error) {
+	return "", errors.New("implement me")
+}
+func (m MockExplorer) Mint(addr string, amount int) (string, string, error) {
+	return "", "", errors.New("implement me")
 }
 
 type MockUtxo struct {
