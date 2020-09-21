@@ -1,6 +1,10 @@
 package vault
 
-import "context"
+import (
+	"context"
+
+	"github.com/tdex-network/tdex-daemon/internal/storageutil/uow"
+)
 
 type Repository interface {
 	GetOrCreateVault(mnemonic []string, passphrase string) (*Vault, error)
@@ -16,4 +20,6 @@ type Repository interface {
 		ctx context.Context,
 		accountIndex int,
 	) ([]string, [][]byte, error)
+	Begin() (uow.Tx, error)
+	ContextKey() interface{}
 }
