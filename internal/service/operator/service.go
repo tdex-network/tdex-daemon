@@ -191,15 +191,20 @@ events:
 					continue events
 				}
 
-				err = m.FundMarket(fundingTxs)
-				if err != nil {
+				if err := s.marketRepository.UpdateMarket(context.Background(), m.AccountIndex(), func(m *market.Market) (*market.Market, error) {
+
+					if err := m.FundMarket(fundingTxs); err != nil {
+						return nil, err
+					}
+
+					log.Info("deposit: funding market with quote asset ", m.QuoteAssetHash())
+
+					return m, nil
+				}); err != nil {
 					log.Warn(err)
 					continue events
 				}
-				log.Debug(fmt.Sprintf(
-					"market with quote asset %v, funded",
-					m.QuoteAssetHash(),
-				))
+
 			}
 
 		case crawler.TransactionConfirmed:
