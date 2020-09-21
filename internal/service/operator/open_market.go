@@ -3,7 +3,6 @@ package operatorservice
 import (
 	"context"
 
-	"github.com/tdex-network/tdex-daemon/internal/domain/market"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 
 	"google.golang.org/grpc/codes"
@@ -13,29 +12,16 @@ import (
 // OpenMarket makes the given market tradable
 func (s *Service) OpenMarket(ctx context.Context, req *pb.OpenMarketRequest) (*pb.OpenMarketReply, error) {
 
+	// Requested market
+	baseAsset := req.GetMarket().GetBaseAsset()
+	quoteAsset := req.GetMarket().GetQuoteAsset()
+
 	// Checks if base asset is correct
-	if err := validateBaseAsset(req.GetMarket().GetBaseAsset()); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	//Checks if market exist
-	currentMarket, accountIndex, err := s.marketRepository.GetMarketByAsset(ctx, req.GetMarket().GetQuoteAsset())
-	if err != nil {
+	if err := validateBaseAsset(baseAsset); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// We update the market status only if the market is closed.
-	if currentMarket.IsTradable() {
-		return &pb.OpenMarketReply{}, nil
-	}
-
-	if err := s.marketRepository.UpdateMarket(context.Background(), accountIndex, func(m *market.Market) (*market.Market, error) {
-
-		if err := m.MakeTradable(); err != nil {
-			return nil, err
-		}
-
-		return m, nil
-	}); err != nil {
+	if err := s.marketRepository.OpenMarket(context.Background(), quoteAsset); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
