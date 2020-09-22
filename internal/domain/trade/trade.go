@@ -64,7 +64,7 @@ type Trade struct {
 
 // NewTrade returns an empty trade
 func NewTrade() *Trade {
-	return &Trade{id: uuid.New()}
+	return &Trade{id: uuid.New(), status: EmptyStatus}
 }
 
 // Propose returns a new trade proposal for the given trader and market
@@ -183,7 +183,7 @@ func (t *Trade) ContainsSwap(swapID string) bool {
 }
 
 // ID returns the ids by witch a trade is univoquely identified.
-// At the very list a trade is identified by swapRequestID and swapAcceptID.
+// At the very least a trade is identified by swapRequestID and swapAcceptID.
 // If present, also the swapCompleteID is added to the returned list of ids.
 func (t *Trade) ID() uuid.UUID {
 	return t.id
