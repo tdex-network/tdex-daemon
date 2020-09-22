@@ -59,9 +59,13 @@ func (s *Service) TradeComplete(req *pb.TradeCompleteRequest, stream pb.Trade_Tr
 	return nil
 }
 
-// getTransactionBlocktime is an hekper function that attempts to retrieve the
-// blocktime of the blokc that includes the given transaction.
-// If it fails to retrieve this information
+// getTransactionBlocktime is an helper function that attempts to retrieve the
+// blocktime of the block that includes the given transaction.
+// If it fails to retrieve this information the first time, it retries once
+// again, falling back to using the current timestamp otherwise.
+// If for any reason the call to the explorer is successfull but the response
+// does not contain the blocktime, the same fallback strategy as above is
+// applied.
 func (s *Service) getTransactionBlocktime(txID string) (blocktime uint64) {
 	status, err := s.explorerService.GetTransactionStatus(txID)
 	if err != nil {
@@ -70,13 +74,24 @@ func (s *Service) getTransactionBlocktime(txID string) (blocktime uint64) {
 		if err != nil {
 			now := time.Now()
 			log.Warn(fmt.Sprintf(
-				"could not retrieve blocktime for tx '%s', using now (%s) instead.",
+				"could not retrieve blocktime for tx '%s', fallback to now %s",
 				txID,
 				now,
 			))
 			return uint64(now.Unix())
 		}
 	}
-	blocktime = uint64(status["block_time"].(int))
+	switch status["block_time"].(type) {
+	case int:
+		blocktime = uint64(status["block_time"].(int))
+	default:
+		now := time.Now()
+		log.Warn(fmt.Sprintf(
+			"could not retrieve blocktime for tx '%s', fallback to now %s",
+			txID,
+			now,
+		))
+		blocktime = uint64(now.Unix())
+	}
 	return
 }
