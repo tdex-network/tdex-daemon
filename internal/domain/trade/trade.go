@@ -94,14 +94,20 @@ func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 
 // Accept attempts to accept a trade proposal. The trade must be in Proposal
 // status to be accepted, otherwise an error is thrown
-func (t *Trade) Accept(psetBase64 string) error {
+func (t *Trade) Accept(
+	psetBase64 string,
+	inputBlindingKeys,
+	outputBlindingKeys map[string][]byte,
+) error {
 	if t.status != ProposalStatus {
 		return ErrMustBeProposal
 	}
 
 	swapAcceptID, swapAcceptMsg, err := pkgswap.Accept(pkgswap.AcceptOpts{
-		Message:    t.swapRequest.message,
-		PsetBase64: psetBase64,
+		Message:            t.swapRequest.message,
+		PsetBase64:         psetBase64,
+		InputBlindingKeys:  inputBlindingKeys,
+		OutputBlindingKeys: outputBlindingKeys,
 	})
 	if err != nil {
 		t.status = ProposalRejectedStatus

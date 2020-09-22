@@ -8,11 +8,13 @@ import (
 
 // RequestOpts is the struct to be given to the Request method
 type RequestOpts struct {
-	AssetToBeSent   string
-	AmountToBeSent  uint64
-	AssetToReceive  string
-	AmountToReceive uint64
-	PsetBase64      string
+	AssetToBeSent      string
+	AmountToBeSent     uint64
+	AssetToReceive     string
+	AmountToReceive    uint64
+	PsetBase64         string
+	InputBlindingKeys  map[string][]byte
+	OutputBlindingKeys map[string][]byte
 }
 
 // ParseSwapRequest checks whether the given swap request is well formed and
@@ -37,6 +39,9 @@ func Request(opts RequestOpts) ([]byte, error) {
 		AmountR: opts.AmountToReceive,
 		//PSET
 		Transaction: opts.PsetBase64,
+		// Blinding keys
+		InputBlindingKey:  opts.InputBlindingKeys,
+		OutputBlindingKey: opts.InputBlindingKeys,
 	}
 
 	return ParseSwapRequest(msg)

@@ -10,8 +10,10 @@ import (
 
 // AcceptOpts is the struct given to Accept method
 type AcceptOpts struct {
-	Message    []byte
-	PsetBase64 string
+	Message            []byte
+	PsetBase64         string
+	InputBlindingKeys  map[string][]byte
+	OutputBlindingKeys map[string][]byte
 }
 
 // Accept takes a AcceptOpts and returns the id of the SwapAccept entity and
@@ -25,9 +27,11 @@ func Accept(accept AcceptOpts) (string, []byte, error) {
 
 	randomID := randstr.Hex(8)
 	msgAccept := &pb.SwapAccept{
-		Id:          randomID,
-		RequestId:   msgRequest.GetId(),
-		Transaction: accept.PsetBase64,
+		Id:                randomID,
+		RequestId:         msgRequest.GetId(),
+		Transaction:       accept.PsetBase64,
+		InputBlindingKey:  accept.InputBlindingKeys,
+		OutputBlindingKey: accept.OutputBlindingKeys,
 	}
 
 	if err := compareMessagesAndTransaction(&msgRequest, msgAccept); err != nil {
