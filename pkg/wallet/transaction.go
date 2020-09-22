@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
@@ -202,10 +203,6 @@ func (o UpdateTxOpts) validate() error {
 		return ErrNullNetwork
 	}
 
-	if len(o.Outputs) <= 0 {
-		return ErrEmptyOutputs
-	}
-
 	if len(o.Unspents) > 0 {
 		for _, in := range o.Unspents {
 			_, _, err := in.Parse()
@@ -281,7 +278,7 @@ func (o UpdateTxOpts) getInputAssets() []string {
 type UpdateTxResult struct {
 	PsetBase64                string
 	SelectedUnspents          []explorer.Utxo
-	ChangeOutputsBlindingKeys [][]byte
+	ChangeOutputsBlindingKeys map[string][]byte
 	FeeAmount                 uint64
 }
 
@@ -307,7 +304,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 
 	inputsToAdd := make([]explorer.Utxo, 0)
 	outputsToAdd := make([]*transaction.TxOutput, len(opts.Outputs))
-	changeOutputsBlindingKeys := make([][]byte, 0)
+	changeOutputsBlindingKeys := map[string][]byte{}
 	feeAmount := uint64(0)
 	copy(outputsToAdd, opts.Outputs)
 
@@ -349,10 +346,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					if err != nil {
 						return nil, err
 					}
-					changeOutputsBlindingKeys = append(
-						changeOutputsBlindingKeys,
-						blindingKey.SerializeCompressed(),
-					)
+					changeOutputsBlindingKeys[hex.EncodeToString(script)] = blindingKey.SerializeCompressed()
 				}
 			}
 		}
@@ -427,10 +421,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					Script: lbtcChangeScript,
 				})
 
-				changeOutputsBlindingKeys = append(
-					changeOutputsBlindingKeys,
-					lbtcChangeBlindingKey.SerializeCompressed(),
-				)
+				changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] = lbtcChangeBlindingKey.SerializeCompressed()
 			}
 		}
 	}
