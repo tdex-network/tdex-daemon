@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
@@ -106,6 +107,17 @@ func (r InMemoryVaultRepository) GetAllDerivedAddressesAndBlindingKeysForAccount
 	return storage.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
+// GetDerivationPathByScript returns the derivation paths for the given account
+// index and the given list of scripts. If some script of the list does not map
+// to any known derivation path, an error is thrown
+func (r InMemoryVaultRepository) GetDerivationPathByScript(ctx context.Context, accountIndex int, scripts []string) (map[string]string, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	storage := r.storageByContext(ctx)
+	return getDerivationPathByScript(storage, accountIndex, scripts)
+}
+
 // Begin returns a new InMemoryVaultRepositoryTx
 func (r InMemoryVaultRepository) Begin() (uow.Tx, error) {
 	tx := &InMemoryVaultRepositoryTx{
@@ -142,6 +154,24 @@ func getOrCreateVault(storage *vault.Vault, mnemonic []string, passphrase string
 		*storage = *v
 	}
 	return storage, nil
+}
+
+func getDerivationPathByScript(storage *vault.Vault, accountIndex int, scripts []string) (map[string]string, error) {
+	account, err := storage.AccountByIndex(accountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	m := map[string]string{}
+	for _, script := range scripts {
+		derivationPath, ok := account.DerivationPathByScript(script)
+		if !ok {
+			return nil, fmt.Errorf("derivation path not found for script '%s'", script)
+		}
+		m[script] = derivationPath
+	}
+
+	return m, nil
 }
 
 // InMemoryVaultRepositoryTx allows to make transactional read/write operation

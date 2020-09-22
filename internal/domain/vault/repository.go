@@ -20,6 +20,7 @@ type Repository interface {
 		ctx context.Context,
 		accountIndex int,
 	) ([]string, [][]byte, error)
+	GetDerivationPathByScript(ctx context.Context, accountIndex int, scripts []string) (map[string]string, error)
 	Begin() (uow.Tx, error)
 	ContextKey() interface{}
 }
