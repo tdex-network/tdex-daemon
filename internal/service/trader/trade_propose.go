@@ -215,7 +215,7 @@ func (s *Service) getUtxos(addresses []string, blindingKeys [][]byte) ([]explore
 }
 
 func (s *Service) getUtxosForAddress(addr string, blindingKeys [][]byte, chUnspents chan []explorer.Utxo, chErr chan error) {
-	unspents, err := s.explorerService.GetUnSpents(addr, blindingKeys)
+	unspents, err := s.explorerService.GetUnspents(addr, blindingKeys)
 	if err != nil {
 		chErr <- err
 		return

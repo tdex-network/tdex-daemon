@@ -9,7 +9,6 @@ import (
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/trade"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 
 	"google.golang.org/grpc/codes"
@@ -36,7 +35,7 @@ func (s *Service) TradeComplete(req *pb.TradeCompleteRequest, stream pb.Trade_Tr
 			return nil, err
 		}
 
-		txID, err := explorer.BroadcastTransaction(txHex)
+		txID, err := s.explorerService.BroadcastTransaction(txHex)
 		if err != nil {
 			return nil, err
 		}
