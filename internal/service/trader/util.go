@@ -14,6 +14,10 @@ import (
 	"github.com/vulpemventures/go-elements/pset"
 )
 
+const (
+	defaultMilliStasPerBytes = 100
+)
+
 type acceptSwapOpts struct {
 	mnemonic                   []string
 	swapRequest                *pb.SwapRequest
@@ -66,7 +70,7 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 	psetWithFeesResult, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64:        psetBase64,
 		Unspents:          opts.feeUnspents,
-		MilliSatsPerBytes: 100,
+		MilliSatsPerBytes: defaultMilliStasPerBytes,
 		Network:           network,
 		ChangePathsByAsset: map[string]string{
 			network.AssetID: opts.feeChangeDerivationPath,
