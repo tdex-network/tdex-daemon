@@ -68,7 +68,7 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 		}
 
 		if req.GetPush() {
-			if _, err := explorer.BroadcastTransaction(txHex); err != nil {
+			if _, err := s.explorerService.BroadcastTransaction(txHex); err != nil {
 				return nil, err
 			}
 		}
@@ -109,7 +109,7 @@ func (s *Service) getUnspents(addresses []string, blindingKeys [][]byte) ([]expl
 }
 
 func (s *Service) getUnspentsForAddress(addr string, blindingKeys [][]byte, chUnspents chan []explorer.Utxo, chErr chan error) {
-	unspents, err := s.explorerService.GetUnSpents(addr, blindingKeys)
+	unspents, err := s.explorerService.GetUnspents(addr, blindingKeys)
 	if err != nil {
 		chErr <- err
 		return

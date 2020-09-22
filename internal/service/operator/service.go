@@ -200,6 +200,10 @@ events:
 
 				if err := s.marketRepository.UpdateMarket(context.Background(), m.AccountIndex(), func(m *market.Market) (*market.Market, error) {
 
+					if m.IsFunded() {
+						return m, nil
+					}
+
 					if err := m.FundMarket(fundingTxs); err != nil {
 						return nil, err
 					}

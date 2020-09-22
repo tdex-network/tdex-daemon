@@ -114,6 +114,11 @@ func (r InMemoryMarketRepository) OpenMarket(_ context.Context, quoteAsset strin
 		return err
 	}
 
+	// We update the market status only if the market is closed.
+	if currentMarket.IsTradable() {
+		return nil
+	}
+
 	err = currentMarket.MakeTradable()
 	if err != nil {
 		return err
@@ -132,6 +137,11 @@ func (r InMemoryMarketRepository) CloseMarket(_ context.Context, quoteAsset stri
 	currentMarket, accountIndex, err := r.getMarketByAsset(quoteAsset)
 	if err != nil {
 		return err
+	}
+
+	// We update the market status only if the market is open.
+	if !currentMarket.IsTradable() {
+		return nil
 	}
 
 	err = currentMarket.MakeNotTradable()

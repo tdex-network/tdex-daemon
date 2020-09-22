@@ -2,15 +2,17 @@ package explorer
 
 import (
 	"encoding/hex"
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/stretchr/testify/assert"
-	"github.com/vulpemventures/go-elements/network"
-	"github.com/vulpemventures/go-elements/payment"
 	"math"
 	"reflect"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/stretchr/testify/assert"
+	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/vulpemventures/go-elements/network"
+	"github.com/vulpemventures/go-elements/payment"
 )
 
 var testKey []byte
@@ -49,16 +51,15 @@ func TestGetUnspents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	explorerSvc := NewService(config.GetString(config.ExplorerEndpointKey))
 
-	_, err = Faucet(address)
+	_, err = explorerSvc.Faucet(address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Second)
 
-	explorerSvc := NewService()
-
-	utxos, err := explorerSvc.GetUnSpents(address, [][]byte{blindKey})
+	utxos, err := explorerSvc.GetUnspents(address, [][]byte{blindKey})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,20 +70,20 @@ func TestGetUnspents(t *testing.T) {
 	assert.Equal(t, true, len(utxos[0].SurjectionProof()) > 0)
 }
 
-func TestSelectUtxos(t *testing.T) {
+func TestSelectUnspents(t *testing.T) {
 	address, key1, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
 	}
+	explorerSvc := NewService(config.GetString(config.ExplorerEndpointKey))
 
-	_, err = Faucet(address)
+	_, err = explorerSvc.Faucet(address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Second)
 
-	explorerSvc := NewService()
-	utxos, err := explorerSvc.GetUnSpents(address, [][]byte{key1})
+	utxos, err := explorerSvc.GetUnspents(address, [][]byte{key1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +94,7 @@ func TestSelectUtxos(t *testing.T) {
 	blindingKeys := [][]byte{key1, key2}
 	targetAmount := uint64(1.5 * math.Pow10(8))
 
-	selectedUtxos, change, err := SelectUnSpents(
+	selectedUtxos, change, err := SelectUnspents(
 		utxos,
 		blindingKeys,
 		targetAmount,
@@ -113,9 +114,9 @@ func TestFailingSelectUtxos(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	explorerSvc := NewService(config.GetString(config.ExplorerEndpointKey))
 
-	explorerSvc := NewService()
-	utxos, err := explorerSvc.GetUnSpents(address, [][]byte{blindKey})
+	utxos, err := explorerSvc.GetUnspents(address, [][]byte{blindKey})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +127,7 @@ func TestFailingSelectUtxos(t *testing.T) {
 	blindingKeys := [][]byte{key}
 	targetAmount := uint64(1.5 * math.Pow10(8))
 
-	_, _, err = SelectUnSpents(
+	_, _, err = SelectUnspents(
 		utxos,
 		blindingKeys,
 		targetAmount,

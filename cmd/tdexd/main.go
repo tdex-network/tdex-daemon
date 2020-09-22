@@ -44,7 +44,7 @@ func main() {
 	vaultRepository := storage.NewInMemoryVaultRepository()
 	tradeRepository := storage.NewInMemoryTradeRepository()
 
-	explorerSvc := explorer.NewService()
+	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	observables, err := getObjectsToObserve(marketRepository, vaultRepository)
 
 	errorHandler := func(err error) {
