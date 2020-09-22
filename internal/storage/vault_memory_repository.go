@@ -35,8 +35,8 @@ type InMemoryVaultRepository struct {
 }
 
 // NewInMemoryVaultRepository returns a new empty InMemoryVaultRepository
-func NewInMemoryVaultRepository() InMemoryVaultRepository {
-	return InMemoryVaultRepository{
+func NewInMemoryVaultRepository() *InMemoryVaultRepository {
+	return &InMemoryVaultRepository{
 		vault: &vault.Vault{},
 		lock:  &sync.RWMutex{},
 	}

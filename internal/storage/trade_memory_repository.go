@@ -22,8 +22,8 @@ type InMemoryTradeRepository struct {
 }
 
 // NewInMemoryTradeRepository returns a new empty InMemoryTradeRepository
-func NewInMemoryTradeRepository() InMemoryTradeRepository {
-	return InMemoryTradeRepository{
+func NewInMemoryTradeRepository() *InMemoryTradeRepository {
+	return &InMemoryTradeRepository{
 		trades:               map[uuid.UUID]*trade.Trade{},
 		tradesBySwapAcceptID: map[string]uuid.UUID{},
 		tradesByTrader:       map[string][]uuid.UUID{},

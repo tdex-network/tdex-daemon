@@ -17,8 +17,8 @@ type InMemoryUnspentRepository struct {
 }
 
 //NewInMemoryUnspentRepository returns a new empty InMemoryMarketRepository
-func NewInMemoryUnspentRepository() InMemoryUnspentRepository {
-	return InMemoryUnspentRepository{
+func NewInMemoryUnspentRepository() *InMemoryUnspentRepository {
+	return &InMemoryUnspentRepository{
 		unspents: map[unspent.UnspentKey]unspent.Unspent{},
 		lock:     &sync.RWMutex{},
 	}
