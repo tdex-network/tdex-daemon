@@ -49,3 +49,7 @@ func ValueToBytes(val uint64) ([]byte, error) {
 	}
 	return buffer[:], nil
 }
+
+func TxIDFromBytes(buffer []byte) string {
+	return hex.EncodeToString(ReverseBytes(buffer))
+}
