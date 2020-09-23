@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/vulpemventures/go-elements/pset"
 )
 
@@ -111,8 +112,11 @@ func (o BlindSwapTransactionOpts) validate() error {
 // BlindSwapTransaction blinds the outputs of a swap transaction. Since this
 // type of transaciton is composed of inputs and outputs owned by 2 different
 // parties, the blinding keys for inputs and outputs are provided through maps
-// outputScript -> blinding key. Thus, the wallet won't derive any key from the
-// scripts of inputs and outputs of the provided transaction.
+// outputScript -> blinding key. Note that all the blinding keys provided must
+// be private, thus for the outputs this function will use the provided
+// blinding keys to get the list of all public keys. This of course also means
+// that no blinding keys are derived internally, but these are all provided as
+// function arguments.
 func (w *Wallet) BlindSwapTransaction(opts BlindSwapTransactionOpts) (string, error) {
 	if err := opts.validate(); err != nil {
 		return "", err
@@ -132,7 +136,8 @@ func (w *Wallet) BlindSwapTransaction(opts BlindSwapTransactionOpts) (string, er
 	outputBlindingKeys := make([][]byte, 0, len(ptx.Outputs))
 	for _, out := range ptx.UnsignedTx.Outputs {
 		script := hex.EncodeToString(out.Script)
-		outputBlindingKeys = append(outputBlindingKeys, opts.OutputBlindingKeys[script])
+		_, blindPubkey := btcec.PrivKeyFromBytes(btcec.S256(), opts.OutputBlindingKeys[script])
+		outputBlindingKeys = append(outputBlindingKeys, blindPubkey.SerializeCompressed())
 	}
 
 	blinder, err := pset.NewBlinder(
