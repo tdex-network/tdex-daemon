@@ -24,7 +24,7 @@ var (
 	// ErrVaultAlreadyInitialized ...
 	ErrVaultAlreadyInitialized = errors.New("vault is already initialized")
 	// ErrNullMnemonicOrPassphrase ...
-	ErrNullMnemonicOrPassphrase = errors.New("mnemonic and passphrase must not be null")
+	ErrNullMnemonicOrPassphrase = errors.New("mnemonic and/or passphrase must not be null")
 )
 
 type Vault struct {
@@ -43,6 +43,12 @@ func NewVault(mnemonic []string, passphrase string) (*Vault, error) {
 	if len(mnemonic) <= 0 || len(passphrase) <= 0 {
 		return nil, ErrNullMnemonicOrPassphrase
 	}
+	if _, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: mnemonic,
+	}); err != nil {
+		return nil, err
+	}
+
 	encryptedMnemonic, err := wallet.Encrypt(wallet.EncryptOpts{
 		PlainText:  strings.Join(mnemonic, " "),
 		Passphrase: passphrase,
@@ -129,6 +135,14 @@ func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error 
 	v.encryptedMnemonic = encryptedMnemonic
 	v.passphraseHash = btcutil.Hash160([]byte(newPassphrase))
 	return nil
+}
+
+// InitAccount creates a new account in the current Vault if not existing
+func (v *Vault) InitAccount(accountIndex int) {
+	if _, ok := v.accounts[accountIndex]; !ok {
+		account, _ := NewAccount(accountIndex)
+		v.accounts[accountIndex] = account
+	}
 }
 
 // DeriveNextExternalAddressForAccount returns the next unused address for the

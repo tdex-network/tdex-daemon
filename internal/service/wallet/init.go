@@ -14,6 +14,8 @@ func (s *Service) InitWallet(ctx context.Context, req *pb.InitWalletRequest) (*p
 	mnemonic := req.GetSeedMnemonic()
 	passphrase := string(req.GetWalletPassword())
 	if err := s.vaultRepository.UpdateVault(ctx, mnemonic, passphrase, func(v *vault.Vault) (*vault.Vault, error) {
+		v.InitAccount(vault.FeeAccount)
+		v.InitAccount(vault.WalletAccount)
 		return v, nil
 	}); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

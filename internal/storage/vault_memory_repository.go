@@ -147,9 +147,7 @@ func getOrCreateVault(storage *vault.Vault, mnemonic []string, passphrase string
 	if storage.IsZero() {
 		v, err := vault.NewVault(mnemonic, passphrase)
 		if err != nil {
-			return nil, errors.New(
-				"vault must be initialized with mnemonic and passphrase",
-			)
+			return nil, err
 		}
 		*storage = *v
 	}
