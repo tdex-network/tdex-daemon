@@ -131,6 +131,14 @@ func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error 
 	return nil
 }
 
+// InitAccount creates a new account in the current Vault if not existing
+func (v *Vault) InitAccount(accountIndex int) {
+	if _, ok := v.accounts[accountIndex]; !ok {
+		account, _ := NewAccount(accountIndex)
+		v.accounts[accountIndex] = account
+	}
+}
+
 // DeriveNextExternalAddressForAccount returns the next unused address for the
 // provided account and the corresponding output script
 func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, string, []byte, error) {
