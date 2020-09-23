@@ -104,9 +104,7 @@ func (r *InMemoryVaultRepository) getOrCreateVault(mnemonic []string, passphrase
 	if r.vault.IsZero() {
 		v, err := vault.NewVault(mnemonic, passphrase)
 		if err != nil {
-			return nil, errors.New(
-				"vault must be initialized with mnemonic and passphrase",
-			)
+			return nil, err
 		}
 		return v, nil
 	}

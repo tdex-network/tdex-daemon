@@ -33,6 +33,10 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 		err = status.Error(codes.Internal, err.Error())
 		return
 	}
+	if len(unspents) <= 0 {
+		err = status.Error(codes.Internal, "wallet not funded")
+		return
+	}
 
 	if err = s.vaultRepository.UpdateVault(ctx, nil, "", func(v *vault.Vault) (*vault.Vault, error) {
 		mnemonic, err := v.Mnemonic()
