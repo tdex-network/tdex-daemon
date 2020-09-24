@@ -68,17 +68,17 @@ func sendToMany(
 	outputsBlindingKeys [][]byte,
 	milliSatsPerBytes int,
 	changePathsByAsset map[string]string,
-) (string, error) {
+) (string, string, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: mnemonic,
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	newPset, err := w.CreateTx()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	updateResult, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64:         newPset,
@@ -89,7 +89,7 @@ func sendToMany(
 		Network:            config.GetNetwork(),
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	changeOutputsBlindingKeys := make([][]byte, 0, len(updateResult.ChangeOutputsBlindingKeys))
@@ -105,7 +105,7 @@ func sendToMany(
 		OutputBlindingKeys: outputsPlusChangesBlindingKeys,
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64: blindedPset,
@@ -113,7 +113,7 @@ func sendToMany(
 		Network:    config.GetNetwork(),
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	inputPathsByScript := getDerivationPathsForUnspents(account, unspents)
@@ -122,7 +122,7 @@ func sendToMany(
 		DerivationPathMap: inputPathsByScript,
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	return wallet.FinalizeAndExtractTransaction(

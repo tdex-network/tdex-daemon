@@ -454,17 +454,21 @@ func (o FinalizeAndExtractTransactionOpts) validate() error {
 
 // FinalizeAndExtractTransaction attempts to finalize the provided partial
 // transaction and eventually extracts the final transaction and returns
-// it in hex string format
-func FinalizeAndExtractTransaction(opts FinalizeAndExtractTransactionOpts) (string, error) {
+// it in hex string format, along with its transaction id
+func FinalizeAndExtractTransaction(opts FinalizeAndExtractTransactionOpts) (string, string, error) {
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
 	if err := pset.FinalizeAll(ptx); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	tx, err := pset.Extract(ptx)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return tx.ToHex()
+	txHex, err := tx.ToHex()
+	if err != nil {
+		return "", "", nil
+	}
+	return txHex, tx.TxHash().String(), nil
 }

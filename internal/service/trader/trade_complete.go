@@ -2,10 +2,7 @@ package tradeservice
 
 import (
 	"context"
-	"fmt"
-	"time"
 
-	log "github.com/sirupsen/logrus"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 
 	"github.com/tdex-network/tdex-daemon/internal/domain/trade"
@@ -30,19 +27,18 @@ func (s *Service) TradeComplete(req *pb.TradeCompleteRequest, stream pb.Trade_Tr
 		opts := wallet.FinalizeAndExtractTransactionOpts{
 			PsetBase64: psetBase64,
 		}
-		txHex, err := wallet.FinalizeAndExtractTransaction(opts)
+		txHex, txID, err := wallet.FinalizeAndExtractTransaction(opts)
 		if err != nil {
 			return nil, err
 		}
 
-		txID, err := s.explorerService.BroadcastTransaction(txHex)
-		if err != nil {
+		if err := t.Complete(psetBase64, txID); err != nil {
 			return nil, err
 		}
 
-		blocktime := s.getTransactionBlocktime(txID)
-
-		t.Complete(psetBase64, blocktime, txID)
+		if _, err := s.explorerService.BroadcastTransaction(txHex); err != nil {
+			return nil, err
+		}
 
 		reply = &pb.TradeCompleteReply{
 			Txid: txID,
@@ -56,41 +52,4 @@ func (s *Service) TradeComplete(req *pb.TradeCompleteRequest, stream pb.Trade_Tr
 		return status.Error(codes.Internal, err.Error())
 	}
 	return nil
-}
-
-// getTransactionBlocktime is an helper function that attempts to retrieve the
-// blocktime of the block that includes the given transaction.
-// If it fails to retrieve this information the first time, it retries once
-// again, falling back to using the current timestamp otherwise.
-// If for any reason the call to the explorer is successfull but the response
-// does not contain the blocktime, the same fallback strategy as above is
-// applied.
-func (s *Service) getTransactionBlocktime(txID string) (blocktime uint64) {
-	status, err := s.explorerService.GetTransactionStatus(txID)
-	if err != nil {
-		time.Sleep(500 * time.Millisecond)
-		status, err = s.explorerService.GetTransactionStatus(txID)
-		if err != nil {
-			now := time.Now()
-			log.Warn(fmt.Sprintf(
-				"could not retrieve blocktime for tx '%s', fallback to now %s",
-				txID,
-				now,
-			))
-			return uint64(now.Unix())
-		}
-	}
-	switch status["block_time"].(type) {
-	case int:
-		blocktime = uint64(status["block_time"].(int))
-	default:
-		now := time.Now()
-		log.Warn(fmt.Sprintf(
-			"could not retrieve blocktime for tx '%s', fallback to now %s",
-			txID,
-			now,
-		))
-		blocktime = uint64(now.Unix())
-	}
-	return
 }

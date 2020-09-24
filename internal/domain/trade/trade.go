@@ -123,10 +123,9 @@ func (t *Trade) Accept(
 }
 
 // Complete sets the status of the trade to Complete by adding the txID
-// of the tx in the blockchain and the blocktime of the block in which it's
-// included. The trade must be in Accepted or FailedToComplete status for being
-//  completed, otherwise an error is thrown
-func (t *Trade) Complete(psetBase64 string, blocktime uint64, txID string) error {
+// of the tx in the blockchain. The trade must be in Accepted or
+// FailedToComplete status for being completed, otherwise an error is thrown
+func (t *Trade) Complete(psetBase64 string, txID string) error {
 	if !t.IsAccepted() {
 		return ErrMustBeAccepted
 	}
@@ -143,9 +142,19 @@ func (t *Trade) Complete(psetBase64 string, blocktime uint64, txID string) error
 	t.status = CompletedStatus
 	t.swapComplete.id = swapCompleteID
 	t.swapComplete.message = swapCompleteMsg
-	t.timestamp.complete = blocktime
 	t.psetBase64 = psetBase64
 	t.txID = txID
+	return nil
+}
+
+// AddBlockTime sets the timestamp for a completed trade to the given blocktime.
+// If the trade is not in Complete status, an error is thrown
+func (t *Trade) AddBlocktime(blocktime uint64) error {
+	if !t.IsCompleted() {
+		return ErrMustBeCompleted
+	}
+
+	t.timestamp.complete = blocktime
 	return nil
 }
 
