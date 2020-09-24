@@ -58,7 +58,7 @@ func (s *Service) SendToMany(ctx context.Context, req *pb.SendToManyRequest) (re
 			changePathsByAsset[asset] = derivationPath
 		}
 
-		txHex, err := sendToMany(
+		txHex, _, err := sendToMany(
 			mnemonic,
 			account,
 			unspents,

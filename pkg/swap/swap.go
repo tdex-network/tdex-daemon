@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/novalagung/gubrak/v2"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
@@ -12,12 +13,7 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
-//Swap defines the initial parameter
-type Swap struct {
-	Verbose bool
-}
-
-func (*Swap) compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccept) error {
+func compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccept) error {
 	decodedFromRequest, err := pset.NewPsetFromBase64(request.GetTransaction())
 	if err != nil {
 		return err

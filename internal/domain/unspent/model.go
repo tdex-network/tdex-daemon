@@ -1,5 +1,7 @@
 package unspent
 
+import "github.com/google/uuid"
+
 type UnspentKey struct {
 	TxID string
 	VOut uint32
@@ -14,6 +16,7 @@ type Unspent struct {
 	spent        bool
 	locked       bool
 	scriptPubKey []byte
+	lockedBy     *uuid.UUID
 }
 
 func NewUnspent(
@@ -22,6 +25,7 @@ func NewUnspent(
 	value uint64,
 	spent, locked bool,
 	scriptPubKey []byte,
+	lockedBy *uuid.UUID,
 ) Unspent {
 	return Unspent{
 		txID:         txID,
@@ -55,12 +59,14 @@ func (u *Unspent) VOut() uint32 {
 	return u.vOut
 }
 
-func (u *Unspent) Lock() {
+func (u *Unspent) Lock(tradeID *uuid.UUID) {
 	u.locked = true
+	u.lockedBy = tradeID
 }
 
 func (u *Unspent) UnLock() {
 	u.locked = false
+	u.lockedBy = nil
 }
 
 func (u *Unspent) IsLocked() bool {
@@ -84,4 +90,8 @@ func (u *Unspent) GetKey() UnspentKey {
 
 func (u *Unspent) IsKeyEqual(key UnspentKey) bool {
 	return u.txID == key.TxID && u.vOut == key.VOut
+}
+
+func (u *Unspent) LockedBy() *uuid.UUID {
+	return u.lockedBy
 }

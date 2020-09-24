@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
@@ -202,10 +203,6 @@ func (o UpdateTxOpts) validate() error {
 		return ErrNullNetwork
 	}
 
-	if len(o.Outputs) <= 0 {
-		return ErrEmptyOutputs
-	}
-
 	if len(o.Unspents) > 0 {
 		for _, in := range o.Unspents {
 			_, _, err := in.Parse()
@@ -281,7 +278,7 @@ func (o UpdateTxOpts) getInputAssets() []string {
 type UpdateTxResult struct {
 	PsetBase64                string
 	SelectedUnspents          []explorer.Utxo
-	ChangeOutputsBlindingKeys [][]byte
+	ChangeOutputsBlindingKeys map[string][]byte
 	FeeAmount                 uint64
 }
 
@@ -307,7 +304,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 
 	inputsToAdd := make([]explorer.Utxo, 0)
 	outputsToAdd := make([]*transaction.TxOutput, len(opts.Outputs))
-	changeOutputsBlindingKeys := make([][]byte, 0)
+	changeOutputsBlindingKeys := map[string][]byte{}
 	feeAmount := uint64(0)
 	copy(outputsToAdd, opts.Outputs)
 
@@ -349,10 +346,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					if err != nil {
 						return nil, err
 					}
-					changeOutputsBlindingKeys = append(
-						changeOutputsBlindingKeys,
-						blindingKey.SerializeCompressed(),
-					)
+					changeOutputsBlindingKeys[hex.EncodeToString(script)] = blindingKey.SerializeCompressed()
 				}
 			}
 		}
@@ -427,10 +421,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					Script: lbtcChangeScript,
 				})
 
-				changeOutputsBlindingKeys = append(
-					changeOutputsBlindingKeys,
-					lbtcChangeBlindingKey.SerializeCompressed(),
-				)
+				changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] = lbtcChangeBlindingKey.SerializeCompressed()
 			}
 		}
 	}
@@ -463,17 +454,21 @@ func (o FinalizeAndExtractTransactionOpts) validate() error {
 
 // FinalizeAndExtractTransaction attempts to finalize the provided partial
 // transaction and eventually extracts the final transaction and returns
-// it in hex string format
-func FinalizeAndExtractTransaction(opts FinalizeAndExtractTransactionOpts) (string, error) {
+// it in hex string format, along with its transaction id
+func FinalizeAndExtractTransaction(opts FinalizeAndExtractTransactionOpts) (string, string, error) {
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
 	if err := pset.FinalizeAll(ptx); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	tx, err := pset.Extract(ptx)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return tx.ToHex()
+	txHex, err := tx.ToHex()
+	if err != nil {
+		return "", "", nil
+	}
+	return txHex, tx.TxHash().String(), nil
 }

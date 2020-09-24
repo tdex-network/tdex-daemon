@@ -32,6 +32,8 @@ const (
 	CrawlIntervalKey = "CRAWL_INTERVAL"
 	// FeeAccountBalanceThresholdKey ...
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
+	// TradeExpiryTimeKey ...
+	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 )
 
 var vip *viper.Viper
@@ -51,6 +53,7 @@ func init() {
 	vip.SetDefault(FeeAccountBalanceThresholdKey, 1000) //TODO check this value
 	vip.SetDefault(NetworkKey, network.Regtest.Name)
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
+	vip.SetDefault(TradeExpiryTimeKey, 120)
 
 }
 

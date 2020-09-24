@@ -1,13 +1,16 @@
 package storage
 
 import (
+	"context"
+	"testing"
+
 	"github.com/magiconair/properties/assert"
 	"github.com/tdex-network/tdex-daemon/internal/domain/unspent"
-	"testing"
 )
 
 func TestAddUnspentAndBalance(t *testing.T) {
 	repo := NewInMemoryUnspentRepository()
+	ctx := context.Background()
 
 	u1 := unspent.NewUnspent(
 		"1",
@@ -17,6 +20,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		1,
 		false,
 		false,
+		nil,
 		nil,
 	)
 
@@ -29,21 +33,22 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		false,
 		false,
 		nil,
+		nil,
 	)
 
 	unspents := []unspent.Unspent{u1, u2}
-	repo.AddUnspent(unspents)
+	repo.AddUnspents(ctx, unspents)
 
-	allUnspent := repo.GetAllUnspent()
-	allSpent := repo.GetAllSpent()
+	allUnspent := repo.GetAllUnspents(ctx)
+	allSpent := repo.GetAllSpents(ctx)
 	assert.Equal(t, len(allUnspent), 2)
 	assert.Equal(t, len(allSpent), 0)
 
 	unspents = []unspent.Unspent{u2}
-	repo.AddUnspent(unspents)
+	repo.AddUnspents(ctx, unspents)
 
-	allUnspent = repo.GetAllUnspent()
-	allSpent = repo.GetAllSpent()
+	allUnspent = repo.GetAllUnspents(ctx)
+	allSpent = repo.GetAllSpents(ctx)
 	assert.Equal(t, len(allUnspent), 1)
 	assert.Equal(t, len(allSpent), 1)
 
@@ -56,6 +61,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		false,
 		false,
 		nil,
+		nil,
 	)
 
 	u4 := unspent.NewUnspent(
@@ -66,6 +72,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		2,
 		false,
 		false,
+		nil,
 		nil,
 	)
 
@@ -78,18 +85,19 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		false,
 		false,
 		nil,
+		nil,
 	)
 
 	unspents = []unspent.Unspent{u3, u4, u5}
-	repo.AddUnspent(unspents)
+	repo.AddUnspents(ctx, unspents)
 
-	allUnspent = repo.GetAllUnspent()
-	allSpent = repo.GetAllSpent()
+	allUnspent = repo.GetAllUnspents(ctx)
+	allSpent = repo.GetAllSpents(ctx)
 
 	assert.Equal(t, len(allUnspent), 3)
 	assert.Equal(t, len(allSpent), 2)
 
-	balance := repo.GetBalance("adr", "lbtc")
+	balance := repo.GetBalance(ctx, "adr", "lbtc")
 
 	assert.Equal(t, balance, uint64(7))
 

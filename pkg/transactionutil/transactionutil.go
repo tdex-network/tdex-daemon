@@ -2,6 +2,8 @@ package transactionutil
 
 import (
 	"encoding/hex"
+
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/vulpemventures/go-elements/confidential"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -37,4 +39,13 @@ func UnblindOutput(
 	}
 
 	return nil, false
+}
+
+func NewFeeOutput(feeAmount uint64) []*transaction.TxOutput {
+	feeAsset, _ := bufferutil.AssetHashToBytes(config.GetNetwork().AssetID)
+	feeValue, _ := bufferutil.ValueToBytes(feeAmount)
+	feeScript := make([]byte, 0)
+	return []*transaction.TxOutput{
+		transaction.NewTxOutput(feeAsset, feeValue, feeScript),
+	}
 }

@@ -15,7 +15,7 @@ import (
 // For each asset owned by the wallet account, the balance info reports both
 // the confirmed and unconfirmed balances and the total balance that is their
 // sum
-func (s *Service) WalletBalance(ctx context.Context, req *pb.WalletBalanceRequest) (*pb.WalletBalanceResponse, error) {
+func (s *Service) WalletBalance(ctx context.Context, req *pb.WalletBalanceRequest) (*pb.WalletBalanceReply, error) {
 	derivedAddresses, prvBlindingKeys, err := s.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, vault.WalletAccount)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -26,7 +26,7 @@ func (s *Service) WalletBalance(ctx context.Context, req *pb.WalletBalanceReques
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.WalletBalanceResponse{
+	return &pb.WalletBalanceReply{
 		Balance: getBalancesByAsset(unspents),
 	}, nil
 }

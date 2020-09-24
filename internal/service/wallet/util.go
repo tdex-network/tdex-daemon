@@ -8,6 +8,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -67,17 +68,17 @@ func sendToMany(
 	outputsBlindingKeys [][]byte,
 	milliSatsPerBytes int,
 	changePathsByAsset map[string]string,
-) (string, error) {
+) (string, string, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: mnemonic,
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	newPset, err := w.CreateTx()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	updateResult, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64:         newPset,
@@ -88,27 +89,31 @@ func sendToMany(
 		Network:            config.GetNetwork(),
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
+	changeOutputsBlindingKeys := make([][]byte, 0, len(updateResult.ChangeOutputsBlindingKeys))
+	for _, v := range updateResult.ChangeOutputsBlindingKeys {
+		changeOutputsBlindingKeys = append(changeOutputsBlindingKeys, v)
+	}
 	outputsPlusChangesBlindingKeys := append(
 		outputsBlindingKeys,
-		updateResult.ChangeOutputsBlindingKeys...,
+		changeOutputsBlindingKeys...,
 	)
 	blindedPset, err := w.BlindTransaction(wallet.BlindTransactionOpts{
 		PsetBase64:         updateResult.PsetBase64,
 		OutputBlindingKeys: outputsPlusChangesBlindingKeys,
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64: blindedPset,
-		Outputs:    newFeeOutput(updateResult.FeeAmount),
+		Outputs:    transactionutil.NewFeeOutput(updateResult.FeeAmount),
 		Network:    config.GetNetwork(),
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	inputPathsByScript := getDerivationPathsForUnspents(account, unspents)
@@ -117,7 +122,7 @@ func sendToMany(
 		DerivationPathMap: inputPathsByScript,
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	return wallet.FinalizeAndExtractTransaction(
@@ -138,13 +143,4 @@ func getDerivationPathsForUnspents(
 		paths[script] = derivationPath
 	}
 	return paths
-}
-
-func newFeeOutput(feeAmount uint64) []*transaction.TxOutput {
-	feeAsset, _ := bufferutil.AssetHashToBytes(config.GetNetwork().AssetID)
-	feeValue, _ := bufferutil.ValueToBytes(feeAmount)
-	feeScript := make([]byte, 0)
-	return []*transaction.TxOutput{
-		transaction.NewTxOutput(feeAsset, feeValue, feeScript),
-	}
 }

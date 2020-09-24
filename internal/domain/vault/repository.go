@@ -1,9 +1,13 @@
 package vault
 
-import "context"
+import (
+	"context"
+
+	"github.com/tdex-network/tdex-daemon/internal/storageutil/uow"
+)
 
 type Repository interface {
-	GetOrCreateVault(mnemonic []string, passphrase string) (*Vault, error)
+	GetOrCreateVault(ctx context.Context, mnemonic []string, passphrase string) (*Vault, error)
 	UpdateVault(
 		ctx context.Context,
 		mnemonic []string,
@@ -16,4 +20,7 @@ type Repository interface {
 		ctx context.Context,
 		accountIndex int,
 	) ([]string, [][]byte, error)
+	GetDerivationPathByScript(ctx context.Context, accountIndex int, scripts []string) (map[string]string, error)
+	Begin() (uow.Tx, error)
+	ContextKey() interface{}
 }

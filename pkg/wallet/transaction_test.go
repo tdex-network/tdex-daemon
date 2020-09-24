@@ -380,18 +380,6 @@ func TestFailingUpdateTx(t *testing.T) {
 	}{
 		{
 			unspents: mockUnspentsForUpdateTx(),
-			outputs:  nil,
-			changePathsByAsset: map[string]string{
-				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
-				"3be6cc6330799ea0a1ae2b7a950ba983e88f41b75a0cb36342e7a039903e7d55": "0'/1/1",
-				network.Regtest.AssetID: "0'/1/2",
-			},
-			milliSatsPerByte: 100,
-			network:          &network.Regtest,
-			err:              ErrEmptyOutputs,
-		},
-		{
-			unspents: mockUnspentsForUpdateTx(),
 			outputs: outputList{
 				{
 					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",

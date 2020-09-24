@@ -10,7 +10,7 @@ import (
 )
 
 // UnlockWallet attempts to unlock the wallet database with the given password
-func (s *Service) UnlockWallet(ctx context.Context, req *pb.UnlockWalletRequest) (*pb.UnlockWalletResponse, error) {
+func (s *Service) UnlockWallet(ctx context.Context, req *pb.UnlockWalletRequest) (*pb.UnlockWalletReply, error) {
 	passphrase := string(req.GetWalletPassword())
 	if err := s.vaultRepository.UpdateVault(ctx, nil, "", func(v *vault.Vault) (*vault.Vault, error) {
 		if err := v.Unlock(passphrase); err != nil {
@@ -21,5 +21,5 @@ func (s *Service) UnlockWallet(ctx context.Context, req *pb.UnlockWalletRequest)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	return &pb.UnlockWalletResponse{}, nil
+	return &pb.UnlockWalletReply{}, nil
 }

@@ -42,6 +42,7 @@ func main() {
 	marketRepository := storage.NewInMemoryMarketRepository()
 	unspentRepository := storage.NewInMemoryUnspentRepository()
 	vaultRepository := storage.NewInMemoryVaultRepository()
+	tradeRepository := storage.NewInMemoryTradeRepository()
 
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	observables, err := getObjectsToObserve(marketRepository, vaultRepository)
@@ -52,7 +53,13 @@ func main() {
 	crawlerSvc := crawler.NewService(explorerSvc, observables, errorHandler)
 
 	// Init services
-	tradeSvc := tradeservice.NewService(marketRepository)
+	tradeSvc := tradeservice.NewService(
+		marketRepository,
+		unspentRepository,
+		vaultRepository,
+		tradeRepository,
+		explorerSvc,
+	)
 	walletSvc := walletservice.NewService(
 		vaultRepository,
 		explorerSvc,
@@ -61,6 +68,7 @@ func main() {
 		marketRepository,
 		unspentRepository,
 		vaultRepository,
+		tradeRepository,
 		crawlerSvc,
 		explorerSvc,
 	)

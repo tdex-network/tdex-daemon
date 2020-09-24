@@ -10,7 +10,7 @@ import (
 )
 
 // ChangePassword changes the wallet passphrase
-func (s *Service) ChangePassword(ctx context.Context, req *pb.ChangePasswordRequest) (*pb.ChangePasswordResponse, error) {
+func (s *Service) ChangePassword(ctx context.Context, req *pb.ChangePasswordRequest) (*pb.ChangePasswordReply, error) {
 	currentPassphrase := string(req.GetCurrentPassword())
 	newPassphrase := string(req.GetNewPassword())
 
@@ -23,5 +23,5 @@ func (s *Service) ChangePassword(ctx context.Context, req *pb.ChangePasswordRequ
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	return &pb.ChangePasswordResponse{}, nil
+	return &pb.ChangePasswordReply{}, nil
 }
