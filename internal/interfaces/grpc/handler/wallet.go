@@ -35,6 +35,14 @@ func (w walletHandler) InitWallet(
 	ctx context.Context,
 	req *pb.InitWalletRequest,
 ) (*pb.InitWalletReply, error) {
+
+	if req.SeedMnemonic == nil || req.WalletPassword == nil {
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"seed and password must be populated",
+		)
+	}
+
 	err := w.walletSvc.InitWallet(ctx,
 		req.SeedMnemonic,
 		hex.EncodeToString(req.WalletPassword),
