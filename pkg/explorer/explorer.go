@@ -14,6 +14,10 @@ type Service interface {
 	// regtest only
 	Faucet(address string) (string, error)
 	Mint(address string, amount int) (string, string, error)
+	GetUnspentsForAddresses(
+		addresses []string,
+		blindingKeys [][]byte,
+	) ([]Utxo, error)
 }
 
 type explorer struct {

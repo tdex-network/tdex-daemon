@@ -71,20 +71,19 @@ events:
 						log.Warn(err)
 						continue utxoLoop
 					}
-					if isTrxConfirmed {
-						u := unspent.NewUnspent(
-							utxo.Hash(),
-							utxo.Asset(),
-							e.Address,
-							utxo.Index(),
-							utxo.Value(),
-							false,
-							false,
-							nil, //TODO should this be populated
-							nil,
-						)
-						unspents = append(unspents, u)
-					}
+					u := unspent.NewUnspent(
+						utxo.Hash(),
+						utxo.Asset(),
+						e.Address,
+						utxo.Index(),
+						utxo.Value(),
+						false,
+						false,
+						nil, //TODO should this be populated
+						nil,
+						isTrxConfirmed,
+					)
+					unspents = append(unspents, u)
 				}
 				err := s.unspentRepository.AddUnspents(context.Background(), unspents)
 				if err != nil {
@@ -158,20 +157,19 @@ events:
 						log.Warn(err)
 						continue utxoLoop1
 					}
-					if isTrxConfirmed {
-						u := unspent.NewUnspent(
-							utxo.Hash(),
-							utxo.Asset(),
-							e.Address,
-							utxo.Index(),
-							utxo.Value(),
-							false,
-							false,
-							nil, //TODO should this be populated
-							nil,
-						)
-						unspents = append(unspents, u)
-					}
+					u := unspent.NewUnspent(
+						utxo.Hash(),
+						utxo.Asset(),
+						e.Address,
+						utxo.Index(),
+						utxo.Value(),
+						false,
+						false,
+						nil, //TODO should this be populated
+						nil,
+						isTrxConfirmed,
+					)
+					unspents = append(unspents, u)
 				}
 				err := s.unspentRepository.AddUnspents(context.Background(), unspents)
 				if err != nil {

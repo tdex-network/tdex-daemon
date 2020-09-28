@@ -1,6 +1,8 @@
-package unspent
+package domain
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 type UnspentKey struct {
 	TxID string
@@ -40,6 +42,12 @@ func NewUnspent(
 		scriptPubKey: scriptPubKey,
 		confirmed:    confirmed,
 	}
+}
+
+type BalanceInfo struct {
+	TotalBalance       uint64
+	ConfirmedBalance   uint64
+	UnconfirmedBalance uint64
 }
 
 func (u *Unspent) Address() string {
@@ -101,4 +109,8 @@ func (u *Unspent) IsKeyEqual(key UnspentKey) bool {
 
 func (u *Unspent) LockedBy() *uuid.UUID {
 	return u.lockedBy
+}
+
+func (u *Unspent) Script() []byte {
+	return u.scriptPubKey
 }

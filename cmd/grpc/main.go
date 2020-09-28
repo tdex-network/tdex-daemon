@@ -3,6 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/soheilhy/cmux"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/persistence/db/inmemory"
+	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
+	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,7 +19,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/domain/market"
 	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
-	"github.com/tdex-network/tdex-daemon/internal/grpcutil"
 	"github.com/tdex-network/tdex-daemon/internal/storage"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -19,8 +26,6 @@ import (
 
 	operatorservice "github.com/tdex-network/tdex-daemon/internal/service/operator"
 	tradeservice "github.com/tdex-network/tdex-daemon/internal/service/trader"
-	walletservice "github.com/tdex-network/tdex-daemon/internal/service/wallet"
-
 	pbhandshake "github.com/tdex-network/tdex-protobuf/generated/go/handshake"
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtrader "github.com/tdex-network/tdex-protobuf/generated/go/trade"
@@ -35,8 +40,14 @@ func main() {
 	var traderAddress = fmt.Sprintf(":%+v", config.GetInt(config.TraderListeningPortKey))
 	var operatorAddress = fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
 	// Grpc Server
-	traderGrpcServer := grpc.NewServer(grpcutil.UnaryLoggerInterceptor(), grpcutil.StreamLoggerInterceptor())
-	operatorGrpcServer := grpc.NewServer(grpcutil.UnaryLoggerInterceptor(), grpcutil.StreamLoggerInterceptor())
+	traderGrpcServer := grpc.NewServer(
+		interceptor.UnaryLoggerInterceptor(),
+		interceptor.StreamLoggerInterceptor(),
+	)
+	operatorGrpcServer := grpc.NewServer(
+		interceptor.UnaryLoggerInterceptor(),
+		interceptor.StreamLoggerInterceptor(),
+	)
 
 	// Init market in-memory storage
 	marketRepository := storage.NewInMemoryMarketRepository()
@@ -60,10 +71,12 @@ func main() {
 		tradeRepository,
 		explorerSvc,
 	)
-	walletSvc := walletservice.NewService(
-		vaultRepository,
-		explorerSvc,
-	)
+
+	unspentRepo := inmemory.NewUnspentRepository()
+	vaultRepo := inmemory.NewVaultRepositoryImpl()
+	walletSvc := application.NewWalletService(vaultRepo, unspentRepo, explorerSvc)
+	walletHandler := grpchandler.NewWalletHandler(walletSvc)
+
 	operatorSvc, err := operatorservice.NewService(
 		marketRepository,
 		unspentRepository,
@@ -82,15 +95,15 @@ func main() {
 	pbhandshake.RegisterHandshakeServer(traderGrpcServer, &pbhandshake.UnimplementedHandshakeServer{})
 	// Register proto implementations on Operator interface
 	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorSvc)
-	pbwallet.RegisterWalletServer(operatorGrpcServer, walletSvc)
+	pbwallet.RegisterWalletServer(operatorGrpcServer, walletHandler)
 
 	log.Debug("starting daemon")
 
 	// Serve grpc and grpc-web multiplexed on the same port
-	if err := grpcutil.ServeMux(traderAddress, traderGrpcServer); err != nil {
+	if err := serveMux(traderAddress, traderGrpcServer); err != nil {
 		log.WithError(err).Panic("error listening on trader interface")
 	}
-	if err := grpcutil.ServeMux(operatorAddress, operatorGrpcServer); err != nil {
+	if err := serveMux(operatorAddress, operatorGrpcServer); err != nil {
 		log.WithError(err).Panic("error listening on operator interface")
 	}
 
@@ -105,6 +118,28 @@ func main() {
 	<-sigChan
 
 	log.Debug("exiting")
+}
+
+func serveMux(address string, grpcServer *grpc.Server) error {
+	lis, err := net.Listen("tcp", address)
+	if err != nil {
+		return err
+	}
+	mux := cmux.New(lis)
+	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
+	httpL := mux.Match(cmux.HTTP1Fast())
+
+	grpcWebServer := grpcweb.WrapServer(grpcServer)
+
+	go grpcServer.Serve(grpcL)
+	go http.Serve(httpL, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		if grpcWebServer.IsGrpcWebRequest(req) {
+			grpcWebServer.ServeHTTP(resp, req)
+		}
+	}))
+
+	go mux.Serve()
+	return nil
 }
 
 func getObjectsToObserve(
