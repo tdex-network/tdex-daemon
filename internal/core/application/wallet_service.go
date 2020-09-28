@@ -74,8 +74,6 @@ func (w *walletService) InitWallet(
 	passphrase string,
 ) error {
 	//validate mnemonic
-
-	//TODO: should we use GetOrCreate repo method instead?
 	return w.vaultRepository.UpdateVault(
 		ctx,
 		mnemonic,
@@ -361,6 +359,10 @@ func sendToMany(
 	})
 	if err != nil {
 		return "", "", err
+	}
+
+	if milliSatsPerBytes < domain.MinMilliSatPerByte {
+		milliSatsPerBytes = domain.MinMilliSatPerByte
 	}
 
 	newPset, err := w.CreateTx()

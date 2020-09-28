@@ -10,4 +10,6 @@ const (
 
 	ExternalChain = 0
 	InternalChain = 1
+
+	MinMilliSatPerByte = 100
 )

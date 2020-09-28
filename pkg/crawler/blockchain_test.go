@@ -87,6 +87,10 @@ func addObservableAfterTimeout(crawler Service) {
 
 type MockExplorer struct{}
 
+func (m MockExplorer) GetUnspentsForAddresses(addresses []string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
+	panic("implement me")
+}
+
 func (m MockExplorer) IsTransactionConfirmed(txID string) (bool, error) {
 	return false, nil
 }

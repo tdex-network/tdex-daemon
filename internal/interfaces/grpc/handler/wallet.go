@@ -36,11 +36,11 @@ func (w walletHandler) InitWallet(
 	req *pb.InitWalletRequest,
 ) (*pb.InitWalletReply, error) {
 	err := w.walletSvc.InitWallet(ctx,
-		req.GetSeedMnemonic(),
-		hex.EncodeToString(req.GetWalletPassword()),
+		req.SeedMnemonic,
+		hex.EncodeToString(req.WalletPassword),
 	)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	return &pb.InitWalletReply{}, nil
 }
@@ -51,7 +51,7 @@ func (w walletHandler) UnlockWallet(
 ) (*pb.UnlockWalletReply, error) {
 	err := w.walletSvc.UnlockWallet(
 		ctx,
-		hex.EncodeToString(req.GetWalletPassword()),
+		hex.EncodeToString(req.WalletPassword),
 	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
