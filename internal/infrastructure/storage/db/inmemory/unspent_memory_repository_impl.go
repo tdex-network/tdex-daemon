@@ -16,7 +16,7 @@ type UnspentRepositoryImpl struct {
 	lock     *sync.RWMutex
 }
 
-//NewUnspentRepository returns a new empty InMemoryMarketRepository
+//NewUnspentRepository returns a new empty MarketRepositoryImpl
 func NewUnspentRepository() *UnspentRepositoryImpl {
 	return &UnspentRepositoryImpl{
 		unspents: map[domain.UnspentKey]domain.Unspent{},

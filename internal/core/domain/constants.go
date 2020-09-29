@@ -12,4 +12,8 @@ const (
 	InternalChain = 1
 
 	MinMilliSatPerByte = 100
+
+	StrategyTypePluggable  StrategyType = 0
+	StrategyTypeBalanced   StrategyType = 1
+	StrategyTypeUnbalanced StrategyType = 2
 )

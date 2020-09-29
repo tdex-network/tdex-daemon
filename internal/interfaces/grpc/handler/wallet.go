@@ -45,7 +45,7 @@ func (w walletHandler) InitWallet(
 
 	err := w.walletSvc.InitWallet(ctx,
 		req.SeedMnemonic,
-		hex.EncodeToString(req.WalletPassword),
+		string(req.WalletPassword),
 	)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -102,7 +102,23 @@ func (w walletHandler) WalletBalance(
 	ctx context.Context,
 	req *pb.WalletBalanceRequest,
 ) (*pb.WalletBalanceReply, error) {
-	panic("implement me")
+	b, err := w.walletSvc.GetWalletBalance(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	balance := make(map[string]*pb.BalanceInfo)
+	for k, v := range b {
+		balance[k] = &pb.BalanceInfo{
+			TotalBalance:       v.TotalBalance,
+			ConfirmedBalance:   v.ConfirmedBalance,
+			UnconfirmedBalance: v.UnconfirmedBalance,
+		}
+	}
+
+	return &pb.WalletBalanceReply{
+		Balance: balance,
+	}, nil
 }
 
 func (w walletHandler) SendToMany(

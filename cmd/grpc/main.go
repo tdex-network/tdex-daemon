@@ -6,7 +6,8 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/persistence/db/inmemory"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 	"net"
@@ -17,14 +18,11 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/internal/domain/market"
-	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/internal/storage"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"google.golang.org/grpc"
 
-	operatorservice "github.com/tdex-network/tdex-daemon/internal/service/operator"
 	tradeservice "github.com/tdex-network/tdex-daemon/internal/service/trader"
 	pbhandshake "github.com/tdex-network/tdex-protobuf/generated/go/handshake"
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -56,7 +54,15 @@ func main() {
 	tradeRepository := storage.NewInMemoryTradeRepository()
 
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
-	observables, err := getObjectsToObserve(marketRepository, vaultRepository)
+
+	unspentRepo := inmemory.NewUnspentRepository()
+	vaultRepo := inmemory.NewVaultRepositoryImpl()
+	marketRepo := inmemory.NewMarketRepositoryImpl()
+	tradeRepo := inmemory.NewTradeRepositoryImpl()
+	observables, err := getObjectsToObserve(marketRepo, vaultRepo)
+	if err != nil {
+		log.WithError(err).Panic(err)
+	}
 
 	errorHandler := func(err error) {
 		log.Warn(err)
@@ -72,29 +78,26 @@ func main() {
 		explorerSvc,
 	)
 
-	unspentRepo := inmemory.NewUnspentRepository()
-	vaultRepo := inmemory.NewVaultRepositoryImpl()
 	walletSvc := application.NewWalletService(vaultRepo, unspentRepo, explorerSvc)
 	walletHandler := grpchandler.NewWalletHandler(walletSvc)
 
-	operatorSvc, err := operatorservice.NewService(
-		marketRepository,
-		unspentRepository,
-		vaultRepository,
-		tradeRepository,
-		crawlerSvc,
+	operatorSvc := application.NewOperatorService(
+		marketRepo,
+		vaultRepo,
+		tradeRepo,
+		unspentRepo,
 		explorerSvc,
+		crawlerSvc,
 	)
-	if err != nil {
-		log.WithError(err).Panic(err)
-	}
+
 	operatorSvc.ObserveBlockchain()
+	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc)
 
 	// Register proto implementations on Trader interface
 	pbtrader.RegisterTradeServer(traderGrpcServer, tradeSvc)
 	pbhandshake.RegisterHandshakeServer(traderGrpcServer, &pbhandshake.UnimplementedHandshakeServer{})
 	// Register proto implementations on Operator interface
-	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorSvc)
+	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorHandler)
 	pbwallet.RegisterWalletServer(operatorGrpcServer, walletHandler)
 
 	log.Debug("starting daemon")
@@ -143,8 +146,8 @@ func serveMux(address string, grpcServer *grpc.Server) error {
 }
 
 func getObjectsToObserve(
-	marketRepository market.Repository,
-	vaultRepository vault.Repository,
+	marketRepository domain.MarketRepository,
+	vaultRepository domain.VaultRepository,
 ) ([]crawler.Observable, error) {
 
 	//get all market addresses to observe
@@ -175,14 +178,14 @@ func getObjectsToObserve(
 	//get fee account addresses to observe
 	addresses, blindingKeys, err := vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
 		context.Background(),
-		vault.FeeAccount,
+		domain.FeeAccount,
 	)
 	if err != nil {
 		return nil, err
 	}
 	for i, a := range addresses {
 		observables = append(observables, &crawler.AddressObservable{
-			AccountIndex: vault.FeeAccount,
+			AccountIndex: domain.FeeAccount,
 			Address:      a,
 			BlindingKey:  blindingKeys[i],
 		})

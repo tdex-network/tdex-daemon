@@ -22,6 +22,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		false,
 		nil,
 		nil,
+		true,
 	)
 
 	u2 := unspent.NewUnspent(
@@ -34,6 +35,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		false,
 		nil,
 		nil,
+		true,
 	)
 
 	unspents := []unspent.Unspent{u1, u2}
@@ -62,6 +64,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		false,
 		nil,
 		nil,
+		true,
 	)
 
 	u4 := unspent.NewUnspent(
@@ -74,6 +77,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		false,
 		nil,
 		nil,
+		true,
 	)
 
 	u5 := unspent.NewUnspent(
@@ -86,6 +90,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		false,
 		nil,
 		nil,
+		true,
 	)
 
 	unspents = []unspent.Unspent{u3, u4, u5}
