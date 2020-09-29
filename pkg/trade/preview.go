@@ -6,10 +6,6 @@ import (
 	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	tradetype "github.com/tdex-network/tdex-daemon/pkg/trade/type"
-
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
-
-	"github.com/shopspring/decimal"
 )
 
 var (
@@ -59,19 +55,19 @@ func (t *Trade) Preview(opts PreviewOpts) (*PreviewResult, error) {
 	}
 
 	tradeType := tradetype.TradeType(opts.TradeType)
-	marketPrice, err := t.client.MarketPrice(tradeclient.MarketPriceOpts{
+	reply, err := t.client.MarketPrice(tradeclient.MarketPriceOpts{
 		Market:    opts.Market,
 		TradeType: tradeType,
 	})
 	if err != nil {
 		return nil, err
 	}
-	priceWithFee := marketPrice.GetPrices()[0]
+	preview := reply.GetPrices()[0]
 
 	if tradeType.IsBuy() {
 		return &PreviewResult{
 			AssetToSend:     opts.Market.QuoteAsset,
-			AmountToSend:    calcProposeAmount(priceWithFee, opts.Amount, opts.Market.QuoteAsset),
+			AmountToSend:    preview.GetAmount(),
 			AssetToReceive:  opts.Market.BaseAsset,
 			AmountToReceive: opts.Amount,
 		}, nil
@@ -81,55 +77,6 @@ func (t *Trade) Preview(opts PreviewOpts) (*PreviewResult, error) {
 		AssetToSend:     opts.Market.BaseAsset,
 		AmountToSend:    opts.Amount,
 		AssetToReceive:  opts.Market.QuoteAsset,
-		AmountToReceive: calcExpectedAmount(priceWithFee, opts.Amount, opts.Market.QuoteAsset),
+		AmountToReceive: preview.GetAmount(),
 	}, nil
-}
-
-func calcProposeAmount(
-	priceWithFee *pbtypes.PriceWithFee,
-	amountToReceive uint64,
-	assetToSend string,
-) uint64 {
-	return calcAmount(priceWithFee, amountToReceive, assetToSend, true)
-}
-
-func calcExpectedAmount(
-	priceWithFee *pbtypes.PriceWithFee,
-	amountToSend uint64,
-	assetToReceive string,
-) uint64 {
-	return calcAmount(priceWithFee, amountToSend, assetToReceive, false)
-}
-
-func calcAmount(priceWithFee *pbtypes.PriceWithFee, amountP uint64, assetP string, isBuy bool) uint64 {
-	price := getPrice(priceWithFee, isBuy)
-	fee := priceWithFee.GetFee()
-	feePercentage := decimal.NewFromInt(fee.GetBasisPoint()).Div(decimal.NewFromInt(100))
-	amount := decimal.NewFromInt(int64(amountP))
-
-	if fee.GetAsset() == assetP {
-		totAmount := amount.Mul(price)
-		totAmount = addOrSubFeeAmount(totAmount, totAmount.Mul(feePercentage), isBuy)
-		amountR, _ := totAmount.Float64()
-		return uint64(amountR)
-	}
-
-	feeAmount := amount.Mul(feePercentage)
-	totAmount := addOrSubFeeAmount(amount, feeAmount, isBuy).Mul(price)
-	amountR, _ := totAmount.Float64()
-	return uint64(amountR)
-}
-
-func getPrice(priceWithFee *pbtypes.PriceWithFee, isBuy bool) decimal.Decimal {
-	if isBuy {
-		return decimal.NewFromFloat32(priceWithFee.GetPrice().GetQuotePrice())
-	}
-	return decimal.NewFromFloat32(priceWithFee.GetPrice().GetBasePrice())
-}
-
-func addOrSubFeeAmount(amountA, amountB decimal.Decimal, toAdd bool) decimal.Decimal {
-	if toAdd {
-		return amountA.Add(amountB)
-	}
-	return amountA.Sub(amountB)
 }
