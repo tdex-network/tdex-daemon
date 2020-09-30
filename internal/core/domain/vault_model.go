@@ -1,9 +1,10 @@
 package domain
 
 import (
+	"strings"
+
 	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	"strings"
 )
 
 type Vault struct {
@@ -46,6 +47,7 @@ func NewVault(mnemonic []string, passphrase string) (*Vault, error) {
 	}
 
 	return &Vault{
+		mnemonic:          mnemonic,
 		encryptedMnemonic: encryptedMnemonic,
 		passphraseHash:    btcutil.Hash160([]byte(passphrase)),
 		accounts:          map[int]*Account{},
