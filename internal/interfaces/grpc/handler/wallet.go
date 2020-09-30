@@ -43,11 +43,10 @@ func (w walletHandler) InitWallet(
 		)
 	}
 
-	err := w.walletSvc.InitWallet(ctx,
+	if err := w.walletSvc.InitWallet(ctx,
 		req.SeedMnemonic,
 		string(req.WalletPassword),
-	)
-	if err != nil {
+	); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	return &pb.InitWalletReply{}, nil
@@ -57,11 +56,10 @@ func (w walletHandler) UnlockWallet(
 	ctx context.Context,
 	req *pb.UnlockWalletRequest,
 ) (*pb.UnlockWalletReply, error) {
-	err := w.walletSvc.UnlockWallet(
+	if err := w.walletSvc.UnlockWallet(
 		ctx,
 		hex.EncodeToString(req.WalletPassword),
-	)
-	if err != nil {
+	); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &pb.UnlockWalletReply{}, nil
@@ -71,12 +69,11 @@ func (w walletHandler) ChangePassword(
 	ctx context.Context,
 	req *pb.ChangePasswordRequest,
 ) (*pb.ChangePasswordReply, error) {
-	err := w.walletSvc.ChangePassword(
+	if err := w.walletSvc.ChangePassword(
 		ctx,
 		hex.EncodeToString(req.CurrentPassword),
 		hex.EncodeToString(req.NewPassword),
-	)
-	if err != nil {
+	); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

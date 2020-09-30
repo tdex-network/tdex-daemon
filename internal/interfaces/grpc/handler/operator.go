@@ -73,11 +73,10 @@ func (o operatorHandler) OpenMarket(
 		)
 	}
 
-	err := o.operatorSvc.OpenMarket(
+	if err := o.operatorSvc.OpenMarket(
 		ctx, req.Market.BaseAsset,
 		req.Market.QuoteAsset,
-	)
-	if err != nil {
+	); err != nil {
 		return nil, status.Error(
 			codes.Internal,
 			err.Error(),
@@ -98,11 +97,10 @@ func (o operatorHandler) CloseMarket(
 		)
 	}
 
-	err := o.operatorSvc.CloseMarket(
+	if err := o.operatorSvc.CloseMarket(
 		ctx, req.Market.BaseAsset,
 		req.Market.QuoteAsset,
-	)
-	if err != nil {
+	); err != nil {
 		return nil, status.Error(
 			codes.Internal,
 			err.Error(),
@@ -158,8 +156,7 @@ func (o operatorHandler) UpdateMarketPrice(
 			QuotePrice: req.Price.QuotePrice,
 		},
 	}
-	err := o.operatorSvc.UpdateMarketPrice(ctx, mwp)
-	if err != nil {
+	if err := o.operatorSvc.UpdateMarketPrice(ctx, mwp); err != nil {
 		return nil, status.Error(
 			codes.Internal,
 			err.Error(),
@@ -178,8 +175,7 @@ func (o operatorHandler) UpdateMarketStrategy(
 		QuoteAsset: req.Market.QuoteAsset,
 		Strategy:   domain.StrategyType(req.StrategyType),
 	}
-	err := o.operatorSvc.UpdateMarketStrategy(ctx, ms)
-	if err != nil {
+	if err := o.operatorSvc.UpdateMarketStrategy(ctx, ms); err != nil {
 		return nil, status.Error(
 			codes.Internal,
 			err.Error(),
