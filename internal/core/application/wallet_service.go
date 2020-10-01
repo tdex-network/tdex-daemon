@@ -130,9 +130,6 @@ func (w *walletService) InitWallet(
 			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService)
 			marketsLastDerivedIndex := getLatestDerivationIndexForMarkets(ww, w.explorerService)
 
-			// fmt.Println("feeLastDerivedIndex", feeLastDerivedIndex)
-			// fmt.Println("walletLastDerivedIndex", walletLastDerivedIndex)
-			// fmt.Println("marketsLastDerivedIndex", len(marketsLastDerivedIndex))
 			if err := initVaultAccount(v, domain.FeeAccount, feeLastDerivedIndex, w.crawlerService); err != nil {
 				return nil, err
 			}
@@ -547,15 +544,12 @@ func getLatestDerivationIndexForAccount(w *wallet.Wallet, accountIndex int, expl
 		unfundedAddressesCounter := 0
 		i := 0
 		for unfundedAddressesCounter < 20 {
-			ctAddress, script, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
+			ctAddress, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 				DerivationPath: fmt.Sprintf("%d'/%d/%d", accountIndex, chainIndex, i),
 				Network:        config.GetNetwork(),
 			})
-			blindingKey, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
-				Script: script,
-			})
 
-			if !isAddressFunded(ctAddress, blindingKey.Serialize(), explorerSvc) {
+			if !isAddressFunded(ctAddress, explorerSvc) {
 				if firstUnfundedAddress < 0 {
 					firstUnfundedAddress = i
 				}
@@ -590,7 +584,6 @@ func getLatestDerivationIndexForMarkets(w *wallet.Wallet, explorerSvc explorer.S
 		marketIndex := domain.MarketAccountStart + i
 		lastDerivedIndex := getLatestDerivationIndexForAccount(w, marketIndex, explorerSvc)
 		if lastDerivedIndex == nil {
-			// fmt.Println("breaked loop at index", i)
 			break
 		}
 		marketsLastIndex = append(marketsLastIndex, lastDerivedIndex)
@@ -634,11 +627,11 @@ func initVaultAccount(v *domain.Vault, accountIndex int, lastDerivedIndex *accou
 	return nil
 }
 
-func isAddressFunded(addr string, blindingKey []byte, explorerSvc explorer.Service) bool {
-	unspents, err := explorerSvc.GetUnspentsForAddresses([]string{addr}, [][]byte{blindingKey})
+func isAddressFunded(addr string, explorerSvc explorer.Service) bool {
+	txs, err := explorerSvc.GetTransactionsForAddress(addr)
 	if err != nil {
 		// should we retry?
 		return false
 	}
-	return len(unspents) > 0
+	return len(txs) > 0
 }
