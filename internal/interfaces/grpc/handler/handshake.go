@@ -13,30 +13,26 @@ func NewHandshakeHandler() pb.HandshakeServer {
 	return &handshakeHandler{}
 }
 
-func (h handshakeHandler) Info(
-	ctx context.Context,
-	request *pb.InfoRequest,
-) (*pb.InfoReply, error) {
-	panic("implement me")
-}
-
 func (h handshakeHandler) Connect(
 	ctx context.Context,
 	init *pb.Init,
 ) (*pb.Ack, error) {
-	panic("implement me")
+	return &pb.Ack{}, nil
 }
 
 func (h handshakeHandler) UnarySecret(
 	ctx context.Context,
 	message *pb.SecretMessage,
 ) (*pb.SecretMessage, error) {
-	panic("implement me")
+	return &pb.SecretMessage{}, nil
 }
 
 func (h handshakeHandler) StreamSecret(
 	message *pb.SecretMessage,
-	server pb.Handshake_StreamSecretServer,
+	stream pb.Handshake_StreamSecretServer,
 ) error {
-	panic("implement me")
+	if err := stream.Send(&pb.SecretMessage{}); err != nil {
+		return err
+	}
+	return nil
 }

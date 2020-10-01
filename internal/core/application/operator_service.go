@@ -41,11 +41,11 @@ type OperatorService interface {
 	) (*MarketWithFee, error)
 	UpdateMarketPrice(
 		ctx context.Context,
-		req MarketWithPriceReq,
+		req MarketWithPrice,
 	) error
 	UpdateMarketStrategy(
 		ctx context.Context,
-		req MarketStrategyReq,
+		req MarketStrategy,
 	) error
 	ListSwaps(
 		ctx context.Context,
@@ -212,17 +212,6 @@ func (o *operatorService) CloseMarket(
 	return nil
 }
 
-type MarketWithFee struct {
-	BaseAsset  string
-	QuoteAsset string
-	Fee
-}
-
-type Fee struct {
-	FeeAsset   string
-	BasisPoint int64
-}
-
 // UpdateMarketFee changes the Liquidity Provider fee for the given market.
 // MUST be expressed as basis point.
 // Eg. To change the fee on each swap from 0.25% to 1% you need to pass down 100
@@ -272,8 +261,10 @@ func (o *operatorService) UpdateMarketFee(
 	)
 
 	return &MarketWithFee{
-		BaseAsset:  mkt.BaseAssetHash(),
-		QuoteAsset: mkt.QuoteAssetHash(),
+		Market: Market{
+			BaseAsset:  mkt.BaseAssetHash(),
+			QuoteAsset: mkt.QuoteAssetHash(),
+		},
 		Fee: Fee{
 			FeeAsset:   mkt.FeeAsset(),
 			BasisPoint: mkt.Fee(),
@@ -281,21 +272,10 @@ func (o *operatorService) UpdateMarketFee(
 	}, nil
 }
 
-type MarketWithPriceReq struct {
-	BaseAsset  string
-	QuoteAsset string
-	PriceReq
-}
-
-type PriceReq struct {
-	BasePrice  float32
-	QuotePrice float32
-}
-
 // UpdateMarketPrice rpc updates the price for the given market
 func (o *operatorService) UpdateMarketPrice(
 	ctx context.Context,
-	req MarketWithPriceReq,
+	req MarketWithPrice,
 ) error {
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
@@ -329,17 +309,11 @@ func (o *operatorService) UpdateMarketPrice(
 	)
 }
 
-type MarketStrategyReq struct {
-	BaseAsset  string
-	QuoteAsset string
-	Strategy   domain.StrategyType
-}
-
 // UpdateMarketStrategy changes the current market making strategy, either using an automated
 // market making formula or a pluggable price feed
 func (o *operatorService) UpdateMarketStrategy(
 	ctx context.Context,
-	req MarketStrategyReq,
+	req MarketStrategy,
 ) error {
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {

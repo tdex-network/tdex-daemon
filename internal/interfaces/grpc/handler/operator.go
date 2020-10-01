@@ -115,8 +115,10 @@ func (o operatorHandler) UpdateMarketFee(
 	req *pb.UpdateMarketFeeRequest,
 ) (*pb.UpdateMarketFeeReply, error) {
 	mwf := application.MarketWithFee{
-		BaseAsset:  req.MarketWithFee.Market.BaseAsset,
-		QuoteAsset: req.MarketWithFee.Market.QuoteAsset,
+		Market: application.Market{
+			BaseAsset:  req.MarketWithFee.Market.BaseAsset,
+			QuoteAsset: req.MarketWithFee.Market.QuoteAsset,
+		},
 		Fee: application.Fee{
 			FeeAsset:   req.MarketWithFee.Fee.Asset,
 			BasisPoint: req.MarketWithFee.Fee.BasisPoint,
@@ -148,10 +150,12 @@ func (o operatorHandler) UpdateMarketPrice(
 	ctx context.Context,
 	req *pb.UpdateMarketPriceRequest,
 ) (*pb.UpdateMarketPriceReply, error) {
-	mwp := application.MarketWithPriceReq{
-		BaseAsset:  req.Market.BaseAsset,
-		QuoteAsset: req.Market.QuoteAsset,
-		PriceReq: application.PriceReq{
+	mwp := application.MarketWithPrice{
+		Market: application.Market{
+			BaseAsset:  req.Market.BaseAsset,
+			QuoteAsset: req.Market.QuoteAsset,
+		},
+		Price: application.Price{
 			BasePrice:  req.Price.BasePrice,
 			QuotePrice: req.Price.QuotePrice,
 		},
@@ -170,10 +174,12 @@ func (o operatorHandler) UpdateMarketStrategy(
 	ctx context.Context,
 	req *pb.UpdateMarketStrategyRequest,
 ) (*pb.UpdateMarketStrategyReply, error) {
-	ms := application.MarketStrategyReq{
-		BaseAsset:  req.Market.BaseAsset,
-		QuoteAsset: req.Market.QuoteAsset,
-		Strategy:   domain.StrategyType(req.StrategyType),
+	ms := application.MarketStrategy{
+		Market: application.Market{
+			BaseAsset:  req.Market.BaseAsset,
+			QuoteAsset: req.Market.QuoteAsset,
+		},
+		Strategy: domain.StrategyType(req.StrategyType),
 	}
 	if err := o.operatorSvc.UpdateMarketStrategy(ctx, ms); err != nil {
 		return nil, status.Error(

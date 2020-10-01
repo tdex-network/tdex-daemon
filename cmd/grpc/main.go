@@ -18,12 +18,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/internal/storage"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"google.golang.org/grpc"
 
-	tradeservice "github.com/tdex-network/tdex-daemon/internal/service/trader"
 	pbhandshake "github.com/tdex-network/tdex-protobuf/generated/go/handshake"
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtrader "github.com/tdex-network/tdex-protobuf/generated/go/trade"
@@ -47,19 +45,13 @@ func main() {
 		interceptor.StreamLoggerInterceptor(),
 	)
 
-	// Init market in-memory storage
-	marketRepository := storage.NewInMemoryMarketRepository()
-	unspentRepository := storage.NewInMemoryUnspentRepository()
-	vaultRepository := storage.NewInMemoryVaultRepository()
-	tradeRepository := storage.NewInMemoryTradeRepository()
-
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 
-	unspentRepo := inmemory.NewUnspentRepository()
-	vaultRepo := inmemory.NewVaultRepositoryImpl()
-	marketRepo := inmemory.NewMarketRepositoryImpl()
-	tradeRepo := inmemory.NewTradeRepositoryImpl()
-	observables, err := getObjectsToObserve(marketRepo, vaultRepo)
+	unspentRepository := inmemory.NewUnspentRepositoryImpl()
+	vaultRepository := inmemory.NewVaultRepositoryImpl()
+	marketRepository := inmemory.NewMarketRepositoryImpl()
+	tradeRepository := inmemory.NewTradeRepositoryImpl()
+	observables, err := getObjectsToObserve(marketRepository, vaultRepository)
 	if err != nil {
 		log.WithError(err).Panic(err)
 	}
@@ -69,23 +61,23 @@ func main() {
 	}
 	crawlerSvc := crawler.NewService(explorerSvc, observables, errorHandler)
 
-	// Init services
-	tradeSvc := tradeservice.NewService(
+	traderSvc := application.NewTraderService(
 		marketRepository,
-		unspentRepository,
-		vaultRepository,
 		tradeRepository,
+		vaultRepository,
+		unspentRepository,
 		explorerSvc,
 	)
+	traderHandler := grpchandler.NewTraderHandler(traderSvc)
 
-	walletSvc := application.NewWalletService(vaultRepo, unspentRepo, explorerSvc)
+	walletSvc := application.NewWalletService(vaultRepository, unspentRepository, explorerSvc)
 	walletHandler := grpchandler.NewWalletHandler(walletSvc)
 
 	operatorSvc := application.NewOperatorService(
-		marketRepo,
-		vaultRepo,
-		tradeRepo,
-		unspentRepo,
+		marketRepository,
+		vaultRepository,
+		tradeRepository,
+		unspentRepository,
 		explorerSvc,
 		crawlerSvc,
 	)
@@ -94,7 +86,7 @@ func main() {
 	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc)
 
 	// Register proto implementations on Trader interface
-	pbtrader.RegisterTradeServer(traderGrpcServer, tradeSvc)
+	pbtrader.RegisterTradeServer(traderGrpcServer, traderHandler)
 	pbhandshake.RegisterHandshakeServer(traderGrpcServer, &pbhandshake.UnimplementedHandshakeServer{})
 	// Register proto implementations on Operator interface
 	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorHandler)
