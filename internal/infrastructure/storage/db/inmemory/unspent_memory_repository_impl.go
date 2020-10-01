@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/tdex-network/tdex-daemon/internal/storageutil/uow"
 )
 
 // UnspentRepositoryImpl represents an in memory storage

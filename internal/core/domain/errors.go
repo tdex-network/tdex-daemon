@@ -43,4 +43,6 @@ var (
 	ErrExpirationDateNotReached = errors.New(
 		"trade did not reached expiration date yet and cannot be set expired",
 	)
+	// ErrMarketNotExist ...
+	ErrMarketNotExist = errors.New("market does not exists")
 )

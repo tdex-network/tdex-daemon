@@ -3,7 +3,7 @@ package domain
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/tdex-network/tdex-daemon/internal/storageutil/uow"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 )
 
 type UnspentRepository interface {

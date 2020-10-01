@@ -2,7 +2,7 @@ package domain
 
 import (
 	"context"
-	"github.com/tdex-network/tdex-daemon/internal/storageutil/uow"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 )
 
 type VaultRepository interface {

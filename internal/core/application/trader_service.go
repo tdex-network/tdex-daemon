@@ -6,8 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/storage"
-	"github.com/tdex-network/tdex-daemon/internal/storageutil/uow"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
@@ -93,7 +92,7 @@ func (t *traderService) GetMarketPrice(
 
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return nil, storage.ErrMarketNotExist
+		return nil, domain.ErrMarketNotExist
 	}
 	//Checks if market exist
 	mkt, _, err := t.marketRepository.GetMarketByAsset(

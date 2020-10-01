@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"sync"
-
-	"github.com/tdex-network/tdex-daemon/internal/storageutil/uow"
 )
 
 var (

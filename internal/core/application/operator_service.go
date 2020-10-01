@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/storage"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -178,7 +177,7 @@ func (o *operatorService) OpenMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return storage.ErrMarketNotExist
+		return domain.ErrMarketNotExist
 	}
 
 	err := o.marketRepository.OpenMarket(
@@ -198,7 +197,7 @@ func (o *operatorService) CloseMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return storage.ErrMarketNotExist
+		return domain.ErrMarketNotExist
 	}
 
 	err := o.marketRepository.CloseMarket(
@@ -223,7 +222,7 @@ func (o *operatorService) UpdateMarketFee(
 
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return nil, storage.ErrMarketNotExist
+		return nil, domain.ErrMarketNotExist
 	}
 	//Checks if market exist
 	_, accountIndex, err := o.marketRepository.GetMarketByAsset(
@@ -279,7 +278,7 @@ func (o *operatorService) UpdateMarketPrice(
 ) error {
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return storage.ErrMarketNotExist
+		return domain.ErrMarketNotExist
 	}
 	//Checks if market exist
 	_, accountIndex, err := o.marketRepository.GetMarketByAsset(
@@ -317,7 +316,7 @@ func (o *operatorService) UpdateMarketStrategy(
 ) error {
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return storage.ErrMarketNotExist
+		return domain.ErrMarketNotExist
 	}
 	//Checks if market exist
 	_, accountIndex, err := o.marketRepository.GetMarketByAsset(
