@@ -2,17 +2,17 @@ package inmemory
 
 import (
 	"context"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"testing"
 
 	"github.com/magiconair/properties/assert"
-	"github.com/tdex-network/tdex-daemon/internal/domain/unspent"
 )
 
 func TestAddUnspentAndBalance(t *testing.T) {
 	repo := NewUnspentRepositoryImpl()
 	ctx := context.Background()
 
-	u1 := unspent.NewUnspent(
+	u1 := domain.NewUnspent(
 		"1",
 		"lbtc",
 		"adr",
@@ -25,7 +25,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		true,
 	)
 
-	u2 := unspent.NewUnspent(
+	u2 := domain.NewUnspent(
 		"2",
 		"lbtc",
 		"adr",
@@ -38,7 +38,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		true,
 	)
 
-	unspents := []unspent.Unspent{u1, u2}
+	unspents := []domain.Unspent{u1, u2}
 	repo.AddUnspents(ctx, unspents)
 
 	allUnspent := repo.GetAllUnspents(ctx)
@@ -46,7 +46,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 	assert.Equal(t, len(allUnspent), 2)
 	assert.Equal(t, len(allSpent), 0)
 
-	unspents = []unspent.Unspent{u2}
+	unspents = []domain.Unspent{u2}
 	repo.AddUnspents(ctx, unspents)
 
 	allUnspent = repo.GetAllUnspents(ctx)
@@ -54,7 +54,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 	assert.Equal(t, len(allUnspent), 1)
 	assert.Equal(t, len(allSpent), 1)
 
-	u3 := unspent.NewUnspent(
+	u3 := domain.NewUnspent(
 		"3",
 		"lbtc",
 		"adr",
@@ -67,7 +67,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		true,
 	)
 
-	u4 := unspent.NewUnspent(
+	u4 := domain.NewUnspent(
 		"4",
 		"lbtc",
 		"adr",
@@ -80,7 +80,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		true,
 	)
 
-	u5 := unspent.NewUnspent(
+	u5 := domain.NewUnspent(
 		"5",
 		"lbtc",
 		"adr",
@@ -93,7 +93,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 		true,
 	)
 
-	unspents = []unspent.Unspent{u3, u4, u5}
+	unspents = []domain.Unspent{u3, u4, u5}
 	repo.AddUnspents(ctx, unspents)
 
 	allUnspent = repo.GetAllUnspents(ctx)
