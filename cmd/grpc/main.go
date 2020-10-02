@@ -47,7 +47,7 @@ func main() {
 		interceptor.StreamLoggerInterceptor(),
 	)
 
-	// Init market in-memory storage
+	// Init market inmemory storage
 	marketRepository := storage.NewInMemoryMarketRepository()
 	unspentRepository := storage.NewInMemoryUnspentRepository()
 	vaultRepository := storage.NewInMemoryVaultRepository()
