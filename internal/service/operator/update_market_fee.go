@@ -46,7 +46,7 @@ func (s *Service) UpdateMarketFee(ctx context.Context, req *pb.UpdateMarketFeeRe
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Ignore errors. If we reached this point it must exists.
+	//Ignore errors. If we reached this point it must exists.
 	mkt, _ := s.marketRepository.GetOrCreateMarket(context.Background(), accountIndex)
 
 	return &pb.UpdateMarketFeeReply{
