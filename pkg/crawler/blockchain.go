@@ -62,7 +62,6 @@ type Observable interface {
 
 type AddressObservable struct {
 	AccountIndex int
-	AssetHash    string
 	Address      string
 	BlindingKey  []byte
 }
