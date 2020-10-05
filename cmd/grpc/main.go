@@ -1,20 +1,19 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
-	"github.com/soheilhy/cmux"
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
-	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
-	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
-	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/soheilhy/cmux"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
+	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
+	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -32,9 +31,40 @@ func main() {
 	log.SetLevel(log.Level(config.GetInt(config.LogLevelKey)))
 	config.Validate()
 
+	unspentRepository := inmemory.NewUnspentRepositoryImpl()
+	vaultRepository := inmemory.NewVaultRepositoryImpl()
+	marketRepository := inmemory.NewMarketRepositoryImpl()
+	tradeRepository := inmemory.NewTradeRepositoryImpl()
+
+	errorHandler := func(err error) { log.Warn(err) }
+	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	crawlerSvc := crawler.NewService(explorerSvc, []crawler.Observable{}, errorHandler)
+	traderSvc := application.NewTraderService(
+		marketRepository,
+		tradeRepository,
+		vaultRepository,
+		unspentRepository,
+		explorerSvc,
+	)
+	walletSvc := application.NewWalletService(
+		vaultRepository,
+		unspentRepository,
+		crawlerSvc,
+		explorerSvc,
+	)
+	operatorSvc := application.NewOperatorService(
+		marketRepository,
+		vaultRepository,
+		tradeRepository,
+		unspentRepository,
+		explorerSvc,
+		crawlerSvc,
+	)
+	operatorSvc.ObserveBlockchain()
+
 	// Ports
-	var traderAddress = fmt.Sprintf(":%+v", config.GetInt(config.TraderListeningPortKey))
-	var operatorAddress = fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
+	traderAddress := fmt.Sprintf(":%+v", config.GetInt(config.TraderListeningPortKey))
+	operatorAddress := fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
 	// Grpc Server
 	traderGrpcServer := grpc.NewServer(
 		interceptor.UnaryLoggerInterceptor(),
@@ -45,44 +75,8 @@ func main() {
 		interceptor.StreamLoggerInterceptor(),
 	)
 
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
-
-	unspentRepository := inmemory.NewUnspentRepositoryImpl()
-	vaultRepository := inmemory.NewVaultRepositoryImpl()
-	marketRepository := inmemory.NewMarketRepositoryImpl()
-	tradeRepository := inmemory.NewTradeRepositoryImpl()
-	observables, err := getObjectsToObserve(marketRepository, vaultRepository)
-	if err != nil {
-		log.WithError(err).Panic(err)
-	}
-
-	errorHandler := func(err error) {
-		log.Warn(err)
-	}
-	crawlerSvc := crawler.NewService(explorerSvc, observables, errorHandler)
-
-	traderSvc := application.NewTraderService(
-		marketRepository,
-		tradeRepository,
-		vaultRepository,
-		unspentRepository,
-		explorerSvc,
-	)
 	traderHandler := grpchandler.NewTraderHandler(traderSvc)
-
-	walletSvc := application.NewWalletService(vaultRepository, unspentRepository, explorerSvc)
 	walletHandler := grpchandler.NewWalletHandler(walletSvc)
-
-	operatorSvc := application.NewOperatorService(
-		marketRepository,
-		vaultRepository,
-		tradeRepository,
-		unspentRepository,
-		explorerSvc,
-		crawlerSvc,
-	)
-
-	operatorSvc.ObserveBlockchain()
 	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc)
 
 	// Register proto implementations on Trader interface
@@ -135,53 +129,4 @@ func serveMux(address string, grpcServer *grpc.Server) error {
 
 	go mux.Serve()
 	return nil
-}
-
-func getObjectsToObserve(
-	marketRepository domain.MarketRepository,
-	vaultRepository domain.VaultRepository,
-) ([]crawler.Observable, error) {
-
-	//get all market addresses to observe
-	markets, err := marketRepository.GetAllMarkets(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	observables := make([]crawler.Observable, 0)
-	for _, m := range markets {
-		addresses, blindingKeys, err := vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
-			context.Background(),
-			m.AccountIndex(),
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		for i, a := range addresses {
-			observables = append(observables, &crawler.AddressObservable{
-				AccountIndex: m.AccountIndex(),
-				Address:      a,
-				BlindingKey:  blindingKeys[i],
-			})
-		}
-	}
-
-	//get fee account addresses to observe
-	addresses, blindingKeys, err := vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
-		context.Background(),
-		domain.FeeAccount,
-	)
-	if err != nil {
-		return nil, err
-	}
-	for i, a := range addresses {
-		observables = append(observables, &crawler.AddressObservable{
-			AccountIndex: domain.FeeAccount,
-			Address:      a,
-			BlindingKey:  blindingKeys[i],
-		})
-	}
-
-	return observables, nil
 }

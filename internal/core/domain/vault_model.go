@@ -1,17 +1,23 @@
 package domain
 
 import (
+	"strings"
+
 	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	"strings"
 )
 
+type accountAndKey struct {
+	accountIndex int
+	blindingKey  []byte
+}
+
 type Vault struct {
-	mnemonic          []string
-	encryptedMnemonic string
-	passphraseHash    []byte
-	accounts          map[int]*Account
-	accountsByAddress map[string]int
+	mnemonic               []string
+	encryptedMnemonic      string
+	passphraseHash         []byte
+	accounts               map[int]*Account
+	accountAndKeyByAddress map[string]accountAndKey
 }
 
 // Account defines the entity data struture for a derived account of the
@@ -21,6 +27,13 @@ type Account struct {
 	lastExternalIndex      int
 	lastInternalIndex      int
 	derivationPathByScript map[string]string
+}
+
+type AddressInfo struct {
+	AccountIndex   int
+	Address        string
+	BlindingKey    []byte
+	DerivationPath string
 }
 
 // NewVault encrypts the provided mnemonic with the passhrase and returns a new
@@ -46,10 +59,11 @@ func NewVault(mnemonic []string, passphrase string) (*Vault, error) {
 	}
 
 	return &Vault{
-		encryptedMnemonic: encryptedMnemonic,
-		passphraseHash:    btcutil.Hash160([]byte(passphrase)),
-		accounts:          map[int]*Account{},
-		accountsByAddress: map[string]int{},
+		mnemonic:               mnemonic,
+		encryptedMnemonic:      encryptedMnemonic,
+		passphraseHash:         btcutil.Hash160([]byte(passphrase)),
+		accounts:               map[int]*Account{},
+		accountAndKeyByAddress: map[string]accountAndKey{},
 	}, nil
 }
 

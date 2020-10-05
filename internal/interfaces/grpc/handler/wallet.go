@@ -2,7 +2,7 @@ package grpchandler
 
 import (
 	"context"
-	"encoding/hex"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
 	"google.golang.org/grpc/codes"
@@ -32,24 +32,28 @@ func (w walletHandler) GenSeed(
 }
 
 func (w walletHandler) InitWallet(
-	ctx context.Context,
 	req *pb.InitWalletRequest,
-) (*pb.InitWalletReply, error) {
-
+	stream pb.Wallet_InitWalletServer,
+) error {
 	if req.SeedMnemonic == nil || req.WalletPassword == nil {
-		return nil, status.Error(
+		return status.Error(
 			codes.InvalidArgument,
 			"seed and password must be populated",
 		)
 	}
 
-	if err := w.walletSvc.InitWallet(ctx,
+	if err := w.walletSvc.InitWallet(
+		context.Background(),
 		req.SeedMnemonic,
 		string(req.WalletPassword),
 	); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
-	return &pb.InitWalletReply{}, nil
+
+	if err := stream.Send(&pb.InitWalletReply{}); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+	return nil
 }
 
 func (w walletHandler) UnlockWallet(
@@ -58,7 +62,7 @@ func (w walletHandler) UnlockWallet(
 ) (*pb.UnlockWalletReply, error) {
 	if err := w.walletSvc.UnlockWallet(
 		ctx,
-		hex.EncodeToString(req.WalletPassword),
+		string(req.WalletPassword),
 	); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -71,8 +75,8 @@ func (w walletHandler) ChangePassword(
 ) (*pb.ChangePasswordReply, error) {
 	if err := w.walletSvc.ChangePassword(
 		ctx,
-		hex.EncodeToString(req.CurrentPassword),
-		hex.EncodeToString(req.NewPassword),
+		string(req.CurrentPassword),
+		string(req.NewPassword),
 	); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

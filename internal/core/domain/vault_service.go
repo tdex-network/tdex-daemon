@@ -5,13 +5,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"reflect"
+	"sort"
+	"strings"
+
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
-	"reflect"
-	"strings"
 )
 
 // IsZero returns whether the Vault is initialized without holding any data
@@ -125,15 +127,24 @@ func (v *Vault) AccountByIndex(accountIndex int) (*Account, error) {
 
 // AccountByAddress returns the account to which the provided address belongs
 func (v *Vault) AccountByAddress(addr string) (*Account, int, error) {
-	accountIndex, ok := v.accountsByAddress[addr]
+	info, ok := v.accountAndKeyByAddress[addr]
 	if !ok {
 		return nil, -1, fmt.Errorf("account not found for address '%s", addr)
 	}
-	account, err := v.AccountByIndex(accountIndex)
+	account, err := v.AccountByIndex(info.accountIndex)
 	if err != nil {
 		return nil, -1, err
 	}
-	return account, accountIndex, nil
+	return account, info.accountIndex, nil
+}
+
+// AllDerivedAddressesInfo returns the info of all the external and internal
+// addresses derived by the daemon. This method does not require the Vault to
+// be unlocked since it does not make use of the mnemonic in plain text.
+// The info returned for each address are the account index, the derivation
+// path, and the private blinding key.
+func (v *Vault) AllDerivedAddressesInfo() []AddressInfo {
+	return v.allDerivedAddressesInfo()
 }
 
 // AllDerivedAddressesAndBlindingKeysForAccount returns all the external and
@@ -210,9 +221,35 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 	} else {
 		account.nextExternalIndex()
 	}
-	v.accountsByAddress[addr] = account.Index()
+	v.accountAndKeyByAddress[addr] = accountAndKey{
+		accountIndex: account.Index(),
+		blindingKey:  blindingKey.Serialize(),
+	}
 
 	return addr, hex.EncodeToString(script), blindingKey.Serialize(), err
+}
+
+func (v *Vault) allDerivedAddressesInfo() []AddressInfo {
+	list := make([]AddressInfo, 0, len(v.accountAndKeyByAddress))
+
+	for addr, info := range v.accountAndKeyByAddress {
+		account, _ := v.AccountByIndex(info.accountIndex)
+		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
+		path, _ := account.DerivationPathByScript(hex.EncodeToString(script))
+
+		list = append(list, AddressInfo{
+			AccountIndex:   info.accountIndex,
+			Address:        addr,
+			BlindingKey:    info.blindingKey,
+			DerivationPath: path,
+		})
+	}
+
+	// sorting list by derivation path also groups addresses by accountIndex
+	sort.SliceStable(list, func(i, j int) bool {
+		return list[i].DerivationPath < list[j].DerivationPath
+	})
+	return list
 }
 
 func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) ([]string, [][]byte, error) {
