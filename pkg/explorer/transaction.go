@@ -65,6 +65,19 @@ func (e *explorer) GetTransactionStatus(txID string) (map[string]interface{}, er
 	return trxStatus, nil
 }
 
+func (e *explorer) GetTransactionsForAddress(address string) ([]Transaction, error) {
+	url := fmt.Sprintf("%s/address/%s/txs", e.apiUrl, address)
+	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, fmt.Errorf(resp)
+	}
+
+	return parseTransactions(resp)
+}
+
 func (e *explorer) BroadcastTransaction(txHex string) (string, error) {
 	url := fmt.Sprintf("%s/tx", e.apiUrl)
 	headers := map[string]string{
@@ -127,4 +140,25 @@ func (e *explorer) Mint(address string, amount int) (string, string, error) {
 	}
 
 	return respBody["txId"].(string), respBody["asset"].(string), nil
+}
+
+func parseTransactions(txList string) ([]Transaction, error) {
+	txInterfaces := make([]interface{}, 0)
+	if err := json.Unmarshal([]byte(txList), &txInterfaces); err != nil {
+		return nil, err
+	}
+	txs := make([]Transaction, 0, len(txInterfaces))
+
+	for _, txi := range txInterfaces {
+		t, err := json.Marshal(txi)
+		if err != nil {
+			return nil, err
+		}
+		trx, err := NewTxFromJSON(string(t))
+		if err != nil {
+			return nil, err
+		}
+		txs = append(txs, trx)
+	}
+	return txs, nil
 }

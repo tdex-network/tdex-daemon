@@ -1,12 +1,12 @@
 package crawler
 
 import (
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/internal/domain/vault"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
@@ -62,7 +62,6 @@ type Observable interface {
 
 type AddressObservable struct {
 	AccountIndex int
-	AssetHash    string
 	Address      string
 	BlindingKey  []byte
 }
@@ -225,7 +224,7 @@ func (a *AddressObservable) observe(
 	}
 	var eventType int
 	switch a.AccountIndex {
-	case vault.FeeAccount:
+	case domain.FeeAccount:
 		eventType = FeeAccountDeposit
 	default:
 		eventType = MarketAccountDeposit

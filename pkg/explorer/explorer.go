@@ -10,10 +10,15 @@ type Service interface {
 	GetTransactionHex(hash string) (string, error)
 	IsTransactionConfirmed(txID string) (bool, error)
 	GetTransactionStatus(txID string) (map[string]interface{}, error)
+	GetTransactionsForAddress(address string) ([]Transaction, error)
 	BroadcastTransaction(txHex string) (string, error)
 	// regtest only
 	Faucet(address string) (string, error)
 	Mint(address string, amount int) (string, string, error)
+	GetUnspentsForAddresses(
+		addresses []string,
+		blindingKeys [][]byte,
+	) ([]Utxo, error)
 }
 
 type explorer struct {

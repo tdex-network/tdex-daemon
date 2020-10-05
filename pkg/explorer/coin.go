@@ -9,6 +9,44 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
+func (e *explorer) GetUnspentsForAddresses(
+	addresses []string,
+	blindingKeys [][]byte,
+) ([]Utxo, error) {
+	chUnspents := make(chan []Utxo)
+	chErr := make(chan error, 1)
+	unspents := make([]Utxo, 0)
+
+	for _, addr := range addresses {
+		go e.getUnspentsForAddress(addr, blindingKeys, chUnspents, chErr)
+
+		select {
+		case err := <-chErr:
+			close(chErr)
+			close(chUnspents)
+			return nil, err
+		case unspentsForAddress := <-chUnspents:
+			unspents = append(unspents, unspentsForAddress...)
+		}
+	}
+
+	return unspents, nil
+}
+
+func (e *explorer) getUnspentsForAddress(
+	addr string,
+	blindingKeys [][]byte,
+	chUnspents chan []Utxo,
+	chErr chan error,
+) {
+	unspents, err := e.GetUnspents(addr, blindingKeys)
+	if err != nil {
+		chErr <- err
+		return
+	}
+	chUnspents <- unspents
+}
+
 func (e *explorer) GetUnspents(addr string, blindingKeys [][]byte) (coins []Utxo, err error) {
 	url := fmt.Sprintf(
 		"%s/address/%s/utxo",
