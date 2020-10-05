@@ -15,7 +15,7 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 		name          string
 		b             BalancedReserves
 		args          args
-		wantSpotPrice uint64
+		wantSpotPrice float32
 	}{
 		{
 			"OutGivenIn",

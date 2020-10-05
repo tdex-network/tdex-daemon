@@ -2,6 +2,7 @@ package grpchandler
 
 import (
 	"context"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	"github.com/tdex-network/tdex-protobuf/generated/go/types"
@@ -68,6 +69,8 @@ func (t traderHandler) MarketPrice(
 			BaseAsset:  req.Market.BaseAsset,
 			QuoteAsset: req.Market.BaseAsset,
 		},
+		int(req.Type),
+		req.Amount,
 	)
 	if err != nil {
 		return nil, status.Error(
@@ -87,6 +90,7 @@ func (t traderHandler) MarketPrice(
 					Asset:      price.FeeAsset,
 					BasisPoint: price.BasisPoint,
 				},
+				Amount: price.Amount,
 			},
 		},
 	}, nil

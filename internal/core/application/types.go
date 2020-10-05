@@ -30,6 +30,7 @@ type Price struct {
 type PriceWithFee struct {
 	Price
 	Fee
+	Amount uint64
 }
 
 type MarketStrategy struct {

@@ -19,7 +19,7 @@ type FormulaOpts struct {
 
 // MakingFormula defines the interface for implementing the formula to derive the spot price
 type MakingFormula interface {
-	SpotPrice(spotPriceOpts *FormulaOpts) (spotPrice uint64)
+	SpotPrice(spotPriceOpts *FormulaOpts) (spotPrice float32)
 	OutGivenIn(outGivenInOpts *FormulaOpts, amountIn uint64) (amountOut uint64)
 	InGivenOut(inGivenOutOpts *FormulaOpts, amountOut uint64) (amountIn uint64)
 }

@@ -3,12 +3,16 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"errors"
+
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
@@ -19,11 +23,18 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	tradeBuy = iota
+	tradeSell
+)
+
 type TraderService interface {
 	GetTradableMarkets(ctx context.Context) ([]MarketWithFee, error)
 	GetMarketPrice(
 		ctx context.Context,
-		req Market,
+		market Market,
+		tradeType int,
+		amount uint64,
 	) (*PriceWithFee, error)
 	TradePropose(
 		req *pbtrade.TradeProposeRequest,
@@ -87,35 +98,43 @@ func (t *traderService) GetTradableMarkets(ctx context.Context) (
 // MarketPrice is the domain controller for the MarketPrice RPC
 func (t *traderService) GetMarketPrice(
 	ctx context.Context,
-	req Market,
+	market Market,
+	tradeType int,
+	amount uint64,
 ) (*PriceWithFee, error) {
 
 	// Checks if base asset is correct
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
 		return nil, domain.ErrMarketNotExist
 	}
 	//Checks if market exist
 	mkt, _, err := t.marketRepository.GetMarketByAsset(
 		ctx,
-		req.QuoteAsset,
+		market.QuoteAsset,
 	)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
 	if !mkt.IsTradable() {
-		return nil, status.Error(codes.FailedPrecondition, "Market is closed")
+		return nil, domain.ErrMarketIsClosed
+	}
+
+	price, previewAmount, err := getPriceAndPreviewForMarket(
+		ctx, t.vaultRepository, t.unspentRepository,
+		mkt, tradeType, amount,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	return &PriceWithFee{
-		Price: Price{
-			BasePrice:  mkt.BaseAssetPrice(),
-			QuotePrice: mkt.QuoteAssetPrice(),
-		},
+		Price: price,
 		Fee: Fee{
 			FeeAsset:   mkt.FeeAsset(),
 			BasisPoint: mkt.Fee(),
 		},
+		Amount: previewAmount,
 	}, nil
 }
 
@@ -596,4 +615,142 @@ func getSelectedBlindingKeys(blindingKeys map[string][]byte, unspents []explorer
 		selectedKeys[script] = blindingKeys[script]
 	}
 	return selectedKeys
+}
+
+func getPriceAndPreviewForMarket(
+	ctx context.Context,
+	vaultRepo domain.VaultRepository,
+	unspentRepo domain.UnspentRepository,
+	market *domain.Market,
+	tradeType int,
+	amount uint64,
+) (
+	price Price,
+	previewAmount uint64,
+	err error,
+) {
+	if market.IsStrategyPluggable() {
+		previewAmount = calcPreviewAmount(market, tradeType, amount)
+		price = Price{
+			BasePrice:  market.BaseAssetPrice(),
+			QuotePrice: market.QuoteAssetPrice(),
+		}
+		return
+	}
+
+	addresses, _, err := vaultRepo.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, market.AccountIndex())
+	if err != nil {
+		return
+	}
+
+	unspents := unspentRepo.GetAvailableUnspentsForAddresses(ctx, addresses)
+	if len(unspents) == 0 {
+		err = errors.New("no available funds for market")
+		return
+	}
+
+	balances := getBalanceByAsset(unspents)
+	baseBalanceAvailable := balances[market.BaseAssetHash()]
+	quoteBalanceAvailable := balances[market.QuoteAssetHash()]
+	previewAmount = market.Strategy().Formula().InGivenOut(
+		&mm.FormulaOpts{
+			BalanceIn:           quoteBalanceAvailable,
+			BalanceOut:          baseBalanceAvailable,
+			Fee:                 uint64(market.Fee()),
+			ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
+		},
+		amount,
+	)
+	if tradeType == tradeSell {
+		previewAmount = market.Strategy().Formula().OutGivenIn(
+			&mm.FormulaOpts{
+				BalanceIn:           baseBalanceAvailable,
+				BalanceOut:          quoteBalanceAvailable,
+				Fee:                 uint64(market.Fee()),
+				ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
+			},
+			amount,
+		)
+	}
+	price = Price{
+		BasePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
+			BalanceIn:  baseBalanceAvailable,
+			BalanceOut: quoteBalanceAvailable,
+		}),
+		QuotePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
+			BalanceIn:  quoteBalanceAvailable,
+			BalanceOut: baseBalanceAvailable,
+		}),
+	}
+
+	return
+}
+
+func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
+	balances := map[string]uint64{}
+	for _, unspent := range unspents {
+		if _, ok := balances[unspent.AssetHash()]; !ok {
+			balances[unspent.AssetHash()] = 0
+		}
+		balances[unspent.AssetHash()] += unspent.Value()
+	}
+	return balances
+}
+
+func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint64 {
+	if tradeType == tradeBuy {
+		return calcProposeAmount(
+			amount,
+			market.BaseAssetHash(),
+			market.BaseAssetPrice(),
+			market.FeeAsset(),
+			market.Fee(),
+		)
+	}
+
+	return calcExpectedAmount(
+		amount,
+		market.QuoteAssetHash(),
+		market.QuoteAssetPrice(),
+		market.FeeAsset(),
+		market.Fee(),
+	)
+}
+
+func calcProposeAmount(
+	amountR uint64, assetR string, assetPrice float32,
+	feeAsset string, fee int64,
+) uint64 {
+	price := decimal.NewFromFloat32(assetPrice)
+	feePercentage := decimal.NewFromInt(fee).Div(decimal.NewFromInt(100))
+	amount := decimal.NewFromInt(int64(amountR))
+
+	if feeAsset != assetR {
+		amountP := amount.Mul(price)
+		amountP = amountP.Add(amountP.Mul(feePercentage))
+		return uint64(amountP.BigInt().Int64())
+	}
+
+	feeAmount := amount.Mul(feePercentage)
+	amountP := amount.Add(feeAmount).Mul(price)
+	return uint64(amountP.BigInt().Int64())
+}
+
+func calcExpectedAmount(
+	amountP uint64, assetP string, assetPrice float32,
+	feeAsset string, fee int64,
+) uint64 {
+	price := decimal.NewFromFloat32(assetPrice)
+	feePercentage := decimal.NewFromInt(fee).Div(decimal.NewFromInt(100))
+	amount := decimal.NewFromInt(int64(amountP))
+
+	if feeAsset != assetP {
+		amountR := amount.Mul(price)
+		amountR = amountR.Sub(amountR.Mul(feePercentage))
+		return uint64(amountR.BigInt().Int64())
+	}
+
+	feeAmount := amount.Mul(feePercentage)
+	amountR := amount.Sub(feeAmount).Mul(price)
+	return uint64(amountR.BigInt().Int64())
 }

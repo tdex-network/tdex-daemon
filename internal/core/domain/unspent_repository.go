@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 )
@@ -17,5 +18,4 @@ type UnspentRepository interface {
 	UnlockUnspents(ctx context.Context, unspentKey []UnspentKey) error
 	Begin() (uow.Tx, error)
 	ContextKey() interface{}
-	GetBalanceInfoForAsset(unspents []Unspent) map[string]BalanceInfo
 }
