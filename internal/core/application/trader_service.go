@@ -652,7 +652,7 @@ func getPriceAndPreviewForMarket(
 			BalanceIn:           quoteBalanceAvailable,
 			BalanceOut:          baseBalanceAvailable,
 			Fee:                 uint64(market.Fee()),
-			ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
+			ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
 		},
 		amount,
 	)
@@ -662,19 +662,19 @@ func getPriceAndPreviewForMarket(
 				BalanceIn:           baseBalanceAvailable,
 				BalanceOut:          quoteBalanceAvailable,
 				Fee:                 uint64(market.Fee()),
-				ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
+				ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
 			},
 			amount,
 		)
 	}
 	price = Price{
 		BasePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
-			BalanceIn:  baseBalanceAvailable,
-			BalanceOut: quoteBalanceAvailable,
-		}),
-		QuotePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
 			BalanceIn:  quoteBalanceAvailable,
 			BalanceOut: baseBalanceAvailable,
+		}),
+		QuotePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
+			BalanceIn:  baseBalanceAvailable,
+			BalanceOut: quoteBalanceAvailable,
 		}),
 	}
 
@@ -697,7 +697,7 @@ func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint
 		return calcProposeAmount(
 			amount,
 			market.BaseAssetHash(),
-			market.BaseAssetPrice(),
+			market.QuoteAssetPrice(),
 			market.FeeAsset(),
 			market.Fee(),
 		)
