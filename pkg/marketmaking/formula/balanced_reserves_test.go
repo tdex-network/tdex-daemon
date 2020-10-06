@@ -15,7 +15,7 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 		name          string
 		b             BalancedReserves
 		args          args
-		wantSpotPrice float32
+		wantSpotPrice int64
 	}{
 		{
 			"OutGivenIn",
@@ -32,7 +32,7 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := &BalancedReserves{}
-			if gotSpotPrice := b.SpotPrice(tt.args.opts); gotSpotPrice != tt.wantSpotPrice {
+			if gotSpotPrice := b.SpotPrice(tt.args.opts); gotSpotPrice.BigInt().Int64() != tt.wantSpotPrice {
 				t.Errorf("BalancedReserves.SpotPrice() = %v, want %v", gotSpotPrice, tt.wantSpotPrice)
 			}
 		})

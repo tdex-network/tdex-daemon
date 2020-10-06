@@ -2,6 +2,8 @@ package grpchandler
 
 import (
 	"context"
+
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -156,8 +158,8 @@ func (o operatorHandler) UpdateMarketPrice(
 			QuoteAsset: req.Market.QuoteAsset,
 		},
 		Price: application.Price{
-			BasePrice:  req.Price.BasePrice,
-			QuotePrice: req.Price.QuotePrice,
+			BasePrice:  decimal.NewFromFloat32(req.Price.BasePrice),
+			QuotePrice: decimal.NewFromFloat32(req.Price.QuotePrice),
 		},
 	}
 	if err := o.operatorSvc.UpdateMarketPrice(ctx, mwp); err != nil {

@@ -2,6 +2,7 @@
 package formula
 
 import (
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
@@ -15,14 +16,12 @@ const (
 type BalancedReserves struct{}
 
 // SpotPrice calculates the spot price (without fees) given the balances fo the two reserves. The weight reserve ratio is fixed at 50/50
-func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice float32) {
+func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice decimal.Decimal) {
 	// 2 : 20k = 1 : x
 	// BI : BO = OneInput : SpotPrice
 	numer := mathutil.Div(opts.BalanceOut, balancedWeightOut)
 	denom := mathutil.Div(opts.BalanceIn, balancedWeightIn)
-	ratio := mathutil.DivDecimal(numer, denom)
-	price, _ := ratio.Float64()
-	spotPrice = float32(price)
+	spotPrice = mathutil.DivDecimal(numer, denom)
 	return
 }
 

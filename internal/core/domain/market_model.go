@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
@@ -40,7 +41,7 @@ type depositedAsset struct {
 }
 
 //Price ...
-type Price float32
+type Price decimal.Decimal
 
 //PriceByTime ...
 type PriceByTime map[uint64]Price

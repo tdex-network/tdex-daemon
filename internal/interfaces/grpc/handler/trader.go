@@ -79,12 +79,15 @@ func (t traderHandler) MarketPrice(
 		)
 	}
 
+	basePrice, _ := price.BasePrice.Float64()
+	quotePrice, _ := price.QuotePrice.Float64()
+
 	return &pb.MarketPriceReply{
 		Prices: []*pbtypes.PriceWithFee{
 			{
 				Price: &pbtypes.Price{
-					BasePrice:  price.BasePrice,
-					QuotePrice: price.QuotePrice,
+					BasePrice:  float32(basePrice),
+					QuotePrice: float32(quotePrice),
 				},
 				Fee: &pbtypes.Fee{
 					Asset:      price.FeeAsset,

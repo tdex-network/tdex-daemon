@@ -718,10 +718,10 @@ func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint
 }
 
 func calcProposeAmount(
-	amountR uint64, assetR string, assetPrice float32,
+	amountR uint64, assetR string,
+	price decimal.Decimal,
 	feeAsset string, fee int64,
 ) uint64 {
-	price := decimal.NewFromFloat32(assetPrice)
 	feePercentage := decimal.NewFromInt(fee).Div(decimal.NewFromInt(100))
 	amount := decimal.NewFromInt(int64(amountR))
 
@@ -737,10 +737,10 @@ func calcProposeAmount(
 }
 
 func calcExpectedAmount(
-	amountP uint64, assetP string, assetPrice float32,
+	amountP uint64, assetP string,
+	price decimal.Decimal,
 	feeAsset string, fee int64,
 ) uint64 {
-	price := decimal.NewFromFloat32(assetPrice)
 	feePercentage := decimal.NewFromInt(fee).Div(decimal.NewFromInt(100))
 	amount := decimal.NewFromInt(int64(amountP))
 
