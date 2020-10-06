@@ -23,11 +23,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const (
-	tradeBuy = iota
-	tradeSell
-)
-
 type TraderService interface {
 	GetTradableMarkets(ctx context.Context) ([]MarketWithFee, error)
 	GetMarketPrice(
@@ -661,7 +656,7 @@ func getPriceAndPreviewForMarket(
 		},
 		amount,
 	)
-	if tradeType == tradeSell {
+	if tradeType == TradeSell {
 		previewAmount = market.Strategy().Formula().OutGivenIn(
 			&mm.FormulaOpts{
 				BalanceIn:           baseBalanceAvailable,
@@ -698,7 +693,7 @@ func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
 }
 
 func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint64 {
-	if tradeType == tradeBuy {
+	if tradeType == TradeBuy {
 		return calcProposeAmount(
 			amount,
 			market.BaseAssetHash(),
