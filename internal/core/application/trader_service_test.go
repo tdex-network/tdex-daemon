@@ -98,6 +98,10 @@ type priceAndPreviewTestData struct {
 }
 
 func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData, error) {
+	// create market
+	market, _ := domain.NewMarket(domain.MarketAccountStart)
+
+	// derive addresses for funding market
 	mnemonic := []string{"curtain", "summer", "juice", "thought", "release", "velvet", "dress", "fantasy", "price", "hard", "core", "friend", "reopen", "myth", "giant", "consider", "seminar", "ladder", "thought", "spell", "state", "home", "diamond", "gold"}
 	passphrase := "Sup3rS3cr3tP4ssw0rd!"
 	var addr string
@@ -116,6 +120,7 @@ func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData
 		return nil, err
 	}
 
+	// persist unspents and fund market
 	unspentRepo := inmemory.NewUnspentRepositoryImpl()
 	unspentRepo.AddUnspents(context.Background(), []domain.Unspent{
 		// 1 LBTC
@@ -146,7 +151,6 @@ func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData
 		),
 	})
 
-	market, _ := domain.NewMarket(domain.MarketAccountStart)
 	market.FundMarket([]domain.OutpointWithAsset{
 		// LBTC
 		domain.OutpointWithAsset{
