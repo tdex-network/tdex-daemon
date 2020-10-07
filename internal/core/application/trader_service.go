@@ -644,40 +644,7 @@ func getPriceAndPreviewForMarket(
 		return
 	}
 
-	balances := getBalanceByAsset(unspents)
-	baseBalanceAvailable := balances[market.BaseAssetHash()]
-	quoteBalanceAvailable := balances[market.QuoteAssetHash()]
-	previewAmount = market.Strategy().Formula().InGivenOut(
-		&mm.FormulaOpts{
-			BalanceIn:           quoteBalanceAvailable,
-			BalanceOut:          baseBalanceAvailable,
-			Fee:                 uint64(market.Fee()),
-			ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
-		},
-		amount,
-	)
-	if tradeType == TradeSell {
-		previewAmount = market.Strategy().Formula().OutGivenIn(
-			&mm.FormulaOpts{
-				BalanceIn:           baseBalanceAvailable,
-				BalanceOut:          quoteBalanceAvailable,
-				Fee:                 uint64(market.Fee()),
-				ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
-			},
-			amount,
-		)
-	}
-	price = Price{
-		BasePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
-			BalanceIn:  quoteBalanceAvailable,
-			BalanceOut: baseBalanceAvailable,
-		}),
-		QuotePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
-			BalanceIn:  baseBalanceAvailable,
-			BalanceOut: quoteBalanceAvailable,
-		}),
-	}
-
+	price, previewAmount = previewFromFormula(unspents, market, tradeType, amount)
 	return
 }
 
@@ -732,4 +699,45 @@ func calcExpectedAmount(
 	// amountR = amountP + price * (1 - feePercentage)
 	amountR := amountP.Mul(price).Mul(decimal.NewFromInt(1).Sub(feePercentage))
 	return uint64(amountR.BigInt().Int64())
+}
+
+func previewFromFormula(unspents []domain.Unspent, market *domain.Market, tradeType int, amount uint64) (Price, uint64) {
+	balances := getBalanceByAsset(unspents)
+	baseBalanceAvailable := balances[market.BaseAssetHash()]
+	quoteBalanceAvailable := balances[market.QuoteAssetHash()]
+	formula := market.Strategy().Formula()
+
+	price := Price{
+		BasePrice: formula.SpotPrice(&mm.FormulaOpts{
+			BalanceIn:  quoteBalanceAvailable,
+			BalanceOut: baseBalanceAvailable,
+		}),
+		QuotePrice: formula.SpotPrice(&mm.FormulaOpts{
+			BalanceIn:  baseBalanceAvailable,
+			BalanceOut: quoteBalanceAvailable,
+		}),
+	}
+
+	if tradeType == TradeBuy {
+		previewAmount := formula.InGivenOut(
+			&mm.FormulaOpts{
+				BalanceIn:           quoteBalanceAvailable,
+				BalanceOut:          baseBalanceAvailable,
+				Fee:                 uint64(market.Fee()),
+				ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
+			},
+			amount,
+		)
+		return price, previewAmount
+	}
+	previewAmount := formula.OutGivenIn(
+		&mm.FormulaOpts{
+			BalanceIn:           baseBalanceAvailable,
+			BalanceOut:          quoteBalanceAvailable,
+			Fee:                 uint64(market.Fee()),
+			ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
+		},
+		amount,
+	)
+	return price, previewAmount
 }
