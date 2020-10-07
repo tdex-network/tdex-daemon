@@ -90,7 +90,7 @@ func (t *traderService) GetTradableMarkets(ctx context.Context) (
 	return marketsWithFee, nil
 }
 
-// MarketPrice is the domain controller for the MarketPrice RPC
+// MarketPrice is the domain controller for the MarketPrice RPC.
 func (t *traderService) GetMarketPrice(
 	ctx context.Context,
 	market Market,
@@ -612,6 +612,17 @@ func getSelectedBlindingKeys(blindingKeys map[string][]byte, unspents []explorer
 	return selectedKeys
 }
 
+// getPriceAndPreviewForMarket returns the current price of a market, along
+// with a amount preview for a BUY or SELL trade.
+// Depending on the strategy set for the market, an input amount might be
+// required to calculate the preview amount.
+// In the specific, if the market strategy is not pluggable, the preview amount
+// is calculated with either InGivenOut or OutGivenIn methods of the
+// MakingFormula interface. Otherwise, the price is simply retrieved from the
+// domain.Market instance and the preview amount is calculated by applying the
+// market fees within the conversion.
+// The incoming amount always represents an amount of the market's base asset,
+// therefore a preview amount for the correspoing quote asset is returned.
 func getPriceAndPreviewForMarket(
 	ctx context.Context,
 	vaultRepo domain.VaultRepository,
@@ -659,6 +670,10 @@ func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
 	return balances
 }
 
+// calcPreviewAmount calculates the amount of a market's quote asset due,
+// depending on the trade type and the base asset amount provided.
+// The market fees are either added or subtracted to the converted amount
+// basing on the trade type.
 func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint64 {
 	if tradeType == TradeBuy {
 		return calcProposeAmount(
@@ -675,6 +690,28 @@ func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint
 	)
 }
 
+// calcProposeAmount returns the quote asset amount due for a BUY trade, that,
+// remind, expresses a willing of buying a certain amount of the market's base
+// asset.
+// The market fees can be collected in either base or quote asset, but this is
+// not relevant when calculating the preview amount. The reason is explained
+// with the following example:
+//
+// Alice wants to BUY 0.1 LBTC in exchange for USDT (hence LBTC/USDT market).
+// Lets assume the provider holds 10 LBTC and 65000 USDT in his reserves, so
+// the USDT/LBTC price is 6500.
+// Depending on how the fees are collected we have:
+// - fee_asset = LBTC
+//		feeAmount = lbtcAmount * feePercentage
+// 		usdtAmount = (lbtcAmount + feeAmount) * price =
+//			= (lbtcAmount + lbtcAmount * feeAmount) * price =
+//			= (1 + feeAmount) * lbtcAmount * price = 1.25 * 0.1 * 6500 = 812,5 USDT
+// - fee_asset = USDT
+//		cAmount = lbtcAmount * price
+// 		feeAmount = cAmount * feePercentage
+// 		usdtAmount = cAmount + feeAmount =
+//			= (lbtcAmount * price) + (lbtcAmount * price * feePercentage)
+// 			= lbtcAmount * price * (1 + feePercentage) = 0.1  * 6500 * 1,25 = 812,5 USDT
 func calcProposeAmount(
 	amount uint64,
 	feeAmount int64,
@@ -685,7 +722,7 @@ func calcProposeAmount(
 
 	// amountP = amountR * price * (1 + feePercentage)
 	amountP := amountR.Mul(price).Mul(decimal.NewFromInt(1).Add(feePercentage))
-	return uint64(amountP.BigInt().Int64())
+	return amountP.BigInt().Uint64()
 }
 
 func calcExpectedAmount(
@@ -698,7 +735,7 @@ func calcExpectedAmount(
 
 	// amountR = amountP + price * (1 - feePercentage)
 	amountR := amountP.Mul(price).Mul(decimal.NewFromInt(1).Sub(feePercentage))
-	return uint64(amountR.BigInt().Int64())
+	return amountR.BigInt().Uint64()
 }
 
 func previewFromFormula(unspents []domain.Unspent, market *domain.Market, tradeType int, amount uint64) (Price, uint64) {
