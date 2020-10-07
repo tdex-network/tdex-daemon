@@ -696,56 +696,40 @@ func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint
 	if tradeType == TradeBuy {
 		return calcProposeAmount(
 			amount,
-			market.BaseAssetHash(),
-			market.QuoteAssetPrice(),
-			market.FeeAsset(),
 			market.Fee(),
+			market.QuoteAssetPrice(),
 		)
 	}
 
 	return calcExpectedAmount(
 		amount,
-		market.QuoteAssetHash(),
-		market.QuoteAssetPrice(),
-		market.FeeAsset(),
 		market.Fee(),
+		market.QuoteAssetPrice(),
 	)
 }
 
 func calcProposeAmount(
-	amountR uint64, assetR string,
+	amount uint64,
+	feeAmount int64,
 	price decimal.Decimal,
-	feeAsset string, fee int64,
 ) uint64 {
-	feePercentage := decimal.NewFromInt(fee).Div(decimal.NewFromInt(100))
-	amount := decimal.NewFromInt(int64(amountR))
+	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
+	amountR := decimal.NewFromInt(int64(amount))
 
-	if feeAsset != assetR {
-		amountP := amount.Mul(price)
-		amountP = amountP.Add(amountP.Mul(feePercentage))
-		return uint64(amountP.BigInt().Int64())
-	}
-
-	feeAmount := amount.Mul(feePercentage)
-	amountP := amount.Add(feeAmount).Mul(price)
+	// amountP = amountR * price * (1 + feePercentage)
+	amountP := amountR.Mul(price).Mul(decimal.NewFromInt(1).Add(feePercentage))
 	return uint64(amountP.BigInt().Int64())
 }
 
 func calcExpectedAmount(
-	amountP uint64, assetP string,
+	amount uint64,
+	feeAmount int64,
 	price decimal.Decimal,
-	feeAsset string, fee int64,
 ) uint64 {
-	feePercentage := decimal.NewFromInt(fee).Div(decimal.NewFromInt(100))
-	amount := decimal.NewFromInt(int64(amountP))
+	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
+	amountP := decimal.NewFromInt(int64(amount))
 
-	if feeAsset != assetP {
-		amountR := amount.Mul(price)
-		amountR = amountR.Sub(amountR.Mul(feePercentage))
-		return uint64(amountR.BigInt().Int64())
-	}
-
-	feeAmount := amount.Mul(feePercentage)
-	amountR := amount.Sub(feeAmount).Mul(price)
+	// amountR = amountP + price * (1 - feePercentage)
+	amountR := amountP.Mul(price).Mul(decimal.NewFromInt(1).Sub(feePercentage))
 	return uint64(amountR.BigInt().Int64())
 }
