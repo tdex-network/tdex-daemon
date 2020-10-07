@@ -15,8 +15,8 @@ var (
 	ErrNullMnemonicOrPassphrase = errors.New("mnemonic and/or passphrase must not be null")
 	//ErrNotFunded is thrown when a market requires being funded for a change
 	ErrNotFunded = errors.New("market must be funded")
-	//ErrMarketMustBeOpen is thrown when a market requires being tradable for a change
-	ErrMarketMustBeOpen = errors.New("market must be opened")
+	//ErrMarketIsClosed is thrown when a market requires being tradable for a change
+	ErrMarketIsClosed = errors.New("market is closed")
 	//ErrMarketMustBeClose is thrown when a market requires being NOT tradable for a change
 	ErrMarketMustBeClose = errors.New("market must be closed")
 	//ErrPriceExists is thrown when a price for that given timestamp already exists

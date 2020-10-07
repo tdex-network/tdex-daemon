@@ -2,11 +2,13 @@ package domain
 
 import (
 	"errors"
+	"sort"
+	"time"
+
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
-	"sort"
-	"time"
 )
 
 // AccountIndex returns the account index
@@ -169,21 +171,21 @@ func (m *Market) ChangeFeeAsset(asset string) error {
 }
 
 // BaseAssetPrice returns the latest price for the base asset
-func (m *Market) BaseAssetPrice() float32 {
+func (m *Market) BaseAssetPrice() decimal.Decimal {
 	_, price := getLatestPrice(m.basePrice)
 
-	return float32(price)
+	return decimal.Decimal(price)
 }
 
 // QuoteAssetPrice returns the latest price for the quote asset
-func (m *Market) QuoteAssetPrice() float32 {
+func (m *Market) QuoteAssetPrice() decimal.Decimal {
 	_, price := getLatestPrice(m.quotePrice)
 
-	return float32(price)
+	return decimal.Decimal(price)
 }
 
 // ChangeBasePrice ...
-func (m *Market) ChangeBasePrice(price float32) error {
+func (m *Market) ChangeBasePrice(price decimal.Decimal) error {
 	if !m.IsFunded() {
 		return ErrNotFunded
 	}
@@ -200,7 +202,7 @@ func (m *Market) ChangeBasePrice(price float32) error {
 }
 
 // ChangeQuotePrice ...
-func (m *Market) ChangeQuotePrice(price float32) error {
+func (m *Market) ChangeQuotePrice(price decimal.Decimal) error {
 	if !m.IsFunded() {
 		return ErrNotFunded
 	}
@@ -223,12 +225,12 @@ func (pt PriceByTime) IsZero() bool {
 
 // IsZero ...
 func (p Price) IsZero() bool {
-	return p == Price(0)
+	return decimal.Decimal(p).Equal(decimal.NewFromInt(0))
 }
 
 func getLatestPrice(keyValue PriceByTime) (uint64, Price) {
 	if keyValue.IsZero() {
-		return uint64(0), Price(0)
+		return uint64(0), Price(decimal.NewFromInt(0))
 	}
 
 	keys := make([]uint64, 0, len(keyValue))

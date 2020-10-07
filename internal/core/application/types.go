@@ -1,6 +1,9 @@
 package application
 
-import "github.com/tdex-network/tdex-daemon/internal/core/domain"
+import (
+	"github.com/shopspring/decimal"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+)
 
 type Market struct {
 	BaseAsset  string
@@ -23,13 +26,14 @@ type MarketWithPrice struct {
 }
 
 type Price struct {
-	BasePrice  float32
-	QuotePrice float32
+	BasePrice  decimal.Decimal
+	QuotePrice decimal.Decimal
 }
 
 type PriceWithFee struct {
 	Price
 	Fee
+	Amount uint64
 }
 
 type MarketStrategy struct {

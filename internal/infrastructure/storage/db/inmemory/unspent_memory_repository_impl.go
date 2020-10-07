@@ -3,9 +3,10 @@ package inmemory
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
-	"sync"
 
 	"github.com/google/uuid"
 )
@@ -119,27 +120,6 @@ func (r UnspentRepositoryImpl) UnlockUnspents(
 	defer r.lock.Unlock()
 
 	return unlockUnspents(r.storageByContext(ctx), unspentKeys)
-}
-
-func (r UnspentRepositoryImpl) GetBalanceInfoForAsset(
-	unspents []domain.Unspent,
-) map[string]domain.BalanceInfo {
-	balances := map[string]domain.BalanceInfo{}
-	for _, unspent := range unspents {
-		if _, ok := balances[unspent.AssetHash()]; !ok {
-			balances[unspent.AssetHash()] = domain.BalanceInfo{}
-		}
-
-		balance := balances[unspent.AssetHash()]
-		balance.TotalBalance += unspent.Value()
-		if unspent.IsConfirmed() {
-			balance.ConfirmedBalance += unspent.Value()
-		} else {
-			balance.UnconfirmedBalance += unspent.Value()
-		}
-		balances[unspent.AssetHash()] = balance
-	}
-	return balances
 }
 
 // Begin returns a new UnspentRepositoryTxImpl

@@ -3,6 +3,7 @@ package formula
 import (
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
@@ -15,7 +16,7 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 		name          string
 		b             BalancedReserves
 		args          args
-		wantSpotPrice uint64
+		wantSpotPrice decimal.Decimal
 	}{
 		{
 			"OutGivenIn",
@@ -26,13 +27,13 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 					BalanceOut: 2 * 9760 * mathutil.BigOne,
 				},
 			},
-			9760,
+			decimal.NewFromInt(9760),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := &BalancedReserves{}
-			if gotSpotPrice := b.SpotPrice(tt.args.opts); gotSpotPrice != tt.wantSpotPrice {
+			if gotSpotPrice := b.SpotPrice(tt.args.opts); !gotSpotPrice.Equal(tt.wantSpotPrice) {
 				t.Errorf("BalancedReserves.SpotPrice() = %v, want %v", gotSpotPrice, tt.wantSpotPrice)
 			}
 		})

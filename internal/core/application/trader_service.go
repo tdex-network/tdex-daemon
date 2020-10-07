@@ -3,12 +3,16 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"errors"
+
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
@@ -23,7 +27,9 @@ type TraderService interface {
 	GetTradableMarkets(ctx context.Context) ([]MarketWithFee, error)
 	GetMarketPrice(
 		ctx context.Context,
-		req Market,
+		market Market,
+		tradeType int,
+		amount uint64,
 	) (*PriceWithFee, error)
 	TradePropose(
 		req *pbtrade.TradeProposeRequest,
@@ -84,38 +90,46 @@ func (t *traderService) GetTradableMarkets(ctx context.Context) (
 	return marketsWithFee, nil
 }
 
-// MarketPrice is the domain controller for the MarketPrice RPC
+// MarketPrice is the domain controller for the MarketPrice RPC.
 func (t *traderService) GetMarketPrice(
 	ctx context.Context,
-	req Market,
+	market Market,
+	tradeType int,
+	amount uint64,
 ) (*PriceWithFee, error) {
 
 	// Checks if base asset is correct
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
 		return nil, domain.ErrMarketNotExist
 	}
 	//Checks if market exist
 	mkt, _, err := t.marketRepository.GetMarketByAsset(
 		ctx,
-		req.QuoteAsset,
+		market.QuoteAsset,
 	)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
 	if !mkt.IsTradable() {
-		return nil, status.Error(codes.FailedPrecondition, "Market is closed")
+		return nil, domain.ErrMarketIsClosed
+	}
+
+	price, previewAmount, err := getPriceAndPreviewForMarket(
+		ctx, t.vaultRepository, t.unspentRepository,
+		mkt, tradeType, amount,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	return &PriceWithFee{
-		Price: Price{
-			BasePrice:  mkt.BaseAssetPrice(),
-			QuotePrice: mkt.QuoteAssetPrice(),
-		},
+		Price: price,
 		Fee: Fee{
 			FeeAsset:   mkt.FeeAsset(),
 			BasisPoint: mkt.Fee(),
 		},
+		Amount: previewAmount,
 	}, nil
 }
 
@@ -596,4 +610,171 @@ func getSelectedBlindingKeys(blindingKeys map[string][]byte, unspents []explorer
 		selectedKeys[script] = blindingKeys[script]
 	}
 	return selectedKeys
+}
+
+// getPriceAndPreviewForMarket returns the current price of a market, along
+// with a amount preview for a BUY or SELL trade.
+// Depending on the strategy set for the market, an input amount might be
+// required to calculate the preview amount.
+// In the specific, if the market strategy is not pluggable, the preview amount
+// is calculated with either InGivenOut or OutGivenIn methods of the
+// MakingFormula interface. Otherwise, the price is simply retrieved from the
+// domain.Market instance and the preview amount is calculated by applying the
+// market fees within the conversion.
+// The incoming amount always represents an amount of the market's base asset,
+// therefore a preview amount for the correspoing quote asset is returned.
+func getPriceAndPreviewForMarket(
+	ctx context.Context,
+	vaultRepo domain.VaultRepository,
+	unspentRepo domain.UnspentRepository,
+	market *domain.Market,
+	tradeType int,
+	amount uint64,
+) (
+	price Price,
+	previewAmount uint64,
+	err error,
+) {
+	if market.IsStrategyPluggable() {
+		previewAmount = calcPreviewAmount(market, tradeType, amount)
+		price = Price{
+			BasePrice:  market.BaseAssetPrice(),
+			QuotePrice: market.QuoteAssetPrice(),
+		}
+		return
+	}
+
+	addresses, _, err := vaultRepo.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, market.AccountIndex())
+	if err != nil {
+		return
+	}
+
+	unspents := unspentRepo.GetAvailableUnspentsForAddresses(ctx, addresses)
+	if len(unspents) == 0 {
+		err = errors.New("no available funds for market")
+		return
+	}
+
+	price, previewAmount = previewFromFormula(unspents, market, tradeType, amount)
+	return
+}
+
+func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
+	balances := map[string]uint64{}
+	for _, unspent := range unspents {
+		if _, ok := balances[unspent.AssetHash()]; !ok {
+			balances[unspent.AssetHash()] = 0
+		}
+		balances[unspent.AssetHash()] += unspent.Value()
+	}
+	return balances
+}
+
+// calcPreviewAmount calculates the amount of a market's quote asset due,
+// depending on the trade type and the base asset amount provided.
+// The market fees are either added or subtracted to the converted amount
+// basing on the trade type.
+func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint64 {
+	if tradeType == TradeBuy {
+		return calcProposeAmount(
+			amount,
+			market.Fee(),
+			market.QuoteAssetPrice(),
+		)
+	}
+
+	return calcExpectedAmount(
+		amount,
+		market.Fee(),
+		market.QuoteAssetPrice(),
+	)
+}
+
+// calcProposeAmount returns the quote asset amount due for a BUY trade, that,
+// remind, expresses a willing of buying a certain amount of the market's base
+// asset.
+// The market fees can be collected in either base or quote asset, but this is
+// not relevant when calculating the preview amount. The reason is explained
+// with the following example:
+//
+// Alice wants to BUY 0.1 LBTC in exchange for USDT (hence LBTC/USDT market).
+// Lets assume the provider holds 10 LBTC and 65000 USDT in his reserves, so
+// the USDT/LBTC price is 6500.
+// Depending on how the fees are collected we have:
+// - fee_asset = LBTC
+//		feeAmount = lbtcAmount * feePercentage
+// 		usdtAmount = (lbtcAmount + feeAmount) * price =
+//			= (lbtcAmount + lbtcAmount * feeAmount) * price =
+//			= (1 + feeAmount) * lbtcAmount * price = 1.25 * 0.1 * 6500 = 812,5 USDT
+// - fee_asset = USDT
+//		cAmount = lbtcAmount * price
+// 		feeAmount = cAmount * feePercentage
+// 		usdtAmount = cAmount + feeAmount =
+//			= (lbtcAmount * price) + (lbtcAmount * price * feePercentage)
+// 			= lbtcAmount * price * (1 + feePercentage) = 0.1  * 6500 * 1,25 = 812,5 USDT
+func calcProposeAmount(
+	amount uint64,
+	feeAmount int64,
+	price decimal.Decimal,
+) uint64 {
+	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
+	amountR := decimal.NewFromInt(int64(amount))
+
+	// amountP = amountR * price * (1 + feePercentage)
+	amountP := amountR.Mul(price).Mul(decimal.NewFromInt(1).Add(feePercentage))
+	return amountP.BigInt().Uint64()
+}
+
+func calcExpectedAmount(
+	amount uint64,
+	feeAmount int64,
+	price decimal.Decimal,
+) uint64 {
+	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
+	amountP := decimal.NewFromInt(int64(amount))
+
+	// amountR = amountP + price * (1 - feePercentage)
+	amountR := amountP.Mul(price).Mul(decimal.NewFromInt(1).Sub(feePercentage))
+	return amountR.BigInt().Uint64()
+}
+
+func previewFromFormula(unspents []domain.Unspent, market *domain.Market, tradeType int, amount uint64) (Price, uint64) {
+	balances := getBalanceByAsset(unspents)
+	baseBalanceAvailable := balances[market.BaseAssetHash()]
+	quoteBalanceAvailable := balances[market.QuoteAssetHash()]
+	formula := market.Strategy().Formula()
+
+	price := Price{
+		BasePrice: formula.SpotPrice(&mm.FormulaOpts{
+			BalanceIn:  quoteBalanceAvailable,
+			BalanceOut: baseBalanceAvailable,
+		}),
+		QuotePrice: formula.SpotPrice(&mm.FormulaOpts{
+			BalanceIn:  baseBalanceAvailable,
+			BalanceOut: quoteBalanceAvailable,
+		}),
+	}
+
+	if tradeType == TradeBuy {
+		previewAmount := formula.InGivenOut(
+			&mm.FormulaOpts{
+				BalanceIn:           quoteBalanceAvailable,
+				BalanceOut:          baseBalanceAvailable,
+				Fee:                 uint64(market.Fee()),
+				ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
+			},
+			amount,
+		)
+		return price, previewAmount
+	}
+	previewAmount := formula.OutGivenIn(
+		&mm.FormulaOpts{
+			BalanceIn:           baseBalanceAvailable,
+			BalanceOut:          quoteBalanceAvailable,
+			Fee:                 uint64(market.Fee()),
+			ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
+		},
+		amount,
+	)
+	return price, previewAmount
 }
