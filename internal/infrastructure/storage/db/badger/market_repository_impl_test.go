@@ -17,7 +17,7 @@ var dbManager *DbManager
 
 func before() {
 	var err error
-	dbDir := filepath.Join(config.GetString(config.TdexDir), "testdb")
+	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "testdb")
 	dbManager, err = NewDbManager(dbDir)
 	if err != nil {
 		panic(err)
@@ -43,7 +43,7 @@ func after() {
 	tx.Discard()
 	dbManager.Store.Close()
 
-	dbDir := filepath.Join(config.GetString(config.TdexDir), "testdb")
+	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "testdb")
 	err := os.RemoveAll(dbDir)
 	if err != nil {
 		panic(err)
