@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -31,9 +34,16 @@ func main() {
 	log.SetLevel(log.Level(config.GetInt(config.LogLevelKey)))
 	config.Validate()
 
+	dbDir := filepath.Join(config.GetString(config.TdexDir), "db")
+	dbManager, err := dbbadger.NewDbManager(dbDir)
+	if err != nil {
+		log.WithError(err).Panic("error while opening db")
+	}
+	defer dbManager.Store.Close()
+
 	unspentRepository := inmemory.NewUnspentRepositoryImpl()
 	vaultRepository := inmemory.NewVaultRepositoryImpl()
-	marketRepository := inmemory.NewMarketRepositoryImpl()
+	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := inmemory.NewTradeRepositoryImpl()
 
 	errorHandler := func(err error) { log.Warn(err) }
@@ -67,11 +77,16 @@ func main() {
 	operatorAddress := fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
 	// Grpc Server
 	traderGrpcServer := grpc.NewServer(
-		interceptor.UnaryLoggerInterceptor(),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer()),
 		interceptor.StreamLoggerInterceptor(),
 	)
 	operatorGrpcServer := grpc.NewServer(
-		interceptor.UnaryLoggerInterceptor(),
+		grpc.UnaryInterceptor(
+			grpc_middleware.ChainUnaryServer(
+				interceptor.UnaryLogger,
+				interceptor.UnaryTransactionHandler(dbManager),
+			),
+		),
 		interceptor.StreamLoggerInterceptor(),
 	)
 

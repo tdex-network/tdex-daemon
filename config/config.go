@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/btcsuite/btcutil"
@@ -34,6 +36,8 @@ const (
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
 	// TradeExpiryTimeKey ...
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
+	// TdexDir ...
+	TdexDir = "DIR"
 )
 
 var vip *viper.Viper
@@ -54,7 +58,35 @@ func init() {
 	vip.SetDefault(NetworkKey, network.Regtest.Name)
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
 
+	tdexDirPath := filepath.Join(dir, ".tdex-daemon")
+	vip.SetDefault(TdexDir, tdexDirPath)
+
+	if dir = os.Getenv("TDEX_DIR"); dir != "" {
+		vip.Set(TdexDir, tdexDirPath)
+	}
+	err = makeDirectoryIfNotExists(tdexDirPath)
+	if err != nil {
+		panic(err)
+	}
+
+	dbDir := filepath.Join(tdexDirPath, "db")
+	err = makeDirectoryIfNotExists(dbDir)
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func makeDirectoryIfNotExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return os.Mkdir(path, os.ModeDir|0755)
+	}
+	return nil
 }
 
 //GetString ...
