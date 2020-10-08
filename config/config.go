@@ -48,7 +48,6 @@ func init() {
 	vip.SetDefault(TraderListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
 	vip.SetDefault(ExplorerEndpointKey, "http://127.0.0.1:3001")
-	vip.SetDefault(DataDirPathKey, btcutil.AppDataDir("tdex-daemon", false))
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)
 	vip.SetDefault(CrawlIntervalKey, 5)                 //TODO check this value
@@ -57,14 +56,21 @@ func init() {
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 
-	if err := makeDirectoryIfNotExists(btcutil.AppDataDir("tdex-daemon", false)); err != nil {
-		log.WithError(err).Panic("error while creating tdex-daemon folder")
+	dataDir := btcutil.AppDataDir("tdex-daemon", false)
+	dataDirEnvVarPath := os.Getenv("TDEX_DATA_DIR_PATH")
+	if dataDirEnvVarPath != "" {
+		dataDir = dataDirEnvVarPath
+	} else {
+		if err := makeDirectoryIfNotExists(dataDir); err != nil {
+			log.WithError(err).Panic("error while creating tdex-daemon folder")
+		}
 	}
-
-	dbDir := filepath.Join(btcutil.AppDataDir("tdex-daemon", false), "db")
+	vip.SetDefault(DataDirPathKey, dataDir)
+	dbDir := filepath.Join(dataDir, "db")
 	if err := makeDirectoryIfNotExists(dbDir); err != nil {
 		log.WithError(err).Panic("error while creating db folder")
 	}
+
 }
 
 func makeDirectoryIfNotExists(path string) error {

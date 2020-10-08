@@ -7,18 +7,18 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
 var ctx context.Context
 var marketRepository domain.MarketRepository
 var dbManager *DbManager
+var testDbDir = "testdb"
 
 func before() {
 	var err error
-	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "testdb")
-	dbManager, err = NewDbManager(dbDir)
+
+	dbManager, err = NewDbManager(testDbDir)
 	if err != nil {
 		panic(err)
 	}
@@ -43,8 +43,7 @@ func after() {
 	tx.Discard()
 	dbManager.Store.Close()
 
-	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "testdb")
-	err := os.RemoveAll(dbDir)
+	err := os.RemoveAll(testDbDir)
 	if err != nil {
 		panic(err)
 	}
