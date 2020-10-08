@@ -77,11 +77,11 @@ func main() {
 	// Grpc Server
 	traderGrpcServer := grpc.NewServer(
 		interceptor.UnaryInterceptor(dbManager),
-		interceptor.StreamLoggerInterceptor(dbManager),
+		interceptor.StreamInterceptor(dbManager),
 	)
 	operatorGrpcServer := grpc.NewServer(
 		interceptor.UnaryInterceptor(dbManager),
-		interceptor.StreamLoggerInterceptor(dbManager),
+		interceptor.StreamInterceptor(dbManager),
 	)
 
 	traderHandler := grpchandler.NewTraderHandler(traderSvc)
