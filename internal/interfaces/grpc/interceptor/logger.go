@@ -7,12 +7,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// StreamLoggerInterceptor returns the stream interceptor with a logrus log
-func StreamLoggerInterceptor() grpc.ServerOption {
-	return grpc.StreamInterceptor(streamLogger)
-}
-
-func UnaryLogger(
+func unaryLogger(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,

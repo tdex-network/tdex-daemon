@@ -49,7 +49,7 @@ func (m marketRepositoryImpl) GetLatestMarket(
 	err = m.db.Store.TxFind(
 		tx,
 		&markets,
-		badgerhold.Where("AccountIndex").Ge(0).SortBy("AccountIndex").Reverse(),
+		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).SortBy("AccountIndex").Reverse(),
 	)
 	if err != nil {
 		return
@@ -122,7 +122,7 @@ func (m marketRepositoryImpl) GetTradableMarkets(
 	err := m.db.Store.TxFind(
 		tx,
 		&markets,
-		badgerhold.Where("AccountIndex").Ge(0).And("Tradable").Eq(true),
+		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).And("Tradable").Eq(true),
 	)
 	if err != nil {
 		if err != badgerhold.ErrNotFound {
@@ -147,7 +147,7 @@ func (m marketRepositoryImpl) GetAllMarkets(
 	err := m.db.Store.TxFind(
 		tx,
 		&markets,
-		badgerhold.Where("AccountIndex").Ge(0),
+		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart),
 	)
 	if err != nil {
 		if err != badgerhold.ErrNotFound {

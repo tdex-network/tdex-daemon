@@ -77,3 +77,45 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 		strategy: mm.NewStrategyFromFormula(formula.BalancedReserves{}),
 	}, nil
 }
+
+//NewMarketFromFields is necessary because newly introduced badger persistent
+//implementation is not able to work with domain Market object since fields
+//are not exported
+func NewMarketFromFields(
+	accountIndex int,
+	baseAsset string,
+	quoteAsset string,
+	fee int64,
+	feeAsset string,
+	tradable bool,
+	formula mm.MakingFormula,
+	basePrice map[uint64]float32,
+	quotePrice map[uint64]float32,
+) *Market {
+
+	basePriceCopy := make(map[uint64]Price)
+	for k, v := range basePrice {
+		basePriceCopy[k] = Price(v)
+	}
+
+	quotePriceCopy := make(map[uint64]Price)
+	for k, v := range quotePrice {
+		quotePriceCopy[k] = Price(v)
+	}
+
+	return &Market{
+		accountIndex: accountIndex,
+		baseAsset: &depositedAsset{
+			assetHash: baseAsset,
+		},
+		quoteAsset: &depositedAsset{
+			assetHash: quoteAsset,
+		},
+		fee:        fee,
+		feeAsset:   feeAsset,
+		tradable:   tradable,
+		strategy:   mm.NewStrategyFromFormula(formula),
+		basePrice:  basePriceCopy,
+		quotePrice: quotePriceCopy,
+	}
+}

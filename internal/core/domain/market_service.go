@@ -282,7 +282,7 @@ func (m *Market) MakeStrategyBalanced() error {
 	return nil
 }
 
-//getter and setter are necessary because newly introduced badger persistent
+//getter are necessary because newly introduced badger persistent
 //implementation is not able to work with domain.
 //Market object since fields are not exported
 
@@ -296,54 +296,4 @@ func (m *Market) GetQuotePrice() PriceByTime {
 
 func (m *Market) GetStrategy() mm.MakingStrategy {
 	return m.strategy
-}
-
-func (m *Market) SetAccountIndex(accountIndex int) {
-	m.accountIndex = accountIndex
-}
-
-func (m *Market) SetBaseAsset(baseAsset string) {
-	m.baseAsset = &depositedAsset{
-		assetHash: baseAsset,
-	}
-}
-
-func (m *Market) SetQuoteAsset(quoteAsset string) {
-	m.quoteAsset = &depositedAsset{
-		assetHash: quoteAsset,
-	}
-}
-
-func (m *Market) SetFee(fee int64) {
-	m.fee = fee
-}
-
-func (m *Market) SetFeeAsset(feeAsset string) {
-	m.feeAsset = feeAsset
-}
-
-func (m *Market) SetTradable(tradable bool) {
-	m.tradable = tradable
-}
-
-func (m *Market) SetStrategy(strategy mm.MakingStrategy) {
-	m.strategy = strategy
-}
-
-func (m *Market) SetBasePrice(price map[uint64]float32) {
-	basePrice := make(map[uint64]Price)
-	for k, v := range price {
-		basePrice[k] = Price(v)
-	}
-
-	m.basePrice = basePrice
-}
-
-func (m *Market) SetQuotePrice(price map[uint64]float32) {
-	quotePrice := make(map[uint64]Price)
-	for k, v := range price {
-		quotePrice[k] = Price(v)
-	}
-
-	m.quotePrice = quotePrice
 }

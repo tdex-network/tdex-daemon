@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"net"
 	"net/http"
@@ -77,17 +76,12 @@ func main() {
 	operatorAddress := fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
 	// Grpc Server
 	traderGrpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer()),
-		interceptor.StreamLoggerInterceptor(),
+		interceptor.UnaryInterceptor(dbManager),
+		interceptor.StreamLoggerInterceptor(dbManager),
 	)
 	operatorGrpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(
-			grpc_middleware.ChainUnaryServer(
-				interceptor.UnaryLogger,
-				interceptor.UnaryTransactionHandler(dbManager),
-			),
-		),
-		interceptor.StreamLoggerInterceptor(),
+		interceptor.UnaryInterceptor(dbManager),
+		interceptor.StreamLoggerInterceptor(dbManager),
 	)
 
 	traderHandler := grpchandler.NewTraderHandler(traderSvc)

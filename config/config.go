@@ -56,17 +56,15 @@ func init() {
 	vip.SetDefault(NetworkKey, network.Regtest.Name)
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
-	err := makeDirectoryIfNotExists(btcutil.AppDataDir("tdex-daemon", false))
-	if err != nil {
-		panic(err)
+
+	if err := makeDirectoryIfNotExists(btcutil.AppDataDir("tdex-daemon", false)); err != nil {
+		log.WithError(err).Panic("error while creating tdex-daemon folder")
 	}
 
 	dbDir := filepath.Join(btcutil.AppDataDir("tdex-daemon", false), "db")
-	err = makeDirectoryIfNotExists(dbDir)
-	if err != nil {
-		panic(err)
+	if err := makeDirectoryIfNotExists(dbDir); err != nil {
+		log.WithError(err).Panic("error while creating db folder")
 	}
-
 }
 
 func makeDirectoryIfNotExists(path string) error {

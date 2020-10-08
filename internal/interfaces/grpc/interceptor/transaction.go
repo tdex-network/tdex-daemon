@@ -7,7 +7,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-func UnaryTransactionHandler(db *dbbadger.DbManager) grpc.UnaryServerInterceptor {
+func unaryTransactionHandler(db *dbbadger.DbManager) grpc.
+	UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -24,5 +25,18 @@ func UnaryTransactionHandler(db *dbbadger.DbManager) grpc.UnaryServerInterceptor
 			log.Error(err)
 		}
 		return res, err
+	}
+}
+
+func streamTransactionHandler(db *dbbadger.DbManager) grpc.
+	StreamServerInterceptor {
+	return func(
+		srv interface{},
+		stream grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
+		//TODO implement transaction handler for stream calls
+		return handler(srv, stream)
 	}
 }

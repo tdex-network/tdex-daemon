@@ -54,14 +54,14 @@ func TestGetCreateOrUpdate(t *testing.T) {
 	before()
 	defer after()
 
-	market, err := marketRepository.GetOrCreateMarket(ctx, 0)
+	market, err := marketRepository.GetOrCreateMarket(ctx, domain.MarketAccountStart)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.BaseAssetHash(), "ah0")
+	assert.Equal(t, market.BaseAssetHash(), "ah5")
 
-	market, err = marketRepository.GetOrCreateMarket(ctx, 5)
+	market, err = marketRepository.GetOrCreateMarket(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,13 +83,13 @@ func TestGetAll(t *testing.T) {
 func TestGetMarketByAsset(t *testing.T) {
 	before()
 	defer after()
-	market, accountIndex, err := marketRepository.GetMarketByAsset(ctx, "qh3")
+	market, accountIndex, err := marketRepository.GetMarketByAsset(ctx, "qh7")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.BaseAssetHash(), "ah3")
-	assert.Equal(t, accountIndex, 3)
+	assert.Equal(t, market.BaseAssetHash(), "ah7")
+	assert.Equal(t, accountIndex, 7)
 }
 
 func TestGetLatestMarket(t *testing.T) {
@@ -100,8 +100,8 @@ func TestGetLatestMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.BaseAssetHash(), "ah4")
-	assert.Equal(t, accountIndex, 4)
+	assert.Equal(t, market.BaseAssetHash(), "ah9")
+	assert.Equal(t, accountIndex, 9)
 }
 
 func TestTradableMarket(t *testing.T) {
@@ -120,7 +120,7 @@ func TestUpdateMarket(t *testing.T) {
 	defer after()
 	err := marketRepository.UpdateMarket(
 		ctx,
-		0,
+		5,
 		func(m *domain.Market) (*domain.Market, error) {
 			err := m.MakeNotTradable()
 			if err != nil {
@@ -133,7 +133,7 @@ func TestUpdateMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	market, _, err := marketRepository.GetMarketByAsset(ctx, "qh0")
+	market, _, err := marketRepository.GetMarketByAsset(ctx, "qh5")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,19 +144,19 @@ func TestUpdateMarket(t *testing.T) {
 func TestOpenMarket(t *testing.T) {
 	before()
 	defer after()
-	market, _, err := marketRepository.GetMarketByAsset(ctx, "qh4")
+	market, _, err := marketRepository.GetMarketByAsset(ctx, "qh9")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	assert.Equal(t, market.IsTradable(), false)
 
-	err = marketRepository.OpenMarket(ctx, "qh4")
+	err = marketRepository.OpenMarket(ctx, "qh9")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	market, _, err = marketRepository.GetMarketByAsset(ctx, "qh4")
+	market, _, err = marketRepository.GetMarketByAsset(ctx, "qh9")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,19 +167,19 @@ func TestOpenMarket(t *testing.T) {
 func TestCloseMarket(t *testing.T) {
 	before()
 	defer after()
-	market, _, err := marketRepository.GetMarketByAsset(ctx, "qh1")
+	market, _, err := marketRepository.GetMarketByAsset(ctx, "qh6")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	assert.Equal(t, market.IsTradable(), true)
 
-	err = marketRepository.CloseMarket(ctx, "qh1")
+	err = marketRepository.CloseMarket(ctx, "qh6")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	market, _, err = marketRepository.GetMarketByAsset(ctx, "qh1")
+	market, _, err = marketRepository.GetMarketByAsset(ctx, "qh6")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,9 +190,9 @@ func TestCloseMarket(t *testing.T) {
 func insertMarkets(tx *badger.Txn, db *DbManager) error {
 	markets := []Market{
 		{
-			AccountIndex: 0,
-			BaseAsset:    "ah0",
-			QuoteAsset:   "qh0",
+			AccountIndex: 5,
+			BaseAsset:    "ah5",
+			QuoteAsset:   "qh5",
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     true,
@@ -201,9 +201,9 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			QuotePrice:   nil,
 		},
 		{
-			AccountIndex: 1,
-			BaseAsset:    "ah1",
-			QuoteAsset:   "qh1",
+			AccountIndex: 6,
+			BaseAsset:    "ah6",
+			QuoteAsset:   "qh6",
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     true,
@@ -212,9 +212,9 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			QuotePrice:   nil,
 		},
 		{
-			AccountIndex: 2,
-			BaseAsset:    "ah2",
-			QuoteAsset:   "qh2",
+			AccountIndex: 7,
+			BaseAsset:    "ah7",
+			QuoteAsset:   "qh7",
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     false,
@@ -223,9 +223,9 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			QuotePrice:   nil,
 		},
 		{
-			AccountIndex: 3,
-			BaseAsset:    "ah3",
-			QuoteAsset:   "qh3",
+			AccountIndex: 8,
+			BaseAsset:    "ah8",
+			QuoteAsset:   "qh8",
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     false,
@@ -234,9 +234,9 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			QuotePrice:   nil,
 		},
 		{
-			AccountIndex: 4,
-			BaseAsset:    "ah4",
-			QuoteAsset:   "qh4",
+			AccountIndex: 9,
+			BaseAsset:    "ah9",
+			QuoteAsset:   "qh9",
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     false,

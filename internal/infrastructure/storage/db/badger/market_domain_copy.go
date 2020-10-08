@@ -18,27 +18,23 @@ type Market struct {
 	FeeAsset     string
 	Tradable     bool
 	Strategy     int
-	BasePrice    PriceByTime
-	QuotePrice   PriceByTime
+	BasePrice    map[uint64]float32
+	QuotePrice   map[uint64]float32
 }
-
-type Price float32
-
-type PriceByTime map[uint64]Price
 
 type StrategyType int32
 
 func MapDomainMarketToInfraMarket(market domain.Market) *Market {
 	basePrice := market.GetBasePrice()
-	basePriceCopy := make(map[uint64]Price)
+	basePriceCopy := make(map[uint64]float32)
 	for k, v := range basePrice {
-		basePriceCopy[k] = Price(v)
+		basePriceCopy[k] = float32(v)
 	}
 
 	quotePrice := market.GetQuotePrice()
-	quotePriceCopy := make(map[uint64]Price)
+	quotePriceCopy := make(map[uint64]float32)
 	for k, v := range quotePrice {
-		quotePriceCopy[k] = Price(v)
+		quotePriceCopy[k] = float32(v)
 	}
 
 	var strategy int
@@ -61,35 +57,21 @@ func MapDomainMarketToInfraMarket(market domain.Market) *Market {
 }
 
 func MapInfraMarketToDomainMarket(market Market) *domain.Market {
-	domainMarket := &domain.Market{}
-	domainMarket.SetAccountIndex(market.AccountIndex)
-	domainMarket.SetBaseAsset(market.BaseAsset)
-	domainMarket.SetQuoteAsset(market.QuoteAsset)
-	domainMarket.SetFee(market.Fee)
-	domainMarket.SetFeeAsset(market.FeeAsset)
-	domainMarket.SetTradable(market.Tradable)
-
 	var f mm.MakingFormula
 	switch market.Strategy {
 	case BalancedStrategyType:
 		f = formula.BalancedReserves{}
 	}
 
-	domainMarket.SetStrategy(mm.NewStrategyFromFormula(f))
-
-	basePrice := market.BasePrice
-	basePriceCopy := make(map[uint64]float32)
-	for k, v := range basePrice {
-		basePriceCopy[k] = float32(v)
-	}
-	domainMarket.SetBasePrice(basePriceCopy)
-
-	quotePrice := market.QuotePrice
-	quotePriceCopy := make(map[uint64]float32)
-	for k, v := range quotePrice {
-		quotePriceCopy[k] = float32(v)
-	}
-	domainMarket.SetQuotePrice(basePriceCopy)
-
-	return domainMarket
+	return domain.NewMarketFromFields(
+		market.AccountIndex,
+		market.BaseAsset,
+		market.QuoteAsset,
+		market.Fee,
+		market.FeeAsset,
+		market.Tradable,
+		f,
+		market.QuotePrice,
+		market.BasePrice,
+	)
 }
