@@ -32,6 +32,9 @@ import (
 func main() {
 	log.SetLevel(log.Level(config.GetInt(config.LogLevelKey)))
 	config.Validate()
+	if err := config.InitDataDir(); err != nil {
+		log.WithError(err).Panic("error while init data dir")
+	}
 
 	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "db")
 	dbManager, err := dbbadger.NewDbManager(dbDir)
