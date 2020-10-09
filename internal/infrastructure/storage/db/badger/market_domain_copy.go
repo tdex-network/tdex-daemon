@@ -1,6 +1,7 @@
 package dbbadger
 
 import (
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
@@ -18,23 +19,23 @@ type Market struct {
 	FeeAsset     string
 	Tradable     bool
 	Strategy     int
-	BasePrice    map[uint64]float32
-	QuotePrice   map[uint64]float32
+	BasePrice    map[uint64]decimal.Decimal
+	QuotePrice   map[uint64]decimal.Decimal
 }
 
 type StrategyType int32
 
 func MapDomainMarketToInfraMarket(market domain.Market) *Market {
 	basePrice := market.GetBasePrice()
-	basePriceCopy := make(map[uint64]float32)
+	basePriceCopy := make(map[uint64]decimal.Decimal)
 	for k, v := range basePrice {
-		basePriceCopy[k] = float32(v)
+		basePriceCopy[k] = decimal.Decimal(v)
 	}
 
 	quotePrice := market.GetQuotePrice()
-	quotePriceCopy := make(map[uint64]float32)
+	quotePriceCopy := make(map[uint64]decimal.Decimal)
 	for k, v := range quotePrice {
-		quotePriceCopy[k] = float32(v)
+		quotePriceCopy[k] = decimal.Decimal(v)
 	}
 
 	var strategy int

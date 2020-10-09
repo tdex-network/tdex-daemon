@@ -90,8 +90,8 @@ func NewMarketFromFields(
 	feeAsset string,
 	tradable bool,
 	formula mm.MakingFormula,
-	basePrice map[uint64]float32,
-	quotePrice map[uint64]float32,
+	basePrice map[uint64]decimal.Decimal,
+	quotePrice map[uint64]decimal.Decimal,
 ) *Market {
 
 	basePriceCopy := make(map[uint64]Price)
