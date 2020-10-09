@@ -102,7 +102,7 @@ func (o *operatorService) DepositMarket(
 
 	if accountIndex == 0 {
 		_, latestAccountIndex, err := o.marketRepository.GetLatestMarket(
-			context.Background(),
+			ctx,
 		)
 		if err != nil {
 			return "", err

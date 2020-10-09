@@ -3,9 +3,11 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcutil"
+	"os"
+	"path/filepath"
 	"time"
 
-	"github.com/btcsuite/btcutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/vulpemventures/go-elements/network"
@@ -37,6 +39,7 @@ const (
 )
 
 var vip *viper.Viper
+var defaultDataDir = btcutil.AppDataDir("tdex-daemon", false)
 
 func init() {
 	vip = viper.New()
@@ -46,7 +49,6 @@ func init() {
 	vip.SetDefault(TraderListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
 	vip.SetDefault(ExplorerEndpointKey, "http://127.0.0.1:3001")
-	vip.SetDefault(DataDirPathKey, btcutil.AppDataDir("tdex-daemon", false))
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)
 	vip.SetDefault(CrawlIntervalKey, 5)                 //TODO check this value
@@ -54,7 +56,20 @@ func init() {
 	vip.SetDefault(NetworkKey, network.Regtest.Name)
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
+	vip.SetDefault(DataDirPathKey, defaultDataDir)
 
+	validate()
+
+	if err := initDataDir(); err != nil {
+		log.WithError(err).Panic("error while init data dir")
+	}
+}
+
+func makeDirectoryIfNotExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return os.Mkdir(path, os.ModeDir|0755)
+	}
+	return nil
 }
 
 //GetString ...
@@ -91,12 +106,18 @@ func GetNetwork() *network.Network {
 }
 
 // Validate method of config will panic
-func Validate() {
+func validate() {
 	if err := validateDefaultFee(vip.GetFloat64(DefaultFeeKey)); err != nil {
 		log.Fatalln(err)
 	}
 	if err := validateDefaultNetwork(vip.GetString(NetworkKey)); err != nil {
 		log.Fatalln(err)
+	}
+	path := vip.GetString(DataDirPathKey)
+	if path != defaultDataDir {
+		if err := validatePath(path); err != nil {
+			log.Fatalln(err)
+		}
 	}
 }
 
@@ -116,5 +137,34 @@ func validateDefaultNetwork(net string) error {
 			network.Regtest.Name,
 		)
 	}
+	return nil
+}
+
+func validatePath(path string) error {
+	if path != "" {
+		stat, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
+
+		if !stat.IsDir() {
+			return errors.New("not a directory")
+		}
+	}
+
+	return nil
+}
+
+func initDataDir() error {
+	dataDir := GetString(DataDirPathKey)
+	if err := makeDirectoryIfNotExists(dataDir); err != nil {
+		log.WithError(err).Panic(
+			fmt.Sprintf("error while creating %v folder", dataDir),
+		)
+	}
+	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "db")); err != nil {
+		log.WithError(err).Panic("error while creating db folder")
+	}
+
 	return nil
 }

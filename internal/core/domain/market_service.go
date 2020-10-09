@@ -283,3 +283,19 @@ func (m *Market) MakeStrategyBalanced() error {
 
 	return nil
 }
+
+//getter are necessary because newly introduced badger persistent
+//implementation is not able to work with domain.
+//Market object since fields are not exported
+
+func (m *Market) GetBasePrice() PriceByTime {
+	return m.basePrice
+}
+
+func (m *Market) GetQuotePrice() PriceByTime {
+	return m.quotePrice
+}
+
+func (m *Market) GetStrategy() mm.MakingStrategy {
+	return m.strategy
+}

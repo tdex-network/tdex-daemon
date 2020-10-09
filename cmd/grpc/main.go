@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -29,11 +31,17 @@ import (
 
 func main() {
 	log.SetLevel(log.Level(config.GetInt(config.LogLevelKey)))
-	config.Validate()
+
+	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "db")
+	dbManager, err := dbbadger.NewDbManager(dbDir)
+	if err != nil {
+		log.WithError(err).Panic("error while opening db")
+	}
+	defer dbManager.Store.Close()
 
 	unspentRepository := inmemory.NewUnspentRepositoryImpl()
 	vaultRepository := inmemory.NewVaultRepositoryImpl()
-	marketRepository := inmemory.NewMarketRepositoryImpl()
+	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := inmemory.NewTradeRepositoryImpl()
 
 	errorHandler := func(err error) { log.Warn(err) }
@@ -67,12 +75,12 @@ func main() {
 	operatorAddress := fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
 	// Grpc Server
 	traderGrpcServer := grpc.NewServer(
-		interceptor.UnaryLoggerInterceptor(),
-		interceptor.StreamLoggerInterceptor(),
+		interceptor.UnaryInterceptor(dbManager),
+		interceptor.StreamInterceptor(dbManager),
 	)
 	operatorGrpcServer := grpc.NewServer(
-		interceptor.UnaryLoggerInterceptor(),
-		interceptor.StreamLoggerInterceptor(),
+		interceptor.UnaryInterceptor(dbManager),
+		interceptor.StreamInterceptor(dbManager),
 	)
 
 	traderHandler := grpchandler.NewTraderHandler(traderSvc)
