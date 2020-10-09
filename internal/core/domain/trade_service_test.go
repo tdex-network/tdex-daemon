@@ -12,25 +12,41 @@ import (
 func TestTradePropose(t *testing.T) {
 	trade := NewTrade()
 	swapRequest, marketQuoteAsset, traderPubkey := mockProposeArgs()
-	assert.NoError(t, trade.Propose(swapRequest, marketQuoteAsset, traderPubkey))
+	ok, err := trade.Propose(swapRequest, marketQuoteAsset, traderPubkey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, true, ok)
 }
 
 func TestTradeAccept(t *testing.T) {
 	trade := NewTrade()
-	err := trade.Propose(mockProposeArgs())
-	assert.NoError(t, err)
-	err = trade.Accept(mockAcceptArgs())
-	assert.NoError(t, err)
+	_, err := trade.Propose(mockProposeArgs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := trade.Accept(mockAcceptArgs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, true, ok)
 }
 
 func TestTradeComplete(t *testing.T) {
 	trade := NewTrade()
-	err := trade.Propose(mockProposeArgs())
-	assert.NoError(t, err)
-	err = trade.Accept(mockAcceptArgs())
-	assert.NoError(t, err)
-	err = trade.Complete(mockCompleteArgs())
-	assert.NoError(t, err)
+	_, err := trade.Propose(mockProposeArgs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = trade.Accept(mockAcceptArgs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := trade.Complete(mockCompleteArgs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, true, ok)
 	err = trade.AddBlocktime(uint64(time.Now().Unix()))
 	assert.NoError(t, err)
 }
