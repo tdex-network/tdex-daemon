@@ -39,6 +39,7 @@ const (
 )
 
 var vip *viper.Viper
+var defaultDataDir = btcutil.AppDataDir("tdex-daemon", false)
 
 func init() {
 	vip = viper.New()
@@ -55,7 +56,13 @@ func init() {
 	vip.SetDefault(NetworkKey, network.Regtest.Name)
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
-	vip.SetDefault(DataDirPathKey, btcutil.AppDataDir("tdex-daemon", false))
+	vip.SetDefault(DataDirPathKey, defaultDataDir)
+
+	validate()
+
+	if err := initDataDir(); err != nil {
+		log.WithError(err).Panic("error while init data dir")
+	}
 }
 
 func makeDirectoryIfNotExists(path string) error {
@@ -99,16 +106,18 @@ func GetNetwork() *network.Network {
 }
 
 // Validate method of config will panic
-func Validate() {
+func validate() {
 	if err := validateDefaultFee(vip.GetFloat64(DefaultFeeKey)); err != nil {
 		log.Fatalln(err)
 	}
 	if err := validateDefaultNetwork(vip.GetString(NetworkKey)); err != nil {
 		log.Fatalln(err)
 	}
-	path := os.Getenv("TDEX_DATA_DIR_PATH")
-	if err := validatePath(path); err != nil {
-		log.Fatalln(err)
+	path := vip.GetString(DataDirPathKey)
+	if path != defaultDataDir {
+		if err := validatePath(path); err != nil {
+			log.Fatalln(err)
+		}
 	}
 }
 
@@ -146,7 +155,7 @@ func validatePath(path string) error {
 	return nil
 }
 
-func InitDataDir() error {
+func initDataDir() error {
 	dataDir := GetString(DataDirPathKey)
 	if err := makeDirectoryIfNotExists(dataDir); err != nil {
 		log.WithError(err).Panic(

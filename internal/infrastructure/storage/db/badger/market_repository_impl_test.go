@@ -33,7 +33,7 @@ func before() {
 	}
 
 	ctx = context.WithValue(
-		ctx,
+		context.Background(),
 		"tx",
 		dbManager.Store.Badger().NewTransaction(true))
 }
