@@ -101,14 +101,49 @@ func (t traderHandler) MarketPrice(
 
 func (t traderHandler) TradePropose(
 	req *pb.TradeProposeRequest,
-	server pb.Trade_TradeProposeServer,
+	stream pb.Trade_TradeProposeServer,
 ) error {
-	return t.traderSvc.TradePropose(req, server)
+	swapRequest := req.GetSwapRequest()
+	tradeType := req.GetType()
+	market := application.Market{
+		BaseAsset:  req.GetMarket().GetBaseAsset(),
+		QuoteAsset: req.GetMarket().GetQuoteAsset(),
+	}
+	swapAccept, swapFail, swapExpiryTime, err :=
+		t.traderSvc.TradePropose(context.Background(), market, int(tradeType), swapRequest)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+	reply := &pb.TradeProposeReply{
+		SwapAccept:     swapAccept,
+		SwapFail:       swapFail,
+		ExpiryTimeUnix: swapExpiryTime,
+	}
+	if err := stream.Send(reply); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+	return nil
 }
 
 func (t traderHandler) TradeComplete(
 	req *pb.TradeCompleteRequest,
-	server pb.Trade_TradeCompleteServer,
+	stream pb.Trade_TradeCompleteServer,
 ) error {
-	return t.traderSvc.TradeComplete(req, server)
+	txID, swapFail, err := t.traderSvc.TradeComplete(
+		context.Background(),
+		req.GetSwapComplete(),
+		req.GetSwapFail(),
+	)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	reply := &pb.TradeCompleteReply{
+		Txid:     txID,
+		SwapFail: swapFail,
+	}
+	if err := stream.Send(reply); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+	return nil
 }
