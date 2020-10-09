@@ -24,12 +24,18 @@ func Complete(complete CompleteOpts) (string, []byte, error) {
 		return "", nil, fmt.Errorf("unmarshal swap accept %w", err)
 	}
 
-	_, err = pset.NewPsetFromBase64(complete.PsetBase64)
+	ptx, err := pset.NewPsetFromBase64(complete.PsetBase64)
 	if err != nil {
 		return "", nil, err
 	}
 
-	//TODO check if signatures of the inputs are valid
+	ok, err := ptx.ValidateAllSignatures()
+	if err != nil {
+		return "", nil, err
+	}
+	if !ok {
+		return "", nil, fmt.Errorf("transaction contains invalid signatures")
+	}
 
 	randomID := randstr.Hex(8)
 	msgComplete := &pb.SwapComplete{
