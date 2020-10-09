@@ -3,10 +3,11 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/btcsuite/btcutil"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -36,6 +37,8 @@ const (
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
 	// TradeExpiryTimeKey ...
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
+	// PriceSlippageKey ...
+	PriceSlippageKey = "PRICE_SLIPPAGE_TIME"
 )
 
 var vip *viper.Viper
@@ -57,6 +60,7 @@ func init() {
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
+	vip.SetDefault(PriceSlippageKey, 0.05)
 
 	validate()
 
