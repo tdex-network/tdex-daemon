@@ -38,7 +38,7 @@ const (
 	// TradeExpiryTimeKey ...
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey ...
-	PriceSlippageKey = "PRICE_SLIPPAGE_TIME"
+	PriceSlippageKey = "PRICE_SLIPPAGE"
 )
 
 var vip *viper.Viper
