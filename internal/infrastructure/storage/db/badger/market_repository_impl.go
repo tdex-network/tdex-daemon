@@ -2,6 +2,7 @@ package dbbadger
 
 import (
 	"context"
+
 	"github.com/dgraph-io/badger"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/timshannon/badgerhold"
@@ -116,14 +117,25 @@ func (m marketRepositoryImpl) getOrCreateMarket(
 func (m marketRepositoryImpl) GetTradableMarkets(
 	ctx context.Context,
 ) ([]domain.Market, error) {
-	tx := ctx.Value("tx").(*badger.Txn)
-
 	var markets []Market
-	err := m.db.Store.TxFind(
-		tx,
-		&markets,
-		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).And("Tradable").Eq(true),
-	)
+	var err error
+
+	query := badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).And("Tradable").Eq(true)
+
+	if ctx.Value("tx") != nil {
+		tx := ctx.Value("tx").(*badger.Txn)
+		err = m.db.Store.TxFind(
+			tx,
+			&markets,
+			query,
+		)
+	} else {
+		err = m.db.Store.Find(
+			&markets,
+			query,
+		)
+	}
+
 	if err != nil {
 		if err != badgerhold.ErrNotFound {
 			return nil, err
