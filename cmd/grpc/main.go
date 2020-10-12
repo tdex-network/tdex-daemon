@@ -60,6 +60,17 @@ func main() {
 		crawlerSvc,
 		explorerSvc,
 	)
+
+	blockchainListener := application.NewBlockchainListener(
+		unspentRepository,
+		marketRepository,
+		vaultRepository,
+		crawlerSvc,
+		explorerSvc,
+		dbManager,
+	)
+	blockchainListener.ObserveBlockchain()
+
 	operatorSvc := application.NewOperatorService(
 		marketRepository,
 		vaultRepository,
@@ -68,7 +79,6 @@ func main() {
 		explorerSvc,
 		crawlerSvc,
 	)
-	operatorSvc.ObserveBlockchain()
 
 	// Ports
 	traderAddress := fmt.Sprintf(":%+v", config.GetInt(config.TraderListeningPortKey))
