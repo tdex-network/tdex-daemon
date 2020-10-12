@@ -86,10 +86,6 @@ func (o *operatorService) DepositMarket(
 
 	var address string
 
-	if quoteAsset == "" {
-		return "", errors.New("quoteAsset must be populated")
-	}
-
 	var accountIndex int
 	_, a, err := o.marketRepository.GetMarketByAsset(
 		ctx,
