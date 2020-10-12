@@ -27,13 +27,7 @@ func (o operatorHandler) DepositMarket(
 	ctx context.Context,
 	req *pb.DepositMarketRequest,
 ) (*pb.DepositMarketReply, error) {
-	if req.Market.QuoteAsset == "" {
-		return nil, status.Error(
-			codes.InvalidArgument,
-			"quote asset must be populated",
-		)
-	}
-	address, err := o.operatorSvc.DepositMarket(ctx, req.Market.QuoteAsset)
+	address, err := o.operatorSvc.DepositMarket(ctx, req.GetMarket().GetQuoteAsset())
 	if err != nil {
 		return nil, status.Error(
 			codes.Internal,
