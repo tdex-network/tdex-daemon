@@ -10,38 +10,16 @@ type UnspentKey struct {
 }
 
 type Unspent struct {
-	txID         string
-	vOut         uint32
-	value        uint64
-	assetHash    string
-	address      string
-	spent        bool
-	locked       bool
-	scriptPubKey []byte
-	lockedBy     *uuid.UUID
-	confirmed    bool
-}
-
-func NewUnspent(
-	txID, assetHash, address string,
-	vOut uint32,
-	value uint64,
-	spent, locked bool,
-	scriptPubKey []byte,
-	lockedBy *uuid.UUID,
-	confirmed bool,
-) Unspent {
-	return Unspent{
-		txID:         txID,
-		vOut:         vOut,
-		value:        value,
-		assetHash:    assetHash,
-		address:      address,
-		spent:        spent,
-		locked:       locked,
-		scriptPubKey: scriptPubKey,
-		confirmed:    confirmed,
-	}
+	TxID         string
+	VOut         uint32
+	Value        uint64
+	AssetHash    string
+	Address      string `badgerhold:"Address"`
+	Spent        bool
+	Locked       bool
+	ScriptPubKey []byte
+	LockedBy     *uuid.UUID
+	Confirmed    bool
 }
 
 type BalanceInfo struct {
@@ -50,67 +28,39 @@ type BalanceInfo struct {
 	UnconfirmedBalance uint64
 }
 
-func (u *Unspent) Address() string {
-	return u.address
-}
-
-func (u *Unspent) AssetHash() string {
-	return u.assetHash
-}
-
-func (u *Unspent) Value() uint64 {
-	return u.value
-}
-
-func (u *Unspent) TxID() string {
-	return u.txID
-}
-
-func (u *Unspent) VOut() uint32 {
-	return u.vOut
-}
-
 func (u *Unspent) Lock(tradeID *uuid.UUID) {
-	u.locked = true
-	u.lockedBy = tradeID
+	u.Locked = true
+	u.LockedBy = tradeID
 }
 
 func (u *Unspent) UnLock() {
-	u.locked = false
-	u.lockedBy = nil
+	u.Locked = false
+	u.LockedBy = nil
 }
 
 func (u *Unspent) IsLocked() bool {
-	return u.locked
+	return u.Locked
 }
 
 func (u *Unspent) Spend() {
-	u.spent = true
+	u.Spent = true
 }
 
 func (u *Unspent) IsSpent() bool {
-	return u.spent
+	return u.Spent
 }
 
 func (u *Unspent) IsConfirmed() bool {
-	return u.confirmed
+	return u.Confirmed
 }
 
-func (u *Unspent) GetKey() UnspentKey {
+func (u *Unspent) Key() UnspentKey {
 	return UnspentKey{
-		TxID: u.txID,
-		VOut: u.vOut,
+		TxID: u.TxID,
+		VOut: u.VOut,
 	}
 }
 
 func (u *Unspent) IsKeyEqual(key UnspentKey) bool {
-	return u.txID == key.TxID && u.vOut == key.VOut
-}
-
-func (u *Unspent) LockedBy() *uuid.UUID {
-	return u.lockedBy
-}
-
-func (u *Unspent) Script() []byte {
-	return u.scriptPubKey
+	return u.TxID == key.TxID && u.VOut == key.VOut
 }

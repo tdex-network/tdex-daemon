@@ -367,7 +367,7 @@ func (t *traderService) getUnspentsBlindingsAndDerivationPathsForAccount(
 
 	availableUtxos := make([]explorer.Utxo, 0, len(unspents))
 	for _, unspent := range unspents {
-		unspentKey := unspent.GetKey()
+		unspentKey := unspent.Key()
 		for _, utxo := range utxos {
 			if unspentKey.TxID == utxo.Hash() && unspentKey.VOut == utxo.Index() {
 				availableUtxos = append(availableUtxos, utxo)
@@ -662,10 +662,10 @@ func getPriceAndPreviewForMarket(
 func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
 	balances := map[string]uint64{}
 	for _, unspent := range unspents {
-		if _, ok := balances[unspent.AssetHash()]; !ok {
-			balances[unspent.AssetHash()] = 0
+		if _, ok := balances[unspent.AssetHash]; !ok {
+			balances[unspent.AssetHash] = 0
 		}
-		balances[unspent.AssetHash()] += unspent.Value()
+		balances[unspent.AssetHash] += unspent.Value
 	}
 	return balances
 }

@@ -447,18 +447,18 @@ events:
 						log.Warn(err)
 						continue utxoLoop
 					}
-					u := domain.NewUnspent(
-						utxo.Hash(),
-						utxo.Asset(),
-						e.Address,
-						utxo.Index(),
-						utxo.Value(),
-						false,
-						false,
-						nil, //TODO should this be populated
-						nil,
-						isTrxConfirmed,
-					)
+					u := domain.Unspent{
+						TxID:         utxo.Hash(),
+						VOut:         utxo.Index(),
+						Value:        utxo.Value(),
+						AssetHash:    utxo.Asset(),
+						Address:      e.Address,
+						Spent:        false,
+						Locked:       false,
+						ScriptPubKey: nil,
+						LockedBy:     nil,
+						Confirmed:    isTrxConfirmed,
+					}
 					unspents = append(unspents, u)
 				}
 				err := o.unspentRepository.AddUnspents(
@@ -541,18 +541,18 @@ events:
 						log.Warn(err)
 						continue utxoLoop1
 					}
-					u := domain.NewUnspent(
-						utxo.Hash(),
-						utxo.Asset(),
-						e.Address,
-						utxo.Index(),
-						utxo.Value(),
-						false,
-						false,
-						nil, //TODO should this be populated
-						nil,
-						isTrxConfirmed,
-					)
+					u := domain.Unspent{
+						TxID:         utxo.Hash(),
+						VOut:         utxo.Index(),
+						Value:        utxo.Value(),
+						AssetHash:    utxo.Asset(),
+						Address:      e.Address,
+						Spent:        false,
+						Locked:       false,
+						ScriptPubKey: nil,
+						LockedBy:     nil,
+						Confirmed:    isTrxConfirmed,
+					}
 					unspents = append(unspents, u)
 				}
 				err := o.unspentRepository.AddUnspents(
