@@ -11,8 +11,10 @@ import (
 )
 
 const (
-	unspentTableName = "MARKET"
+	unspentTableName = "MARKET_"
 )
+
+var unspentTablePrefixKey = []byte(unspentTableName)
 
 type unspentRepositoryImpl struct {
 	db *DbManager
@@ -32,7 +34,7 @@ func (u unspentRepositoryImpl) AddUnspents(
 	for _, v := range unspents {
 		if err := u.db.Store.TxInsert(
 			tx,
-			fmt.Sprintf("%v_%v", unspentTableName, v.Address),
+			fmt.Sprintf("%v%v", unspentTableName, v.Key()),
 			&v,
 		); err != nil {
 			return err
@@ -52,7 +54,7 @@ func (u unspentRepositoryImpl) GetAllUnspents(
 	it := tx.NewIterator(iter)
 	defer it.Close()
 
-	for it.Rewind(); it.Valid(); it.Next() {
+	for it.Seek(unspentTablePrefixKey); it.ValidForPrefix(unspentTablePrefixKey); it.Next() {
 		item := it.Item()
 		data, _ := item.ValueCopy(nil)
 		var unspent domain.Unspent
@@ -70,7 +72,17 @@ func (u unspentRepositoryImpl) GetBalance(
 	address string,
 	assetHash string,
 ) uint64 {
-	panic("implement me")
+	var markets []Market
+	err := m.db.Store.TxFind(
+		tx,
+		&markets,
+		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).And("Tradable").Eq(true),
+	)
+	if err != nil {
+		if err != badgerhold.ErrNotFound {
+			return nil, err
+		}
+	}
 }
 
 func (u unspentRepositoryImpl) GetAvailableUnspents(
