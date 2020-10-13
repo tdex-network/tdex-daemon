@@ -90,31 +90,34 @@ func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData
 	addr := "el1qqfmmhdayrxdqs60hecn6yzfzmpquwlhn5m39ytngr8gu63ar6zhqngyj0ak7n3jr8ypfz7s6v7nmnkdvmu8n5pev33ac5thm7"
 	script, _ := address.ToOutputScript(addr, *config.GetNetwork())
 	unspents := []domain.Unspent{
-		// 1 LBTC
 		domain.NewUnspent(
 			"0000000000000000000000000000000000000000000000000000000000000000", // txid
-			config.GetNetwork().AssetID,                                        // assetHash
-			addr,                                                               // address
-			0,                                                                  // vout
-			100000000,                                                          // value
-			false,                                                              // spent
-			false,                                                              // locked
-			script,                                                             // scriptpubkey
-			nil,                                                                // lockedBy
-			true,                                                               // confirmed
+			0,                           // vout
+			100000000,                   // value
+			config.GetNetwork().AssetID, // assetHash
+			script,                      // scriptpubkey
+			"080000000000000000000000000000000000000000000000000000000000000000", // value commitment
+			"090000000000000000000000000000000000000000000000000000000000000000", // asset commitment
+			make([]byte, 33),   // nonce
+			make([]byte, 4174), // range proof
+			make([]byte, 64),   // surjection proof
+			addr,               // address
+			true,               // confirmed
 		),
 		// 6500 ASS
 		domain.NewUnspent(
 			"0000000000000000000000000000000000000000000000000000000000000000", // txid
-			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // assetHash
-			addr,         // address
 			1,            // vout
 			650000000000, // value
-			false,        // spent
-			false,        // locked
-			script,       // scriptpubkey
-			nil,          // lockedBy
-			true,         // confirmed
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // assetHash
+			script, // scriptpubkey
+			"080000000000000000000000000000000000000000000000000000000000000000", // value commitment
+			"090000000000000000000000000000000000000000000000000000000000000000", // asset commitment
+			make([]byte, 33),   // nonce
+			make([]byte, 4174), // range proof
+			make([]byte, 64),   // surjection proof
+			addr,               // address
+			true,               // confirmed
 		),
 	}
 

@@ -18,8 +18,6 @@ import (
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/pset"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type TraderService interface {
@@ -74,10 +72,10 @@ func (t *traderService) GetTradableMarkets(ctx context.Context) (
 ) {
 	tradableMarkets, err := t.marketRepository.GetTradableMarkets(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	marketsWithFee := make([]MarketWithFee, 0)
+	marketsWithFee := make([]MarketWithFee, 0, len(tradableMarkets))
 	for _, mkt := range tradableMarkets {
 		marketsWithFee = append(marketsWithFee, MarketWithFee{
 			Market: Market{
@@ -424,9 +422,9 @@ func (t *traderService) getUnspentsBlindingsAndDerivationPathsForAccount(
 		ctx,
 		derivedAddresses,
 	)
-	utxos, err := t.unspentsToUtxos(unspents, derivedAddresses, blindingKeys)
-	if err != nil {
-		return nil, nil, nil, nil, err
+	utxos := make([]explorer.Utxo, 0, len(unspents))
+	for _, unspent := range unspents {
+		utxos = append(utxos, unspent.ToUtxo())
 	}
 
 	scripts := make([]string, 0, len(derivedAddresses))
@@ -447,62 +445,6 @@ func (t *traderService) getUnspentsBlindingsAndDerivationPathsForAccount(
 	}
 
 	return unspents, utxos, blindingKeysByScript, derivationPaths, nil
-}
-
-// unspentsToUtxos retrieves all the confirmed/unconfirmed Utxos from the
-// explorer for the given addresses, and returns only those included in the
-// provided list of Unspents
-func (t *traderService) unspentsToUtxos(unspents []domain.Unspent, addresses []string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
-	allUtxos, err := t.getUtxos(addresses, blindingKeys)
-	if err != nil {
-		return nil, err
-	}
-
-	utxos := make([]explorer.Utxo, 0, len(unspents))
-	for _, unspent := range unspents {
-		unspentKey := unspent.GetKey()
-		for _, utxo := range allUtxos {
-			if unspentKey.TxID == utxo.Hash() && unspentKey.VOut == utxo.Index() {
-				utxos = append(utxos, utxo)
-				break
-			}
-		}
-	}
-	return utxos, nil
-}
-
-func (t *traderService) getUtxos(
-	addresses []string,
-	blindingKeys [][]byte,
-) ([]explorer.Utxo, error) {
-	chUnspents := make(chan []explorer.Utxo)
-	chErr := make(chan error, 1)
-	unspents := make([]explorer.Utxo, 0)
-
-	for _, addr := range addresses {
-		go t.getUtxosForAddress(addr, blindingKeys, chUnspents, chErr)
-
-		select {
-		case err := <-chErr:
-			close(chErr)
-			close(chUnspents)
-			return nil, err
-		case unspentsForAddress := <-chUnspents:
-			unspents = append(unspents, unspentsForAddress...)
-		}
-	}
-
-	return unspents, nil
-}
-
-func (t *traderService) getUtxosForAddress(addr string, blindingKeys [][]byte,
-	chUnspents chan []explorer.Utxo, chErr chan error) {
-	unspents, err := t.explorerSvc.GetUnspents(addr, blindingKeys)
-	if err != nil {
-		chErr <- err
-		return
-	}
-	chUnspents <- unspents
 }
 
 func blindingKeyByScriptFromCTAddress(addr string) map[string][]byte {

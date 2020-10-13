@@ -2,6 +2,7 @@ package domain
 
 import (
 	"github.com/google/uuid"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
 type UnspentKey struct {
@@ -10,37 +11,43 @@ type UnspentKey struct {
 }
 
 type Unspent struct {
-	txID         string
-	vOut         uint32
-	value        uint64
-	assetHash    string
-	address      string
-	spent        bool
-	locked       bool
-	scriptPubKey []byte
-	lockedBy     *uuid.UUID
-	confirmed    bool
+	txID            string
+	vOut            uint32
+	value           uint64
+	assetHash       string
+	valueCommitment string
+	assetCommitment string
+	scriptPubKey    []byte
+	nonce           []byte
+	rangeProof      []byte
+	surjectionProof []byte
+	address         string
+	spent           bool
+	locked          bool
+	lockedBy        *uuid.UUID
+	confirmed       bool
 }
 
 func NewUnspent(
-	txID, assetHash, address string,
-	vOut uint32,
-	value uint64,
-	spent, locked bool,
-	scriptPubKey []byte,
-	lockedBy *uuid.UUID,
-	confirmed bool,
+	txID string, vOut uint32,
+	value uint64, assetHash string, scriptPubKey []byte,
+	valueCommitment, assetCommitment string,
+	nonce, rangeProof, surjectionProof []byte,
+	address string, confirmed bool,
 ) Unspent {
 	return Unspent{
-		txID:         txID,
-		vOut:         vOut,
-		value:        value,
-		assetHash:    assetHash,
-		address:      address,
-		spent:        spent,
-		locked:       locked,
-		scriptPubKey: scriptPubKey,
-		confirmed:    confirmed,
+		txID:            txID,
+		vOut:            vOut,
+		value:           value,
+		assetHash:       assetHash,
+		valueCommitment: valueCommitment,
+		assetCommitment: assetCommitment,
+		nonce:           nonce,
+		rangeProof:      rangeProof,
+		surjectionProof: surjectionProof,
+		address:         address,
+		scriptPubKey:    scriptPubKey,
+		confirmed:       confirmed,
 	}
 }
 
@@ -68,6 +75,30 @@ func (u *Unspent) TxID() string {
 
 func (u *Unspent) VOut() uint32 {
 	return u.vOut
+}
+
+func (u *Unspent) ValueCommitment() string {
+	return u.valueCommitment
+}
+
+func (u *Unspent) AssetCommitment() string {
+	return u.assetCommitment
+}
+
+func (u *Unspent) Script() []byte {
+	return u.scriptPubKey
+}
+
+func (u *Unspent) Nonce() []byte {
+	return u.nonce
+}
+
+func (u *Unspent) RangeProof() []byte {
+	return u.rangeProof
+}
+
+func (u *Unspent) SurjectionProof() []byte {
+	return u.surjectionProof
 }
 
 func (u *Unspent) Lock(tradeID *uuid.UUID) {
@@ -111,6 +142,18 @@ func (u *Unspent) LockedBy() *uuid.UUID {
 	return u.lockedBy
 }
 
-func (u *Unspent) Script() []byte {
-	return u.scriptPubKey
+func (u *Unspent) ToUtxo() explorer.Utxo {
+	return explorer.NewWitnessUtxo(
+		u.txID,
+		u.vOut,
+		u.value,
+		u.assetHash,
+		u.valueCommitment,
+		u.assetCommitment,
+		u.scriptPubKey,
+		u.nonce,
+		u.rangeProof,
+		u.surjectionProof,
+		u.confirmed,
+	)
 }

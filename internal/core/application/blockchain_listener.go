@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -70,16 +71,11 @@ events:
 						continue utxoLoop
 					}
 					u := domain.NewUnspent(
-						utxo.Hash(),
-						utxo.Asset(),
-						e.Address,
-						utxo.Index(),
-						utxo.Value(),
-						false,
-						false,
-						nil, //TODO should this be populated
-						nil,
-						isTrxConfirmed,
+						utxo.Hash(), utxo.Index(),
+						utxo.Value(), utxo.Asset(), utxo.Script(),
+						utxo.ValueCommitment(), utxo.AssetCommitment(),
+						utxo.Nonce(), utxo.RangeProof(), utxo.SurjectionProof(),
+						e.Address, isTrxConfirmed,
 					)
 					unspents = append(unspents, u)
 				}
@@ -173,16 +169,11 @@ events:
 						continue utxoLoop1
 					}
 					u := domain.NewUnspent(
-						utxo.Hash(),
-						utxo.Asset(),
-						e.Address,
-						utxo.Index(),
-						utxo.Value(),
-						false,
-						false,
-						nil, //TODO should this be populated
-						nil,
-						isTrxConfirmed,
+						utxo.Hash(), utxo.Index(),
+						utxo.Value(), utxo.Asset(), utxo.Script(),
+						utxo.ValueCommitment(), utxo.AssetCommitment(),
+						utxo.Nonce(), utxo.RangeProof(), utxo.SurjectionProof(),
+						e.Address, isTrxConfirmed,
 					)
 					unspents = append(unspents, u)
 				}
