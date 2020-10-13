@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -121,34 +122,38 @@ func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData
 	}
 
 	// persist unspents and fund market
-	unspentRepo := inmemory.NewUnspentRepositoryImpl()
+	dbManager, err := dbbadger.NewDbManager("testdb")
+	if err != nil {
+		panic(err)
+	}
+	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	unspentRepo.AddUnspents(context.Background(), []domain.Unspent{
 		// 1 LBTC
-		domain.NewUnspent(
-			"0000000000000000000000000000000000000000000000000000000000000000", // txid
-			config.GetNetwork().AssetID,                                        // assetHash
-			addr,                                                               // address
-			0,                                                                  // vout
-			100000000,                                                          // value
-			false,                                                              // spent
-			false,                                                              // locked
-			script,                                                             // scriptpubkey
-			nil,                                                                // lockedBy
-			true,                                                               // confirmed
-		),
+		{
+			TxID:         "0000000000000000000000000000000000000000000000000000000000000000",
+			VOut:         0,
+			Value:        0100000000,
+			AssetHash:    config.GetNetwork().AssetID,
+			Address:      addr,
+			Spent:        false,
+			Locked:       false,
+			ScriptPubKey: script,
+			LockedBy:     nil,
+			Confirmed:    true,
+		},
 		// 6500 ASS
-		domain.NewUnspent(
-			"0000000000000000000000000000000000000000000000000000000000000000", // txid
-			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // assetHash
-			addr,         // address
-			1,            // vout
-			650000000000, // value
-			false,        // spent
-			false,        // locked
-			script,       // scriptpubkey
-			nil,          // lockedBy
-			true,         // confirmed
-		),
+		{
+			TxID:         "0000000000000000000000000000000000000000000000000000000000000000",
+			VOut:         1,
+			Value:        650000000000,
+			AssetHash:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Address:      addr,
+			Spent:        false,
+			Locked:       false,
+			ScriptPubKey: script,
+			LockedBy:     nil,
+			Confirmed:    true,
+		},
 	})
 
 	market.FundMarket([]domain.OutpointWithAsset{

@@ -23,10 +23,13 @@ func before() {
 	marketRepository = NewMarketRepositoryImpl(dbManager)
 	unspentRepository = NewUnspentRepositoryImpl(dbManager)
 	tx := dbManager.Store.Badger().NewTransaction(true)
-	err = insertMarkets(tx, dbManager)
-	if err != nil {
+	if err = insertMarkets(tx, dbManager); err != nil {
 		panic(err)
 	}
+	if err = insertUnspents(tx, dbManager); err != nil {
+		panic(err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		panic(err)
 	}
@@ -39,6 +42,9 @@ func before() {
 
 func after() {
 	tx := ctx.Value("tx").(*badger.Txn)
+	if err := tx.Commit(); err != nil {
+		panic(err)
+	}
 	tx.Discard()
 	dbManager.Store.Close()
 
@@ -109,6 +115,94 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 	for _, v := range markets {
 		err := db.Store.TxInsert(tx, v.AccountIndex, v)
 		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func insertUnspents(tx *badger.Txn, db *DbManager) error {
+	unspents := []domain.Unspent{
+		{
+			TxID:         "1",
+			VOut:         0,
+			Value:        4,
+			AssetHash:    "ah",
+			Address:      "a",
+			Spent:        false,
+			Locked:       false,
+			ScriptPubKey: nil,
+			LockedBy:     nil,
+			Confirmed:    true,
+		},
+		{
+			TxID:         "1",
+			VOut:         1,
+			Value:        2,
+			AssetHash:    "ah",
+			Address:      "adr",
+			Spent:        false,
+			Locked:       false,
+			ScriptPubKey: nil,
+			LockedBy:     nil,
+			Confirmed:    true,
+		},
+		{
+			TxID:         "2",
+			VOut:         1,
+			Value:        4,
+			AssetHash:    "ah",
+			Address:      "adre",
+			Spent:        false,
+			Locked:       false,
+			ScriptPubKey: nil,
+			LockedBy:     nil,
+			Confirmed:    false,
+		},
+		{
+			TxID:         "2",
+			VOut:         2,
+			Value:        9,
+			AssetHash:    "ah",
+			Address:      "adra",
+			Spent:        false,
+			Locked:       false,
+			ScriptPubKey: nil,
+			LockedBy:     nil,
+			Confirmed:    false,
+		},
+		{
+			TxID:         "3",
+			VOut:         1,
+			Value:        4,
+			AssetHash:    "ah",
+			Address:      "a",
+			Spent:        false,
+			Locked:       false,
+			ScriptPubKey: nil,
+			LockedBy:     nil,
+			Confirmed:    false,
+		},
+		{
+			TxID:         "3",
+			VOut:         0,
+			Value:        2,
+			AssetHash:    "ah",
+			Address:      "a",
+			Spent:        false,
+			Locked:       false,
+			ScriptPubKey: nil,
+			LockedBy:     nil,
+			Confirmed:    false,
+		},
+	}
+	for _, v := range unspents {
+		if err := db.Store.TxInsert(
+			tx,
+			v.Key(),
+			&v,
+		); err != nil {
 			return err
 		}
 	}

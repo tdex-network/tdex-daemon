@@ -13,6 +13,11 @@ import (
 
 type BlockchainListener interface {
 	ObserveBlockchain()
+	UpdateUnspentsForAddress(
+		ctx context.Context,
+		unspents []domain.Unspent,
+		address string,
+	) error
 }
 
 type blockchainListener struct {
@@ -69,23 +74,25 @@ events:
 						log.Warn(err)
 						continue utxoLoop
 					}
-					u := domain.NewUnspent(
-						utxo.Hash(),
-						utxo.Asset(),
-						e.Address,
-						utxo.Index(),
-						utxo.Value(),
-						false,
-						false,
-						nil, //TODO should this be populated
-						nil,
-						isTrxConfirmed,
-					)
+
+					u := domain.Unspent{
+						TxID:         utxo.Hash(),
+						VOut:         utxo.Index(),
+						Value:        utxo.Value(),
+						AssetHash:    utxo.Asset(),
+						Address:      e.Address,
+						Spent:        false,
+						Locked:       false,
+						ScriptPubKey: nil,
+						LockedBy:     nil,
+						Confirmed:    isTrxConfirmed,
+					}
 					unspents = append(unspents, u)
 				}
-				err := b.unspentRepository.AddUnspents(
+				err := b.UpdateUnspentsForAddress(
 					ctx,
 					unspents,
+					e.Address,
 				)
 				if err != nil {
 					tx.Discard()
@@ -115,11 +122,18 @@ events:
 
 				var feeAccountBalance uint64
 				for _, a := range addresses {
-					feeAccountBalance += b.unspentRepository.GetBalance(
+					b, err := b.unspentRepository.GetBalance(
 						ctx,
 						a,
 						config.GetString(config.BaseAssetKey),
 					)
+					if err != nil {
+						tx.Discard()
+						log.Warn(err)
+						continue events
+					}
+
+					feeAccountBalance += b
 				}
 
 				if feeAccountBalance < uint64(
@@ -172,23 +186,24 @@ events:
 						log.Warn(err)
 						continue utxoLoop1
 					}
-					u := domain.NewUnspent(
-						utxo.Hash(),
-						utxo.Asset(),
-						e.Address,
-						utxo.Index(),
-						utxo.Value(),
-						false,
-						false,
-						nil, //TODO should this be populated
-						nil,
-						isTrxConfirmed,
-					)
+					u := domain.Unspent{
+						TxID:         utxo.Hash(),
+						VOut:         utxo.Index(),
+						Value:        utxo.Value(),
+						AssetHash:    utxo.Asset(),
+						Address:      e.Address,
+						Spent:        false,
+						Locked:       false,
+						ScriptPubKey: nil,
+						LockedBy:     nil,
+						Confirmed:    isTrxConfirmed,
+					}
 					unspents = append(unspents, u)
 				}
-				err := b.unspentRepository.AddUnspents(
+				err := b.UpdateUnspentsForAddress(
 					ctx,
 					unspents,
+					e.Address,
 				)
 				if err != nil {
 					tx.Discard()
@@ -246,6 +261,47 @@ events:
 		}
 		b.commitTx(tx)
 	}
+}
+
+func (b *blockchainListener) UpdateUnspentsForAddress(
+	ctx context.Context,
+	unspents []domain.Unspent,
+	address string,
+) error {
+	err := b.unspentRepository.AddUnspents(ctx, unspents)
+	if err != nil {
+		return err
+	}
+
+	unsp, err := b.unspentRepository.GetUnspentsForAddresses(
+		ctx,
+		[]string{address},
+	)
+
+	for _, oldUnspent := range unsp {
+		exist := false
+		for _, newUnspent := range unspents {
+			if newUnspent.IsKeyEqual(oldUnspent.Key()) {
+				exist = true
+			}
+		}
+		if !exist {
+			oldUnspent.Spend()
+			err := b.unspentRepository.UpdateUnspent(
+				ctx,
+				oldUnspent.Key(),
+				func(unspent *domain.Unspent) (*domain.Unspent, error) {
+					unspent.Spend()
+					return unspent, nil
+				},
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (b *blockchainListener) startTx() ports.Transaction {

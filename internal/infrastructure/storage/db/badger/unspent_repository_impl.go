@@ -2,19 +2,19 @@ package dbbadger
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"github.com/dgraph-io/badger"
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"github.com/timshannon/badgerhold"
 )
 
 const (
-	unspentTableName = "MARKET_"
+	UnspentBadgerholdKeyPrefix = "bh_Unspent"
 )
 
-var unspentTablePrefixKey = []byte(unspentTableName)
+//badgerhold internal implementation adds prefix to the key
+var unspentTablePrefixKey = []byte(UnspentBadgerholdKeyPrefix)
 
 type unspentRepositoryImpl struct {
 	db *DbManager
@@ -34,10 +34,12 @@ func (u unspentRepositoryImpl) AddUnspents(
 	for _, v := range unspents {
 		if err := u.db.Store.TxInsert(
 			tx,
-			fmt.Sprintf("%v%v", unspentTableName, v.Key()),
+			v.Key(),
 			&v,
 		); err != nil {
-			return err
+			if err != badgerhold.ErrKeyExists {
+				return err
+			}
 		}
 	}
 	return nil
@@ -47,10 +49,10 @@ func (u unspentRepositoryImpl) GetAllUnspents(
 	ctx context.Context,
 ) []domain.Unspent {
 	tx := ctx.Value("tx").(*badger.Txn)
-
 	unspents := make([]domain.Unspent, 0)
 
 	iter := badger.DefaultIteratorOptions
+	iter.PrefetchValues = false
 	it := tx.NewIterator(iter)
 	defer it.Close()
 
@@ -58,12 +60,13 @@ func (u unspentRepositoryImpl) GetAllUnspents(
 		item := it.Item()
 		data, _ := item.ValueCopy(nil)
 		var unspent domain.Unspent
-		err := badgerhold.DefaultDecode(data, &unspent)
+		err := JsonDecode(data, &unspent)
 		if err == nil {
 			unspents = append(unspents, unspent)
 		}
 
 	}
+
 	return unspents
 }
 
@@ -71,39 +74,153 @@ func (u unspentRepositoryImpl) GetBalance(
 	ctx context.Context,
 	address string,
 	assetHash string,
-) uint64 {
-	var markets []Market
-	err := m.db.Store.TxFind(
+) (uint64, error) {
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	var unspents []domain.Unspent
+
+	query := badgerhold.Where("Address").Eq(address).
+		And("AssetHash").Eq(assetHash).
+		And("Spent").Eq(false).
+		And("Confirmed").Eq(true)
+
+	err := u.db.Store.TxFind(
 		tx,
-		&markets,
-		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).And("Tradable").Eq(true),
+		&unspents,
+		query,
+	)
+	if err != nil {
+		if err != badgerhold.ErrNotFound {
+			return 0, err
+		}
+	}
+
+	var balance uint64
+	for _, v := range unspents {
+		balance += v.Value
+	}
+
+	return balance, nil
+}
+
+func (u unspentRepositoryImpl) GetAvailableUnspents(
+	ctx context.Context,
+) ([]domain.Unspent, error) {
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	var unspents []domain.Unspent
+
+	query := badgerhold.Where("Spent").Eq(false).
+		And("Locked").Eq(false).
+		And("Confirmed").Eq(true)
+
+	err := u.db.Store.TxFind(
+		tx,
+		&unspents,
+		query,
 	)
 	if err != nil {
 		if err != badgerhold.ErrNotFound {
 			return nil, err
 		}
 	}
+
+	return unspents, nil
 }
 
-func (u unspentRepositoryImpl) GetAvailableUnspents(
+func (u unspentRepositoryImpl) GetUnspentsForAddresses(
 	ctx context.Context,
-) []domain.Unspent {
-	panic("implement me")
+	addresses []string,
+) ([]domain.Unspent, error) {
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	var unspents []domain.Unspent
+
+	iface := make([]interface{}, len(addresses))
+	for i := range addresses {
+		iface[i] = addresses[i]
+	}
+
+	query := badgerhold.Where("Address").In(iface...)
+
+	err := u.db.Store.TxFind(
+		tx,
+		&unspents,
+		query,
+	)
+	if err != nil {
+		if err != badgerhold.ErrNotFound {
+			return nil, err
+		}
+	}
+
+	return unspents, nil
 }
 
 func (u unspentRepositoryImpl) GetAvailableUnspentsForAddresses(
 	ctx context.Context,
 	addresses []string,
-) []domain.Unspent {
-	panic("implement me")
+) ([]domain.Unspent, error) {
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	var unspents []domain.Unspent
+
+	iface := make([]interface{}, len(addresses))
+	for i := range addresses {
+		iface[i] = addresses[i]
+	}
+
+	query := badgerhold.Where("Spent").Eq(false).
+		And("Locked").Eq(false).
+		And("Confirmed").Eq(true).
+		And("Address").In(iface...)
+
+	err := u.db.Store.TxFind(
+		tx,
+		&unspents,
+		query,
+	)
+	if err != nil {
+		if err != badgerhold.ErrNotFound {
+			return nil, err
+		}
+	}
+
+	return unspents, nil
 }
 
 func (u unspentRepositoryImpl) GetUnlockedBalance(
 	ctx context.Context,
 	address string,
 	assetHash string,
-) uint64 {
-	panic("implement me")
+) (uint64, error) {
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	var unspents []domain.Unspent
+
+	query := badgerhold.Where("Address").Eq(address).
+		And("AssetHash").Eq(assetHash).
+		And("Spent").Eq(false).
+		And("Confirmed").Eq(true).
+		And("Locked").Eq(false)
+
+	err := u.db.Store.TxFind(
+		tx,
+		&unspents,
+		query,
+	)
+	if err != nil {
+		if err != badgerhold.ErrNotFound {
+			return 0, err
+		}
+	}
+
+	var balance uint64
+	for _, v := range unspents {
+		balance += v.Value
+	}
+
+	return balance, nil
 }
 
 func (u unspentRepositoryImpl) LockUnspents(
@@ -111,23 +228,125 @@ func (u unspentRepositoryImpl) LockUnspents(
 	unspentKeys []domain.UnspentKey,
 	tradeID uuid.UUID,
 ) error {
-	panic("implement me")
+	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return errors.New("context must contain db transaction value")
+	}
+
+	for _, v := range unspentKeys {
+		var unspents []domain.Unspent
+		err := u.db.Store.TxFind(
+			tx,
+			&unspents,
+			badgerhold.Where(badgerhold.Key).Eq(v),
+		)
+		if err != nil {
+			return err
+		}
+
+		unspent := unspents[0]
+		unspent.Lock(&tradeID)
+
+		err = u.db.Store.TxUpdate(
+			tx,
+			v,
+			unspent,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (u unspentRepositoryImpl) UnlockUnspents(
 	ctx context.Context,
-	unspentKey []domain.UnspentKey) error {
-	panic("implement me")
+	unspentKeys []domain.UnspentKey) error {
+	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return errors.New("context must contain db transaction value")
+	}
+
+	for _, v := range unspentKeys {
+		var unspents []domain.Unspent
+		err := u.db.Store.TxFind(
+			tx,
+			&unspents,
+			badgerhold.Where(badgerhold.Key).Eq(v),
+		)
+		if err != nil {
+			return err
+		}
+
+		unspent := unspents[0]
+		unspent.UnLock()
+
+		err = u.db.Store.TxUpdate(
+			tx,
+			v,
+			unspent,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (u unspentRepositoryImpl) Begin() (uow.Tx, error) {
-	panic("implement me")
+func (u unspentRepositoryImpl) GetUnspentForKey(
+	ctx context.Context,
+	unspentKey domain.UnspentKey,
+) (*domain.Unspent, error) {
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	var unspents []domain.Unspent
+	err := u.db.Store.TxFind(
+		tx,
+		&unspents,
+		badgerhold.Where(badgerhold.Key).Eq(unspentKey),
+	)
+	if err != nil {
+		if err != badgerhold.ErrNotFound {
+			return nil, err
+		}
+	}
+
+	return &unspents[0], nil
 }
 
-func (u unspentRepositoryImpl) ContextKey() interface{} {
-	panic("implement me")
+func (u unspentRepositoryImpl) UpdateUnspent(
+	ctx context.Context,
+	unspentKey domain.UnspentKey,
+	updateFn func(m *domain.Unspent) (*domain.Unspent, error),
+) error {
+	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return errors.New("context must contain db transaction value")
+	}
+
+	currentUnspent, err := u.GetUnspentForKey(ctx, unspentKey)
+	if err != nil {
+		return err
+	}
+
+	updatedUnspent, err := updateFn(currentUnspent)
+	if err != nil {
+		return err
+	}
+
+	return u.db.Store.TxUpdate(
+		tx,
+		unspentKey,
+		updatedUnspent,
+	)
 }
 
-func (u unspentRepositoryImpl) GetBalanceInfoForAsset(unspents []domain.Unspent) map[string]domain.BalanceInfo {
-	panic("implement me")
-}
+//
+//func (u unspentRepositoryImpl) Begin() (uow.Tx, error) {
+//	return nil, nil
+//}
+//func (u unspentRepositoryImpl) ContextKey() interface{} {
+//	return nil
+//}

@@ -9,7 +9,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
@@ -167,113 +166,112 @@ func (t *traderService) TradePropose(
 	// changes to different storages only if the trade is accepted at the very end.
 	// This process causes changes that affect different domains so we need to
 	// update all or none of them in case any errors occur.
-	unit := uow.NewUnitOfWork(t.tradeRepository, t.unspentRepository)
+	//unit := uow.NewUnitOfWork(t.tradeRepository, t.unspentRepository)
 
-	if err := unit.Run(func(u uow.Contextual) error {
-		var mnemonic []string
-		var tradeID uuid.UUID
-		var selectedUnspents []explorer.Utxo
-		var outputBlindingKeyByScript map[string][]byte
-		var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
+	//if err := unit.Run(func(u uow.Contextual) error {
+	var mnemonic []string
+	var tradeID uuid.UUID
+	var selectedUnspents []explorer.Utxo
+	var outputBlindingKeyByScript map[string][]byte
+	var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
 
-		// derive output and change address for market, and change address for fee account
-		vaultCtx := u.Context(t.vaultRepository)
-		if err := t.vaultRepository.UpdateVault(
-			vaultCtx,
-			nil,
-			"",
-			func(v *domain.Vault) (*domain.Vault, error) {
-				mnemonic, err = v.Mnemonic()
-				if err != nil {
-					return nil, err
-				}
-				outputAddress, outputScript, _, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
-				if err != nil {
-					return nil, err
-				}
-				_, changeScript, _, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
-				if err != nil {
-					return nil, err
-				}
-				_, feeChangeScript, _,
-					err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
-				if err != nil {
-					return nil, err
-				}
-				marketAccount, _ := v.AccountByIndex(marketAccountIndex)
-				feeAccount, _ := v.AccountByIndex(domain.FeeAccount)
+	// derive output and change address for market, and change address for fee account
+	//vaultCtx := u.Context(t.vaultRepository)
+	if err := t.vaultRepository.UpdateVault(
+		context.Background(),
+		nil,
+		"",
+		func(v *domain.Vault) (*domain.Vault, error) {
+			mnemonic, err = v.Mnemonic()
+			if err != nil {
+				return nil, err
+			}
+			outputAddress, outputScript, _, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
+			if err != nil {
+				return nil, err
+			}
+			_, changeScript, _, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
+			if err != nil {
+				return nil, err
+			}
+			_, feeChangeScript, _,
+				err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			if err != nil {
+				return nil, err
+			}
+			marketAccount, _ := v.AccountByIndex(marketAccountIndex)
+			feeAccount, _ := v.AccountByIndex(domain.FeeAccount)
 
-				outputBlindingKeyByScript = blindingKeyByScriptFromCTAddress(outputAddress)
-				outputDerivationPath, _ = marketAccount.DerivationPathByScript(outputScript)
-				changeDerivationPath, _ = marketAccount.DerivationPathByScript(changeScript)
-				feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript(feeChangeScript)
+			outputBlindingKeyByScript = blindingKeyByScriptFromCTAddress(outputAddress)
+			outputDerivationPath, _ = marketAccount.DerivationPathByScript(outputScript)
+			changeDerivationPath, _ = marketAccount.DerivationPathByScript(changeScript)
+			feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript(feeChangeScript)
 
-				return v, nil
-			}); err != nil {
-			return err
-		}
-
-		tradeCtx := u.Context(t.tradeRepository)
-		// parse swap proposal and possibly accept
-		if err := t.tradeRepository.UpdateTrade(
-			tradeCtx,
-			nil,
-			func(t *domain.Trade) (*domain.Trade, error) {
-				if err := t.Propose(req.GetSwapRequest(), req.GetMarket().GetQuoteAsset(), nil); err != nil {
-					return nil, err
-				}
-				tradeID = t.ID()
-
-				acceptSwapResult, err := acceptSwap(acceptSwapOpts{
-					mnemonic:                   mnemonic,
-					swapRequest:                req.GetSwapRequest(),
-					marketUnspents:             marketUnspents,
-					feeUnspents:                feeUnspents,
-					marketBlindingKeysByScript: marketBlindingKeysByScript,
-					feeBlindingKeysByScript:    feeBlindingKeysByScript,
-					outputBlindingKeyByScript:  outputBlindingKeyByScript,
-					marketDerivationPaths:      marketDerivationPaths,
-					feeDerivationPaths:         feeDerivationPaths,
-					outputDerivationPath:       outputDerivationPath,
-					changeDerivationPath:       changeDerivationPath,
-					feeChangeDerivationPath:    feeChangeDerivationPath,
-				})
-				if err != nil {
-					return nil, err
-				}
-
-				if err := t.Accept(
-					acceptSwapResult.psetBase64,
-					acceptSwapResult.inputBlindingKeys,
-					acceptSwapResult.outputBlindingKeys,
-				); err != nil {
-					return nil, err
-				}
-
-				reply = &pbtrade.TradeProposeReply{
-					SwapAccept:     t.SwapAcceptMessage(),
-					ExpiryTimeUnix: t.SwapExpiryTime(),
-				}
-
-				return t, nil
-			}); err != nil {
-			return err
-		}
-
-		selectedUnspentKeys := getUnspentKeys(selectedUnspents)
-		unspentCtx := u.Context(t.unspentRepository)
-		if err := t.unspentRepository.LockUnspents(
-			unspentCtx,
-			selectedUnspentKeys,
-			tradeID,
-		); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		return status.Error(codes.Internal, err.Error())
+			return v, nil
+		}); err != nil {
+		return err
 	}
+
+	//tradeCtx := u.Context(t.tradeRepository)
+	// parse swap proposal and possibly accept
+	if err := t.tradeRepository.UpdateTrade(
+		context.Background(),
+		nil,
+		func(t *domain.Trade) (*domain.Trade, error) {
+			if err := t.Propose(req.GetSwapRequest(), req.GetMarket().GetQuoteAsset(), nil); err != nil {
+				return nil, err
+			}
+			tradeID = t.ID()
+
+			acceptSwapResult, err := acceptSwap(acceptSwapOpts{
+				mnemonic:                   mnemonic,
+				swapRequest:                req.GetSwapRequest(),
+				marketUnspents:             marketUnspents,
+				feeUnspents:                feeUnspents,
+				marketBlindingKeysByScript: marketBlindingKeysByScript,
+				feeBlindingKeysByScript:    feeBlindingKeysByScript,
+				outputBlindingKeyByScript:  outputBlindingKeyByScript,
+				marketDerivationPaths:      marketDerivationPaths,
+				feeDerivationPaths:         feeDerivationPaths,
+				outputDerivationPath:       outputDerivationPath,
+				changeDerivationPath:       changeDerivationPath,
+				feeChangeDerivationPath:    feeChangeDerivationPath,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			if err := t.Accept(
+				acceptSwapResult.psetBase64,
+				acceptSwapResult.inputBlindingKeys,
+				acceptSwapResult.outputBlindingKeys,
+			); err != nil {
+				return nil, err
+			}
+
+			reply = &pbtrade.TradeProposeReply{
+				SwapAccept:     t.SwapAcceptMessage(),
+				ExpiryTimeUnix: t.SwapExpiryTime(),
+			}
+
+			return t, nil
+		}); err != nil {
+		return err
+	}
+
+	selectedUnspentKeys := getUnspentKeys(selectedUnspents)
+	//unspentCtx := u.Context(t.unspentRepository)
+	if err := t.unspentRepository.LockUnspents(
+		context.Background(),
+		selectedUnspentKeys,
+		tradeID,
+	); err != nil {
+		return err
+	}
+
+	//}); err != nil {
+	//	return status.Error(codes.Internal, err.Error())
+	//}
 
 	if err := stream.Send(reply); err != nil {
 		return status.Error(codes.Internal, err.Error())
@@ -355,10 +353,13 @@ func (t *traderService) getUnspentsBlindingsAndDerivationPathsForAccount(
 		scripts,
 	)
 
-	unspents := t.unspentRepository.GetAvailableUnspentsForAddresses(
+	unspents, err := t.unspentRepository.GetAvailableUnspentsForAddresses(
 		context.Background(),
 		derivedAddresses,
 	)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	utxos, err := t.getUtxos(derivedAddresses, blindingKeys)
 	if err != nil {
@@ -649,7 +650,11 @@ func getPriceAndPreviewForMarket(
 		return
 	}
 
-	unspents := unspentRepo.GetAvailableUnspentsForAddresses(ctx, addresses)
+	unspents, err := unspentRepo.GetAvailableUnspentsForAddresses(ctx,
+		addresses)
+	if err != nil {
+		return
+	}
 	if len(unspents) == 0 {
 		err = errors.New("no available funds for market")
 		return
