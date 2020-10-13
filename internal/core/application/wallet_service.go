@@ -657,7 +657,6 @@ func initVaultAccount(v *domain.Vault, accountIndex int, lastDerivedIndex *accou
 			return err
 		}
 		if crawlerSvc != nil {
-			fmt.Println("ADD OBSERVABLE", accountIndex)
 			crawlerSvc.AddObservable(&crawler.AddressObservable{
 				AccountIndex: accountIndex,
 				Address:      addr,
