@@ -2,6 +2,7 @@ package tradeclient
 
 import (
 	"context"
+	"errors"
 
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	tradetype "github.com/tdex-network/tdex-daemon/pkg/trade/type"
@@ -46,6 +47,7 @@ func (c *Client) Balances(opts BalancesOpts) (*pbtrade.BalancesReply, error) {
 type MarketPriceOpts struct {
 	Market    trademarket.Market
 	TradeType tradetype.TradeType
+	Amount    uint64
 }
 
 func (o MarketPriceOpts) validate() error {
@@ -54,6 +56,9 @@ func (o MarketPriceOpts) validate() error {
 	}
 	if err := o.TradeType.Validate(); err != nil {
 		return err
+	}
+	if o.Amount == 0 {
+		return errors.New("amount must be greater than 0")
 	}
 	return nil
 }
@@ -69,7 +74,8 @@ func (c *Client) MarketPrice(opts MarketPriceOpts) (*pbtrade.MarketPriceReply, e
 			BaseAsset:  opts.Market.BaseAsset,
 			QuoteAsset: opts.Market.QuoteAsset,
 		},
-		Type: pbtypes.TradeType(opts.TradeType),
+		Type:   pbtypes.TradeType(opts.TradeType),
+		Amount: opts.Amount,
 	}
 	return c.client.MarketPrice(context.Background(), request)
 }
