@@ -2,6 +2,7 @@ package dbbadger
 
 import (
 	"context"
+	"errors"
 	"github.com/dgraph-io/badger"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/timshannon/badgerhold"
@@ -22,6 +23,11 @@ func (m marketRepositoryImpl) GetMarketByAsset(
 	quoteAsset string,
 ) (market *domain.Market, accountIndex int, err error) {
 	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return nil, 0,
+			errors.New("context must contain db transaction value")
+	}
+
 	var markets []Market
 	err = m.db.Store.TxFind(
 		tx,
@@ -44,12 +50,17 @@ func (m marketRepositoryImpl) GetLatestMarket(
 	ctx context.Context,
 ) (market *domain.Market, accountIndex int, err error) {
 	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return nil, 0,
+			errors.New("context must contain db transaction value")
+	}
 
 	var markets []Market
 	err = m.db.Store.TxFind(
 		tx,
 		&markets,
-		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).SortBy("AccountIndex").Reverse(),
+		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).
+			SortBy("AccountIndex").Reverse(),
 	)
 	if err != nil {
 		return
@@ -79,6 +90,9 @@ func (m marketRepositoryImpl) getOrCreateMarket(
 	accountIndex int,
 ) (*domain.Market, error) {
 	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return nil, errors.New("context must contain db transaction value")
+	}
 
 	var markets []Market
 	err := m.db.Store.TxFind(
@@ -117,12 +131,16 @@ func (m marketRepositoryImpl) GetTradableMarkets(
 	ctx context.Context,
 ) ([]domain.Market, error) {
 	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return nil, errors.New("context must contain db transaction value")
+	}
 
 	var markets []Market
 	err := m.db.Store.TxFind(
 		tx,
 		&markets,
-		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).And("Tradable").Eq(true),
+		badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart).
+			And("Tradable").Eq(true),
 	)
 	if err != nil {
 		if err != badgerhold.ErrNotFound {
@@ -142,6 +160,9 @@ func (m marketRepositoryImpl) GetAllMarkets(
 	ctx context.Context,
 ) ([]domain.Market, error) {
 	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return nil, errors.New("context must contain db transaction value")
+	}
 
 	var markets []Market
 	err := m.db.Store.TxFind(
@@ -169,6 +190,9 @@ func (m marketRepositoryImpl) UpdateMarket(
 	updateFn func(m *domain.Market) (*domain.Market, error),
 ) error {
 	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return errors.New("context must contain db transaction value")
+	}
 
 	currentMarket, err := m.getOrCreateMarket(ctx, accountIndex)
 	if err != nil {
@@ -192,6 +216,9 @@ func (m marketRepositoryImpl) OpenMarket(
 	quoteAsset string,
 ) error {
 	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return errors.New("context must contain db transaction value")
+	}
 
 	var markets []Market
 	err := m.db.Store.TxFind(
@@ -232,6 +259,9 @@ func (m marketRepositoryImpl) CloseMarket(
 	quoteAsset string,
 ) error {
 	tx := ctx.Value("tx").(*badger.Txn)
+	if tx == nil {
+		return errors.New("context must contain db transaction value")
+	}
 
 	var markets []Market
 	err := m.db.Store.TxFind(

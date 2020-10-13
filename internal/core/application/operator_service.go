@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -49,7 +47,6 @@ type OperatorService interface {
 	ListSwaps(
 		ctx context.Context,
 	) (*pb.ListSwapsReply, error)
-	ObserveBlockchain()
 }
 
 type operatorService struct {
@@ -85,10 +82,6 @@ func (o *operatorService) DepositMarket(
 ) (string, error) {
 
 	var address string
-
-	if quoteAsset == "" {
-		return "", errors.New("quoteAsset must be populated")
-	}
 
 	var accountIndex int
 	_, a, err := o.marketRepository.GetMarketByAsset(
@@ -422,192 +415,4 @@ func tradesToSwapInfo(
 		info = append(info, i)
 	}
 	return info
-}
-
-func (o *operatorService) ObserveBlockchain() {
-	go o.crawlerSvc.Start()
-	go o.handleBlockChainEvents()
-}
-
-func (o *operatorService) handleBlockChainEvents() {
-events:
-	for event := range o.crawlerSvc.GetEventChannel() {
-		switch event.Type() {
-		case crawler.FeeAccountDeposit:
-			e := event.(crawler.AddressEvent)
-			unspents := make([]domain.Unspent, 0)
-			if len(e.Utxos) > 0 {
-
-			utxoLoop:
-				for _, utxo := range e.Utxos {
-					isTrxConfirmed, err := o.explorerSvc.IsTransactionConfirmed(
-						utxo.Hash(),
-					)
-					if err != nil {
-						log.Warn(err)
-						continue utxoLoop
-					}
-					u := domain.Unspent{
-						TxID:         utxo.Hash(),
-						VOut:         utxo.Index(),
-						Value:        utxo.Value(),
-						AssetHash:    utxo.Asset(),
-						Address:      e.Address,
-						Spent:        false,
-						Locked:       false,
-						ScriptPubKey: nil,
-						LockedBy:     nil,
-						Confirmed:    isTrxConfirmed,
-					}
-					unspents = append(unspents, u)
-				}
-				err := o.unspentRepository.AddUnspents(
-					context.Background(),
-					unspents,
-				)
-				if err != nil {
-					log.Warn(err)
-					continue events
-				}
-
-				markets, err := o.marketRepository.GetTradableMarkets(
-					context.Background(),
-				)
-				if err != nil {
-					log.Warn(err)
-					continue events
-				}
-
-				addresses, _, err := o.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
-					context.Background(),
-					domain.FeeAccount,
-				)
-				if err != nil {
-					log.Warn(err)
-					continue events
-				}
-
-				var feeAccountBalance uint64
-				for _, a := range addresses {
-					feeAccountBalance += o.unspentRepository.GetBalance(
-						context.Background(),
-						a,
-						config.GetString(config.BaseAssetKey),
-					)
-				}
-
-				if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-					log.Debug("fee account balance too low - Trades and" +
-						" deposits will be disabled")
-					for _, m := range markets {
-						err := o.marketRepository.CloseMarket(
-							context.Background(),
-							m.QuoteAssetHash(),
-						)
-						if err != nil {
-							log.Warn(err)
-							continue events
-						}
-					}
-					continue events
-				}
-
-				for _, m := range markets {
-					err := o.marketRepository.OpenMarket(
-						context.Background(),
-						m.QuoteAssetHash(),
-					)
-					if err != nil {
-						log.Warn(err)
-						continue events
-					}
-					log.Debug(fmt.Sprintf(
-						"market %v, opened",
-						m.AccountIndex(),
-					))
-				}
-			}
-
-		case crawler.MarketAccountDeposit:
-			e := event.(crawler.AddressEvent)
-			unspents := make([]domain.Unspent, 0)
-			if len(e.Utxos) > 0 {
-			utxoLoop1:
-				for _, utxo := range e.Utxos {
-					isTrxConfirmed, err := o.explorerSvc.IsTransactionConfirmed(
-						utxo.Hash(),
-					)
-					if err != nil {
-						log.Warn(err)
-						continue utxoLoop1
-					}
-					u := domain.Unspent{
-						TxID:         utxo.Hash(),
-						VOut:         utxo.Index(),
-						Value:        utxo.Value(),
-						AssetHash:    utxo.Asset(),
-						Address:      e.Address,
-						Spent:        false,
-						Locked:       false,
-						ScriptPubKey: nil,
-						LockedBy:     nil,
-						Confirmed:    isTrxConfirmed,
-					}
-					unspents = append(unspents, u)
-				}
-				err := o.unspentRepository.AddUnspents(
-					context.Background(),
-					unspents,
-				)
-				if err != nil {
-					log.Warn(err)
-					continue events
-				}
-
-				fundingTxs := make([]domain.OutpointWithAsset, 0)
-				for _, u := range e.Utxos {
-					tx := domain.OutpointWithAsset{
-						Asset: u.Asset(),
-						Txid:  u.Hash(),
-						Vout:  int(u.Index()),
-					}
-					fundingTxs = append(fundingTxs, tx)
-				}
-
-				m, err := o.marketRepository.GetOrCreateMarket(
-					context.Background(),
-					e.AccountIndex,
-				)
-				if err != nil {
-					log.Error(err)
-					continue events
-				}
-
-				if err := o.marketRepository.UpdateMarket(
-					context.Background(),
-					m.AccountIndex(),
-					func(m *domain.Market) (*domain.Market, error) {
-
-						if m.IsFunded() {
-							return m, nil
-						}
-
-						if err := m.FundMarket(fundingTxs); err != nil {
-							return nil, err
-						}
-
-						log.Info("deposit: funding market with quote asset ", m.QuoteAssetHash())
-
-						return m, nil
-					}); err != nil {
-					log.Warn(err)
-					continue events
-				}
-
-			}
-
-		case crawler.TransactionConfirmed:
-			//TODO
-		}
-	}
 }

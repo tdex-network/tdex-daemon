@@ -3,11 +3,12 @@ package interceptor
 import (
 	"context"
 	log "github.com/sirupsen/logrus"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"google.golang.org/grpc"
 )
 
-func unaryTransactionHandler(db *dbbadger.DbManager) grpc.
+func unaryTransactionHandler(db ports.DbManager) grpc.
 	UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
@@ -15,7 +16,7 @@ func unaryTransactionHandler(db *dbbadger.DbManager) grpc.
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
-		tx := db.Store.Badger().NewTransaction(true)
+		tx := db.NewTransaction()
 		defer tx.Discard()
 
 		dbContext := context.WithValue(ctx, "tx", tx)
