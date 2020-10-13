@@ -28,13 +28,10 @@ func (t traderHandler) Markets(
 ) (*pb.MarketsReply, error) {
 	markets, err := t.traderSvc.GetTradableMarkets(ctx)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	marketsReply := new(pb.MarketsReply)
-	marketsWithFee := make([]*types.MarketWithFee, 0)
-	marketsReply.Markets = marketsWithFee
-
+	marketsWithFee := make([]*types.MarketWithFee, 0, len(markets))
 	for _, v := range markets {
 		m := &types.MarketWithFee{
 			Market: &types.Market{
@@ -49,7 +46,7 @@ func (t traderHandler) Markets(
 		marketsWithFee = append(marketsWithFee, m)
 	}
 
-	return marketsReply, nil
+	return &pb.MarketsReply{Markets: marketsWithFee}, nil
 }
 
 func (t traderHandler) Balances(
@@ -67,16 +64,13 @@ func (t traderHandler) MarketPrice(
 		ctx,
 		application.Market{
 			BaseAsset:  req.Market.BaseAsset,
-			QuoteAsset: req.Market.BaseAsset,
+			QuoteAsset: req.Market.QuoteAsset,
 		},
 		int(req.Type),
 		req.Amount,
 	)
 	if err != nil {
-		return nil, status.Error(
-			codes.Internal,
-			err.Error(),
-		)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	basePrice, _ := price.BasePrice.Float64()

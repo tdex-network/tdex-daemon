@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type OperatorService interface {
@@ -279,7 +278,7 @@ func (o *operatorService) UpdateMarketPrice(
 		req.QuoteAsset,
 	)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return err
 	}
 
 	//Updates the base price and the quote price
@@ -317,7 +316,7 @@ func (o *operatorService) UpdateMarketStrategy(
 		req.QuoteAsset,
 	)
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return err
 	}
 
 	//For now we support only BALANCED or PLUGGABLE (ie. price feed)
@@ -355,12 +354,12 @@ func (o *operatorService) ListSwaps(
 ) (*pb.ListSwapsReply, error) {
 	trades, err := o.tradeRepository.GetAllTrades(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	markets, err := o.getMarketsForTrades(ctx, trades)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	swaps := tradesToSwapInfo(markets, trades)
