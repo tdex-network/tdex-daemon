@@ -7,26 +7,26 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 )
 
-type accountAndKey struct {
-	accountIndex int
-	blindingKey  []byte
+type AccountAndKey struct {
+	AccountIndex int
+	BlindingKey  []byte
 }
 
 type Vault struct {
-	mnemonic               []string
-	encryptedMnemonic      string
-	passphraseHash         []byte
-	accounts               map[int]*Account
-	accountAndKeyByAddress map[string]accountAndKey
+	Mnemonic               []string
+	EncryptedMnemonic      string
+	PassphraseHash         []byte
+	Accounts               map[int]*Account
+	AccountAndKeyByAddress map[string]AccountAndKey
 }
 
 // Account defines the entity data struture for a derived account of the
 // daemon's HD wallet
 type Account struct {
-	accountIndex           int
-	lastExternalIndex      int
-	lastInternalIndex      int
-	derivationPathByScript map[string]string
+	AccountIndex           int
+	LastExternalIndex      int
+	LastInternalIndex      int
+	DerivationPathByScript map[string]string
 }
 
 type AddressInfo struct {
@@ -59,11 +59,11 @@ func NewVault(mnemonic []string, passphrase string) (*Vault, error) {
 	}
 
 	return &Vault{
-		mnemonic:               mnemonic,
-		encryptedMnemonic:      encryptedMnemonic,
-		passphraseHash:         btcutil.Hash160([]byte(passphrase)),
-		accounts:               map[int]*Account{},
-		accountAndKeyByAddress: map[string]accountAndKey{},
+		Mnemonic:               mnemonic,
+		EncryptedMnemonic:      encryptedMnemonic,
+		PassphraseHash:         btcutil.Hash160([]byte(passphrase)),
+		Accounts:               map[int]*Account{},
+		AccountAndKeyByAddress: map[string]AccountAndKey{},
 	}, nil
 }
 
@@ -74,9 +74,9 @@ func NewAccount(positiveAccountIndex int) (*Account, error) {
 	}
 
 	return &Account{
-		accountIndex:           positiveAccountIndex,
-		derivationPathByScript: map[string]string{},
-		lastExternalIndex:      0,
-		lastInternalIndex:      0,
+		AccountIndex:           positiveAccountIndex,
+		DerivationPathByScript: map[string]string{},
+		LastExternalIndex:      0,
+		LastInternalIndex:      0,
 	}, nil
 }

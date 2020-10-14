@@ -182,7 +182,7 @@ func (t *traderService) TradePropose(
 		nil,
 		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
-			mnemonic, err = v.Mnemonic()
+			mnemonic, err = v.GetMnemonic()
 			if err != nil {
 				return nil, err
 			}
@@ -203,9 +203,15 @@ func (t *traderService) TradePropose(
 			feeAccount, _ := v.AccountByIndex(domain.FeeAccount)
 
 			outputBlindingKeyByScript = blindingKeyByScriptFromCTAddress(outputAddress)
-			outputDerivationPath, _ = marketAccount.DerivationPathByScript(outputScript)
-			changeDerivationPath, _ = marketAccount.DerivationPathByScript(changeScript)
-			feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript(feeChangeScript)
+			outputDerivationPath, _ = marketAccount.GetDerivationPathByScript(
+				outputScript,
+			)
+			changeDerivationPath, _ = marketAccount.GetDerivationPathByScript(
+				changeScript,
+			)
+			feeChangeDerivationPath, _ = feeAccount.GetDerivationPathByScript(
+				feeChangeScript,
+			)
 
 			return v, nil
 		}); err != nil {

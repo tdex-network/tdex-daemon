@@ -22,12 +22,12 @@ func (v *Vault) IsZero() bool {
 }
 
 // Mnemonic is getter for Vault's mnemonic in plain text
-func (v *Vault) Mnemonic() ([]string, error) {
+func (v *Vault) GetMnemonic() ([]string, error) {
 	if v.isLocked() {
 		return nil, ErrMustBeUnlocked
 	}
 
-	return v.mnemonic, nil
+	return v.Mnemonic, nil
 }
 
 // Lock locks the Vault by wiping its mnemonic field
@@ -36,7 +36,7 @@ func (v *Vault) Lock() error {
 		return nil
 	}
 	// flush mnemonic in plain text
-	v.mnemonic = nil
+	v.Mnemonic = nil
 	return nil
 }
 
@@ -47,14 +47,14 @@ func (v *Vault) Unlock(passphrase string) error {
 	}
 
 	mnemonic, err := wallet.Decrypt(wallet.DecryptOpts{
-		CypherText: v.encryptedMnemonic,
+		CypherText: v.EncryptedMnemonic,
 		Passphrase: passphrase,
 	})
 	if err != nil {
 		return err
 	}
 
-	v.mnemonic = strings.Split(mnemonic, " ")
+	v.Mnemonic = strings.Split(mnemonic, " ")
 	return nil
 }
 
@@ -68,7 +68,7 @@ func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error 
 	}
 
 	mnemonic, err := wallet.Decrypt(wallet.DecryptOpts{
-		CypherText: v.encryptedMnemonic,
+		CypherText: v.EncryptedMnemonic,
 		Passphrase: currentPassphrase,
 	})
 	if err != nil {
@@ -83,16 +83,16 @@ func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error 
 		return err
 	}
 
-	v.encryptedMnemonic = encryptedMnemonic
-	v.passphraseHash = btcutil.Hash160([]byte(newPassphrase))
+	v.EncryptedMnemonic = encryptedMnemonic
+	v.PassphraseHash = btcutil.Hash160([]byte(newPassphrase))
 	return nil
 }
 
 // InitAccount creates a new account in the current Vault if not existing
 func (v *Vault) InitAccount(accountIndex int) {
-	if _, ok := v.accounts[accountIndex]; !ok {
+	if _, ok := v.Accounts[accountIndex]; !ok {
 		account, _ := NewAccount(accountIndex)
-		v.accounts[accountIndex] = account
+		v.Accounts[accountIndex] = account
 	}
 }
 
@@ -118,7 +118,7 @@ func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (string, s
 
 // AccountByIndex returns the account with the given index
 func (v *Vault) AccountByIndex(accountIndex int) (*Account, error) {
-	account, ok := v.accounts[accountIndex]
+	account, ok := v.Accounts[accountIndex]
 	if !ok {
 		return nil, fmt.Errorf("account not found with index %d", accountIndex)
 	}
@@ -127,15 +127,15 @@ func (v *Vault) AccountByIndex(accountIndex int) (*Account, error) {
 
 // AccountByAddress returns the account to which the provided address belongs
 func (v *Vault) AccountByAddress(addr string) (*Account, int, error) {
-	info, ok := v.accountAndKeyByAddress[addr]
+	info, ok := v.AccountAndKeyByAddress[addr]
 	if !ok {
 		return nil, -1, fmt.Errorf("account not found for address '%s", addr)
 	}
-	account, err := v.AccountByIndex(info.accountIndex)
+	account, err := v.AccountByIndex(info.AccountIndex)
 	if err != nil {
 		return nil, -1, err
 	}
-	return account, info.accountIndex, nil
+	return account, info.AccountIndex, nil
 }
 
 // AllDerivedAddressesInfo returns the info of all the external and internal
@@ -162,46 +162,46 @@ func (v *Vault) AllDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 // if the mnemonic has been encrypted, its plain text version has been wiped
 // and a passphrase (hash) has been set
 func (v *Vault) isInitialized() bool {
-	return len(v.encryptedMnemonic) > 0
+	return len(v.EncryptedMnemonic) > 0
 }
 
 // isLocked returns whether the Vault is initialized and locked
 func (v *Vault) isLocked() bool {
-	return !v.isInitialized() || len(v.mnemonic) == 0
+	return !v.isInitialized() || len(v.Mnemonic) == 0
 }
 
 func (v *Vault) isValidPassphrase(passphrase string) bool {
-	return bytes.Equal(v.passphraseHash, btcutil.Hash160([]byte(passphrase)))
+	return bytes.Equal(v.PassphraseHash, btcutil.Hash160([]byte(passphrase)))
 }
 
 func (v *Vault) isPassphraseSet() bool {
-	return len(v.passphraseHash) > 0
+	return len(v.PassphraseHash) > 0
 }
 
 func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (string, string, []byte, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: v.mnemonic,
+		SigningMnemonic: v.Mnemonic,
 	})
 	if err != nil {
 		return "", "", nil, err
 	}
 
-	account, ok := v.accounts[accountIndex]
+	account, ok := v.Accounts[accountIndex]
 	if !ok {
 		account, err = NewAccount(accountIndex)
 		if err != nil {
 			return "", "", nil, err
 		}
-		v.accounts[accountIndex] = account
+		v.Accounts[accountIndex] = account
 	}
 
-	addressIndex := account.LastExternalIndex()
+	addressIndex := account.LastExternalIndex
 	if chainIndex == InternalChain {
-		addressIndex = account.LastInternalIndex()
+		addressIndex = account.LastInternalIndex
 	}
 	derivationPath := fmt.Sprintf(
 		"%d'/%d/%d",
-		account.Index(), chainIndex, addressIndex,
+		account.AccountIndex, chainIndex, addressIndex,
 	)
 	addr, script, err := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 		DerivationPath: derivationPath,
@@ -221,26 +221,26 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 	} else {
 		account.nextExternalIndex()
 	}
-	v.accountAndKeyByAddress[addr] = accountAndKey{
-		accountIndex: account.Index(),
-		blindingKey:  blindingKey.Serialize(),
+	v.AccountAndKeyByAddress[addr] = AccountAndKey{
+		AccountIndex: account.AccountIndex,
+		BlindingKey:  blindingKey.Serialize(),
 	}
 
 	return addr, hex.EncodeToString(script), blindingKey.Serialize(), err
 }
 
 func (v *Vault) allDerivedAddressesInfo() []AddressInfo {
-	list := make([]AddressInfo, 0, len(v.accountAndKeyByAddress))
+	list := make([]AddressInfo, 0, len(v.AccountAndKeyByAddress))
 
-	for addr, info := range v.accountAndKeyByAddress {
-		account, _ := v.AccountByIndex(info.accountIndex)
+	for addr, info := range v.AccountAndKeyByAddress {
+		account, _ := v.AccountByIndex(info.AccountIndex)
 		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
-		path, _ := account.DerivationPathByScript(hex.EncodeToString(script))
+		path, _ := account.GetDerivationPathByScript(hex.EncodeToString(script))
 
 		list = append(list, AddressInfo{
-			AccountIndex:   info.accountIndex,
+			AccountIndex:   info.AccountIndex,
 			Address:        addr,
-			BlindingKey:    info.blindingKey,
+			BlindingKey:    info.BlindingKey,
 			DerivationPath: path,
 		})
 	}
@@ -259,26 +259,26 @@ func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 	}
 
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: v.mnemonic,
+		SigningMnemonic: v.Mnemonic,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	addresses := make([]string, 0, account.lastExternalIndex+account.lastInternalIndex)
+	addresses := make([]string, 0, account.LastExternalIndex+account.LastInternalIndex)
 	externalAddresses := deriveAddressesInRange(
 		w,
 		accountIndex,
 		ExternalChain,
 		0,
-		account.lastExternalIndex-1,
+		account.LastExternalIndex-1,
 	)
 	internalAddresses := deriveAddressesInRange(
 		w,
 		accountIndex,
 		InternalChain,
 		0,
-		account.lastExternalIndex-1,
+		account.LastExternalIndex-1,
 	)
 	addresses = append(addresses, externalAddresses...)
 	addresses = append(addresses, internalAddresses...)
@@ -303,25 +303,10 @@ func validateAccountIndex(accIndex int) error {
 	return nil
 }
 
-// Index returns the index of the current account
-func (a *Account) Index() int {
-	return a.accountIndex
-}
-
-// LastExternalIndex returns the last address index of external chain (0)
-func (a *Account) LastExternalIndex() int {
-	return a.lastExternalIndex
-}
-
-// LastInternalIndex returns the last address index of internal chain (1)
-func (a *Account) LastInternalIndex() int {
-	return a.lastInternalIndex
-}
-
 // DerivationPathByScript returns the derivation path that generates the
 // provided output script
-func (a *Account) DerivationPathByScript(outputScript string) (string, bool) {
-	derivationPath, ok := a.derivationPathByScript[outputScript]
+func (a *Account) GetDerivationPathByScript(outputScript string) (string, bool) {
+	derivationPath, ok := a.DerivationPathByScript[outputScript]
 	return derivationPath, ok
 }
 
@@ -329,28 +314,28 @@ func (a *Account) DerivationPathByScript(outputScript string) (string, bool) {
 func (a *Account) nextExternalIndex() (next int) {
 	// restart from 0 if index has reached the its max value
 	next = 0
-	if a.lastExternalIndex != hdkeychain.HardenedKeyStart-1 {
-		next = a.lastExternalIndex + 1
+	if a.LastExternalIndex != hdkeychain.HardenedKeyStart-1 {
+		next = a.LastExternalIndex + 1
 	}
-	a.lastExternalIndex = next
+	a.LastExternalIndex = next
 	return
 }
 
 // NextInternalIndex increments the last internal index by one and returns the new last
 func (a *Account) nextInternalIndex() (next int) {
 	next = 0
-	if a.lastInternalIndex != hdkeychain.HardenedKeyStart-1 {
-		next = a.lastInternalIndex + 1
+	if a.LastInternalIndex != hdkeychain.HardenedKeyStart-1 {
+		next = a.LastInternalIndex + 1
 	}
-	a.lastInternalIndex = next
+	a.LastInternalIndex = next
 	return
 }
 
 // AddDerivationPath adds an entry outputScript-derivationPath to the inner to
 // the inner derivationPathByScript map
 func (a *Account) addDerivationPath(outputScript, derivationPath string) {
-	if _, ok := a.derivationPathByScript[outputScript]; !ok {
-		a.derivationPathByScript[outputScript] = derivationPath
+	if _, ok := a.DerivationPathByScript[outputScript]; !ok {
+		a.DerivationPathByScript[outputScript] = derivationPath
 	}
 }
 
