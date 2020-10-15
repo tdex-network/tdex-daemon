@@ -30,7 +30,10 @@ func (v vaultRepositoryImpl) GetOrCreateVault(
 	mnemonic []string,
 	passphrase string,
 ) (*domain.Vault, error) {
-	tx := ctx.Value("tx").(*badger.Txn)
+	var tx *badger.Txn
+	if ctx.Value("tx") != nil {
+		tx = ctx.Value("tx").(*badger.Txn)
+	}
 
 	return v.getOrCreateVault(tx, mnemonic, passphrase)
 }
@@ -189,12 +192,22 @@ func (v vaultRepositoryImpl) insertVault(
 func (v vaultRepositoryImpl) getVault(
 	tx *badger.Txn,
 ) (*domain.Vault, error) {
+	var err error
 	var vault domain.Vault
-	if err := v.db.Store.TxGet(
-		tx,
-		vaultKey,
-		&vault,
-	); err != nil {
+	if tx != nil {
+		err = v.db.Store.TxGet(
+			tx,
+			vaultKey,
+			&vault,
+		)
+	} else {
+		err = v.db.Store.Get(
+			vaultKey,
+			&vault,
+		)
+	}
+
+	if err != nil {
 		if err == badgerhold.ErrNotFound {
 			return nil, nil
 		}
