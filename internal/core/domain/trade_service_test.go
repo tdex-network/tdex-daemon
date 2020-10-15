@@ -13,9 +13,7 @@ func TestTradePropose(t *testing.T) {
 	trade := NewTrade()
 	swapRequest, marketQuoteAsset, traderPubkey := mockProposeArgs()
 	ok, err := trade.Propose(swapRequest, marketQuoteAsset, traderPubkey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, true, ok)
 }
 
@@ -26,26 +24,18 @@ func TestTradeAccept(t *testing.T) {
 		t.Fatal(err)
 	}
 	ok, err := trade.Accept(mockAcceptArgs())
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, true, ok)
 }
 
 func TestTradeComplete(t *testing.T) {
 	trade := NewTrade()
 	_, err := trade.Propose(mockProposeArgs())
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	_, err = trade.Accept(mockAcceptArgs())
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	ok, err := trade.Complete(mockCompleteArgs())
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, true, ok)
 	err = trade.AddBlocktime(uint64(time.Now().Unix()))
 	assert.NoError(t, err)

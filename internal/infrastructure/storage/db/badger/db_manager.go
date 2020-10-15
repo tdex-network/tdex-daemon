@@ -1,6 +1,8 @@
 package dbbadger
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/dgraph-io/badger"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -12,11 +14,16 @@ type DbManager struct {
 }
 
 func NewDbManager(dbDir string) (*DbManager, error) {
+	opts := badger.DefaultOptions(dbDir)
+	//TODO add logger as input param so we can control log level,
+	//which is currently annoying in testing
+	//opts.Logger = nil
+
 	db, err := badgerhold.Open(badgerhold.Options{
-		Encoder:          badgerhold.DefaultEncode,
-		Decoder:          badgerhold.DefaultDecode,
+		Encoder:          JsonEncode,
+		Decoder:          JsonDecode,
 		SequenceBandwith: 100,
-		Options:          badger.DefaultOptions(dbDir),
+		Options:          opts,
 	})
 	if err != nil {
 		fmt.Println("Error instance db: ", err)
@@ -29,4 +36,29 @@ func NewDbManager(dbDir string) (*DbManager, error) {
 
 func (d DbManager) NewTransaction() ports.Transaction {
 	return d.Store.Badger().NewTransaction(true)
+}
+
+func JsonEncode(value interface{}) ([]byte, error) {
+	var buff bytes.Buffer
+
+	en := json.NewEncoder(&buff)
+
+	err := en.Encode(value)
+	if err != nil {
+		return nil, err
+	}
+
+	return buff.Bytes(), nil
+}
+
+func JsonDecode(data []byte, value interface{}) error {
+	var buff bytes.Buffer
+	de := json.NewDecoder(&buff)
+
+	_, err := buff.Write(data)
+	if err != nil {
+		return err
+	}
+
+	return de.Decode(value)
 }

@@ -11,44 +11,21 @@ type UnspentKey struct {
 }
 
 type Unspent struct {
-	txID            string
-	vOut            uint32
-	value           uint64
-	assetHash       string
-	valueCommitment string
-	assetCommitment string
-	scriptPubKey    []byte
-	nonce           []byte
-	rangeProof      []byte
-	surjectionProof []byte
-	address         string
-	spent           bool
-	locked          bool
-	lockedBy        *uuid.UUID
-	confirmed       bool
-}
-
-func NewUnspent(
-	txID string, vOut uint32,
-	value uint64, assetHash string, scriptPubKey []byte,
-	valueCommitment, assetCommitment string,
-	nonce, rangeProof, surjectionProof []byte,
-	address string, confirmed bool,
-) Unspent {
-	return Unspent{
-		txID:            txID,
-		vOut:            vOut,
-		value:           value,
-		assetHash:       assetHash,
-		valueCommitment: valueCommitment,
-		assetCommitment: assetCommitment,
-		nonce:           nonce,
-		rangeProof:      rangeProof,
-		surjectionProof: surjectionProof,
-		address:         address,
-		scriptPubKey:    scriptPubKey,
-		confirmed:       confirmed,
-	}
+	TxID            string
+	VOut            uint32
+	Value           uint64
+	AssetHash       string
+	ValueCommitment string
+	AssetCommitment string
+	ScriptPubKey    []byte
+	Nonce           []byte
+	RangeProof      []byte
+	SurjectionProof []byte
+	Address         string
+	Spent           bool
+	Locked          bool
+	LockedBy        *uuid.UUID
+	Confirmed       bool
 }
 
 type BalanceInfo struct {
@@ -57,103 +34,55 @@ type BalanceInfo struct {
 	UnconfirmedBalance uint64
 }
 
-func (u *Unspent) Address() string {
-	return u.address
-}
-
-func (u *Unspent) AssetHash() string {
-	return u.assetHash
-}
-
-func (u *Unspent) Value() uint64 {
-	return u.value
-}
-
-func (u *Unspent) TxID() string {
-	return u.txID
-}
-
-func (u *Unspent) VOut() uint32 {
-	return u.vOut
-}
-
-func (u *Unspent) ValueCommitment() string {
-	return u.valueCommitment
-}
-
-func (u *Unspent) AssetCommitment() string {
-	return u.assetCommitment
-}
-
-func (u *Unspent) Script() []byte {
-	return u.scriptPubKey
-}
-
-func (u *Unspent) Nonce() []byte {
-	return u.nonce
-}
-
-func (u *Unspent) RangeProof() []byte {
-	return u.rangeProof
-}
-
-func (u *Unspent) SurjectionProof() []byte {
-	return u.surjectionProof
-}
-
 func (u *Unspent) Lock(tradeID *uuid.UUID) {
-	u.locked = true
-	u.lockedBy = tradeID
+	u.Locked = true
+	u.LockedBy = tradeID
 }
 
 func (u *Unspent) UnLock() {
-	u.locked = false
-	u.lockedBy = nil
+	u.Locked = false
+	u.LockedBy = nil
 }
 
 func (u *Unspent) IsLocked() bool {
-	return u.locked
+	return u.Locked
 }
 
 func (u *Unspent) Spend() {
-	u.spent = true
+	u.Spent = true
 }
 
 func (u *Unspent) IsSpent() bool {
-	return u.spent
+	return u.Spent
 }
 
 func (u *Unspent) IsConfirmed() bool {
-	return u.confirmed
+	return u.Confirmed
 }
 
-func (u *Unspent) GetKey() UnspentKey {
+func (u *Unspent) Key() UnspentKey {
 	return UnspentKey{
-		TxID: u.txID,
-		VOut: u.vOut,
+		TxID: u.TxID,
+		VOut: u.VOut,
 	}
 }
 
 func (u *Unspent) IsKeyEqual(key UnspentKey) bool {
-	return u.txID == key.TxID && u.vOut == key.VOut
-}
-
-func (u *Unspent) LockedBy() *uuid.UUID {
-	return u.lockedBy
+	return u.TxID == key.TxID && u.VOut == key.VOut
 }
 
 func (u *Unspent) ToUtxo() explorer.Utxo {
 	return explorer.NewWitnessUtxo(
-		u.txID,
-		u.vOut,
-		u.value,
-		u.assetHash,
-		u.valueCommitment,
-		u.assetCommitment,
-		u.scriptPubKey,
-		u.nonce,
-		u.rangeProof,
-		u.surjectionProof,
-		u.confirmed,
+		u.TxID,
+		u.VOut,
+		u.Value,
+		u.AssetHash,
+		u.ValueCommitment,
+		u.AssetCommitment,
+		u.ScriptPubKey,
+		u.Nonce,
+		u.RangeProof,
+		u.SurjectionProof,
+		u.Confirmed,
 	)
 }

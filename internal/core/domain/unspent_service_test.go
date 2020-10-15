@@ -9,8 +9,8 @@ import (
 
 func TestLockUnlockUnSpents(t *testing.T) {
 	u := Unspent{
-		spent:  false,
-		locked: false,
+		Spent:  false,
+		Locked: false,
 	}
 	tradeID := uuid.New()
 

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
@@ -30,12 +31,11 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 			decimal.NewFromInt(9760),
 		},
 	}
+	b := &BalancedReserves{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := &BalancedReserves{}
-			if gotSpotPrice := b.SpotPrice(tt.args.opts); !gotSpotPrice.Equal(tt.wantSpotPrice) {
-				t.Errorf("BalancedReserves.SpotPrice() = %v, want %v", gotSpotPrice, tt.wantSpotPrice)
-			}
+			gotSpotPrice := b.SpotPrice(tt.args.opts)
+			assert.Equal(t, tt.wantSpotPrice.BigInt().Int64(), gotSpotPrice.BigInt().Int64())
 		})
 	}
 }
@@ -47,13 +47,11 @@ func TestBalancedReserves_OutGivenIn(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		b             BalancedReserves
 		args          args
 		wantAmountOut uint64
 	}{
 		{
 			"OutGivenIn with fee taken on the input",
-			BalancedReserves{},
 			args{
 				opts: &marketmaking.FormulaOpts{
 					BalanceIn:           100000000,
@@ -67,7 +65,6 @@ func TestBalancedReserves_OutGivenIn(t *testing.T) {
 		},
 		{
 			"OutGivenIn with the fee taken on the output",
-			BalancedReserves{},
 			args{
 				opts: &marketmaking.FormulaOpts{
 					BalanceIn:           100000000,
@@ -80,12 +77,42 @@ func TestBalancedReserves_OutGivenIn(t *testing.T) {
 			65155984,
 		},
 	}
+
+	failingTests := []struct {
+		name      string
+		args      args
+		wantError error
+	}{
+		{
+			"OutGivenIn fails if provided amount is 0",
+			args{
+				opts: &marketmaking.FormulaOpts{
+					BalanceIn:           100000000,
+					BalanceOut:          650000000000,
+					Fee:                 25,
+					ChargeFeeOnTheWayIn: true,
+				},
+				amountIn: 0,
+			},
+			ErrAmountTooLow,
+		},
+	}
+
+	b := BalancedReserves{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := BalancedReserves{}
-			if gotAmountOut := b.OutGivenIn(tt.args.opts, tt.args.amountIn); gotAmountOut != tt.wantAmountOut {
-				t.Errorf("BalancedReserves.OutGivenIn() = %v, want %v", gotAmountOut, tt.wantAmountOut)
+			gotAmountOut, err := b.OutGivenIn(tt.args.opts, tt.args.amountIn)
+			if err != nil {
+				t.Error(err)
 			}
+			assert.Equal(t, tt.wantAmountOut, gotAmountOut)
+		})
+	}
+
+	for _, tt := range failingTests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := b.OutGivenIn(tt.args.opts, tt.args.amountIn)
+			assert.Equal(t, tt.wantError, err)
 		})
 	}
 }
@@ -130,12 +157,55 @@ func TestBalancedReserves_InGivenOut(t *testing.T) {
 			64843983,
 		},
 	}
+
+	failingTests := []struct {
+		name      string
+		args      args
+		wantError error
+	}{
+		{
+			"InGivenOut fails if provided amount is 0",
+			args{
+				opts: &marketmaking.FormulaOpts{
+					BalanceIn:           100000000,
+					BalanceOut:          650000000000,
+					Fee:                 25,
+					ChargeFeeOnTheWayIn: true,
+				},
+				amountOut: 0,
+			},
+			ErrAmountTooLow,
+		},
+		{
+			"InGivenOut fails if provided amount is equal or exceeds the balance",
+			args{
+				opts: &marketmaking.FormulaOpts{
+					BalanceIn:           100000000,
+					BalanceOut:          650000000000,
+					Fee:                 25,
+					ChargeFeeOnTheWayIn: true,
+				},
+				amountOut: 650000000000,
+			},
+			ErrAmountTooBig,
+		},
+	}
+
+	b := BalancedReserves{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := BalancedReserves{}
-			if gotAmountIn := b.InGivenOut(tt.args.opts, tt.args.amountOut); gotAmountIn != tt.wantAmountIn {
-				t.Errorf("BalancedReserves.InGivenOut() = %v, want %v", gotAmountIn, tt.wantAmountIn)
+			gotAmountIn, err := b.InGivenOut(tt.args.opts, tt.args.amountOut)
+			if err != nil {
+				t.Error(err)
 			}
+			assert.Equal(t, tt.wantAmountIn, gotAmountIn)
+		})
+	}
+
+	for _, tt := range failingTests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := b.InGivenOut(tt.args.opts, tt.args.amountOut)
+			assert.Equal(t, tt.wantError, err)
 		})
 	}
 }
