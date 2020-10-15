@@ -44,7 +44,10 @@ func (v vaultRepositoryImpl) UpdateVault(
 	passphrase string,
 	updateFn func(v *domain.Vault) (*domain.Vault, error),
 ) error {
-	tx := ctx.Value("tx").(*badger.Txn)
+	var tx *badger.Txn
+	if ctx.Value("tx") != nil {
+		tx = ctx.Value("tx").(*badger.Txn)
+	}
 
 	var err error
 	vault, err := v.getVault(tx)
@@ -176,11 +179,20 @@ func (v vaultRepositoryImpl) insertVault(
 	tx *badger.Txn,
 	vault domain.Vault,
 ) error {
-	if err := v.db.Store.TxInsert(
-		tx,
-		vaultKey,
-		&vault,
-	); err != nil {
+	var err error
+	if tx != nil {
+		err = v.db.Store.TxInsert(
+			tx,
+			vaultKey,
+			&vault,
+		)
+	} else {
+		err = v.db.Store.Insert(
+			vaultKey,
+			&vault,
+		)
+	}
+	if err != nil {
 		if err != badgerhold.ErrKeyExists {
 			return err
 		}
@@ -221,11 +233,20 @@ func (v vaultRepositoryImpl) updateVault(
 	tx *badger.Txn,
 	vault domain.Vault,
 ) error {
-	return v.db.Store.TxUpdate(
-		tx,
-		vaultKey,
-		vault,
-	)
+	var err error
+	if tx != nil {
+		err = v.db.Store.TxUpdate(
+			tx,
+			vaultKey,
+			vault,
+		)
+	} else {
+		err = v.db.Store.Update(
+			vaultKey,
+			vault,
+		)
+	}
+	return err
 }
 
 func (v vaultRepositoryImpl) getDerivationPathByScript(

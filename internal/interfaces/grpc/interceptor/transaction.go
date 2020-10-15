@@ -37,7 +37,12 @@ func streamTransactionHandler(db *dbbadger.DbManager) grpc.
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler,
 	) error {
-		//TODO implement transaction handler for stream calls
+		////TODO implement transaction handler for stream calls
+		//tx := db.NewTransaction()
+		//defer tx.Discard()
+		//
+		//dbStreamContext := context.WithValue(stream.Context(), "tx", tx)
+		//fromContext := grpc.ServerTransportStreamFromContext(dbStreamContext)
 		return handler(srv, stream)
 	}
 }
