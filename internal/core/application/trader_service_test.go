@@ -110,8 +110,8 @@ func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData
 		{
 			TxID:            "0000000000000000000000000000000000000000000000000000000000000000",
 			VOut:            0,
-			Value:           100000000,
-			AssetHash:       config.GetNetwork().AssetID,
+			Value:           650000000000,
+			AssetHash:       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
 			AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
 			ScriptPubKey:    script,
