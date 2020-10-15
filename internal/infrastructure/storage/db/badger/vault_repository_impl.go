@@ -25,21 +25,7 @@ func (v vaultRepositoryImpl) GetOrCreateVault(
 ) (*domain.Vault, error) {
 	tx := ctx.Value("tx").(*badger.Txn)
 
-	vault, err := domain.NewVault(mnemonic, passphrase)
-	if err != nil {
-		return nil, err
-	}
-
-	err = v.db.Store.TxInsert(
-		tx,
-		vault.Mnemonic,
-		vault,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return vault, nil
+	return v.getOrCreateVault(tx, mnemonic, passphrase)
 }
 
 func (v vaultRepositoryImpl) UpdateVault(
@@ -61,16 +47,17 @@ func (v vaultRepositoryImpl) UpdateVault(
 		return err
 	}
 
+	var newVault *domain.Vault
 	if vault.IsZero() {
-		vault, err = domain.NewVault(mnemonic, passphrase)
+		newVault, err = domain.NewVault(mnemonic, passphrase)
 		if err != nil {
 			return err
 		}
 
 		err = v.db.Store.TxInsert(
 			tx,
-			vault.Mnemonic,
-			vault,
+			newVault.Mnemonic,
+			newVault,
 		)
 		if err != nil {
 			return err
@@ -121,4 +108,64 @@ func (v vaultRepositoryImpl) Begin() (uow.Tx, error) {
 
 func (v vaultRepositoryImpl) ContextKey() interface{} {
 	panic("implement me")
+}
+
+func (v vaultRepositoryImpl) getOrCreateVault(
+	tx *badger.Txn,
+	mnemonic []string,
+	passphrase string,
+) (*domain.Vault, error) {
+	vault, err := v.getVault(tx, mnemonic)
+	if err != nil {
+		return nil, err
+	}
+
+	if vault == nil {
+		vlt, err := domain.NewVault(mnemonic, passphrase)
+		if err != nil {
+			return nil, err
+		}
+
+		err = v.insertVault(tx, *vlt)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return vault, nil
+}
+
+func (v vaultRepositoryImpl) insertVault(
+	tx *badger.Txn,
+	vault domain.Vault,
+) error {
+	if err := v.db.Store.TxInsert(
+		tx,
+		vault.Mnemonic,
+		&vault,
+	); err != nil {
+		if err != badgerhold.ErrKeyExists {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (v vaultRepositoryImpl) getVault(
+	tx *badger.Txn,
+	mnemonic []string,
+) (*domain.Vault, error) {
+	var vault domain.Vault
+	if err := v.db.Store.TxGet(
+		tx,
+		mnemonic,
+		&vault,
+	); err != nil {
+		if err != badgerhold.ErrKeyExists {
+			return nil, err
+		}
+	}
+
+	return &vault, nil
 }
