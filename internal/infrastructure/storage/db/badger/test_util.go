@@ -10,6 +10,7 @@ import (
 var ctx context.Context
 var marketRepository domain.MarketRepository
 var unspentRepository domain.UnspentRepository
+var vaultRepository domain.VaultRepository
 var dbManager *DbManager
 var testDbDir = "testdb"
 
@@ -22,11 +23,19 @@ func before() {
 	}
 	marketRepository = NewMarketRepositoryImpl(dbManager)
 	unspentRepository = NewUnspentRepositoryImpl(dbManager)
+	vaultRepository = NewVaultRepositoryImpl(dbManager)
 	tx := dbManager.Store.Badger().NewTransaction(true)
+	ctx = context.WithValue(
+		context.Background(),
+		"tx",
+		dbManager.Store.Badger().NewTransaction(true))
 	if err = insertMarkets(tx, dbManager); err != nil {
 		panic(err)
 	}
 	if err = insertUnspents(tx, dbManager); err != nil {
+		panic(err)
+	}
+	if err = insertVault(ctx); err != nil {
 		panic(err)
 	}
 
@@ -34,10 +43,6 @@ func before() {
 		panic(err)
 	}
 
-	ctx = context.WithValue(
-		context.Background(),
-		"tx",
-		dbManager.Store.Badger().NewTransaction(true))
 }
 
 func after() {
@@ -208,4 +213,26 @@ func insertUnspents(tx *badger.Txn, db *DbManager) error {
 	}
 
 	return nil
+}
+
+func insertVault(ctx context.Context) error {
+
+	pass := "pass"
+	mnemonic := []string{
+		"addict",
+		"able",
+		"about",
+		"above",
+		"absent",
+		"absorb",
+		"abstract",
+		"absurd",
+		"abuse",
+		"access",
+		"accident",
+		"account",
+	}
+
+	_, err := vaultRepository.GetOrCreateVault(ctx, mnemonic, pass)
+	return err
 }

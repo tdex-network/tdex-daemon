@@ -2,10 +2,17 @@ package dbbadger
 
 import (
 	"context"
+	"fmt"
 	"github.com/dgraph-io/badger"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"github.com/timshannon/badgerhold"
+)
+
+const (
+	//since there can be only 1 vault in database,
+	//key is hardcoded for easier retrival
+	vaultKey = "vault"
 )
 
 type vaultRepositoryImpl struct {
@@ -37,61 +44,81 @@ func (v vaultRepositoryImpl) UpdateVault(
 	tx := ctx.Value("tx").(*badger.Txn)
 
 	var err error
-	var vault domain.Vault
-	err = v.db.Store.TxFind(
-		tx,
-		&vault,
-		badgerhold.Where(badgerhold.Key).Eq(mnemonic),
-	)
+	vault, err := v.getVault(tx)
 	if err != nil {
 		return err
 	}
 
-	var newVault *domain.Vault
-	if vault.IsZero() {
-		newVault, err = domain.NewVault(mnemonic, passphrase)
+	if vault == nil {
+		vault, err = domain.NewVault(mnemonic, passphrase)
 		if err != nil {
 			return err
 		}
 
-		err = v.db.Store.TxInsert(
-			tx,
-			newVault.Mnemonic,
-			newVault,
-		)
+		err := v.insertVault(tx, *vault)
 		if err != nil {
 			return err
 		}
 	}
 
-	updatedVault, err := updateFn(v)
+	updatedVault, err := updateFn(vault)
 	if err != nil {
 		return err
 	}
 
-	*storage = *updatedVault
-	return nil
+	return v.updateVault(tx, *updatedVault)
 }
 
 func (v vaultRepositoryImpl) GetAccountByIndex(
 	ctx context.Context,
 	accountIndex int,
 ) (*domain.Account, error) {
-	panic("implement me")
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	vault, err := v.getVault(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	account, err := vault.AccountByIndex(accountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	return account, nil
 }
 
 func (v vaultRepositoryImpl) GetAccountByAddress(
 	ctx context.Context,
 	addr string,
 ) (*domain.Account, int, error) {
-	panic("implement me")
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	vault, err := v.getVault(tx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	account, accountIndex, err := vault.AccountByAddress(addr)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return account, accountIndex, nil
 }
 
 func (v vaultRepositoryImpl) GetAllDerivedAddressesAndBlindingKeysForAccount(
 	ctx context.Context,
 	accountIndex int,
 ) ([]string, [][]byte, error) {
-	panic("implement me")
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	vault, err := v.getVault(tx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
 func (v vaultRepositoryImpl) GetDerivationPathByScript(
@@ -99,7 +126,14 @@ func (v vaultRepositoryImpl) GetDerivationPathByScript(
 	accountIndex int,
 	scripts []string,
 ) (map[string]string, error) {
-	panic("implement me")
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	vault, err := v.getVault(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return v.getDerivationPathByScript(vault, accountIndex, scripts)
 }
 
 func (v vaultRepositoryImpl) Begin() (uow.Tx, error) {
@@ -115,18 +149,18 @@ func (v vaultRepositoryImpl) getOrCreateVault(
 	mnemonic []string,
 	passphrase string,
 ) (*domain.Vault, error) {
-	vault, err := v.getVault(tx, mnemonic)
+	vault, err := v.getVault(tx)
 	if err != nil {
 		return nil, err
 	}
 
 	if vault == nil {
-		vlt, err := domain.NewVault(mnemonic, passphrase)
+		vault, err = domain.NewVault(mnemonic, passphrase)
 		if err != nil {
 			return nil, err
 		}
 
-		err = v.insertVault(tx, *vlt)
+		err = v.insertVault(tx, *vault)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +175,7 @@ func (v vaultRepositoryImpl) insertVault(
 ) error {
 	if err := v.db.Store.TxInsert(
 		tx,
-		vault.Mnemonic,
+		vaultKey,
 		&vault,
 	); err != nil {
 		if err != badgerhold.ErrKeyExists {
@@ -154,18 +188,54 @@ func (v vaultRepositoryImpl) insertVault(
 
 func (v vaultRepositoryImpl) getVault(
 	tx *badger.Txn,
-	mnemonic []string,
 ) (*domain.Vault, error) {
 	var vault domain.Vault
 	if err := v.db.Store.TxGet(
 		tx,
-		mnemonic,
+		vaultKey,
 		&vault,
 	); err != nil {
-		if err != badgerhold.ErrKeyExists {
-			return nil, err
+		if err == badgerhold.ErrNotFound {
+			return nil, nil
 		}
+		return nil, err
 	}
 
 	return &vault, nil
+}
+
+func (v vaultRepositoryImpl) updateVault(
+	tx *badger.Txn,
+	vault domain.Vault,
+) error {
+	return v.db.Store.TxUpdate(
+		tx,
+		vaultKey,
+		vault,
+	)
+}
+
+func (v vaultRepositoryImpl) getDerivationPathByScript(
+	vault *domain.Vault,
+	accountIndex int,
+	scripts []string,
+) (map[string]string, error) {
+	account, err := vault.AccountByIndex(accountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	m := map[string]string{}
+	for _, script := range scripts {
+		derivationPath, ok := account.GetDerivationPathByScript(script)
+		if !ok {
+			return nil, fmt.Errorf(
+				"derivation path not found for script '%s'",
+				script,
+			)
+		}
+		m[script] = derivationPath
+	}
+
+	return m, nil
 }

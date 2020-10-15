@@ -14,11 +14,13 @@ type DbManager struct {
 }
 
 func NewDbManager(dbDir string) (*DbManager, error) {
+	opts := badger.DefaultOptions(dbDir)
+	opts.Logger = nil
 	db, err := badgerhold.Open(badgerhold.Options{
 		Encoder:          JsonEncode,
 		Decoder:          JsonDecode,
 		SequenceBandwith: 100,
-		Options:          badger.DefaultOptions(dbDir),
+		Options:          opts,
 	})
 	if err != nil {
 		fmt.Println("Error instance db: ", err)
