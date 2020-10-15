@@ -29,6 +29,7 @@ import (
 const walletPassword = "Sup3rS3cr3tP4ssw0rd!"
 
 func TestGrpcMain(t *testing.T) {
+	t.Skip()
 	startDaemon()
 	defer stopDaemon()
 	defer func() {
@@ -47,9 +48,9 @@ func TestGrpcMain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// if err := tradeLBTCPerUSDT(); err != nil {
-	// 	t.Fatal(err)
-	// }
+	if err := tradeLBTCPerUSDT(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func startDaemon() {
