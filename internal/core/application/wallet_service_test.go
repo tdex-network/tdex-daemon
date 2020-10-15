@@ -2,9 +2,11 @@ package application
 
 import (
 	"context"
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	"os"
 	"testing"
 	"time"
+
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -16,27 +18,34 @@ import (
 
 var ctx = context.Background()
 
-func newTestWallet() *walletService {
+func newTestWallet() (*walletService, func()) {
 	dbManager, err := dbbadger.NewDbManager("testdb")
 	if err != nil {
 		panic(err)
 	}
+
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	return newWalletService(
-		inmemory.NewVaultRepositoryImpl(),
-		dbbadger.NewUnspentRepositoryImpl(dbManager),
-		crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
-		explorerSvc,
-	)
+			inmemory.NewVaultRepositoryImpl(),
+			dbbadger.NewUnspentRepositoryImpl(dbManager),
+			crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
+			explorerSvc,
+		), func() {
+			dbManager.Store.Close()
+			os.RemoveAll("testdb")
+		}
 }
+
 func TestNewWalletService(t *testing.T) {
-	ws := newTestWallet()
+	ws, close := newTestWallet()
+	defer close()
 	assert.Equal(t, false, ws.walletInitialized)
 	assert.Equal(t, false, ws.walletIsSyncing)
 }
 
 func TestGenSeed(t *testing.T) {
-	walletSvc := newTestWallet()
+	walletSvc, close := newTestWallet()
+	defer close()
 
 	seed, err := walletSvc.GenSeed(ctx)
 	if err != nil {
@@ -47,13 +56,18 @@ func TestGenSeed(t *testing.T) {
 }
 
 func TestInitWalletWrongSeed(t *testing.T) {
+	walletSvc, close := newTestWallet()
+	defer close()
+
 	wrongSeed := []string{"test"}
-	walletSvc := newTestWallet()
 	err := walletSvc.InitWallet(ctx, wrongSeed, "pass")
 	assert.Error(t, err)
 }
 
 func TestInitEmptyWallet(t *testing.T) {
+	walletSvc, close := newTestWallet()
+	defer close()
+
 	mnemonic := []string{
 		"curtain", "summer", "juice", "thought", "release", "velvet", "dress", "fantasy",
 		"price", "hard", "core", "friend", "reopen", "myth", "giant", "consider",
@@ -69,8 +83,6 @@ func TestInitEmptyWallet(t *testing.T) {
 		Network:        config.GetNetwork(),
 	})
 
-	walletSvc := newTestWallet()
-	ctx := context.Background()
 	err := walletSvc.InitWallet(ctx, mnemonic, passphrase)
 	if err != nil {
 		t.Fatal(err)
@@ -88,15 +100,15 @@ func TestInitEmptyWallet(t *testing.T) {
 }
 
 func TestInitUsedWallet(t *testing.T) {
+	walletSvc, close := newTestWallet()
+	defer close()
+
 	mnemonic := []string{
 		"trophy", "situate", "mobile", "royal", "disease", "obvious", "ramp", "buddy",
 		"turn", "robust", "trust", "company", "wheel", "adult", "produce", "spawn",
 		"afford", "inspire", "topic", "farm", "sword", "embark", "body", "runway",
 	}
 	passphrase := "Sup3rS3cr3tP4ssw0rd!"
-
-	walletSvc := newTestWallet()
-	ctx := context.Background()
 
 	w, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: mnemonic,
@@ -128,7 +140,9 @@ func TestInitUsedWallet(t *testing.T) {
 }
 
 func TestWalletLockUnlock(t *testing.T) {
-	walletSvc := newTestWallet()
+	walletSvc, close := newTestWallet()
+	defer close()
+
 	seed, err := walletSvc.GenSeed(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -157,7 +171,9 @@ func TestWalletLockUnlock(t *testing.T) {
 }
 
 func TestWalletChangePass(t *testing.T) {
-	walletSvc := newTestWallet()
+	walletSvc, close := newTestWallet()
+	defer close()
+
 	seed, err := walletSvc.GenSeed(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +201,9 @@ func TestWalletChangePass(t *testing.T) {
 }
 
 func TestWalletBalance(t *testing.T) {
-	walletSvc := newTestWallet()
+	walletSvc, close := newTestWallet()
+	defer close()
+
 	seed, err := walletSvc.GenSeed(ctx)
 	if err != nil {
 		t.Fatal(err)
