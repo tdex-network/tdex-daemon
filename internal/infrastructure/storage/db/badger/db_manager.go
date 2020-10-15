@@ -14,11 +14,16 @@ type DbManager struct {
 }
 
 func NewDbManager(dbDir string) (*DbManager, error) {
+	opts := badger.DefaultOptions(dbDir)
+	//TODO add logger as input param so we can control log level,
+	//which is currently annoying in testing
+	//opts.Logger = nil
+
 	db, err := badgerhold.Open(badgerhold.Options{
 		Encoder:          JsonEncode,
 		Decoder:          JsonDecode,
 		SequenceBandwith: 100,
-		Options:          badger.DefaultOptions(dbDir),
+		Options:          opts,
 	})
 	if err != nil {
 		fmt.Println("Error instance db: ", err)

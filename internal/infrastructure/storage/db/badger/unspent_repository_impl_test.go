@@ -130,6 +130,21 @@ func TestGetAvailableUnspents(t *testing.T) {
 	assert.Equal(t, len(unspents), 2)
 }
 
+func TestGetUnspentsForAddresses(t *testing.T) {
+	before()
+	defer after()
+
+	unspents, err := unspentRepository.GetUnspentsForAddresses(
+		ctx,
+		[]string{"a", "adr"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, len(unspents), 4)
+}
+
 func TestGetAvailableUnspentsForAddresses(t *testing.T) {
 	before()
 	defer after()
@@ -141,6 +156,61 @@ func TestGetAvailableUnspentsForAddresses(t *testing.T) {
 	}
 
 	assert.Equal(t, len(unspents), 2)
+}
+
+func TestGetUnspentForKey(t *testing.T) {
+	before()
+	defer after()
+
+	unspent, err := unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
+		TxID: "1",
+		VOut: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, unspent.Value, uint64(2))
+}
+
+func TestUpdateUnspent(t *testing.T) {
+	before()
+	defer after()
+
+	unspent, err := unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
+		TxID: "1",
+		VOut: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, unspent.Value, uint64(2))
+
+	err = unspentRepository.UpdateUnspent(
+		ctx,
+		domain.UnspentKey{
+			TxID: "1",
+			VOut: 1,
+		},
+		func(m *domain.Unspent) (*domain.Unspent, error) {
+			m.Value = 444
+			return m, nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unspent, err = unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
+		TxID: "1",
+		VOut: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, unspent.Value, uint64(444))
 }
 
 func TestGetUnlockedBalance(t *testing.T) {

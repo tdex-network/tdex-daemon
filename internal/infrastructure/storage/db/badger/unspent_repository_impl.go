@@ -92,8 +92,8 @@ func (u unspentRepositoryImpl) GetUnspentsForAddresses(
 	tx := ctx.Value("tx").(*badger.Txn)
 
 	iface := make([]interface{}, 0, len(addresses))
-	for i := range addresses {
-		iface[i] = addresses[i]
+	for _, v := range addresses {
+		iface = append(iface, v)
 	}
 
 	query := badgerhold.Where("Address").In(iface...)
@@ -113,8 +113,8 @@ func (u unspentRepositoryImpl) GetAvailableUnspentsForAddresses(
 	tx := ctx.Value("tx").(*badger.Txn)
 
 	iface := make([]interface{}, 0, len(addresses))
-	for i := range addresses {
-		iface[i] = addresses[i]
+	for _, v := range addresses {
+		iface = append(iface, v)
 	}
 
 	query := badgerhold.Where("Spent").Eq(false).
@@ -286,13 +286,14 @@ func (u unspentRepositoryImpl) getUnspent(
 	var unspent domain.Unspent
 	err := u.db.Store.TxGet(
 		tx,
-		badgerhold.Where(badgerhold.Key).Eq(key),
+		key,
 		&unspent,
 	)
 	if err != nil {
-		if err != badgerhold.ErrNotFound {
-			return nil, err
+		if err == badgerhold.ErrNotFound {
+			return nil, nil
 		}
+		return nil, err
 	}
 
 	return &unspent, nil
@@ -333,6 +334,10 @@ func (u unspentRepositoryImpl) lockUnspent(
 		return err
 	}
 
+	if unspent == nil {
+		return nil
+	}
+
 	unspent.Lock(&tradeID)
 
 	return u.updateUnspent(tx, key, *unspent)
@@ -357,6 +362,10 @@ func (u unspentRepositoryImpl) unlockUnspent(
 	unspent, err := u.getUnspent(tx, key)
 	if err != nil {
 		return err
+	}
+
+	if unspent == nil {
+		return nil
 	}
 
 	unspent.UnLock()
