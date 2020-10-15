@@ -12,7 +12,7 @@ const (
 )
 
 type Market struct {
-	AccountIndex int `badgerhold:"AccountIndex"`
+	AccountIndex int
 	BaseAsset    string
 	QuoteAsset   string
 	Fee          int64

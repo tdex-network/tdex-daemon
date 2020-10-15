@@ -1,18 +1,19 @@
 package domain
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/config"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 // Propose returns a new trade proposal for the given trader and market
-func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, traderPubkey []byte) error {
+func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, traderPubkey []byte) (bool, error) {
 	if !t.IsEmpty() {
-		return ErrMustBeEmpty
+		return false, ErrMustBeEmpty
 	}
 
 	t.traderPubkey = traderPubkey
@@ -24,14 +25,18 @@ func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 
 	msg, err := pkgswap.ParseSwapRequest(swapRequest)
 	if err != nil {
-		t.status = ProposalRejectedStatus
-		return err
+		t.Fail(
+			swapRequest.GetId(),
+			ProposalRejectedStatus,
+			pkgswap.ErrCodeInvalidSwapRequest,
+			err.Error(),
+		)
+		return false, nil
 	}
-	// TODO: check price
 
 	t.status = ProposalStatus
 	t.swapRequest.message = msg
-	return nil
+	return true, nil
 }
 
 // Accept attempts to accept a trade proposal. The trade must be in Proposal
@@ -40,9 +45,9 @@ func (t *Trade) Accept(
 	psetBase64 string,
 	inputBlindingKeys,
 	outputBlindingKeys map[string][]byte,
-) error {
+) (bool, error) {
 	if t.status != ProposalStatus {
-		return ErrMustBeProposal
+		return false, ErrMustBeProposal
 	}
 
 	swapAcceptID, swapAcceptMsg, err := pkgswap.Accept(pkgswap.AcceptOpts{
@@ -52,8 +57,13 @@ func (t *Trade) Accept(
 		OutputBlindingKeys: outputBlindingKeys,
 	})
 	if err != nil {
-		t.status = ProposalRejectedStatus
-		return err
+		t.Fail(
+			t.swapRequest.id,
+			ProposalRejectedStatus,
+			pkgswap.ErrCodeRejectedSwapRequest,
+			err.Error(),
+		)
+		return false, nil
 	}
 
 	t.status = AcceptedStatus
@@ -61,15 +71,15 @@ func (t *Trade) Accept(
 	t.swapAccept.message = swapAcceptMsg
 	t.timestamp.accept = uint64(time.Now().Unix())
 	t.psetBase64 = psetBase64
-	return nil
+	return true, nil
 }
 
 // Complete sets the status of the trade to Complete by adding the txID
 // of the tx in the blockchain. The trade must be in Accepted or
 // FailedToComplete status for being completed, otherwise an error is thrown
-func (t *Trade) Complete(psetBase64 string, txID string) error {
+func (t *Trade) Complete(psetBase64 string, txID string) (bool, error) {
 	if !t.IsAccepted() {
-		return ErrMustBeAccepted
+		return false, ErrMustBeAccepted
 	}
 
 	swapCompleteID, swapCompleteMsg, err := pkgswap.Complete(pkgswap.CompleteOpts{
@@ -77,8 +87,13 @@ func (t *Trade) Complete(psetBase64 string, txID string) error {
 		PsetBase64: psetBase64,
 	})
 	if err != nil {
-		t.status = FailedToCompleteStatus
-		return err
+		t.Fail(
+			t.swapAccept.id,
+			FailedToCompleteStatus,
+			pkgswap.ErrCodeFailedToComplete,
+			err.Error(),
+		)
+		return false, nil
 	}
 
 	t.status = CompletedStatus
@@ -86,10 +101,23 @@ func (t *Trade) Complete(psetBase64 string, txID string) error {
 	t.swapComplete.message = swapCompleteMsg
 	t.psetBase64 = psetBase64
 	t.txID = txID
-	return nil
+	return true, nil
 }
 
-// AddBlockTime sets the timestamp for a completed trade to the given blocktime.
+// Fail sets the status of the trade to the provided status and creates the
+// serialized SwapFail message and id for the given swap, errCode and errMsg
+func (t *Trade) Fail(swapID string, tradeStatus Status, errCode pkgswap.ErrCode, errMsg string) {
+	swapFailID, swapFailMsg, _ := pkgswap.Fail(pkgswap.FailOpts{
+		MessageID:  swapID,
+		ErrCode:    errCode,
+		ErrMessage: errMsg,
+	})
+	t.swapFail.id = swapFailID
+	t.swapFail.message = swapFailMsg
+	t.status = tradeStatus
+}
+
+// AddBlocktime sets the timestamp for a completed trade to the given blocktime.
 // If the trade is not in Complete status, an error is thrown
 func (t *Trade) AddBlocktime(blocktime uint64) error {
 	if !t.IsCompleted() {
@@ -118,6 +146,11 @@ func (t *Trade) IsAccepted() bool {
 // IsCompleted returns whether the trade is in Completed status
 func (t *Trade) IsCompleted() bool {
 	return t.status == CompletedStatus
+}
+
+// IsRejected returns whether the trade is in ProposalRejected status
+func (t *Trade) IsRejected() bool {
+	return t.status == ProposalRejectedStatus
 }
 
 // IsExpired returns whether the trade has reached the expiration date, ie if
@@ -186,6 +219,17 @@ func (t *Trade) SwapCompleteMessage() *pb.SwapComplete {
 
 	s := &pb.SwapComplete{}
 	proto.Unmarshal(t.swapComplete.message, s)
+	return s
+}
+
+// SwapFailMessage returns the swap fail message for the trade if existing
+func (t *Trade) SwapFailMessage() *pb.SwapFail {
+	if !t.IsRejected() {
+		return nil
+	}
+
+	s := &pb.SwapFail{}
+	proto.Unmarshal(t.swapFail.message, s)
 	return s
 }
 

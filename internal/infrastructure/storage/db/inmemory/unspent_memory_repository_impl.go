@@ -3,12 +3,11 @@ package inmemory
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"sync"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
-
-	"github.com/google/uuid"
 )
 
 // UnspentRepositoryImpl represents an in memory storage
@@ -152,29 +151,29 @@ func (r UnspentRepositoryImpl) storageByContext(ctx context.Context) (
 }
 
 func addUnspents(storage map[domain.UnspentKey]domain.Unspent, unspents []domain.Unspent) error {
-	addr := unspents[0].Address()
+	addr := unspents[0].Address
 	for _, u := range unspents {
-		if u.Address() != addr {
+		if u.Address != addr {
 			return fmt.Errorf("all unspent's must belong to the same address")
 		}
 	}
 
 	//add new unspent
 	for _, newUnspent := range unspents {
-		if _, ok := storage[newUnspent.GetKey()]; !ok {
+		if _, ok := storage[newUnspent.Key()]; !ok {
 			storage[domain.UnspentKey{
-				TxID: newUnspent.TxID(),
-				VOut: newUnspent.VOut(),
+				TxID: newUnspent.TxID,
+				VOut: newUnspent.VOut,
 			}] = newUnspent
 		}
 	}
 
 	//update spent
 	for key, oldUnspent := range storage {
-		if oldUnspent.Address() == addr {
+		if oldUnspent.Address == addr {
 			exist := false
 			for _, newUnspent := range unspents {
-				if newUnspent.IsKeyEqual(oldUnspent.GetKey()) {
+				if newUnspent.IsKeyEqual(oldUnspent.Key()) {
 					exist = true
 				}
 			}
@@ -201,8 +200,8 @@ func getAllUnspents(storage map[domain.UnspentKey]domain.Unspent, spent bool) []
 func getBalance(storage map[domain.UnspentKey]domain.Unspent, address, assetHash string) uint64 {
 	var balance uint64
 	for _, u := range storage {
-		if u.Address() == address && u.AssetHash() == assetHash && !u.IsSpent() && u.IsConfirmed() {
-			balance += u.Value()
+		if u.Address == address && u.AssetHash == assetHash && !u.IsSpent() && u.IsConfirmed() {
+			balance += u.Value
 		}
 	}
 	return balance
@@ -211,9 +210,9 @@ func getBalance(storage map[domain.UnspentKey]domain.Unspent, address, assetHash
 func getUnlockedBalance(storage map[domain.UnspentKey]domain.Unspent, address, assetHash string) uint64 {
 	var balance uint64
 	for _, u := range storage {
-		if u.Address() == address && u.AssetHash() == assetHash &&
+		if u.Address == address && u.AssetHash == assetHash &&
 			!u.IsSpent() && !u.IsLocked() && u.IsConfirmed() {
-			balance += u.Value()
+			balance += u.Value
 		}
 	}
 	return balance
@@ -227,7 +226,7 @@ func getAvailableUnspents(storage map[domain.UnspentKey]domain.Unspent, addresse
 				unspents = append(unspents, u)
 			} else {
 				for _, addr := range addresses {
-					if addr == u.Address() {
+					if addr == u.Address {
 						unspents = append(unspents, u)
 						break
 					}

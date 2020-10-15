@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"testing"
 	"time"
 
@@ -16,10 +17,14 @@ import (
 var ctx = context.Background()
 
 func newTestWallet() *walletService {
+	dbManager, err := dbbadger.NewDbManager("testdb")
+	if err != nil {
+		panic(err)
+	}
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	return newWalletService(
 		inmemory.NewVaultRepositoryImpl(),
-		inmemory.NewUnspentRepositoryImpl(),
+		dbbadger.NewUnspentRepositoryImpl(dbManager),
 		crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
 		explorerSvc,
 	)

@@ -39,7 +39,7 @@ func main() {
 	}
 	defer dbManager.Store.Close()
 
-	unspentRepository := inmemory.NewUnspentRepositoryImpl()
+	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	vaultRepository := inmemory.NewVaultRepositoryImpl()
 	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := inmemory.NewTradeRepositoryImpl()

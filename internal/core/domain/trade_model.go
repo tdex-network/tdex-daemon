@@ -76,6 +76,7 @@ type Trade struct {
 	swapRequest      swap
 	swapAccept       swap
 	swapComplete     swap
+	swapFail         swap
 }
 
 // NewTrade returns an empty trade

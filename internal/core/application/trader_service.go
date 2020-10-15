@@ -3,24 +3,20 @@ package application
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
+	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
-	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
+	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/pset"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type TraderService interface {
@@ -32,11 +28,16 @@ type TraderService interface {
 		amount uint64,
 	) (*PriceWithFee, error)
 	TradePropose(
-		req *pbtrade.TradeProposeRequest,
-		stream pbtrade.Trade_TradeProposeServer,
-	) error
-	TradeComplete(req *pbtrade.TradeCompleteRequest,
-		stream pbtrade.Trade_TradeCompleteServer) error
+		ctx context.Context,
+		market Market,
+		tradeType int,
+		swapRequest *pb.SwapRequest,
+	) (*pb.SwapAccept, *pb.SwapFail, uint64, error)
+	TradeComplete(
+		ctx context.Context,
+		swapComplete *pb.SwapComplete,
+		swapFail *pb.SwapFail,
+	) (string, *pb.SwapFail, error)
 }
 
 type traderService struct {
@@ -70,10 +71,10 @@ func (t *traderService) GetTradableMarkets(ctx context.Context) (
 ) {
 	tradableMarkets, err := t.marketRepository.GetTradableMarkets(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	marketsWithFee := make([]MarketWithFee, 0)
+	marketsWithFee := make([]MarketWithFee, 0, len(tradableMarkets))
 	for _, mkt := range tradableMarkets {
 		marketsWithFee = append(marketsWithFee, MarketWithFee{
 			Market: Market{
@@ -103,7 +104,7 @@ func (t *traderService) GetMarketPrice(
 		return nil, domain.ErrMarketNotExist
 	}
 	//Checks if market exist
-	mkt, _, err := t.marketRepository.GetMarketByAsset(
+	mkt, mktAccountIndex, err := t.marketRepository.GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
 	)
@@ -115,10 +116,12 @@ func (t *traderService) GetMarketPrice(
 		return nil, domain.ErrMarketIsClosed
 	}
 
-	price, previewAmount, err := getPriceAndPreviewForMarket(
-		ctx, t.vaultRepository, t.unspentRepository,
-		mkt, tradeType, amount,
-	)
+	unspents, _, _, _, err := t.getUnspentsBlindingsAndDerivationPathsForAccount(ctx, mktAccountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	price, previewAmount, err := getPriceAndPreviewForMarket(unspents, mkt, tradeType, amount)
 	if err != nil {
 		return nil, err
 	}
@@ -135,213 +138,282 @@ func (t *traderService) GetMarketPrice(
 
 // TradePropose is the domain controller for the TradePropose RPC
 func (t *traderService) TradePropose(
-	req *pbtrade.TradeProposeRequest,
-	stream pbtrade.Trade_TradeProposeServer,
-) error {
-	_, marketAccountIndex, err := t.marketRepository.GetMarketByAsset(
-		context.Background(),
-		req.GetMarket().GetQuoteAsset(),
+	ctx context.Context,
+	market Market,
+	tradeType int,
+	swapRequest *pb.SwapRequest,
+) (
+	swapAccept *pb.SwapAccept,
+	swapFail *pb.SwapFail,
+	swapExpiryTime uint64,
+	err error,
+) {
+	mkt, marketAccountIndex, _err := t.marketRepository.GetMarketByAsset(
+		ctx,
+		market.QuoteAsset,
 	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+	if _err != nil {
+		err = _err
+		return
 	}
 
-	// get all unspents for market account along with private blinding keys and
-	// signing derivation paths for respectively unblinding and signing them later
-	marketUnspents, marketBlindingKeysByScript, marketDerivationPaths,
-		err := t.getUnspentsBlindingsAndDerivationPathsForAccount(marketAccountIndex)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
+	// get all unspents for market account (both as []domain.Unspents and as
+	// []explorer.Utxo)along with private blinding keys and signing derivation
+	// paths for respectively unblinding and signing them later
+	marketUnspents, marketUtxos, marketBlindingKeysByScript, marketDerivationPaths, _err :=
+		t.getUnspentsBlindingsAndDerivationPathsForAccount(ctx, marketAccountIndex)
+	if _err != nil {
+		err = _err
+		return
 	}
 
 	// ... and the same for fee account (we'll need to top-up fees)
-	feeUnspents, feeBlindingKeysByScript, feeDerivationPaths, err :=
-		t.getUnspentsBlindingsAndDerivationPathsForAccount(domain.FeeAccount)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
+	_, feeUtxos, feeBlindingKeysByScript, feeDerivationPaths, _err :=
+		t.getUnspentsBlindingsAndDerivationPathsForAccount(ctx, domain.FeeAccount)
+	if _err != nil {
+		err = _err
+		return
 	}
 
-	var reply *pbtrade.TradeProposeReply
-
-	// try to accept the incoming proposal in a transactional way, by committing
-	// changes to different storages only if the trade is accepted at the very end.
-	// This process causes changes that affect different domains so we need to
-	// update all or none of them in case any errors occur.
-	unit := uow.NewUnitOfWork(t.tradeRepository, t.unspentRepository)
-
-	if err := unit.Run(func(u uow.Contextual) error {
-		var mnemonic []string
-		var tradeID uuid.UUID
-		var selectedUnspents []explorer.Utxo
-		var outputBlindingKeyByScript map[string][]byte
-		var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
-
-		// derive output and change address for market, and change address for fee account
-		vaultCtx := u.Context(t.vaultRepository)
-		if err := t.vaultRepository.UpdateVault(
-			vaultCtx,
-			nil,
-			"",
-			func(v *domain.Vault) (*domain.Vault, error) {
-				mnemonic, err = v.Mnemonic()
-				if err != nil {
-					return nil, err
-				}
-				outputAddress, outputScript, _, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
-				if err != nil {
-					return nil, err
-				}
-				_, changeScript, _, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
-				if err != nil {
-					return nil, err
-				}
-				_, feeChangeScript, _,
-					err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
-				if err != nil {
-					return nil, err
-				}
-				marketAccount, _ := v.AccountByIndex(marketAccountIndex)
-				feeAccount, _ := v.AccountByIndex(domain.FeeAccount)
-
-				outputBlindingKeyByScript = blindingKeyByScriptFromCTAddress(outputAddress)
-				outputDerivationPath, _ = marketAccount.DerivationPathByScript(outputScript)
-				changeDerivationPath, _ = marketAccount.DerivationPathByScript(changeScript)
-				feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript(feeChangeScript)
-
-				return v, nil
-			}); err != nil {
-			return err
-		}
-
-		tradeCtx := u.Context(t.tradeRepository)
-		// parse swap proposal and possibly accept
-		if err := t.tradeRepository.UpdateTrade(
-			tradeCtx,
-			nil,
-			func(t *domain.Trade) (*domain.Trade, error) {
-				if err := t.Propose(req.GetSwapRequest(), req.GetMarket().GetQuoteAsset(), nil); err != nil {
-					return nil, err
-				}
-				tradeID = t.ID()
-
-				acceptSwapResult, err := acceptSwap(acceptSwapOpts{
-					mnemonic:                   mnemonic,
-					swapRequest:                req.GetSwapRequest(),
-					marketUnspents:             marketUnspents,
-					feeUnspents:                feeUnspents,
-					marketBlindingKeysByScript: marketBlindingKeysByScript,
-					feeBlindingKeysByScript:    feeBlindingKeysByScript,
-					outputBlindingKeyByScript:  outputBlindingKeyByScript,
-					marketDerivationPaths:      marketDerivationPaths,
-					feeDerivationPaths:         feeDerivationPaths,
-					outputDerivationPath:       outputDerivationPath,
-					changeDerivationPath:       changeDerivationPath,
-					feeChangeDerivationPath:    feeChangeDerivationPath,
-				})
-				if err != nil {
-					return nil, err
-				}
-
-				if err := t.Accept(
-					acceptSwapResult.psetBase64,
-					acceptSwapResult.inputBlindingKeys,
-					acceptSwapResult.outputBlindingKeys,
-				); err != nil {
-					return nil, err
-				}
-
-				reply = &pbtrade.TradeProposeReply{
-					SwapAccept:     t.SwapAcceptMessage(),
-					ExpiryTimeUnix: t.SwapExpiryTime(),
-				}
-
-				return t, nil
-			}); err != nil {
-			return err
-		}
-
-		selectedUnspentKeys := getUnspentKeys(selectedUnspents)
-		unspentCtx := u.Context(t.unspentRepository)
-		if err := t.unspentRepository.LockUnspents(
-			unspentCtx,
-			selectedUnspentKeys,
-			tradeID,
-		); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		return status.Error(codes.Internal, err.Error())
+	amount := swapRequest.AmountR
+	if tradeType == TradeSell {
+		amount = swapRequest.AmountP
 	}
 
-	if err := stream.Send(reply); err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-	return nil
-}
-
-// TradeComplete is the domain controller for the TradeComplete RPC
-func (t *traderService) TradeComplete(req *pbtrade.TradeCompleteRequest,
-	stream pbtrade.Trade_TradeCompleteServer) error {
-	ctx := context.Background()
-	currentTrade, err := t.tradeRepository.GetTradeBySwapAcceptID(
-		ctx,
-		req.GetSwapComplete().GetAcceptId(),
+	_, previewAmount, _err := getPriceAndPreviewForMarket(
+		marketUnspents,
+		mkt, tradeType, amount,
 	)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+	if _err != nil {
+		err = _err
+		return
 	}
 
-	var reply *pbtrade.TradeCompleteReply
-	tradeID := currentTrade.ID()
+	var mnemonic []string
+	var tradeID uuid.UUID
+	var selectedUnspents []explorer.Utxo
+	var outputBlindingKeyByScript map[string][]byte
+	var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
+
+	// derive output and change address for market, and change address for fee account
+	if err := t.vaultRepository.UpdateVault(
+		ctx,
+		nil,
+		"",
+		func(v *domain.Vault) (*domain.Vault, error) {
+			mnemonic, err = v.Mnemonic()
+			if err != nil {
+				return nil, err
+			}
+			outputAddress, outputScript, _, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
+			if err != nil {
+				return nil, err
+			}
+			_, changeScript, _, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
+			if err != nil {
+				return nil, err
+			}
+			_, feeChangeScript, _,
+				err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			if err != nil {
+				return nil, err
+			}
+			marketAccount, _ := v.AccountByIndex(marketAccountIndex)
+			feeAccount, _ := v.AccountByIndex(domain.FeeAccount)
+
+			outputBlindingKeyByScript = blindingKeyByScriptFromCTAddress(outputAddress)
+			outputDerivationPath, _ = marketAccount.DerivationPathByScript(outputScript)
+			changeDerivationPath, _ = marketAccount.DerivationPathByScript(changeScript)
+			feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript(feeChangeScript)
+
+			return v, nil
+		}); err != nil {
+		return nil, nil, 0, err
+	}
+
+	// parse swap proposal and possibly accept
 	if err := t.tradeRepository.UpdateTrade(
 		ctx,
-		&tradeID,
-		func(tr *domain.Trade) (*domain.Trade, error) {
-			psetBase64 := req.GetSwapComplete().GetTransaction()
-			opts := wallet.FinalizeAndExtractTransactionOpts{
-				PsetBase64: psetBase64,
+		nil,
+		func(trade *domain.Trade) (*domain.Trade, error) {
+			ok, err := trade.Propose(swapRequest, market.QuoteAsset, nil)
+			if err != nil {
+				return nil, err
 			}
-			txHex, txID, err := wallet.FinalizeAndExtractTransaction(opts)
+			if !ok {
+				swapFail = trade.SwapFailMessage()
+				return trade, nil
+			}
+
+			if !isValidTradePrice(swapRequest, tradeType, previewAmount) {
+				trade.Fail(
+					swapRequest.GetId(),
+					domain.ProposalRejectedStatus,
+					pkgswap.ErrCodeInvalidSwapRequest,
+					"bad pricing",
+				)
+				return trade, nil
+			}
+			tradeID = trade.ID()
+
+			acceptSwapResult, err := acceptSwap(acceptSwapOpts{
+				mnemonic:                   mnemonic,
+				swapRequest:                swapRequest,
+				marketUnspents:             marketUtxos,
+				feeUnspents:                feeUtxos,
+				marketBlindingKeysByScript: marketBlindingKeysByScript,
+				feeBlindingKeysByScript:    feeBlindingKeysByScript,
+				outputBlindingKeyByScript:  outputBlindingKeyByScript,
+				marketDerivationPaths:      marketDerivationPaths,
+				feeDerivationPaths:         feeDerivationPaths,
+				outputDerivationPath:       outputDerivationPath,
+				changeDerivationPath:       changeDerivationPath,
+				feeChangeDerivationPath:    feeChangeDerivationPath,
+			})
 			if err != nil {
 				return nil, err
 			}
 
-			if err := tr.Complete(psetBase64, txID); err != nil {
+			ok, err = trade.Accept(
+				acceptSwapResult.psetBase64,
+				acceptSwapResult.inputBlindingKeys,
+				acceptSwapResult.outputBlindingKeys,
+			)
+			if err != nil {
 				return nil, err
+			}
+			if !ok {
+				swapFail = trade.SwapFailMessage()
+			} else {
+				swapAccept = trade.SwapAcceptMessage()
+				swapExpiryTime = trade.SwapExpiryTime()
+				selectedUnspents = acceptSwapResult.selectedUnspents
+			}
+
+			return trade, nil
+		}); err != nil {
+		return nil, nil, 0, err
+	}
+
+	selectedUnspentKeys := getUnspentKeys(selectedUnspents)
+	if err := t.unspentRepository.LockUnspents(
+		ctx,
+		selectedUnspentKeys,
+		tradeID,
+	); err != nil {
+		return nil, nil, 0, err
+	}
+
+	return
+}
+
+// TradeComplete is the domain controller for the TradeComplete RPC
+func (t *traderService) TradeComplete(
+	ctx context.Context,
+	swapComplete *pb.SwapComplete,
+	swapFail *pb.SwapFail,
+) (string, *pb.SwapFail, error) {
+	if swapFail != nil {
+		swapFailMsg, err := t.tradeFail(ctx, swapFail)
+		return "", swapFailMsg, err
+	}
+
+	return t.tradeComplete(ctx, swapComplete)
+}
+
+func (t *traderService) tradeComplete(ctx context.Context, swapComplete *pb.SwapComplete) (txID string, swapFail *pb.SwapFail, err error) {
+	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
+	if err != nil {
+		return "", nil, err
+	}
+
+	tradeID := trade.ID()
+	err = t.tradeRepository.UpdateTrade(
+		ctx,
+		&tradeID,
+		func(trade *domain.Trade) (*domain.Trade, error) {
+			psetBase64 := swapComplete.GetTransaction()
+			opts := wallet.FinalizeAndExtractTransactionOpts{
+				PsetBase64: psetBase64,
+			}
+			txHex, txHash, err := wallet.FinalizeAndExtractTransaction(opts)
+			if err != nil {
+				return nil, err
+			}
+
+			ok, err := trade.Complete(psetBase64, txID)
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
+				swapFail = trade.SwapFailMessage()
+				return trade, nil
 			}
 
 			if _, err := t.explorerSvc.BroadcastTransaction(txHex); err != nil {
 				return nil, err
 			}
 
-			reply = &pbtrade.TradeCompleteReply{
-				Txid: txID,
-			}
-			return tr, nil
-		}); err != nil {
-		return status.Error(codes.Internal, err.Error())
+			txID = txHash
+			return trade, nil
+		},
+	)
+	return
+}
+
+func (t *traderService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*pb.SwapFail, error) {
+	swapID := swapFail.GetMessageId()
+	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapID)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := stream.Send(reply); err != nil {
-		return status.Error(codes.Internal, err.Error())
+	tradeID := trade.ID()
+	err = t.tradeRepository.UpdateTrade(
+		ctx,
+		&tradeID,
+		func(trade *domain.Trade) (*domain.Trade, error) {
+			trade.Fail(
+				swapID,
+				domain.FailedToCompleteStatus,
+				pkgswap.ErrCodeFailedToComplete,
+				"set failed by counter-party",
+			)
+			return trade, nil
+		},
+	)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return swapFail, nil
 }
 
 func (t *traderService) getUnspentsBlindingsAndDerivationPathsForAccount(
+	ctx context.Context,
 	account int,
 ) (
+	[]domain.Unspent,
 	[]explorer.Utxo,
 	map[string][]byte,
 	map[string]string,
 	error,
 ) {
 	derivedAddresses, blindingKeys, err := t.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(context.Background(), account)
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, account)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
+	}
+
+	unspents, err := t.unspentRepository.GetAvailableUnspentsForAddresses(
+		ctx,
+		derivedAddresses,
+	)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	utxos := make([]explorer.Utxo, 0, len(unspents))
+	for _, unspent := range unspents {
+		utxos = append(utxos, unspent.ToUtxo())
 	}
 
 	scripts := make([]string, 0, len(derivedAddresses))
@@ -350,31 +422,10 @@ func (t *traderService) getUnspentsBlindingsAndDerivationPathsForAccount(
 		scripts = append(scripts, hex.EncodeToString(script))
 	}
 	derivationPaths, _ := t.vaultRepository.GetDerivationPathByScript(
-		context.Background(),
+		ctx,
 		account,
 		scripts,
 	)
-
-	unspents := t.unspentRepository.GetAvailableUnspentsForAddresses(
-		context.Background(),
-		derivedAddresses,
-	)
-
-	utxos, err := t.getUtxos(derivedAddresses, blindingKeys)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	availableUtxos := make([]explorer.Utxo, 0, len(unspents))
-	for _, unspent := range unspents {
-		unspentKey := unspent.GetKey()
-		for _, utxo := range utxos {
-			if unspentKey.TxID == utxo.Hash() && unspentKey.VOut == utxo.Index() {
-				availableUtxos = append(availableUtxos, utxo)
-				break
-			}
-		}
-	}
 
 	blindingKeysByScript := map[string][]byte{}
 	for i, addr := range derivedAddresses {
@@ -382,41 +433,7 @@ func (t *traderService) getUnspentsBlindingsAndDerivationPathsForAccount(
 		blindingKeysByScript[hex.EncodeToString(script)] = blindingKeys[i]
 	}
 
-	return availableUtxos, blindingKeysByScript, derivationPaths, nil
-}
-
-func (t *traderService) getUtxos(
-	addresses []string,
-	blindingKeys [][]byte,
-) ([]explorer.Utxo, error) {
-	chUnspents := make(chan []explorer.Utxo)
-	chErr := make(chan error, 1)
-	unspents := make([]explorer.Utxo, 0)
-
-	for _, addr := range addresses {
-		go t.getUtxosForAddress(addr, blindingKeys, chUnspents, chErr)
-
-		select {
-		case err := <-chErr:
-			close(chErr)
-			close(chUnspents)
-			return nil, err
-		case unspentsForAddress := <-chUnspents:
-			unspents = append(unspents, unspentsForAddress...)
-		}
-	}
-
-	return unspents, nil
-}
-
-func (t *traderService) getUtxosForAddress(addr string, blindingKeys [][]byte,
-	chUnspents chan []explorer.Utxo, chErr chan error) {
-	unspents, err := t.explorerSvc.GetUnspents(addr, blindingKeys)
-	if err != nil {
-		chErr <- err
-		return
-	}
-	chUnspents <- unspents
+	return unspents, utxos, blindingKeysByScript, derivationPaths, nil
 }
 
 func blindingKeyByScriptFromCTAddress(addr string) map[string][]byte {
@@ -429,7 +446,7 @@ func blindingKeyByScriptFromCTAddress(addr string) map[string][]byte {
 
 type acceptSwapOpts struct {
 	mnemonic                   []string
-	swapRequest                *pbswap.SwapRequest
+	swapRequest                *pb.SwapRequest
 	marketUnspents             []explorer.Utxo
 	feeUnspents                []explorer.Utxo
 	marketBlindingKeysByScript map[string][]byte
@@ -624,9 +641,7 @@ func getSelectedBlindingKeys(blindingKeys map[string][]byte, unspents []explorer
 // The incoming amount always represents an amount of the market's base asset,
 // therefore a preview amount for the correspoing quote asset is returned.
 func getPriceAndPreviewForMarket(
-	ctx context.Context,
-	vaultRepo domain.VaultRepository,
-	unspentRepo domain.UnspentRepository,
+	unspents []domain.Unspent,
 	market *domain.Market,
 	tradeType int,
 	amount uint64,
@@ -644,28 +659,50 @@ func getPriceAndPreviewForMarket(
 		return
 	}
 
-	addresses, _, err := vaultRepo.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, market.AccountIndex())
-	if err != nil {
-		return
+	balances := getBalanceByAsset(unspents)
+	baseBalanceAvailable := balances[market.BaseAssetHash()]
+	quoteBalanceAvailable := balances[market.QuoteAssetHash()]
+	previewAmount = market.Strategy().Formula().InGivenOut(
+		&mm.FormulaOpts{
+			BalanceIn:           quoteBalanceAvailable,
+			BalanceOut:          baseBalanceAvailable,
+			Fee:                 uint64(market.Fee()),
+			ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
+		},
+		amount,
+	)
+	if tradeType == TradeSell {
+		previewAmount = market.Strategy().Formula().OutGivenIn(
+			&mm.FormulaOpts{
+				BalanceIn:           baseBalanceAvailable,
+				BalanceOut:          quoteBalanceAvailable,
+				Fee:                 uint64(market.Fee()),
+				ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
+			},
+			amount,
+		)
+	}
+	price = Price{
+		BasePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
+			BalanceIn:  quoteBalanceAvailable,
+			BalanceOut: baseBalanceAvailable,
+		}),
+		QuotePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
+			BalanceIn:  baseBalanceAvailable,
+			BalanceOut: quoteBalanceAvailable,
+		}),
 	}
 
-	unspents := unspentRepo.GetAvailableUnspentsForAddresses(ctx, addresses)
-	if len(unspents) == 0 {
-		err = errors.New("no available funds for market")
-		return
-	}
-
-	price, previewAmount = previewFromFormula(unspents, market, tradeType, amount)
 	return
 }
 
 func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
 	balances := map[string]uint64{}
 	for _, unspent := range unspents {
-		if _, ok := balances[unspent.AssetHash()]; !ok {
-			balances[unspent.AssetHash()] = 0
+		if _, ok := balances[unspent.AssetHash]; !ok {
+			balances[unspent.AssetHash] = 0
 		}
-		balances[unspent.AssetHash()] += unspent.Value()
+		balances[unspent.AssetHash] += unspent.Value
 	}
 	return balances
 }
@@ -777,4 +814,17 @@ func previewFromFormula(unspents []domain.Unspent, market *domain.Market, tradeT
 		amount,
 	)
 	return price, previewAmount
+}
+
+func isValidTradePrice(swapRequest *pb.SwapRequest, tradeType int, previewAmount uint64) bool {
+	amountToCheck := decimal.NewFromInt(int64(swapRequest.GetAmountP()))
+	if tradeType == TradeSell {
+		amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
+	}
+	slippage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
+	expectedAmount := decimal.NewFromInt(int64(previewAmount))
+	lowerBound := expectedAmount.Sub(expectedAmount.Mul(slippage))
+	upperBound := expectedAmount.Add(expectedAmount.Mul(slippage))
+
+	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
 }

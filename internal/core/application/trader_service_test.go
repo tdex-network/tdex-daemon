@@ -1,15 +1,13 @@
 package application
 
 import (
-	"context"
-	"encoding/hex"
 	"testing"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
+	"github.com/vulpemventures/go-elements/address"
 )
 
 func TestGetPriceAndPreviewForMarket(t *testing.T) {
@@ -21,9 +19,7 @@ func TestGetPriceAndPreviewForMarket(t *testing.T) {
 		}
 
 		price, previewAmount, err := getPriceAndPreviewForMarket(
-			context.Background(),
-			tt.vaultRepo,
-			tt.unspentRepo,
+			tt.unspents,
 			tt.market,
 			TradeBuy,
 			tt.lbtcAmount,
@@ -36,9 +32,7 @@ func TestGetPriceAndPreviewForMarket(t *testing.T) {
 		assert.Equal(t, tt.expectedPrice.QuotePrice.String(), price.QuotePrice.String())
 
 		_, previewAmount, err = getPriceAndPreviewForMarket(
-			context.Background(),
-			tt.vaultRepo,
-			tt.unspentRepo,
+			tt.unspents,
 			tt.market,
 			TradeSell,
 			tt.lbtcAmount,
@@ -57,9 +51,7 @@ func TestGetPriceAndPreviewForMarket(t *testing.T) {
 		}
 
 		price, previewAmount, err := getPriceAndPreviewForMarket(
-			context.Background(),
-			tt.vaultRepo,
-			tt.unspentRepo,
+			tt.unspents,
 			tt.market,
 			TradeBuy,
 			tt.lbtcAmount,
@@ -72,9 +64,7 @@ func TestGetPriceAndPreviewForMarket(t *testing.T) {
 		assert.Equal(t, tt.expectedPrice.QuotePrice.String(), price.QuotePrice.String())
 
 		_, previewAmount, err = getPriceAndPreviewForMarket(
-			context.Background(),
-			tt.vaultRepo,
-			tt.unspentRepo,
+			tt.unspents,
 			tt.market,
 			TradeSell,
 			tt.lbtcAmount,
@@ -88,8 +78,7 @@ func TestGetPriceAndPreviewForMarket(t *testing.T) {
 }
 
 type priceAndPreviewTestData struct {
-	vaultRepo          domain.VaultRepository
-	unspentRepo        domain.UnspentRepository
+	unspents           []domain.Unspent
 	market             *domain.Market
 	lbtcAmount         uint64
 	expectedBuyAmount  uint64
@@ -98,59 +87,46 @@ type priceAndPreviewTestData struct {
 }
 
 func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData, error) {
-	// create market
+	addr := "el1qqfmmhdayrxdqs60hecn6yzfzmpquwlhn5m39ytngr8gu63ar6zhqngyj0ak7n3jr8ypfz7s6v7nmnkdvmu8n5pev33ac5thm7"
+	script, _ := address.ToOutputScript(addr, *config.GetNetwork())
+	unspents := []domain.Unspent{
+		{
+			TxID:            "0000000000000000000000000000000000000000000000000000000000000000",
+			VOut:            0,
+			Value:           100000000,
+			AssetHash:       config.GetNetwork().AssetID,
+			ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
+			AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
+			ScriptPubKey:    script,
+			Nonce:           make([]byte, 33),
+			RangeProof:      make([]byte, 4174),
+			SurjectionProof: make([]byte, 64),
+			Address:         addr,
+			Spent:           false,
+			Locked:          false,
+			LockedBy:        nil,
+			Confirmed:       true,
+		},
+		{
+			TxID:            "0000000000000000000000000000000000000000000000000000000000000000",
+			VOut:            0,
+			Value:           100000000,
+			AssetHash:       config.GetNetwork().AssetID,
+			ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
+			AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
+			ScriptPubKey:    script,
+			Nonce:           make([]byte, 33),
+			RangeProof:      make([]byte, 4174),
+			SurjectionProof: make([]byte, 64),
+			Address:         addr,
+			Spent:           false,
+			Locked:          false,
+			LockedBy:        nil,
+			Confirmed:       true,
+		},
+	}
+
 	market, _ := domain.NewMarket(domain.MarketAccountStart)
-
-	// derive addresses for funding market
-	mnemonic := []string{"curtain", "summer", "juice", "thought", "release", "velvet", "dress", "fantasy", "price", "hard", "core", "friend", "reopen", "myth", "giant", "consider", "seminar", "ladder", "thought", "spell", "state", "home", "diamond", "gold"}
-	passphrase := "Sup3rS3cr3tP4ssw0rd!"
-	var addr string
-	var script []byte
-	closure := func(v *domain.Vault) (*domain.Vault, error) {
-		a, s, _, err := v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart)
-		if err != nil {
-			return nil, err
-		}
-		addr = a
-		script, _ = hex.DecodeString(s)
-		return v, nil
-	}
-	vaultRepo := inmemory.NewVaultRepositoryImpl()
-	if err := vaultRepo.UpdateVault(context.Background(), mnemonic, passphrase, closure); err != nil {
-		return nil, err
-	}
-
-	// persist unspents and fund market
-	unspentRepo := inmemory.NewUnspentRepositoryImpl()
-	unspentRepo.AddUnspents(context.Background(), []domain.Unspent{
-		// 1 LBTC
-		domain.NewUnspent(
-			"0000000000000000000000000000000000000000000000000000000000000000", // txid
-			config.GetNetwork().AssetID,                                        // assetHash
-			addr,                                                               // address
-			0,                                                                  // vout
-			100000000,                                                          // value
-			false,                                                              // spent
-			false,                                                              // locked
-			script,                                                             // scriptpubkey
-			nil,                                                                // lockedBy
-			true,                                                               // confirmed
-		),
-		// 6500 ASS
-		domain.NewUnspent(
-			"0000000000000000000000000000000000000000000000000000000000000000", // txid
-			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // assetHash
-			addr,         // address
-			1,            // vout
-			650000000000, // value
-			false,        // spent
-			false,        // locked
-			script,       // scriptpubkey
-			nil,          // lockedBy
-			true,         // confirmed
-		),
-	})
-
 	market.FundMarket([]domain.OutpointWithAsset{
 		// LBTC
 		domain.OutpointWithAsset{
@@ -177,8 +153,7 @@ func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData
 		market.MakeTradable()
 
 		return &priceAndPreviewTestData{
-			vaultRepo:          vaultRepo,
-			unspentRepo:        unspentRepo,
+			unspents:           unspents,
 			market:             market,
 			lbtcAmount:         10000, // 0.0001 LBTC
 			expectedBuyAmount:  65169016,
@@ -192,8 +167,7 @@ func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData
 	market.ChangeQuotePrice(qp)
 
 	return &priceAndPreviewTestData{
-		vaultRepo:          vaultRepo,
-		unspentRepo:        unspentRepo,
+		unspents:           unspents,
 		market:             market,
 		lbtcAmount:         10000, // 0.0001 LBTC
 		expectedBuyAmount:  81250000,

@@ -9,15 +9,15 @@ import (
 
 func TestLockUnlockUnSpents(t *testing.T) {
 	u := Unspent{
-		spent:  false,
-		locked: false,
+		Spent:  false,
+		Locked: false,
 	}
 	tradeID := uuid.New()
 
 	u.Spend()
-	assert.Equal(t, u.spent, true)
+	assert.Equal(t, true, u.IsSpent())
 	u.UnLock()
-	assert.Equal(t, u.locked, false)
+	assert.Equal(t, false, u.IsLocked())
 	u.Lock(&tradeID)
-	assert.Equal(t, u.locked, true)
+	assert.Equal(t, true, u.IsLocked())
 }
