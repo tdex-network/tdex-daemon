@@ -76,16 +76,21 @@ events:
 					}
 
 					u := domain.Unspent{
-						TxID:         utxo.Hash(),
-						VOut:         utxo.Index(),
-						Value:        utxo.Value(),
-						AssetHash:    utxo.Asset(),
-						Address:      e.Address,
-						Spent:        false,
-						Locked:       false,
-						ScriptPubKey: nil,
-						LockedBy:     nil,
-						Confirmed:    isTrxConfirmed,
+						TxID:            utxo.Hash(),
+						VOut:            utxo.Index(),
+						Value:           utxo.Value(),
+						AssetHash:       utxo.Asset(),
+						ValueCommitment: utxo.ValueCommitment(),
+						AssetCommitment: utxo.AssetCommitment(),
+						ScriptPubKey:    nil,
+						Nonce:           utxo.Nonce(),
+						RangeProof:      utxo.RangeProof(),
+						SurjectionProof: utxo.SurjectionProof(),
+						Address:         e.Address,
+						Spent:           false,
+						Locked:          false,
+						LockedBy:        nil,
+						Confirmed:       isTrxConfirmed,
 					}
 					unspents = append(unspents, u)
 				}
@@ -187,16 +192,21 @@ events:
 						continue utxoLoop1
 					}
 					u := domain.Unspent{
-						TxID:         utxo.Hash(),
-						VOut:         utxo.Index(),
-						Value:        utxo.Value(),
-						AssetHash:    utxo.Asset(),
-						Address:      e.Address,
-						Spent:        false,
-						Locked:       false,
-						ScriptPubKey: nil,
-						LockedBy:     nil,
-						Confirmed:    isTrxConfirmed,
+						TxID:            utxo.Hash(),
+						VOut:            utxo.Index(),
+						Value:           utxo.Value(),
+						AssetHash:       utxo.Asset(),
+						ValueCommitment: utxo.ValueCommitment(),
+						AssetCommitment: utxo.AssetCommitment(),
+						ScriptPubKey:    nil,
+						Nonce:           utxo.Nonce(),
+						RangeProof:      utxo.RangeProof(),
+						SurjectionProof: utxo.SurjectionProof(),
+						Address:         e.Address,
+						Spent:           false,
+						Locked:          false,
+						LockedBy:        nil,
+						Confirmed:       isTrxConfirmed,
 					}
 					unspents = append(unspents, u)
 				}

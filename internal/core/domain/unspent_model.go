@@ -2,6 +2,7 @@ package domain
 
 import (
 	"github.com/google/uuid"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
 type UnspentKey struct {
@@ -10,16 +11,21 @@ type UnspentKey struct {
 }
 
 type Unspent struct {
-	TxID         string
-	VOut         uint32
-	Value        uint64
-	AssetHash    string
-	Address      string `badgerhold:"Address"`
-	Spent        bool
-	Locked       bool
-	ScriptPubKey []byte
-	LockedBy     *uuid.UUID
-	Confirmed    bool
+	TxID            string
+	VOut            uint32
+	Value           uint64
+	AssetHash       string
+	ValueCommitment string
+	AssetCommitment string
+	ScriptPubKey    []byte
+	Nonce           []byte
+	RangeProof      []byte
+	SurjectionProof []byte
+	Address         string
+	Spent           bool
+	Locked          bool
+	LockedBy        *uuid.UUID
+	Confirmed       bool
 }
 
 type BalanceInfo struct {
@@ -63,4 +69,20 @@ func (u *Unspent) Key() UnspentKey {
 
 func (u *Unspent) IsKeyEqual(key UnspentKey) bool {
 	return u.TxID == key.TxID && u.VOut == key.VOut
+}
+
+func (u *Unspent) ToUtxo() explorer.Utxo {
+	return explorer.NewWitnessUtxo(
+		u.TxID,
+		u.VOut,
+		u.Value,
+		u.AssetHash,
+		u.ValueCommitment,
+		u.AssetCommitment,
+		u.ScriptPubKey,
+		u.Nonce,
+		u.RangeProof,
+		u.SurjectionProof,
+		u.Confirmed,
+	)
 }

@@ -63,6 +63,28 @@ func NewConfidentialWitnessUtxo(
 	}
 }
 
+func NewWitnessUtxo(
+	hash string, index uint32,
+	value uint64, asset string,
+	valueCommitment, assetCommitment string,
+	script, nonce, rangeProof, surjectionProof []byte,
+	confirmed bool,
+) Utxo {
+	return witnessUtxo{
+		UHash:            hash,
+		UIndex:           index,
+		UValue:           value,
+		UAsset:           asset,
+		UValueCommitment: valueCommitment,
+		UAssetCommitment: assetCommitment,
+		UScript:          script,
+		UNonce:           nonce,
+		URangeProof:      rangeProof,
+		USurjectionProof: surjectionProof,
+		UStatus:          status{Confirmed: confirmed},
+	}
+}
+
 type status struct {
 	Confirmed bool `json:"confirmed"`
 }

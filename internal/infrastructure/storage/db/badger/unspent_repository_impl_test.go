@@ -12,28 +12,38 @@ func TestAddUnspents(t *testing.T) {
 	defer after()
 	unspents := []domain.Unspent{
 		{
-			TxID:         "6",
-			VOut:         1,
-			Value:        0,
-			AssetHash:    "",
-			Address:      "a",
-			Spent:        false,
-			Locked:       false,
-			ScriptPubKey: nil,
-			LockedBy:     nil,
-			Confirmed:    false,
+			TxID:            "6",
+			VOut:            1,
+			Value:           0,
+			AssetHash:       "",
+			ValueCommitment: "",
+			AssetCommitment: "",
+			ScriptPubKey:    nil,
+			Nonce:           nil,
+			RangeProof:      nil,
+			SurjectionProof: nil,
+			Address:         "a",
+			Spent:           false,
+			Locked:          false,
+			LockedBy:        nil,
+			Confirmed:       false,
 		},
 		{
-			TxID:         "7",
-			VOut:         2,
-			Value:        0,
-			AssetHash:    "",
-			Address:      "b",
-			Spent:        false,
-			Locked:       false,
-			ScriptPubKey: nil,
-			LockedBy:     nil,
-			Confirmed:    false,
+			TxID:            "7",
+			VOut:            2,
+			Value:           0,
+			AssetHash:       "",
+			ValueCommitment: "",
+			AssetCommitment: "",
+			Nonce:           nil,
+			RangeProof:      nil,
+			SurjectionProof: nil,
+			Address:         "b",
+			Spent:           false,
+			Locked:          false,
+			ScriptPubKey:    nil,
+			LockedBy:        nil,
+			Confirmed:       false,
 		},
 	}
 	err := unspentRepository.AddUnspents(ctx, unspents)
@@ -50,28 +60,38 @@ func TestAddUnspents(t *testing.T) {
 	//repeat insertion of same keys to check if there will be errors
 	unspents = []domain.Unspent{
 		{
-			TxID:         "6",
-			VOut:         1,
-			Value:        0,
-			AssetHash:    "",
-			Address:      "a",
-			Spent:        false,
-			Locked:       false,
-			ScriptPubKey: nil,
-			LockedBy:     nil,
-			Confirmed:    false,
+			TxID:            "6",
+			VOut:            1,
+			Value:           0,
+			AssetHash:       "",
+			ValueCommitment: "",
+			AssetCommitment: "",
+			Nonce:           nil,
+			RangeProof:      nil,
+			SurjectionProof: nil,
+			Address:         "a",
+			Spent:           false,
+			Locked:          false,
+			ScriptPubKey:    nil,
+			LockedBy:        nil,
+			Confirmed:       false,
 		},
 		{
-			TxID:         "7",
-			VOut:         2,
-			Value:        0,
-			AssetHash:    "",
-			Address:      "b",
-			Spent:        false,
-			Locked:       false,
-			ScriptPubKey: nil,
-			LockedBy:     nil,
-			Confirmed:    false,
+			TxID:            "7",
+			VOut:            2,
+			Value:           0,
+			AssetHash:       "",
+			ValueCommitment: "",
+			AssetCommitment: "",
+			Nonce:           nil,
+			RangeProof:      nil,
+			SurjectionProof: nil,
+			Address:         "b",
+			Spent:           false,
+			Locked:          false,
+			ScriptPubKey:    nil,
+			LockedBy:        nil,
+			Confirmed:       false,
 		},
 	}
 	err = unspentRepository.AddUnspents(ctx, unspents)
@@ -110,6 +130,21 @@ func TestGetAvailableUnspents(t *testing.T) {
 	assert.Equal(t, len(unspents), 2)
 }
 
+func TestGetUnspentsForAddresses(t *testing.T) {
+	before()
+	defer after()
+
+	unspents, err := unspentRepository.GetUnspentsForAddresses(
+		ctx,
+		[]string{"a", "adr"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, len(unspents), 4)
+}
+
 func TestGetAvailableUnspentsForAddresses(t *testing.T) {
 	before()
 	defer after()
@@ -121,6 +156,61 @@ func TestGetAvailableUnspentsForAddresses(t *testing.T) {
 	}
 
 	assert.Equal(t, len(unspents), 2)
+}
+
+func TestGetUnspentForKey(t *testing.T) {
+	before()
+	defer after()
+
+	unspent, err := unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
+		TxID: "1",
+		VOut: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, unspent.Value, uint64(2))
+}
+
+func TestUpdateUnspent(t *testing.T) {
+	before()
+	defer after()
+
+	unspent, err := unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
+		TxID: "1",
+		VOut: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, unspent.Value, uint64(2))
+
+	err = unspentRepository.UpdateUnspent(
+		ctx,
+		domain.UnspentKey{
+			TxID: "1",
+			VOut: 1,
+		},
+		func(m *domain.Unspent) (*domain.Unspent, error) {
+			m.Value = 444
+			return m, nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unspent, err = unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
+		TxID: "1",
+		VOut: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, unspent.Value, uint64(444))
 }
 
 func TestGetUnlockedBalance(t *testing.T) {

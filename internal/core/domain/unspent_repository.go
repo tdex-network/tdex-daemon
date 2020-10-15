@@ -42,6 +42,4 @@ type UnspentRepository interface {
 		ctx context.Context,
 		unspentKey UnspentKey,
 	) (*Unspent, error)
-	//Begin() (uow.Tx, error)
-	//ContextKey() interface{}
 }
