@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	balancedWeightIn  = 50
-	balancedWeightOut = 50
+	balancedWeightIn     = 50
+	balancedWeightOut    = 50
+	BalancedReservesType = 1
 )
 
 //BalancedReserves defines an AMM strategy with fixed 50/50 reserves
@@ -57,4 +58,8 @@ func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut uin
 	}
 
 	return
+}
+
+func (BalancedReserves) FormulaType() int {
+	return BalancedReservesType
 }

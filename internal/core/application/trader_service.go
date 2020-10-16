@@ -78,12 +78,12 @@ func (t *traderService) GetTradableMarkets(ctx context.Context) (
 	for _, mkt := range tradableMarkets {
 		marketsWithFee = append(marketsWithFee, MarketWithFee{
 			Market: Market{
-				BaseAsset:  mkt.BaseAssetHash(),
-				QuoteAsset: mkt.QuoteAssetHash(),
+				BaseAsset:  mkt.BaseAsset,
+				QuoteAsset: mkt.QuoteAsset,
 			},
 			Fee: Fee{
-				FeeAsset:   mkt.FeeAsset(),
-				BasisPoint: mkt.Fee(),
+				FeeAsset:   mkt.FeeAsset,
+				BasisPoint: mkt.Fee,
 			},
 		})
 	}
@@ -129,8 +129,8 @@ func (t *traderService) GetMarketPrice(
 	return &PriceWithFee{
 		Price: price,
 		Fee: Fee{
-			FeeAsset:   mkt.FeeAsset(),
-			BasisPoint: mkt.Fee(),
+			FeeAsset:   mkt.FeeAsset,
+			BasisPoint: mkt.Fee,
 		},
 		Amount: previewAmount,
 	}, nil
@@ -666,34 +666,34 @@ func getPriceAndPreviewForMarket(
 	}
 
 	balances := getBalanceByAsset(unspents)
-	baseBalanceAvailable := balances[market.BaseAssetHash()]
-	quoteBalanceAvailable := balances[market.QuoteAssetHash()]
-	previewAmount = market.Strategy().Formula().InGivenOut(
+	baseBalanceAvailable := balances[market.BaseAsset]
+	quoteBalanceAvailable := balances[market.QuoteAsset]
+	previewAmount = market.Strategy.Formula().InGivenOut(
 		&mm.FormulaOpts{
 			BalanceIn:           quoteBalanceAvailable,
 			BalanceOut:          baseBalanceAvailable,
-			Fee:                 uint64(market.Fee()),
-			ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
+			Fee:                 uint64(market.Fee),
+			ChargeFeeOnTheWayIn: market.FeeAsset == market.BaseAsset,
 		},
 		amount,
 	)
 	if tradeType == TradeSell {
-		previewAmount = market.Strategy().Formula().OutGivenIn(
+		previewAmount = market.Strategy.Formula().OutGivenIn(
 			&mm.FormulaOpts{
 				BalanceIn:           baseBalanceAvailable,
 				BalanceOut:          quoteBalanceAvailable,
-				Fee:                 uint64(market.Fee()),
-				ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
+				Fee:                 uint64(market.Fee),
+				ChargeFeeOnTheWayIn: market.FeeAsset == market.QuoteAsset,
 			},
 			amount,
 		)
 	}
 	price = Price{
-		BasePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
+		BasePrice: market.Strategy.Formula().SpotPrice(&mm.FormulaOpts{
 			BalanceIn:  quoteBalanceAvailable,
 			BalanceOut: baseBalanceAvailable,
 		}),
-		QuotePrice: market.Strategy().Formula().SpotPrice(&mm.FormulaOpts{
+		QuotePrice: market.Strategy.Formula().SpotPrice(&mm.FormulaOpts{
 			BalanceIn:  baseBalanceAvailable,
 			BalanceOut: quoteBalanceAvailable,
 		}),
@@ -721,14 +721,14 @@ func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint
 	if tradeType == TradeBuy {
 		return calcProposeAmount(
 			amount,
-			market.Fee(),
+			market.Fee,
 			market.QuoteAssetPrice(),
 		)
 	}
 
 	return calcExpectedAmount(
 		amount,
-		market.Fee(),
+		market.Fee,
 		market.QuoteAssetPrice(),
 	)
 }
@@ -783,9 +783,9 @@ func calcExpectedAmount(
 
 func previewFromFormula(unspents []domain.Unspent, market *domain.Market, tradeType int, amount uint64) (Price, uint64) {
 	balances := getBalanceByAsset(unspents)
-	baseBalanceAvailable := balances[market.BaseAssetHash()]
-	quoteBalanceAvailable := balances[market.QuoteAssetHash()]
-	formula := market.Strategy().Formula()
+	baseBalanceAvailable := balances[market.BaseAsset]
+	quoteBalanceAvailable := balances[market.QuoteAsset]
+	formula := market.Strategy.Formula()
 
 	price := Price{
 		BasePrice: formula.SpotPrice(&mm.FormulaOpts{
@@ -803,8 +803,8 @@ func previewFromFormula(unspents []domain.Unspent, market *domain.Market, tradeT
 			&mm.FormulaOpts{
 				BalanceIn:           quoteBalanceAvailable,
 				BalanceOut:          baseBalanceAvailable,
-				Fee:                 uint64(market.Fee()),
-				ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
+				Fee:                 uint64(market.Fee),
+				ChargeFeeOnTheWayIn: market.FeeAsset == market.BaseAsset,
 			},
 			amount,
 		)
@@ -814,8 +814,8 @@ func previewFromFormula(unspents []domain.Unspent, market *domain.Market, tradeT
 		&mm.FormulaOpts{
 			BalanceIn:           baseBalanceAvailable,
 			BalanceOut:          quoteBalanceAvailable,
-			Fee:                 uint64(market.Fee()),
-			ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
+			Fee:                 uint64(market.Fee),
+			ChargeFeeOnTheWayIn: market.FeeAsset == market.QuoteAsset,
 		},
 		amount,
 	)

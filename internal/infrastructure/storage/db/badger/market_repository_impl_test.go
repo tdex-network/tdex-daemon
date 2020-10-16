@@ -16,14 +16,14 @@ func TestGetCreateOrUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.BaseAssetHash(), "ah5")
+	assert.Equal(t, market.BaseAsset, "ah5")
 
 	market, err = marketRepository.GetOrCreateMarket(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.FeeAsset(), config.GetString(config.BaseAssetKey))
+	assert.Equal(t, market.FeeAsset, config.GetString(config.BaseAssetKey))
 }
 
 func TestGetAll(t *testing.T) {
@@ -45,7 +45,7 @@ func TestGetMarketByAsset(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.BaseAssetHash(), "ah7")
+	assert.Equal(t, market.BaseAsset, "ah7")
 	assert.Equal(t, accountIndex, 7)
 }
 
@@ -57,7 +57,7 @@ func TestGetLatestMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.BaseAssetHash(), "ah9")
+	assert.Equal(t, market.BaseAsset, "ah9")
 	assert.Equal(t, accountIndex, 9)
 }
 

@@ -43,7 +43,7 @@ func (w walletHandler) InitWallet(
 	}
 
 	if err := w.walletSvc.InitWallet(
-		context.Background(),
+		stream.Context(),
 		req.SeedMnemonic,
 		string(req.WalletPassword),
 	); err != nil {

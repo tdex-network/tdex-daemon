@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"github.com/timshannon/badgerhold"
 )
 
@@ -49,22 +48,9 @@ func (v vaultRepositoryImpl) UpdateVault(
 		tx = ctx.Value("tx").(*badger.Txn)
 	}
 
-	var err error
-	vault, err := v.getVault(tx)
+	vault, err := v.getOrCreateVault(tx, mnemonic, passphrase)
 	if err != nil {
 		return err
-	}
-
-	if vault == nil {
-		vault, err = domain.NewVault(mnemonic, passphrase)
-		if err != nil {
-			return err
-		}
-
-		err := v.insertVault(tx, *vault)
-		if err != nil {
-			return err
-		}
 	}
 
 	updatedVault, err := updateFn(vault)
@@ -142,12 +128,29 @@ func (v vaultRepositoryImpl) GetDerivationPathByScript(
 	return v.getDerivationPathByScript(vault, accountIndex, scripts)
 }
 
-func (v vaultRepositoryImpl) Begin() (uow.Tx, error) {
-	panic("implement me")
-}
+func (v vaultRepositoryImpl) getDerivationPathByScript(
+	vault *domain.Vault,
+	accountIndex int,
+	scripts []string,
+) (map[string]string, error) {
+	account, err := vault.AccountByIndex(accountIndex)
+	if err != nil {
+		return nil, err
+	}
 
-func (v vaultRepositoryImpl) ContextKey() interface{} {
-	panic("implement me")
+	m := map[string]string{}
+	for _, script := range scripts {
+		derivationPath, ok := account.GetDerivationPathByScript(script)
+		if !ok {
+			return nil, fmt.Errorf(
+				"derivation path not found for script '%s'",
+				script,
+			)
+		}
+		m[script] = derivationPath
+	}
+
+	return m, nil
 }
 
 func (v vaultRepositoryImpl) getOrCreateVault(
@@ -247,29 +250,4 @@ func (v vaultRepositoryImpl) updateVault(
 		)
 	}
 	return err
-}
-
-func (v vaultRepositoryImpl) getDerivationPathByScript(
-	vault *domain.Vault,
-	accountIndex int,
-	scripts []string,
-) (map[string]string, error) {
-	account, err := vault.AccountByIndex(accountIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	m := map[string]string{}
-	for _, script := range scripts {
-		derivationPath, ok := account.GetDerivationPathByScript(script)
-		if !ok {
-			return nil, fmt.Errorf(
-				"derivation path not found for script '%s'",
-				script,
-			)
-		}
-		m[script] = derivationPath
-	}
-
-	return m, nil
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestGetOrCreateVault(t *testing.T) {
+func TestAll(t *testing.T) {
 	before()
 	defer after()
 
