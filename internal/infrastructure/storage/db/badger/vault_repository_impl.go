@@ -140,7 +140,7 @@ func (v vaultRepositoryImpl) getDerivationPathByScript(
 
 	m := map[string]string{}
 	for _, script := range scripts {
-		derivationPath, ok := account.GetDerivationPathByScript(script)
+		derivationPath, ok := account.DerivationPathByScript[script]
 		if !ok {
 			return nil, fmt.Errorf(
 				"derivation path not found for script '%s'",

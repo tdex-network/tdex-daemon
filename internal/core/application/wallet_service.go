@@ -337,7 +337,7 @@ func (w *walletService) SendToMany(
 		nil,
 		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
-			mnemonic, err := v.GetMnemonic()
+			mnemonic, err := v.GetMnemonicSafe()
 			if err != nil {
 				return nil, err
 			}
@@ -354,7 +354,7 @@ func (w *walletService) SendToMany(
 				if err != nil {
 					return nil, err
 				}
-				derivationPath, _ := account.GetDerivationPathByScript(script)
+				derivationPath, _ := account.DerivationPathByScript[script]
 				changePathsByAsset[asset] = derivationPath
 			}
 
@@ -579,7 +579,7 @@ func getDerivationPathsForUnspents(
 	paths := map[string]string{}
 	for _, unspent := range unspents {
 		script := hex.EncodeToString(unspent.Script())
-		derivationPath, _ := account.GetDerivationPathByScript(script)
+		derivationPath, _ := account.DerivationPathByScript[script]
 		paths[script] = derivationPath
 	}
 	return paths

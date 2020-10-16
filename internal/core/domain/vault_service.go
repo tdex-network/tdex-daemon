@@ -22,7 +22,7 @@ func (v *Vault) IsZero() bool {
 }
 
 // Mnemonic is getter for Vault's mnemonic in plain text
-func (v *Vault) GetMnemonic() ([]string, error) {
+func (v *Vault) GetMnemonicSafe() ([]string, error) {
 	if v.isLocked() {
 		return nil, ErrMustBeUnlocked
 	}
@@ -235,7 +235,7 @@ func (v *Vault) allDerivedAddressesInfo() []AddressInfo {
 	for addr, info := range v.AccountAndKeyByAddress {
 		account, _ := v.AccountByIndex(info.AccountIndex)
 		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
-		path, _ := account.GetDerivationPathByScript(hex.EncodeToString(script))
+		path, _ := account.DerivationPathByScript[hex.EncodeToString(script)]
 
 		list = append(list, AddressInfo{
 			AccountIndex:   info.AccountIndex,
@@ -278,7 +278,7 @@ func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 		accountIndex,
 		InternalChain,
 		0,
-		account.LastExternalIndex-1,
+		account.LastInternalIndex-1,
 	)
 	addresses = append(addresses, externalAddresses...)
 	addresses = append(addresses, internalAddresses...)
@@ -301,13 +301,6 @@ func validateAccountIndex(accIndex int) error {
 	}
 
 	return nil
-}
-
-// DerivationPathByScript returns the derivation path that generates the
-// provided output script
-func (a *Account) GetDerivationPathByScript(outputScript string) (string, bool) {
-	derivationPath, ok := a.DerivationPathByScript[outputScript]
-	return derivationPath, ok
 }
 
 // NextExternalIndex increments the last external index by one and returns the new last

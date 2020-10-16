@@ -1,7 +1,7 @@
 package dbbadger
 
 import (
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"testing"
 )
@@ -41,22 +41,22 @@ func TestAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, vault.Accounts[domain.FeeAccount].LastExternalIndex, 1)
+	assert.Equal(t, 1, vault.Accounts[domain.FeeAccount].LastExternalIndex)
 
 	account, err := vaultRepository.GetAccountByIndex(ctx, domain.FeeAccount)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, account.LastExternalIndex, 1)
+	assert.Equal(t, 1, account.LastExternalIndex)
 
 	accnt, accntIndex, err := vaultRepository.GetAccountByAddress(ctx, addr)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, accnt.LastExternalIndex, 1)
-	assert.Equal(t, accntIndex, domain.FeeAccount)
+	assert.Equal(t, 1, accnt.LastExternalIndex)
+	assert.Equal(t, domain.FeeAccount, accntIndex)
 
 	addresses, _, err := vaultRepository.
 		GetAllDerivedAddressesAndBlindingKeysForAccount(
@@ -66,7 +66,7 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, addresses[0], addr)
+	assert.Equal(t, addr, addresses[0])
 
 	var script string
 	var path string
@@ -80,5 +80,5 @@ func TestAll(t *testing.T) {
 		domain.FeeAccount,
 		[]string{script},
 	)
-	assert.Equal(t, pathByScript[script], path)
+	assert.Equal(t, path, pathByScript[script])
 }
