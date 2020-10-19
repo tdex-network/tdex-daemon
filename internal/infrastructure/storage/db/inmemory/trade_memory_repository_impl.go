@@ -102,12 +102,12 @@ func (r TradeRepositoryImpl) UpdateTrade(
 
 	if swapAccept := updatedTrade.SwapAcceptMessage(); swapAccept != nil {
 		if _, ok := tradesBySwapAcceptID[swapAccept.GetId()]; !ok {
-			tradesBySwapAcceptID[swapAccept.GetId()] = currentTrade.ID()
+			tradesBySwapAcceptID[swapAccept.GetId()] = currentTrade.ID
 		}
 	}
 
-	addTradeIDByKeyString(tradesByMarket, updatedTrade.MarketQuoteAsset(), currentTrade.ID())
-	addTradeIDByKeyString(tradesByTrader, hex.EncodeToString(updatedTrade.TraderPubkey()), currentTrade.ID())
+	addTradeIDByKeyString(tradesByMarket, updatedTrade.MarketQuoteAsset, currentTrade.ID)
+	addTradeIDByKeyString(tradesByTrader, hex.EncodeToString(updatedTrade.TraderPubkey), currentTrade.ID)
 	return nil
 }
 
@@ -169,14 +169,14 @@ func (r TradeRepositoryImpl) storageByContext(ctx context.Context) (
 func getOrCreateTrade(trades map[uuid.UUID]*domain.Trade, tradeID *uuid.UUID) (*domain.Trade, error) {
 	if tradeID == nil {
 		t := domain.NewTrade()
-		trades[t.ID()] = t
+		trades[t.ID] = t
 		return t, nil
 	}
 
 	currentTrade, ok := trades[*tradeID]
 	if !ok {
 		t := domain.NewTrade()
-		trades[t.ID()] = t
+		trades[t.ID] = t
 		return t, nil
 	}
 

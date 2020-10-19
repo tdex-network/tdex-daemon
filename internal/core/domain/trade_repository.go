@@ -3,7 +3,6 @@ package domain
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 )
 
 // TradeRepository defines the abstraction for Trade
@@ -18,6 +17,4 @@ type TradeRepository interface {
 		tradeID *uuid.UUID,
 		updateFn func(t *Trade) (*Trade, error),
 	) error
-	Begin() (uow.Tx, error)
-	ContextKey() interface{}
 }

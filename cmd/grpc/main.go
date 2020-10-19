@@ -13,7 +13,6 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 
@@ -42,7 +41,7 @@ func main() {
 	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	vaultRepository := dbbadger.NewVaultRepositoryImpl(dbManager)
 	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
-	tradeRepository := inmemory.NewTradeRepositoryImpl()
+	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
 
 	errorHandler := func(err error) { log.Warn(err) }
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
