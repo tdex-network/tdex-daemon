@@ -216,7 +216,7 @@ func TestWalletChangePass(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = walletSvc.UnlockWallet(ctx, dryLockedWallet.password)
-	assert.Equal(t, domain.ErrInvalidPassphrase, err)
+	assert.Equal(t, wallet.ErrInvalidPassphrase, err)
 }
 
 func TestWalletBalance(t *testing.T) {
