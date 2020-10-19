@@ -1,7 +1,7 @@
 package dbbadger
 
 import (
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"testing"
@@ -16,14 +16,14 @@ func TestGetCreateOrUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.BaseAssetHash(), "ah5")
+	assert.Equal(t, "ah5", market.BaseAsset)
 
 	market, err = marketRepository.GetOrCreateMarket(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.FeeAsset(), config.GetString(config.BaseAssetKey))
+	assert.Equal(t, config.GetString(config.BaseAssetKey), market.FeeAsset)
 }
 
 func TestGetAll(t *testing.T) {
@@ -34,7 +34,7 @@ func TestGetAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(market), 5)
+	assert.Equal(t, 5, len(market))
 }
 
 func TestGetMarketByAsset(t *testing.T) {
@@ -45,8 +45,8 @@ func TestGetMarketByAsset(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.BaseAssetHash(), "ah7")
-	assert.Equal(t, accountIndex, 7)
+	assert.Equal(t, "ah7", market.BaseAsset)
+	assert.Equal(t, 7, accountIndex)
 }
 
 func TestGetLatestMarket(t *testing.T) {
@@ -57,8 +57,8 @@ func TestGetLatestMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.BaseAssetHash(), "ah9")
-	assert.Equal(t, accountIndex, 9)
+	assert.Equal(t, "ah9", market.BaseAsset)
+	assert.Equal(t, 9, accountIndex)
 }
 
 func TestTradableMarket(t *testing.T) {
@@ -69,7 +69,7 @@ func TestTradableMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(markets), 2)
+	assert.Equal(t, 2, len(markets))
 }
 
 func TestUpdateMarket(t *testing.T) {
@@ -95,7 +95,7 @@ func TestUpdateMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.IsTradable(), false)
+	assert.Equal(t, false, market.IsTradable())
 }
 
 func TestOpenMarket(t *testing.T) {
@@ -106,7 +106,7 @@ func TestOpenMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.IsTradable(), false)
+	assert.Equal(t, false, market.IsTradable())
 
 	err = marketRepository.OpenMarket(ctx, "qh9")
 	if err != nil {
@@ -118,7 +118,7 @@ func TestOpenMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.IsTradable(), true)
+	assert.Equal(t, true, market.IsTradable())
 }
 
 func TestCloseMarket(t *testing.T) {
@@ -129,7 +129,7 @@ func TestCloseMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.IsTradable(), true)
+	assert.Equal(t, true, market.IsTradable())
 
 	err = marketRepository.CloseMarket(ctx, "qh6")
 	if err != nil {
@@ -141,5 +141,5 @@ func TestCloseMarket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, market.IsTradable(), false)
+	assert.Equal(t, false, market.IsTradable())
 }

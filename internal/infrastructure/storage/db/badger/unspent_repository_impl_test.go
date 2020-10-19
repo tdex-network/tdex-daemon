@@ -2,7 +2,7 @@ package dbbadger
 
 import (
 	"github.com/google/uuid"
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"testing"
 )
@@ -53,9 +53,9 @@ func TestAddUnspents(t *testing.T) {
 
 	u := unspentRepository.GetAllUnspents(ctx)
 
-	assert.Equal(t, len(u), 8)
-	assert.Equal(t, u[6].TxID == "6", true)
-	assert.Equal(t, u[7].TxID == "7", true)
+	assert.Equal(t, 8, len(u))
+	assert.Equal(t, true, u[6].TxID == "6")
+	assert.Equal(t, true, u[7].TxID == "7")
 
 	//repeat insertion of same keys to check if there will be errors
 	unspents = []domain.Unspent{
@@ -102,8 +102,8 @@ func TestAddUnspents(t *testing.T) {
 	u = unspentRepository.GetAllUnspents(ctx)
 
 	assert.Equal(t, len(u), 8)
-	assert.Equal(t, u[6].TxID == "6", true)
-	assert.Equal(t, u[7].TxID == "7", true)
+	assert.Equal(t, true, u[6].TxID == "6")
+	assert.Equal(t, true, u[7].TxID == "7")
 }
 
 func TestGetBalance(t *testing.T) {
@@ -115,7 +115,7 @@ func TestGetBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, balance, uint64(4))
+	assert.Equal(t, uint64(4), balance)
 }
 
 func TestGetAvailableUnspents(t *testing.T) {
@@ -127,7 +127,7 @@ func TestGetAvailableUnspents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(unspents), 2)
+	assert.Equal(t, 2, len(unspents))
 }
 
 func TestGetUnspentsForAddresses(t *testing.T) {
@@ -142,7 +142,7 @@ func TestGetUnspentsForAddresses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(unspents), 4)
+	assert.Equal(t, 4, len(unspents))
 }
 
 func TestGetAvailableUnspentsForAddresses(t *testing.T) {
@@ -155,7 +155,7 @@ func TestGetAvailableUnspentsForAddresses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(unspents), 2)
+	assert.Equal(t, 2, len(unspents))
 }
 
 func TestGetUnspentForKey(t *testing.T) {
@@ -170,7 +170,7 @@ func TestGetUnspentForKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, unspent.Value, uint64(2))
+	assert.Equal(t, uint64(2), unspent.Value)
 }
 
 func TestUpdateUnspent(t *testing.T) {
@@ -185,7 +185,7 @@ func TestUpdateUnspent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, unspent.Value, uint64(2))
+	assert.Equal(t, uint64(2), unspent.Value)
 
 	err = unspentRepository.UpdateUnspent(
 		ctx,
@@ -210,7 +210,7 @@ func TestUpdateUnspent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, unspent.Value, uint64(444))
+	assert.Equal(t, uint64(444), unspent.Value)
 }
 
 func TestGetUnlockedBalance(t *testing.T) {
@@ -222,7 +222,7 @@ func TestGetUnlockedBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, balance, uint64(4))
+	assert.Equal(t, uint64(4), balance)
 }
 
 func TestLockUnlockUnspents(t *testing.T) {
@@ -253,7 +253,7 @@ func TestLockUnlockUnspents(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, lockedCount, 2)
+	assert.Equal(t, 2, lockedCount)
 
 	err = unspentRepository.UnlockUnspents(ctx, unpsentsKeys)
 	if err != nil {
@@ -268,5 +268,5 @@ func TestLockUnlockUnspents(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, lockedCount, 0)
+	assert.Equal(t, 0, lockedCount)
 }

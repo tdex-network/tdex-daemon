@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 )
 
 type VaultRepository interface {
@@ -20,6 +19,4 @@ type VaultRepository interface {
 		accountIndex int,
 	) ([]string, [][]byte, error)
 	GetDerivationPathByScript(ctx context.Context, accountIndex int, scripts []string) (map[string]string, error)
-	Begin() (uow.Tx, error)
-	ContextKey() interface{}
 }

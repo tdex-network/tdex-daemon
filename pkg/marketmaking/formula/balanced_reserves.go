@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	balancedWeightIn  = 50
-	balancedWeightOut = 50
+	balancedWeightIn     = 50
+	balancedWeightOut    = 50
+	BalancedReservesType = 1
 )
 
 var (
@@ -78,4 +79,8 @@ func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut uin
 	}
 
 	return
+}
+
+func (BalancedReserves) FormulaType() int {
+	return BalancedReservesType
 }

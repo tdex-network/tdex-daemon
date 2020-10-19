@@ -4,12 +4,15 @@ import (
 	"context"
 	"github.com/dgraph-io/badger"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
+	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 	"os"
 )
 
 var ctx context.Context
 var marketRepository domain.MarketRepository
 var unspentRepository domain.UnspentRepository
+var vaultRepository domain.VaultRepository
 var dbManager *DbManager
 var testDbDir = "testdb"
 
@@ -22,11 +25,22 @@ func before() {
 	}
 	marketRepository = NewMarketRepositoryImpl(dbManager)
 	unspentRepository = NewUnspentRepositoryImpl(dbManager)
+	vaultRepository = NewVaultRepositoryImpl(dbManager)
 	tx := dbManager.Store.Badger().NewTransaction(true)
+
 	if err = insertMarkets(tx, dbManager); err != nil {
 		panic(err)
 	}
 	if err = insertUnspents(tx, dbManager); err != nil {
+		panic(err)
+	}
+
+	tmpCtx := context.WithValue(
+		context.Background(),
+		"tx",
+		tx,
+	)
+	if err = insertVault(tmpCtx); err != nil {
 		panic(err)
 	}
 
@@ -38,6 +52,7 @@ func before() {
 		context.Background(),
 		"tx",
 		dbManager.Store.Badger().NewTransaction(true))
+
 }
 
 func after() {
@@ -55,7 +70,7 @@ func after() {
 }
 
 func insertMarkets(tx *badger.Txn, db *DbManager) error {
-	markets := []Market{
+	markets := []domain.Market{
 		{
 			AccountIndex: 5,
 			BaseAsset:    "ah5",
@@ -63,9 +78,9 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     true,
-			Strategy:     1,
-			BasePrice:    nil,
-			QuotePrice:   nil,
+			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
+			BasePrice:    domain.PriceByTime{},
+			QuotePrice:   domain.PriceByTime{},
 		},
 		{
 			AccountIndex: 6,
@@ -74,9 +89,9 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     true,
-			Strategy:     1,
-			BasePrice:    nil,
-			QuotePrice:   nil,
+			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
+			BasePrice:    domain.PriceByTime{},
+			QuotePrice:   domain.PriceByTime{},
 		},
 		{
 			AccountIndex: 7,
@@ -85,9 +100,9 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     false,
-			Strategy:     1,
-			BasePrice:    nil,
-			QuotePrice:   nil,
+			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
+			BasePrice:    domain.PriceByTime{},
+			QuotePrice:   domain.PriceByTime{},
 		},
 		{
 			AccountIndex: 8,
@@ -96,9 +111,9 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     false,
-			Strategy:     1,
-			BasePrice:    nil,
-			QuotePrice:   nil,
+			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
+			BasePrice:    domain.PriceByTime{},
+			QuotePrice:   domain.PriceByTime{},
 		},
 		{
 			AccountIndex: 9,
@@ -107,9 +122,9 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			Fee:          0,
 			FeeAsset:     "",
 			Tradable:     false,
-			Strategy:     1,
-			BasePrice:    nil,
-			QuotePrice:   nil,
+			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
+			BasePrice:    domain.PriceByTime{},
+			QuotePrice:   domain.PriceByTime{},
 		},
 	}
 	for _, v := range markets {
@@ -208,4 +223,26 @@ func insertUnspents(tx *badger.Txn, db *DbManager) error {
 	}
 
 	return nil
+}
+
+func insertVault(ctx context.Context) error {
+
+	pass := "pass"
+	mnemonic := []string{
+		"addict",
+		"able",
+		"about",
+		"above",
+		"absent",
+		"absorb",
+		"abstract",
+		"absurd",
+		"abuse",
+		"access",
+		"accident",
+		"account",
+	}
+
+	_, err := vaultRepository.GetOrCreateVault(ctx, mnemonic, pass)
+	return err
 }

@@ -2,7 +2,7 @@ package application
 
 import (
 	"context"
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"os"
@@ -73,7 +73,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(unsp), 2)
+	assert.Equal(t, 2, len(unsp))
 
 	unspents = []domain.Unspent{
 		{
@@ -119,7 +119,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(unsp), 3)
+	assert.Equal(t, 3, len(unsp))
 
 	count := 0
 	for _, v := range unsp {
@@ -128,7 +128,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, count, 1)
+	assert.Equal(t, 1, count)
 
 	err = tx.Commit()
 	if err != nil {

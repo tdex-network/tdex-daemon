@@ -97,7 +97,7 @@ func (r MarketRepositoryImpl) UpdateMarket(
 
 	r.markets[accountIndex] = *updatedMarket
 	if updatedMarket.IsFunded() {
-		r.accountsByAsset[updatedMarket.QuoteAssetHash()] = accountIndex
+		r.accountsByAsset[updatedMarket.QuoteAsset] = accountIndex
 	}
 
 	return nil

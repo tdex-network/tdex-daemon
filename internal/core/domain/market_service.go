@@ -11,31 +11,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 )
 
-// AccountIndex returns the account index
-func (m *Market) AccountIndex() int {
-	return m.accountIndex
-}
-
-// BaseAssetHash returns the base asset hash
-func (m *Market) BaseAssetHash() string {
-	return m.baseAsset.assetHash
-}
-
-// QuoteAssetHash returns the quote asset hash
-func (m *Market) QuoteAssetHash() string {
-	return m.quoteAsset.assetHash
-}
-
-// Fee returns the selected fee
-func (m *Market) Fee() int64 {
-	return m.fee
-}
-
-// FeeAsset returns the selected asset to be used for market fee collection
-func (m *Market) FeeAsset() string {
-	return m.feeAsset
-}
-
 // MakeTradable ...
 func (m *Market) MakeTradable() error {
 	if !m.IsFunded() {
@@ -46,7 +21,7 @@ func (m *Market) MakeTradable() error {
 		return ErrNotPriced
 	}
 
-	m.tradable = true
+	m.Tradable = true
 	return nil
 }
 
@@ -56,13 +31,13 @@ func (m *Market) MakeNotTradable() error {
 		return ErrNotFunded
 	}
 
-	m.tradable = false
+	m.Tradable = false
 	return nil
 }
 
 // IsTradable returns true if the market is available for trading
 func (m *Market) IsTradable() bool {
-	return m.tradable
+	return m.Tradable
 }
 
 func validateFee(basisPoint int64) error {
@@ -73,14 +48,9 @@ func validateFee(basisPoint int64) error {
 	return nil
 }
 
-// IsNotZero ...
-func (d depositedAsset) IsNotZero() bool {
-	return d != depositedAsset{}
-}
-
 // IsFunded method returns true if the market contains a non empty funding tx outpoint for each asset
 func (m *Market) IsFunded() bool {
-	return m.baseAsset.IsNotZero() && m.quoteAsset.IsNotZero()
+	return m.BaseAsset != "" && m.QuoteAsset != ""
 }
 
 // FundMarket adds funding details given an array of outpoints and recognize quote asset
@@ -116,13 +86,8 @@ func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 		return errors.New("must be deposited 2 unique assets")
 	}
 
-	m.baseAsset = &depositedAsset{
-		assetHash: baseAssetHash,
-	}
-
-	m.quoteAsset = &depositedAsset{
-		assetHash: otherAssetHash,
-	}
+	m.BaseAsset = baseAssetHash
+	m.QuoteAsset = otherAssetHash
 
 	return nil
 }
@@ -142,7 +107,7 @@ func (m *Market) ChangeFee(fee int64) error {
 		return err
 	}
 
-	m.fee = fee
+	m.Fee = fee
 	return nil
 }
 
@@ -161,25 +126,25 @@ func (m *Market) ChangeFeeAsset(asset string) error {
 		return ErrMarketMustBeClose
 	}
 
-	if asset != m.BaseAssetHash() && asset != m.QuoteAssetHash() {
+	if asset != m.BaseAsset && asset != m.QuoteAsset {
 		return errors.New("the given asset must be either the base or quote" +
 			" asset in the pair")
 	}
 
-	m.feeAsset = asset
+	m.FeeAsset = asset
 	return nil
 }
 
 // BaseAssetPrice returns the latest price for the base asset
 func (m *Market) BaseAssetPrice() decimal.Decimal {
-	_, price := getLatestPrice(m.basePrice)
+	_, price := getLatestPrice(m.BasePrice)
 
 	return decimal.Decimal(price)
 }
 
 // QuoteAssetPrice returns the latest price for the quote asset
 func (m *Market) QuoteAssetPrice() decimal.Decimal {
-	_, price := getLatestPrice(m.quotePrice)
+	_, price := getLatestPrice(m.QuotePrice)
 
 	return decimal.Decimal(price)
 }
@@ -193,11 +158,11 @@ func (m *Market) ChangeBasePrice(price decimal.Decimal) error {
 	// TODO add logic to be sure that the price do not change to much from the latest one
 
 	timestamp := uint64(time.Now().Unix())
-	if _, ok := m.basePrice[timestamp]; ok {
+	if _, ok := m.BasePrice[timestamp]; ok {
 		return ErrPriceExists
 	}
 
-	m.basePrice[timestamp] = Price(price)
+	m.BasePrice[timestamp] = Price(price)
 	return nil
 }
 
@@ -210,11 +175,11 @@ func (m *Market) ChangeQuotePrice(price decimal.Decimal) error {
 	//TODO check if the previous price is changing too much as security measure
 
 	timestamp := uint64(time.Now().Unix())
-	if _, ok := m.quotePrice[timestamp]; ok {
+	if _, ok := m.QuotePrice[timestamp]; ok {
 		return ErrPriceExists
 	}
 
-	m.quotePrice[timestamp] = Price(price)
+	m.QuotePrice[timestamp] = Price(price)
 	return nil
 }
 
@@ -245,29 +210,25 @@ func getLatestPrice(keyValue PriceByTime) (uint64, Price) {
 	return latestKey, latestValue
 }
 
-// Strategy ...
-func (m *Market) Strategy() mm.MakingStrategy {
-	return m.strategy
-}
-
 // IsStrategyPluggable returns true if the the startegy isn't automated.
 func (m *Market) IsStrategyPluggable() bool {
-	return m.strategy.IsZero()
+	return m.Strategy.IsZero()
 }
 
 // IsStrategyPluggableInitialized returns true if the prices have been set.
 func (m *Market) IsStrategyPluggableInitialized() bool {
-	return !m.basePrice.IsZero() && !m.quotePrice.IsZero()
+	return !m.BasePrice.IsZero() && !m.QuotePrice.IsZero()
 }
 
-// MakeStrategyPluggable makes the current market using a given price (ie. set via UpdateMarketPrice rpc either manually or a price feed plugin)
+// MakeStrategyPluggable makes the current market using a given price
+//(ie. set via UpdateMarketPrice rpc either manually or a price feed plugin)
 func (m *Market) MakeStrategyPluggable() error {
 	if m.IsTradable() {
 		// We need the market be switched off before making this change
 		return ErrMarketMustBeClose
 	}
 
-	m.strategy = mm.MakingStrategy{}
+	m.Strategy = mm.MakingStrategy{}
 
 	return nil
 }
@@ -279,23 +240,7 @@ func (m *Market) MakeStrategyBalanced() error {
 		return ErrMarketMustBeClose
 	}
 
-	m.strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})
+	m.Strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})
 
 	return nil
-}
-
-//getter are necessary because newly introduced badger persistent
-//implementation is not able to work with domain.
-//Market object since fields are not exported
-
-func (m *Market) GetBasePrice() PriceByTime {
-	return m.basePrice
-}
-
-func (m *Market) GetQuotePrice() PriceByTime {
-	return m.quotePrice
-}
-
-func (m *Market) GetStrategy() mm.MakingStrategy {
-	return m.strategy
 }
