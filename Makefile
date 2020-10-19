@@ -55,5 +55,7 @@ test: shorttest
 ## shorttest: runs unit tests by skipping those that are time expensive
 shorttest:
 	@echo "Testing..."
+	rm -rf ./internal/core/application/testdb
+	rm -rf ./internal/infrastructure/storage/db/badger/testdb
 	go test -v -count=1 -race -short ./...
 

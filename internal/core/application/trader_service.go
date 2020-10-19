@@ -254,7 +254,7 @@ func (t *traderService) TradePropose(
 				)
 				return trade, nil
 			}
-			tradeID = trade.ID()
+			tradeID = trade.ID
 
 			acceptSwapResult, err := acceptSwap(acceptSwapOpts{
 				mnemonic:                   mnemonic,
@@ -327,7 +327,7 @@ func (t *traderService) tradeComplete(ctx context.Context, swapComplete *pb.Swap
 		return "", nil, err
 	}
 
-	tradeID := trade.ID()
+	tradeID := trade.ID
 	err = t.tradeRepository.UpdateTrade(
 		ctx,
 		&tradeID,
@@ -368,7 +368,7 @@ func (t *traderService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*
 		return nil, err
 	}
 
-	tradeID := trade.ID()
+	tradeID := trade.ID
 	err = t.tradeRepository.UpdateTrade(
 		ctx,
 		&tradeID,
