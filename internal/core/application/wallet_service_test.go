@@ -100,7 +100,7 @@ func TestGenSeed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(seed), 24)
+	assert.Equal(t, 24, len(seed))
 }
 
 func TestInitWalletWrongSeed(t *testing.T) {
@@ -189,7 +189,7 @@ func TestWalletUnlock(t *testing.T) {
 	defer close()
 
 	address, blindingKey, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
-	assert.Error(t, err, "wallet must be unlocked to perform this operation")
+	assert.Equal(t, domain.ErrMustBeUnlocked, err)
 
 	err = walletSvc.UnlockWallet(ctx, dryLockedWallet.password)
 	if err != nil {
@@ -201,8 +201,8 @@ func TestWalletUnlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(address) > 0, true)
-	assert.Equal(t, len(blindingKey) > 0, true)
+	assert.Equal(t, true, len(address) > 0)
+	assert.Equal(t, true, len(blindingKey) > 0)
 }
 
 func TestWalletChangePass(t *testing.T) {
@@ -210,13 +210,13 @@ func TestWalletChangePass(t *testing.T) {
 	defer close()
 
 	err := walletSvc.ChangePassword(ctx, "wrongPass", "newPass")
-	assert.Error(t, err, "passphrase is not valid")
+	assert.Equal(t, domain.ErrInvalidPassphrase, err)
 
 	err = walletSvc.ChangePassword(ctx, dryLockedWallet.password, "newPass")
 	assert.NoError(t, err)
 
 	err = walletSvc.UnlockWallet(ctx, dryLockedWallet.password)
-	assert.Error(t, err, "passphrase is not valid")
+	assert.Equal(t, domain.ErrInvalidPassphrase, err)
 }
 
 func TestWalletBalance(t *testing.T) {
