@@ -63,14 +63,6 @@ func (t tradeRepositoryImpl) GetAllTradesByMarket(
 	return trades, nil
 }
 
-//TODO check if this method is needed
-func (t tradeRepositoryImpl) GetAllTradesByTrader(
-	ctx context.Context,
-	traderID string,
-) ([]*domain.Trade, error) {
-	panic("implement me")
-}
-
 func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
 	ctx context.Context,
 	swapAcceptID string,
