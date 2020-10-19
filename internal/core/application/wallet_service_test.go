@@ -113,6 +113,10 @@ func TestInitWalletWrongSeed(t *testing.T) {
 }
 
 func TestInitEmptyWallet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	walletSvc, close := newTestWallet(emptyWallet)
 	defer close()
 	// If the vault repository is not empty when the wallet service is
@@ -151,6 +155,10 @@ func TestInitEmptyWallet(t *testing.T) {
 }
 
 func TestInitUsedWallet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	walletSvc, close := newTestWallet(usedWallet)
 	defer close()
 	walletSvc.walletInitialized = false
@@ -185,6 +193,10 @@ func TestInitUsedWallet(t *testing.T) {
 }
 
 func TestWalletUnlock(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	walletSvc, close := newTestWallet(dryLockedWallet)
 	defer close()
 
@@ -206,6 +218,10 @@ func TestWalletUnlock(t *testing.T) {
 }
 
 func TestWalletChangePass(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	walletSvc, close := newTestWallet(dryLockedWallet)
 	defer close()
 
@@ -233,7 +249,7 @@ func TestWalletBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	balance, err := walletSvc.GetWalletBalance(ctx)
 	if err != nil {
