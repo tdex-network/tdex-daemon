@@ -50,7 +50,10 @@ vet:
 
 
 ## test: runs go unit test with default values
-test:
+test: shorttest
+
+## shorttest: runs unit tests by skipping those that are time expensive
+shorttest:
 	@echo "Testing..."
-	go test -v -count=1 -race ./...
+	go test -v -count=1 -race -short ./...
 
