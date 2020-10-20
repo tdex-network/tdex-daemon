@@ -25,7 +25,6 @@ require (
 	github.com/vulpemventures/go-bip39 v1.0.2
 	github.com/vulpemventures/go-elements v0.0.4-0.20200901152827-3e772f50e0dc
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	google.golang.org/grpc v1.32.0
 	google.golang.org/grpc/examples v0.0.0-20200925170654-e6c98a478e62 // indirect
 	google.golang.org/protobuf v1.25.0
