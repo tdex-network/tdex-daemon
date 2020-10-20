@@ -150,7 +150,7 @@ events:
 					for _, m := range markets {
 						err := b.marketRepository.CloseMarket(
 							ctx,
-							m.QuoteAssetHash(),
+							m.QuoteAsset,
 						)
 						if err != nil {
 							tx.Discard()
@@ -164,7 +164,7 @@ events:
 				for _, m := range markets {
 					err := b.marketRepository.OpenMarket(
 						ctx,
-						m.QuoteAssetHash(),
+						m.QuoteAsset,
 					)
 					if err != nil {
 						tx.Discard()
@@ -173,7 +173,7 @@ events:
 					}
 					log.Debug(fmt.Sprintf(
 						"market %v, opened",
-						m.AccountIndex(),
+						m.AccountIndex,
 					))
 				}
 			}
@@ -244,7 +244,7 @@ events:
 
 				if err := b.marketRepository.UpdateMarket(
 					ctx,
-					m.AccountIndex(),
+					m.AccountIndex,
 					func(m *domain.Market) (*domain.Market, error) {
 
 						if m.IsFunded() {
@@ -255,8 +255,10 @@ events:
 							tx.Discard()
 							return nil, err
 						}
-
-						log.Info("deposit: funding market with quote asset ", m.QuoteAssetHash())
+						log.Info(
+							"deposit: funding market with quote asset ",
+							m.QuoteAsset,
+						)
 
 						return m, nil
 					}); err != nil {

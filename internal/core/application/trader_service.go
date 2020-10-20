@@ -78,12 +78,12 @@ func (t *traderService) GetTradableMarkets(ctx context.Context) (
 	for _, mkt := range tradableMarkets {
 		marketsWithFee = append(marketsWithFee, MarketWithFee{
 			Market: Market{
-				BaseAsset:  mkt.BaseAssetHash(),
-				QuoteAsset: mkt.QuoteAssetHash(),
+				BaseAsset:  mkt.BaseAsset,
+				QuoteAsset: mkt.QuoteAsset,
 			},
 			Fee: Fee{
-				FeeAsset:   mkt.FeeAsset(),
-				BasisPoint: mkt.Fee(),
+				FeeAsset:   mkt.FeeAsset,
+				BasisPoint: mkt.Fee,
 			},
 		})
 	}
@@ -129,8 +129,8 @@ func (t *traderService) GetMarketPrice(
 	return &PriceWithFee{
 		Price: price,
 		Fee: Fee{
-			FeeAsset:   mkt.FeeAsset(),
-			BasisPoint: mkt.Fee(),
+			FeeAsset:   mkt.FeeAsset,
+			BasisPoint: mkt.Fee,
 		},
 		Amount: previewAmount,
 	}, nil
@@ -201,7 +201,7 @@ func (t *traderService) TradePropose(
 		nil,
 		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
-			mnemonic, err = v.Mnemonic()
+			mnemonic, err = v.GetMnemonicSafe()
 			if err != nil {
 				return nil, err
 			}
@@ -222,9 +222,9 @@ func (t *traderService) TradePropose(
 			feeAccount, _ := v.AccountByIndex(domain.FeeAccount)
 
 			outputBlindingKeyByScript = blindingKeyByScriptFromCTAddress(outputAddress)
-			outputDerivationPath, _ = marketAccount.DerivationPathByScript(outputScript)
-			changeDerivationPath, _ = marketAccount.DerivationPathByScript(changeScript)
-			feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript(feeChangeScript)
+			outputDerivationPath, _ = marketAccount.DerivationPathByScript[outputScript]
+			changeDerivationPath, _ = marketAccount.DerivationPathByScript[changeScript]
+			feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript[feeChangeScript]
 
 			return v, nil
 		}); err != nil {
@@ -254,7 +254,7 @@ func (t *traderService) TradePropose(
 				)
 				return trade, nil
 			}
-			tradeID = trade.ID()
+			tradeID = trade.ID
 
 			acceptSwapResult, err := acceptSwap(acceptSwapOpts{
 				mnemonic:                   mnemonic,
@@ -327,7 +327,7 @@ func (t *traderService) tradeComplete(ctx context.Context, swapComplete *pb.Swap
 		return "", nil, err
 	}
 
-	tradeID := trade.ID()
+	tradeID := trade.ID
 	err = t.tradeRepository.UpdateTrade(
 		ctx,
 		&tradeID,
@@ -368,7 +368,7 @@ func (t *traderService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*
 		return nil, err
 	}
 
-	tradeID := trade.ID()
+	tradeID := trade.ID
 	err = t.tradeRepository.UpdateTrade(
 		ctx,
 		&tradeID,
@@ -681,14 +681,14 @@ func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint
 	if tradeType == TradeBuy {
 		return calcProposeAmount(
 			amount,
-			market.Fee(),
+			market.Fee,
 			market.QuoteAssetPrice(),
 		)
 	}
 
 	return calcExpectedAmount(
 		amount,
-		market.Fee(),
+		market.Fee,
 		market.QuoteAssetPrice(),
 	)
 }
@@ -748,17 +748,17 @@ func previewFromFormula(
 	amount uint64,
 ) (price Price, previewAmount uint64, err error) {
 	balances := getBalanceByAsset(unspents)
-	baseBalanceAvailable := balances[market.BaseAssetHash()]
-	quoteBalanceAvailable := balances[market.QuoteAssetHash()]
-	formula := market.Strategy().Formula()
+	baseBalanceAvailable := balances[market.BaseAsset]
+	quoteBalanceAvailable := balances[market.QuoteAsset]
+	formula := market.Strategy.Formula()
 
 	if tradeType == TradeBuy {
 		previewAmount, err = formula.InGivenOut(
 			&mm.FormulaOpts{
 				BalanceIn:           quoteBalanceAvailable,
 				BalanceOut:          baseBalanceAvailable,
-				Fee:                 uint64(market.Fee()),
-				ChargeFeeOnTheWayIn: market.FeeAsset() == market.BaseAssetHash(),
+				Fee:                 uint64(market.Fee),
+				ChargeFeeOnTheWayIn: market.FeeAsset == market.BaseAsset,
 			},
 			amount,
 		)
@@ -767,8 +767,8 @@ func previewFromFormula(
 			&mm.FormulaOpts{
 				BalanceIn:           baseBalanceAvailable,
 				BalanceOut:          quoteBalanceAvailable,
-				Fee:                 uint64(market.Fee()),
-				ChargeFeeOnTheWayIn: market.FeeAsset() == market.QuoteAssetHash(),
+				Fee:                 uint64(market.Fee),
+				ChargeFeeOnTheWayIn: market.FeeAsset == market.QuoteAsset,
 			},
 			amount,
 		)

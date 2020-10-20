@@ -225,22 +225,6 @@ func (u unspentRepositoryImpl) addUnspents(
 	return nil
 }
 
-func (u unspentRepositoryImpl) insertUnspent(
-	tx *badger.Txn,
-	unspent domain.Unspent,
-) error {
-	if err := u.db.Store.TxInsert(
-		tx,
-		unspent.Key(),
-		&unspent,
-	); err != nil {
-		if err != badgerhold.ErrKeyExists {
-			return err
-		}
-	}
-	return nil
-}
-
 func (u unspentRepositoryImpl) getAllUnspents(tx *badger.Txn) []domain.Unspent {
 	unspents := make([]domain.Unspent, 0)
 
@@ -260,55 +244,6 @@ func (u unspentRepositoryImpl) getAllUnspents(tx *badger.Txn) []domain.Unspent {
 	}
 
 	return unspents
-}
-
-func (u unspentRepositoryImpl) findUnspents(
-	tx *badger.Txn,
-	query *badgerhold.Query,
-) ([]domain.Unspent, error) {
-	var unspents []domain.Unspent
-	err := u.db.Store.TxFind(
-		tx,
-		&unspents,
-		query,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return unspents, nil
-}
-
-func (u unspentRepositoryImpl) getUnspent(
-	tx *badger.Txn,
-	key domain.UnspentKey,
-) (*domain.Unspent, error) {
-	var unspent domain.Unspent
-	err := u.db.Store.TxGet(
-		tx,
-		key,
-		&unspent,
-	)
-	if err != nil {
-		if err == badgerhold.ErrNotFound {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return &unspent, nil
-}
-
-func (u unspentRepositoryImpl) updateUnspent(
-	tx *badger.Txn,
-	key domain.UnspentKey,
-	unspent domain.Unspent,
-) error {
-	return u.db.Store.TxUpdate(
-		tx,
-		key,
-		unspent,
-	)
 }
 
 func (u unspentRepositoryImpl) lockUnspents(
@@ -371,4 +306,66 @@ func (u unspentRepositoryImpl) unlockUnspent(
 	unspent.UnLock()
 
 	return u.updateUnspent(tx, key, *unspent)
+}
+
+func (u unspentRepositoryImpl) findUnspents(
+	tx *badger.Txn,
+	query *badgerhold.Query,
+) ([]domain.Unspent, error) {
+	var unspents []domain.Unspent
+	err := u.db.Store.TxFind(
+		tx,
+		&unspents,
+		query,
+	)
+
+	return unspents, err
+}
+
+func (u unspentRepositoryImpl) getUnspent(
+	tx *badger.Txn,
+	key domain.UnspentKey,
+) (*domain.Unspent, error) {
+	var unspent domain.Unspent
+	err := u.db.Store.TxGet(
+		tx,
+		key,
+		&unspent,
+	)
+	if err != nil {
+		if err == badgerhold.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &unspent, nil
+}
+
+func (u unspentRepositoryImpl) updateUnspent(
+	tx *badger.Txn,
+	key domain.UnspentKey,
+	unspent domain.Unspent,
+) error {
+	return u.db.Store.TxUpdate(
+		tx,
+		key,
+		unspent,
+	)
+}
+
+func (u unspentRepositoryImpl) insertUnspent(
+	tx *badger.Txn,
+	unspent domain.Unspent,
+) error {
+	if err := u.db.Store.TxInsert(
+		tx,
+		unspent.Key(),
+		&unspent,
+	); err != nil {
+		if err != badgerhold.ErrKeyExists {
+			return err
+		}
+	}
+	return nil
 }

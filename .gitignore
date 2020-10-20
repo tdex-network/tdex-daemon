@@ -22,3 +22,8 @@ DS_Store
 ._.DS_Store
 **/.DS_Store
 **/._.DS_Store
+./internal/infrastructure/.DS_Store
+./internal/infrastructure/storage/db/badger/.DS_Store
+
+./internal/core/application/testdb
+./internal/infrastructure/storage/db/badger/testdb

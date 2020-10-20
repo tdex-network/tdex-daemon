@@ -18,78 +18,78 @@ func NewMarketRepositoryImpl(db *DbManager) domain.MarketRepository {
 	}
 }
 
-func (m marketRepositoryImpl) GetOrCreateMarket(
-	ctx context.Context,
-	accountIndex int,
-) (*domain.Market, error) {
-	market, err := m.getOrCreateMarket(ctx, accountIndex)
-	if err != nil {
-		return nil, err
-	}
-	return market, nil
-}
-
 func (m marketRepositoryImpl) GetMarketByAsset(
 	ctx context.Context,
 	quoteAsset string,
 ) (market *domain.Market, accountIndex int, err error) {
-	mkt, err := m.getMarketByAsset(ctx, quoteAsset)
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	query := badgerhold.Where("QuoteAsset").Eq(quoteAsset)
+	markets, err := m.findMarkets(tx, query)
 	if err != nil {
-		return nil, -1, err
+		return
 	}
 
-	market = MapInfraMarketToDomainMarket(mkt)
-	accountIndex = market.AccountIndex()
+	if len(markets) > 0 {
+		market = &markets[0]
+		accountIndex = market.AccountIndex
+	}
+
 	return
 }
 
 func (m marketRepositoryImpl) GetLatestMarket(
 	ctx context.Context,
 ) (market *domain.Market, accountIndex int, err error) {
-	markets, err := m.getAllMarkets(ctx, true, false)
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	query := badgerhold.Where("AccountIndex").
+		Ge(domain.MarketAccountStart).
+		SortBy("AccountIndex").
+		Reverse()
+	markets, err := m.findMarkets(tx, query)
 	if err != nil {
-		return nil, -1, err
+		return
 	}
 
-	accountIndex = domain.MarketAccountStart - 1
 	if len(markets) > 0 {
-		market = MapInfraMarketToDomainMarket(markets[0])
-		accountIndex = market.AccountIndex()
+		market = &markets[0]
+		accountIndex = market.AccountIndex
 	}
 
 	return
 }
 
+func (m marketRepositoryImpl) GetOrCreateMarket(
+	ctx context.Context,
+	accountIndex int,
+) (*domain.Market, error) {
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	return m.getOrCreateMarket(tx, accountIndex)
+}
+
 func (m marketRepositoryImpl) GetTradableMarkets(
 	ctx context.Context,
 ) ([]domain.Market, error) {
-	markets, err := m.getAllMarkets(ctx, false, true)
-	if err != nil {
-		return nil, err
-	}
+	tx := ctx.Value("tx").(*badger.Txn)
 
-	domainMarkets := make([]domain.Market, 0, len(markets))
-	for _, v := range markets {
-		domainMarkets = append(domainMarkets, *MapInfraMarketToDomainMarket(v))
-	}
+	query := badgerhold.Where("AccountIndex").
+		Ge(domain.MarketAccountStart).
+		And("Tradable").
+		Eq(true)
 
-	return domainMarkets, nil
+	return m.findMarkets(tx, query)
 }
 
 func (m marketRepositoryImpl) GetAllMarkets(
 	ctx context.Context,
 ) ([]domain.Market, error) {
-	markets, err := m.getAllMarkets(ctx, false, false)
-	if err != nil {
-		return nil, err
-	}
+	tx := ctx.Value("tx").(*badger.Txn)
 
-	domainMarkets := make([]domain.Market, 0, len(markets))
-	for _, v := range markets {
-		domainMarkets = append(domainMarkets, *MapInfraMarketToDomainMarket(v))
-	}
+	query := badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart)
 
-	return domainMarkets, nil
+	return m.findMarkets(tx, query)
 }
 
 func (m marketRepositoryImpl) UpdateMarket(
@@ -97,7 +97,9 @@ func (m marketRepositoryImpl) UpdateMarket(
 	accountIndex int,
 	updateFn func(m *domain.Market) (*domain.Market, error),
 ) error {
-	currentMarket, err := m.getOrCreateMarket(ctx, accountIndex)
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	currentMarket, err := m.getOrCreateMarket(tx, accountIndex)
 	if err != nil {
 		return err
 	}
@@ -107,29 +109,36 @@ func (m marketRepositoryImpl) UpdateMarket(
 		return err
 	}
 
-	return m.updateMarket(ctx, MapDomainMarketToInfraMarket(*updatedMarket))
+	return m.updateMarket(tx, accountIndex, *updatedMarket)
 }
 
 func (m marketRepositoryImpl) OpenMarket(
 	ctx context.Context,
 	quoteAsset string,
 ) error {
-	market, err := m.getMarketByAsset(ctx, quoteAsset)
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	query := badgerhold.Where("QuoteAsset").Eq(quoteAsset)
+	markets, err := m.findMarkets(tx, query)
 	if err != nil {
 		return err
 	}
 
-	mkt := MapInfraMarketToDomainMarket(market)
-	if mkt.IsTradable() {
-		return nil
-	}
+	if len(markets) > 0 {
+		market := markets[0]
+		if market.IsTradable() {
+			return nil
+		}
 
-	if err := mkt.MakeTradable(); err != nil {
-		return err
-	}
+		err = market.MakeTradable()
+		if err != nil {
+			return err
+		}
 
-	if err := m.updateMarket(ctx, MapDomainMarketToInfraMarket(*mkt)); err != nil {
-		return err
+		err := m.updateMarket(tx, market.AccountIndex, market)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -139,164 +148,153 @@ func (m marketRepositoryImpl) CloseMarket(
 	ctx context.Context,
 	quoteAsset string,
 ) error {
-	market, err := m.getMarketByAsset(ctx, quoteAsset)
+	tx := ctx.Value("tx").(*badger.Txn)
+
+	query := badgerhold.Where("QuoteAsset").Eq(quoteAsset)
+	markets, err := m.findMarkets(tx, query)
 	if err != nil {
 		return err
 	}
 
-	mkt := MapInfraMarketToDomainMarket(market)
-	if !mkt.IsTradable() {
-		return nil
-	}
+	if len(markets) > 0 {
+		market := markets[0]
+		if !market.IsTradable() {
+			return nil
+		}
 
-	err = mkt.MakeNotTradable()
-	if err != nil {
-		return err
-	}
+		err = market.MakeNotTradable()
+		if err != nil {
+			return err
+		}
 
-	err = m.updateMarket(ctx, MapDomainMarketToInfraMarket(*mkt))
-	if err != nil {
-		return err
+		err := m.updateMarket(tx, market.AccountIndex, market)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (m marketRepositoryImpl) getOrCreateMarket(
-	ctx context.Context,
+	tx *badger.Txn,
 	accountIndex int,
 ) (*domain.Market, error) {
-	market, err := m.getMarketByIndex(ctx, accountIndex)
-	if err != nil {
-		return nil, err
-	}
-	if market != nil {
-		return MapInfraMarketToDomainMarket(*market), nil
-	}
-
-	newMarket, err := domain.NewMarket(accountIndex)
+	market, err := m.getMarket(tx, accountIndex)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := m.insertMarket(
-		ctx, accountIndex, MapDomainMarketToInfraMarket(*newMarket),
-	); err != nil {
-		return nil, err
+	if market == nil {
+		market, err = domain.NewMarket(accountIndex)
+		if err != nil {
+			return nil, err
+		}
+
+		err = m.insertMarket(tx, accountIndex, *market)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return newMarket, nil
+	return market, nil
 }
 
-// getAllMarkets returns all the markets. If no market is present, the function
-// does not raise an error but just return
-func (m marketRepositoryImpl) getAllMarkets(ctx context.Context, sorted, filterTradable bool) ([]Market, error) {
-	markets := make([]Market, 0)
-	query := badgerhold.Where("AccountIndex").Ge(domain.MarketAccountStart)
-	if sorted {
-		query = query.SortBy("AccountIndex").Reverse()
-	}
-	if filterTradable {
-		query = query.And("Tradable").Eq(true)
-	}
-
+func (m marketRepositoryImpl) insertMarket(
+	tx *badger.Txn,
+	accountIndex int,
+	market domain.Market,
+) error {
 	var err error
-	if ctx.Value("tx") != nil {
-		err = m.db.Store.TxFind(
-			ctx.Value("tx").(*badger.Txn),
-			&markets,
-			query,
-		)
-	} else {
-		err = m.db.Store.Find(
-			&markets,
-			query,
-		)
-	}
-	if err != nil && err == badgerhold.ErrNotFound {
-		err = nil
-	}
-	return markets, err
-}
-
-// getMarketByIndex returns the market identified by the given accountIndex.
-// If not found, the function won't raise an error.
-func (m marketRepositoryImpl) getMarketByIndex(ctx context.Context, accountIndex int) (market *Market, err error) {
-	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
-	markets := make([]Market, 0)
-
-	if ctx.Value("tx") != nil {
-		err = m.db.Store.TxFind(
-			ctx.Value("tx").(*badger.Txn),
-			&markets,
-			query,
-		)
-	} else {
-		err = m.db.Store.Find(
-			&markets,
-			query,
-		)
-	}
-	if err != nil && err == badgerhold.ErrNotFound {
-		err = nil
-	}
-	if len(markets) > 0 {
-		market = &markets[0]
-	}
-
-	return
-}
-
-// getMarketByAsset returns the market identified by the given quote asset.
-// If not found, the the function will raise an error.
-func (m marketRepositoryImpl) getMarketByAsset(ctx context.Context, quoteAsset string) (market Market, err error) {
-	query := badgerhold.Where("QuoteAsset").Eq(quoteAsset)
-	markets := make([]Market, 0)
-
-	if ctx.Value("tx") != nil {
-		err = m.db.Store.TxFind(
-			ctx.Value("tx").(*badger.Txn),
-			&markets,
-			query,
-		)
-	} else {
-		err = m.db.Store.Find(
-			&markets,
-			query,
-		)
-	}
-	if len(markets) > 0 {
-		market = markets[0]
-	}
-
-	return
-}
-
-func (m marketRepositoryImpl) insertMarket(ctx context.Context, accountIndex int, market *Market) (err error) {
-	if ctx.Value("tx") != nil {
+	if tx != nil {
 		err = m.db.Store.TxInsert(
-			ctx.Value("tx").(*badger.Txn),
+			tx,
+			accountIndex,
+			&market,
+		)
+	} else {
+		err = m.db.Store.Insert(
+			vaultKey,
+			&market,
+		)
+	}
+	if err != nil {
+		if err != badgerhold.ErrKeyExists {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m marketRepositoryImpl) getMarket(
+	tx *badger.Txn,
+	accountIndex int,
+) (*domain.Market, error) {
+	var err error
+	var market domain.Market
+	if tx != nil {
+		err = m.db.Store.TxGet(
+			tx,
+			accountIndex,
+			&market,
+		)
+	} else {
+		err = m.db.Store.Get(
+			accountIndex,
+			&market,
+		)
+	}
+
+	if err != nil {
+		if err == badgerhold.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &market, nil
+}
+
+func (m marketRepositoryImpl) updateMarket(
+	tx *badger.Txn,
+	accountIndex int,
+	market domain.Market,
+) error {
+	var err error
+	if tx != nil {
+		err = m.db.Store.TxUpdate(
+			tx,
 			accountIndex,
 			market,
 		)
 	} else {
-		err = m.db.Store.Insert(accountIndex, market)
+		err = m.db.Store.Update(
+			accountIndex,
+			market,
+		)
 	}
-	return
+	return err
 }
 
-func (m marketRepositoryImpl) updateMarket(ctx context.Context, market *Market) (err error) {
-	if ctx.Value("tx") != nil {
-		err = m.db.Store.TxUpdate(
-			ctx.Value("tx").(*badger.Txn),
-			market.AccountIndex,
-			market,
+func (m marketRepositoryImpl) findMarkets(
+	tx *badger.Txn,
+	query *badgerhold.Query,
+) ([]domain.Market, error) {
+	var markets []domain.Market
+	var err error
+	if tx != nil {
+		err = m.db.Store.TxFind(
+			tx,
+			&markets,
+			query,
 		)
 	} else {
-		err = m.db.Store.Update(
-			market.AccountIndex,
-			market,
+		err = m.db.Store.Find(
+			&markets,
+			query,
 		)
 	}
-	return
+
+	return markets, err
 }

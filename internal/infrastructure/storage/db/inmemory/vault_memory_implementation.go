@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
-	"sync"
 )
 
 var (
@@ -33,8 +34,8 @@ type VaultRepositoryImpl struct {
 	lock *sync.RWMutex
 }
 
-// NewInMemoryVaultRepository returns a new empty VaultRepositoryImpl
-func NewVaultRepositoryImpl() *VaultRepositoryImpl {
+// NewVaultRepositoryImpl returns a new empty VaultRepositoryImpl
+func NewVaultRepositoryImpl() domain.VaultRepository {
 	return &VaultRepositoryImpl{
 		vault: &domain.Vault{},
 		lock:  &sync.RWMutex{},
@@ -167,7 +168,7 @@ func getDerivationPathByScript(storage *domain.Vault, accountIndex int,
 
 	m := map[string]string{}
 	for _, script := range scripts {
-		derivationPath, ok := account.DerivationPathByScript(script)
+		derivationPath, ok := account.DerivationPathByScript[script]
 		if !ok {
 			return nil, fmt.Errorf("derivation path not found for script '%s'", script)
 		}

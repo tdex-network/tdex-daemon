@@ -253,12 +253,12 @@ func (o *operatorService) UpdateMarketFee(
 
 	return &MarketWithFee{
 		Market: Market{
-			BaseAsset:  mkt.BaseAssetHash(),
-			QuoteAsset: mkt.QuoteAssetHash(),
+			BaseAsset:  mkt.BaseAsset,
+			QuoteAsset: mkt.QuoteAsset,
 		},
 		Fee: Fee{
-			FeeAsset:   mkt.FeeAsset(),
-			BasisPoint: mkt.Fee(),
+			FeeAsset:   mkt.FeeAsset,
+			BasisPoint: mkt.Fee,
 		},
 	}, nil
 }
@@ -376,13 +376,13 @@ func (o *operatorService) getMarketsForTrades(
 	for _, trade := range trades {
 		market, _, err := o.marketRepository.GetMarketByAsset(
 			ctx,
-			trade.MarketQuoteAsset(),
+			trade.MarketQuoteAsset,
 		)
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := markets[trade.MarketQuoteAsset()]; !ok {
-			markets[trade.MarketQuoteAsset()] = market
+		if _, ok := markets[trade.MarketQuoteAsset]; !ok {
+			markets[trade.MarketQuoteAsset] = market
 		}
 	}
 	return markets, nil
@@ -396,11 +396,11 @@ func tradesToSwapInfo(
 	for _, trade := range trades {
 		requestMsg := trade.SwapRequestMessage()
 		fee := &pbtypes.Fee{
-			Asset:      markets[trade.MarketQuoteAsset()].FeeAsset(),
-			BasisPoint: markets[trade.MarketQuoteAsset()].Fee(),
+			Asset:      markets[trade.MarketQuoteAsset].FeeAsset,
+			BasisPoint: markets[trade.MarketQuoteAsset].Fee,
 		}
 		i := &pb.SwapInfo{
-			Status:           trade.Status().Code(),
+			Status:           trade.Status.Code,
 			AmountP:          requestMsg.GetAmountP(),
 			AssetP:           requestMsg.GetAssetP(),
 			AmountR:          requestMsg.GetAmountR(),
