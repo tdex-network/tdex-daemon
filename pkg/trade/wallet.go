@@ -14,7 +14,7 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
-func newSwapTx(
+func NewSwapTx(
 	unspents []explorer.Utxo,
 	blindingKey []byte,
 	inAsset string,
@@ -56,7 +56,7 @@ func newSwapTx(
 	updater.AddOutput(output)
 
 	if change > 0 {
-		changeOutput, err := newTxOutput(outAsset, change, outScript)
+		changeOutput, err := newTxOutput(inAsset, change, outScript)
 		if err != nil {
 			return "", err
 		}
@@ -66,31 +66,43 @@ func newSwapTx(
 	return ptx.ToBase64()
 }
 
-type wallet struct {
+type Wallet struct {
 	privateKey         *btcec.PrivateKey
 	blindingPrivateKey *btcec.PrivateKey
 	network            *network.Network
 }
 
-func newWalletFromKey(privateKey, blindingKey []byte, net *network.Network) *wallet {
+func NewRandomWallet(net *network.Network) (*Wallet, error) {
+	prvkey, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		return nil, err
+	}
+	blindPrvkey, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		return nil, err
+	}
+	return &Wallet{prvkey, blindPrvkey, net}, nil
+}
+
+func NewWalletFromKey(privateKey, blindingKey []byte, net *network.Network) *Wallet {
 	prvkey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privateKey)
 	blindPrvkey, _ := btcec.PrivKeyFromBytes(btcec.S256(), blindingKey)
 
-	return &wallet{prvkey, blindPrvkey, net}
+	return &Wallet{prvkey, blindPrvkey, net}
 }
 
-func (w *wallet) address() string {
+func (w *Wallet) Address() string {
 	p2wpkh := payment.FromPublicKey(w.privateKey.PubKey(), w.network, w.blindingPrivateKey.PubKey())
 	ctAddress, _ := p2wpkh.ConfidentialWitnessPubKeyHash()
 	return ctAddress
 }
 
-func (w *wallet) script() ([]byte, []byte) {
+func (w *Wallet) Script() ([]byte, []byte) {
 	p2wpkh := payment.FromPublicKey(w.privateKey.PubKey(), w.network, w.blindingPrivateKey.PubKey())
 	return p2wpkh.Script, p2wpkh.WitnessScript
 }
 
-func (w *wallet) sign(psetBase64 string) (string, error) {
+func (w *Wallet) Sign(psetBase64 string) (string, error) {
 	ptx, err := pset.NewPsetFromBase64(psetBase64)
 	if err != nil {
 		return "", err
@@ -101,7 +113,7 @@ func (w *wallet) sign(psetBase64 string) (string, error) {
 	}
 
 	for i, in := range ptx.Inputs {
-		script, witnessScript := w.script()
+		script, witnessScript := w.Script()
 		if bytes.Equal(in.WitnessUtxo.Script, witnessScript) {
 			hashForSignature := ptx.UnsignedTx.HashForWitnessV0(
 				i,
@@ -134,6 +146,10 @@ func (w *wallet) sign(psetBase64 string) (string, error) {
 	}
 
 	return ptx.ToBase64()
+}
+
+func (w *Wallet) BlindingKey() []byte {
+	return w.blindingPrivateKey.Serialize()
 }
 
 func newTxOutput(assetHex string, amount uint64, script []byte) (*transaction.TxOutput, error) {
