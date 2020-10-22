@@ -227,7 +227,7 @@ func (o *operatorService) UpdateMarketFee(
 
 	//Updates the fee and the fee asset
 	err = o.marketRepository.UpdateMarket(
-		context.Background(),
+		ctx,
 		accountIndex,
 		func(m *domain.Market) (*domain.Market, error) {
 			if err := m.ChangeFee(req.BasisPoint); err != nil {
@@ -247,7 +247,7 @@ func (o *operatorService) UpdateMarketFee(
 
 	// Ignore errors. If we reached this point it must exists.
 	mkt, _ := o.marketRepository.GetOrCreateMarket(
-		context.Background(),
+		ctx,
 		accountIndex,
 	)
 
