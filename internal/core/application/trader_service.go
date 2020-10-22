@@ -55,6 +55,22 @@ func NewTraderService(
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
 ) TraderService {
+	return newTraderService(
+		marketRepository,
+		tradeRepository,
+		vaultRepository,
+		unspentRepository,
+		explorerSvc,
+	)
+}
+
+func newTraderService(
+	marketRepository domain.MarketRepository,
+	tradeRepository domain.TradeRepository,
+	vaultRepository domain.VaultRepository,
+	unspentRepository domain.UnspentRepository,
+	explorerSvc explorer.Service,
+) *traderService {
 	return &traderService{
 		marketRepository:  marketRepository,
 		tradeRepository:   tradeRepository,
@@ -192,7 +208,7 @@ func (t *traderService) TradePropose(
 	var mnemonic []string
 	var tradeID uuid.UUID
 	var selectedUnspents []explorer.Utxo
-	var outputBlindingKeyByScript map[string][]byte
+	var outputBlindingKeysByScript map[string][]byte
 	var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
 
 	// derive output and change address for market, and change address for fee account
@@ -205,23 +221,25 @@ func (t *traderService) TradePropose(
 			if err != nil {
 				return nil, err
 			}
-			outputAddress, outputScript, _, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
+			_, outputScript, outputBlindKey, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			_, changeScript, _, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
+			_, changeScript, changeBlindKey, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			_, feeChangeScript, _,
-				err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			_, feeChangeScript, _, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
 			marketAccount, _ := v.AccountByIndex(marketAccountIndex)
 			feeAccount, _ := v.AccountByIndex(domain.FeeAccount)
 
-			outputBlindingKeyByScript = blindingKeyByScriptFromCTAddress(outputAddress)
+			outputBlindingKeysByScript = map[string][]byte{
+				outputScript: outputBlindKey,
+				changeScript: changeBlindKey,
+			}
 			outputDerivationPath, _ = marketAccount.DerivationPathByScript[outputScript]
 			changeDerivationPath, _ = marketAccount.DerivationPathByScript[changeScript]
 			feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript[feeChangeScript]
@@ -263,7 +281,7 @@ func (t *traderService) TradePropose(
 				feeUnspents:                feeUtxos,
 				marketBlindingKeysByScript: marketBlindingKeysByScript,
 				feeBlindingKeysByScript:    feeBlindingKeysByScript,
-				outputBlindingKeyByScript:  outputBlindingKeyByScript,
+				outputBlindingKeysByScript: outputBlindingKeysByScript,
 				marketDerivationPaths:      marketDerivationPaths,
 				feeDerivationPaths:         feeDerivationPaths,
 				outputDerivationPath:       outputDerivationPath,
@@ -333,28 +351,20 @@ func (t *traderService) tradeComplete(ctx context.Context, swapComplete *pb.Swap
 		&tradeID,
 		func(trade *domain.Trade) (*domain.Trade, error) {
 			psetBase64 := swapComplete.GetTransaction()
-			opts := wallet.FinalizeAndExtractTransactionOpts{
-				PsetBase64: psetBase64,
-			}
-			txHex, txHash, err := wallet.FinalizeAndExtractTransaction(opts)
+			res, err := trade.Complete(psetBase64, txID)
 			if err != nil {
 				return nil, err
 			}
-
-			ok, err := trade.Complete(psetBase64, txID)
-			if err != nil {
-				return nil, err
-			}
-			if !ok {
+			if !res.OK {
 				swapFail = trade.SwapFailMessage()
 				return trade, nil
 			}
 
-			if _, err := t.explorerSvc.BroadcastTransaction(txHex); err != nil {
+			if _, err := t.explorerSvc.BroadcastTransaction(res.TxHex); err != nil {
 				return nil, err
 			}
 
-			txID = txHash
+			txID = res.TxID
 			return trade, nil
 		},
 	)
@@ -436,14 +446,6 @@ func (t *traderService) getUnspentsBlindingsAndDerivationPathsForAccount(
 	return unspents, utxos, blindingKeysByScript, derivationPaths, nil
 }
 
-func blindingKeyByScriptFromCTAddress(addr string) map[string][]byte {
-	script, _ := address.ToOutputScript(addr, *config.GetNetwork())
-	blech32, _ := address.FromBlech32(addr)
-	return map[string][]byte{
-		hex.EncodeToString(script): blech32.PublicKey,
-	}
-}
-
 type acceptSwapOpts struct {
 	mnemonic                   []string
 	swapRequest                *pb.SwapRequest
@@ -451,7 +453,7 @@ type acceptSwapOpts struct {
 	feeUnspents                []explorer.Utxo
 	marketBlindingKeysByScript map[string][]byte
 	feeBlindingKeysByScript    map[string][]byte
-	outputBlindingKeyByScript  map[string][]byte
+	outputBlindingKeysByScript map[string][]byte
 	marketDerivationPaths      map[string]string
 	feeDerivationPaths         map[string]string
 	outputDerivationPath       string
@@ -474,15 +476,14 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 		return
 	}
 	network := config.GetNetwork()
-
 	// fill swap request transaction with daemon's inputs and outputs
 	psetBase64, selectedUnspentsForSwap, err := w.UpdateSwapTx(wallet.UpdateSwapTxOpts{
 		PsetBase64:           opts.swapRequest.GetTransaction(),
 		Unspents:             opts.marketUnspents,
-		InputAmount:          opts.swapRequest.GetAmountP(),
-		InputAsset:           opts.swapRequest.GetAssetP(),
-		OutputAmount:         opts.swapRequest.GetAmountR(),
-		OutputAsset:          opts.swapRequest.GetAssetR(),
+		InputAmount:          opts.swapRequest.GetAmountR(),
+		InputAsset:           opts.swapRequest.GetAssetR(),
+		OutputAmount:         opts.swapRequest.GetAmountP(),
+		OutputAsset:          opts.swapRequest.GetAssetP(),
 		OutputDerivationPath: opts.outputDerivationPath,
 		ChangeDerivationPath: opts.changeDerivationPath,
 		Network:              network,
@@ -518,7 +519,7 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 
 	// same for output  public blinding keys
 	outputBlindingKeys := mergeBlindingKeys(
-		opts.outputBlindingKeyByScript,
+		opts.outputBlindingKeysByScript,
 		psetWithFeesResult.ChangeOutputsBlindingKeys,
 		opts.swapRequest.GetOutputBlindingKey(),
 	)
@@ -529,6 +530,9 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 		InputBlindingKeys:  inputBlindingKeys,
 		OutputBlindingKeys: outputBlindingKeys,
 	})
+	if err != nil {
+		return
+	}
 
 	// add the explicit fee output to the tx
 	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
