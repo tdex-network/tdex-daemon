@@ -302,6 +302,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 		return nil, err
 	}
 
+	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 	inputsToAdd := make([]explorer.Utxo, 0)
 	outputsToAdd := make([]*transaction.TxOutput, len(opts.Outputs))
 	changeOutputsBlindingKeys := map[string][]byte{}
@@ -357,8 +358,8 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 		})
 
 		feeAmount = estimateTxSize(
-			len(inputsToAdd),
-			len(outputsToAdd),
+			len(inputsToAdd)+len(ptx.Inputs),
+			len(outputsToAdd)+len(ptx.Outputs),
 			!anyOutputWithScript(outputsToAdd, lbtcChangeScript),
 			opts.MilliSatsPerBytes,
 		)
@@ -426,7 +427,6 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 		}
 	}
 
-	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 	psetBase64, err := addInsAndOutsToPset(ptx, inputsToAdd, outputsToAdd)
 	if err != nil {
 		return nil, err
@@ -458,6 +458,14 @@ func (o FinalizeAndExtractTransactionOpts) validate() error {
 func FinalizeAndExtractTransaction(opts FinalizeAndExtractTransactionOpts) (string, string, error) {
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
+	ok, err := ptx.ValidateAllSignatures()
+	if err != nil {
+		return "", "", err
+	}
+	if !ok {
+		return "", "", ErrInvalidSignatures
+	}
+
 	if err := pset.FinalizeAll(ptx); err != nil {
 		return "", "", err
 	}
@@ -468,7 +476,7 @@ func FinalizeAndExtractTransaction(opts FinalizeAndExtractTransactionOpts) (stri
 	}
 	txHex, err := tx.ToHex()
 	if err != nil {
-		return "", "", nil
+		return "", "", err
 	}
 	return txHex, tx.TxHash().String(), nil
 }
