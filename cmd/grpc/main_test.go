@@ -35,6 +35,7 @@ func TestGrpcMain(t *testing.T) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			stopDaemon()
+			t.Fatal(errors.New("execution panicked"))
 		}
 	}()
 
@@ -48,9 +49,11 @@ func TestGrpcMain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := tradeLBTCPerUSDT(); err != nil {
+	tradeTxID, err := tradeLBTCPerUSDT()
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("swap transaction confirmed with id:", tradeTxID)
 }
 
 func startDaemon() {
@@ -142,22 +145,22 @@ func initFeeAndMarketAccounts() error {
 	return nil
 }
 
-func tradeLBTCPerUSDT() error {
+func tradeLBTCPerUSDT() (string, error) {
 	// create a single-key wallet for the trader and fund it with 1 LBTC
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	signingKey, blindingKey, addr, err := newSingleKeyWallet()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if _, err := explorerSvc.Faucet(addr); err != nil {
-		return err
+		return "", err
 	}
 
 	time.Sleep(5 * time.Second)
 
 	client, err := tradeclient.NewTradeClient("localhost", config.GetInt(config.TraderListeningPortKey))
 	if err != nil {
-		return err
+		return "", err
 	}
 	tr, err := pkgtrade.NewTrade(trade.NewTradeOpts{
 		Chain:       "regtest",
@@ -165,16 +168,16 @@ func tradeLBTCPerUSDT() error {
 		Client:      client,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// get trading market from the list of all those tradable
 	marketsReply, err := client.Markets()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if len(marketsReply.GetMarkets()) <= 0 {
-		return errors.New("no open markets found")
+		return "", errors.New("no open markets found")
 	}
 
 	// Trade 0.3 LBTCs for USDTs
@@ -183,17 +186,13 @@ func tradeLBTCPerUSDT() error {
 		QuoteAsset: marketsReply.GetMarkets()[0].GetMarket().GetQuoteAsset(),
 	}
 
-	if _, err := tr.SellAndComplete(pkgtrade.BuyOrSellAndCompleteOpts{
+	return tr.SellAndComplete(pkgtrade.BuyOrSellAndCompleteOpts{
 		Market:      market,
 		TradeType:   int(tradetype.Sell),
 		Amount:      30000000,
 		PrivateKey:  signingKey,
 		BlindingKey: blindingKey,
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }
 
 func newWalletClient() (pbwallet.WalletClient, error) {
