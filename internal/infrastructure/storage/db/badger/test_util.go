@@ -2,7 +2,7 @@ package dbbadger
 
 import (
 	"context"
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
