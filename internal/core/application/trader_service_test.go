@@ -1,13 +1,13 @@
 package application
 
 import (
+	"errors"
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/vulpemventures/go-elements/address"
+
+	"github.com/tdex-network/tdex-daemon/pkg/trade"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 func TestGetPriceAndPreviewForMarket(t *testing.T) {
@@ -74,104 +74,116 @@ func TestGetPriceAndPreviewForMarket(t *testing.T) {
 		}
 		assert.Equal(t, int(tt.expectedSellAmount), int(previewAmount))
 	})
-
 }
 
-type priceAndPreviewTestData struct {
-	unspents           []domain.Unspent
-	market             *domain.Market
-	lbtcAmount         uint64
-	expectedBuyAmount  uint64
-	expectedSellAmount uint64
-	expectedPrice      Price
+func TestGetTradableMarkets(t *testing.T) {
+	traderSvc, ctx, close := newTestTrader()
+	defer close()
+
+	markets, err := traderSvc.GetTradableMarkets(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 1, len(markets))
 }
 
-func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData, error) {
-	addr := "el1qqfmmhdayrxdqs60hecn6yzfzmpquwlhn5m39ytngr8gu63ar6zhqngyj0ak7n3jr8ypfz7s6v7nmnkdvmu8n5pev33ac5thm7"
-	script, _ := address.ToOutputScript(addr, *config.GetNetwork())
-	unspents := []domain.Unspent{
-		{
-			TxID:            "0000000000000000000000000000000000000000000000000000000000000000",
-			VOut:            0,
-			Value:           100000000,
-			AssetHash:       config.GetNetwork().AssetID,
-			ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
-			AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
-			ScriptPubKey:    script,
-			Nonce:           make([]byte, 33),
-			RangeProof:      make([]byte, 4174),
-			SurjectionProof: make([]byte, 64),
-			Address:         addr,
-			Spent:           false,
-			Locked:          false,
-			LockedBy:        nil,
-			Confirmed:       true,
-		},
-		{
-			TxID:            "0000000000000000000000000000000000000000000000000000000000000000",
-			VOut:            0,
-			Value:           650000000000,
-			AssetHash:       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
-			AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
-			ScriptPubKey:    script,
-			Nonce:           make([]byte, 33),
-			RangeProof:      make([]byte, 4174),
-			SurjectionProof: make([]byte, 64),
-			Address:         addr,
-			Spent:           false,
-			Locked:          false,
-			LockedBy:        nil,
-			Confirmed:       true,
-		},
+func TestGetMarketPrice(t *testing.T) {
+	traderSvc, ctx, close := newTestTrader()
+	defer close()
+
+	market := Market{
+		BaseAsset:  marketUnspents[0].AssetHash,
+		QuoteAsset: marketUnspents[1].AssetHash,
+	}
+	sellPreview, err := traderSvc.GetMarketPrice(ctx, market, TradeSell, 30000000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotNil(t, sellPreview)
+
+	buyPreview, err := traderSvc.GetMarketPrice(ctx, market, TradeBuy, 30000000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotNil(t, buyPreview)
+}
+
+func TestTradePropose(t *testing.T) {
+	traderSvc, ctx, close := newTestTrader()
+	defer close()
+
+	markets, err := traderSvc.GetTradableMarkets(ctx)
+	if err != nil {
+		t.Error(err)
 	}
 
-	market, _ := domain.NewMarket(domain.MarketAccountStart)
-	market.FundMarket([]domain.OutpointWithAsset{
-		// LBTC
-		domain.OutpointWithAsset{
-			Asset: config.GetNetwork().AssetID,
-			Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-			Vout:  0,
-		},
-		// ASS
-		domain.OutpointWithAsset{
-			Asset: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-			Vout:  1,
-		},
+	market := markets[0].Market
+	preview, err := traderSvc.GetMarketPrice(ctx, market, TradeSell, 30000000)
+	if err != nil {
+		t.Error(err)
+	}
+
+	proposerWallet, err := trade.NewRandomWallet(&network.Regtest)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Run("propose rejected", func(t *testing.T) {
+		swapRequest, err := newSwapRequest(
+			proposerWallet,
+			market.BaseAsset, 30000000,
+			market.QuoteAsset, preview.Amount,
+		)
+		if err != nil {
+			t.Error(err)
+		}
+
+		// alter the swap request params to make it invalid
+		swapRequest.AmountR = 50000000
+		swapAccept, swapFail, _, err := traderSvc.TradePropose(ctx, market, TradeSell, swapRequest)
+		if err != nil {
+			t.Error(err)
+		}
+		assert.NotNil(t, swapFail)
+		assert.Nil(t, swapAccept)
 	})
 
-	bp, _ := decimal.NewFromString("0.00015385")
-	qp, _ := decimal.NewFromString("6500")
-	price := Price{
-		BasePrice:  bp,
-		QuotePrice: qp,
-	}
+	t.Run("propose accepted", func(t *testing.T) {
+		swapRequest, err := newSwapRequest(
+			proposerWallet,
+			market.BaseAsset, 30000000,
+			market.QuoteAsset, preview.Amount,
+		)
+		if err != nil {
+			t.Error(err)
+		}
 
-	if withDefaultStrategy {
-		market.MakeTradable()
+		swapAccept, swapFail, _, err := traderSvc.TradePropose(ctx, market, TradeSell, swapRequest)
+		if err != nil {
+			t.Error(err)
+		}
+		if swapFail != nil {
+			t.Error(errors.New(swapFail.GetFailureMessage()))
+		}
+		assert.NotNil(t, swapAccept)
+		assert.Nil(t, swapFail)
 
-		return &priceAndPreviewTestData{
-			unspents:           unspents,
-			market:             market,
-			lbtcAmount:         10000, // 0.0001 LBTC
-			expectedBuyAmount:  65169016,
-			expectedSellAmount: 65155984,
-			expectedPrice:      price,
-		}, nil
-	}
-
-	market.MakeStrategyPluggable()
-	market.ChangeBasePrice(bp)
-	market.ChangeQuotePrice(qp)
-
-	return &priceAndPreviewTestData{
-		unspents:           unspents,
-		market:             market,
-		lbtcAmount:         10000, // 0.0001 LBTC
-		expectedBuyAmount:  81250000,
-		expectedSellAmount: 48750000,
-		expectedPrice:      price,
-	}, nil
+		swapComplete, err := newSwapComplete(proposerWallet, swapAccept)
+		if err != nil {
+			t.Error(err)
+		}
+		assert.Equal(t, true, isFinalizableTransaction(swapComplete.GetTransaction()))
+	})
 }
+
+// func TestTradeFailedToComplete(t *testing.T) {
+// 	traderSvc, ctx, close := newTestTrader()
+// 	defer close()
+
+// 	txID, swapFail, err := traderSvc.TradeComplete(ctx, mockWrongSwapComplete(), nil)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	assert.Equal(t, true, len(txID) <= 0)
+// 	assert.NotNil(t, swapFail)
+// }
