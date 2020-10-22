@@ -76,11 +76,11 @@ func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
 		return nil, err
 	}
 
-	var trade *domain.Trade
-	if len(trades) > 0 {
-		trade = &trades[0]
+	if len(trades) <= 0 {
+		return nil, errors.New("trade not found")
 	}
 
+	trade := &trades[0]
 	return trade, nil
 }
 

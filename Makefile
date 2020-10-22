@@ -62,5 +62,5 @@ shorttest:
 ## integrationtest: runs e2e tests by
 integrationtest:
 	@echo "E2E Testing..."
-	go test -v -count=1 ./cmd/grpc
+	go test -v -count=1 -race ./cmd/grpc
 
