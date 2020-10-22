@@ -59,3 +59,8 @@ shorttest:
 	rm -rf ./internal/infrastructure/storage/db/badger/testdb
 	go test -v -count=1 -race -short ./...
 
+## shorttest: runs e2e tests by
+integrationtest:
+	@echo "E2E Testing..."
+	go test -v -count=1 ./cmd/grpc
+
