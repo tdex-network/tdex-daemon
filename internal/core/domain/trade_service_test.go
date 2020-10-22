@@ -34,9 +34,9 @@ func TestTradeComplete(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = trade.Accept(mockAcceptArgs())
 	assert.NoError(t, err)
-	ok, err := trade.Complete(mockCompleteArgs())
+	res, err := trade.Complete(mockCompleteArgs())
 	assert.NoError(t, err)
-	assert.Equal(t, true, ok)
+	assert.Equal(t, true, res.OK)
 	err = trade.AddBlocktime(uint64(time.Now().Unix()))
 	assert.NoError(t, err)
 }

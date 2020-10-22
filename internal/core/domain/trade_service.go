@@ -5,6 +5,7 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/config"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"google.golang.org/protobuf/proto"
 )
@@ -74,12 +75,33 @@ func (t *Trade) Accept(
 	return true, nil
 }
 
+// CompleteResult is return type of Complete method
+type CompleteResult struct {
+	OK    bool
+	TxHex string
+	TxID  string
+}
+
 // Complete sets the status of the trade to Complete by adding the txID
 // of the tx in the blockchain. The trade must be in Accepted or
 // FailedToComplete status for being completed, otherwise an error is thrown
-func (t *Trade) Complete(psetBase64 string, txID string) (bool, error) {
+func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error) {
 	if !t.IsAccepted() {
-		return false, ErrMustBeAccepted
+		return nil, ErrMustBeAccepted
+	}
+
+	opts := wallet.FinalizeAndExtractTransactionOpts{
+		PsetBase64: psetBase64,
+	}
+	txHex, txHash, err := wallet.FinalizeAndExtractTransaction(opts)
+	if err != nil {
+		t.Fail(
+			t.SwapAccept.ID,
+			FailedToCompleteStatus,
+			pkgswap.ErrCodeFailedToComplete,
+			err.Error(),
+		)
+		return &CompleteResult{OK: false}, nil
 	}
 
 	swapCompleteID, swapCompleteMsg, err := pkgswap.Complete(pkgswap.CompleteOpts{
@@ -93,7 +115,7 @@ func (t *Trade) Complete(psetBase64 string, txID string) (bool, error) {
 			pkgswap.ErrCodeFailedToComplete,
 			err.Error(),
 		)
-		return false, nil
+		return &CompleteResult{OK: false}, nil
 	}
 
 	t.Status = CompletedStatus
@@ -101,7 +123,7 @@ func (t *Trade) Complete(psetBase64 string, txID string) (bool, error) {
 	t.SwapComplete.Message = swapCompleteMsg
 	t.PsetBase64 = psetBase64
 	t.TxID = txID
-	return true, nil
+	return &CompleteResult{OK: true, TxHex: txHex, TxID: txHash}, nil
 }
 
 // Fail sets the status of the trade to the provided status and creates the
