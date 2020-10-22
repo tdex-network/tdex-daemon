@@ -29,7 +29,9 @@ import (
 const walletPassword = "Sup3rS3cr3tP4ssw0rd!"
 
 func TestGrpcMain(t *testing.T) {
-	t.Skip()
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	startDaemon()
 	defer stopDaemon()
 	defer func() {
