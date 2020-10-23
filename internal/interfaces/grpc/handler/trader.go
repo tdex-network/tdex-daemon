@@ -104,7 +104,7 @@ func (t traderHandler) TradePropose(
 		QuoteAsset: req.GetMarket().GetQuoteAsset(),
 	}
 	swapAccept, swapFail, swapExpiryTime, err :=
-		t.traderSvc.TradePropose(context.Background(), market, int(tradeType), swapRequest)
+		t.traderSvc.TradePropose(stream.Context(), market, int(tradeType), swapRequest)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -124,7 +124,7 @@ func (t traderHandler) TradeComplete(
 	stream pb.Trade_TradeCompleteServer,
 ) error {
 	txID, swapFail, err := t.traderSvc.TradeComplete(
-		context.Background(),
+		stream.Context(),
 		req.GetSwapComplete(),
 		req.GetSwapFail(),
 	)

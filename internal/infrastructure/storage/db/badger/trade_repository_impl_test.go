@@ -1,20 +1,18 @@
 package dbbadger
 
 import (
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"testing"
 )
 
 func TestGetOrCreateTrade(t *testing.T) {
 	before()
 	defer after()
 
-	tradeID, err := uuid.Parse("5440a53e-58d2-4e3d-8380-20410e687589")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tradeID, _ := uuid.Parse("5440a53e-58d2-4e3d-8380-20410e687589")
 	trade, err := tradeRepository.GetOrCreateTrade(ctx, &tradeID)
 	if err != nil {
 		t.Fatal(err)
@@ -26,9 +24,13 @@ func TestGetAllTrades(t *testing.T) {
 	before()
 	defer after()
 
+	// try to get unknow trade
 	tradeID := uuid.New()
 	_, err := tradeRepository.GetOrCreateTrade(ctx, &tradeID)
-	if err != nil {
+	assert.NotNil(t, err)
+
+	// create a trade by passing a nil trade id
+	if _, err := tradeRepository.GetOrCreateTrade(ctx, nil); err != nil {
 		t.Fatal(err)
 	}
 

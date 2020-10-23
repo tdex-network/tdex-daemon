@@ -12,16 +12,20 @@ import (
 func TestTradePropose(t *testing.T) {
 	trade := NewTrade()
 	swapRequest, marketQuoteAsset, traderPubkey := mockProposeArgs()
-	_, err := trade.Propose(swapRequest, marketQuoteAsset, traderPubkey)
+	ok, err := trade.Propose(swapRequest, marketQuoteAsset, traderPubkey)
 	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
 }
 
 func TestTradeAccept(t *testing.T) {
 	trade := NewTrade()
 	_, err := trade.Propose(mockProposeArgs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := trade.Accept(mockAcceptArgs())
 	assert.NoError(t, err)
-	_, err = trade.Accept(mockAcceptArgs())
-	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
 }
 
 func TestTradeComplete(t *testing.T) {
@@ -30,8 +34,9 @@ func TestTradeComplete(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = trade.Accept(mockAcceptArgs())
 	assert.NoError(t, err)
-	_, err = trade.Complete(mockCompleteArgs())
+	res, err := trade.Complete(mockCompleteArgs())
 	assert.NoError(t, err)
+	assert.Equal(t, true, res.OK)
 	err = trade.AddBlocktime(uint64(time.Now().Unix()))
 	assert.NoError(t, err)
 }

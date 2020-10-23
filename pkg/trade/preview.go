@@ -58,6 +58,7 @@ func (t *Trade) Preview(opts PreviewOpts) (*PreviewResult, error) {
 	reply, err := t.client.MarketPrice(tradeclient.MarketPriceOpts{
 		Market:    opts.Market,
 		TradeType: tradeType,
+		Amount:    opts.Amount,
 	})
 	if err != nil {
 		return nil, err

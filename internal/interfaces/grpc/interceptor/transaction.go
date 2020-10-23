@@ -2,6 +2,8 @@ package interceptor
 
 import (
 	"context"
+	"errors"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
@@ -15,17 +17,33 @@ func unaryTransactionHandler(db ports.DbManager) grpc.
 		req interface{},
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	) (reply interface{}, err error) {
 		tx := db.NewTransaction()
-		defer tx.Discard()
+		defer func() {
+			if err != nil {
+				tx.Discard()
+			}
+			if rec := recover(); rec != nil {
+				log.Error(rec)
+				reply = nil
+				err = errors.New("not able to serve request")
+			}
+		}()
 
 		dbContext := context.WithValue(ctx, "tx", tx)
 		res, err := handler(dbContext, req)
-
-		if err := tx.Commit(); err != nil {
-			log.Error(err)
+		if err != nil {
+			return
 		}
-		return res, err
+
+		if err = tx.Commit(); err != nil {
+			log.Error(err)
+			return
+		}
+
+		reply = res
+
+		return
 	}
 }
 
@@ -36,19 +54,29 @@ func streamTransactionHandler(db *dbbadger.DbManager) grpc.
 		stream grpc.ServerStream,
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler,
-	) error {
+	) (err error) {
 		tx := db.NewTransaction()
-		defer tx.Discard()
+		defer func() {
+			if err != nil {
+				tx.Discard()
+			}
+			if rec := recover(); rec != nil {
+				log.Error(rec)
+				err = errors.New("not able to serve request")
+			}
+		}()
 
 		streamContextWithTx := context.WithValue(stream.Context(), "tx", tx)
 		newStream := WrapServerStream(stream, streamContextWithTx)
 
-		err := handler(srv, newStream)
+		if err = handler(srv, newStream); err != nil {
+			return
+		}
 
-		if err := tx.Commit(); err != nil {
+		if err = tx.Commit(); err != nil {
 			log.Error(err)
 		}
 
-		return err
+		return
 	}
 }

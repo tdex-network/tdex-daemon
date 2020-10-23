@@ -22,7 +22,7 @@ const (
 	MaxHardenedValue = math.MaxUint32 - hdkeychain.HardenedKeyStart
 	// MinRelayFee is the minimum fee amount that the Liquid miners accept to
 	// broadcast the transaction
-	MinRelayFee = 257
+	MinRelayFee = 650
 )
 
 func generateMnemonic(entropySize int) ([]string, error) {

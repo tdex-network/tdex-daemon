@@ -110,12 +110,12 @@ func (t *Trade) BuyAndComplete(opts BuyOrSellAndCompleteOpts) (string, error) {
 		return "", err
 	}
 
-	w := newWalletFromKey(opts.PrivateKey, opts.BlindingKey, t.network)
+	w := NewWalletFromKey(opts.PrivateKey, opts.BlindingKey, t.network)
 	swapAcceptMsg, err := t.marketOrderRequest(
 		opts.Market,
 		tradetype.Buy,
 		opts.Amount,
-		w.address(),
+		w.Address(),
 		opts.BlindingKey,
 	)
 	if err != nil {
@@ -152,7 +152,7 @@ func (t *Trade) marketOrderRequest(
 	outputScript, _ := address.ToOutputScript(addr, *t.network)
 	outputScriptHex := hex.EncodeToString(outputScript)
 
-	psetBase64, err := newSwapTx(
+	psetBase64, err := NewSwapTx(
 		unspents,
 		blindingKey,
 		preview.AssetToSend,
@@ -195,12 +195,12 @@ func (t *Trade) marketOrderRequest(
 	return proto.Marshal(reply.GetSwapAccept())
 }
 
-func (t *Trade) marketOrderComplete(swapAcceptMsg []byte, w *wallet) (string, error) {
+func (t *Trade) marketOrderComplete(swapAcceptMsg []byte, w *Wallet) (string, error) {
 	swapAccept := &pb.SwapAccept{}
 	proto.Unmarshal(swapAcceptMsg, swapAccept)
 
 	psetBase64 := swapAccept.GetTransaction()
-	signedPset, err := w.sign(psetBase64)
+	signedPset, err := w.Sign(psetBase64)
 	if err != nil {
 		return "", err
 	}
@@ -217,7 +217,10 @@ func (t *Trade) marketOrderComplete(swapAcceptMsg []byte, w *wallet) (string, er
 		SwapComplete: swapCompleteMsg,
 	})
 	if err != nil {
-		return "", nil
+		return "", err
+	}
+	if swapFail := reply.GetSwapFail(); swapFail != nil {
+		return "", errors.New(swapFail.GetFailureMessage())
 	}
 
 	return reply.GetTxid(), nil

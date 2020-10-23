@@ -3,10 +3,11 @@ package dbbadger
 import (
 	"context"
 	"errors"
-	"github.com/dgraph-io/badger"
+
+	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/timshannon/badgerhold"
+	"github.com/timshannon/badgerhold/v2"
 )
 
 const (
@@ -31,7 +32,7 @@ func (t tradeRepositoryImpl) GetOrCreateTrade(
 	tradeID *uuid.UUID,
 ) (*domain.Trade, error) {
 	tx := ctx.Value("tx").(*badger.Txn)
-	return t.getOrCreateTrade(tx, *tradeID)
+	return t.getOrCreateTrade(tx, tradeID)
 }
 
 func (t tradeRepositoryImpl) GetAllTrades(
@@ -75,11 +76,11 @@ func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
 		return nil, err
 	}
 
-	var trade *domain.Trade
-	if len(trades) > 0 {
-		trade = &trades[0]
+	if len(trades) <= 0 {
+		return nil, errors.New("trade not found")
 	}
 
+	trade := &trades[0]
 	return trade, nil
 }
 
@@ -90,7 +91,7 @@ func (t tradeRepositoryImpl) UpdateTrade(
 ) error {
 	tx := ctx.Value("tx").(*badger.Txn)
 
-	currentTrade, err := t.getOrCreateTrade(tx, *ID)
+	currentTrade, err := t.getOrCreateTrade(tx, ID)
 	if err != nil {
 		return err
 	}
@@ -105,21 +106,16 @@ func (t tradeRepositoryImpl) UpdateTrade(
 
 func (t tradeRepositoryImpl) getOrCreateTrade(
 	tx *badger.Txn,
-	ID uuid.UUID,
+	ID *uuid.UUID,
 ) (*domain.Trade, error) {
-	trade, err := t.getTrade(tx, ID)
-	if err != nil {
+	if ID != nil {
+		return t.getTrade(tx, *ID)
+	}
+
+	trade := domain.NewTrade()
+	if err := t.insertTrade(tx, *trade); err != nil {
 		return nil, err
 	}
-
-	if trade == nil {
-		trade = domain.NewTrade()
-		err = t.insertTrade(tx, *trade)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return trade, nil
 }
 
@@ -148,9 +144,6 @@ func (t tradeRepositoryImpl) getTrade(
 		&trade,
 	)
 	if err != nil {
-		if err == badgerhold.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
 
