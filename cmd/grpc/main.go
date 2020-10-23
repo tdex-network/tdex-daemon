@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/soheilhy/cmux"
@@ -36,7 +37,6 @@ func main() {
 	if err != nil {
 		log.WithError(err).Panic("error while opening db")
 	}
-	defer dbManager.Store.Close()
 
 	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	vaultRepository := dbbadger.NewVaultRepositoryImpl(dbManager)
@@ -105,6 +105,13 @@ func main() {
 
 	log.Debug("starting daemon")
 
+	defer stop(
+		dbManager,
+		crawlerSvc,
+		traderGrpcServer,
+		operatorGrpcServer,
+	)
+
 	// Serve grpc and grpc-web multiplexed on the same port
 	if err := serveMux(traderAddress, traderGrpcServer); err != nil {
 		log.WithError(err).Panic("error listening on trader interface")
@@ -116,13 +123,27 @@ func main() {
 	log.Debug("trader interface is listening on " + traderAddress)
 	log.Debug("operator interface is listening on " + operatorAddress)
 
-	defer traderGrpcServer.Stop()
-	defer operatorGrpcServer.Stop()
-
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 	<-sigChan
 
+	log.Debug("shutting down daemon")
+}
+
+func stop(
+	dbManager *dbbadger.DbManager,
+	crawlerSvc crawler.Service,
+	traderServer *grpc.Server,
+	operatorServer *grpc.Server,
+) {
+	operatorServer.Stop()
+	log.Debug("disabled operator interface")
+	traderServer.Stop()
+	log.Debug("disabled trader interface")
+	crawlerSvc.Stop()
+	log.Debug("stop observing blockchain")
+	dbManager.Store.Close()
+	log.Debug("closed connection with database")
 	log.Debug("exiting")
 }
 
