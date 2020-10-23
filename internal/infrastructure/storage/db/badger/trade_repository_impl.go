@@ -144,9 +144,6 @@ func (t tradeRepositoryImpl) getTrade(
 		&trade,
 	)
 	if err != nil {
-		if err == badgerhold.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
 
