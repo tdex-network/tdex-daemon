@@ -290,6 +290,9 @@ func (b *blockchainListener) UpdateUnspentsForAddress(
 		ctx,
 		[]string{address},
 	)
+	if err != nil {
+		return err
+	}
 
 	for _, oldUnspent := range unsp {
 		exist := false
