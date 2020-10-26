@@ -44,7 +44,7 @@ run-linux: clean build-linux
 	./build/tdexd-linux-amd64
 
 ## run-mac: Run locally with default configuration
-run-max: clean build-mac
+run-mac: clean build-mac
 	./build/tdexd-darwin-amd64
 
 ## vet: code analysis
