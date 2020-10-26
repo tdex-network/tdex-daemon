@@ -57,10 +57,10 @@ shorttest:
 	@echo "Testing..."
 	rm -rf ./internal/core/application/testdb
 	rm -rf ./internal/infrastructure/storage/db/badger/testdb
-	go test -v -count=1 -race -short ./...
+	CGO_ENABLED=1 go test -v -count=1 -race -short ./...
 
 ## integrationtest: runs e2e tests by
 integrationtest:
 	@echo "E2E Testing..."
-	go test -v -count=1 -race ./cmd/grpc
+	CGO_ENABLED=1 go test -v -count=1 -race ./cmd/grpc
 
