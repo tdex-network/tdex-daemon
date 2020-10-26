@@ -22,9 +22,8 @@ jobs:
 
       - name: Install Nigiri
         run: |
-          mkdir -p tmp; cd tmp
+          mkdir -p tmp; cd tmp; sudo chmod -R 777 .
           curl https://travis.nigiri.network | bash; cd ..
-          sudo chmod -R 777 .
           docker-compose -f tmp/docker-compose.yml up -d
 
       - name: Get dependencies
