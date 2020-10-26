@@ -3,8 +3,10 @@ module github.com/tdex-network/tdex-daemon
 go 1.14
 
 require (
-	github.com/btcsuite/btcd v0.20.1-beta
+	github.com/btcsuite/btcd v0.20.1-beta.0.20200513120220-b470eee47728
 	github.com/btcsuite/btcutil v1.0.2
+	github.com/btcsuite/btcwallet v0.11.1-0.20200814001439-1d31f4ea6fc5
+	github.com/btcsuite/btcwallet/walletdb v1.3.3
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger v1.6.0
 	github.com/google/uuid v1.1.2
@@ -29,4 +31,6 @@ require (
 	google.golang.org/grpc v1.32.0
 	google.golang.org/grpc/examples v0.0.0-20200925170654-e6c98a478e62 // indirect
 	google.golang.org/protobuf v1.25.0
+	gopkg.in/macaroon-bakery.v2 v2.2.0
+	gopkg.in/macaroon.v2 v2.1.0
 )
