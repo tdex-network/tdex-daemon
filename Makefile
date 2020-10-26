@@ -39,9 +39,13 @@ help:
 	@echo "Usage: \n"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 
-## run: Run locally with default configuration
-run: clean build-linux
+## run-linux: Run locally with default configuration
+run-linux: clean build-linux
 	./build/tdexd-linux-amd64
+
+## run-mac: Run locally with default configuration
+run-max: clean build-mac
+	./build/tdexd-darwin-amd64
 
 ## vet: code analysis
 vet:
@@ -57,10 +61,10 @@ shorttest:
 	@echo "Testing..."
 	rm -rf ./internal/core/application/testdb
 	rm -rf ./internal/infrastructure/storage/db/badger/testdb
-	CGO_ENABLED=1 go test -v -count=1 -race -short ./...
+	go test -v -count=1 -race -short ./...
 
 ## integrationtest: runs e2e tests by
 integrationtest:
 	@echo "E2E Testing..."
-	CGO_ENABLED=1 go test -v -count=1 -race ./cmd/grpc
+	go test -v -count=1 -race ./cmd/grpc
 
