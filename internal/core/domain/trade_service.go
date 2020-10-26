@@ -90,6 +90,21 @@ func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error
 		return nil, ErrMustBeAccepted
 	}
 
+	if err := pkgswap.ValidateCompletePset(pkgswap.ValidateCompletePsetOpts{
+		PsetBase64:         psetBase64,
+		InputBlindingKeys:  t.SwapAcceptMessage().GetInputBlindingKey(),
+		OutputBlindingKeys: t.SwapAcceptMessage().GetOutputBlindingKey(),
+		SwapRequest:        t.SwapRequestMessage(),
+	}); err != nil {
+		t.Fail(
+			t.SwapAccept.ID,
+			FailedToCompleteStatus,
+			pkgswap.ErrCodeFailedToComplete,
+			err.Error(),
+		)
+		return &CompleteResult{OK: false}, nil
+	}
+
 	opts := wallet.FinalizeAndExtractTransactionOpts{
 		PsetBase64: psetBase64,
 	}
