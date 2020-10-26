@@ -30,4 +30,6 @@ jobs:
         run: go get -v -t -d ./...
 
       - name: Test
-        run: make test
+        run: |
+          export CGO_ENABLED=1
+          make test
