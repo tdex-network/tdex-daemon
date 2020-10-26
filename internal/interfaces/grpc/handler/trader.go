@@ -2,8 +2,10 @@ package grpchandler
 
 import (
 	"context"
+	"errors"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	"github.com/tdex-network/tdex-protobuf/generated/go/types"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
@@ -60,14 +62,27 @@ func (t traderHandler) MarketPrice(
 	ctx context.Context,
 	req *pb.MarketPriceRequest,
 ) (*pb.MarketPriceReply, error) {
+	market := req.GetMarket()
+	if err := validateMarket(market); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	tradeType := req.GetType()
+	if err := validateTradeType(tradeType); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	amount := req.GetAmount()
+	if err := validateAmount(amount); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	price, err := t.traderSvc.GetMarketPrice(
 		ctx,
 		application.Market{
-			BaseAsset:  req.Market.BaseAsset,
-			QuoteAsset: req.Market.QuoteAsset,
+			BaseAsset:  market.GetBaseAsset(),
+			QuoteAsset: market.GetQuoteAsset(),
 		},
-		int(req.Type),
-		req.Amount,
+		int(tradeType),
+		amount,
 	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -97,14 +112,29 @@ func (t traderHandler) TradePropose(
 	req *pb.TradeProposeRequest,
 	stream pb.Trade_TradeProposeServer,
 ) error {
-	swapRequest := req.GetSwapRequest()
-	tradeType := req.GetType()
-	market := application.Market{
-		BaseAsset:  req.GetMarket().GetBaseAsset(),
-		QuoteAsset: req.GetMarket().GetQuoteAsset(),
+	mkt := req.GetMarket()
+	if err := validateMarket(mkt); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
-	swapAccept, swapFail, swapExpiryTime, err :=
-		t.traderSvc.TradePropose(stream.Context(), market, int(tradeType), swapRequest)
+	tradeType := req.GetType()
+	if err := validateTradeType(tradeType); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	swapRequest := req.GetSwapRequest()
+	if err := validateSwapRequest(swapRequest); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	market := application.Market{
+		BaseAsset:  mkt.GetBaseAsset(),
+		QuoteAsset: mkt.GetQuoteAsset(),
+	}
+	swapAccept, swapFail, swapExpiryTime, err := t.traderSvc.TradePropose(
+		stream.Context(),
+		market,
+		int(tradeType),
+		swapRequest,
+	)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -138,6 +168,36 @@ func (t traderHandler) TradeComplete(
 	}
 	if err := stream.Send(reply); err != nil {
 		return status.Error(codes.Internal, err.Error())
+	}
+	return nil
+}
+
+func validateTradeType(tType pbtypes.TradeType) error {
+	if int(tType) < application.TradeBuy || int(tType) > application.TradeSell {
+		return errors.New("trade type is unknown")
+	}
+	return nil
+}
+
+func validateAmount(amount uint64) error {
+	if amount <= 0 {
+		return errors.New("amount is too low")
+	}
+	return nil
+}
+
+func validateSwapRequest(swapRequest *pbswap.SwapRequest) error {
+	if swapRequest == nil {
+		return errors.New("swap request is null")
+	}
+	if swapRequest.GetAmountP() <= 0 ||
+		len(swapRequest.GetAssetP()) <= 0 ||
+		swapRequest.GetAmountR() <= 0 ||
+		len(swapRequest.GetAssetR()) <= 0 ||
+		len(swapRequest.GetTransaction()) <= 0 ||
+		len(swapRequest.GetInputBlindingKey()) <= 0 ||
+		len(swapRequest.GetOutputBlindingKey()) <= 0 {
+		return errors.New("swap request is malformed")
 	}
 	return nil
 }
