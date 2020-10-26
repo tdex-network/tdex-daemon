@@ -7,6 +7,9 @@ import (
 )
 
 func TestEncryptDecrypt(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	plaintext := "super secret message"
 	passphrase := "supersecurekey"
 
@@ -29,6 +32,9 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func TestFailingEncrypt(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	tests := []struct {
 		opts EncryptOpts
 		err  error
@@ -55,6 +61,9 @@ func TestFailingEncrypt(t *testing.T) {
 }
 
 func TestFailingDecrypt(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	tests := []struct {
 		opts DecryptOpts
 		err  error

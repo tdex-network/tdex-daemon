@@ -39,9 +39,13 @@ help:
 	@echo "Usage: \n"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 
-## run: Run locally with default configuration
-run: clean build-linux
+## run-linux: Run locally with default configuration
+run-linux: clean build-linux
 	./build/tdexd-linux-amd64
+
+## run-mac: Run locally with default configuration
+run-mac: clean build-mac
+	./build/tdexd-darwin-amd64
 
 ## vet: code analysis
 vet:
