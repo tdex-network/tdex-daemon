@@ -13,11 +13,9 @@ type DbManager struct {
 	Store *badgerhold.Store
 }
 
-func NewDbManager(dbDir string) (*DbManager, error) {
+func NewDbManager(dbDir string, logger badger.Logger) (*DbManager, error) {
 	opts := badger.DefaultOptions(dbDir)
-	//TODO add logger as input param so we can control log level,
-	//which is currently annoying in testing
-	//opts.Logger = nil
+	opts.Logger = logger
 
 	db, err := badgerhold.Open(badgerhold.Options{
 		Encoder:          JsonEncode,

@@ -10,7 +10,7 @@ import (
 )
 
 func TestUpdateUnspentsForAddress(t *testing.T) {
-	dbManager, err := dbbadger.NewDbManager("testdb")
+	dbManager, err := dbbadger.NewDbManager("testdb", nil)
 	if err != nil {
 		panic(err)
 	}
