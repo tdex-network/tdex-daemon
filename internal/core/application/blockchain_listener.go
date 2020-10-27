@@ -255,10 +255,19 @@ events:
 							tx.Discard()
 							return nil, err
 						}
-						log.Info(
-							"deposit: funding market with quote asset ",
-							m.QuoteAsset,
-						)
+
+						if m.IsFunded() {
+							log.Info(
+								"deposit: funding market with quote asset ",
+								m.QuoteAsset,
+							)
+						} else {
+							assetType := "base"
+							if len(m.QuoteAsset) <= 0 {
+								assetType = "quote"
+							}
+							log.Warn(fmt.Sprintf("%s asset is missing", assetType))
+						}
 
 						return m, nil
 					}); err != nil {
