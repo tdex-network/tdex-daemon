@@ -3,7 +3,6 @@ package dbbadger
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/dgraph-io/badger/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/timshannon/badgerhold/v2"
@@ -26,7 +25,7 @@ func NewDbManager(dbDir string) (*DbManager, error) {
 		Options:          opts,
 	})
 	if err != nil {
-		fmt.Println("Error instance db: ", err)
+		return nil, err
 	}
 
 	return &DbManager{

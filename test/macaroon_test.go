@@ -4,18 +4,26 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbwallet "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
 	"google.golang.org/grpc"
 	"gopkg.in/macaroon.v2"
 	"io/ioutil"
+	"path/filepath"
 	"testing"
 )
 
 func TestHavePermissionMacaroon(t *testing.T) {
 
-	macBytes, err := ioutil.ReadFile("/Users/sekulicd/tdex-testing/admin.macaroon")
+	adminMacPath := filepath.Join(
+		config.GetString(config.DataDirPathKey),
+		"macaroon",
+		macaroons.AdminFileName,
+	)
+
+	macBytes, err := ioutil.ReadFile(adminMacPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +68,13 @@ func TestHavePermissionMacaroon(t *testing.T) {
 
 func TestNoPermissionMacaroon(t *testing.T) {
 
-	macBytes, err := ioutil.ReadFile("/Users/sekulicd/tdex-testing/price.macaroon")
+	priceMacPath := filepath.Join(
+		config.GetString(config.DataDirPathKey),
+		"macaroon",
+		macaroons.PriceFileName,
+	)
+
+	macBytes, err := ioutil.ReadFile(priceMacPath)
 	if err != nil {
 		t.Fatal(err)
 	}

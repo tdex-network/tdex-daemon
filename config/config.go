@@ -170,5 +170,9 @@ func initDataDir() error {
 		log.WithError(err).Panic("error while creating db folder")
 	}
 
+	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "macaroon")); err != nil {
+		log.WithError(err).Panic("error while creating macaroon folder")
+	}
+
 	return nil
 }

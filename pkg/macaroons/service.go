@@ -4,16 +4,25 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons/kvdb"
+	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	"gopkg.in/macaroon-bakery.v2/bakery"
 	"gopkg.in/macaroon-bakery.v2/bakery/checkers"
 	macaroon "gopkg.in/macaroon.v2"
+)
+
+const (
+	AdminFileName    = "admin.macaroon"
+	ReadOnlyFileName = "readonly.macaroon"
+	PriceFileName    = "price.macaroon"
+	MarketFileName   = "market.macaroon"
 )
 
 var (
@@ -121,6 +130,150 @@ func NewService(dir, location string, checks ...Checker) (*Service, error) {
 	}, nil
 }
 
+func (svc *Service) Init() error {
+	adminMacPath := filepath.Join(
+		config.GetString(config.DataDirPathKey),
+		"macaroon",
+		AdminFileName,
+	)
+
+	readMacPath := filepath.Join(
+		config.GetString(config.DataDirPathKey),
+		"macaroon",
+		ReadOnlyFileName,
+	)
+
+	priceMacPath := filepath.Join(
+		config.GetString(config.DataDirPathKey),
+		"macaroon",
+		PriceFileName,
+	)
+
+	marketMacPath := filepath.Join(
+		config.GetString(config.DataDirPathKey),
+		"macaroon",
+		MarketFileName,
+	)
+
+	// Create macaroon files for lncli to use if they don't exist.
+	if !fileExists(adminMacPath) && !fileExists(readMacPath) &&
+		!fileExists(priceMacPath) && !fileExists(marketMacPath) {
+
+		err := svc.genMacaroons(
+			context.Background(),
+			adminMacPath,
+			readMacPath,
+			priceMacPath,
+			marketMacPath,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (svc *Service) GetValidator(methodName string) MacaroonValidator {
+	validator, ok := svc.externalValidators[methodName]
+	if !ok {
+		validator = svc
+	}
+
+	return validator
+}
+
+// genMacaroons generates three macaroon files; one admin-level, one for
+// invoice access and one read-only. These can also be used to generate more
+// granular macaroons.
+func (svc *Service) genMacaroons(
+	ctx context.Context,
+	admFile string,
+	roFile string,
+	priceFile string,
+	marketFile string,
+) error {
+
+	priceMac, err := svc.NewMacaroon(
+		ctx, DefaultRootKeyID, pricePermissions...,
+	)
+	if err != nil {
+		return err
+	}
+	priceUpdateMacBytes, err := priceMac.M().MarshalBinary()
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(priceFile, priceUpdateMacBytes, 0644)
+	if err != nil {
+		os.Remove(priceFile)
+		return err
+	}
+
+	marketMac, err := svc.NewMacaroon(
+		ctx, DefaultRootKeyID, marketPermissions...,
+	)
+	if err != nil {
+		return err
+	}
+	marketMacBytes, err := marketMac.M().MarshalBinary()
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(marketFile, marketMacBytes, 0644)
+	if err != nil {
+		os.Remove(marketFile)
+		return err
+	}
+
+	//TODO uncomment once read only permissions are defined
+	//// Generate the read-only macaroon and write it to a file.
+	//roMacaroon, err := svc.NewMacaroon(
+	//	ctx, macaroons.DefaultRootKeyID, macaroons.ReadonlyPermissions...,
+	//)
+	//if err != nil {
+	//	return err
+	//}
+	//roBytes, err := roMacaroon.M().MarshalBinary()
+	//if err != nil {
+	//	return err
+	//}
+	//if err = ioutil.WriteFile(roFile, roBytes, 0644); err != nil {
+	//	os.Remove(admFile)
+	//	return err
+	//}
+
+	// Generate the admin macaroon and write it to a file.
+	admMacaroon, err := svc.NewMacaroon(
+		ctx, DefaultRootKeyID, adminPermissions...,
+	)
+	if err != nil {
+		return err
+	}
+	admBytes, err := admMacaroon.M().MarshalBinary()
+	if err != nil {
+		return err
+	}
+	println(hex.EncodeToString(admBytes))
+
+	if err = ioutil.WriteFile(admFile, admBytes, 0600); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// fileExists reports whether the named file or directory exists.
+// This function is taken from https://github.com/btcsuite/btcd
+func fileExists(name string) bool {
+	if _, err := os.Stat(name); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
+}
+
 // isRegistered checks to see if the required checker has already been
 // registered in order to avoid a panic caused by double registration.
 func isRegistered(c *checkers.Checker, name string) bool {
@@ -158,77 +311,6 @@ func (svc *Service) RegisterExternalValidator(fullMethod string,
 
 	svc.externalValidators[fullMethod] = validator
 	return nil
-}
-
-// UnaryServerInterceptor is a GRPC interceptor that checks whether the
-// request is authorized by the included macaroons.
-func (svc *Service) UnaryServerInterceptor(
-	permissionMap map[string][]bakery.Op) grpc.UnaryServerInterceptor {
-
-	return func(ctx context.Context, req interface{},
-		info *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
-
-		uriPermissions, ok := permissionMap[info.FullMethod]
-		if !ok {
-			return nil, fmt.Errorf("%s: unknown permissions "+
-				"required for method", info.FullMethod)
-		}
-
-		if uriPermissions[0].Entity == "operator" {
-			// Find out if there is an external validator registered for
-			// this method. Fall back to the internal one if there isn't.
-			validator, ok := svc.externalValidators[info.FullMethod]
-			if !ok {
-				validator = svc
-			}
-
-			// Now that we know what validator to use, let it do its work.
-			err := validator.ValidateMacaroon(
-				ctx, uriPermissions, info.FullMethod,
-			)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		return handler(ctx, req)
-	}
-}
-
-// StreamServerInterceptor is a GRPC interceptor that checks whether the
-// request is authorized by the included macaroons.
-func (svc *Service) StreamServerInterceptor(
-	permissionMap map[string][]bakery.Op) grpc.StreamServerInterceptor {
-
-	return func(srv interface{}, ss grpc.ServerStream,
-		info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-
-		uriPermissions, ok := permissionMap[info.FullMethod]
-		if !ok {
-			return fmt.Errorf("%s: unknown permissions required "+
-				"for method", info.FullMethod)
-		}
-
-		if uriPermissions[0].Entity == "operator" {
-			// Find out if there is an external validator registered for
-			// this method. Fall back to the internal one if there isn't.
-			validator, ok := svc.externalValidators[info.FullMethod]
-			if !ok {
-				validator = svc
-			}
-
-			// Now that we know what validator to use, let it do its work.
-			err := validator.ValidateMacaroon(
-				ss.Context(), uriPermissions, info.FullMethod,
-			)
-			if err != nil {
-				return err
-			}
-		}
-
-		return handler(srv, ss)
-	}
 }
 
 // ValidateMacaroon validates the capabilities of a given request given a
