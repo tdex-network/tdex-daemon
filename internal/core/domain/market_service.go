@@ -83,12 +83,10 @@ func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 	}
 
 	for asset := range assetCount {
-		if asset == baseAssetHash {
-			if !m.IsFunded() {
+		if !m.IsFunded() {
+			if asset == baseAssetHash {
 				m.BaseAsset = baseAssetHash
-			}
-		} else {
-			if !m.IsFunded() {
+			} else {
 				m.QuoteAsset = asset
 			}
 		}
