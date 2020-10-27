@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -53,41 +54,43 @@ func (m *Market) IsFunded() bool {
 	return m.BaseAsset != "" && m.QuoteAsset != ""
 }
 
-// FundMarket adds funding details given an array of outpoints and recognize quote asset
+// FundMarket adds the assets of market from the given array of outpoints.
+// Since the list of outpoints can contain an infinite number of utxos with
+// different  assets, they're fistly indexed by their asset, then the market's
+// base asset is updated if found in the list, otherwise only the very first
+// asset type is used as the market's quote asset, discarding the others that
+// should be manually transferred to some other address because they won't be
+// used by the daemon.
 func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 	if m.IsFunded() {
 		return nil
 	}
 
-	var baseAssetHash = config.GetString(config.BaseAssetKey)
-	var otherAssetHash string
-
-	var baseAssetTxs []OutpointWithAsset
-	var otherAssetTxs []OutpointWithAsset
-
+	baseAssetHash := config.GetString(config.BaseAssetKey)
 	assetCount := make(map[string]int)
 	for _, o := range fundingTxs {
 		assetCount[o.Asset]++
-		if o.Asset == baseAssetHash {
-			baseAssetTxs = append(baseAssetTxs, o)
-		} else {
-			// Potentially here could be different assets mixed
-			// We chek if unique quote asset later after the loop
-			otherAssetTxs = append(otherAssetTxs, o)
-			otherAssetHash = o.Asset
+	}
+
+	if len(assetCount) > 2 {
+		return fmt.Errorf(
+			"outpoints must be at most of 2 different type of assets, but %d were "+
+				"found and it's not possible to determine what's the correct asset "+
+				"pair of the market! It's mandatory to move funds from market's "+
+				"addresses so that they own only utxos of 2 different asset types "+
+				"(base asset included).", len(assetCount),
+		)
+	}
+
+	for asset := range assetCount {
+		if !m.IsFunded() {
+			if asset == baseAssetHash {
+				m.BaseAsset = baseAssetHash
+			} else {
+				m.QuoteAsset = asset
+			}
 		}
 	}
-
-	if _, ok := assetCount[baseAssetHash]; !ok {
-		return errors.New("base asset is missing")
-	}
-
-	if keysNumber := len(assetCount); keysNumber != 2 {
-		return errors.New("must be deposited 2 unique assets")
-	}
-
-	m.BaseAsset = baseAssetHash
-	m.QuoteAsset = otherAssetHash
 
 	return nil
 }
