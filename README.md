@@ -5,26 +5,63 @@
 
 Go implementation of the TDex Daemon
 
+## 📄 Usage
 
-## Development
+In-depth documentation for installing and using the tdex-daemon is available at [docs.tdex.network](https://docs.tdex.network/tdex-daemon.html)
 
 
-* Build
+## 🛣 Roadmap
 
-```sh
-# Build for Linux
+* [x] Swap protocol
+* [x] Trade protocol
+* [x] Confidential support
+* [x] Automated Market Making
+* [x] Pluggable Market Making
+
+
+## 🖥 Local Development
+
+Below is a list of commands you will probably find useful for development.
+
+## Requirements
+
+* Go (^1.15.2)
+
+### Run
+
+Builds `tdexd` as static binary and runs the project with default configuration.
+
+```bash
+# Max OSX
+$ make run-mac
+
+# Linux
+$ make run-linux
+```
+
+
+### Build
+
+Builds `tdexd` as static binary in the `./build` folder
+
+```bash
+# Max OSX
+$ make build-mac
+
+# Linux
 $ make build-linux
 
-# Build for ARM
-$ make build-arm
-
-# Build for Mac
-$ make build-mac
+# ARM
+$ make build-linux
 ```
 
-* Run
 
-```sh
-./build/tdexd-<os>-<arch>
+### Test
+
+```bash
+# Short testing
+$ make test
+
+# integration testing
+$ make integrationtest
 ```
-

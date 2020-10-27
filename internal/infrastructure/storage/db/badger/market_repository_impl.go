@@ -2,9 +2,12 @@ package dbbadger
 
 import (
 	"context"
-	"github.com/dgraph-io/badger"
+
+	"github.com/dgraph-io/badger/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/timshannon/badgerhold"
+	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
+	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
+	"github.com/timshannon/badgerhold/v2"
 )
 
 type marketRepositoryImpl struct {
@@ -51,6 +54,7 @@ func (m marketRepositoryImpl) GetLatestMarket(
 		return
 	}
 
+	accountIndex = domain.MarketAccountStart - 1
 	if len(markets) > 0 {
 		market = &markets[0]
 		accountIndex = market.AccountIndex
@@ -252,6 +256,8 @@ func (m marketRepositoryImpl) getMarket(
 		return nil, err
 	}
 
+	restoreStrategy(&market)
+
 	return &market, nil
 }
 
@@ -294,6 +300,19 @@ func (m marketRepositoryImpl) findMarkets(
 			query,
 		)
 	}
+	for i, m := range markets {
+		restoreStrategy(&m)
+		markets[i] = m
+	}
 
 	return markets, err
+}
+
+func restoreStrategy(market *domain.Market) {
+	if !market.IsStrategyPluggable() {
+		switch market.Strategy.Type {
+		case formula.BalancedReservesType:
+			market.Strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})
+		}
+	}
 }

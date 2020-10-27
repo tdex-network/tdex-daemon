@@ -2,8 +2,10 @@ package grpchandler
 
 import (
 	"context"
+	"errors"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,17 +37,19 @@ func (w walletHandler) InitWallet(
 	req *pb.InitWalletRequest,
 	stream pb.Wallet_InitWalletServer,
 ) error {
-	if req.SeedMnemonic == nil || req.WalletPassword == nil {
-		return status.Error(
-			codes.InvalidArgument,
-			"seed and password must be populated",
-		)
+	mnemonic := req.GetSeedMnemonic()
+	if err := validateMnemonic(mnemonic); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	password := req.GetWalletPassword()
+	if err := validatePassword(password); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if err := w.walletSvc.InitWallet(
 		stream.Context(),
-		req.SeedMnemonic,
-		string(req.WalletPassword),
+		mnemonic,
+		string(password),
 	); err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -60,10 +64,12 @@ func (w walletHandler) UnlockWallet(
 	ctx context.Context,
 	req *pb.UnlockWalletRequest,
 ) (*pb.UnlockWalletReply, error) {
-	if err := w.walletSvc.UnlockWallet(
-		ctx,
-		string(req.WalletPassword),
-	); err != nil {
+	password := req.GetWalletPassword()
+	if err := validatePassword(password); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := w.walletSvc.UnlockWallet(ctx, string(password)); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &pb.UnlockWalletReply{}, nil
@@ -73,10 +79,19 @@ func (w walletHandler) ChangePassword(
 	ctx context.Context,
 	req *pb.ChangePasswordRequest,
 ) (*pb.ChangePasswordReply, error) {
+	currentPwd := req.GetCurrentPassword()
+	if err := validatePassword(currentPwd); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	newPwd := req.GetNewPassword()
+	if err := validatePassword(newPwd); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	if err := w.walletSvc.ChangePassword(
 		ctx,
-		string(req.CurrentPassword),
-		string(req.NewPassword),
+		string(currentPwd),
+		string(newPwd),
 	); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -126,21 +141,29 @@ func (w walletHandler) SendToMany(
 	ctx context.Context,
 	req *pb.SendToManyRequest,
 ) (*pb.SendToManyReply, error) {
+	outs := req.GetOutputs()
+	if err := validateOutputs(outs); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	msatPerByte := req.GetMillisatPerByte()
+	if err := validateMillisatPerByte(msatPerByte); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	outputs := make([]application.TxOut, 0)
-	for _, v := range req.Outputs {
+	for _, v := range outs {
 		output := application.TxOut{
-			Asset:   v.Asset,
-			Value:   v.Value,
-			Address: v.Address,
+			Asset:   v.GetAsset(),
+			Value:   v.GetValue(),
+			Address: v.GetAddress(),
 		}
 		outputs = append(outputs, output)
 	}
 
 	walletReq := application.SendToManyRequest{
 		Outputs:         outputs,
-		MillisatPerByte: req.MillisatPerByte,
-		Push:            req.Push,
+		MillisatPerByte: msatPerByte,
+		Push:            req.GetPush(),
 	}
 	rawTx, err := w.walletSvc.SendToMany(ctx, walletReq)
 	if err != nil {
@@ -150,4 +173,40 @@ func (w walletHandler) SendToMany(
 	return &pb.SendToManyReply{
 		RawTx: rawTx,
 	}, nil
+}
+
+func validateMnemonic(mnemonic []string) error {
+	if len(mnemonic) <= 0 {
+		return errors.New("mnemonic is null")
+	}
+	return nil
+}
+
+func validatePassword(password []byte) error {
+	if len(password) <= 0 {
+		return errors.New("password is null")
+	}
+	return nil
+}
+
+func validateOutputs(outputs []*pb.TxOut) error {
+	if len(outputs) <= 0 {
+		return errors.New("output list is empty")
+	}
+	for _, o := range outputs {
+		if o == nil ||
+			len(o.GetAsset()) <= 0 ||
+			o.GetValue() <= 0 ||
+			len(o.GetAddress()) <= 0 {
+			return errors.New("output list is malformed")
+		}
+	}
+	return nil
+}
+
+func validateMillisatPerByte(satPerByte int64) error {
+	if satPerByte < domain.MinMilliSatPerByte {
+		return errors.New("milli sats per byte is too low")
+	}
+	return nil
 }

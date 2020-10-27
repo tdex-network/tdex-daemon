@@ -2,12 +2,13 @@ package dbbadger
 
 import (
 	"context"
-	"github.com/dgraph-io/badger"
+	"os"
+
+	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
-	"os"
 )
 
 var ctx context.Context
@@ -29,24 +30,19 @@ func before() {
 	unspentRepository = NewUnspentRepositoryImpl(dbManager)
 	vaultRepository = NewVaultRepositoryImpl(dbManager)
 	tradeRepository = NewTradeRepositoryImpl(dbManager)
-	tx := dbManager.Store.Badger().NewTransaction(true)
+	tx := dbManager.NewTransaction()
 
-	if err = insertMarkets(tx, dbManager); err != nil {
+	if err = insertMarkets(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
-	if err = insertUnspents(tx, dbManager); err != nil {
+	if err = insertUnspents(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
-	if err = insertTrades(tx, dbManager); err != nil {
+	if err = insertTrades(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
 
-	tmpCtx := context.WithValue(
-		context.Background(),
-		"tx",
-		tx,
-	)
-	if err = insertVault(tmpCtx); err != nil {
+	if err = insertVault(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
 
@@ -57,7 +53,8 @@ func before() {
 	ctx = context.WithValue(
 		context.Background(),
 		"tx",
-		dbManager.Store.Badger().NewTransaction(true))
+		dbManager.NewTransaction(),
+	)
 
 }
 
@@ -66,7 +63,6 @@ func after() {
 	if err := tx.Commit(); err != nil {
 		panic(err)
 	}
-	tx.Discard()
 	dbManager.Store.Close()
 
 	err := os.RemoveAll(testDbDir)
@@ -231,118 +227,75 @@ func insertUnspents(tx *badger.Txn, db *DbManager) error {
 	return nil
 }
 
-func insertVault(ctx context.Context) error {
-
-	pass := "pass"
-	mnemonic := []string{
-		"addict",
-		"able",
-		"about",
-		"above",
-		"absent",
-		"absorb",
-		"abstract",
-		"absurd",
-		"abuse",
-		"access",
-		"accident",
-		"account",
+func insertVault(tx *badger.Txn, db *DbManager) error {
+	vault := &domain.Vault{
+		Mnemonic: []string{
+			"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
+			"lunar", "account", "silver", "admit", "cheap", "fringe", "disorder", "trade",
+			"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
+		},
+		EncryptedMnemonic:      "dVoBFte1oeRkPl8Vf8DzBP3PRnzPA3fxtyvDHXFGYAS9MP8V2Sc9nHcQW4PrMkQNnf2uGrDg81dFgBrwqv1n3frXxRBKhp83fSsTm4xqj8+jdwTI3nouFmi1W/O4UqpHdQ62EYoabJQtKpptWO11TFJzw8WF02pfS6git8YjLR4xrnfp2LkOEjSU9CI82ZasF46WZFKcpeUJTAsxU/03ONpAdwwEsC96f1KAvh8tqaO0yLDOcmPf8a5B82jefgncCRrt32kCpbpIE4YiCFrqqdUHXKH+",
+		PassphraseHash:         []byte("pass"),
+		Accounts:               map[int]*domain.Account{},
+		AccountAndKeyByAddress: map[string]domain.AccountAndKey{},
 	}
 
-	_, err := vaultRepository.GetOrCreateVault(ctx, mnemonic, pass)
-	return err
+	return db.Store.TxInsert(tx, vaultKey, vault)
 }
 
 func insertTrades(tx *badger.Txn, db *DbManager) error {
-	tradeID1, err := uuid.Parse("cc913d4e-174e-449c-82b4-e848d57cbf2e")
-	if err != nil {
-		return err
-	}
-	tradeID2, err := uuid.Parse("5440a53e-58d2-4e3d-8380-20410e687589")
-	if err != nil {
-		return err
-	}
-	tradeID3, err := uuid.Parse("2a12e2a0-d99c-4bd3-ad99-03dd926ae080")
-	if err != nil {
-		return err
-	}
+	tradeID1, _ := uuid.Parse("cc913d4e-174e-449c-82b4-e848d57cbf2e")
+	tradeID2, _ := uuid.Parse("5440a53e-58d2-4e3d-8380-20410e687589")
+	tradeID3, _ := uuid.Parse("2a12e2a0-d99c-4bd3-ad99-03dd926ae080")
+
 	trades := []domain.Trade{
 		{
 			ID:               tradeID1,
 			MarketQuoteAsset: "mqa1",
-			TraderPubkey:     nil,
-			Status:           domain.Status{},
-			PsetBase64:       "",
-			TxID:             "",
-			Price:            0,
-			Timestamp:        domain.Timestamp{},
 			SwapRequest: domain.Swap{
-				ID:      "1",
-				Message: nil,
+				ID: "1",
 			},
 			SwapAccept: domain.Swap{
-				ID:      "2",
-				Message: nil,
+				ID: "2",
 			},
 			SwapComplete: domain.Swap{
-				ID:      "3",
-				Message: nil,
+				ID: "3",
 			},
 			SwapFail: domain.Swap{
-				ID:      "4",
-				Message: nil,
+				ID: "4",
 			},
 		},
 		{
 			ID:               tradeID2,
 			MarketQuoteAsset: "mqa2",
-			TraderPubkey:     nil,
-			Status:           domain.Status{},
-			PsetBase64:       "",
-			TxID:             "",
-			Price:            0,
-			Timestamp:        domain.Timestamp{},
 			SwapRequest: domain.Swap{
-				ID:      "11",
-				Message: nil,
+				ID: "11",
 			},
 			SwapAccept: domain.Swap{
-				ID:      "21",
-				Message: nil,
+				ID: "21",
 			},
 			SwapComplete: domain.Swap{
-				ID:      "31",
-				Message: nil,
+				ID: "31",
 			},
 			SwapFail: domain.Swap{
-				ID:      "4",
-				Message: nil,
+				ID: "41",
 			},
 		},
 		{
 			ID:               tradeID3,
 			MarketQuoteAsset: "mqa2",
-			TraderPubkey:     nil,
-			Status:           domain.Status{},
-			PsetBase64:       "",
 			TxID:             "424",
-			Price:            0,
-			Timestamp:        domain.Timestamp{},
 			SwapRequest: domain.Swap{
-				ID:      "12",
-				Message: nil,
+				ID: "12",
 			},
 			SwapAccept: domain.Swap{
-				ID:      "22",
-				Message: nil,
+				ID: "22",
 			},
 			SwapComplete: domain.Swap{
-				ID:      "32",
-				Message: nil,
+				ID: "32",
 			},
 			SwapFail: domain.Swap{
-				ID:      "42",
-				Message: nil,
+				ID: "42",
 			},
 		},
 	}

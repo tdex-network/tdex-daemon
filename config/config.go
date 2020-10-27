@@ -3,10 +3,11 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/btcsuite/btcutil"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"

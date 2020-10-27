@@ -33,12 +33,12 @@ func (t *Trade) SellAndComplete(opts BuyOrSellAndCompleteOpts) (string, error) {
 		return "", err
 	}
 
-	w := newWalletFromKey(opts.PrivateKey, opts.BlindingKey, t.network)
+	w := NewWalletFromKey(opts.PrivateKey, opts.BlindingKey, t.network)
 	swapAcceptMsg, err := t.marketOrderRequest(
 		opts.Market,
 		tradetype.Sell,
 		opts.Amount,
-		w.address(),
+		w.Address(),
 		opts.BlindingKey,
 	)
 	if err != nil {

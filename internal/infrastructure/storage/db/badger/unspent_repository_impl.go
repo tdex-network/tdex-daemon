@@ -3,10 +3,10 @@ package dbbadger
 import (
 	"context"
 	"errors"
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/timshannon/badgerhold"
+	"github.com/timshannon/badgerhold/v2"
 )
 
 const (

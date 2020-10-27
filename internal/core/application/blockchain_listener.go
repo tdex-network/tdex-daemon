@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -82,7 +83,7 @@ events:
 						AssetHash:       utxo.Asset(),
 						ValueCommitment: utxo.ValueCommitment(),
 						AssetCommitment: utxo.AssetCommitment(),
-						ScriptPubKey:    nil,
+						ScriptPubKey:    utxo.Script(),
 						Nonce:           utxo.Nonce(),
 						RangeProof:      utxo.RangeProof(),
 						SurjectionProof: utxo.SurjectionProof(),
@@ -198,7 +199,7 @@ events:
 						AssetHash:       utxo.Asset(),
 						ValueCommitment: utxo.ValueCommitment(),
 						AssetCommitment: utxo.AssetCommitment(),
-						ScriptPubKey:    nil,
+						ScriptPubKey:    utxo.Script(),
 						Nonce:           utxo.Nonce(),
 						RangeProof:      utxo.RangeProof(),
 						SurjectionProof: utxo.SurjectionProof(),
@@ -289,6 +290,9 @@ func (b *blockchainListener) UpdateUnspentsForAddress(
 		ctx,
 		[]string{address},
 	)
+	if err != nil {
+		return err
+	}
 
 	for _, oldUnspent := range unsp {
 		exist := false
