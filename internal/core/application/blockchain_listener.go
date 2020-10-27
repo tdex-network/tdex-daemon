@@ -281,12 +281,7 @@ func (b *blockchainListener) UpdateUnspentsForAddress(
 	unspents []domain.Unspent,
 	address string,
 ) error {
-	err := b.unspentRepository.AddUnspents(ctx, unspents)
-	if err != nil {
-		return err
-	}
-
-	unsp, err := b.unspentRepository.GetUnspentsForAddresses(
+	existingUnspents, err := b.unspentRepository.GetUnspentsForAddresses(
 		ctx,
 		[]string{address},
 	)
@@ -294,18 +289,41 @@ func (b *blockchainListener) UpdateUnspentsForAddress(
 		return err
 	}
 
-	for _, oldUnspent := range unsp {
+	//add new unspent
+	unspentsToAdd := make([]domain.Unspent, 0)
+	for _, newUnspent := range unspents {
 		exist := false
-		for _, newUnspent := range unspents {
-			if newUnspent.IsKeyEqual(oldUnspent.Key()) {
+	existing:
+		for _, existingUnspent := range existingUnspents {
+			if newUnspent.IsKeyEqual(existingUnspent.Key()) {
 				exist = true
+				break existing
 			}
 		}
 		if !exist {
-			oldUnspent.Spend()
+			unspentsToAdd = append(unspentsToAdd, newUnspent)
+		}
+	}
+	err = b.unspentRepository.AddUnspents(ctx, unspentsToAdd)
+	if err != nil {
+		return err
+	}
+
+	//update spent
+	for _, existingUnspent := range existingUnspents {
+		exist := false
+	newUnsp:
+		for _, newUnspent := range unspents {
+			if newUnspent.IsKeyEqual(existingUnspent.Key()) {
+				exist = true
+				break newUnsp
+			}
+		}
+		if !exist {
+			existingUnspent.Spend()
 			err := b.unspentRepository.UpdateUnspent(
 				ctx,
-				oldUnspent.Key(),
+				existingUnspent.Key(),
 				func(unspent *domain.Unspent) (*domain.Unspent, error) {
 					unspent.Spend()
 					return unspent, nil
