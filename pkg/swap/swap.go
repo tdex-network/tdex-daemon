@@ -70,8 +70,6 @@ func compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccep
 }
 
 func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, asset string, ouptutBlindKeys map[string][]byte) (bool, error) {
-	found := false
-
 	for _, output := range outputs {
 		// if confidential, unblind before check
 		if output.IsConfidential() {
@@ -86,18 +84,16 @@ func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, ass
 			}
 
 			if unblinded.Value == value && unblinded.AssetHash == asset {
-				found = true
-				break
+				return true, nil
 			}
 		}
 		// unconfidential check
 	 	if bufferutil.ValueFromBytes(output.Value) == value && bufferutil.AssetHashFromBytes(output.Asset) == asset {
-			found = true
-			break
+			return true, nil
 		}
 	}
 
-	return found, nil
+	return false, nil
 }
 
 func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) (uint64, error) {
