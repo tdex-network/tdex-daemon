@@ -69,11 +69,10 @@ func compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccep
 	return nil
 }
 
-func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset string, ouptutBlindKeys map[string][]byte) (bool, error) {
-	var found bool = false
+func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, asset string, ouptutBlindKeys map[string][]byte) (bool, error) {
+	found := false
 
-	for index := 0; index < len(outs) ; index++ {
-		output := outs[index]
+	for _, output := range outputs {
 		// if confidential, unblind before check
 		if output.IsConfidential() {
 			blindingPrivateKey, ok := ouptutBlindKeys[hex.EncodeToString(output.Script)]
@@ -110,8 +109,7 @@ func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map
 		}
 
 		// sum all the filteredUtxos' values
-		for index := 0; index < len(filteredUtxos); index++ {
-			utxo := filteredUtxos[index]
+		for _, utxo := range filteredUtxos {
 			value := bufferutil.ValueFromBytes(utxo.WitnessUtxo.Value)
 			amount += value
 		}
@@ -122,9 +120,7 @@ func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map
 func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) ([]pset.PInput, error) {
 	filteredUtxos := make([]pset.PInput, 0)
 
-	for index := 0; index < len(utxos); index++ {
-		utxo := utxos[index]
-		
+	for _, utxo := range utxos {
 		// if confidential, unblind before checking asset hash
 		if utxo.WitnessUtxo.IsConfidential() {
 			blindKey, ok := inputBlindKeys[hex.EncodeToString(utxo.WitnessUtxo.Script)]
