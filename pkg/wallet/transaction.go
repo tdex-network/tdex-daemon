@@ -341,13 +341,13 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					changeOutput, _ := newTxOutput(asset, change, script)
 					outputsToAdd = append(outputsToAdd, changeOutput)
 
-					_, blindingKey, err := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
+					blindingKey, _, err := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
 						Script: script,
 					})
 					if err != nil {
 						return nil, err
 					}
-					changeOutputsBlindingKeys[hex.EncodeToString(script)] = blindingKey.SerializeCompressed()
+					changeOutputsBlindingKeys[hex.EncodeToString(script)] = blindingKey.Serialize()
 				}
 			}
 		}
@@ -418,11 +418,11 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				)
 				outputsToAdd = append(outputsToAdd, lbtcChangeOutput)
 
-				_, lbtcChangeBlindingKey, _ := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
+				lbtcChangeBlindingKey, _, _ := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
 					Script: lbtcChangeScript,
 				})
 
-				changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] = lbtcChangeBlindingKey.SerializeCompressed()
+				changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] = lbtcChangeBlindingKey.Serialize()
 			}
 		}
 	}
