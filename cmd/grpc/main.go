@@ -33,7 +33,7 @@ func main() {
 	log.SetLevel(log.Level(config.GetInt(config.LogLevelKey)))
 
 	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "db")
-	dbManager, err := dbbadger.NewDbManager(dbDir)
+	dbManager, err := dbbadger.NewDbManager(dbDir, log.New())
 	if err != nil {
 		log.WithError(err).Panic("error while opening db")
 	}

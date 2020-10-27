@@ -22,7 +22,7 @@ var testDbDir = "testdb"
 func before() {
 	var err error
 
-	dbManager, err = NewDbManager(testDbDir)
+	dbManager, err = NewDbManager(testDbDir, nil)
 	if err != nil {
 		panic(err)
 	}

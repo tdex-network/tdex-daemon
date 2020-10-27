@@ -20,7 +20,7 @@ import (
 var ctx = context.Background()
 
 func newTestWallet(w *mockedWallet) (*walletService, func()) {
-	dbManager, err := dbbadger.NewDbManager("testdb")
+	dbManager, err := dbbadger.NewDbManager("testdb", nil)
 	if err != nil {
 		panic(err)
 	}

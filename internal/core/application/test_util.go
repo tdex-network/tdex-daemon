@@ -45,7 +45,7 @@ func b2h(b []byte) string {
 // 	- unspents funding the close market (1 LBTC utxo of amount 1 BTC)
 //	- unspents funding the fee account (1 LBTC utxo of amount 1 BTC)
 func newTestTrader() (*traderService, context.Context, func()) {
-	dbManager, err := dbbadger.NewDbManager("testtrader")
+	dbManager, err := dbbadger.NewDbManager("testtrader", nil)
 	if err != nil {
 		panic(err)
 	}
