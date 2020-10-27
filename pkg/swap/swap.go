@@ -3,9 +3,6 @@ package swap
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
-
-	"github.com/novalagung/gubrak/v2"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
@@ -73,31 +70,35 @@ func compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccep
 }
 
 func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset string, ouptutBlindKeys map[string][]byte) (bool, error) {
-	found, err := gubrak.From(outs).
-		Find(func(each *transaction.TxOutput) bool {
+	var found bool = false
 
-			if each.IsConfidential() {
-				blindKey, ok := ouptutBlindKeys[hex.EncodeToString(each.Script)]
-				if !ok {
-					return false
-				}
-
-				unblinded, ok := transactionutil.UnblindOutput(each, blindKey)
-				if !ok {
-					return false
-				}
-
-				return unblinded.Value == value && unblinded.AssetHash == asset
+	for index := 0; index < len(outs) ; index++ {
+		output := outs[index]
+		// if confidential, unblind before check
+		if output.IsConfidential() {
+			blindingPrivateKey, ok := ouptutBlindKeys[hex.EncodeToString(output.Script)]
+			if !ok {
+				continue
 			}
 
-			return bufferutil.ValueFromBytes(each.Value) == value && bufferutil.AssetHashFromBytes(each.Asset) == asset
-		}).ResultAndError()
+			unblinded, ok := transactionutil.UnblindOutput(output, blindingPrivateKey)
+			if !ok {
+				continue
+			}
 
-	if err != nil {
-		return false, fmt.Errorf("gubrak: %w", err)
+			if unblinded.Value == value && unblinded.AssetHash == asset {
+				found = true
+				break
+			}
+		}
+		// unconfidential check
+	 	if bufferutil.ValueFromBytes(output.Value) == value && bufferutil.AssetHashFromBytes(output.Asset) == asset {
+			found = true
+			break
+		}
 	}
 
-	return found != nil, nil
+	return found, nil
 }
 
 func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) (uint64, error) {
