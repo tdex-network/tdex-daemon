@@ -183,6 +183,10 @@ func (svc *Service) GetValidator(methodName string) MacaroonValidator {
 	return validator
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // genMacaroons generates three macaroon files; one admin-level, one for
 // invoice access and one read-only. These can also be used to generate more
 // granular macaroons.
@@ -263,6 +267,10 @@ func (svc *Service) genMacaroons(
 	return nil
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // fileExists reports whether the named file or directory exists.
 // This function is taken from https://github.com/btcsuite/btcd
 func fileExists(name string) bool {
@@ -274,6 +282,10 @@ func fileExists(name string) bool {
 	return true
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // isRegistered checks to see if the required checker has already been
 // registered in order to avoid a panic caused by double registration.
 func isRegistered(c *checkers.Checker, name string) bool {
@@ -292,6 +304,10 @@ func isRegistered(c *checkers.Checker, name string) bool {
 	return false
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // RegisterExternalValidator registers a custom, external macaroon validator for
 // the specified absolute gRPC URI. That validator is then fully responsible to
 // make sure any macaroon passed for a request to that URI is valid and
@@ -313,6 +329,10 @@ func (svc *Service) RegisterExternalValidator(fullMethod string,
 	return nil
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // ValidateMacaroon validates the capabilities of a given request given a
 // bakery service, context, and uri. Within the passed context.Context, we
 // expect a macaroon to be encoded as request metadata using the key
@@ -364,18 +384,30 @@ func (svc *Service) ValidateMacaroon(ctx context.Context,
 	return err
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // Close closes the database that underlies the RootKeyStore and zeroes the
 // encryption keys.
 func (svc *Service) Close() error {
 	return svc.rks.Close()
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // CreateUnlock calls the underlying root key store's CreateUnlock and returns
 // the result.
 func (svc *Service) CreateUnlock(password *[]byte) error {
 	return svc.rks.CreateUnlock(password)
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // NewMacaroon wraps around the function Oven.NewMacaroon with the defaults,
 //  - version is always bakery.LatestVersion;
 //  - caveats is always nil.
@@ -399,12 +431,20 @@ func (svc *Service) NewMacaroon(
 	return svc.Oven.NewMacaroon(ctx, bakery.LatestVersion, nil, ops...)
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // ListMacaroonIDs returns all the root key ID values except the value of
 // encryptedKeyID.
 func (svc *Service) ListMacaroonIDs(ctxt context.Context) ([][]byte, error) {
 	return svc.rks.ListMacaroonIDs(ctxt)
 }
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
 // DeleteMacaroonID removes one specific root key ID. If the root key ID is
 // found and deleted, it will be returned.
 func (svc *Service) DeleteMacaroonID(ctxt context.Context,

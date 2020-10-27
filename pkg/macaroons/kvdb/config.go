@@ -1,5 +1,10 @@
 package kvdb
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
+
 // BoltBackendName is the name of the backend that should be passed into
 // kvdb.Create to initialize a new instance of kvdb.Backend backed by a live
 // instance of bbolt.

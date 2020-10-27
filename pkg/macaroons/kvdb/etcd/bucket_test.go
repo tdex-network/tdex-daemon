@@ -2,6 +2,11 @@
 
 package etcd
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
+
 // bkey is a helper functon used in tests to create a bucket key from passed
 // bucket list.
 func bkey(buckets ...string) string {

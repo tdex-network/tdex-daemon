@@ -2,6 +2,11 @@
 
 package etcd
 
+/*
+Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
+Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MACAROON-LND for licensing terms.
+*/
+
 // readWriteCursor holds a reference to the cursors bucket, the value
 // prefix and the current key used while iterating.
 type readWriteCursor struct {
