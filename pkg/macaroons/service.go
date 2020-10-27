@@ -175,19 +175,21 @@ func (svc *Service) UnaryServerInterceptor(
 				"required for method", info.FullMethod)
 		}
 
-		// Find out if there is an external validator registered for
-		// this method. Fall back to the internal one if there isn't.
-		validator, ok := svc.externalValidators[info.FullMethod]
-		if !ok {
-			validator = svc
-		}
+		if uriPermissions[0].Entity == "operator" {
+			// Find out if there is an external validator registered for
+			// this method. Fall back to the internal one if there isn't.
+			validator, ok := svc.externalValidators[info.FullMethod]
+			if !ok {
+				validator = svc
+			}
 
-		// Now that we know what validator to use, let it do its work.
-		err := validator.ValidateMacaroon(
-			ctx, uriPermissions, info.FullMethod,
-		)
-		if err != nil {
-			return nil, err
+			// Now that we know what validator to use, let it do its work.
+			err := validator.ValidateMacaroon(
+				ctx, uriPermissions, info.FullMethod,
+			)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		return handler(ctx, req)
@@ -208,19 +210,21 @@ func (svc *Service) StreamServerInterceptor(
 				"for method", info.FullMethod)
 		}
 
-		// Find out if there is an external validator registered for
-		// this method. Fall back to the internal one if there isn't.
-		validator, ok := svc.externalValidators[info.FullMethod]
-		if !ok {
-			validator = svc
-		}
+		if uriPermissions[0].Entity == "operator" {
+			// Find out if there is an external validator registered for
+			// this method. Fall back to the internal one if there isn't.
+			validator, ok := svc.externalValidators[info.FullMethod]
+			if !ok {
+				validator = svc
+			}
 
-		// Now that we know what validator to use, let it do its work.
-		err := validator.ValidateMacaroon(
-			ss.Context(), uriPermissions, info.FullMethod,
-		)
-		if err != nil {
-			return err
+			// Now that we know what validator to use, let it do its work.
+			err := validator.ValidateMacaroon(
+				ss.Context(), uriPermissions, info.FullMethod,
+			)
+			if err != nil {
+				return err
+			}
 		}
 
 		return handler(srv, ss)
