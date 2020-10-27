@@ -101,47 +101,65 @@ func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset 
 }
 
 func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) (uint64, error) {
-	result, err := gubrak.From(utxos).
-		Filter(func(each pset.PInput) bool {
-			// TODO check if a nonWitnessUtxo is given
+		var amount uint64 = 0
 
-			if each.WitnessUtxo.IsConfidential() {
+		filteredUtxos, err := utxosFilteredByAssetHashAndUnblinded(utxos, asset, inputBlindKeys)
+		if (err != nil) {
+			return 0, err
+		}
 
-				blindKey, ok := inputBlindKeys[hex.EncodeToString(each.WitnessUtxo.Script)]
-				if !ok {
-					return false
-				}
+		// sum all the filteredUtxos' values
+		for index := 0; index < len(filteredUtxos); index++ {
+			utxo := filteredUtxos[index]
+			value := bufferutil.ValueFromBytes(utxo.WitnessUtxo.Value)
+			amount += value
+		}
 
-				unblinded, ok := transactionutil.UnblindOutput(each.WitnessUtxo, blindKey)
-				if !ok {
-					return false
-				}
+		return amount, nil
+}
 
-				return unblinded.AssetHash == asset
+func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) ([]pset.PInput, error) {
+	filteredUtxos := make([]pset.PInput, 0)
+
+	for index := 0; index < len(utxos); index++ {
+		utxo := utxos[index]
+		
+		// if confidential, unblind before checking asset hash
+		if utxo.WitnessUtxo.IsConfidential() {
+			blindKey, ok := inputBlindKeys[hex.EncodeToString(utxo.WitnessUtxo.Script)]
+			if !ok {
+				continue
 			}
 
-			return bufferutil.AssetHashFromBytes(each.WitnessUtxo.Asset) == asset
-		}).
-		Map(func(each pset.PInput) uint64 {
-
-			if each.WitnessUtxo.IsConfidential() {
-
-				blindKey, _ := inputBlindKeys[hex.EncodeToString(each.WitnessUtxo.Script)]
-				unblinded, _ := transactionutil.UnblindOutput(each.WitnessUtxo, blindKey)
-
-				return unblinded.Value
+			unblinded, ok := transactionutil.UnblindOutput(utxo.WitnessUtxo, blindKey)
+			if !ok {
+				continue
 			}
 
-			return bufferutil.ValueFromBytes(each.WitnessUtxo.Value)
-		}).
-		Reduce(func(accumulator, value uint64) uint64 {
-			return accumulator + value
-		}, uint64(0)).
-		ResultAndError()
+			// replace Asset and Value by unblinded data before append
+			if unblinded.AssetHash == asset {
+				assetBytes, err := bufferutil.AssetHashToBytes(unblinded.AssetHash)
+				if err != nil {
+					return nil, err
+				}
+				utxo.WitnessUtxo.Asset = assetBytes 
 
-	if err != nil {
-		return 0, fmt.Errorf("gubrak: %w", err)
+				valueBytes, err := bufferutil.ValueToBytes(unblinded.Value)
+				if err != nil {
+					return nil, err
+				}
+				utxo.WitnessUtxo.Value = valueBytes
+
+				filteredUtxos = append(filteredUtxos, utxo)
+			}
+
+			continue
+		}
+
+		if bufferutil.AssetHashFromBytes(utxo.WitnessUtxo.Asset) == asset {
+			filteredUtxos = append(filteredUtxos, utxo)
+		}
 	}
 
-	return result.(uint64), nil
+	return filteredUtxos, nil
 }
