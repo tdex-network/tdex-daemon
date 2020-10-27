@@ -83,6 +83,7 @@ func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, ass
 				continue
 			}
 
+			// check if the unblinded output respect criterias
 			if unblinded.Value == value && unblinded.AssetHash == asset {
 				return true, nil
 			}
@@ -92,13 +93,14 @@ func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, ass
 			return true, nil
 		}
 	}
-
+	// output not found
 	return false, nil
 }
 
 func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) (uint64, error) {
 		var amount uint64 = 0
 
+		// filter the utxos using assetHash
 		filteredUtxos, err := utxosFilteredByAssetHashAndUnblinded(utxos, asset, inputBlindKeys)
 		if (err != nil) {
 			return 0, err
