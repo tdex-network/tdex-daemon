@@ -147,6 +147,10 @@ func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inp
 				}
 				utxo.WitnessUtxo.Value = valueBytes
 
+				utxo.WitnessUtxo.RangeProof = make([]byte, 0)
+				utxo.WitnessUtxo.SurjectionProof = make([]byte, 0)
+				utxo.WitnessUtxo.Nonce = make([]byte, 0)
+
 				filteredUtxos = append(filteredUtxos, utxo)
 			}
 
