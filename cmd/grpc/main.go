@@ -46,7 +46,7 @@ func main() {
 	errorHandler := func(err error) { log.Warn(err) }
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	crawlerSvc := crawler.NewService(explorerSvc, []crawler.Observable{}, errorHandler)
-	traderSvc := application.NewTraderService(
+	traderSvc := application.NewTradeService(
 		marketRepository,
 		tradeRepository,
 		vaultRepository,

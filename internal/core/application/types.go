@@ -40,3 +40,13 @@ type MarketStrategy struct {
 	Market
 	Strategy domain.StrategyType
 }
+
+type Balance struct {
+	BaseAmount  int64
+	QuoteAmount int64
+}
+
+type BalanceWithFee struct {
+	Balance
+	Fee
+}

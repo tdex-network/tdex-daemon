@@ -37,14 +37,14 @@ func b2h(b []byte) string {
 	return hex.EncodeToString(b)
 }
 
-// returns a TraderService intialized with some mocked data:
+// returns a TradeService intialized with some mocked data:
 //	- 1 open market
 //	- 1 close market
 //	- unlocked wallet
 // 	- unspents funding the open market (1 LBTC utxo of amount 1 BTC, 1 ASS utxo of amount 6500 BTC)
 // 	- unspents funding the close market (1 LBTC utxo of amount 1 BTC)
 //	- unspents funding the fee account (1 LBTC utxo of amount 1 BTC)
-func newTestTrader() (*traderService, context.Context, func()) {
+func newTestTrader() (*tradeService, context.Context, func()) {
 	dbManager, err := dbbadger.NewDbManager("testtrader", nil)
 	if err != nil {
 		panic(err)
@@ -101,7 +101,7 @@ func newTestTrader() (*traderService, context.Context, func()) {
 	tradeRepo := inmemory.NewTradeRepositoryImpl()
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 
-	traderSvc := newTraderService(
+	traderSvc := newTradeService(
 		marketRepo,
 		tradeRepo,
 		vaultRepo,

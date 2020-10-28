@@ -15,10 +15,10 @@ import (
 
 type traderHandler struct {
 	pb.UnimplementedTradeServer
-	traderSvc application.TraderService
+	traderSvc application.TradeService
 }
 
-func NewTraderHandler(traderSvc application.TraderService) pb.TradeServer {
+func NewTraderHandler(traderSvc application.TradeService) pb.TradeServer {
 	return &traderHandler{
 		traderSvc: traderSvc,
 	}
@@ -55,7 +55,38 @@ func (t traderHandler) Balances(
 	ctx context.Context,
 	req *pb.BalancesRequest,
 ) (*pb.BalancesReply, error) {
-	return &pb.BalancesReply{}, nil
+
+	mkt := req.GetMarket()
+	if err := validateMarket(mkt); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	balance, err := t.traderSvc.GetMarketBalance(
+		ctx,
+		application.Market{
+			BaseAsset:  req.Market.BaseAsset,
+			QuoteAsset: req.Market.QuoteAsset,
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	balancesWithFee := make([]*types.BalanceWithFee, 0)
+	balancesWithFee = append(balancesWithFee, &types.BalanceWithFee{
+		Balance: &types.Balance{
+			BaseAmount:  balance.BaseAmount,
+			QuoteAmount: balance.QuoteAmount,
+		},
+		Fee: &types.Fee{
+			Asset:      balance.FeeAsset,
+			BasisPoint: balance.BasisPoint,
+		},
+	})
+
+	return &pb.BalancesReply{
+		Balances: balancesWithFee,
+	}, nil
 }
 
 func (t traderHandler) MarketPrice(
