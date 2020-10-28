@@ -1,10 +1,15 @@
 package dbbadger
 
 import (
+	"context"
+	"math"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"testing"
 )
 
 func TestAddUnspents(t *testing.T) {
@@ -269,4 +274,98 @@ func TestLockUnlockUnspents(t *testing.T) {
 	}
 
 	assert.Equal(t, 0, lockedCount)
+}
+
+func TestConcurrentGetUnspentsAddUnspents(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	dbManager, err := NewDbManager("testdb", nil)
+	if err != nil {
+		panic("error while opening db")
+	}
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+	defer func() {
+		rec := recover()
+		os.RemoveAll("testdb")
+		if rec != nil {
+			t.Fatal(rec)
+		}
+	}()
+
+	go startWriter(t, dbManager, unspentRepository)
+	time.Sleep(1 * time.Millisecond)
+	startReader(t, dbManager, unspentRepository)
+}
+
+func startWriter(
+	t *testing.T,
+	dbManager *DbManager,
+	repo domain.UnspentRepository,
+) {
+	var unspents, oldUnspents []domain.Unspent
+	for {
+		tx := dbManager.NewTransaction()
+		ctx := context.WithValue(context.Background(), "tx", tx)
+		if len(unspents) > 0 {
+			oldUnspents = make([]domain.Unspent, len(unspents))
+			copy(oldUnspents, unspents)
+		}
+
+		unspents = randUnspents()
+		if err := repo.AddUnspents(ctx, unspents); err != nil {
+			t.Log(err)
+			tx.Discard()
+			continue
+		}
+		for _, oldUnspent := range oldUnspents {
+			if err := repo.UpdateUnspent(ctx, oldUnspent.Key(), func(u *domain.Unspent) (*domain.Unspent, error) {
+				u.Spend()
+				return u, nil
+			}); err != nil {
+				t.Log(err)
+				tx.Discard()
+				continue
+			}
+		}
+		if err := tx.Commit(); err != nil {
+			panic(err)
+		}
+		t.Log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+		t.Logf("%d new unspents added", len(unspents))
+		t.Logf("%d existing unspents marked as spent", len(oldUnspents))
+		t.Log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
+		time.Sleep(3 * time.Second)
+	}
+}
+
+func startReader(
+	t *testing.T,
+	dbManager *DbManager,
+	repo domain.UnspentRepository,
+) {
+	now := time.Now()
+
+	for {
+		if timeElapsed := time.Since(now); timeElapsed.Seconds() >= 30 {
+			break
+		}
+
+		tx := dbManager.NewTransaction()
+		ctx := context.WithValue(context.Background(), "tx", tx)
+		allUnspents := repo.GetAllUnspents(ctx)
+		availableUnspents, err := repo.GetAvailableUnspents(ctx)
+		if err != nil {
+			panic(err)
+		}
+		t.Log("-------------------------------------------------------")
+		t.Log("all unspents/spents:", len(allUnspents))
+		t.Log("unspents:", len(availableUnspents))
+		t.Log("spents:", math.Abs(float64(len(allUnspents)-len(availableUnspents))))
+		t.Log("-------------------------------------------------------")
+
+		time.Sleep(3 * time.Second)
+	}
 }
