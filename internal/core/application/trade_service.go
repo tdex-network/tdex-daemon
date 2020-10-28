@@ -19,7 +19,7 @@ import (
 	"github.com/vulpemventures/go-elements/pset"
 )
 
-type TraderService interface {
+type TradeService interface {
 	GetTradableMarkets(ctx context.Context) ([]MarketWithFee, error)
 	GetMarketPrice(
 		ctx context.Context,
@@ -38,9 +38,13 @@ type TraderService interface {
 		swapComplete *pb.SwapComplete,
 		swapFail *pb.SwapFail,
 	) (string, *pb.SwapFail, error)
+	GetMarketBalance(
+		ctx context.Context,
+		market Market,
+	) (*BalanceWithFee, error)
 }
 
-type traderService struct {
+type tradeService struct {
 	marketRepository  domain.MarketRepository
 	tradeRepository   domain.TradeRepository
 	vaultRepository   domain.VaultRepository
@@ -48,14 +52,14 @@ type traderService struct {
 	explorerSvc       explorer.Service
 }
 
-func NewTraderService(
+func NewTradeService(
 	marketRepository domain.MarketRepository,
 	tradeRepository domain.TradeRepository,
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
-) TraderService {
-	return newTraderService(
+) TradeService {
+	return newTradeService(
 		marketRepository,
 		tradeRepository,
 		vaultRepository,
@@ -64,14 +68,14 @@ func NewTraderService(
 	)
 }
 
-func newTraderService(
+func newTradeService(
 	marketRepository domain.MarketRepository,
 	tradeRepository domain.TradeRepository,
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
-) *traderService {
-	return &traderService{
+) *tradeService {
+	return &tradeService{
 		marketRepository:  marketRepository,
 		tradeRepository:   tradeRepository,
 		vaultRepository:   vaultRepository,
@@ -81,7 +85,7 @@ func newTraderService(
 }
 
 // Markets is the domain controller for the Markets RPC
-func (t *traderService) GetTradableMarkets(ctx context.Context) (
+func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 	[]MarketWithFee,
 	error,
 ) {
@@ -108,7 +112,7 @@ func (t *traderService) GetTradableMarkets(ctx context.Context) (
 }
 
 // MarketPrice is the domain controller for the MarketPrice RPC.
-func (t *traderService) GetMarketPrice(
+func (t *tradeService) GetMarketPrice(
 	ctx context.Context,
 	market Market,
 	tradeType int,
@@ -153,7 +157,7 @@ func (t *traderService) GetMarketPrice(
 }
 
 // TradePropose is the domain controller for the TradePropose RPC
-func (t *traderService) TradePropose(
+func (t *tradeService) TradePropose(
 	ctx context.Context,
 	market Market,
 	tradeType int,
@@ -326,7 +330,7 @@ func (t *traderService) TradePropose(
 }
 
 // TradeComplete is the domain controller for the TradeComplete RPC
-func (t *traderService) TradeComplete(
+func (t *tradeService) TradeComplete(
 	ctx context.Context,
 	swapComplete *pb.SwapComplete,
 	swapFail *pb.SwapFail,
@@ -339,7 +343,7 @@ func (t *traderService) TradeComplete(
 	return t.tradeComplete(ctx, swapComplete)
 }
 
-func (t *traderService) tradeComplete(ctx context.Context, swapComplete *pb.SwapComplete) (txID string, swapFail *pb.SwapFail, err error) {
+func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapComplete) (txID string, swapFail *pb.SwapFail, err error) {
 	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
 	if err != nil {
 		return "", nil, err
@@ -371,7 +375,7 @@ func (t *traderService) tradeComplete(ctx context.Context, swapComplete *pb.Swap
 	return
 }
 
-func (t *traderService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*pb.SwapFail, error) {
+func (t *tradeService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*pb.SwapFail, error) {
 	swapID := swapFail.GetMessageId()
 	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapID)
 	if err != nil {
@@ -398,7 +402,7 @@ func (t *traderService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*
 	return swapFail, nil
 }
 
-func (t *traderService) getUnspentsBlindingsAndDerivationPathsForAccount(
+func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 	ctx context.Context,
 	account int,
 ) (
@@ -806,4 +810,60 @@ func isValidTradePrice(swapRequest *pb.SwapRequest, tradeType int, previewAmount
 	upperBound := expectedAmount.Add(expectedAmount.Mul(slippage))
 
 	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
+}
+
+func (t *tradeService) GetMarketBalance(
+	ctx context.Context,
+	market Market,
+) (*BalanceWithFee, error) {
+	m, _, err := t.marketRepository.GetMarketByAsset(
+		ctx,
+		market.QuoteAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	marketAddresses, _, err := t.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, m.AccountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	var baseAmount int64
+	var quoteAmount int64
+
+	for _, a := range marketAddresses {
+		baseAddressBalance, err := t.unspentRepository.GetBalance(
+			ctx,
+			a,
+			m.BaseAsset,
+		)
+		if err != nil {
+			return nil, err
+		}
+		baseAmount += int64(baseAddressBalance)
+
+		quoteAddressBalance, err := t.unspentRepository.GetBalance(
+			ctx,
+			a,
+			m.QuoteAsset,
+		)
+		if err != nil {
+			return nil, err
+		}
+		quoteAmount += int64(quoteAddressBalance)
+
+	}
+
+	return &BalanceWithFee{
+		Balance: Balance{
+			BaseAmount:  baseAmount,
+			QuoteAmount: quoteAmount,
+		},
+		Fee: Fee{
+			FeeAsset:   m.BaseAsset,
+			BasisPoint: m.Fee,
+		},
+	}, nil
 }
