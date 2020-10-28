@@ -39,6 +39,8 @@ const (
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey ...
 	PriceSlippageKey = "PRICE_SLIPPAGE"
+	// MacaroonRootKeyPass ...
+	MacaroonRootKeyPass = "MACAROON_ROOT_KEY_PASS"
 )
 
 var vip *viper.Viper
@@ -61,6 +63,7 @@ func init() {
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
+	vip.SetDefault(MacaroonRootKeyPass, "hello")
 
 	validate()
 

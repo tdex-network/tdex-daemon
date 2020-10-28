@@ -13,8 +13,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/tdex-network/tdex-daemon/pkg/macaroons/kvdb"
-
 	"github.com/btcsuite/btcwallet/snacl"
 )
 
@@ -54,7 +52,7 @@ var (
 
 // RootKeyStorage implements the bakery.RootKeyStorage interface.
 type RootKeyStorage struct {
-	kvdb.Backend
+	Backend
 
 	encKeyMtx sync.RWMutex
 	encKey    *snacl.SecretKey
@@ -62,9 +60,9 @@ type RootKeyStorage struct {
 
 // NewRootKeyStorage creates a RootKeyStorage instance.
 // TODO(aakselrod): Add support for encryption of data with passphrase.
-func NewRootKeyStorage(db kvdb.Backend) (*RootKeyStorage, error) {
+func NewRootKeyStorage(db Backend) (*RootKeyStorage, error) {
 	// If the store's bucket doesn't exist, create it.
-	err := kvdb.Update(db, func(tx kvdb.RwTx) error {
+	err := Update(db, func(tx RwTx) error {
 		_, err := tx.CreateTopLevelBucket(rootKeyBucketName)
 		return err
 	})
@@ -92,7 +90,7 @@ func (r *RootKeyStorage) CreateUnlock(password *[]byte) error {
 		return ErrPasswordRequired
 	}
 
-	return kvdb.Update(r, func(tx kvdb.RwTx) error {
+	return Update(r, func(tx RwTx) error {
 		bucket := tx.ReadWriteBucket(rootKeyBucketName)
 		dbKey := bucket.Get(encryptedKeyID)
 		if len(dbKey) > 0 {
@@ -140,7 +138,7 @@ func (r *RootKeyStorage) Get(_ context.Context, id []byte) ([]byte, error) {
 		return nil, ErrStoreLocked
 	}
 	var rootKey []byte
-	err := kvdb.View(r, func(tx kvdb.RTx) error {
+	err := View(r, func(tx RTx) error {
 		dbKey := tx.ReadBucket(rootKeyBucketName).Get(id)
 		if len(dbKey) == 0 {
 			return fmt.Errorf("root key with id %s doesn't exist",
@@ -185,7 +183,7 @@ func (r *RootKeyStorage) RootKey(ctx context.Context) ([]byte, []byte, error) {
 		return nil, nil, ErrKeyValueForbidden
 	}
 
-	err = kvdb.Update(r, func(tx kvdb.RwTx) error {
+	err = Update(r, func(tx RwTx) error {
 		ns := tx.ReadWriteBucket(rootKeyBucketName)
 		dbKey := ns.Get(id)
 
@@ -249,7 +247,7 @@ func (r *RootKeyStorage) ListMacaroonIDs(_ context.Context) ([][]byte, error) {
 
 	// Read all the items in the bucket and append the keys, which are the
 	// root key IDs we want.
-	err := kvdb.View(r, func(tx kvdb.RTx) error {
+	err := View(r, func(tx RTx) error {
 
 		// appendRootKey is a function closure that appends root key ID
 		// to rootKeySlice.
@@ -296,7 +294,7 @@ func (r *RootKeyStorage) DeleteMacaroonID(
 	}
 
 	var rootKeyIDDeleted []byte
-	err := kvdb.Update(r, func(tx kvdb.RwTx) error {
+	err := Update(r, func(tx RwTx) error {
 		bucket := tx.ReadWriteBucket(rootKeyBucketName)
 
 		// Check the key can be found. If not, return nil.

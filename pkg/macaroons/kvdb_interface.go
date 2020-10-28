@@ -1,4 +1,4 @@
-package kvdb
+package macaroons
 
 /*
 Modified from https://github.com/lightningnetwork/lnd/blob/master/macaroons/auth.go
@@ -9,6 +9,11 @@ import (
 	"github.com/btcsuite/btcwallet/walletdb"
 	_ "github.com/btcsuite/btcwallet/walletdb/bdb" // Import to register backend.
 )
+
+// BoltBackendName is the name of the backend that should be passed into
+// kvdb.Create to initialize a new instance of kvdb.Backend backed by a live
+// instance of bbolt.
+const BoltBackendName = "bdb"
 
 // Update opens a database read/write transaction and executes the function f
 // with the transaction passed as a parameter. After f exits, if f did not

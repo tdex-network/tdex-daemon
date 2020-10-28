@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/tdex-network/tdex-daemon/config"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 	"google.golang.org/grpc"
@@ -14,7 +15,7 @@ func UnaryInterceptor(
 ) grpc.ServerOption {
 	return grpc.UnaryInterceptor(
 		middleware.ChainUnaryServer(
-			unaryAuthHandler(macaroons.RPCServerPermissions(), macaroonService),
+			unaryAuthHandler(config.RPCServerPermissions(), macaroonService),
 			unaryLogger,
 			unaryTransactionHandler(dbManager),
 		),
@@ -24,11 +25,11 @@ func UnaryInterceptor(
 // StreamInterceptor returns the stream interceptor with a logrus log
 func StreamInterceptor(
 	dbManager *dbbadger.DbManager,
-	macaroonService *macaroons.Service,
+	macaroonService macaroons.Service,
 ) grpc.ServerOption {
 	return grpc.StreamInterceptor(
 		middleware.ChainStreamServer(
-			streamAuthHandler(macaroons.RPCServerPermissions(), *macaroonService),
+			streamAuthHandler(config.RPCServerPermissions(), macaroonService),
 			streamLogger,
 			streamTransactionHandler(dbManager),
 		),

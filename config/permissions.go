@@ -1,15 +1,15 @@
-package macaroons
+package config
 
 import "gopkg.in/macaroon-bakery.v2/bakery"
 
 var (
-	pricePermissions = []bakery.Op{
+	PricePermissions = []bakery.Op{
 		{
 			Entity: "market",
 			Action: "updatemarketprice",
 		},
 	}
-	marketPermissions = []bakery.Op{
+	MarketPermissions = []bakery.Op{
 		{
 			Entity: "market",
 			Action: "openmarket",
@@ -23,10 +23,26 @@ var (
 			Action: "updatemarketstrategy",
 		},
 	}
-	//TODO check permissions
-	readonlyPermissions = []bakery.Op{}
+	ReadonlyPermissions = []bakery.Op{
+		{
+			Entity: "operator",
+			Action: "reportmarketfee",
+		},
+		{
+			Entity: "operator",
+			Action: "listswaps",
+		},
+		{
+			Entity: "operator",
+			Action: "listmarket",
+		},
+		{
+			Entity: "operator",
+			Action: "balancefeeaccount",
+		},
+	}
 
-	adminPermissions = []bakery.Op{
+	AdminPermissions = []bakery.Op{
 		{
 			Entity: "wallet",
 			Action: "genseed",
@@ -106,26 +122,6 @@ var (
 		{
 			Entity: "operator",
 			Action: "reportmarketfee",
-		},
-		{
-			Entity: "trade",
-			Action: "markets",
-		},
-		{
-			Entity: "trade",
-			Action: "balances",
-		},
-		{
-			Entity: "trade",
-			Action: "marketprice",
-		},
-		{
-			Entity: "trade",
-			Action: "tradepropose",
-		},
-		{
-			Entity: "trade",
-			Action: "tradecomplete",
 		},
 	}
 )
@@ -213,26 +209,6 @@ func RPCServerPermissions() map[string][]bakery.Op {
 		"/Operator/ReportMarketFee": {{
 			Entity: "operator",
 			Action: "reportmarketfee",
-		}},
-		"/Trade/Markets": {{
-			Entity: "trade",
-			Action: "markets",
-		}},
-		"/Trade/Balances": {{
-			Entity: "trade",
-			Action: "balances",
-		}},
-		"/Trade/MarketPrice": {{
-			Entity: "trade",
-			Action: "marketprice",
-		}},
-		"/Trade/TradePropose": {{
-			Entity: "trade",
-			Action: "tradepropose",
-		}},
-		"/Trade/TradeComplete": {{
-			Entity: "trade",
-			Action: "tradecomplete",
 		}},
 	}
 }

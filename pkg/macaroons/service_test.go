@@ -8,7 +8,6 @@ Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MAC
 import (
 	"context"
 	"encoding/hex"
-	"github.com/tdex-network/tdex-daemon/pkg/macaroons/kvdb"
 	"io/ioutil"
 	"os"
 	"path"
@@ -42,8 +41,8 @@ func setupTestRootKeyStorage(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("Error creating temp dir: %v", err)
 	}
-	db, err := kvdb.Create(
-		kvdb.BoltBackendName, path.Join(tempDir, "macaroons.db"), true,
+	db, err := Create(
+		BoltBackendName, path.Join(tempDir, "macaroons.db"), true,
 	)
 	if err != nil {
 		t.Fatalf("Error opening store DB: %v", err)

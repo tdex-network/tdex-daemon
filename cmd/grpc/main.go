@@ -46,7 +46,7 @@ func main() {
 	}
 	defer macaroonService.Close()
 
-	var pass = []byte("hello") //TODO this should be passed as flag/env?
+	var pass = []byte(config.GetString(config.MacaroonRootKeyPass))
 	// Try to unlock the macaroon store with the private password.
 	err = macaroonService.CreateUnlock(&pass)
 	if err != nil {
@@ -105,11 +105,11 @@ func main() {
 	// Grpc Server
 	traderGrpcServer := grpc.NewServer(
 		interceptor.UnaryInterceptor(dbManager, *macaroonService),
-		interceptor.StreamInterceptor(dbManager, macaroonService),
+		interceptor.StreamInterceptor(dbManager, *macaroonService),
 	)
 	operatorGrpcServer := grpc.NewServer(
 		interceptor.UnaryInterceptor(dbManager, *macaroonService),
-		interceptor.StreamInterceptor(dbManager, macaroonService),
+		interceptor.StreamInterceptor(dbManager, *macaroonService),
 	)
 
 	traderHandler := grpchandler.NewTraderHandler(traderSvc)

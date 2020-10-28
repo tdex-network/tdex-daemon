@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/tdex-network/tdex-daemon/config"
-	"github.com/tdex-network/tdex-daemon/pkg/macaroons/kvdb"
+	"gopkg.in/macaroon.v2"
 	"io/ioutil"
 	"os"
 	"path"
@@ -15,7 +15,6 @@ import (
 
 	"gopkg.in/macaroon-bakery.v2/bakery"
 	"gopkg.in/macaroon-bakery.v2/bakery/checkers"
-	macaroon "gopkg.in/macaroon.v2"
 )
 
 const (
@@ -90,8 +89,8 @@ func NewService(dir, location string, checks ...Checker) (*Service, error) {
 
 	// Open the database that we'll use to store the primary macaroon key,
 	// and all generated macaroons+caveats.
-	macaroonDB, err := kvdb.Create(
-		kvdb.BoltBackendName, path.Join(dir, DBFilename), true,
+	macaroonDB, err := Create(
+		BoltBackendName, path.Join(dir, DBFilename), true,
 	)
 	if err != nil {
 		return nil, err
@@ -105,16 +104,13 @@ func NewService(dir, location string, checks ...Checker) (*Service, error) {
 	macaroonParams := bakery.BakeryParams{
 		Location:     location,
 		RootKeyStore: rootKeyStore,
-		// No third-party caveat support for now.
-		// TODO(aakselrod): Add third-party caveat support.
-		Locator: nil,
-		Key:     nil,
+		Locator:      nil,
+		Key:          nil,
 	}
 
 	svc := bakery.New(macaroonParams)
 
 	// Register all custom caveat checkers with the bakery's checker.
-	// TODO(aakselrod): Add more checks as required.
 	checker := svc.Checker.FirstPartyCaveatChecker.(*checkers.Checker)
 	for _, check := range checks {
 		cond, fun := check()
@@ -199,7 +195,7 @@ func (svc *Service) genMacaroons(
 ) error {
 
 	priceMac, err := svc.NewMacaroon(
-		ctx, DefaultRootKeyID, pricePermissions...,
+		ctx, DefaultRootKeyID, config.PricePermissions...,
 	)
 	if err != nil {
 		return err
@@ -215,7 +211,7 @@ func (svc *Service) genMacaroons(
 	}
 
 	marketMac, err := svc.NewMacaroon(
-		ctx, DefaultRootKeyID, marketPermissions...,
+		ctx, DefaultRootKeyID, config.MarketPermissions...,
 	)
 	if err != nil {
 		return err
@@ -230,26 +226,24 @@ func (svc *Service) genMacaroons(
 		return err
 	}
 
-	//TODO uncomment once read only permissions are defined
-	//// Generate the read-only macaroon and write it to a file.
-	//roMacaroon, err := svc.NewMacaroon(
-	//	ctx, macaroons.DefaultRootKeyID, macaroons.ReadonlyPermissions...,
-	//)
-	//if err != nil {
-	//	return err
-	//}
-	//roBytes, err := roMacaroon.M().MarshalBinary()
-	//if err != nil {
-	//	return err
-	//}
-	//if err = ioutil.WriteFile(roFile, roBytes, 0644); err != nil {
-	//	os.Remove(admFile)
-	//	return err
-	//}
+	roMacaroon, err := svc.NewMacaroon(
+		ctx, DefaultRootKeyID, config.ReadonlyPermissions...,
+	)
+	if err != nil {
+		return err
+	}
+	roBytes, err := roMacaroon.M().MarshalBinary()
+	if err != nil {
+		return err
+	}
+	if err = ioutil.WriteFile(roFile, roBytes, 0644); err != nil {
+		os.Remove(admFile)
+		return err
+	}
 
 	// Generate the admin macaroon and write it to a file.
 	admMacaroon, err := svc.NewMacaroon(
-		ctx, DefaultRootKeyID, adminPermissions...,
+		ctx, DefaultRootKeyID, config.AdminPermissions...,
 	)
 	if err != nil {
 		return err
@@ -258,7 +252,6 @@ func (svc *Service) genMacaroons(
 	if err != nil {
 		return err
 	}
-	println(hex.EncodeToString(admBytes))
 
 	if err = ioutil.WriteFile(admFile, admBytes, 0600); err != nil {
 		return err

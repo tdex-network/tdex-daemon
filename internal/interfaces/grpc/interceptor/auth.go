@@ -8,6 +8,8 @@ import (
 	"gopkg.in/macaroon-bakery.v2/bakery"
 )
 
+var entities = []string{"operator"}
+
 func unaryAuthHandler(
 	permissionMap map[string][]bakery.Op,
 	macaroonSvc macaroons.Service,
@@ -20,22 +22,9 @@ func unaryAuthHandler(
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
 
-		uriPermissions, ok := permissionMap[info.FullMethod]
-		if !ok {
-			return nil, fmt.Errorf("%s: unknown permissions "+
-				"required for method", info.FullMethod)
-		}
-
-		if uriPermissions[0].Entity == "operator" {
-			validator := macaroonSvc.GetValidator(info.FullMethod)
-
-			// Now that we know what validator to use, let it do its work.
-			err := validator.ValidateMacaroon(
-				ctx, uriPermissions, info.FullMethod,
-			)
-			if err != nil {
-				return nil, err
-			}
+		err := auth(ctx, permissionMap, info.FullMethod, macaroonSvc)
+		if err != nil {
+			return nil, err
 		}
 
 		return handler(ctx, req)
@@ -47,27 +36,53 @@ func streamAuthHandler(
 	macaroonSvc macaroons.Service,
 ) grpc.StreamServerInterceptor {
 
-	return func(srv interface{}, ss grpc.ServerStream,
-		info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(
+		srv interface{},
+		ss grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
 
-		uriPermissions, ok := permissionMap[info.FullMethod]
-		if !ok {
-			return fmt.Errorf("%s: unknown permissions required "+
-				"for method", info.FullMethod)
-		}
-
-		if uriPermissions[0].Entity == "operator" {
-			validator := macaroonSvc.GetValidator(info.FullMethod)
-
-			// Now that we know what validator to use, let it do its work.
-			err := validator.ValidateMacaroon(
-				ss.Context(), uriPermissions, info.FullMethod,
-			)
-			if err != nil {
-				return err
-			}
+		err := auth(ss.Context(), permissionMap, info.FullMethod, macaroonSvc)
+		if err != nil {
+			return err
 		}
 
 		return handler(srv, ss)
 	}
+}
+
+func auth(
+	ctx context.Context,
+	permissionMap map[string][]bakery.Op,
+	rpcMethod string,
+	macaroonSvc macaroons.Service,
+) error {
+	uriPermissions, ok := permissionMap[rpcMethod]
+	if !ok {
+		return fmt.Errorf("%s: unknown permissions "+
+			"required for method", rpcMethod)
+	}
+
+	if isForAuth(uriPermissions[0].Entity) {
+		validator := macaroonSvc.GetValidator(rpcMethod)
+
+		// Now that we know what validator to use, let it do its work.
+		err := validator.ValidateMacaroon(
+			ctx, uriPermissions, rpcMethod,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func isForAuth(entity string) bool {
+	for _, v := range entities {
+		if entity == v {
+			return true
+		}
+	}
+	return false
 }
