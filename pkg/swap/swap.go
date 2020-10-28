@@ -73,14 +73,15 @@ func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, ass
 	for _, output := range outputs {
 		// if confidential, unblind before check
 		if output.IsConfidential() {
-			blindingPrivateKey, ok := ouptutBlindKeys[hex.EncodeToString(output.Script)]
+			script := hex.EncodeToString(output.Script)
+			blindingPrivateKey, ok := ouptutBlindKeys[script]
 			if !ok {
-				continue
+				return false, errors.New("No blinding private key for script: " + script)
 			}
 
 			unblinded, ok := transactionutil.UnblindOutput(output, blindingPrivateKey)
 			if !ok {
-				continue
+				return false, errors.New("Unable to unblind output with script: " + script)
 			}
 
 			// check if the unblinded output respect criterias
@@ -121,14 +122,15 @@ func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inp
 	for _, utxo := range utxos {
 		// if confidential, unblind before checking asset hash
 		if utxo.WitnessUtxo.IsConfidential() {
-			blindKey, ok := inputBlindKeys[hex.EncodeToString(utxo.WitnessUtxo.Script)]
+			script := hex.EncodeToString(utxo.WitnessUtxo.Script)
+			blindKey, ok := inputBlindKeys[script]
 			if !ok {
-				continue
+				return nil, errors.New("No blinding private key for script: " + script)
 			}
 
 			unblinded, ok := transactionutil.UnblindOutput(utxo.WitnessUtxo, blindKey)
 			if !ok {
-				continue
+				return nil, errors.New("Unable to unblind output with script: " + script)
 			}
 
 			// replace Asset and Value by unblinded data before append
