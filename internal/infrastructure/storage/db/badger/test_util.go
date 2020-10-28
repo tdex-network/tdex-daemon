@@ -2,7 +2,9 @@ package dbbadger
 
 import (
 	"context"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
@@ -11,38 +13,34 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 )
 
-var ctx context.Context
-var marketRepository domain.MarketRepository
-var unspentRepository domain.UnspentRepository
-var vaultRepository domain.VaultRepository
-var tradeRepository domain.TradeRepository
-var dbManager *DbManager
-var testDbDir = "testdb"
+var (
+	ctx               context.Context
+	marketRepository  domain.MarketRepository
+	unspentRepository domain.UnspentRepository
+	vaultRepository   domain.VaultRepository
+	tradeRepository   domain.TradeRepository
+	dbManager         *DbManager
+	testDbDir         = "testdb"
+)
 
 func before() {
-	var err error
-
-	dbManager, err = NewDbManager(testDbDir, nil)
+	dbManager, err := NewDbManager(testDbDir, nil)
 	if err != nil {
 		panic(err)
 	}
-	marketRepository = NewMarketRepositoryImpl(dbManager)
-	unspentRepository = NewUnspentRepositoryImpl(dbManager)
-	vaultRepository = NewVaultRepositoryImpl(dbManager)
-	tradeRepository = NewTradeRepositoryImpl(dbManager)
 	tx := dbManager.NewTransaction()
 
-	if err = insertMarkets(tx.(*badger.Txn), dbManager); err != nil {
+	if err := insertMarkets(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
-	if err = insertUnspents(tx.(*badger.Txn), dbManager); err != nil {
+	if err := insertUnspents(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
-	if err = insertTrades(tx.(*badger.Txn), dbManager); err != nil {
+	if err := insertTrades(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
 
-	if err = insertVault(tx.(*badger.Txn), dbManager); err != nil {
+	if err := insertVault(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
 
@@ -50,6 +48,10 @@ func before() {
 		panic(err)
 	}
 
+	marketRepository = NewMarketRepositoryImpl(dbManager)
+	unspentRepository = NewUnspentRepositoryImpl(dbManager)
+	vaultRepository = NewVaultRepositoryImpl(dbManager)
+	tradeRepository = NewTradeRepositoryImpl(dbManager)
 	ctx = context.WithValue(
 		context.Background(),
 		"tx",
@@ -311,4 +313,56 @@ func insertTrades(tx *badger.Txn, db *DbManager) error {
 	}
 
 	return nil
+}
+
+var (
+	hexCharset  = "0123456789abcdef"
+	addrCharset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+	seededRand  = rand.New(rand.NewSource(time.Now().UnixNano()))
+)
+
+func randUnspents() []domain.Unspent {
+	numUnspents := randInt(1, 4)
+	unspents := make([]domain.Unspent, numUnspents)
+	for i := range unspents {
+		unspents[i] = domain.Unspent{
+			TxID:            randStr(32),
+			VOut:            uint32(randInt(0, 15)),
+			Value:           uint64(randInt(1, 100000000000)),
+			AssetHash:       randStr(32),
+			ValueCommitment: "08" + randStr(32),
+			AssetCommitment: "0b" + randStr(32),
+			ScriptPubKey:    append([]byte{0, 20}, randBytes(20)...),
+			Nonce:           append([]byte{2}, randBytes(32)...),
+			RangeProof:      make([]byte, 4174),
+			SurjectionProof: make([]byte, 64),
+			Address:         randAddr(),
+			Confirmed:       true,
+		}
+	}
+	return unspents
+}
+
+func randInt(min, max int) int {
+	return seededRand.Intn(max-min+1) + min
+}
+
+func randAddr() string {
+	return "el1qq" + string(_randBytes(48, addrCharset))
+}
+
+func randStr(length int) string {
+	return string(randBytes(length))
+}
+
+func randBytes(length int) []byte {
+	return _randBytes(length, hexCharset)
+}
+
+func _randBytes(length int, charset string) []byte {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = hexCharset[randInt(0, len(hexCharset)-1)]
+	}
+	return b
 }
