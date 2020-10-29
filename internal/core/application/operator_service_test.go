@@ -33,11 +33,11 @@ func newTestOperator() (OperatorService, context.Context) {
 }
 
 func TestListMarket(t *testing.T) {
-	t.Run("ListMaker test", func(t *testing.T) {
+	t.Run("ListMaker should return an empty list and a nil error", func(t *testing.T) {
 		operatorService, ctx := newTestOperator()
 
 		listMarketReply, err := operatorService.ListMarket(ctx, ListMarketRequest{})
-		fmt.Println(listMarketReply)
 		assert.Equal(t, err, nil)
+		assert.Equal(t, len(listMarketReply.Markets), 0)
 	})
 }
