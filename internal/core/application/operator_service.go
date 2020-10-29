@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -45,10 +46,6 @@ type OperatorService interface {
 	ListSwaps(
 		ctx context.Context,
 	) (*pb.ListSwapsReply, error)
-	ListMarket(
-		ctx context.Context,
-		req ListMarketRequest,
-	) (*pb.ListMarketReply, error)
 }
 
 type operatorService struct {
@@ -77,8 +74,6 @@ func NewOperatorService(
 		crawlerSvc:        crawlerSvc,
 	}
 }
-
-
 
 func (o *operatorService) DepositMarket(
 	ctx context.Context,
@@ -370,37 +365,6 @@ func (o *operatorService) ListSwaps(
 	swaps := tradesToSwapInfo(markets, trades)
 	return &pb.ListSwapsReply{
 		Swaps: swaps,
-	}, nil
-}
-
-func (o *operatorService) ListMarket(
-	ctx context.Context,
-	request ListMarketRequest,
-) (*pb.ListMarketReply, error) {
-	markets, err := o.marketRepository.GetAllMarkets(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	marketInfos := make([]*pb.MarketInfo, len(markets)) 
-
-	for index, market := range markets {
-		marketInfos[index] = &pb.MarketInfo{
-			Market: &pbtypes.Market{
-				BaseAsset: market.BaseAsset,
-				QuoteAsset: market.QuoteAsset,
-			},
-			Fee: &pbtypes.Fee{
-				BasisPoint: market.Fee,
-				Asset: market.FeeAsset,
-			},
-			Tradable: market.Tradable,
-			StrategyType: pb.StrategyType(market.Strategy.Type),
-		}
-	}
-
-	return &pb.ListMarketReply{
-		Markets: marketInfos,
 	}, nil
 }
 
