@@ -128,7 +128,7 @@ func TestAddUnspentAndBalance(t *testing.T) {
 	assert.Equal(t, 3, len(allUnspent))
 	assert.Equal(t, 2, len(allSpent))
 
-	balance := repo.GetBalance(
+	balance, _ := repo.GetBalance(
 		ctx,
 		"el1qqfxwyst8u39d37k2mepqhlxhm9r00rqrnvhnqw444730a9frszjnw7ydmu8dm4j2n60asfw46ym6kum02e4pglsjdnyl68pfc",
 		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

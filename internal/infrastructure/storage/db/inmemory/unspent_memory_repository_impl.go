@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 	"sync"
-
+	"errors"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
@@ -58,11 +58,11 @@ func (r UnspentRepositoryImpl) GetAllSpents(ctx context.Context) []domain.Unspen
 func (r UnspentRepositoryImpl) GetBalance(
 	ctx context.Context,
 	address, assetHash string,
-) uint64 {
+) (uint64, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return getBalance(r.storageByContext(ctx), address, assetHash)
+	return getBalance(r.storageByContext(ctx), address, assetHash), nil
 }
 
 // GetUnlockedBalance returns the total amount of unlocked unspents for the
@@ -70,19 +70,19 @@ func (r UnspentRepositoryImpl) GetBalance(
 func (r UnspentRepositoryImpl) GetUnlockedBalance(
 	ctx context.Context,
 	address, assetHash string,
-) uint64 {
+) (uint64, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return getUnlockedBalance(r.storageByContext(ctx), address, assetHash)
+	return getUnlockedBalance(r.storageByContext(ctx), address, assetHash), nil
 }
 
 // GetAvailableUnspents returns the list of unlocked unspents
-func (r UnspentRepositoryImpl) GetAvailableUnspents(ctx context.Context) []domain.Unspent {
+func (r UnspentRepositoryImpl) GetAvailableUnspents(ctx context.Context) ([]domain.Unspent, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return getAvailableUnspents(r.storageByContext(ctx), nil)
+	return getAvailableUnspents(r.storageByContext(ctx), nil), nil
 }
 
 // GetAvailableUnspentsForAddresses returns the list of unlocked unspents for
@@ -90,11 +90,11 @@ func (r UnspentRepositoryImpl) GetAvailableUnspents(ctx context.Context) []domai
 func (r UnspentRepositoryImpl) GetAvailableUnspentsForAddresses(
 	ctx context.Context,
 	addresses []string,
-) []domain.Unspent {
+) ([]domain.Unspent, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return getAvailableUnspents(r.storageByContext(ctx), addresses)
+	return getAvailableUnspents(r.storageByContext(ctx), addresses), nil
 }
 
 // LockUnspents locks the given unspents associating them with the trade where
@@ -119,6 +119,46 @@ func (r UnspentRepositoryImpl) UnlockUnspents(
 	defer r.lock.Unlock()
 
 	return unlockUnspents(r.storageByContext(ctx), unspentKeys)
+}
+
+// GetUnspentForKey return unspent for a given key.
+func (r UnspentRepositoryImpl) GetUnspentForKey(
+	ctx context.Context,
+	unspentKey domain.UnspentKey,
+) (*domain.Unspent, error) {
+	unspent, ok := r.unspents[unspentKey]
+	if !ok {
+		return nil, errors.New("Unspent not found")
+	}
+	return &unspent, nil
+}
+
+// GetUnspentsForAddresses returns unspents for a list of addresses.
+func (r UnspentRepositoryImpl) GetUnspentsForAddresses(
+	ctx context.Context,
+	addresses []string,
+) ([]domain.Unspent, error) {
+	return getUnspentsForAddresses(r.unspents, addresses), nil
+}
+
+// UpdateUnspent will update the Unspent model with the updateFn
+func (r UnspentRepositoryImpl) UpdateUnspent(
+	ctx context.Context,
+	unspentKey domain.UnspentKey,
+	updateFn func(m *domain.Unspent) (*domain.Unspent, error),
+) error {
+	unspentToUpdate, ok := r.unspents[unspentKey]
+	if !ok {
+		return errors.New("No unspent for the given key")
+	}
+	unspent, err := updateFn(&unspentToUpdate)
+	if err != nil {
+		return err
+	}
+
+	r.unspents[unspentKey] = *unspent
+	
+	return nil
 }
 
 // Begin returns a new UnspentRepositoryTxImpl
@@ -218,10 +258,20 @@ func getUnlockedBalance(storage map[domain.UnspentKey]domain.Unspent, address, a
 	return balance
 }
 
+func getUnspentsForAddresses(storage map[domain.UnspentKey]domain.Unspent, addresses []string) []domain.Unspent {
+	unspentsUnlocked := getUnspents(storage, addresses, false)
+	unspentsLocked := getUnspents(storage, addresses, true)
+	return append(unspentsUnlocked, unspentsLocked...)
+}
+
 func getAvailableUnspents(storage map[domain.UnspentKey]domain.Unspent, addresses []string) []domain.Unspent {
+	return getUnspents(storage, addresses, false)
+}
+
+func getUnspents(storage map[domain.UnspentKey]domain.Unspent, addresses []string, isLocked bool) []domain.Unspent {
 	unspents := make([]domain.Unspent, 0)
 	for _, u := range storage {
-		if !u.IsSpent() && !u.IsLocked() && u.IsConfirmed() {
+		if !u.IsSpent() && u.IsLocked() == isLocked && u.IsConfirmed() {
 			if len(addresses) == 0 {
 				unspents = append(unspents, u)
 			} else {
