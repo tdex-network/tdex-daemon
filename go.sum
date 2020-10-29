@@ -317,6 +317,7 @@ github.com/subosito/gotenv v1.2.0 h1:Slr1R9HxAlEKefgq5jn9U+DnETlIUa6HfgEzj0g5d7s
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/tdex-network/tdex-protobuf v0.0.0-20201008143413-df425a64802c h1:4CujNJ3liyoHqQ1utgvLxbl41hs3gcN8snnQEEdSqRI=
 github.com/tdex-network/tdex-protobuf v0.0.0-20201008143413-df425a64802c/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20201021085727-d732c073ee90 h1:sRbLc16n+ed0uOPPJtaW4qO5wmh38wJ7aHdAv6oCLAU=
 github.com/thanhpk/randstr v1.0.4 h1:IN78qu/bR+My+gHCvMEXhR/i5oriVHcTB/BJJIRTsNo=
 github.com/thanhpk/randstr v1.0.4/go.mod h1:M/H2P1eNLZzlDwAzpkkkUvoyNNMbzRGhESZuEQk3r0U=
 github.com/timshannon/badgerhold v0.0.0-20200723210455-8addb9de1e75 h1:FUf9S7cZPBwXUlzJbdLF/4Nm3PXd+IUgfxPVoWA+JvE=

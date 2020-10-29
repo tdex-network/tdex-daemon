@@ -78,8 +78,6 @@ func NewOperatorService(
 	}
 }
 
-
-
 func (o *operatorService) DepositMarket(
 	ctx context.Context,
 	quoteAsset string,
@@ -383,19 +381,19 @@ func (o *operatorService) ListMarket(
 		return nil, err
 	}
 
-	marketInfos := make([]*pb.MarketInfo, len(markets)) 
+	marketInfos := make([]*pb.MarketInfo, len(markets))
 
 	for index, market := range markets {
 		marketInfos[index] = &pb.MarketInfo{
 			Market: &pbtypes.Market{
-				BaseAsset: market.BaseAsset,
+				BaseAsset:  market.BaseAsset,
 				QuoteAsset: market.QuoteAsset,
 			},
 			Fee: &pbtypes.Fee{
 				BasisPoint: market.Fee,
-				Asset: market.FeeAsset,
+				Asset:      market.FeeAsset,
 			},
-			Tradable: market.Tradable,
+			Tradable:     market.Tradable,
 			StrategyType: pb.StrategyType(market.Strategy.Type),
 		}
 	}
