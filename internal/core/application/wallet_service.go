@@ -424,8 +424,11 @@ func (w *walletService) getUnspentsForAddress(addr string, blindingKeys [][]byte
 	chUnspents <- unspents
 }
 
-func parseRequestOutputs(reqOutputs []TxOut) ([]*transaction.TxOutput,
-	[][]byte, error) {
+func parseRequestOutputs(reqOutputs []TxOut) (
+	[]*transaction.TxOutput,
+	[][]byte,
+	error,
+) {
 	outputs := make([]*transaction.TxOutput, 0, len(reqOutputs))
 	blindingKeys := make([][]byte, 0, len(reqOutputs))
 

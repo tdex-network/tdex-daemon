@@ -46,6 +46,17 @@ type OperatorService interface {
 	ListSwaps(
 		ctx context.Context,
 	) (*pb.ListSwapsReply, error)
+	WithdrawMarketFunds(
+		ctx context.Context,
+		req WithdrawMarketReq,
+	) (
+		[]byte,
+		error,
+	)
+	FeeAccountBalance(ctx context.Context) (
+		int64,
+		error,
+	)
 }
 
 type operatorService struct {
@@ -55,6 +66,7 @@ type operatorService struct {
 	unspentRepository domain.UnspentRepository
 	explorerSvc       explorer.Service
 	crawlerSvc        crawler.Service
+	walletSvc         WalletService
 }
 
 func NewOperatorService(
@@ -64,6 +76,7 @@ func NewOperatorService(
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
 	crawlerSvc crawler.Service,
+	walletSvc WalletService,
 ) OperatorService {
 	return &operatorService{
 		marketRepository:  marketRepository,
@@ -72,6 +85,7 @@ func NewOperatorService(
 		unspentRepository: unspentRepository,
 		explorerSvc:       explorerSvc,
 		crawlerSvc:        crawlerSvc,
+		walletSvc:         walletSvc,
 	}
 }
 
@@ -124,6 +138,8 @@ func (o *operatorService) DepositMarket(
 				Address:      addr,
 				BlindingKey:  blindingKey,
 			})
+
+			println(hex.EncodeToString(blindingKey))
 
 			return v, nil
 		})
@@ -414,4 +430,104 @@ func tradesToSwapInfo(
 		info = append(info, i)
 	}
 	return info
+}
+
+func (o *operatorService) WithdrawMarketFunds(
+	ctx context.Context,
+	req WithdrawMarketReq,
+) (
+	[]byte,
+	error,
+) {
+	m, _, err := o.marketRepository.GetMarketByAsset(
+		ctx,
+		req.Market.QuoteAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	marketAddresses, _, err := o.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, m.AccountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	var baseAmount int64
+	var quoteAmount int64
+
+	for _, a := range marketAddresses {
+		baseAddressBalance, err := o.unspentRepository.GetBalance(
+			ctx,
+			a,
+			m.BaseAsset,
+		)
+		if err != nil {
+			return nil, err
+		}
+		baseAmount += int64(baseAddressBalance)
+
+		quoteAddressBalance, err := o.unspentRepository.GetBalance(
+			ctx,
+			a,
+			m.QuoteAsset,
+		)
+		if err != nil {
+			return nil, err
+		}
+		quoteAmount += int64(quoteAddressBalance)
+
+	}
+
+	if baseAmount < req.BalanceToWithdraw.BaseAmount ||
+		quoteAmount < req.BalanceToWithdraw.QuoteAmount {
+		return nil, errors.New("insufficient funds")
+	}
+
+	outputs := []TxOut{
+		{
+			Asset:   req.BaseAsset,
+			Value:   req.BalanceToWithdraw.BaseAmount,
+			Address: req.Address,
+		},
+		{
+			Asset:   req.QuoteAsset,
+			Value:   req.BalanceToWithdraw.QuoteAmount,
+			Address: req.Address,
+		},
+	}
+
+	r := SendToManyRequest{
+		Outputs:         outputs,
+		MillisatPerByte: req.MillisatPerByte,
+		Push:            req.Push,
+	}
+
+	return o.walletSvc.SendToMany(ctx, r)
+}
+
+func (o *operatorService) FeeAccountBalance(ctx context.Context) (
+	int64,
+	error,
+) {
+	addresses, _, err := o.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return 0, err
+	}
+
+	var baseAmount int64
+	for _, a := range addresses {
+		baseAddressBalance, err := o.unspentRepository.GetBalance(
+			ctx,
+			a,
+			config.GetString(config.BaseAssetKey),
+		)
+		if err != nil {
+			return 0, err
+		}
+		baseAmount += int64(baseAddressBalance)
+	}
+
+	return baseAmount, nil
 }

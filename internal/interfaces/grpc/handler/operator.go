@@ -205,6 +205,51 @@ func (o operatorHandler) ListSwaps(
 	return swaps, nil
 }
 
+func (o operatorHandler) WithdrawMarket(
+	ctx context.Context,
+	req *pb.WithdrawMarketRequest,
+) (*pb.WithdrawMarketReply, error) {
+
+	rawTx, err := o.operatorSvc.WithdrawMarketFunds(
+		ctx,
+		application.WithdrawMarketReq{
+			Market: application.Market{
+				BaseAsset:  req.GetMarket().GetBaseAsset(),
+				QuoteAsset: req.GetMarket().GetQuoteAsset(),
+			},
+			BalanceToWithdraw: application.Balance{
+				BaseAmount:  req.GetBalanceToWithdraw().GetBaseAmount(),
+				QuoteAmount: req.GetBalanceToWithdraw().GetQuoteAmount(),
+			},
+			MillisatPerByte: req.GetMillisatPerByte(),
+			Address:         req.GetAddress(),
+			Push:            req.GetPush(),
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.WithdrawMarketReply{
+		RawTx: rawTx,
+	}, nil
+}
+
+func (o operatorHandler) BalanceFeeAccount(
+	ctx context.Context,
+	req *pb.BalanceFeeAccountRequest,
+) (*pb.BalanceFeeAccountReply, error) {
+
+	balance, err := o.operatorSvc.FeeAccountBalance(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.BalanceFeeAccountReply{
+		Balance: balance,
+	}, nil
+}
+
 func validateMarketWithFee(marketWithFee *pbtypes.MarketWithFee) error {
 	if marketWithFee == nil {
 		return errors.New("market with fee is null")
