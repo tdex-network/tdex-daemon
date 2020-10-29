@@ -3,9 +3,6 @@ package swap
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
-
-	"github.com/novalagung/gubrak/v2"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
@@ -72,76 +69,98 @@ func compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccep
 	return nil
 }
 
-func outputFoundInTransaction(outs []*transaction.TxOutput, value uint64, asset string, ouptutBlindKeys map[string][]byte) (bool, error) {
-	found, err := gubrak.From(outs).
-		Find(func(each *transaction.TxOutput) bool {
-
-			if each.IsConfidential() {
-				blindKey, ok := ouptutBlindKeys[hex.EncodeToString(each.Script)]
-				if !ok {
-					return false
-				}
-
-				unblinded, ok := transactionutil.UnblindOutput(each, blindKey)
-				if !ok {
-					return false
-				}
-
-				return unblinded.Value == value && unblinded.AssetHash == asset
+func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, asset string, ouptutBlindKeys map[string][]byte) (bool, error) {
+	for _, output := range outputs {
+		// if confidential, unblind before check
+		if output.IsConfidential() {
+			script := hex.EncodeToString(output.Script)
+			blindingPrivateKey, ok := ouptutBlindKeys[script]
+			if !ok {
+				return false, errors.New("No blinding private key for script: " + script)
 			}
 
-			return bufferutil.ValueFromBytes(each.Value) == value && bufferutil.AssetHashFromBytes(each.Asset) == asset
-		}).ResultAndError()
+			unblinded, ok := transactionutil.UnblindOutput(output, blindingPrivateKey)
+			if !ok {
+				return false, errors.New("Unable to unblind output with script: " + script)
+			}
 
-	if err != nil {
-		return false, fmt.Errorf("gubrak: %w", err)
+			// check if the unblinded output respect criterias
+			if unblinded.Value == value && unblinded.AssetHash == asset {
+				return true, nil
+			}
+		}
+		// unconfidential check
+	 	if bufferutil.ValueFromBytes(output.Value) == value && bufferutil.AssetHashFromBytes(output.Asset) == asset {
+			return true, nil
+		}
 	}
-
-	return found != nil, nil
+	// output not found
+	return false, nil
 }
 
 func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) (uint64, error) {
-	result, err := gubrak.From(utxos).
-		Filter(func(each pset.PInput) bool {
-			// TODO check if a nonWitnessUtxo is given
+		var amount uint64 = 0
 
-			if each.WitnessUtxo.IsConfidential() {
+		// filter the utxos using assetHash
+		filteredUtxos, err := utxosFilteredByAssetHashAndUnblinded(utxos, asset, inputBlindKeys)
+		if (err != nil) {
+			return 0, err
+		}
 
-				blindKey, ok := inputBlindKeys[hex.EncodeToString(each.WitnessUtxo.Script)]
-				if !ok {
-					return false
-				}
+		// sum all the filteredUtxos' values
+		for _, utxo := range filteredUtxos {
+			value := bufferutil.ValueFromBytes(utxo.WitnessUtxo.Value)
+			amount += value
+		}
 
-				unblinded, ok := transactionutil.UnblindOutput(each.WitnessUtxo, blindKey)
-				if !ok {
-					return false
-				}
+		return amount, nil
+}
 
-				return unblinded.AssetHash == asset
+func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) ([]pset.PInput, error) {
+	filteredUtxos := make([]pset.PInput, 0)
+
+	for _, utxo := range utxos {
+		// if confidential, unblind before checking asset hash
+		if utxo.WitnessUtxo.IsConfidential() {
+			script := hex.EncodeToString(utxo.WitnessUtxo.Script)
+			blindKey, ok := inputBlindKeys[script]
+			if !ok {
+				return nil, errors.New("No blinding private key for script: " + script)
 			}
 
-			return bufferutil.AssetHashFromBytes(each.WitnessUtxo.Asset) == asset
-		}).
-		Map(func(each pset.PInput) uint64 {
-
-			if each.WitnessUtxo.IsConfidential() {
-
-				blindKey, _ := inputBlindKeys[hex.EncodeToString(each.WitnessUtxo.Script)]
-				unblinded, _ := transactionutil.UnblindOutput(each.WitnessUtxo, blindKey)
-
-				return unblinded.Value
+			unblinded, ok := transactionutil.UnblindOutput(utxo.WitnessUtxo, blindKey)
+			if !ok {
+				return nil, errors.New("Unable to unblind output with script: " + script)
 			}
 
-			return bufferutil.ValueFromBytes(each.WitnessUtxo.Value)
-		}).
-		Reduce(func(accumulator, value uint64) uint64 {
-			return accumulator + value
-		}, uint64(0)).
-		ResultAndError()
+			// replace Asset and Value by unblinded data before append
+			if unblinded.AssetHash == asset {
+				assetBytes, err := bufferutil.AssetHashToBytes(unblinded.AssetHash)
+				if err != nil {
+					return nil, err
+				}
+				utxo.WitnessUtxo.Asset = assetBytes 
 
-	if err != nil {
-		return 0, fmt.Errorf("gubrak: %w", err)
+				valueBytes, err := bufferutil.ValueToBytes(unblinded.Value)
+				if err != nil {
+					return nil, err
+				}
+				utxo.WitnessUtxo.Value = valueBytes
+
+				utxo.WitnessUtxo.RangeProof = make([]byte, 0)
+				utxo.WitnessUtxo.SurjectionProof = make([]byte, 0)
+				utxo.WitnessUtxo.Nonce = make([]byte, 0)
+
+				filteredUtxos = append(filteredUtxos, utxo)
+			}
+
+			continue
+		}
+
+		if bufferutil.AssetHashFromBytes(utxo.WitnessUtxo.Asset) == asset {
+			filteredUtxos = append(filteredUtxos, utxo)
+		}
 	}
 
-	return result.(uint64), nil
+	return filteredUtxos, nil
 }
