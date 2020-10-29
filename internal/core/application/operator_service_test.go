@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"github.com/tdex-network/tdex-daemon/config"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -17,7 +16,7 @@ func newTestOperator() (OperatorService, context.Context) {
 		panic(err)
 	}
 
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc := explorer.NewService("localhost:3001")
 	operatorService := NewOperatorService(
 		dbbadger.NewMarketRepositoryImpl(dbManager),
 		dbbadger.NewVaultRepositoryImpl(dbManager),
