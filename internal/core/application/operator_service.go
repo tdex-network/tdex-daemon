@@ -47,7 +47,6 @@ type OperatorService interface {
 	) (*pb.ListSwapsReply, error)
 	ListMarket(
 		ctx context.Context,
-		req ListMarketRequest,
 	) (*pb.ListMarketReply, error)
 }
 
@@ -374,7 +373,6 @@ func (o *operatorService) ListSwaps(
 //ListMarket a set of informations about all the markets.
 func (o *operatorService) ListMarket(
 	ctx context.Context,
-	request ListMarketRequest,
 ) (*pb.ListMarketReply, error) {
 	markets, err := o.marketRepository.GetAllMarkets(ctx)
 	if err != nil {

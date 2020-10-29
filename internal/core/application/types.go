@@ -50,7 +50,3 @@ type BalanceWithFee struct {
 	Balance
 	Fee
 }
-
-//ListMarketRequest is an empty struct used as parameter in ListMarket rpc
-type ListMarketRequest struct {
-}

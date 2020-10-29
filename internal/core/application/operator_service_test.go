@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -36,7 +35,7 @@ func TestListMarket(t *testing.T) {
 	t.Run("ListMaker should return an empty list and a nil error", func(t *testing.T) {
 		operatorService, ctx := newTestOperator()
 
-		listMarketReply, err := operatorService.ListMarket(ctx, ListMarketRequest{})
+		listMarketReply, err := operatorService.ListMarket(ctx)
 		assert.Equal(t, err, nil)
 		assert.Equal(t, len(listMarketReply.Markets), 0)
 	})
