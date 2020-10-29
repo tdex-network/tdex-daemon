@@ -373,6 +373,7 @@ func (o *operatorService) ListSwaps(
 	}, nil
 }
 
+//ListMarket a set of informations about all the markets.
 func (o *operatorService) ListMarket(
 	ctx context.Context,
 	request ListMarketRequest,
