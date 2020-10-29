@@ -3,6 +3,7 @@ package dbbadger
 import (
 	"context"
 	"errors"
+
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -237,7 +238,7 @@ func (u unspentRepositoryImpl) getAllUnspents(tx *badger.Txn) []domain.Unspent {
 		item := it.Item()
 		data, _ := item.ValueCopy(nil)
 		var unspent domain.Unspent
-		err := JsonDecode(data, &unspent)
+		err := JSONDecode(data, &unspent)
 		if err == nil {
 			unspents = append(unspents, unspent)
 		}

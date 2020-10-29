@@ -190,7 +190,7 @@ func (t tradeRepositoryImpl) getAllTrades(tx *badger.Txn) []*domain.Trade {
 		item := it.Item()
 		data, _ := item.ValueCopy(nil)
 		var trade domain.Trade
-		err := JsonDecode(data, &trade)
+		err := JSONDecode(data, &trade)
 		if err == nil {
 			trades = append(trades, &trade)
 		}
