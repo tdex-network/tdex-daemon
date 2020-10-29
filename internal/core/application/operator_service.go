@@ -139,8 +139,6 @@ func (o *operatorService) DepositMarket(
 				BlindingKey:  blindingKey,
 			})
 
-			println(hex.EncodeToString(blindingKey))
-
 			return v, nil
 		})
 	if err != nil {
