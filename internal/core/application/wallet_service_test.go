@@ -1,56 +1,24 @@
 package application
 
 import (
-	"context"
-	"os"
 	"testing"
 	"time"
-
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 )
 
-var ctx = context.Background()
-
-func newTestWallet(w *mockedWallet) (*walletService, func()) {
-	dbManager, err := dbbadger.NewDbManager("testdb", nil)
-	if err != nil {
-		panic(err)
-	}
-	vaultRepo := inmemory.NewVaultRepositoryImpl()
-	if w != nil {
-		vaultRepo = newMockedVaultRepositoryImpl(*w)
-	}
-
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
-	return newWalletService(
-			vaultRepo,
-			dbbadger.NewUnspentRepositoryImpl(dbManager),
-			crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
-			explorerSvc,
-		), func() {
-			recover()
-			dbManager.Store.Close()
-			os.RemoveAll("testdb")
-		}
-}
-
 func TestNewWalletService(t *testing.T) {
-	ws, close := newTestWallet(nil)
+	ws, _, close := newTestWallet(nil)
 	defer close()
 	assert.Equal(t, false, ws.walletInitialized)
 	assert.Equal(t, false, ws.walletIsSyncing)
 }
 
 func TestGenSeed(t *testing.T) {
-	walletSvc, close := newTestWallet(nil)
+	walletSvc, ctx, close := newTestWallet(nil)
 	defer close()
 
 	seed, err := walletSvc.GenSeed(ctx)
@@ -62,7 +30,7 @@ func TestGenSeed(t *testing.T) {
 }
 
 func TestInitWalletWrongSeed(t *testing.T) {
-	walletSvc, close := newTestWallet(nil)
+	walletSvc, ctx, close := newTestWallet(nil)
 	defer close()
 
 	wrongSeed := []string{"test"}
@@ -75,7 +43,7 @@ func TestInitEmptyWallet(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	walletSvc, close := newTestWallet(emptyWallet)
+	walletSvc, ctx, close := newTestWallet(emptyWallet)
 	defer close()
 	// If the vault repository is not empty when the wallet service is
 	// instantiated, this behaves like it  it was shut down and restarted again.
@@ -117,7 +85,7 @@ func TestInitUsedWallet(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	walletSvc, close := newTestWallet(usedWallet)
+	walletSvc, ctx, close := newTestWallet(usedWallet)
 	defer close()
 	walletSvc.walletInitialized = false
 
@@ -155,7 +123,7 @@ func TestWalletUnlock(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	walletSvc, close := newTestWallet(dryLockedWallet)
+	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
 	defer close()
 
 	address, blindingKey, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
@@ -180,7 +148,7 @@ func TestWalletChangePass(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	walletSvc, close := newTestWallet(dryLockedWallet)
+	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
 	defer close()
 
 	err := walletSvc.ChangePassword(ctx, "wrongPass", "newPass")
@@ -194,7 +162,7 @@ func TestWalletChangePass(t *testing.T) {
 }
 
 func TestWalletBalance(t *testing.T) {
-	walletSvc, close := newTestWallet(dryWallet)
+	walletSvc, ctx, close := newTestWallet(dryWallet)
 	defer close()
 
 	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
