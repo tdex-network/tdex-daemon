@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -46,6 +45,9 @@ type OperatorService interface {
 	ListSwaps(
 		ctx context.Context,
 	) (*pb.ListSwapsReply, error)
+	ListMarket(
+		ctx context.Context,
+	) ([]MarketInfo, error)
 }
 
 type operatorService struct {
@@ -57,6 +59,7 @@ type operatorService struct {
 	crawlerSvc        crawler.Service
 }
 
+// NewOperatorService is a constructor function for OperatorService.
 func NewOperatorService(
 	marketRepository domain.MarketRepository,
 	vaultRepository domain.VaultRepository,
@@ -410,6 +413,35 @@ func (o *operatorService) ListSwaps(
 	return &pb.ListSwapsReply{
 		Swaps: swaps,
 	}, nil
+}
+
+//ListMarket a set of informations about all the markets.
+func (o *operatorService) ListMarket(
+	ctx context.Context,
+) ([]MarketInfo, error) {
+	markets, err := o.marketRepository.GetAllMarkets(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	marketInfos := make([]MarketInfo, len(markets), len(markets))
+
+	for index, market := range markets {
+		marketInfos[index] = MarketInfo{
+			Market: Market{
+				BaseAsset:  market.BaseAsset,
+				QuoteAsset: market.QuoteAsset,
+			},
+			Fee: Fee{
+				BasisPoint: market.Fee,
+				FeeAsset: market.FeeAsset,
+			},
+			Tradable:     market.Tradable,
+			StrategyType: market.Strategy.Type,
+		}
+	}
+
+	return marketInfos, nil
 }
 
 func (o *operatorService) getMarketsForTrades(
