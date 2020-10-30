@@ -5,6 +5,13 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
+type MarketInfo struct {
+	Market Market
+	Fee Fee
+	Tradable bool
+	StrategyType int
+}
+
 type Market struct {
 	BaseAsset  string
 	QuoteAsset string

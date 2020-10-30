@@ -34,4 +34,7 @@ type MarketRepository interface {
 	// Open and close trading activities for a market with the given quote asset hash
 	OpenMarket(ctx context.Context, quoteAsset string) error
 	CloseMarket(ctx context.Context, quoteAsset string) error
+
+	// Update only the price without touching market details
+	UpdatePrices(ctx context.Context, accountIndex int, prices Prices) error
 }

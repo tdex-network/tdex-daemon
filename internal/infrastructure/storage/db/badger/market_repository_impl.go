@@ -2,6 +2,7 @@ package dbbadger
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -14,6 +15,7 @@ type marketRepositoryImpl struct {
 	db *DbManager
 }
 
+//NewMarketRepositoryImpl initialize a badger implementation of the domain.MarketRepository
 func NewMarketRepositoryImpl(db *DbManager) domain.MarketRepository {
 	return marketRepositoryImpl{
 		db: db,
@@ -34,15 +36,16 @@ func (m marketRepositoryImpl) GetMarketByAsset(
 	query := badgerhold.Where("QuoteAsset").Eq(quoteAsset)
 	markets, err := m.findMarkets(ctx, query)
 	if err != nil {
-		return
+		return nil, -1, err
 	}
 
 	if len(markets) > 0 {
 		market = &markets[0]
 		accountIndex = market.AccountIndex
+		return
 	}
 
-	return
+	return nil, -1, nil
 }
 
 func (m marketRepositoryImpl) GetLatestMarket(
@@ -170,6 +173,16 @@ func (m marketRepositoryImpl) CloseMarket(
 	return nil
 }
 
+func (m marketRepositoryImpl) UpdatePrices(ctx context.Context, accountIndex int, prices domain.Prices) error {
+	//Now we update the price store as well only if market insertion went ok
+	err := m.updatePriceByAccountIndex(accountIndex, prices)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m marketRepositoryImpl) getOrCreateMarket(
 	ctx context.Context,
 	accountIndex int,
@@ -213,6 +226,12 @@ func (m marketRepositoryImpl) insertMarket(
 		}
 	}
 
+	//Now we update the price store as well only if market insertion went ok
+	err = m.updatePriceByAccountIndex(accountIndex, domain.Prices{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -236,6 +255,13 @@ func (m marketRepositoryImpl) getMarket(
 		return nil, err
 	}
 
+	// Let's get the price from PriceStore
+	price, err := m.getPriceByAccountIndex(accountIndex)
+	if err != nil {
+		return nil, err
+	}
+	market.Price = *price
+	//Restore strategy
 	restoreStrategy(&market)
 
 	return &market, nil
@@ -248,13 +274,23 @@ func (m marketRepositoryImpl) updateMarket(
 ) error {
 	var err error
 
+	// This is needed to be sure to put inside badger main db Prices wich are to zero value,
+	// since we use the prices badger db to store it. This is mostly beacuse Badger put inside the value
+	// everything you pass to (ie. no fixed schema)
+	market.Price = domain.Prices{}
+
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
 		err = m.db.Store.TxUpdate(tx, accountIndex, market)
 	} else {
 		err = m.db.Store.Update(accountIndex, market)
 	}
-	return err
+
+	if err != nil {
+		return fmt.Errorf("trying to update market with account index %v %w", accountIndex, err)
+	}
+
+	return nil
 }
 
 func (m marketRepositoryImpl) findMarkets(
@@ -270,12 +306,44 @@ func (m marketRepositoryImpl) findMarkets(
 	} else {
 		err = m.db.Store.Find(&markets, query)
 	}
-	for i, m := range markets {
-		restoreStrategy(&m)
-		markets[i] = m
+	for i, mkt := range markets {
+		// Let's get the price from PriceStore
+		price, err := m.getPriceByAccountIndex(mkt.AccountIndex)
+		if err != nil {
+			return nil, err
+		}
+		mkt.Price = *price
+
+		restoreStrategy(&mkt)
+
+		// Assign the restore market with price and startegy
+		markets[i] = mkt
 	}
 
 	return markets, err
+}
+
+func (m marketRepositoryImpl) getPriceByAccountIndex(accountIndex int) (*domain.Prices, error) {
+	var prices *domain.Prices
+
+	err := m.db.PriceStore.Get(accountIndex, &prices)
+	if err != nil {
+		return nil, fmt.Errorf("trying to get price with account index %v %w", accountIndex, err)
+	}
+
+	return prices, nil
+}
+
+func (m marketRepositoryImpl) updatePriceByAccountIndex(accountIndex int, prices domain.Prices) error {
+	err := m.db.PriceStore.Upsert(
+		accountIndex,
+		prices,
+	)
+	if err != nil {
+		return fmt.Errorf("trying to updating price with account index %v %w", accountIndex, err)
+	}
+
+	return nil
 }
 
 func restoreStrategy(market *domain.Market) {

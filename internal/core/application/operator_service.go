@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -46,6 +45,9 @@ type OperatorService interface {
 	ListSwaps(
 		ctx context.Context,
 	) (*pb.ListSwapsReply, error)
+	ListMarket(
+		ctx context.Context,
+	) ([]MarketInfo, error)
 }
 
 type operatorService struct {
@@ -57,6 +59,7 @@ type operatorService struct {
 	crawlerSvc        crawler.Service
 }
 
+// NewOperatorService is a constructor function for OperatorService.
 func NewOperatorService(
 	marketRepository domain.MarketRepository,
 	vaultRepository domain.VaultRepository,
@@ -92,7 +95,7 @@ func (o *operatorService) DepositMarket(
 	}
 	accountIndex = a
 
-	if accountIndex == 0 {
+	if accountIndex == -1 {
 		_, latestAccountIndex, err := o.marketRepository.GetLatestMarket(
 			ctx,
 		)
@@ -172,13 +175,13 @@ func (o *operatorService) OpenMarket(
 		return errors.New("invalid base asset")
 	}
 
-	market, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
+	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
 	if err != nil {
 		return err
 	}
 
 	var outpoints []domain.OutpointWithAsset
-	if market == nil {
+	if marketAccountIndex < 0 {
 		_, marketAccountIndex, err = o.marketRepository.GetLatestMarket(ctx)
 		if err != nil {
 			return err
@@ -267,6 +270,9 @@ func (o *operatorService) UpdateMarketFee(
 	if err != nil {
 		return nil, err
 	}
+	if accountIndex < 0 {
+		return nil, domain.ErrMarketNotExist
+	}
 
 	//Updates the fee and the fee asset
 	err = o.marketRepository.UpdateMarket(
@@ -323,22 +329,17 @@ func (o *operatorService) UpdateMarketPrice(
 	if err != nil {
 		return err
 	}
+	if accountIndex < 0 {
+		return domain.ErrMarketNotExist
+	}
 
 	//Updates the base price and the quote price
-	return o.marketRepository.UpdateMarket(
+	return o.marketRepository.UpdatePrices(
 		ctx,
 		accountIndex,
-		func(m *domain.Market) (*domain.Market, error) {
-
-			if err := m.ChangeBasePrice(req.BasePrice); err != nil {
-				return nil, err
-			}
-
-			if err := m.ChangeQuotePrice(req.QuotePrice); err != nil {
-				return nil, err
-			}
-
-			return m, nil
+		domain.Prices{
+			BasePrice:  req.Price.BasePrice,
+			QuotePrice: req.Price.QuotePrice,
 		},
 	)
 }
@@ -360,6 +361,9 @@ func (o *operatorService) UpdateMarketStrategy(
 	)
 	if err != nil {
 		return err
+	}
+	if accountIndex < 0 {
+		return domain.ErrMarketNotExist
 	}
 
 	//For now we support only BALANCED or PLUGGABLE (ie. price feed)
@@ -411,18 +415,50 @@ func (o *operatorService) ListSwaps(
 	}, nil
 }
 
+//ListMarket a set of informations about all the markets.
+func (o *operatorService) ListMarket(
+	ctx context.Context,
+) ([]MarketInfo, error) {
+	markets, err := o.marketRepository.GetAllMarkets(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	marketInfos := make([]MarketInfo, len(markets), len(markets))
+
+	for index, market := range markets {
+		marketInfos[index] = MarketInfo{
+			Market: Market{
+				BaseAsset:  market.BaseAsset,
+				QuoteAsset: market.QuoteAsset,
+			},
+			Fee: Fee{
+				BasisPoint: market.Fee,
+				FeeAsset: market.FeeAsset,
+			},
+			Tradable:     market.Tradable,
+			StrategyType: market.Strategy.Type,
+		}
+	}
+
+	return marketInfos, nil
+}
+
 func (o *operatorService) getMarketsForTrades(
 	ctx context.Context,
 	trades []*domain.Trade,
 ) (map[string]*domain.Market, error) {
 	markets := map[string]*domain.Market{}
 	for _, trade := range trades {
-		market, _, err := o.marketRepository.GetMarketByAsset(
+		market, accountIndex, err := o.marketRepository.GetMarketByAsset(
 			ctx,
 			trade.MarketQuoteAsset,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if accountIndex < 0 {
+			return nil, domain.ErrMarketNotExist
 		}
 		if _, ok := markets[trade.MarketQuoteAsset]; !ok {
 			markets[trade.MarketQuoteAsset] = market

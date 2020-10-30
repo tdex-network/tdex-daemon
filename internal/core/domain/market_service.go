@@ -3,8 +3,6 @@ package domain
 import (
 	"errors"
 	"fmt"
-	"sort"
-	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -145,16 +143,16 @@ func (m *Market) ChangeFeeAsset(asset string) error {
 
 // BaseAssetPrice returns the latest price for the base asset
 func (m *Market) BaseAssetPrice() decimal.Decimal {
-	_, price := getLatestPrice(m.BasePrice)
+	basePrice, _ := getLatestPrice(m.Price)
 
-	return decimal.Decimal(price)
+	return decimal.Decimal(basePrice)
 }
 
 // QuoteAssetPrice returns the latest price for the quote asset
 func (m *Market) QuoteAssetPrice() decimal.Decimal {
-	_, price := getLatestPrice(m.QuotePrice)
+	_, quotePrice := getLatestPrice(m.Price)
 
-	return decimal.Decimal(price)
+	return decimal.Decimal(quotePrice)
 }
 
 // ChangeBasePrice ...
@@ -165,12 +163,7 @@ func (m *Market) ChangeBasePrice(price decimal.Decimal) error {
 
 	// TODO add logic to be sure that the price do not change to much from the latest one
 
-	timestamp := uint64(time.Now().Unix())
-	if _, ok := m.BasePrice[timestamp]; ok {
-		return ErrPriceExists
-	}
-
-	m.BasePrice[timestamp] = Price(price)
+	m.Price.BasePrice = price
 	return nil
 }
 
@@ -182,40 +175,30 @@ func (m *Market) ChangeQuotePrice(price decimal.Decimal) error {
 
 	//TODO check if the previous price is changing too much as security measure
 
-	timestamp := uint64(time.Now().Unix())
-	if _, ok := m.QuotePrice[timestamp]; ok {
-		return ErrPriceExists
-	}
-
-	m.QuotePrice[timestamp] = Price(price)
+	m.Price.QuotePrice = price
 	return nil
 }
 
 // IsZero ...
-func (pt PriceByTime) IsZero() bool {
-	return len(pt) == 0
+func (p Prices) IsZero() bool {
+	return p == Prices{}
 }
 
-// IsZero ...
-func (p Price) IsZero() bool {
-	return decimal.Decimal(p).Equal(decimal.NewFromInt(0))
+// AreZero ...
+func (p Prices) AreZero() bool {
+	if p.IsZero() {
+		return true
+	}
+
+	return decimal.Decimal(p.BasePrice).Equal(decimal.NewFromInt(0)) && decimal.Decimal(p.QuotePrice).Equal(decimal.NewFromInt(0))
 }
 
-func getLatestPrice(keyValue PriceByTime) (uint64, Price) {
-	if keyValue.IsZero() {
-		return uint64(0), Price(decimal.NewFromInt(0))
+func getLatestPrice(pt Prices) (decimal.Decimal, decimal.Decimal) {
+	if pt.IsZero() || pt.AreZero() {
+		return decimal.NewFromInt(0), decimal.NewFromInt(0)
 	}
 
-	keys := make([]uint64, 0, len(keyValue))
-	for k := range keyValue {
-		keys = append(keys, k)
-	}
-
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-
-	latestKey := keys[len(keys)-1]
-	latestValue := keyValue[latestKey]
-	return latestKey, latestValue
+	return pt.BasePrice, pt.QuotePrice
 }
 
 // IsStrategyPluggable returns true if the the startegy isn't automated.
@@ -225,7 +208,7 @@ func (m *Market) IsStrategyPluggable() bool {
 
 // IsStrategyPluggableInitialized returns true if the prices have been set.
 func (m *Market) IsStrategyPluggableInitialized() bool {
-	return !m.BasePrice.IsZero() && !m.QuotePrice.IsZero()
+	return !m.Price.AreZero()
 }
 
 // MakeStrategyPluggable makes the current market using a given price
@@ -237,6 +220,8 @@ func (m *Market) MakeStrategyPluggable() error {
 	}
 
 	m.Strategy = mm.MakingStrategy{}
+	m.ChangeBasePrice(decimal.NewFromInt(0))
+	m.ChangeQuotePrice(decimal.NewFromInt(0))
 
 	return nil
 }
