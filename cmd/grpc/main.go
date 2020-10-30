@@ -143,6 +143,8 @@ func stop(
 	crawlerSvc.Stop()
 	log.Debug("stop observing blockchain")
 	dbManager.Store.Close()
+	dbManager.UnspentStore.Close()
+	dbManager.PriceStore.Close()
 	log.Debug("closed connection with database")
 	log.Debug("exiting")
 }

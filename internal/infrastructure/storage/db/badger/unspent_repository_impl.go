@@ -189,7 +189,7 @@ func (u unspentRepositoryImpl) getAllUnspents(ctx context.Context) []domain.Unsp
 			item := it.Item()
 			data, _ := item.ValueCopy(nil)
 			var unspent domain.Unspent
-			err := JsonDecode(data, &unspent)
+			err := JSONDecode(data, &unspent)
 			if err == nil {
 				tradeID, err := u.getLock(ctx, unspent.Key())
 				if err == nil {

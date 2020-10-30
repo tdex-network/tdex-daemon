@@ -188,7 +188,7 @@ func (t tradeRepositoryImpl) getAllTrades(ctx context.Context) []*domain.Trade {
 			item := it.Item()
 			data, _ := item.ValueCopy(nil)
 			var trade domain.Trade
-			err := JsonDecode(data, &trade)
+			err := JSONDecode(data, &trade)
 			if err == nil {
 				trades = append(trades, &trade)
 			}
