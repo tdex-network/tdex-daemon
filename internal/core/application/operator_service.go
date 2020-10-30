@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -66,7 +65,6 @@ type operatorService struct {
 	unspentRepository domain.UnspentRepository
 	explorerSvc       explorer.Service
 	crawlerSvc        crawler.Service
-	walletSvc         WalletService
 }
 
 func NewOperatorService(
@@ -76,7 +74,6 @@ func NewOperatorService(
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
 	crawlerSvc crawler.Service,
-	walletSvc WalletService,
 ) OperatorService {
 	return &operatorService{
 		marketRepository:  marketRepository,
@@ -85,7 +82,6 @@ func NewOperatorService(
 		unspentRepository: unspentRepository,
 		explorerSvc:       explorerSvc,
 		crawlerSvc:        crawlerSvc,
-		walletSvc:         walletSvc,
 	}
 }
 
@@ -437,52 +433,14 @@ func (o *operatorService) WithdrawMarketFunds(
 	[]byte,
 	error,
 ) {
-	m, _, err := o.marketRepository.GetMarketByAsset(
-		ctx,
-		req.Market.QuoteAsset,
-	)
+	var rawTx []byte
+
+	market, _, err := o.marketRepository.GetMarketByAsset(ctx, req.QuoteAsset)
 	if err != nil {
 		return nil, err
 	}
 
-	marketAddresses, _, err := o.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, m.AccountIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	var baseAmount int64
-	var quoteAmount int64
-
-	for _, a := range marketAddresses {
-		baseAddressBalance, err := o.unspentRepository.GetBalance(
-			ctx,
-			a,
-			m.BaseAsset,
-		)
-		if err != nil {
-			return nil, err
-		}
-		baseAmount += int64(baseAddressBalance)
-
-		quoteAddressBalance, err := o.unspentRepository.GetBalance(
-			ctx,
-			a,
-			m.QuoteAsset,
-		)
-		if err != nil {
-			return nil, err
-		}
-		quoteAmount += int64(quoteAddressBalance)
-
-	}
-
-	if baseAmount < req.BalanceToWithdraw.BaseAmount ||
-		quoteAmount < req.BalanceToWithdraw.QuoteAmount {
-		return nil, errors.New("insufficient funds")
-	}
-
-	outputs := []TxOut{
+	outs := []TxOut{
 		{
 			Asset:   req.BaseAsset,
 			Value:   req.BalanceToWithdraw.BaseAmount,
@@ -494,14 +452,92 @@ func (o *operatorService) WithdrawMarketFunds(
 			Address: req.Address,
 		},
 	}
-
-	r := SendToManyRequest{
-		Outputs:         outputs,
-		MillisatPerByte: req.MillisatPerByte,
-		Push:            req.Push,
+	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs)
+	if err != nil {
+		return nil, err
 	}
 
-	return o.walletSvc.SendToMany(ctx, r)
+	derivedAddresses, _, err := o.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, market.AccountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	unspents, err := o.unspentRepository.GetUnspentsForAddresses(
+		ctx,
+		derivedAddresses,
+	)
+	if err != nil {
+		return nil, err
+	}
+	utxos := make([]explorer.Utxo, 0)
+	for _, u := range unspents {
+		utxos = append(utxos, u.ToUtxo())
+	}
+
+	if len(unspents) <= 0 {
+		return nil, ErrWalletNotFunded
+	}
+
+	err = o.vaultRepository.UpdateVault(
+		ctx,
+		nil,
+		"",
+		func(v *domain.Vault) (*domain.Vault, error) {
+			mnemonic, err := v.GetMnemonicSafe()
+			if err != nil {
+				return nil, err
+			}
+			account, err := v.AccountByIndex(market.AccountIndex)
+			if err != nil {
+				return nil, err
+			}
+
+			changePathsByAsset := map[string]string{}
+			for _, asset := range getAssetsOfOutputs(outputs) {
+				_, script, _, err := v.DeriveNextInternalAddressForAccount(
+					market.AccountIndex,
+				)
+				if err != nil {
+					return nil, err
+				}
+				derivationPath, _ := account.DerivationPathByScript[script]
+				changePathsByAsset[asset] = derivationPath
+			}
+
+			txHex, _, err := sendToMany(
+				mnemonic,
+				account,
+				utxos,
+				outputs,
+				outputsBlindingKeys,
+				int(req.MillisatPerByte),
+				changePathsByAsset,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			if req.Push {
+				if _, err := o.explorerSvc.BroadcastTransaction(txHex); err != nil {
+					return nil, err
+				}
+			}
+
+			tx, err := hex.DecodeString(txHex)
+			if err != nil {
+				return nil, err
+			}
+			rawTx = tx
+
+			return v, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return rawTx, nil
 }
 
 func (o *operatorService) FeeAccountBalance(ctx context.Context) (

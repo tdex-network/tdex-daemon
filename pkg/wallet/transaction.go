@@ -333,29 +333,35 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				inputsToAdd = append(inputsToAdd, selectedUnspents...)
 
 				if change > 0 {
-					_, script, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
-						DerivationPath: opts.ChangePathsByAsset[asset],
-						Network:        opts.Network,
-					})
+					_, script, _ := w.DeriveConfidentialAddress(
+						DeriveConfidentialAddressOpts{
+							DerivationPath: opts.ChangePathsByAsset[asset],
+							Network:        opts.Network,
+						},
+					)
 
 					changeOutput, _ := newTxOutput(asset, change, script)
 					outputsToAdd = append(outputsToAdd, changeOutput)
 
-					prvBlindingKey, _, err := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
-						Script: script,
-					})
+					_, pubBlindingKey, err := w.DeriveBlindingKeyPair(
+						DeriveBlindingKeyPairOpts{
+							Script: script,
+						})
 					if err != nil {
 						return nil, err
 					}
-					changeOutputsBlindingKeys[hex.EncodeToString(script)] = prvBlindingKey.Serialize()
+					changeOutputsBlindingKeys[hex.EncodeToString(script)] =
+						pubBlindingKey.SerializeCompressed()
 				}
 			}
 		}
 
-		_, lbtcChangeScript, _ := w.DeriveConfidentialAddress(DeriveConfidentialAddressOpts{
-			DerivationPath: opts.ChangePathsByAsset[opts.Network.AssetID],
-			Network:        opts.Network,
-		})
+		_, lbtcChangeScript, _ := w.DeriveConfidentialAddress(
+			DeriveConfidentialAddressOpts{
+				DerivationPath: opts.ChangePathsByAsset[opts.Network.AssetID],
+				Network:        opts.Network,
+			},
+		)
 
 		feeAmount = estimateTxSize(
 			len(inputsToAdd)+len(ptx.Inputs),
@@ -418,11 +424,14 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				)
 				outputsToAdd = append(outputsToAdd, lbtcChangeOutput)
 
-				lbtcChangePrvBlindingKey, _, _ := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
-					Script: lbtcChangeScript,
-				})
+				_, lbtcChangePubBlindingKey, _ := w.DeriveBlindingKeyPair(
+					DeriveBlindingKeyPairOpts{
+						Script: lbtcChangeScript,
+					},
+				)
 
-				changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] = lbtcChangePrvBlindingKey.Serialize()
+				changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] =
+					lbtcChangePubBlindingKey.SerializeCompressed()
 			}
 		}
 	}

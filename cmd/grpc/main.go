@@ -76,7 +76,6 @@ func main() {
 		unspentRepository,
 		explorerSvc,
 		crawlerSvc,
-		walletSvc,
 	)
 
 	// Ports
