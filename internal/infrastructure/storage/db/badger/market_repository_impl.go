@@ -42,6 +42,7 @@ func (m marketRepositoryImpl) GetMarketByAsset(
 	if len(markets) > 0 {
 		market = &markets[0]
 		accountIndex = market.AccountIndex
+		return
 	}
 
 	return nil, -1, nil
