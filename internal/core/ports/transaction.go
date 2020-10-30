@@ -1,7 +1,7 @@
 package ports
 
 type DbManager interface {
-	NewDaemonTransaction() Transaction
+	NewTransaction() Transaction
 	NewUnspentsTransaction() Transaction
 }
 

@@ -30,7 +30,7 @@ func before() {
 	if err != nil {
 		panic(err)
 	}
-	tx := dbManager.NewDaemonTransaction()
+	tx := dbManager.NewTransaction()
 	utx := dbManager.NewUnspentsTransaction()
 
 	if err := insertMarkets(tx.(*badger.Txn), dbManager); err != nil {
@@ -61,7 +61,7 @@ func before() {
 	ctx = context.WithValue(
 		context.Background(),
 		"tx",
-		dbManager.NewDaemonTransaction(),
+		dbManager.NewTransaction(),
 	)
 	ctx = context.WithValue(
 		ctx,

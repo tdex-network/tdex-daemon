@@ -31,7 +31,7 @@ func NewDbManager(dbDir string, logger badger.Logger) (*DbManager, error) {
 	}, nil
 }
 
-func (d DbManager) NewDaemonTransaction() ports.Transaction {
+func (d DbManager) NewTransaction() ports.Transaction {
 	return d.Store.Badger().NewTransaction(true)
 }
 

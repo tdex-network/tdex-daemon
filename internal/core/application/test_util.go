@@ -55,7 +55,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 		panic(err)
 	}
 
-	tx := dbManager.NewDaemonTransaction()
+	tx := dbManager.NewTransaction()
 	ctx := context.WithValue(context.Background(), "tx", tx)
 
 	// vault repo with fee and markets (1 open and 1 closed) accounts initialized
@@ -144,7 +144,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	ctx := context.WithValue(
 		context.Background(),
 		"tx",
-		dbManager.NewDaemonTransaction(),
+		dbManager.NewTransaction(),
 	)
 	close := func() {
 		recover()
