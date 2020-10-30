@@ -152,36 +152,9 @@ func TestUpdateMarketPrice(t *testing.T) {
 
 	before()
 	defer after()
-	err := marketRepository.UpdateMarket(
-		ctx,
-		5,
-		func(m *domain.Market) (*domain.Market, error) {
-
-			if err := m.MakeNotTradable(); err != nil {
-				return nil, err
-			}
-
-			if err := m.MakeStrategyPluggable(); err != nil {
-				return nil, err
-			}
-
-			bp, _ := decimal.NewFromString(basePriceString)
-			if err := m.ChangeBasePrice(bp); err != nil {
-				return nil, err
-			}
-
-			qp, _ := decimal.NewFromString(quotePriceString)
-			if err := m.ChangeQuotePrice(qp); err != nil {
-				return nil, err
-			}
-
-			if err := m.MakeTradable(); err != nil {
-				return nil, err
-			}
-
-			return m, nil
-		},
-	)
+	bp, _ := decimal.NewFromString(basePriceString)
+	qp, _ := decimal.NewFromString(quotePriceString)
+	err := marketRepository.UpdatePrices(ctx, 5, domain.Prices{BasePrice: bp, QuotePrice: qp})
 	if err != nil {
 		t.Fatal(err)
 	}
