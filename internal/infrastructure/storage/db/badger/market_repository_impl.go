@@ -36,7 +36,7 @@ func (m marketRepositoryImpl) GetMarketByAsset(
 	query := badgerhold.Where("QuoteAsset").Eq(quoteAsset)
 	markets, err := m.findMarkets(ctx, query)
 	if err != nil {
-		return
+		return nil, -1, err
 	}
 
 	if len(markets) > 0 {
@@ -44,7 +44,7 @@ func (m marketRepositoryImpl) GetMarketByAsset(
 		accountIndex = market.AccountIndex
 	}
 
-	return
+	return nil, -1, nil
 }
 
 func (m marketRepositoryImpl) GetLatestMarket(

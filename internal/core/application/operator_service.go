@@ -92,7 +92,7 @@ func (o *operatorService) DepositMarket(
 	}
 	accountIndex = a
 
-	if accountIndex == 0 {
+	if accountIndex == -1 {
 		_, latestAccountIndex, err := o.marketRepository.GetLatestMarket(
 			ctx,
 		)
@@ -172,13 +172,13 @@ func (o *operatorService) OpenMarket(
 		return errors.New("invalid base asset")
 	}
 
-	market, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
+	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
 	if err != nil {
 		return err
 	}
 
 	var outpoints []domain.OutpointWithAsset
-	if market == nil {
+	if marketAccountIndex < 0 {
 		_, marketAccountIndex, err = o.marketRepository.GetLatestMarket(ctx)
 		if err != nil {
 			return err
@@ -267,6 +267,9 @@ func (o *operatorService) UpdateMarketFee(
 	if err != nil {
 		return nil, err
 	}
+	if accountIndex < 0 {
+		return nil, domain.ErrMarketNotExist
+	}
 
 	//Updates the fee and the fee asset
 	err = o.marketRepository.UpdateMarket(
@@ -323,6 +326,9 @@ func (o *operatorService) UpdateMarketPrice(
 	if err != nil {
 		return err
 	}
+	if accountIndex < 0 {
+		return domain.ErrMarketNotExist
+	}
 
 	//Updates the base price and the quote price
 	return o.marketRepository.UpdateMarket(
@@ -360,6 +366,9 @@ func (o *operatorService) UpdateMarketStrategy(
 	)
 	if err != nil {
 		return err
+	}
+	if accountIndex < 0 {
+		return domain.ErrMarketNotExist
 	}
 
 	//For now we support only BALANCED or PLUGGABLE (ie. price feed)
@@ -417,12 +426,15 @@ func (o *operatorService) getMarketsForTrades(
 ) (map[string]*domain.Market, error) {
 	markets := map[string]*domain.Market{}
 	for _, trade := range trades {
-		market, _, err := o.marketRepository.GetMarketByAsset(
+		market, accountIndex, err := o.marketRepository.GetMarketByAsset(
 			ctx,
 			trade.MarketQuoteAsset,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if accountIndex < 0 {
+			return nil, domain.ErrMarketNotExist
 		}
 		if _, ok := markets[trade.MarketQuoteAsset]; !ok {
 			markets[trade.MarketQuoteAsset] = market
