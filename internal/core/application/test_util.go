@@ -11,7 +11,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
@@ -21,6 +21,8 @@ import (
 	"github.com/vulpemventures/go-elements/pset"
 	"google.golang.org/protobuf/proto"
 )
+
+const testDir = "testDatadir"
 
 type mockedWallet struct {
 	mnemonic          []string
@@ -45,7 +47,10 @@ func b2h(b []byte) string {
 // 	- unspents funding the close market (1 LBTC utxo of amount 1 BTC)
 //	- unspents funding the fee account (1 LBTC utxo of amount 1 BTC)
 func newTestTrader() (*tradeService, context.Context, func()) {
-	dbManager, err := dbbadger.NewDbManager("testtrader", nil)
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		os.Mkdir(testDir, os.ModePerm)
+	}
+	dbManager, err := dbbadger.NewDbManager(testDir, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +103,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	marketRepo.GetOrCreateMarket(ctx, domain.MarketAccountStart+1)
 
 	// trade repo, this doesn't need to be prepared
-	tradeRepo := inmemory.NewTradeRepositoryImpl()
+	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 
 	traderSvc := newTradeService(
@@ -110,9 +115,43 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	)
 	close := func() {
 		dbManager.Store.Close()
-		os.RemoveAll("testtrader")
+		os.RemoveAll(testDir)
 	}
 	return traderSvc, ctx, close
+}
+
+func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		os.Mkdir(testDir, os.ModePerm)
+	}
+	dbManager, err := dbbadger.NewDbManager(testDir, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	vaultRepo := dbbadger.NewVaultRepositoryImpl(dbManager)
+	if w != nil {
+		vaultRepo = newMockedVaultRepositoryImpl(*w)
+	}
+	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+
+	walletSvc := newWalletService(
+		vaultRepo,
+		dbbadger.NewUnspentRepositoryImpl(dbManager),
+		crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
+		explorerSvc,
+	)
+	ctx := context.WithValue(
+		context.Background(),
+		"tx",
+		dbManager.NewTransaction(),
+	)
+	close := func() {
+		recover()
+		dbManager.Store.Close()
+		os.RemoveAll(testDir)
+	}
+	return walletSvc, ctx, close
 }
 
 func newSwapRequest(
