@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -194,7 +193,7 @@ events:
 
 					switch len(unspentsAssetType) {
 					case 0:
-						log.Warn("no funds detected for market")
+						log.Warnf("no funds detected for market %d", e.AccountIndex)
 					case 1:
 						asset := "base"
 						for k := range unspentsAssetType {
@@ -202,7 +201,7 @@ events:
 								asset = "quote"
 							}
 						}
-						log.Warn(fmt.Sprintf("%s asset is missing", asset))
+						log.Warnf("%s asset is missing for market %d", asset, e.AccountIndex)
 					case 2:
 						var asset string
 						for k := range unspentsAssetType {
@@ -212,11 +211,12 @@ events:
 						}
 						log.Infof("market with quote asset '%s' can be opened", asset)
 					default:
-						log.Warn(
-							"market account funded with more than 2 different assets." +
-								"It will be impossible to determine the correct quote asset " +
-								"and market won't be opened. Funds must be moved away from " +
+						log.Warnf(
+							"market with account %d funded with more than 2 different assets."+
+								"It will be impossible to determine the correct quote asset "+
+								"and market won't be opened. Funds must be moved away from "+
 								"this account so that it owns only unspents of 2 type of assets",
+							e.AccountIndex,
 						)
 					}
 				}
