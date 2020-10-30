@@ -115,7 +115,7 @@ func TestGetBalance(t *testing.T) {
 	before()
 	defer after()
 
-	balance, err := unspentRepository.GetBalance(ctx, "a", "ah")
+	balance, err := unspentRepository.GetBalance(ctx, []string{"a"}, "ah")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,6 +135,21 @@ func TestGetAvailableUnspents(t *testing.T) {
 	assert.Equal(t, 2, len(unspents))
 }
 
+func TestGetAllUnspentsForAddresses(t *testing.T) {
+	before()
+	defer after()
+
+	unspents, err := unspentRepository.GetAllUnspentsForAddresses(
+		ctx,
+		[]string{"a", "adr"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 4, len(unspents))
+
+}
 func TestGetUnspentsForAddresses(t *testing.T) {
 	before()
 	defer after()
@@ -147,7 +162,7 @@ func TestGetUnspentsForAddresses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 4, len(unspents))
+	assert.Equal(t, 2, len(unspents))
 }
 
 func TestGetAvailableUnspentsForAddresses(t *testing.T) {
@@ -178,51 +193,41 @@ func TestGetUnspentForKey(t *testing.T) {
 	assert.Equal(t, uint64(2), unspent.Value)
 }
 
-func TestUpdateUnspent(t *testing.T) {
+func TestSpendUnspents(t *testing.T) {
 	before()
 	defer after()
 
-	unspent, err := unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
+	unspentKey := domain.UnspentKey{
 		TxID: "1",
 		VOut: 1,
-	})
+	}
+	unspent, err := unspentRepository.GetUnspentForKey(ctx, unspentKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, uint64(2), unspent.Value)
+	assert.Equal(t, false, unspent.IsSpent())
 
-	err = unspentRepository.UpdateUnspent(
+	if err = unspentRepository.SpendUnspents(
 		ctx,
-		domain.UnspentKey{
-			TxID: "1",
-			VOut: 1,
-		},
-		func(m *domain.Unspent) (*domain.Unspent, error) {
-			m.Value = 444
-			return m, nil
-		},
-	)
+		[]domain.UnspentKey{unspentKey},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	unspent, err = unspentRepository.GetUnspentForKey(ctx, unspentKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	unspent, err = unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
-		TxID: "1",
-		VOut: 1,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, uint64(444), unspent.Value)
+	assert.Equal(t, true, unspent.IsSpent())
 }
 
 func TestGetUnlockedBalance(t *testing.T) {
 	before()
 	defer after()
 
-	balance, err := unspentRepository.GetUnlockedBalance(ctx, "a", "ah")
+	balance, err := unspentRepository.GetUnlockedBalance(ctx, []string{"a"}, "ah")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,13 +250,13 @@ func TestLockUnlockUnspents(t *testing.T) {
 		},
 	}
 
-	err := unspentRepository.LockUnspents(ctx, unpsentsKeys, uuid.New())
+	err := unspentRepository.LockUnspents(context.Background(), unpsentsKeys, uuid.New())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	lockedCount := 0
-	unspents := unspentRepository.GetAllUnspents(ctx)
+	unspents := unspentRepository.GetAllUnspents(context.Background())
 	for _, v := range unspents {
 		if v.IsLocked() == true {
 			lockedCount++
@@ -260,13 +265,13 @@ func TestLockUnlockUnspents(t *testing.T) {
 
 	assert.Equal(t, 2, lockedCount)
 
-	err = unspentRepository.UnlockUnspents(ctx, unpsentsKeys)
+	err = unspentRepository.UnlockUnspents(context.Background(), unpsentsKeys)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	lockedCount = 0
-	unspents = unspentRepository.GetAllUnspents(ctx)
+	unspents = unspentRepository.GetAllUnspents(context.Background())
 	for _, v := range unspents {
 		if v.IsLocked() == true {
 			lockedCount++
@@ -281,14 +286,15 @@ func TestConcurrentGetUnspentsAddUnspents(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	dbManager, err := NewDbManager("testdb", nil)
+	os.Mkdir(testDbDir, os.ModePerm)
+	dbManager, err := NewDbManager(testDbDir, nil)
 	if err != nil {
-		panic("error while opening db")
+		panic(err)
 	}
 	unspentRepository := NewUnspentRepositoryImpl(dbManager)
 	defer func() {
 		rec := recover()
-		os.RemoveAll("testdb")
+		os.RemoveAll(testDbDir)
 		if rec != nil {
 			t.Fatal(rec)
 		}
@@ -304,13 +310,16 @@ func startWriter(
 	dbManager *DbManager,
 	repo domain.UnspentRepository,
 ) {
-	var unspents, oldUnspents []domain.Unspent
+	var unspents []domain.Unspent
+	var oldUnspentKeys []domain.UnspentKey
 	for {
-		tx := dbManager.NewTransaction()
-		ctx := context.WithValue(context.Background(), "tx", tx)
+		tx := dbManager.NewUnspentsTransaction()
+		ctx := context.WithValue(context.Background(), "utx", tx)
 		if len(unspents) > 0 {
-			oldUnspents = make([]domain.Unspent, len(unspents))
-			copy(oldUnspents, unspents)
+			oldUnspentKeys = make([]domain.UnspentKey, 0, len(unspents))
+			for _, u := range unspents {
+				oldUnspentKeys = append(oldUnspentKeys, u.Key())
+			}
 		}
 
 		unspents = randUnspents()
@@ -319,22 +328,17 @@ func startWriter(
 			tx.Discard()
 			continue
 		}
-		for _, oldUnspent := range oldUnspents {
-			if err := repo.UpdateUnspent(ctx, oldUnspent.Key(), func(u *domain.Unspent) (*domain.Unspent, error) {
-				u.Spend()
-				return u, nil
-			}); err != nil {
-				t.Log(err)
-				tx.Discard()
-				continue
-			}
+		if err := repo.SpendUnspents(ctx, oldUnspentKeys); err != nil {
+			t.Log(err)
+			tx.Discard()
+			continue
 		}
 		if err := tx.Commit(); err != nil {
 			panic(err)
 		}
 		t.Log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 		t.Logf("%d new unspents added", len(unspents))
-		t.Logf("%d existing unspents marked as spent", len(oldUnspents))
+		t.Logf("%d existing unspents marked as spent", len(oldUnspentKeys))
 		t.Log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 		time.Sleep(3 * time.Second)
@@ -353,8 +357,8 @@ func startReader(
 			break
 		}
 
-		tx := dbManager.NewTransaction()
-		ctx := context.WithValue(context.Background(), "tx", tx)
+		tx := dbManager.NewUnspentsTransaction()
+		ctx := context.WithValue(context.Background(), "utx", tx)
 		allUnspents := repo.GetAllUnspents(ctx)
 		availableUnspents, err := repo.GetAvailableUnspents(ctx)
 		if err != nil {
