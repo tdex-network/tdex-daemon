@@ -331,20 +331,12 @@ func (o *operatorService) UpdateMarketPrice(
 	}
 
 	//Updates the base price and the quote price
-	return o.marketRepository.UpdateMarket(
+	return o.marketRepository.UpdatePrices(
 		ctx,
 		accountIndex,
-		func(m *domain.Market) (*domain.Market, error) {
-
-			if err := m.ChangeBasePrice(req.BasePrice); err != nil {
-				return nil, err
-			}
-
-			if err := m.ChangeQuotePrice(req.QuotePrice); err != nil {
-				return nil, err
-			}
-
-			return m, nil
+		domain.Prices{
+			BasePrice:  req.Price.BasePrice,
+			QuotePrice: req.Price.QuotePrice,
 		},
 	)
 }

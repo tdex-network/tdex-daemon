@@ -172,6 +172,16 @@ func (m marketRepositoryImpl) CloseMarket(
 	return nil
 }
 
+func (m marketRepositoryImpl) UpdatePrices(ctx context.Context, accountIndex int, prices domain.Prices) error {
+	//Now we update the price store as well only if market insertion went ok
+	err := m.updatePriceByAccountIndex(accountIndex, prices)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m marketRepositoryImpl) getOrCreateMarket(
 	ctx context.Context,
 	accountIndex int,
@@ -214,9 +224,6 @@ func (m marketRepositoryImpl) insertMarket(
 			return err
 		}
 	}
-
-	//Now we update the price store as well only if market insertion went ok
-	err = m.updatePriceByAccountIndex(accountIndex, market.Price)
 
 	return nil
 }
@@ -271,10 +278,7 @@ func (m marketRepositoryImpl) updateMarket(
 		return fmt.Errorf("trying to update market with account index %v %w", accountIndex, err)
 	}
 
-	//Now we update the price store as well only if market went ok
-	err = m.updatePriceByAccountIndex(accountIndex, market.Price)
-
-	return err
+	return nil
 }
 
 func (m marketRepositoryImpl) findMarkets(
