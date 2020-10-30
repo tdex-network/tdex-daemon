@@ -226,6 +226,12 @@ func (m marketRepositoryImpl) insertMarket(
 		}
 	}
 
+	//Now we update the price store as well only if market insertion went ok
+	err = m.updatePriceByAccountIndex(accountIndex, domain.Prices{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
