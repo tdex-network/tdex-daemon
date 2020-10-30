@@ -70,6 +70,13 @@ func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 		assetCount[o.Asset]++
 	}
 
+	if _, ok := assetCount[baseAssetHash]; !ok {
+		return errors.New("base asset is missing")
+	}
+	if len(assetCount) < 2 {
+		return errors.New("quote asset is missing")
+	}
+
 	if len(assetCount) > 2 {
 		return fmt.Errorf(
 			"outpoints must be at most of 2 different type of assets, but %d were "+
@@ -81,12 +88,10 @@ func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 	}
 
 	for asset := range assetCount {
-		if !m.IsFunded() {
-			if asset == baseAssetHash {
-				m.BaseAsset = baseAssetHash
-			} else {
-				m.QuoteAsset = asset
-			}
+		if asset == baseAssetHash {
+			m.BaseAsset = baseAssetHash
+		} else {
+			m.QuoteAsset = asset
 		}
 	}
 

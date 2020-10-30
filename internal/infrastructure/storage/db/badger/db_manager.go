@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -18,25 +19,25 @@ type DbManager struct {
 }
 
 // NewDbManager opens (or creates if not exists) the badger store on disk. It expects a base data dir and an optional logger.
-// It creates a dedicated directory for swap, price and unspent.
+// It creates a dedicated directory for main, price and unspent.
 func NewDbManager(baseDbDir string, logger badger.Logger) (*DbManager, error) {
-	swapDb, err := createDb(baseDbDir+"/swap", logger)
+	mainDb, err := createDb(filepath.Join(baseDbDir, "main"), logger)
 	if err != nil {
-		return nil, fmt.Errorf("opening swap db: %w", err)
+		return nil, fmt.Errorf("opening main db: %w", err)
 	}
 
-	priceDb, err := createDb(baseDbDir+"/price", logger)
+	priceDb, err := createDb(filepath.Join(baseDbDir, "prices"), logger)
 	if err != nil {
-		return nil, fmt.Errorf("opening price db: %w", err)
+		return nil, fmt.Errorf("opening prices db: %w", err)
 	}
 
-	unspentDb, err := createDb(baseDbDir+"/unspent", logger)
+	unspentDb, err := createDb(filepath.Join(baseDbDir, "unspents"), logger)
 	if err != nil {
-		return nil, fmt.Errorf("opening unspent db: %w", err)
+		return nil, fmt.Errorf("opening unspents db: %w", err)
 	}
 
 	return &DbManager{
-		Store:        swapDb,
+		Store:        mainDb,
 		PriceStore:   priceDb,
 		UnspentStore: unspentDb,
 	}, nil
@@ -47,13 +48,13 @@ func (d DbManager) NewTransaction() ports.Transaction {
 	return d.Store.Badger().NewTransaction(true)
 }
 
-// NewPriceTransaction implements the DbManager interface
-func (d DbManager) NewPriceTransaction() ports.Transaction {
+// NewPricesTransaction implements the DbManager interface
+func (d DbManager) NewPricesTransaction() ports.Transaction {
 	return d.PriceStore.Badger().NewTransaction(true)
 }
 
-// NewUnspentTransaction implements the DbManager interface
-func (d DbManager) NewUnspentTransaction() ports.Transaction {
+// NewUnspentsTransaction implements the DbManager interface
+func (d DbManager) NewUnspentsTransaction() ports.Transaction {
 	return d.UnspentStore.Badger().NewTransaction(true)
 }
 
