@@ -121,9 +121,9 @@ events:
 				}
 
 				if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-					log.Debug(
-						"fee account balance too low - Trades and deposits must be " +
-							"disabled until account is refunded",
+					log.Warn(
+						"fee account balance too low. Trades for markets won't be " +
+							"served properly. Fund the fee account as soon as possible",
 					)
 					continue events
 				}
