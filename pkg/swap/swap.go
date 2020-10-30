@@ -120,6 +120,10 @@ func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inp
 	filteredUtxos := make([]pset.PInput, 0)
 
 	for _, utxo := range utxos {
+		if utxo.NonWitnessUtxo != nil && utxo.WitnessUtxo == nil {
+			// fetch the WitnessUtxo
+			
+		}
 		// if confidential, unblind before checking asset hash
 		if utxo.WitnessUtxo.IsConfidential() {
 			script := hex.EncodeToString(utxo.WitnessUtxo.Script)
