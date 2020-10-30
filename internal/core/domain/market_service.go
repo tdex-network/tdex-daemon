@@ -138,16 +138,16 @@ func (m *Market) ChangeFeeAsset(asset string) error {
 
 // BaseAssetPrice returns the latest price for the base asset
 func (m *Market) BaseAssetPrice() decimal.Decimal {
-	price := getLatestPrice(m.BasePrice)
+	basePrice, _ := getLatestPrice(m.Price)
 
-	return decimal.Decimal(price)
+	return decimal.Decimal(basePrice)
 }
 
 // QuoteAssetPrice returns the latest price for the quote asset
 func (m *Market) QuoteAssetPrice() decimal.Decimal {
-	price := getLatestPrice(m.QuotePrice)
+	_, quotePrice := getLatestPrice(m.Price)
 
-	return decimal.Decimal(price)
+	return decimal.Decimal(quotePrice)
 }
 
 // ChangeBasePrice ...
@@ -158,7 +158,7 @@ func (m *Market) ChangeBasePrice(price decimal.Decimal) error {
 
 	// TODO add logic to be sure that the price do not change to much from the latest one
 
-	m.BasePrice = Price(price)
+	m.Price.BasePrice = price
 	return nil
 }
 
@@ -170,21 +170,30 @@ func (m *Market) ChangeQuotePrice(price decimal.Decimal) error {
 
 	//TODO check if the previous price is changing too much as security measure
 
-	m.QuotePrice = Price(price)
+	m.Price.QuotePrice = price
 	return nil
 }
 
 // IsZero ...
-func (p Price) IsZero() bool {
-	return decimal.Decimal(p).Equal(decimal.NewFromInt(0))
+func (p Prices) IsZero() bool {
+	return p == Prices{}
 }
 
-func getLatestPrice(pt Price) Price {
-	if pt.IsZero() {
-		return Price(decimal.NewFromInt(0))
+// AreZero ...
+func (p Prices) AreZero() bool {
+	if p.IsZero() {
+		return true
 	}
 
-	return pt
+	return decimal.Decimal(p.BasePrice).Equal(decimal.NewFromInt(0)) && decimal.Decimal(p.QuotePrice).Equal(decimal.NewFromInt(0))
+}
+
+func getLatestPrice(pt Prices) (decimal.Decimal, decimal.Decimal) {
+	if pt.IsZero() || pt.AreZero() {
+		return decimal.NewFromInt(0), decimal.NewFromInt(0)
+	}
+
+	return pt.BasePrice, pt.QuotePrice
 }
 
 // IsStrategyPluggable returns true if the the startegy isn't automated.
@@ -194,7 +203,7 @@ func (m *Market) IsStrategyPluggable() bool {
 
 // IsStrategyPluggableInitialized returns true if the prices have been set.
 func (m *Market) IsStrategyPluggableInitialized() bool {
-	return !m.BasePrice.IsZero() && !m.QuotePrice.IsZero()
+	return !m.Price.AreZero()
 }
 
 // MakeStrategyPluggable makes the current market using a given price
@@ -206,6 +215,8 @@ func (m *Market) MakeStrategyPluggable() error {
 	}
 
 	m.Strategy = mm.MakingStrategy{}
+	m.ChangeBasePrice(decimal.NewFromInt(0))
+	m.ChangeQuotePrice(decimal.NewFromInt(0))
 
 	return nil
 }

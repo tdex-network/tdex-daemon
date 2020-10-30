@@ -191,7 +191,7 @@ func TestUpdateMarketPrice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, basePriceString, market.BaseAssetPrice().String())
-	assert.Equal(t, quotePriceString, market.QuoteAssetPrice().String())
+	assert.Equal(t, basePriceString, market.Price.BasePrice.String())
+	assert.Equal(t, quotePriceString, market.Price.QuotePrice.String())
 
 }

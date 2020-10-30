@@ -15,6 +15,7 @@ type marketRepositoryImpl struct {
 	db *DbManager
 }
 
+//NewMarketRepositoryImpl initialize a badger implementation of the domain.MarketRepository
 func NewMarketRepositoryImpl(db *DbManager) domain.MarketRepository {
 	return marketRepositoryImpl{
 		db: db,
@@ -228,6 +229,9 @@ func (m marketRepositoryImpl) insertMarket(
 		}
 	}
 
+	//Now we update the price store as well only if market insertion went ok
+	err = m.updatePriceByAccountIndex(accountIndex, market.Price)
+
 	return nil
 }
 
@@ -257,6 +261,13 @@ func (m marketRepositoryImpl) getMarket(
 		return nil, err
 	}
 
+	// Let's get the price from PriceStore
+	price, err := m.getPriceByAccountIndex(accountIndex)
+	if err != nil {
+		return nil, err
+	}
+	market.Price = *price
+	//Restore strategy
 	restoreStrategy(&market)
 
 	return &market, nil
@@ -280,6 +291,14 @@ func (m marketRepositoryImpl) updateMarket(
 			market,
 		)
 	}
+
+	if err != nil {
+		return fmt.Errorf("trying to update market with account index %v %w", accountIndex, err)
+	}
+
+	//Now we update the price store as well only if market went ok
+	err = m.updatePriceByAccountIndex(accountIndex, market.Price)
+
 	return err
 }
 
@@ -303,12 +322,42 @@ func (m marketRepositoryImpl) findMarkets(
 	}
 	for i, mkt := range markets {
 		// Let's get the price from PriceStore
+		price, err := m.getPriceByAccountIndex(mkt.AccountIndex)
+		if err != nil {
+			return nil, err
+		}
+		mkt.Price = *price
+
 		restoreStrategy(&mkt)
-		restorePrice(&mkt)
+
+		// Assign the restore market with price and startegy
 		markets[i] = mkt
 	}
 
 	return markets, err
+}
+
+func (m marketRepositoryImpl) getPriceByAccountIndex(accountIndex int) (*domain.Prices, error) {
+	var prices *domain.Prices
+
+	err := m.db.PriceStore.Get(accountIndex, &prices)
+	if err != nil {
+		return nil, fmt.Errorf("trying to get price with account index %v %w", accountIndex, err)
+	}
+
+	return prices, nil
+}
+
+func (m marketRepositoryImpl) updatePriceByAccountIndex(accountIndex int, prices domain.Prices) error {
+	err := m.db.PriceStore.Upsert(
+		accountIndex,
+		prices,
+	)
+	if err != nil {
+		return fmt.Errorf("trying to updating price with account index %v %w", accountIndex, err)
+	}
+
+	return nil
 }
 
 func restoreStrategy(market *domain.Market) {
@@ -318,20 +367,4 @@ func restoreStrategy(market *domain.Market) {
 			market.Strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})
 		}
 	}
-}
-
-type Prices struct {
-	BaseAsset *domain.Price
-}
-
-func restorePrice(mktRepo marketRepositoryImpl, mkt *domain.Market) error {
-	var prices interface{}
-	err := mktRepo.db.PriceStore.Get(mkt.AccountIndex, prices)
-	if err != nil {
-		return fmt.Errorf("Price with account index %i does not exists %w", mkt.AccountIndex, err)
-	}
-	mkt.BaseAsset = prices.BaseAsset
-	mkt.QuoteAsset = prices.QuoteAsset
-
-	return nil
 }
