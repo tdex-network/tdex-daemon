@@ -105,6 +105,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	// trade repo, this doesn't need to be prepared
 	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	crawlerSvc := crawler.NewService(explorerSvc, nil, nil)
 
 	traderSvc := newTradeService(
 		marketRepo,
@@ -112,6 +113,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 		vaultRepo,
 		unspentsRepo,
 		explorerSvc,
+		crawlerSvc,
 	)
 	close := func() {
 		dbManager.Store.Close()

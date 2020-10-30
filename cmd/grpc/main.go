@@ -52,6 +52,7 @@ func main() {
 		vaultRepository,
 		unspentRepository,
 		explorerSvc,
+		crawlerSvc,
 	)
 	walletSvc := application.NewWalletService(
 		vaultRepository,

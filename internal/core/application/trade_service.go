@@ -3,12 +3,14 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
@@ -50,6 +52,7 @@ type tradeService struct {
 	vaultRepository   domain.VaultRepository
 	unspentRepository domain.UnspentRepository
 	explorerSvc       explorer.Service
+	crawlerSvc        crawler.Service
 }
 
 func NewTradeService(
@@ -58,6 +61,7 @@ func NewTradeService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
+	crawlerSvc crawler.Service,
 ) TradeService {
 	return newTradeService(
 		marketRepository,
@@ -65,6 +69,7 @@ func NewTradeService(
 		vaultRepository,
 		unspentRepository,
 		explorerSvc,
+		crawlerSvc,
 	)
 }
 
@@ -74,6 +79,7 @@ func newTradeService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
+	crawlerSvc crawler.Service,
 ) *tradeService {
 	return &tradeService{
 		marketRepository:  marketRepository,
@@ -81,6 +87,7 @@ func newTradeService(
 		vaultRepository:   vaultRepository,
 		unspentRepository: unspentRepository,
 		explorerSvc:       explorerSvc,
+		crawlerSvc:        crawlerSvc,
 	}
 }
 
@@ -214,6 +221,11 @@ func (t *tradeService) TradePropose(
 	var selectedUnspents []explorer.Utxo
 	var outputBlindingKeysByScript map[string][]byte
 	var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
+	type blindKeyAndAccountIndex struct {
+		blindkey     []byte
+		accountIndex int
+	}
+	var addressesToObserve map[string]blindKeyAndAccountIndex
 
 	// derive output and change address for market, and change address for fee account
 	if err := t.vaultRepository.UpdateVault(
@@ -225,15 +237,15 @@ func (t *tradeService) TradePropose(
 			if err != nil {
 				return nil, err
 			}
-			_, outputScript, outputBlindKey, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
+			outputAddress, outputScript, outputBlindKey, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			_, changeScript, changeBlindKey, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
+			changeAddress, changeScript, changeBlindKey, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			_, feeChangeScript, _, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			feeChangeAddress, feeChangeScript, feeChangeBlindKey, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
@@ -243,6 +255,11 @@ func (t *tradeService) TradePropose(
 			outputBlindingKeysByScript = map[string][]byte{
 				outputScript: outputBlindKey,
 				changeScript: changeBlindKey,
+			}
+			addressesToObserve = map[string]blindKeyAndAccountIndex{
+				outputAddress:    blindKeyAndAccountIndex{outputBlindKey, marketAccountIndex},
+				changeAddress:    blindKeyAndAccountIndex{changeBlindKey, marketAccountIndex},
+				feeChangeAddress: blindKeyAndAccountIndex{feeChangeBlindKey, domain.FeeAccount},
 			}
 			outputDerivationPath, _ = marketAccount.DerivationPathByScript[outputScript]
 			changeDerivationPath, _ = marketAccount.DerivationPathByScript[changeScript]
@@ -324,6 +341,14 @@ func (t *tradeService) TradePropose(
 		tradeID,
 	); err != nil {
 		return nil, nil, 0, err
+	}
+
+	for addr, info := range addressesToObserve {
+		t.crawlerSvc.AddObservable(&crawler.AddressObservable{
+			AccountIndex: info.accountIndex,
+			Address:      addr,
+			BlindingKey:  info.blindkey,
+		})
 	}
 
 	return
@@ -758,6 +783,8 @@ func previewFromFormula(
 	balances := getBalanceByAsset(unspents)
 	baseBalanceAvailable := balances[market.BaseAsset]
 	quoteBalanceAvailable := balances[market.QuoteAsset]
+	fmt.Println("base asset balance", baseBalanceAvailable)
+	fmt.Println("quote asset balance", quoteBalanceAvailable)
 	formula := market.Strategy.Formula()
 
 	if tradeType == TradeBuy {
