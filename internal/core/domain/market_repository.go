@@ -2,8 +2,11 @@ package domain
 
 import "context"
 
-// Repository defines the abstraction for Market
+// MarketRepository defines the abstraction for Market
 type MarketRepository interface {
+
+	// Retrieves a market with a given account index.
+	GetMarketByAccount(ctx context.Context, accountIndex int) (market *Market, err error)
 
 	// Retrieves a market with a given a quote asset hash.
 	GetMarketByAsset(ctx context.Context, quoteAsset string) (market *Market, accountIndex int, err error)
