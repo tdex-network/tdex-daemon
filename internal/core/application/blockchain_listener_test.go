@@ -2,23 +2,25 @@ package application
 
 import (
 	"context"
+	"os"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	"os"
-	"testing"
 )
 
 func TestUpdateUnspentsForAddress(t *testing.T) {
-	dbManager, err := dbbadger.NewDbManager("testdb", nil)
+	os.Mkdir(testDir, os.ModePerm)
+	dbManager, err := dbbadger.NewDbManager(testDir, nil)
 	if err != nil {
 		panic(err)
 	}
 	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	tx := dbManager.Store.Badger().NewTransaction(true)
-	ctx = context.WithValue(
+	ctx := context.WithValue(
 		context.Background(),
-		"tx",
+		"utx",
 		tx,
 	)
 	l := NewBlockchainListener(
@@ -65,7 +67,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unsp, err := unspentRepository.GetUnspentsForAddresses(
+	unsp, err := unspentRepository.GetAllUnspentsForAddresses(
 		ctx,
 		[]string{"a"},
 	)
@@ -111,7 +113,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unsp, err = unspentRepository.GetUnspentsForAddresses(
+	unsp, err = unspentRepository.GetAllUnspentsForAddresses(
 		ctx,
 		[]string{"a"},
 	)
@@ -136,7 +138,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 	}
 	dbManager.Store.Close()
 
-	err = os.RemoveAll("testdb")
+	err = os.RemoveAll(testDir)
 	if err != nil {
 		panic(err)
 	}

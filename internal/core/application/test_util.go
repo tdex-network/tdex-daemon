@@ -11,6 +11,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
@@ -19,8 +20,9 @@ import (
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 	"google.golang.org/protobuf/proto"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 )
+
+const testDir = "testDatadir"
 
 type mockedWallet struct {
 	mnemonic          []string
@@ -48,7 +50,7 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 
 	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
 	if marketRepositoryIsEmpty == false {
-		fillMarketRepo(&marketRepo, ctx)
+		fillMarketRepo(ctx, &marketRepo)
 	}
 
 	explorerSvc := explorer.NewService("localhost:3001")
@@ -63,7 +65,7 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 
 	close := func() {
 		dbManager.Store.Close()
-		os.RemoveAll("testtrader")
+		os.RemoveAll("testoperator")
 	}
 
 	return operatorService, ctx, close
@@ -77,7 +79,10 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 // 	- unspents funding the close market (1 LBTC utxo of amount 1 BTC)
 //	- unspents funding the fee account (1 LBTC utxo of amount 1 BTC)
 func newTestTrader() (*tradeService, context.Context, func()) {
-	dbManager, err := dbbadger.NewDbManager("testtrader", nil)
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		os.Mkdir(testDir, os.ModePerm)
+	}
+	dbManager, err := dbbadger.NewDbManager(testDir, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +109,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 
 	// market repo with open market
 	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
-	fillMarketRepo(&marketRepo, ctx)
+	fillMarketRepo(ctx, &marketRepo)
 
 	// trade repo, this doesn't need to be prepared
 	tradeRepo := inmemory.NewTradeRepositoryImpl()
@@ -124,7 +129,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	return traderSvc, ctx, close
 }
 
-func fillMarketRepo(marketRepo *domain.MarketRepository, ctx context.Context) error { 
+func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) error { 
 	// TODO: create and open market
 	// opened market
 	(*marketRepo).UpdateMarket(
@@ -150,6 +155,40 @@ func fillMarketRepo(marketRepo *domain.MarketRepository, ctx context.Context) er
 	// closed market (and also not funded)
 	(*marketRepo).GetOrCreateMarket(ctx, domain.MarketAccountStart+1)
 	return nil
+}
+
+func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		os.Mkdir(testDir, os.ModePerm)
+	}
+	dbManager, err := dbbadger.NewDbManager(testDir, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	vaultRepo := dbbadger.NewVaultRepositoryImpl(dbManager)
+	if w != nil {
+		vaultRepo = newMockedVaultRepositoryImpl(*w)
+	}
+	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+
+	walletSvc := newWalletService(
+		vaultRepo,
+		dbbadger.NewUnspentRepositoryImpl(dbManager),
+		crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
+		explorerSvc,
+	)
+	ctx := context.WithValue(
+		context.Background(),
+		"tx",
+		dbManager.NewTransaction(),
+	)
+	close := func() {
+		recover()
+		dbManager.Store.Close()
+		os.RemoveAll(testDir)
+	}
+	return walletSvc, ctx, close
 }
 
 func newSwapRequest(
