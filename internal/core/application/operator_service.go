@@ -179,14 +179,57 @@ func (o *operatorService) OpenMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return domain.ErrMarketNotExist
+		return errors.New("invalid base asset")
 	}
 
-	err := o.marketRepository.OpenMarket(
-		ctx,
-		quoteAsset,
-	)
+	market, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
 	if err != nil {
+		return err
+	}
+
+	var outpoints []domain.OutpointWithAsset
+	if market == nil {
+		_, marketAccountIndex, err = o.marketRepository.GetLatestMarket(ctx)
+		if err != nil {
+			return err
+		}
+
+		addresses, _, err :=
+			o.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, marketAccountIndex)
+		if err != nil {
+			return err
+		}
+		unspents, err := o.unspentRepository.GetUnspentsForAddresses(ctx, addresses)
+		if err != nil {
+			return err
+		}
+
+		outpoints = make([]domain.OutpointWithAsset, 0, len(unspents))
+		for _, u := range unspents {
+			outpoints = append(outpoints, domain.OutpointWithAsset{
+				Txid:  u.TxID,
+				Vout:  int(u.VOut),
+				Asset: u.AssetHash,
+			})
+		}
+	}
+
+	if err := o.marketRepository.UpdateMarket(ctx, marketAccountIndex, func(m *domain.Market) (*domain.Market, error) {
+		if m.IsTradable() {
+			return m, nil
+		}
+
+		if len(outpoints) > 0 {
+			if err := m.FundMarket(outpoints); err != nil {
+				return nil, err
+			}
+		}
+
+		if err := m.MakeTradable(); err != nil {
+			return nil, err
+		}
+		return m, nil
+	}); err != nil {
 		return err
 	}
 
@@ -199,7 +242,7 @@ func (o *operatorService) CloseMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return domain.ErrMarketNotExist
+		return errors.New("invalid base asset")
 	}
 
 	err := o.marketRepository.CloseMarket(

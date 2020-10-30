@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 )
 
@@ -10,10 +11,14 @@ type UnspentRepository interface {
 	GetAllUnspents(ctx context.Context) []Unspent
 	GetBalance(
 		ctx context.Context,
-		address string,
+		addresses []string,
 		assetHash string,
 	) (uint64, error)
 	GetAvailableUnspents(ctx context.Context) ([]Unspent, error)
+	GetAllUnspentsForAddresses(
+		ctx context.Context,
+		addresses []string,
+	) ([]Unspent, error)
 	GetUnspentsForAddresses(
 		ctx context.Context,
 		addresses []string,
@@ -24,20 +29,19 @@ type UnspentRepository interface {
 	) ([]Unspent, error)
 	GetUnlockedBalance(
 		ctx context.Context,
-		address string,
+		addresses []string,
 		assetHash string,
 	) (uint64, error)
+	SpendUnspents(
+		ctx context.Context,
+		unspentKeys []UnspentKey,
+	) error
 	LockUnspents(
 		ctx context.Context,
 		unspentKeys []UnspentKey,
 		tradeID uuid.UUID,
 	) error
 	UnlockUnspents(ctx context.Context, unspentKeys []UnspentKey) error
-	UpdateUnspent(
-		ctx context.Context,
-		unspentKey UnspentKey,
-		updateFn func(m *Unspent) (*Unspent, error),
-	) error
 	GetUnspentForKey(
 		ctx context.Context,
 		unspentKey UnspentKey,
