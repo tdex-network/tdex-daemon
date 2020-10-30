@@ -16,6 +16,13 @@ func compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccep
 		return err
 	}
 
+	for index, input := range decodedFromRequest.Inputs {
+		if (input.WitnessUtxo == nil && input.NonWitnessUtxo != nil) {
+			inputVout := decodedFromRequest.UnsignedTx.Inputs[index].Index
+			decodedFromRequest.Inputs[index].WitnessUtxo = input.NonWitnessUtxo.Outputs[inputVout]
+		}
+	}
+
 	totalP, err := countCumulativeAmount(decodedFromRequest.Inputs, request.GetAssetP(), request.GetInputBlindingKey())
 	if err != nil {
 		return err
@@ -120,10 +127,6 @@ func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inp
 	filteredUtxos := make([]pset.PInput, 0)
 
 	for _, utxo := range utxos {
-		if utxo.NonWitnessUtxo != nil && utxo.WitnessUtxo == nil {
-			// fetch the WitnessUtxo
-			
-		}
 		// if confidential, unblind before checking asset hash
 		if utxo.WitnessUtxo.IsConfidential() {
 			script := hex.EncodeToString(utxo.WitnessUtxo.Script)
