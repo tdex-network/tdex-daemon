@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -789,8 +788,6 @@ func previewFromFormula(
 	balances := getBalanceByAsset(unspents)
 	baseBalanceAvailable := balances[market.BaseAsset]
 	quoteBalanceAvailable := balances[market.QuoteAsset]
-	fmt.Println("base asset balance", baseBalanceAvailable)
-	fmt.Println("quote asset balance", quoteBalanceAvailable)
 	formula := market.Strategy.Formula()
 
 	if tradeType == TradeBuy {
