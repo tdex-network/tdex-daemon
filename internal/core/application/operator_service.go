@@ -500,26 +500,17 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, err
 	}
 
-	derivedAddresses, _, err := o.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, market.AccountIndex)
+	unspents, err := o.unspentRepository.GetAvailableUnspents(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	unspents, err := o.unspentRepository.GetUnspentsForAddresses(
-		ctx,
-		derivedAddresses,
-	)
-	if err != nil {
-		return nil, err
-	}
-	utxos := make([]explorer.Utxo, 0)
-	for _, u := range unspents {
-		utxos = append(utxos, u.ToUtxo())
-	}
-
 	if len(unspents) <= 0 {
 		return nil, ErrWalletNotFunded
+	}
+
+	utxos := make([]explorer.Utxo, 0, len(unspents))
+	for _, u := range unspents {
+		utxos = append(utxos, u.ToUtxo())
 	}
 
 	err = o.vaultRepository.UpdateVault(
@@ -567,11 +558,7 @@ func (o *operatorService) WithdrawMarketFunds(
 				}
 			}
 
-			tx, err := hex.DecodeString(txHex)
-			if err != nil {
-				return nil, err
-			}
-			rawTx = tx
+			rawTx, _ = hex.DecodeString(txHex)
 
 			return v, nil
 		},
@@ -593,18 +580,13 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 		return 0, err
 	}
 
-	var baseAmount int64
-	for _, a := range addresses {
-		baseAddressBalance, err := o.unspentRepository.GetBalance(
-			ctx,
-			a,
-			config.GetString(config.BaseAssetKey),
-		)
-		if err != nil {
-			return 0, err
-		}
-		baseAmount += int64(baseAddressBalance)
+	baseAssetAmount, err := o.unspentRepository.GetBalance(
+		ctx,
+		addresses,
+		config.GetString(config.BaseAssetKey),
+	)
+	if err != nil {
+		return -1, err
 	}
-
-	return baseAmount, nil
+	return int64(baseAssetAmount), nil
 }
