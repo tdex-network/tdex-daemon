@@ -35,8 +35,8 @@ func TestListMarket(t *testing.T) {
 	t.Run("ListMaker should return an empty list and a nil error", func(t *testing.T) {
 		operatorService, ctx := newTestOperator()
 
-		listMarketReply, err := operatorService.ListMarket(ctx)
+		marketInfos, err := operatorService.ListMarket(ctx)
 		assert.Equal(t, err, nil)
-		assert.Equal(t, len(listMarketReply.Markets), 0)
+		assert.Equal(t, len(marketInfos), 0)
 	})
 }

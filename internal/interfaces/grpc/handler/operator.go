@@ -205,6 +205,37 @@ func (o operatorHandler) ListSwaps(
 	return swaps, nil
 }
 
+// ListMarket returns the result of the ListMarket method of the operator service.
+func (o operatorHandler) ListMarket(ctx context.Context, req *pb.ListMarketRequest) (*pb.ListMarketReply, error) {
+	marketInfos, err := o.operatorSvc.ListMarket(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos))
+
+	for index, marketInfo := range marketInfos {
+		pbMarketInfos[index] = applicationMarketInfoToPbMarketInfo(marketInfo)
+	}
+
+	return &pb.ListMarketReply{ Markets: pbMarketInfos, }, nil
+}
+
+func applicationMarketInfoToPbMarketInfo(marketInfo application.MarketInfo) *pb.MarketInfo {
+	return &pb.MarketInfo{
+		Fee: &pbtypes.Fee{
+			BasisPoint: marketInfo.Fee.BasisPoint,
+			Asset: marketInfo.Fee.FeeAsset,
+		},
+		Market: &pbtypes.Market{
+			BaseAsset: marketInfo.Market.BaseAsset,
+			QuoteAsset: marketInfo.Market.QuoteAsset,
+		},
+		Tradable: marketInfo.Tradable,
+		StrategyType: pb.StrategyType(marketInfo.StrategyType),
+	}
+}
+
 func validateMarketWithFee(marketWithFee *pbtypes.MarketWithFee) error {
 	if marketWithFee == nil {
 		return errors.New("market with fee is null")

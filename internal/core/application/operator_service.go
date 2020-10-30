@@ -47,7 +47,7 @@ type OperatorService interface {
 	) (*pb.ListSwapsReply, error)
 	ListMarket(
 		ctx context.Context,
-	) (*pb.ListMarketReply, error)
+	) ([]MarketInfo, error)
 }
 
 type operatorService struct {
@@ -59,6 +59,7 @@ type operatorService struct {
 	crawlerSvc        crawler.Service
 }
 
+// NewOperatorService is a constructor function for OperatorService.
 func NewOperatorService(
 	marketRepository domain.MarketRepository,
 	vaultRepository domain.VaultRepository,
@@ -373,32 +374,30 @@ func (o *operatorService) ListSwaps(
 //ListMarket a set of informations about all the markets.
 func (o *operatorService) ListMarket(
 	ctx context.Context,
-) (*pb.ListMarketReply, error) {
+) ([]MarketInfo, error) {
 	markets, err := o.marketRepository.GetAllMarkets(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	marketInfos := make([]*pb.MarketInfo, len(markets))
+	marketInfos := make([]MarketInfo, len(markets))
 
 	for index, market := range markets {
-		marketInfos[index] = &pb.MarketInfo{
-			Market: &pbtypes.Market{
+		marketInfos[index] = MarketInfo{
+			Market: Market{
 				BaseAsset:  market.BaseAsset,
 				QuoteAsset: market.QuoteAsset,
 			},
-			Fee: &pbtypes.Fee{
+			Fee: Fee{
 				BasisPoint: market.Fee,
-				Asset:      market.FeeAsset,
+				FeeAsset: market.FeeAsset,
 			},
 			Tradable:     market.Tradable,
-			StrategyType: pb.StrategyType(market.Strategy.Type),
+			StrategyType: market.Strategy.Type,
 		}
 	}
 
-	return &pb.ListMarketReply{
-		Markets: marketInfos,
-	}, nil
+	return marketInfos, nil
 }
 
 func (o *operatorService) getMarketsForTrades(
