@@ -18,6 +18,7 @@ type operatorHandler struct {
 	operatorSvc application.OperatorService
 }
 
+// NewOperatorHandler is a constructor function returning an protobuf OperatorServer.
 func NewOperatorHandler(operatorSvc application.OperatorService) pb.OperatorServer {
 	return &operatorHandler{
 		operatorSvc: operatorSvc,
@@ -215,25 +216,21 @@ func (o operatorHandler) ListMarket(ctx context.Context, req *pb.ListMarketReque
 	pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos))
 
 	for index, marketInfo := range marketInfos {
-		pbMarketInfos[index] = applicationMarketInfoToPbMarketInfo(marketInfo)
+		pbMarketInfos[index] = &pb.MarketInfo{
+			Fee: &pbtypes.Fee{
+				BasisPoint: marketInfo.Fee.BasisPoint,
+				Asset:      marketInfo.Fee.FeeAsset,
+			},
+			Market: &pbtypes.Market{
+				BaseAsset:  marketInfo.Market.BaseAsset,
+				QuoteAsset: marketInfo.Market.QuoteAsset,
+			},
+			Tradable:     marketInfo.Tradable,
+			StrategyType: pb.StrategyType(marketInfo.StrategyType),
+		}
 	}
 
-	return &pb.ListMarketReply{ Markets: pbMarketInfos, }, nil
-}
-
-func applicationMarketInfoToPbMarketInfo(marketInfo application.MarketInfo) *pb.MarketInfo {
-	return &pb.MarketInfo{
-		Fee: &pbtypes.Fee{
-			BasisPoint: marketInfo.Fee.BasisPoint,
-			Asset: marketInfo.Fee.FeeAsset,
-		},
-		Market: &pbtypes.Market{
-			BaseAsset: marketInfo.Market.BaseAsset,
-			QuoteAsset: marketInfo.Market.QuoteAsset,
-		},
-		Tradable: marketInfo.Tradable,
-		StrategyType: pb.StrategyType(marketInfo.StrategyType),
-	}
+	return &pb.ListMarketReply{Markets: pbMarketInfos}, nil
 }
 
 func validateMarketWithFee(marketWithFee *pbtypes.MarketWithFee) error {
