@@ -2,6 +2,7 @@ package dbbadger
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -300,9 +301,11 @@ func (m marketRepositoryImpl) findMarkets(
 			query,
 		)
 	}
-	for i, m := range markets {
-		restoreStrategy(&m)
-		markets[i] = m
+	for i, mkt := range markets {
+		// Let's get the price from PriceStore
+		restoreStrategy(&mkt)
+		restorePrice(&mkt)
+		markets[i] = mkt
 	}
 
 	return markets, err
@@ -315,4 +318,20 @@ func restoreStrategy(market *domain.Market) {
 			market.Strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})
 		}
 	}
+}
+
+type Prices struct {
+	BaseAsset *domain.Price
+}
+
+func restorePrice(mktRepo marketRepositoryImpl, mkt *domain.Market) error {
+	var prices interface{}
+	err := mktRepo.db.PriceStore.Get(mkt.AccountIndex, prices)
+	if err != nil {
+		return fmt.Errorf("Price with account index %i does not exists %w", mkt.AccountIndex, err)
+	}
+	mkt.BaseAsset = prices.BaseAsset
+	mkt.QuoteAsset = prices.QuoteAsset
+
+	return nil
 }

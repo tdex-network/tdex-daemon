@@ -22,11 +22,9 @@ type Market struct {
 	// Market Making strategy
 	Strategy mm.MakingStrategy
 	// how much 1 base asset is valued in quote asset.
-	// It's a map  timestamp -> price, so it's easier to do historical price change.
-	BasePrice PriceByTime
+	BasePrice Price
 	// how much 1 quote asset is valued in base asset
-	// It's a map  timestamp -> price, so it's easier to do historical price change.
-	QuotePrice PriceByTime
+	QuotePrice Price
 }
 
 // OutpointWithAsset contains the transaction outpoint (tx hash and vout) along with the asset hash
@@ -39,10 +37,7 @@ type OutpointWithAsset struct {
 //Price ...
 type Price decimal.Decimal
 
-//PriceByTime ...
-type PriceByTime map[uint64]Price
-
-//Market strategy type
+//StrategyType is the Market making strategy type
 type StrategyType int32
 
 //NewMarket returns an empty market with a reference to an account index
@@ -63,8 +58,8 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 		BaseAsset:    "",
 		QuoteAsset:   "",
 
-		BasePrice:  map[uint64]Price{},
-		QuotePrice: map[uint64]Price{},
+		BasePrice:  Price{},
+		QuotePrice: Price{},
 
 		Fee:      defaultFeeInBasisPoint,
 		FeeAsset: defaultFeeAsset,
