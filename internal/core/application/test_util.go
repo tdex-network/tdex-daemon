@@ -46,7 +46,7 @@ func b2h(b []byte) string {
 // 	- unspents funding the open market (1 LBTC utxo of amount 1 BTC, 1 ASS utxo of amount 6500 BTC)
 // 	- unspents funding the close market (1 LBTC utxo of amount 1 BTC)
 //	- unspents funding the fee account (1 LBTC utxo of amount 1 BTC)
-func newTestTrader() (*traderService, context.Context, func()) {
+func newTestTrader() (*tradeService, context.Context, func()) {
 	if _, err := os.Stat(testDir); os.IsNotExist(err) {
 		os.Mkdir(testDir, os.ModePerm)
 	}

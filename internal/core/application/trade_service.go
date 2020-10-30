@@ -830,36 +830,28 @@ func (t *tradeService) GetMarketBalance(
 		return nil, err
 	}
 
-	var baseAmount int64
-	var quoteAmount int64
+	baseAssetBalance, err := t.unspentRepository.GetBalance(
+		ctx,
+		marketAddresses,
+		m.BaseAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, a := range marketAddresses {
-		baseAddressBalance, err := t.unspentRepository.GetBalance(
-			ctx,
-			a,
-			m.BaseAsset,
-		)
-		if err != nil {
-			return nil, err
-		}
-		baseAmount += int64(baseAddressBalance)
-
-		quoteAddressBalance, err := t.unspentRepository.GetBalance(
-			ctx,
-			a,
-			m.QuoteAsset,
-		)
-		if err != nil {
-			return nil, err
-		}
-		quoteAmount += int64(quoteAddressBalance)
-
+	quoteAssetBalance, err := t.unspentRepository.GetBalance(
+		ctx,
+		marketAddresses,
+		m.QuoteAsset,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	return &BalanceWithFee{
 		Balance: Balance{
-			BaseAmount:  baseAmount,
-			QuoteAmount: quoteAmount,
+			BaseAmount:  int64(baseAssetBalance),
+			QuoteAmount: int64(quoteAssetBalance),
 		},
 		Fee: Fee{
 			FeeAsset:   m.BaseAsset,
