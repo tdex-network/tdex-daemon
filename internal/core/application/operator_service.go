@@ -380,10 +380,10 @@ func (o *operatorService) ListMarket(
 		return nil, err
 	}
 
-	marketInfos := make([]MarketInfo, 0, len(markets))
+	marketInfos := make([]MarketInfo, len(markets), len(markets))
 
-	for _, market := range markets {
-		marketInfos = append(marketInfos, MarketInfo{
+	for index, market := range markets {
+		marketInfos[index] = MarketInfo{
 			Market: Market{
 				BaseAsset:  market.BaseAsset,
 				QuoteAsset: market.QuoteAsset,
@@ -394,7 +394,7 @@ func (o *operatorService) ListMarket(
 			},
 			Tradable:     market.Tradable,
 			StrategyType: market.Strategy.Type,
-		})
+		}
 	}
 
 	return marketInfos, nil
