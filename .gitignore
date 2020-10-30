@@ -27,6 +27,7 @@ DS_Store
 
 ./internal/core/application/testdb
 ./internal/core/application/testoperator
+./internal/core/application/testoperator/*
 ./internal/infrastructure/storage/db/badger/testdb
 
 .vscode/

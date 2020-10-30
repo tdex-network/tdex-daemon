@@ -1,42 +1,24 @@
 package application
 
 import (
-	"context"
 	"github.com/stretchr/testify/assert"
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"testing"
 )
 
-func newTestOperator() (OperatorService, context.Context) {
-	dbManager, err := dbbadger.NewDbManager("testoperator", nil)
-	if err != nil {
-		panic(err)
-	}
-
-	explorerSvc := explorer.NewService("localhost:3001")
-	operatorService := NewOperatorService(
-		dbbadger.NewMarketRepositoryImpl(dbManager),
-		dbbadger.NewVaultRepositoryImpl(dbManager),
-		dbbadger.NewTradeRepositoryImpl(dbManager),
-		dbbadger.NewUnspentRepositoryImpl(dbManager),
-		explorerSvc,
-		crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
-	)
-
-	tx := dbManager.NewTransaction()
-	ctx := context.WithValue(context.Background(), "tx", tx)
-
-	return operatorService, ctx
-}
-
 func TestListMarket(t *testing.T) {
-	t.Run("ListMaker should return an empty list and a nil error", func(t *testing.T) {
-		operatorService, ctx := newTestOperator()
-
+	t.Run("ListMarket should return an empty list and a nil error if market repository is empty", func(t *testing.T) {
+		operatorService, ctx, close := newTestOperator(true)
 		marketInfos, err := operatorService.ListMarket(ctx)
-		assert.Equal(t, err, nil)
-		assert.Equal(t, len(marketInfos), 0)
+		close()
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 0, len(marketInfos))
+	})
+
+	t.Run("ListMarket should return the number of markets in the market repository", func(t *testing.T) {
+		operatorService, ctx, close := newTestOperator(false)
+		marketInfos, err := operatorService.ListMarket(ctx)
+		close()
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 2, len(marketInfos))
 	})
 }
