@@ -23,6 +23,7 @@ import (
 )
 
 const testDir = "testDatadir"
+const testDirOperator = "testDatadirOperator"
 
 type mockedWallet struct {
 	mnemonic          []string
@@ -41,7 +42,10 @@ func b2h(b []byte) string {
 
 
 func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
-	dbManager, err := dbbadger.NewDbManager("testoperator", nil)
+	if _, err := os.Stat(testDirOperator); os.IsNotExist(err) {
+		os.Mkdir(testDirOperator, os.ModePerm)
+	}
+	dbManager, err := dbbadger.NewDbManager(testDirOperator, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +69,7 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 
 	close := func() {
 		dbManager.Store.Close()
-		os.RemoveAll("testoperator")
+		os.RemoveAll(testDirOperator)
 	}
 
 	return operatorService, ctx, close
@@ -124,7 +128,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	)
 	close := func() {
 		dbManager.Store.Close()
-		os.RemoveAll("testtrader")
+		os.RemoveAll(testDir)
 	}
 	return traderSvc, ctx, close
 }
