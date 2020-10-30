@@ -65,7 +65,7 @@ func JsonDecode(data []byte, value interface{}) error {
 }
 
 func newDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
-	opts := badger.DefaultOptions(filepath.Join(dbDir, "daemon"))
+	opts := badger.DefaultOptions(dbDir)
 	opts.Logger = logger
 	return badgerhold.Open(badgerhold.Options{
 		Encoder:          JsonEncode,
