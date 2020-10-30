@@ -1,10 +1,12 @@
 package dbbadger
 
 import (
+	"testing"
+
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"testing"
 )
 
 func TestGetCreateOrUpdate(t *testing.T) {
@@ -142,4 +144,54 @@ func TestCloseMarket(t *testing.T) {
 	}
 
 	assert.Equal(t, false, market.IsTradable())
+}
+
+func TestUpdateMarketPrice(t *testing.T) {
+	const basePriceString = "13000.5"
+	const quotePriceString = "0.02"
+
+	before()
+	defer after()
+	err := marketRepository.UpdateMarket(
+		ctx,
+		5,
+		func(m *domain.Market) (*domain.Market, error) {
+
+			if err := m.MakeNotTradable(); err != nil {
+				return nil, err
+			}
+
+			if err := m.MakeStrategyPluggable(); err != nil {
+				return nil, err
+			}
+
+			bp, _ := decimal.NewFromString(basePriceString)
+			if err := m.ChangeBasePrice(bp); err != nil {
+				return nil, err
+			}
+
+			qp, _ := decimal.NewFromString(quotePriceString)
+			if err := m.ChangeQuotePrice(qp); err != nil {
+				return nil, err
+			}
+
+			if err := m.MakeTradable(); err != nil {
+				return nil, err
+			}
+
+			return m, nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	market, _, err := marketRepository.GetMarketByAsset(ctx, "qh5")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, basePriceString, market.BaseAssetPrice().String())
+	assert.Equal(t, quotePriceString, market.QuoteAssetPrice().String())
+
 }
