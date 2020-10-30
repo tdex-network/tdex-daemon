@@ -18,7 +18,7 @@ func unaryTransactionHandler(db ports.DbManager) grpc.
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (reply interface{}, err error) {
-		tx := db.NewTransaction()
+		tx := db.NewDaemonTransaction()
 		defer func() {
 			if err != nil {
 				tx.Discard()
@@ -55,7 +55,7 @@ func streamTransactionHandler(db *dbbadger.DbManager) grpc.
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler,
 	) (err error) {
-		tx := db.NewTransaction()
+		tx := db.NewDaemonTransaction()
 		defer func() {
 			if err != nil {
 				tx.Discard()

@@ -24,16 +24,19 @@ var (
 )
 
 func before() {
-	dbManager, err := NewDbManager(testDbDir, nil)
+	var err error
+	os.Mkdir(testDbDir, os.ModePerm)
+	dbManager, err = NewDbManager(testDbDir, nil)
 	if err != nil {
 		panic(err)
 	}
-	tx := dbManager.NewTransaction()
+	tx := dbManager.NewDaemonTransaction()
+	utx := dbManager.NewUnspentsTransaction()
 
 	if err := insertMarkets(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
-	if err := insertUnspents(tx.(*badger.Txn), dbManager); err != nil {
+	if err := insertUnspents(utx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
 	if err := insertTrades(tx.(*badger.Txn), dbManager); err != nil {
@@ -47,6 +50,9 @@ func before() {
 	if err := tx.Commit(); err != nil {
 		panic(err)
 	}
+	if err := utx.Commit(); err != nil {
+		panic(err)
+	}
 
 	marketRepository = NewMarketRepositoryImpl(dbManager)
 	unspentRepository = NewUnspentRepositoryImpl(dbManager)
@@ -55,7 +61,12 @@ func before() {
 	ctx = context.WithValue(
 		context.Background(),
 		"tx",
-		dbManager.NewTransaction(),
+		dbManager.NewDaemonTransaction(),
+	)
+	ctx = context.WithValue(
+		ctx,
+		"utx",
+		dbManager.NewUnspentsTransaction(),
 	)
 
 }
@@ -65,12 +76,14 @@ func after() {
 	if err := tx.Commit(); err != nil {
 		panic(err)
 	}
-	dbManager.Store.Close()
-
-	err := os.RemoveAll(testDbDir)
-	if err != nil {
+	utx := ctx.Value("utx").(*badger.Txn)
+	if err := utx.Commit(); err != nil {
 		panic(err)
 	}
+
+	dbManager.Store.Close()
+	dbManager.UnspentStore.Close()
+	os.RemoveAll(testDbDir)
 }
 
 func insertMarkets(tx *badger.Txn, db *DbManager) error {
