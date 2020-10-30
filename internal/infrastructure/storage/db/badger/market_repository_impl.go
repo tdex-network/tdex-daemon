@@ -268,6 +268,11 @@ func (m marketRepositoryImpl) updateMarket(
 ) error {
 	var err error
 
+	// This is needed to be sure to put inside badger main db Prices wich are to zero value,
+	// since we use the prices badger db to store it. This is mostly beacuse Badger put inside the value
+	// everything you pass to (ie. no fixed schema)
+	market.Price = domain.Prices{}
+
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
 		err = m.db.Store.TxUpdate(tx, accountIndex, market)
