@@ -158,6 +158,19 @@ func (v *Vault) AllDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 	return v.allDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
+// AllDerivedEternalAddressesForAccount returns all the external
+// derived for the provided account
+func (v *Vault) AllDerivedEternalAddressesForAccount(accountIndex int) (
+	[]string,
+	error,
+) {
+	if v.isLocked() {
+		return nil, ErrMustBeUnlocked
+	}
+
+	return v.allDerivedExternalAddressesForAccount(accountIndex)
+}
+
 // isInitialized returnes whether the Vault has been inizitialized by checking
 // if the mnemonic has been encrypted, its plain text version has been wiped
 // and a passphrase (hash) has been set
@@ -293,6 +306,33 @@ func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 	}
 
 	return addresses, blindingKeys, nil
+}
+
+func (v *Vault) allDerivedExternalAddressesForAccount(accountIndex int) (
+	[]string,
+	error,
+) {
+	account, err := v.AccountByIndex(accountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: v.Mnemonic,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	externalAddresses := deriveAddressesInRange(
+		w,
+		accountIndex,
+		ExternalChain,
+		0,
+		account.LastExternalIndex-1,
+	)
+
+	return externalAddresses, nil
 }
 
 func validateAccountIndex(accIndex int) error {

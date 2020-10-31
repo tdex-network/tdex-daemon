@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -46,6 +47,10 @@ type OperatorService interface {
 	ListSwaps(
 		ctx context.Context,
 	) (*pb.ListSwapsReply, error)
+	ListMarketExternalAddresses(
+		ctx context.Context,
+		req Market,
+	) ([]string, error)
 }
 
 type operatorService struct {
@@ -124,6 +129,8 @@ func (o *operatorService) DepositMarket(
 				Address:      addr,
 				BlindingKey:  blindingKey,
 			})
+
+			fmt.Println(hex.EncodeToString(blindingKey))
 
 			return v, nil
 		})
@@ -409,6 +416,25 @@ func (o *operatorService) ListSwaps(
 	return &pb.ListSwapsReply{
 		Swaps: swaps,
 	}, nil
+}
+
+func (o *operatorService) ListMarketExternalAddresses(
+	ctx context.Context,
+	req Market,
+) ([]string, error) {
+	market, _, err := o.marketRepository.GetMarketByAsset(ctx, req.QuoteAsset)
+	if err != nil {
+		return nil, err
+	}
+
+	if market == nil {
+		return nil, errors.New("market doesnt exists")
+	}
+
+	return o.vaultRepository.GetAllDerivedEternalAddressesForAccount(
+		ctx,
+		market.AccountIndex,
+	)
 }
 
 func (o *operatorService) getMarketsForTrades(

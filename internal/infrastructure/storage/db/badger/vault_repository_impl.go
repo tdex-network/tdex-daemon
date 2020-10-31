@@ -98,6 +98,18 @@ func (v vaultRepositoryImpl) GetAllDerivedAddressesAndBlindingKeysForAccount(
 	return vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
+func (v vaultRepositoryImpl) GetAllDerivedEternalAddressesForAccount(
+	ctx context.Context,
+	accountIndex int,
+) ([]string, error) {
+	vault, err := v.getVault(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return vault.AllDerivedEternalAddressesForAccount(accountIndex)
+}
+
 func (v vaultRepositoryImpl) GetDerivationPathByScript(
 	ctx context.Context,
 	accountIndex int,

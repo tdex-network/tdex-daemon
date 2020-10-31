@@ -5,7 +5,11 @@ import (
 )
 
 type VaultRepository interface {
-	GetOrCreateVault(ctx context.Context, mnemonic []string, passphrase string) (*Vault, error)
+	GetOrCreateVault(
+		ctx context.Context,
+		mnemonic []string,
+		passphrase string,
+	) (*Vault, error)
 	UpdateVault(
 		ctx context.Context,
 		mnemonic []string,
@@ -18,5 +22,13 @@ type VaultRepository interface {
 		ctx context.Context,
 		accountIndex int,
 	) ([]string, [][]byte, error)
-	GetDerivationPathByScript(ctx context.Context, accountIndex int, scripts []string) (map[string]string, error)
+	GetDerivationPathByScript(
+		ctx context.Context,
+		accountIndex int,
+		scripts []string,
+	) (map[string]string, error)
+	GetAllDerivedEternalAddressesForAccount(
+		ctx context.Context,
+		accountIndex int,
+	) ([]string, error)
 }

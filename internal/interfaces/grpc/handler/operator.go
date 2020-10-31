@@ -3,7 +3,6 @@ package grpchandler
 import (
 	"context"
 	"errors"
-
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -203,6 +202,27 @@ func (o operatorHandler) ListSwaps(
 	}
 
 	return swaps, nil
+}
+
+func (o operatorHandler) ListDepositMarket(
+	ctx context.Context,
+	req *pb.ListDepositMarketRequest,
+) (*pb.ListDepositMarketReply, error) {
+	if err := validateMarket(req.GetMarket()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	addresses, err := o.operatorSvc.ListMarketExternalAddresses(ctx, application.Market{
+		BaseAsset:  req.GetMarket().GetBaseAsset(),
+		QuoteAsset: req.GetMarket().GetQuoteAsset(),
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.ListDepositMarketReply{
+		Address: addresses,
+	}, nil
 }
 
 func validateMarketWithFee(marketWithFee *pbtypes.MarketWithFee) error {

@@ -367,6 +367,13 @@ func newMockedVaultRepositoryImpl(w mockedWallet) domain.VaultRepository {
 	}
 }
 
+func (r *mockedVaultRepository) GetAllDerivedEternalAddressesForAccount(
+	ctx context.Context,
+	accountIndex int,
+) ([]string, error) {
+	return nil, nil
+}
+
 func (r *mockedVaultRepository) GetOrCreateVault(ctx context.Context, mnemonic []string, passphrase string) (*domain.Vault, error) {
 	return r.vault, nil
 }
