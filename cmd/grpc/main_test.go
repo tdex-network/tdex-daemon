@@ -51,11 +51,14 @@ func TestGrpcMain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tradeTxID, err := tradeLBTCPerUSDT()
-	if err != nil {
-		t.Fatal(err)
+	for i := 0; i < 3; i++ {
+		tradeTxID, err := tradeLBTCPerUSDT()
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("swap transaction confirmed with id:", tradeTxID)
+		time.Sleep(6 * time.Second)
 	}
-	t.Log("swap transaction confirmed with id:", tradeTxID)
 }
 
 func startDaemon() {
