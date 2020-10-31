@@ -182,12 +182,13 @@ func (w *Wallet) UpdateSwapTx(opts UpdateSwapTxOpts) (string, []explorer.Utxo, e
 
 // UpdateTxOpts is the struct given to UpdateTx method
 type UpdateTxOpts struct {
-	PsetBase64         string
-	Unspents           []explorer.Utxo
-	Outputs            []*transaction.TxOutput
-	ChangePathsByAsset map[string]string
-	MilliSatsPerBytes  int
-	Network            *network.Network
+	PsetBase64           string
+	Unspents             []explorer.Utxo
+	Outputs              []*transaction.TxOutput
+	ChangePathsByAsset   map[string]string
+	MilliSatsPerBytes    int
+	Network              *network.Network
+	WantPrivateBlindKeys bool
 }
 
 func (o UpdateTxOpts) validate() error {
@@ -343,15 +344,20 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					changeOutput, _ := newTxOutput(asset, change, script)
 					outputsToAdd = append(outputsToAdd, changeOutput)
 
-					_, pubBlindingKey, err := w.DeriveBlindingKeyPair(
+					prvBlindingKey, pubBlindingKey, err := w.DeriveBlindingKeyPair(
 						DeriveBlindingKeyPairOpts{
 							Script: script,
 						})
 					if err != nil {
 						return nil, err
 					}
-					changeOutputsBlindingKeys[hex.EncodeToString(script)] =
-						pubBlindingKey.SerializeCompressed()
+					if opts.WantPrivateBlindKeys {
+						changeOutputsBlindingKeys[hex.EncodeToString(script)] =
+							prvBlindingKey.Serialize()
+					} else {
+						changeOutputsBlindingKeys[hex.EncodeToString(script)] =
+							pubBlindingKey.SerializeCompressed()
+					}
 				}
 			}
 		}
@@ -424,14 +430,19 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				)
 				outputsToAdd = append(outputsToAdd, lbtcChangeOutput)
 
-				_, lbtcChangePubBlindingKey, _ := w.DeriveBlindingKeyPair(
+				lbtcChangePrvBlindingKey, lbtcChangePubBlindingKey, _ := w.DeriveBlindingKeyPair(
 					DeriveBlindingKeyPairOpts{
 						Script: lbtcChangeScript,
 					},
 				)
 
-				changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] =
-					lbtcChangePubBlindingKey.SerializeCompressed()
+				if opts.WantPrivateBlindKeys {
+					changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] =
+						lbtcChangePrvBlindingKey.Serialize()
+				} else {
+					changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] =
+						lbtcChangePubBlindingKey.SerializeCompressed()
+				}
 			}
 		}
 	}

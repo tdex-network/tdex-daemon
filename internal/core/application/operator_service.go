@@ -520,6 +520,10 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, err
 	}
 
+	if market == nil {
+		return nil, errors.New("market does not exists")
+	}
+
 	outs := []TxOut{
 		{
 			Asset:   req.BaseAsset,

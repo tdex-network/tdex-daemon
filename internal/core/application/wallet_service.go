@@ -582,8 +582,9 @@ func getDerivationPathsForUnspents(
 	paths := map[string]string{}
 	for _, unspent := range unspents {
 		script := hex.EncodeToString(unspent.Script())
-		derivationPath, _ := account.DerivationPathByScript[script]
-		paths[script] = derivationPath
+		if derivationPath, ok := account.DerivationPathByScript[script]; ok {
+			paths[script] = derivationPath
+		}
 	}
 	return paths
 }
