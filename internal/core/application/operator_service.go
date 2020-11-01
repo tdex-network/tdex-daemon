@@ -227,7 +227,6 @@ func (o *operatorService) OpenMarket(
 				Vout:  int(u.VOut),
 				Asset: u.AssetHash,
 			})
-			println(u.TxID)
 		}
 	}
 

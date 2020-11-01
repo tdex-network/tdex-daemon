@@ -101,9 +101,6 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 
 	t.Run("Get address to deposit, fund market and get next address for the market", func(t *testing.T) {
 
-		if testing.Short() {
-			t.Skip("skipping test in short mode.")
-		}
 		startNigiriAndWait()
 
 		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
