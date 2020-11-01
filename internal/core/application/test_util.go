@@ -10,7 +10,6 @@ import (
 
 	"github.com/btcsuite/btcutil"
 	"github.com/shopspring/decimal"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
@@ -165,7 +164,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 
 	// trade repo, this doesn't need to be prepared
 	tradeRepo := inmemory.NewTradeRepositoryImpl()
-	explorerSvc := explorer.NewService(config.GetString(RegtestExplorerAPI))
+	explorerSvc := explorer.NewService(RegtestExplorerAPI)
 
 	traderSvc := newTradeService(
 		marketRepo,
@@ -223,7 +222,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	if w != nil {
 		vaultRepo = newMockedVaultRepositoryImpl(*w)
 	}
-	explorerSvc := explorer.NewService(config.GetString(RegtestExplorerAPI))
+	explorerSvc := explorer.NewService(RegtestExplorerAPI)
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
 		ExplorerURL:            RegtestExplorerAPI,
