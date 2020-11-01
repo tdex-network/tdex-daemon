@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -12,9 +13,11 @@ import (
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 )
 
+// OperatorService defines the methods of the application layer for the operator service.
 type OperatorService interface {
 	DepositMarket(
 		ctx context.Context,
+		baseAsset string,
 		quoteAsset string,
 	) (string, error)
 	DepositFeeAccount(
@@ -80,22 +83,35 @@ func NewOperatorService(
 
 func (o *operatorService) DepositMarket(
 	ctx context.Context,
+	baseAsset string,
 	quoteAsset string,
-) (string, error) {
-
-	var address string
+) (address string, err error) {
 
 	var accountIndex int
-	_, a, err := o.marketRepository.GetMarketByAsset(
-		ctx,
-		quoteAsset,
-	)
-	if err != nil {
-		return "", err
-	}
-	accountIndex = a
 
-	if accountIndex == -1 {
+	// First case: the assets are given. If are valid and a market exist we need to derive a new address for that account.
+	if len(baseAsset) > 0 && len(quoteAsset) > 0 {
+
+		// Checks if base asset is valid
+		if baseAsset != config.GetString(config.BaseAssetKey) {
+			return "", domain.ErrInvalidBaseAsset
+		}
+
+		//Checks if quote asset exists
+		_, accountOfExistentMarket, err := o.marketRepository.GetMarketByAsset(
+			ctx,
+			quoteAsset,
+		)
+		if err != nil {
+			return "", err
+		}
+		if accountOfExistentMarket == -1 {
+			return "", domain.ErrMarketNotExist
+		}
+
+		accountIndex = accountOfExistentMarket
+	} else if len(baseAsset) == 0 && len(quoteAsset) == 0 {
+		// Second case: base and quote asset are empty. this means we need to create a new market.
 		_, latestAccountIndex, err := o.marketRepository.GetLatestMarket(
 			ctx,
 		)
@@ -103,13 +119,20 @@ func (o *operatorService) DepositMarket(
 			return "", err
 		}
 
-		accountIndex = latestAccountIndex + 1
-		_, err = o.marketRepository.GetOrCreateMarket(ctx, accountIndex)
+		nextAccountIndex := latestAccountIndex + 1
+		_, err = o.marketRepository.GetOrCreateMarket(ctx, nextAccountIndex)
 		if err != nil {
 			return "", err
 		}
+
+		accountIndex = nextAccountIndex
+	} else if baseAsset != config.GetString(config.BaseAssetKey) {
+		return "", domain.ErrInvalidBaseAsset
+	} else {
+		return "", domain.ErrMarketNotExist
 	}
 
+	//Derive an address for that specific market
 	err = o.vaultRepository.UpdateVault(
 		ctx,
 		nil,
@@ -172,7 +195,7 @@ func (o *operatorService) OpenMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return errors.New("invalid base asset")
+		return domain.ErrInvalidBaseAsset
 	}
 
 	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
@@ -204,6 +227,7 @@ func (o *operatorService) OpenMarket(
 				Vout:  int(u.VOut),
 				Asset: u.AssetHash,
 			})
+			println(u.TxID)
 		}
 	}
 
@@ -235,7 +259,7 @@ func (o *operatorService) CloseMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return errors.New("invalid base asset")
+		return domain.ErrInvalidBaseAsset
 	}
 
 	err := o.marketRepository.CloseMarket(
@@ -434,7 +458,7 @@ func (o *operatorService) ListMarket(
 			},
 			Fee: Fee{
 				BasisPoint: market.Fee,
-				FeeAsset: market.FeeAsset,
+				FeeAsset:   market.FeeAsset,
 			},
 			Tradable:     market.Tradable,
 			StrategyType: market.Strategy.Type,

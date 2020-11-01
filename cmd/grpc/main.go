@@ -43,9 +43,14 @@ func main() {
 	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
 
-	errorHandler := func(err error) { log.Warn(err) }
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
-	crawlerSvc := crawler.NewService(explorerSvc, []crawler.Observable{}, errorHandler)
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:            explorerSvc,
+		ExplorerURL:            config.GetString(config.ExplorerEndpointKey),
+		Observables:            []crawler.Observable{},
+		ErrorHandler:           func(err error) { log.Warn(err) },
+		IntervalInMilliseconds: config.GetInt(config.CrawlIntervalKey),
+	})
 	traderSvc := application.NewTradeService(
 		marketRepository,
 		tradeRepository,

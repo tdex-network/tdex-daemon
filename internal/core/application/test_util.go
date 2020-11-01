@@ -3,8 +3,11 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"os"
+	"os/exec"
 	"time"
+
 	"github.com/btcsuite/btcutil"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -23,7 +26,9 @@ import (
 )
 
 const testDir = "testDatadir"
-const testDirOperator = "testDatadirOperator"
+
+//RegtestExplorerAPI ...
+const RegtestExplorerAPI = "http://127.0.0.1:3001"
 
 type mockedWallet struct {
 	mnemonic          []string
@@ -40,12 +45,33 @@ func b2h(b []byte) string {
 	return hex.EncodeToString(b)
 }
 
+func startNigiriAndWait() {
+	cmd := exec.Command("nigiri", "start", "--liquid")
+	runCommand(cmd)
+	time.Sleep(10000 * time.Millisecond)
+}
+
+func stopNigiri() {
+	cmd := exec.Command("nigiri", "stop", "--delete")
+	runCommand(cmd)
+}
+
+func runCommand(cmd *exec.Cmd) {
+	// configure `Stderr`
+	cmd.Stdout = nil
+	cmd.Stderr = os.Stdout
+
+	// run command
+	if err := cmd.Run(); err != nil {
+		panic(err)
+	}
+}
 
 func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
-	if _, err := os.Stat(testDirOperator); os.IsNotExist(err) {
-		os.Mkdir(testDirOperator, os.ModePerm)
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		os.Mkdir(testDir, os.ModePerm)
 	}
-	dbManager, err := dbbadger.NewDbManager(testDirOperator, nil)
+	dbManager, err := dbbadger.NewDbManager(testDir, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -57,19 +83,41 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 		fillMarketRepo(ctx, &marketRepo)
 	}
 
-	explorerSvc := explorer.NewService("localhost:3001")
+	vaultRepo := newMockedVaultRepositoryImpl(tradeWallet)
+	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
+
+	explorerSvc := explorer.NewService(RegtestExplorerAPI)
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:            explorerSvc,
+		ExplorerURL:            RegtestExplorerAPI,
+		Observables:            []crawler.Observable{},
+		ErrorHandler:           func(err error) { fmt.Println(err) },
+		IntervalInMilliseconds: 100,
+	})
 	operatorService := NewOperatorService(
 		marketRepo,
-		dbbadger.NewVaultRepositoryImpl(dbManager),
+		vaultRepo,
 		dbbadger.NewTradeRepositoryImpl(dbManager),
-		dbbadger.NewUnspentRepositoryImpl(dbManager),
+		unspentRepo,
 		explorerSvc,
-		crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
+		crawlerSvc,
 	)
+
+	blockchainListener := NewBlockchainListener(
+		unspentRepo,
+		marketRepo,
+		vaultRepo,
+		crawlerSvc,
+		explorerSvc,
+		dbManager,
+	)
+	blockchainListener.ObserveBlockchain()
 
 	close := func() {
 		dbManager.Store.Close()
-		os.RemoveAll(testDirOperator)
+		dbManager.UnspentStore.Close()
+		crawlerSvc.Stop()
+		os.RemoveAll(testDir)
 	}
 
 	return operatorService, ctx, close
@@ -117,7 +165,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 
 	// trade repo, this doesn't need to be prepared
 	tradeRepo := inmemory.NewTradeRepositoryImpl()
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc := explorer.NewService(config.GetString(RegtestExplorerAPI))
 
 	traderSvc := newTradeService(
 		marketRepo,
@@ -128,12 +176,13 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	)
 	close := func() {
 		dbManager.Store.Close()
+		dbManager.UnspentStore.Close()
 		os.RemoveAll(testDir)
 	}
 	return traderSvc, ctx, close
 }
 
-func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) error { 
+func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) error {
 	// TODO: create and open market
 	// opened market
 	(*marketRepo).UpdateMarket(
@@ -174,12 +223,18 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	if w != nil {
 		vaultRepo = newMockedVaultRepositoryImpl(*w)
 	}
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
-
+	explorerSvc := explorer.NewService(config.GetString(RegtestExplorerAPI))
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:            explorerSvc,
+		ExplorerURL:            RegtestExplorerAPI,
+		Observables:            []crawler.Observable{},
+		ErrorHandler:           func(err error) { fmt.Println(err) },
+		IntervalInMilliseconds: 500,
+	})
 	walletSvc := newWalletService(
 		vaultRepo,
 		dbbadger.NewUnspentRepositoryImpl(dbManager),
-		crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
+		crawlerSvc,
 		explorerSvc,
 	)
 	ctx := context.WithValue(
@@ -190,6 +245,8 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	close := func() {
 		recover()
 		dbManager.Store.Close()
+		dbManager.UnspentStore.Close()
+		crawlerSvc.Stop()
 		os.RemoveAll(testDir)
 	}
 	return walletSvc, ctx, close
@@ -200,7 +257,7 @@ func newSwapRequest(
 	assetP string, amountP uint64,
 	assetR string, amountR uint64,
 ) (*pb.SwapRequest, error) {
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc := explorer.NewService(RegtestExplorerAPI)
 	if _, err := explorerSvc.Faucet(w.Address()); err != nil {
 		return nil, err
 	}

@@ -29,7 +29,7 @@ func (o operatorHandler) DepositMarket(
 	ctx context.Context,
 	req *pb.DepositMarketRequest,
 ) (*pb.DepositMarketReply, error) {
-	address, err := o.operatorSvc.DepositMarket(ctx, req.GetMarket().GetQuoteAsset())
+	address, err := o.operatorSvc.DepositMarket(ctx, req.GetMarket().GetBaseAsset(), req.GetMarket().GetQuoteAsset())
 	if err != nil {
 		return nil, status.Error(
 			codes.Internal,
