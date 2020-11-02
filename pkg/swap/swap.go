@@ -16,6 +16,13 @@ func compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccep
 		return err
 	}
 
+	for index, input := range decodedFromRequest.Inputs {
+		if (input.WitnessUtxo == nil && input.NonWitnessUtxo != nil) {
+			inputVout := decodedFromRequest.UnsignedTx.Inputs[index].Index
+			decodedFromRequest.Inputs[index].WitnessUtxo = input.NonWitnessUtxo.Outputs[inputVout]
+		}
+	}
+
 	totalP, err := countCumulativeAmount(decodedFromRequest.Inputs, request.GetAssetP(), request.GetInputBlindingKey())
 	if err != nil {
 		return err
