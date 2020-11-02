@@ -171,7 +171,12 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 		vaultRepo,
 		unspentsRepo,
 		explorerSvc,
-		crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
+		crawler.NewService(crawler.Opts{
+			ExplorerSvc:            explorerSvc,
+			Observables:            []crawler.Observable{},
+			ErrorHandler:           func(err error) { fmt.Println(err) },
+			IntervalInMilliseconds: 100,
+		}),
 	)
 	close := func() {
 		dbManager.Store.Close()
