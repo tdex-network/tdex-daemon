@@ -71,7 +71,6 @@ type TransactionObservable struct {
 }
 
 type utxoCrawler struct {
-	explorerURL  string
 	interval     *time.Ticker
 	explorerSvc  explorer.Service
 	errChan      chan error
@@ -85,7 +84,6 @@ type utxoCrawler struct {
 // Opts defines the parameters needed for creating a crawler service with NewService method
 type Opts struct {
 	ExplorerSvc            explorer.Service
-	ExplorerURL            string
 	IntervalInMilliseconds int
 	Observables            []Observable
 	ErrorHandler           func(err error)
@@ -97,7 +95,6 @@ func NewService(opts Opts) Service {
 	interval := time.NewTicker(time.Duration(opts.IntervalInMilliseconds) * time.Millisecond)
 
 	return &utxoCrawler{
-		explorerURL:  opts.ExplorerURL,
 		interval:     interval,
 		explorerSvc:  opts.ExplorerSvc,
 		errChan:      make(chan error),

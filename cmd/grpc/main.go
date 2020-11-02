@@ -46,7 +46,6 @@ func main() {
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
-		ExplorerURL:            config.GetString(config.ExplorerEndpointKey),
 		Observables:            []crawler.Observable{},
 		ErrorHandler:           func(err error) { log.Warn(err) },
 		IntervalInMilliseconds: config.GetInt(config.CrawlIntervalKey),

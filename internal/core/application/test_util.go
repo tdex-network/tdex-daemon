@@ -88,7 +88,6 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
-		ExplorerURL:            RegtestExplorerAPI,
 		Observables:            []crawler.Observable{},
 		ErrorHandler:           func(err error) { fmt.Println(err) },
 		IntervalInMilliseconds: 100,
@@ -225,10 +224,9 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
-		ExplorerURL:            RegtestExplorerAPI,
 		Observables:            []crawler.Observable{},
 		ErrorHandler:           func(err error) { fmt.Println(err) },
-		IntervalInMilliseconds: 500,
+		IntervalInMilliseconds: 5000,
 	})
 	walletSvc := newWalletService(
 		vaultRepo,

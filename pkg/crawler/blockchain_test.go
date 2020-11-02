@@ -29,7 +29,6 @@ func TestCrawler(t *testing.T) {
 
 	crawlSvc := NewService(Opts{
 		ExplorerSvc:            mockExplorerSvc,
-		ExplorerURL:            "http://localhost:3001",
 		Observables:            []Observable{},
 		ErrorHandler:           func(err error) {},
 		IntervalInMilliseconds: 500,
