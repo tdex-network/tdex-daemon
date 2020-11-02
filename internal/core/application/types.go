@@ -6,9 +6,9 @@ import (
 )
 
 type MarketInfo struct {
-	Market Market
-	Fee Fee
-	Tradable bool
+	Market       Market
+	Fee          Fee
+	Tradable     bool
 	StrategyType int
 }
 
@@ -56,4 +56,9 @@ type Balance struct {
 type BalanceWithFee struct {
 	Balance
 	Fee
+}
+
+type ReportMarketFee struct {
+	CollectedFees              []Fee
+	TotalCollectedFeesPerAsset map[string]int64
 }

@@ -51,6 +51,10 @@ type OperatorService interface {
 	ListMarket(
 		ctx context.Context,
 	) ([]MarketInfo, error)
+	GetCollectedMarketFee(
+		ctx context.Context,
+		market Market,
+	) (*ReportMarketFee, error)
 }
 
 type operatorService struct {
@@ -465,6 +469,41 @@ func (o *operatorService) ListMarket(
 	}
 
 	return marketInfos, nil
+}
+
+func (o *operatorService) GetCollectedMarketFee(
+	ctx context.Context,
+	market Market,
+) (*ReportMarketFee, error) {
+	m, _, err := o.marketRepository.GetMarketByAsset(
+		ctx,
+		market.QuoteAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if m == nil {
+		return nil, domain.ErrMarketNotExist
+	}
+
+	trades, err := o.tradeRepository.GetAllTradesByMarket(ctx, market.QuoteAsset)
+	if err != nil {
+		return nil, err
+	}
+
+	fees := make([]Fee, 0)
+	for _, v := range trades {
+		fees = append(fees, Fee{
+			FeeAsset:   v.MarketQuoteAsset,
+			BasisPoint: v.MarketFee,
+		})
+	}
+
+	return &ReportMarketFee{
+		CollectedFees:              fees,
+		TotalCollectedFeesPerAsset: nil,
+	}, nil
 }
 
 func (o *operatorService) getMarketsForTrades(
