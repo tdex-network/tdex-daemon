@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
-
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -155,8 +153,6 @@ func (o *operatorService) DepositMarket(
 				Address:      addr,
 				BlindingKey:  blindingKey,
 			})
-
-			fmt.Println(hex.EncodeToString(blindingKey))
 
 			return v, nil
 		})
