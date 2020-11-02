@@ -445,6 +445,15 @@ func (o *operatorService) ListMarketExternalAddresses(
 	ctx context.Context,
 	req Market,
 ) ([]string, error) {
+
+	if len(req.BaseAsset) <= 0 || len(req.QuoteAsset) <= 0 {
+		return nil, errors.New("base asset or quote asset are null")
+	}
+
+	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+		return nil, domain.ErrInvalidBaseAsset
+	}
+
 	market, _, err := o.marketRepository.GetMarketByAsset(ctx, req.QuoteAsset)
 	if err != nil {
 		return nil, err
