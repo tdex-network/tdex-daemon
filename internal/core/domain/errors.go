@@ -3,6 +3,8 @@ package domain
 import "errors"
 
 var (
+	// ErrInvalidBaseAsset is thrown when non valid base asset is given
+	ErrInvalidBaseAsset = errors.New("invalid base asset")
 	// ErrMustBeLocked is thrown when trying to change the passphrase with an unlocked wallet
 	ErrMustBeLocked = errors.New("wallet must be locked to perform this operation")
 	// ErrMustBeUnlocked is thrown when trying to make an operation that requires the wallet to be unlocked
