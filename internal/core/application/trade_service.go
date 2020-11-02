@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -220,11 +221,22 @@ func (t *tradeService) TradePropose(
 		return
 	}
 
+	// Check we got at least one
+	if len(marketUnspents) == 0 || len(marketUtxos) == 0 {
+		err = errors.New("market account is not funded")
+		return
+	}
+
 	// ... and the same for fee account (we'll need to top-up fees)
-	_, feeUtxos, feeBlindingKeysByScript, feeDerivationPaths, _err :=
+	feeUnspents, feeUtxos, feeBlindingKeysByScript, feeDerivationPaths, _err :=
 		t.getUnspentsBlindingsAndDerivationPathsForAccount(ctx, domain.FeeAccount)
 	if _err != nil {
 		err = _err
+		return
+	}
+	// Check we got at least one
+	if len(feeUnspents) == 0 || len(feeUtxos) == 0 {
+		err = errors.New("fee account is not funded")
 		return
 	}
 
