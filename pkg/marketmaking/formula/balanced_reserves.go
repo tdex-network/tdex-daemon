@@ -20,6 +20,8 @@ var (
 	ErrAmountTooLow = errors.New("provided amount is too low")
 	// ErrAmountTooBig ...
 	ErrAmountTooBig = errors.New("provided amount is too big")
+	// ErrBalanceTooLow
+	ErrBalanceTooLow = errors.New("reserve balance amount is too low")
 )
 
 //BalancedReserves defines an AMM strategy with fixed 50/50 reserves
@@ -39,6 +41,11 @@ func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice dec
 func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn uint64) (amountOut uint64, err error) {
 	if amountIn == 0 {
 		err = ErrAmountTooLow
+		return
+	}
+
+	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
+		err = ErrBalanceTooLow
 		return
 	}
 

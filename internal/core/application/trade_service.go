@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -147,12 +148,12 @@ func (t *tradeService) GetMarketPrice(
 
 	unspents, _, _, _, err := t.getUnspentsBlindingsAndDerivationPathsForAccount(ctx, mktAccountIndex)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("trying to fund from market account with index:  %v %w", mktAccountIndex, err)
 	}
 
 	price, previewAmount, err := getPriceAndPreviewForMarket(unspents, mkt, tradeType, amount)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("trying to preview with price: %w", err)
 	}
 
 	return &PriceWithFee{
@@ -195,7 +196,7 @@ func (t *tradeService) TradePropose(
 	marketUnspents, marketUtxos, marketBlindingKeysByScript, marketDerivationPaths, _err :=
 		t.getUnspentsBlindingsAndDerivationPathsForAccount(ctx, marketAccountIndex)
 	if _err != nil {
-		err = _err
+		err = fmt.Errorf("trying to fund from market account with index: %v %w", marketAccountIndex, err)
 		return
 	}
 
@@ -203,7 +204,7 @@ func (t *tradeService) TradePropose(
 	_, feeUtxos, feeBlindingKeysByScript, feeDerivationPaths, _err :=
 		t.getUnspentsBlindingsAndDerivationPathsForAccount(ctx, domain.FeeAccount)
 	if _err != nil {
-		err = _err
+		err = fmt.Errorf("trying to fund from fee account %w", err)
 		return
 	}
 
@@ -217,7 +218,7 @@ func (t *tradeService) TradePropose(
 		mkt, tradeType, amount,
 	)
 	if _err != nil {
-		err = _err
+		err = fmt.Errorf("trying to preview with price %w", _err)
 		return
 	}
 
@@ -272,7 +273,7 @@ func (t *tradeService) TradePropose(
 
 			return v, nil
 		}); err != nil {
-		return nil, nil, 0, err
+		return nil, nil, 0, fmt.Errorf("trying to fund the swap transaction %w", err)
 	}
 
 	// parse swap proposal and possibly accept
@@ -315,7 +316,7 @@ func (t *tradeService) TradePropose(
 				feeChangeDerivationPath:    feeChangeDerivationPath,
 			})
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("trying to accept a swap %w", err)
 			}
 
 			ok, err = trade.Accept(

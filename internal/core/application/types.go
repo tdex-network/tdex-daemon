@@ -6,9 +6,9 @@ import (
 )
 
 type MarketInfo struct {
-	Market Market
-	Fee Fee
-	Tradable bool
+	Market       Market
+	Fee          Fee
+	Tradable     bool
 	StrategyType int
 }
 
