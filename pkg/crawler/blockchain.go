@@ -1,12 +1,12 @@
 package crawler
 
 import (
-	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"sync"
 	"time"
 
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+
 	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
@@ -71,36 +71,38 @@ type TransactionObservable struct {
 }
 
 type utxoCrawler struct {
-	explorerApiUrl string
-	interval       *time.Ticker
-	explorerSvc    explorer.Service
-	errChan        chan error
-	quitChan       chan int
-	eventChan      chan Event
-	observables    []Observable
-	errorHandler   func(err error)
-	mutex          *sync.RWMutex
+	interval     *time.Ticker
+	explorerSvc  explorer.Service
+	errChan      chan error
+	quitChan     chan int
+	eventChan    chan Event
+	observables  []Observable
+	errorHandler func(err error)
+	mutex        *sync.RWMutex
 }
 
-func NewService(
-	explorerSvc explorer.Service,
-	observables []Observable,
-	errorHandler func(err error),
-) Service {
+// Opts defines the parameters needed for creating a crawler service with NewService method
+type Opts struct {
+	ExplorerSvc            explorer.Service
+	IntervalInMilliseconds int
+	Observables            []Observable
+	ErrorHandler           func(err error)
+}
 
-	intervalInSeconds := config.GetInt(config.CrawlIntervalKey)
-	interval := time.NewTicker(time.Duration(intervalInSeconds) * time.Second)
+// NewService returns an utxoCrawelr that is ready for watch for blockchain activites. Use Start and Stop methods to manage it.
+func NewService(opts Opts) Service {
+
+	interval := time.NewTicker(time.Duration(opts.IntervalInMilliseconds) * time.Millisecond)
 
 	return &utxoCrawler{
-		explorerApiUrl: config.GetString(config.ExplorerEndpointKey),
-		interval:       interval,
-		explorerSvc:    explorerSvc,
-		errChan:        make(chan error),
-		quitChan:       make(chan int),
-		eventChan:      make(chan Event),
-		observables:    observables,
-		errorHandler:   errorHandler,
-		mutex:          &sync.RWMutex{},
+		interval:     interval,
+		explorerSvc:  opts.ExplorerSvc,
+		errChan:      make(chan error),
+		quitChan:     make(chan int),
+		eventChan:    make(chan Event),
+		observables:  opts.Observables,
+		errorHandler: opts.ErrorHandler,
+		mutex:        &sync.RWMutex{},
 	}
 }
 
