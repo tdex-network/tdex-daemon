@@ -14,9 +14,11 @@ import (
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 )
 
+// OperatorService defines the methods of the application layer for the operator service.
 type OperatorService interface {
 	DepositMarket(
 		ctx context.Context,
+		baseAsset string,
 		quoteAsset string,
 	) (string, error)
 	DepositFeeAccount(
@@ -51,6 +53,9 @@ type OperatorService interface {
 		ctx context.Context,
 		req Market,
 	) ([]string, error)
+	ListMarket(
+		ctx context.Context,
+	) ([]MarketInfo, error)
 }
 
 type operatorService struct {
@@ -62,6 +67,7 @@ type operatorService struct {
 	crawlerSvc        crawler.Service
 }
 
+// NewOperatorService is a constructor function for OperatorService.
 func NewOperatorService(
 	marketRepository domain.MarketRepository,
 	vaultRepository domain.VaultRepository,
@@ -82,22 +88,35 @@ func NewOperatorService(
 
 func (o *operatorService) DepositMarket(
 	ctx context.Context,
+	baseAsset string,
 	quoteAsset string,
-) (string, error) {
-
-	var address string
+) (address string, err error) {
 
 	var accountIndex int
-	_, a, err := o.marketRepository.GetMarketByAsset(
-		ctx,
-		quoteAsset,
-	)
-	if err != nil {
-		return "", err
-	}
-	accountIndex = a
 
-	if accountIndex == 0 {
+	// First case: the assets are given. If are valid and a market exist we need to derive a new address for that account.
+	if len(baseAsset) > 0 && len(quoteAsset) > 0 {
+
+		// Checks if base asset is valid
+		if baseAsset != config.GetString(config.BaseAssetKey) {
+			return "", domain.ErrInvalidBaseAsset
+		}
+
+		//Checks if quote asset exists
+		_, accountOfExistentMarket, err := o.marketRepository.GetMarketByAsset(
+			ctx,
+			quoteAsset,
+		)
+		if err != nil {
+			return "", err
+		}
+		if accountOfExistentMarket == -1 {
+			return "", domain.ErrMarketNotExist
+		}
+
+		accountIndex = accountOfExistentMarket
+	} else if len(baseAsset) == 0 && len(quoteAsset) == 0 {
+		// Second case: base and quote asset are empty. this means we need to create a new market.
 		_, latestAccountIndex, err := o.marketRepository.GetLatestMarket(
 			ctx,
 		)
@@ -105,13 +124,20 @@ func (o *operatorService) DepositMarket(
 			return "", err
 		}
 
-		accountIndex = latestAccountIndex + 1
-		_, err = o.marketRepository.GetOrCreateMarket(ctx, accountIndex)
+		nextAccountIndex := latestAccountIndex + 1
+		_, err = o.marketRepository.GetOrCreateMarket(ctx, nextAccountIndex)
 		if err != nil {
 			return "", err
 		}
+
+		accountIndex = nextAccountIndex
+	} else if baseAsset != config.GetString(config.BaseAssetKey) {
+		return "", domain.ErrInvalidBaseAsset
+	} else {
+		return "", domain.ErrMarketNotExist
 	}
 
+	//Derive an address for that specific market
 	err = o.vaultRepository.UpdateVault(
 		ctx,
 		nil,
@@ -176,16 +202,16 @@ func (o *operatorService) OpenMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return errors.New("invalid base asset")
+		return domain.ErrInvalidBaseAsset
 	}
 
-	market, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
+	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
 	if err != nil {
 		return err
 	}
 
 	var outpoints []domain.OutpointWithAsset
-	if market == nil {
+	if marketAccountIndex < 0 {
 		_, marketAccountIndex, err = o.marketRepository.GetLatestMarket(ctx)
 		if err != nil {
 			return err
@@ -239,7 +265,7 @@ func (o *operatorService) CloseMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return errors.New("invalid base asset")
+		return domain.ErrInvalidBaseAsset
 	}
 
 	err := o.marketRepository.CloseMarket(
@@ -273,6 +299,9 @@ func (o *operatorService) UpdateMarketFee(
 	)
 	if err != nil {
 		return nil, err
+	}
+	if accountIndex < 0 {
+		return nil, domain.ErrMarketNotExist
 	}
 
 	//Updates the fee and the fee asset
@@ -330,22 +359,17 @@ func (o *operatorService) UpdateMarketPrice(
 	if err != nil {
 		return err
 	}
+	if accountIndex < 0 {
+		return domain.ErrMarketNotExist
+	}
 
 	//Updates the base price and the quote price
-	return o.marketRepository.UpdateMarket(
+	return o.marketRepository.UpdatePrices(
 		ctx,
 		accountIndex,
-		func(m *domain.Market) (*domain.Market, error) {
-
-			if err := m.ChangeBasePrice(req.BasePrice); err != nil {
-				return nil, err
-			}
-
-			if err := m.ChangeQuotePrice(req.QuotePrice); err != nil {
-				return nil, err
-			}
-
-			return m, nil
+		domain.Prices{
+			BasePrice:  req.Price.BasePrice,
+			QuotePrice: req.Price.QuotePrice,
 		},
 	)
 }
@@ -367,6 +391,9 @@ func (o *operatorService) UpdateMarketStrategy(
 	)
 	if err != nil {
 		return err
+	}
+	if accountIndex < 0 {
+		return domain.ErrMarketNotExist
 	}
 
 	//For now we support only BALANCED or PLUGGABLE (ie. price feed)
@@ -437,18 +464,50 @@ func (o *operatorService) ListMarketExternalAddresses(
 	)
 }
 
+//ListMarket a set of informations about all the markets.
+func (o *operatorService) ListMarket(
+	ctx context.Context,
+) ([]MarketInfo, error) {
+	markets, err := o.marketRepository.GetAllMarkets(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	marketInfos := make([]MarketInfo, len(markets), len(markets))
+
+	for index, market := range markets {
+		marketInfos[index] = MarketInfo{
+			Market: Market{
+				BaseAsset:  market.BaseAsset,
+				QuoteAsset: market.QuoteAsset,
+			},
+			Fee: Fee{
+				BasisPoint: market.Fee,
+				FeeAsset:   market.FeeAsset,
+			},
+			Tradable:     market.Tradable,
+			StrategyType: market.Strategy.Type,
+		}
+	}
+
+	return marketInfos, nil
+}
+
 func (o *operatorService) getMarketsForTrades(
 	ctx context.Context,
 	trades []*domain.Trade,
 ) (map[string]*domain.Market, error) {
 	markets := map[string]*domain.Market{}
 	for _, trade := range trades {
-		market, _, err := o.marketRepository.GetMarketByAsset(
+		market, accountIndex, err := o.marketRepository.GetMarketByAsset(
 			ctx,
 			trade.MarketQuoteAsset,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if accountIndex < 0 {
+			return nil, domain.ErrMarketNotExist
 		}
 		if _, ok := markets[trade.MarketQuoteAsset]; !ok {
 			markets[trade.MarketQuoteAsset] = market

@@ -96,9 +96,8 @@ func (v *Vault) InitAccount(accountIndex int) {
 	}
 }
 
-// DeriveNextExternalAddressForAccount returns the next unused address for the
-// provided account and the corresponding output script
-func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, string, []byte, error) {
+// DeriveNextExternalAddressForAccount returns the next unused address, the corresponding output script, the blinding key.
+func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (address string, script string, blindingPrivateKey []byte, err error) {
 	if v.isLocked() {
 		return "", "", nil, ErrMustBeUnlocked
 	}
@@ -108,7 +107,7 @@ func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (string, s
 
 // DeriveNextInternalAddressForAccount returns the next unused change address for the
 // provided account and the corresponding output script
-func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (string, string, []byte, error) {
+func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (address string, script string, blindingPrivateKey []byte, err error) {
 	if v.isLocked() {
 		return "", "", nil, ErrMustBeUnlocked
 	}

@@ -5,12 +5,16 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 func TestNewWalletService(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	ws, _, close := newTestWallet(nil)
 	defer close()
 	assert.Equal(t, false, ws.walletInitialized)
@@ -18,6 +22,10 @@ func TestNewWalletService(t *testing.T) {
 }
 
 func TestGenSeed(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	walletSvc, ctx, close := newTestWallet(nil)
 	defer close()
 
@@ -30,6 +38,10 @@ func TestGenSeed(t *testing.T) {
 }
 
 func TestInitWalletWrongSeed(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	walletSvc, ctx, close := newTestWallet(nil)
 	defer close()
 
@@ -61,7 +73,7 @@ func TestInitEmptyWallet(t *testing.T) {
 	})
 	firstWalletAccountAddr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 		DerivationPath: "1'/0/0",
-		Network:        config.GetNetwork(),
+		Network:        &network.Regtest,
 	})
 
 	err := walletSvc.InitWallet(ctx, emptyWallet.mnemonic, emptyWallet.password)
@@ -94,14 +106,14 @@ func TestInitUsedWallet(t *testing.T) {
 	})
 	mockedLastDerivedAddr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 		DerivationPath: "1'/0/15",
-		Network:        config.GetNetwork(),
+		Network:        &network.Regtest,
 	})
 	if _, err := walletSvc.explorerService.Faucet(mockedLastDerivedAddr); err != nil {
 		t.Fatal(err)
 	}
 	firstWalletAccountAddr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 		DerivationPath: "1'/0/16",
-		Network:        config.GetNetwork(),
+		Network:        &network.Regtest,
 	})
 
 	err := walletSvc.InitWallet(ctx, usedWallet.mnemonic, usedWallet.password)
@@ -162,6 +174,10 @@ func TestWalletChangePass(t *testing.T) {
 }
 
 func TestWalletBalance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	walletSvc, ctx, close := newTestWallet(dryWallet)
 	defer close()
 
@@ -185,6 +201,6 @@ func TestWalletBalance(t *testing.T) {
 	assert.Equal(
 		t,
 		true,
-		int(balance[config.GetString(config.BaseAssetKey)].ConfirmedBalance) >= 100000000,
+		int(balance[network.Regtest.AssetID].ConfirmedBalance) >= 100000000,
 	)
 }

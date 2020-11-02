@@ -96,8 +96,7 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			FeeAsset:     "",
 			Tradable:     true,
 			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
-			BasePrice:    domain.PriceByTime{},
-			QuotePrice:   domain.PriceByTime{},
+			Price:        domain.Prices{},
 		},
 		{
 			AccountIndex: 6,
@@ -107,8 +106,7 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			FeeAsset:     "",
 			Tradable:     true,
 			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
-			BasePrice:    domain.PriceByTime{},
-			QuotePrice:   domain.PriceByTime{},
+			Price:        domain.Prices{},
 		},
 		{
 			AccountIndex: 7,
@@ -118,8 +116,7 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			FeeAsset:     "",
 			Tradable:     false,
 			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
-			BasePrice:    domain.PriceByTime{},
-			QuotePrice:   domain.PriceByTime{},
+			Price:        domain.Prices{},
 		},
 		{
 			AccountIndex: 8,
@@ -129,8 +126,7 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			FeeAsset:     "",
 			Tradable:     false,
 			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
-			BasePrice:    domain.PriceByTime{},
-			QuotePrice:   domain.PriceByTime{},
+			Price:        domain.Prices{},
 		},
 		{
 			AccountIndex: 9,
@@ -140,12 +136,15 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			FeeAsset:     "",
 			Tradable:     false,
 			Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
-			BasePrice:    domain.PriceByTime{},
-			QuotePrice:   domain.PriceByTime{},
+			Price:        domain.Prices{},
 		},
 	}
 	for _, v := range markets {
 		err := db.Store.TxInsert(tx, v.AccountIndex, v)
+		if err != nil {
+			return err
+		}
+		err = db.PriceStore.Upsert(v.AccountIndex, v.Price)
 		if err != nil {
 			return err
 		}

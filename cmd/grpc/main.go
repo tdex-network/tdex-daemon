@@ -42,9 +42,13 @@ func main() {
 	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
 
-	errorHandler := func(err error) { log.Warn(err) }
 	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
-	crawlerSvc := crawler.NewService(explorerSvc, []crawler.Observable{}, errorHandler)
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:            explorerSvc,
+		Observables:            []crawler.Observable{},
+		ErrorHandler:           func(err error) { log.Warn(err) },
+		IntervalInMilliseconds: config.GetInt(config.CrawlIntervalKey),
+	})
 	traderSvc := application.NewTradeService(
 		marketRepository,
 		tradeRepository,
@@ -141,6 +145,8 @@ func stop(
 	crawlerSvc.Stop()
 	log.Debug("stop observing blockchain")
 	dbManager.Store.Close()
+	dbManager.UnspentStore.Close()
+	dbManager.PriceStore.Close()
 	log.Debug("closed connection with database")
 	log.Debug("exiting")
 }

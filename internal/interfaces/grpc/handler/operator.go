@@ -17,6 +17,7 @@ type operatorHandler struct {
 	operatorSvc application.OperatorService
 }
 
+// NewOperatorHandler is a constructor function returning an protobuf OperatorServer.
 func NewOperatorHandler(operatorSvc application.OperatorService) pb.OperatorServer {
 	return &operatorHandler{
 		operatorSvc: operatorSvc,
@@ -27,7 +28,7 @@ func (o operatorHandler) DepositMarket(
 	ctx context.Context,
 	req *pb.DepositMarketRequest,
 ) (*pb.DepositMarketReply, error) {
-	address, err := o.operatorSvc.DepositMarket(ctx, req.GetMarket().GetQuoteAsset())
+	address, err := o.operatorSvc.DepositMarket(ctx, req.GetMarket().GetBaseAsset(), req.GetMarket().GetQuoteAsset())
 	if err != nil {
 		return nil, status.Error(
 			codes.Internal,
@@ -223,6 +224,33 @@ func (o operatorHandler) ListDepositMarket(
 	return &pb.ListDepositMarketReply{
 		Address: addresses,
 	}, nil
+}
+
+// ListMarket returns the result of the ListMarket method of the operator service.
+func (o operatorHandler) ListMarket(ctx context.Context, req *pb.ListMarketRequest) (*pb.ListMarketReply, error) {
+	marketInfos, err := o.operatorSvc.ListMarket(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos))
+
+	for index, marketInfo := range marketInfos {
+		pbMarketInfos[index] = &pb.MarketInfo{
+			Fee: &pbtypes.Fee{
+				BasisPoint: marketInfo.Fee.BasisPoint,
+				Asset:      marketInfo.Fee.FeeAsset,
+			},
+			Market: &pbtypes.Market{
+				BaseAsset:  marketInfo.Market.BaseAsset,
+				QuoteAsset: marketInfo.Market.QuoteAsset,
+			},
+			Tradable:     marketInfo.Tradable,
+			StrategyType: pb.StrategyType(marketInfo.StrategyType),
+		}
+	}
+
+	return &pb.ListMarketReply{Markets: pbMarketInfos}, nil
 }
 
 func validateMarketWithFee(marketWithFee *pbtypes.MarketWithFee) error {

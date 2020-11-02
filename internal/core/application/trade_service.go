@@ -131,6 +131,9 @@ func (t *tradeService) GetMarketPrice(
 	if err != nil {
 		return nil, err
 	}
+	if mktAccountIndex < 0 {
+		return nil, domain.ErrMarketNotExist
+	}
 
 	if !mkt.IsTradable() {
 		return nil, domain.ErrMarketIsClosed
@@ -175,6 +178,9 @@ func (t *tradeService) TradePropose(
 	if _err != nil {
 		err = _err
 		return
+	}
+	if marketAccountIndex < 0 {
+		return nil, nil, 0, domain.ErrMarketNotExist
 	}
 
 	// get all unspents for market account (both as []domain.Unspents and as
@@ -816,12 +822,15 @@ func (t *tradeService) GetMarketBalance(
 	ctx context.Context,
 	market Market,
 ) (*BalanceWithFee, error) {
-	m, _, err := t.marketRepository.GetMarketByAsset(
+	m, accountIndex, err := t.marketRepository.GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if accountIndex < 0 {
+		return nil, domain.ErrMarketNotExist
 	}
 
 	marketAddresses, _, err := t.vaultRepository.
