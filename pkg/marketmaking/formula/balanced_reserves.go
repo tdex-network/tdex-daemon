@@ -67,6 +67,11 @@ func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut uin
 		return
 	}
 
+	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
+		err = ErrBalanceTooLow
+		return
+	}
+
 	invariant := mathutil.Mul(opts.BalanceIn, opts.BalanceOut)
 	nextOutBalance := mathutil.Sub(opts.BalanceOut, amountOut)
 	nextInBalance := mathutil.DivDecimal(invariant, nextOutBalance)
