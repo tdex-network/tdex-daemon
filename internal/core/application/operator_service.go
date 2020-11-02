@@ -455,7 +455,7 @@ func (o *operatorService) ListMarketExternalAddresses(
 	}
 
 	if market == nil {
-		return nil, errors.New("market doesnt exists")
+		return nil, domain.ErrMarketNotExist
 	}
 
 	return o.vaultRepository.GetAllDerivedEternalAddressesForAccount(
