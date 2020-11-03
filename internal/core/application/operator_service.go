@@ -529,15 +529,22 @@ func (o *operatorService) WithdrawMarketFunds(
 	[]byte,
 	error,
 ) {
+	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+		return nil, domain.ErrInvalidBaseAsset
+	}
+
 	var rawTx []byte
 
-	market, _, err := o.marketRepository.GetMarketByAsset(ctx, req.QuoteAsset)
+	market, accountIndex, err := o.marketRepository.GetMarketByAsset(
+		ctx,
+		req.QuoteAsset,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	if market == nil {
-		return nil, errors.New("market does not exists")
+	if accountIndex == -1 {
+		return nil, domain.ErrMarketNotExist
 	}
 
 	outs := make([]TxOut, 0)

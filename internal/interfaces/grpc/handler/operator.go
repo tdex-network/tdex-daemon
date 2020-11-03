@@ -210,6 +210,10 @@ func (o operatorHandler) WithdrawMarket(
 	ctx context.Context,
 	req *pb.WithdrawMarketRequest,
 ) (*pb.WithdrawMarketReply, error) {
+	market := req.GetMarket()
+	if err := validateMarket(market); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	rawTx, err := o.operatorSvc.WithdrawMarketFunds(
 		ctx,
