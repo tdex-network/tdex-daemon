@@ -318,6 +318,9 @@ func (t *tradeService) TradePropose(
 				selectedUnspents = acceptSwapResult.selectedUnspents
 			}
 
+			trade.MarketFee = mkt.Fee
+			trade.MarketQuoteAsset = mkt.FeeAsset
+
 			return trade, nil
 		}); err != nil {
 		return nil, nil, 0, err

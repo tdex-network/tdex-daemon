@@ -493,16 +493,23 @@ func (o *operatorService) GetCollectedMarketFee(
 	}
 
 	fees := make([]Fee, 0)
+	total := make(map[string]int64)
 	for _, v := range trades {
 		fees = append(fees, Fee{
-			FeeAsset:   v.MarketQuoteAsset,
+			FeeAsset:   v.MarketFeeAsset,
 			BasisPoint: v.MarketFee,
 		})
+
+		if val, ok := total[v.MarketFeeAsset]; ok {
+			total[v.MarketFeeAsset] = val + v.MarketFee
+		} else {
+			total[v.MarketFeeAsset] = v.MarketFee
+		}
 	}
 
 	return &ReportMarketFee{
 		CollectedFees:              fees,
-		TotalCollectedFeesPerAsset: nil,
+		TotalCollectedFeesPerAsset: total,
 	}, nil
 }
 
