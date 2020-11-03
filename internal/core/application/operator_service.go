@@ -198,54 +198,41 @@ func (o *operatorService) OpenMarket(
 		return domain.ErrInvalidBaseAsset
 	}
 
-	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
-	if err != nil {
-		return err
-	}
+	/*
 
-	var outpoints []domain.OutpointWithAsset
-	if marketAccountIndex < 0 {
-		_, marketAccountIndex, err = o.marketRepository.GetLatestMarket(ctx)
+			_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
 		if err != nil {
 			return err
 		}
 
-		addresses, _, err :=
-			o.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, marketAccountIndex)
-		if err != nil {
-			return err
-		}
-		unspents, err := o.unspentRepository.GetUnspentsForAddresses(ctx, addresses)
-		if err != nil {
-			return err
-		}
+			var outpoints []domain.OutpointWithAsset
+			if marketAccountIndex < 0 {
+				_, marketAccountIndex, err = o.marketRepository.GetLatestMarket(ctx)
+				if err != nil {
+					return err
+				}
 
-		outpoints = make([]domain.OutpointWithAsset, 0, len(unspents))
-		for _, u := range unspents {
-			outpoints = append(outpoints, domain.OutpointWithAsset{
-				Txid:  u.TxID,
-				Vout:  int(u.VOut),
-				Asset: u.AssetHash,
-			})
-		}
-	}
+				addresses, _, err :=
+					o.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, marketAccountIndex)
+				if err != nil {
+					return err
+				}
+				unspents, err := o.unspentRepository.GetUnspentsForAddresses(ctx, addresses)
+				if err != nil {
+					return err
+				}
 
-	if err := o.marketRepository.UpdateMarket(ctx, marketAccountIndex, func(m *domain.Market) (*domain.Market, error) {
-		if m.IsTradable() {
-			return m, nil
-		}
+				outpoints = make([]domain.OutpointWithAsset, 0, len(unspents))
+				for _, u := range unspents {
+					outpoints = append(outpoints, domain.OutpointWithAsset{
+						Txid:  u.TxID,
+						Vout:  int(u.VOut),
+						Asset: u.AssetHash,
+					})
+				}
+			} */
 
-		if len(outpoints) > 0 {
-			if err := m.FundMarket(outpoints); err != nil {
-				return nil, err
-			}
-		}
-
-		if err := m.MakeTradable(); err != nil {
-			return nil, err
-		}
-		return m, nil
-	}); err != nil {
+	if err := o.marketRepository.OpenMarket(ctx, quoteAsset); err != nil {
 		return err
 	}
 
