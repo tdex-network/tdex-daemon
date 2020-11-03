@@ -53,7 +53,8 @@ func TestDepositMarket(t *testing.T) {
 	t.Run("DepositMarket with invalid base asset", func(t *testing.T) {
 		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
 
-		emptyAddress, err := operatorService.DepositMarket(ctx, "", "validQuoteAsset")
+		validQuoteAsset := "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
+		emptyAddress, err := operatorService.DepositMarket(ctx, "", validQuoteAsset)
 		assert.Equal(t, domain.ErrInvalidBaseAsset, err)
 		assert.Equal(
 			t,
@@ -68,7 +69,7 @@ func TestDepositMarket(t *testing.T) {
 		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(ctx, baseAsset, "")
-		assert.Equal(t, domain.ErrMarketNotExist, err)
+		assert.Equal(t, domain.ErrInvalidQuoteAsset, err)
 		assert.Equal(
 			t,
 			"",
@@ -82,7 +83,7 @@ func TestDepositMarket(t *testing.T) {
 		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(ctx, baseAsset, "ldjbwjkbfjksdbjkvcsbdjkbcdsjkb")
-		assert.Equal(t, domain.ErrMarketNotExist, err)
+		assert.Equal(t, domain.ErrInvalidQuoteAsset, err)
 		assert.Equal(
 			t,
 			"",
