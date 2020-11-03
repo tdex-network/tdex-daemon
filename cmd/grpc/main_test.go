@@ -52,7 +52,7 @@ func TestGrpcMain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := initMarketAccounts(); err != nil {
+	if err := initMarketAccounts(true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -64,18 +64,18 @@ func TestGrpcMain(t *testing.T) {
 					t.Fatal(err)
 				}
 				t.Log("swap transaction confirmed with id:", tradeTxID)
-				time.Sleep(6 * time.Second)
+				time.Sleep(3 * time.Second)
 			}
 		},
 		func() {
-			for i := 0; i < 5; i++ {
-				if err := initMarketAccounts(); err != nil {
+			for i := 0; i < 10; i++ {
+				if err := initMarketAccounts(false); err != nil {
 					t.Fatal(err)
 				}
 			}
 		},
 		func() {
-			for i := 0; i < 3; i++ {
+			for i := 0; i < 5; i++ {
 				tradeTxID, err := tradeLBTCPerUSDT()
 				if err != nil {
 					t.Fatal(err)
@@ -148,7 +148,7 @@ func initFee() error {
 	return nil
 }
 
-func initMarketAccounts() error {
+func initMarketAccounts(andOpen bool) error {
 	client, err := newOperatorClient()
 	if err != nil {
 		return err
@@ -172,16 +172,20 @@ func initMarketAccounts() error {
 	}
 	lbtc := config.GetNetwork().AssetID
 
-	time.Sleep(6 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	// ...finally, open the market
-	if _, err := client.OpenMarket(ctx, &pboperator.OpenMarketRequest{
-		Market: &pbtypes.Market{
-			BaseAsset:  lbtc,
-			QuoteAsset: usdt,
-		},
-	}); err != nil {
-		return err
+	if andOpen {
+		time.Sleep(6 * time.Second)
+		if _, err := client.OpenMarket(ctx, &pboperator.OpenMarketRequest{
+			Market: &pbtypes.Market{
+				BaseAsset:  lbtc,
+				QuoteAsset: usdt,
+			},
+		}); err != nil {
+			return err
+		}
+		time.Sleep(2 * time.Second)
 	}
 
 	return nil

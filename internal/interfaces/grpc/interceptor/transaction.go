@@ -42,7 +42,7 @@ func unaryTransactionHandler(db ports.DbManager) grpc.
 			if err == badger.ErrConflict {
 				for {
 					time.Sleep(100 * time.Millisecond)
-					log.Debug("try again to commit...")
+					log.Debug("try again to commit: ", info.FullMethod)
 					if err = tx.Commit(); err != badger.ErrConflict {
 						break
 					}
@@ -89,7 +89,7 @@ func streamTransactionHandler(db *dbbadger.DbManager) grpc.
 			if err == badger.ErrConflict {
 				for {
 					time.Sleep(100 * time.Millisecond)
-					log.Debug("try again to commit...")
+					log.Debug("try again to commit: ", info.FullMethod)
 					if err = tx.Commit(); err != badger.ErrConflict {
 						break
 					}
