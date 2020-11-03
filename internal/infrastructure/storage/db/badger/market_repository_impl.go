@@ -218,7 +218,7 @@ func (m marketRepositoryImpl) insertMarket(
 		tx := ctx.Value("tx").(*badger.Txn)
 		err = m.db.Store.TxInsert(tx, accountIndex, &market)
 	} else {
-		err = m.db.Store.Insert(vaultKey, &market)
+		err = m.db.Store.Insert(accountIndex, &market)
 	}
 	if err != nil {
 		if err != badgerhold.ErrKeyExists {
