@@ -118,6 +118,16 @@ func (t *tradeService) GetMarketPrice(
 	tradeType int,
 	amount uint64,
 ) (*PriceWithFee, error) {
+	// check the asset strings
+	err := validateAssetString(market.BaseAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(market.QuoteAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidQuoteAsset
+	}
 
 	// Checks if base asset is correct
 	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
@@ -171,6 +181,17 @@ func (t *tradeService) TradePropose(
 	swapExpiryTime uint64,
 	err error,
 ) {
+	// check the asset strings
+	_err := validateAssetString(market.BaseAsset)
+	if _err != nil {
+		return nil, nil, 0, domain.ErrInvalidBaseAsset
+	}
+
+	_err = validateAssetString(market.QuoteAsset)
+	if _err != nil {
+		return nil, nil, 0, domain.ErrInvalidQuoteAsset
+	}
+
 	mkt, marketAccountIndex, _err := t.marketRepository.GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
@@ -822,6 +843,17 @@ func (t *tradeService) GetMarketBalance(
 	ctx context.Context,
 	market Market,
 ) (*BalanceWithFee, error) {
+	// check the asset strings
+	err := validateAssetString(market.BaseAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(market.QuoteAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidQuoteAsset
+	}
+
 	m, accountIndex, err := t.marketRepository.GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,

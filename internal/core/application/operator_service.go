@@ -91,6 +91,16 @@ func (o *operatorService) DepositMarket(
 
 	// First case: the assets are given. If are valid and a market exist we need to derive a new address for that account.
 	if len(baseAsset) > 0 && len(quoteAsset) > 0 {
+		// check the asset strings
+		err := validateAssetString(baseAsset)
+		if err != nil {
+			return "", domain.ErrInvalidBaseAsset
+		}
+
+		err = validateAssetString(quoteAsset)
+		if err != nil {
+			return "", domain.ErrInvalidQuoteAsset
+		}
 
 		// Checks if base asset is valid
 		if baseAsset != config.GetString(config.BaseAssetKey) {
@@ -194,6 +204,17 @@ func (o *operatorService) OpenMarket(
 	baseAsset string,
 	quoteAsset string,
 ) error {
+	// check the asset strings
+	err := validateAssetString(baseAsset)
+	if err != nil {
+		return domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(quoteAsset)
+	if err != nil {
+		return domain.ErrInvalidQuoteAsset
+	}
+
 	if baseAsset != config.GetString(config.BaseAssetKey) {
 		return domain.ErrInvalidBaseAsset
 	}
@@ -257,11 +278,22 @@ func (o *operatorService) CloseMarket(
 	baseAsset string,
 	quoteAsset string,
 ) error {
+	// check the asset strings
+	err := validateAssetString(baseAsset)
+	if err != nil {
+		return domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(quoteAsset)
+	if err != nil {
+		return domain.ErrInvalidQuoteAsset
+	}
+
 	if baseAsset != config.GetString(config.BaseAssetKey) {
 		return domain.ErrInvalidBaseAsset
 	}
 
-	err := o.marketRepository.CloseMarket(
+	err = o.marketRepository.CloseMarket(
 		ctx,
 		quoteAsset,
 	)
