@@ -127,7 +127,9 @@ func (o *operatorService) DepositMarket(
 		nil,
 		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
-			addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+			addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(
+				accountIndex,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -187,7 +189,10 @@ func (o *operatorService) OpenMarket(
 		return errors.New("invalid base asset")
 	}
 
-	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(ctx, quoteAsset)
+	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(
+		ctx,
+		quoteAsset,
+	)
 	if err != nil {
 		return err
 	}
@@ -200,11 +205,17 @@ func (o *operatorService) OpenMarket(
 		}
 
 		addresses, _, err :=
-			o.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, marketAccountIndex)
+			o.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
+				ctx,
+				marketAccountIndex,
+			)
 		if err != nil {
 			return err
 		}
-		unspents, err := o.unspentRepository.GetUnspentsForAddresses(ctx, addresses)
+		unspents, err := o.unspentRepository.GetUnspentsForAddresses(
+			ctx,
+			addresses,
+		)
 		if err != nil {
 			return err
 		}
@@ -219,22 +230,26 @@ func (o *operatorService) OpenMarket(
 		}
 	}
 
-	if err := o.marketRepository.UpdateMarket(ctx, marketAccountIndex, func(m *domain.Market) (*domain.Market, error) {
-		if m.IsTradable() {
-			return m, nil
-		}
+	if err := o.marketRepository.UpdateMarket(
+		ctx,
+		marketAccountIndex,
+		func(m *domain.Market) (*domain.Market, error) {
+			if m.IsTradable() {
+				return m, nil
+			}
 
-		if len(outpoints) > 0 {
-			if err := m.FundMarket(outpoints); err != nil {
+			if len(outpoints) > 0 {
+				if err := m.FundMarket(outpoints); err != nil {
+					return nil, err
+				}
+			}
+
+			if err := m.MakeTradable(); err != nil {
 				return nil, err
 			}
-		}
-
-		if err := m.MakeTradable(); err != nil {
-			return nil, err
-		}
-		return m, nil
-	}); err != nil {
+			return m, nil
+		},
+	); err != nil {
 		return err
 	}
 
@@ -356,8 +371,8 @@ func (o *operatorService) UpdateMarketPrice(
 	)
 }
 
-// UpdateMarketStrategy changes the current market making strategy, either using an automated
-// market making formula or a pluggable price feed
+// UpdateMarketStrategy changes the current market making strategy,
+// either using an automated market making formula or a pluggable price feed
 func (o *operatorService) UpdateMarketStrategy(
 	ctx context.Context,
 	req MarketStrategy,
@@ -583,43 +598,54 @@ func (o *operatorService) WithdrawMarketFunds(
 			changePathsByAsset := map[string]string{}
 			feeChangePathByAsset := map[string]string{}
 			for _, asset := range getAssetsOfOutputs(outputs) {
-				addr, script, blindkey, err := v.DeriveNextInternalAddressForAccount(
-					market.AccountIndex,
-				)
+				addr, script, blindkey, err :=
+					v.DeriveNextInternalAddressForAccount(
+						market.AccountIndex,
+					)
 				if err != nil {
 					return nil, err
 				}
 
 				derivationPath, _ := marketAccount.DerivationPathByScript[script]
 				changePathsByAsset[asset] = derivationPath
-				addressesToObserve = append(addressesToObserve, &crawler.AddressObservable{
-					AccountIndex: market.AccountIndex,
-					Address:      addr,
-					BlindingKey:  blindkey,
-				})
+				addressesToObserve = append(
+					addressesToObserve,
+					&crawler.AddressObservable{
+						AccountIndex: market.AccountIndex,
+						Address:      addr,
+						BlindingKey:  blindkey,
+					},
+				)
 			}
 
-			feeAddress, script, feeBlindkey, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			feeAddress, script, feeBlindkey, err :=
+				v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
-			feeChangePathByAsset[config.GetNetwork().AssetID] = feeAccount.DerivationPathByScript[script]
+			feeChangePathByAsset[config.GetNetwork().AssetID] =
+				feeAccount.DerivationPathByScript[script]
 
-			addressesToObserve = append(addressesToObserve, &crawler.AddressObservable{
-				AccountIndex: market.AccountIndex,
-				Address:      feeAddress,
-				BlindingKey:  feeBlindkey,
-			})
+			addressesToObserve = append(
+				addressesToObserve,
+				&crawler.AddressObservable{
+					AccountIndex: market.AccountIndex,
+					Address:      feeAddress,
+					BlindingKey:  feeBlindkey,
+				},
+			)
 
 			txHex, _, err := sendToMany(sendToManyOpts{
-				mnemonic:             mnemonic,
-				unspents:             marketUnspents,
-				feeUnspents:          feeUnspents,
-				outputs:              outputs,
-				outputsBlindingKeys:  outputsBlindingKeys,
-				milliSatPerByte:      int(req.MillisatPerByte),
-				changePathsByAsset:   changePathsByAsset,
-				feeChangePathByAsset: feeChangePathByAsset,
+				mnemonic:              mnemonic,
+				unspents:              marketUnspents,
+				feeUnspents:           feeUnspents,
+				outputs:               outputs,
+				outputsBlindingKeys:   outputsBlindingKeys,
+				changePathsByAsset:    changePathsByAsset,
+				feeChangePathByAsset:  feeChangePathByAsset,
+				inputPathsByScript:    marketAccount.DerivationPathByScript,
+				feeInputPathsByScript: feeAccount.DerivationPathByScript,
+				milliSatPerByte:       int(req.MillisatPerByte),
 			})
 			if err != nil {
 				return nil, err
@@ -678,7 +704,10 @@ func (o *operatorService) getAllUnspentsForAccount(
 		return nil, err
 	}
 
-	unspents, err := o.unspentRepository.GetAvailableUnspentsForAddresses(ctx, addresses)
+	unspents, err := o.unspentRepository.GetAvailableUnspentsForAddresses(
+		ctx,
+		addresses,
+	)
 	if err != nil {
 		return nil, err
 	}

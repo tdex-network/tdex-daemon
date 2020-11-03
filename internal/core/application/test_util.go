@@ -3,8 +3,6 @@ package application
 import (
 	"context"
 	"encoding/hex"
-	"os"
-	"time"
 	"github.com/btcsuite/btcutil"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -20,6 +18,8 @@ import (
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 	"google.golang.org/protobuf/proto"
+	"os"
+	"time"
 )
 
 const testDir = "testDatadir"
@@ -40,7 +40,6 @@ func b2h(b []byte) string {
 	return hex.EncodeToString(b)
 }
 
-
 func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
 	if _, err := os.Stat(testDirOperator); os.IsNotExist(err) {
 		os.Mkdir(testDirOperator, os.ModePerm)
@@ -57,7 +56,7 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 		fillMarketRepo(ctx, &marketRepo)
 	}
 
-	explorerSvc := explorer.NewService("localhost:3001")
+	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	operatorService := NewOperatorService(
 		marketRepo,
 		dbbadger.NewVaultRepositoryImpl(dbManager),
@@ -133,7 +132,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	return traderSvc, ctx, close
 }
 
-func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) error { 
+func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) error {
 	// TODO: create and open market
 	// opened market
 	(*marketRepo).UpdateMarket(
