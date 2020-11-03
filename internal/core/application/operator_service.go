@@ -139,7 +139,7 @@ func (o *operatorService) DepositMarket(
 	} else if baseAsset != config.GetString(config.BaseAssetKey) {
 		return "", domain.ErrInvalidBaseAsset
 	} else {
-		return "", domain.ErrMarketNotExist
+		return "", domain.ErrInvalidQuoteAsset
 	}
 
 	//Derive an address for that specific market
