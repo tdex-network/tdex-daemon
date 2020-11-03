@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -524,36 +525,43 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, errors.New("market does not exists")
 	}
 
-	outs := []TxOut{
-		{
+	outs := make([]TxOut, 0)
+	if req.BalanceToWithdraw.BaseAmount > 0 {
+		outs = append(outs, TxOut{
 			Asset:   req.BaseAsset,
 			Value:   req.BalanceToWithdraw.BaseAmount,
 			Address: req.Address,
-		},
-		{
+		})
+	}
+	if req.BalanceToWithdraw.QuoteAmount > 0 {
+		outs = append(outs, TxOut{
 			Asset:   req.QuoteAsset,
 			Value:   req.BalanceToWithdraw.QuoteAmount,
 			Address: req.Address,
-		},
+		})
 	}
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs)
 	if err != nil {
 		return nil, err
 	}
 
-	unspents, err := o.unspentRepository.GetAvailableUnspents(ctx)
+	marketUnspents, err := o.getAllUnspentsForAccount(ctx, market.AccountIndex)
 	if err != nil {
 		return nil, err
 	}
-	if len(unspents) <= 0 {
+	if len(marketUnspents) <= 0 {
 		return nil, ErrWalletNotFunded
 	}
 
-	utxos := make([]explorer.Utxo, 0, len(unspents))
-	for _, u := range unspents {
-		utxos = append(utxos, u.ToUtxo())
+	feeUnspents, err := o.getAllUnspentsForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return nil, err
+	}
+	if len(feeUnspents) <= 0 {
+		return nil, ErrWalletNotFunded
 	}
 
+	var addressesToObserve []*crawler.AddressObservable
 	err = o.vaultRepository.UpdateVault(
 		ctx,
 		nil,
@@ -563,32 +571,56 @@ func (o *operatorService) WithdrawMarketFunds(
 			if err != nil {
 				return nil, err
 			}
-			account, err := v.AccountByIndex(market.AccountIndex)
+			marketAccount, err := v.AccountByIndex(market.AccountIndex)
+			if err != nil {
+				return nil, err
+			}
+			feeAccount, err := v.AccountByIndex(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
 
 			changePathsByAsset := map[string]string{}
+			feeChangePathByAsset := map[string]string{}
 			for _, asset := range getAssetsOfOutputs(outputs) {
-				_, script, _, err := v.DeriveNextInternalAddressForAccount(
+				addr, script, blindkey, err := v.DeriveNextInternalAddressForAccount(
 					market.AccountIndex,
 				)
 				if err != nil {
 					return nil, err
 				}
-				derivationPath, _ := account.DerivationPathByScript[script]
+
+				derivationPath, _ := marketAccount.DerivationPathByScript[script]
 				changePathsByAsset[asset] = derivationPath
+				addressesToObserve = append(addressesToObserve, &crawler.AddressObservable{
+					AccountIndex: market.AccountIndex,
+					Address:      addr,
+					BlindingKey:  blindkey,
+				})
 			}
 
-			txHex, _, err := sendToMany(
-				mnemonic,
-				account,
-				utxos,
-				outputs,
-				outputsBlindingKeys,
-				int(req.MillisatPerByte),
-				changePathsByAsset,
-			)
+			feeAddress, script, feeBlindkey, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			if err != nil {
+				return nil, err
+			}
+			feeChangePathByAsset[config.GetNetwork().AssetID] = feeAccount.DerivationPathByScript[script]
+
+			addressesToObserve = append(addressesToObserve, &crawler.AddressObservable{
+				AccountIndex: market.AccountIndex,
+				Address:      feeAddress,
+				BlindingKey:  feeBlindkey,
+			})
+
+			txHex, _, err := sendToMany(sendToManyOpts{
+				mnemonic:             mnemonic,
+				unspents:             marketUnspents,
+				feeUnspents:          feeUnspents,
+				outputs:              outputs,
+				outputsBlindingKeys:  outputsBlindingKeys,
+				milliSatPerByte:      int(req.MillisatPerByte),
+				changePathsByAsset:   changePathsByAsset,
+				feeChangePathByAsset: feeChangePathByAsset,
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -606,6 +638,10 @@ func (o *operatorService) WithdrawMarketFunds(
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, obs := range addressesToObserve {
+		o.crawlerSvc.AddObservable(obs)
 	}
 
 	return rawTx, nil
@@ -630,4 +666,26 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 		return -1, err
 	}
 	return int64(baseAssetAmount), nil
+}
+
+func (o *operatorService) getAllUnspentsForAccount(
+	ctx context.Context,
+	accountIndex int,
+) ([]explorer.Utxo, error) {
+	addresses, _, err := o.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, accountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	unspents, err := o.unspentRepository.GetAvailableUnspentsForAddresses(ctx, addresses)
+	if err != nil {
+		return nil, err
+	}
+
+	utxos := make([]explorer.Utxo, 0, len(unspents))
+	for _, u := range unspents {
+		utxos = append(utxos, u.ToUtxo())
+	}
+	return utxos, nil
 }

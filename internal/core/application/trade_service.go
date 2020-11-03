@@ -513,6 +513,7 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 			network.AssetID: opts.feeChangeDerivationPath,
 		},
 		WantPrivateBlindKeys: true,
+		WantChangeForFees:    true,
 	})
 	if err != nil {
 		return
