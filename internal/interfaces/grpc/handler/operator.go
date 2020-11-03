@@ -198,25 +198,32 @@ func (o operatorHandler) ListSwaps(
 	ctx context.Context,
 	req *pb.ListSwapsRequest,
 ) (*pb.ListSwapsReply, error) {
-	swaps, err := o.operatorSvc.ListSwaps(ctx)
+	swapInfos, err := o.operatorSvc.ListSwaps(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-// i := SwapInfo{
-// 			Status:           trade.Status.Code,
-// 			AmountP:          requestMsg.GetAmountP(),
-// 			AssetP:           requestMsg.GetAssetP(),
-// 			AmountR:          requestMsg.GetAmountR(),
-// 			AssetR:           requestMsg.GetAssetR(),
-// 			MarketFee:        fee,
-// 			RequestTimeUnix:  trade.SwapRequestTime(),
-// 			AcceptTimeUnix:   trade.SwapAcceptTime(),
-// 			CompleteTimeUnix: trade.SwapCompleteTime(),
-// 			ExpiryTimeUnix:   trade.SwapExpiryTime(),
-// 		}
+	pbSwapInfos := make([]*pb.SwapInfo, len(swapInfos), len(swapInfos))
 
-	return swaps, nil
+	for index, swapInfo := range swapInfos {
+		pbSwapInfos[index] = &pb.SwapInfo{
+			Status: pb.SwapStatus(swapInfo.Status),
+			AmountP: swapInfo.AmountP,
+			AssetP: swapInfo.AssetP,
+			AmountR: swapInfo.AmountR,
+			AssetR: swapInfo.AssetR,
+			MarketFee: &pbtypes.Fee{
+				Asset: swapInfo.MarketFee.FeeAsset,
+				BasisPoint: swapInfo.MarketFee.BasisPoint,
+			},
+			RequestTimeUnix: swapInfo.RequestTimeUnix,
+			AcceptTimeUnix: swapInfo.AcceptTimeUnix,
+			CompleteTimeUnix: swapInfo.RequestTimeUnix,
+			ExpiryTimeUnix: swapInfo.ExpiryTimeUnix,
+		}
+	}
+	
+	return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
 }
 
 // ListMarket returns the result of the ListMarket method of the operator service.
@@ -226,7 +233,7 @@ func (o operatorHandler) ListMarket(ctx context.Context, req *pb.ListMarketReque
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos))
+	pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos), len(marketInfos))
 
 	for index, marketInfo := range marketInfos {
 		pbMarketInfos[index] = &pb.MarketInfo{
