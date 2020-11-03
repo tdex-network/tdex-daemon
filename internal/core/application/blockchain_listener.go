@@ -169,7 +169,7 @@ events:
 					continue events
 				}
 
-				market, err := b.marketRepository.GetMarketByAccount(ctx, e.AccountIndex)
+				market, err := b.marketRepository.GetMarketByAccount(context.Background(), e.AccountIndex)
 				if err != nil {
 					log.Warn(err)
 				}
@@ -209,7 +209,34 @@ events:
 								asset = k
 							}
 						}
-						log.Infof("market with quote asset '%s' can be opened", asset)
+						log.Infof("funding market with quote asset %s", asset)
+
+						// Prepare unspents to become outpoint for the market to run validations
+						outpoints := make([]domain.OutpointWithAsset, 0, len(unspents))
+						for _, u := range unspents {
+							outpoints = append(outpoints, domain.OutpointWithAsset{
+								Txid:  u.TxID,
+								Vout:  int(u.VOut),
+								Asset: u.AssetHash,
+							})
+						}
+
+						// Update the market trying to funding attaching the newly found quote asset.
+						if err := b.marketRepository.UpdateMarket(
+							context.Background(),
+							e.AccountIndex,
+							func(m *domain.Market) (*domain.Market, error) {
+
+								if err := m.FundMarket(outpoints); err != nil {
+									return nil, err
+								}
+
+								return m, nil
+							},
+						); err != nil {
+							log.Warn(err)
+						}
+
 					default:
 						log.Warnf(
 							"market with account %d funded with more than 2 different assets."+
