@@ -56,7 +56,7 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 		fillMarketRepo(ctx, &marketRepo)
 	}
 
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc := explorer.NewService("localhost:3001")
 	operatorService := NewOperatorService(
 		marketRepo,
 		dbbadger.NewVaultRepositoryImpl(dbManager),
