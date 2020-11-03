@@ -3,7 +3,9 @@ package interceptor
 import (
 	"context"
 	"errors"
+	"time"
 
+	"github.com/dgraph-io/badger/v2"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
@@ -37,8 +39,18 @@ func unaryTransactionHandler(db ports.DbManager) grpc.
 		}
 
 		if err = tx.Commit(); err != nil {
-			log.Error(err)
-			return
+			if err == badger.ErrConflict {
+				for {
+					time.Sleep(100 * time.Millisecond)
+					log.Debug("try again to commit...")
+					if err = tx.Commit(); err != badger.ErrConflict {
+						break
+					}
+				}
+			} else {
+				log.Error(err)
+				return
+			}
 		}
 
 		reply = res
@@ -74,7 +86,17 @@ func streamTransactionHandler(db *dbbadger.DbManager) grpc.
 		}
 
 		if err = tx.Commit(); err != nil {
-			log.Error(err)
+			if err == badger.ErrConflict {
+				for {
+					time.Sleep(100 * time.Millisecond)
+					log.Debug("try again to commit...")
+					if err = tx.Commit(); err != badger.ErrConflict {
+						break
+					}
+				}
+			} else {
+				log.Error(err)
+			}
 		}
 
 		return

@@ -74,6 +74,16 @@ func TestGrpcMain(t *testing.T) {
 				}
 			}
 		},
+		func() {
+			for i := 0; i < 3; i++ {
+				tradeTxID, err := tradeLBTCPerUSDT()
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Log("swap transaction confirmed with id:", tradeTxID)
+				time.Sleep(3 * time.Second)
+			}
+		},
 	)
 }
 
@@ -162,7 +172,7 @@ func initMarketAccounts() error {
 	}
 	lbtc := config.GetNetwork().AssetID
 
-	time.Sleep(8 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	// ...finally, open the market
 	if _, err := client.OpenMarket(ctx, &pboperator.OpenMarketRequest{
@@ -221,7 +231,7 @@ func tradeLBTCPerUSDT() (string, error) {
 	return tr.SellAndComplete(pkgtrade.BuyOrSellAndCompleteOpts{
 		Market:      market,
 		TradeType:   int(tradetype.Sell),
-		Amount:      30000000,
+		Amount:      500000,
 		PrivateKey:  signingKey,
 		BlindingKey: blindingKey,
 	})
