@@ -88,7 +88,7 @@ func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool) 
 	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 
 	if !tradeRepositoryIsEmpty {
-		err := fillTradeRepo(ctx, tradeRepo, "d090c403610fe8a9e31967355929833bc8a8fe08429e630162d1ecbf29fdf28b", network.Regtest.AssetID)
+		err := fillTradeRepo(ctx, tradeRepo, marketUnspents[1].AssetHash, network.Regtest.AssetID)
 		if err != nil {
 			panic(err)
 		}
