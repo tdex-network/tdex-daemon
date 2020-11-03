@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"log"
 
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -470,8 +469,6 @@ func (o *operatorService) getMarketsForTrades(
 ) (map[string]*domain.Market, error) {
 	markets := map[string]*domain.Market{}
 	for _, trade := range trades {
-		m, err := o.marketRepository.GetAllMarkets(ctx)
-		log.Print(m)
 		market, accountIndex, err := o.marketRepository.GetMarketByAsset(
 			ctx,
 			trade.MarketQuoteAsset,
