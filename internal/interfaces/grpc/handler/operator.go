@@ -203,6 +203,19 @@ func (o operatorHandler) ListSwaps(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+// i := SwapInfo{
+// 			Status:           trade.Status.Code,
+// 			AmountP:          requestMsg.GetAmountP(),
+// 			AssetP:           requestMsg.GetAssetP(),
+// 			AmountR:          requestMsg.GetAmountR(),
+// 			AssetR:           requestMsg.GetAssetR(),
+// 			MarketFee:        fee,
+// 			RequestTimeUnix:  trade.SwapRequestTime(),
+// 			AcceptTimeUnix:   trade.SwapAcceptTime(),
+// 			CompleteTimeUnix: trade.SwapCompleteTime(),
+// 			ExpiryTimeUnix:   trade.SwapExpiryTime(),
+// 		}
+
 	return swaps, nil
 }
 

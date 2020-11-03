@@ -66,7 +66,7 @@ func runCommand(cmd *exec.Cmd) {
 	}
 }
 
-func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
+func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
 	if _, err := os.Stat(testDir); os.IsNotExist(err) {
 		os.Mkdir(testDir, os.ModePerm)
 	}
@@ -79,7 +79,19 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 
 	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
 	if marketRepositoryIsEmpty == false {
-		fillMarketRepo(ctx, &marketRepo)
+		err := fillMarketRepo(ctx, &marketRepo)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
+
+	if !tradeRepositoryIsEmpty {
+		err := fillTradeRepo(ctx, tradeRepo, "d090c403610fe8a9e31967355929833bc8a8fe08429e630162d1ecbf29fdf28b", network.Regtest.AssetID)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	vaultRepo := newMockedVaultRepositoryImpl(tradeWallet)
@@ -95,7 +107,7 @@ func newTestOperator(marketRepositoryIsEmpty bool) (OperatorService, context.Con
 	operatorService := NewOperatorService(
 		marketRepo,
 		vaultRepo,
-		dbbadger.NewTradeRepositoryImpl(dbManager),
+		tradeRepo,
 		unspentRepo,
 		explorerSvc,
 		crawlerSvc,
@@ -205,6 +217,30 @@ func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) er
 	)
 	// closed market (and also not funded)
 	(*marketRepo).GetOrCreateMarket(ctx, domain.MarketAccountStart+1)
+	return nil
+}
+
+func fillTradeRepo(ctx context.Context, tradeRepo domain.TradeRepository, quoteAsset string, baseAsset string) error {
+	proposerWallet, err := trade.NewRandomWallet(&network.Regtest)
+	if err != nil {
+		return err
+	}
+
+	swapRequest, err := newSwapRequest(
+		proposerWallet,
+		baseAsset, 30000000,
+		quoteAsset, 20000000,
+	)
+	
+	if err != nil {
+		return err
+	}
+
+	tradeRepo.UpdateTrade(ctx, nil, func(trade *domain.Trade) (*domain.Trade, error) {
+		trade.Propose(swapRequest, quoteAsset, nil)
+		return trade, nil
+	})
+
 	return nil
 }
 
