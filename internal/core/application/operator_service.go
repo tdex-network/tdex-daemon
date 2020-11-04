@@ -89,6 +89,16 @@ func (o *operatorService) DepositMarket(
 
 	// First case: the assets are given. If are valid and a market exist we need to derive a new address for that account.
 	if len(baseAsset) > 0 && len(quoteAsset) > 0 {
+		// check the asset strings
+		err := validateAssetString(baseAsset)
+		if err != nil {
+			return "", domain.ErrInvalidBaseAsset
+		}
+
+		err = validateAssetString(quoteAsset)
+		if err != nil {
+			return "", domain.ErrInvalidQuoteAsset
+		}
 
 		// Checks if base asset is valid
 		if baseAsset != config.GetString(config.BaseAssetKey) {
@@ -127,7 +137,7 @@ func (o *operatorService) DepositMarket(
 	} else if baseAsset != config.GetString(config.BaseAssetKey) {
 		return "", domain.ErrInvalidBaseAsset
 	} else {
-		return "", domain.ErrMarketNotExist
+		return "", domain.ErrInvalidQuoteAsset
 	}
 
 	//Derive an address for that specific market
@@ -192,6 +202,17 @@ func (o *operatorService) OpenMarket(
 	baseAsset string,
 	quoteAsset string,
 ) error {
+	// check the asset strings
+	err := validateAssetString(baseAsset)
+	if err != nil {
+		return domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(quoteAsset)
+	if err != nil {
+		return domain.ErrInvalidQuoteAsset
+	}
+
 	if baseAsset != config.GetString(config.BaseAssetKey) {
 		return domain.ErrInvalidBaseAsset
 	}
@@ -255,11 +276,22 @@ func (o *operatorService) CloseMarket(
 	baseAsset string,
 	quoteAsset string,
 ) error {
+	// check the asset strings
+	err := validateAssetString(baseAsset)
+	if err != nil {
+		return domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(quoteAsset)
+	if err != nil {
+		return domain.ErrInvalidQuoteAsset
+	}
+
 	if baseAsset != config.GetString(config.BaseAssetKey) {
 		return domain.ErrInvalidBaseAsset
 	}
 
-	err := o.marketRepository.CloseMarket(
+	err = o.marketRepository.CloseMarket(
 		ctx,
 		quoteAsset,
 	)
@@ -278,6 +310,16 @@ func (o *operatorService) UpdateMarketFee(
 	ctx context.Context,
 	req MarketWithFee,
 ) (*MarketWithFee, error) {
+	// check the asset strings
+	err := validateAssetString(req.BaseAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(req.QuoteAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidQuoteAsset
+	}
 
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
@@ -338,6 +380,17 @@ func (o *operatorService) UpdateMarketPrice(
 	ctx context.Context,
 	req MarketWithPrice,
 ) error {
+	// check the asset strings
+	err := validateAssetString(req.BaseAsset)
+	if err != nil {
+		return domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(req.QuoteAsset)
+	if err != nil {
+		return domain.ErrInvalidQuoteAsset
+	}
+
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
 		return domain.ErrMarketNotExist
@@ -371,6 +424,17 @@ func (o *operatorService) UpdateMarketStrategy(
 	ctx context.Context,
 	req MarketStrategy,
 ) error {
+	// check the asset strings
+	err := validateAssetString(req.Market.BaseAsset)
+	if err != nil {
+		return domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(req.Market.QuoteAsset)
+	if err != nil {
+		return domain.ErrInvalidQuoteAsset
+	}
+
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
 		return domain.ErrMarketNotExist
