@@ -13,7 +13,7 @@ func validateAssetString(asset string) error {
 		return err
 	}
 
-	if matched == false {
+	if !matched {
 		return errors.New(asset + " is an invalid asset string.")
 	}
 
