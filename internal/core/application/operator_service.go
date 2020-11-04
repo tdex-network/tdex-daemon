@@ -9,8 +9,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -47,7 +45,7 @@ type OperatorService interface {
 	) error
 	ListSwaps(
 		ctx context.Context,
-	) (*pb.ListSwapsReply, error)
+	) ([]SwapInfo, error)
 	ListMarket(
 		ctx context.Context,
 	) ([]MarketInfo, error)
@@ -421,7 +419,7 @@ func (o *operatorService) UpdateMarketStrategy(
 // ListSwaps returns the list of all swaps processed by the daemon
 func (o *operatorService) ListSwaps(
 	ctx context.Context,
-) (*pb.ListSwapsReply, error) {
+) ([]SwapInfo, error) {
 	trades, err := o.tradeRepository.GetAllTrades(ctx)
 	if err != nil {
 		return nil, err
@@ -433,9 +431,7 @@ func (o *operatorService) ListSwaps(
 	}
 
 	swaps := tradesToSwapInfo(markets, trades)
-	return &pb.ListSwapsReply{
-		Swaps: swaps,
-	}, nil
+	return swaps, nil
 }
 
 //ListMarket a set of informations about all the markets.
@@ -493,16 +489,18 @@ func (o *operatorService) getMarketsForTrades(
 func tradesToSwapInfo(
 	markets map[string]*domain.Market,
 	trades []*domain.Trade,
-) []*pb.SwapInfo {
-	info := make([]*pb.SwapInfo, 0, len(trades))
+) []SwapInfo {
+	swapInfos := make([]SwapInfo, 0, len(trades))
 	for _, trade := range trades {
 		requestMsg := trade.SwapRequestMessage()
-		fee := &pbtypes.Fee{
-			Asset:      markets[trade.MarketQuoteAsset].FeeAsset,
+
+		fee := Fee{
+			FeeAsset:      markets[trade.MarketQuoteAsset].FeeAsset,
 			BasisPoint: markets[trade.MarketQuoteAsset].Fee,
 		}
-		i := &pb.SwapInfo{
-			Status:           trade.Status.Code,
+
+		newSwapInfo := SwapInfo{
+			Status:           int32(trade.Status.Code),
 			AmountP:          requestMsg.GetAmountP(),
 			AssetP:           requestMsg.GetAssetP(),
 			AmountR:          requestMsg.GetAmountR(),
@@ -513,7 +511,9 @@ func tradesToSwapInfo(
 			CompleteTimeUnix: trade.SwapCompleteTime(),
 			ExpiryTimeUnix:   trade.SwapExpiryTime(),
 		}
-		info = append(info, i)
+
+		swapInfos = append(swapInfos, newSwapInfo)
 	}
-	return info
+	
+	return swapInfos
 }
