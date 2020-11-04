@@ -12,11 +12,8 @@ import (
 )
 
 const marketRepoIsEmpty = true
-<<<<<<< HEAD
-=======
 const tradeRepoIsEmpty = true
 
->>>>>>> 2683ce50086590e8520968f2f54d9d6711b51364
 var baseAsset = config.GetString(config.BaseAssetKey)
 
 const (
