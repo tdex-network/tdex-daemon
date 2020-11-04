@@ -9,13 +9,13 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 )
 
+// OperatorService defines the methods of the application layer for the operator service.
 type OperatorService interface {
 	DepositMarket(
 		ctx context.Context,
+		baseAsset string,
 		quoteAsset string,
 	) (string, error)
 	DepositFeeAccount(
@@ -45,7 +45,7 @@ type OperatorService interface {
 	) error
 	ListSwaps(
 		ctx context.Context,
-	) (*pb.ListSwapsReply, error)
+	) ([]SwapInfo, error)
 	WithdrawMarketFunds(
 		ctx context.Context,
 		req WithdrawMarketReq,
@@ -92,22 +92,35 @@ func NewOperatorService(
 
 func (o *operatorService) DepositMarket(
 	ctx context.Context,
+	baseAsset string,
 	quoteAsset string,
-) (string, error) {
-
-	var address string
+) (address string, err error) {
 
 	var accountIndex int
-	_, a, err := o.marketRepository.GetMarketByAsset(
-		ctx,
-		quoteAsset,
-	)
-	if err != nil {
-		return "", err
-	}
-	accountIndex = a
 
-	if accountIndex == -1 {
+	// First case: the assets are given. If are valid and a market exist we need to derive a new address for that account.
+	if len(baseAsset) > 0 && len(quoteAsset) > 0 {
+
+		// Checks if base asset is valid
+		if baseAsset != config.GetString(config.BaseAssetKey) {
+			return "", domain.ErrInvalidBaseAsset
+		}
+
+		//Checks if quote asset exists
+		_, accountOfExistentMarket, err := o.marketRepository.GetMarketByAsset(
+			ctx,
+			quoteAsset,
+		)
+		if err != nil {
+			return "", err
+		}
+		if accountOfExistentMarket == -1 {
+			return "", domain.ErrMarketNotExist
+		}
+
+		accountIndex = accountOfExistentMarket
+	} else if len(baseAsset) == 0 && len(quoteAsset) == 0 {
+		// Second case: base and quote asset are empty. this means we need to create a new market.
 		_, latestAccountIndex, err := o.marketRepository.GetLatestMarket(
 			ctx,
 		)
@@ -115,13 +128,20 @@ func (o *operatorService) DepositMarket(
 			return "", err
 		}
 
-		accountIndex = latestAccountIndex + 1
-		_, err = o.marketRepository.GetOrCreateMarket(ctx, accountIndex)
+		nextAccountIndex := latestAccountIndex + 1
+		_, err = o.marketRepository.GetOrCreateMarket(ctx, nextAccountIndex)
 		if err != nil {
 			return "", err
 		}
+
+		accountIndex = nextAccountIndex
+	} else if baseAsset != config.GetString(config.BaseAssetKey) {
+		return "", domain.ErrInvalidBaseAsset
+	} else {
+		return "", domain.ErrMarketNotExist
 	}
 
+	//Derive an address for that specific market
 	err = o.vaultRepository.UpdateVault(
 		ctx,
 		nil,
@@ -141,6 +161,8 @@ func (o *operatorService) DepositMarket(
 				Address:      addr,
 				BlindingKey:  blindingKey,
 			})
+
+			println(hex.EncodeToString(blindingKey))
 
 			return v, nil
 		})
@@ -186,7 +208,7 @@ func (o *operatorService) OpenMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return errors.New("invalid base asset")
+		return domain.ErrInvalidBaseAsset
 	}
 
 	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(
@@ -262,7 +284,7 @@ func (o *operatorService) CloseMarket(
 	quoteAsset string,
 ) error {
 	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return errors.New("invalid base asset")
+		return domain.ErrInvalidBaseAsset
 	}
 
 	err := o.marketRepository.CloseMarket(
@@ -425,7 +447,7 @@ func (o *operatorService) UpdateMarketStrategy(
 // ListSwaps returns the list of all swaps processed by the daemon
 func (o *operatorService) ListSwaps(
 	ctx context.Context,
-) (*pb.ListSwapsReply, error) {
+) ([]SwapInfo, error) {
 	trades, err := o.tradeRepository.GetAllTrades(ctx)
 	if err != nil {
 		return nil, err
@@ -437,9 +459,7 @@ func (o *operatorService) ListSwaps(
 	}
 
 	swaps := tradesToSwapInfo(markets, trades)
-	return &pb.ListSwapsReply{
-		Swaps: swaps,
-	}, nil
+	return swaps, nil
 }
 
 //ListMarket a set of informations about all the markets.
@@ -497,16 +517,18 @@ func (o *operatorService) getMarketsForTrades(
 func tradesToSwapInfo(
 	markets map[string]*domain.Market,
 	trades []*domain.Trade,
-) []*pb.SwapInfo {
-	info := make([]*pb.SwapInfo, 0, len(trades))
+) []SwapInfo {
+	swapInfos := make([]SwapInfo, 0, len(trades))
 	for _, trade := range trades {
 		requestMsg := trade.SwapRequestMessage()
-		fee := &pbtypes.Fee{
-			Asset:      markets[trade.MarketQuoteAsset].FeeAsset,
+
+		fee := Fee{
+			FeeAsset:   markets[trade.MarketQuoteAsset].FeeAsset,
 			BasisPoint: markets[trade.MarketQuoteAsset].Fee,
 		}
-		i := &pb.SwapInfo{
-			Status:           trade.Status.Code,
+
+		newSwapInfo := SwapInfo{
+			Status:           int32(trade.Status.Code),
 			AmountP:          requestMsg.GetAmountP(),
 			AssetP:           requestMsg.GetAssetP(),
 			AmountR:          requestMsg.GetAmountR(),
@@ -517,9 +539,11 @@ func tradesToSwapInfo(
 			CompleteTimeUnix: trade.SwapCompleteTime(),
 			ExpiryTimeUnix:   trade.SwapExpiryTime(),
 		}
-		info = append(info, i)
+
+		swapInfos = append(swapInfos, newSwapInfo)
 	}
-	return info
+
+	return swapInfos
 }
 
 func (o *operatorService) WithdrawMarketFunds(

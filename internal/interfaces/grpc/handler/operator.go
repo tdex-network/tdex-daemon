@@ -29,7 +29,7 @@ func (o operatorHandler) DepositMarket(
 	ctx context.Context,
 	req *pb.DepositMarketRequest,
 ) (*pb.DepositMarketReply, error) {
-	address, err := o.operatorSvc.DepositMarket(ctx, req.GetMarket().GetQuoteAsset())
+	address, err := o.operatorSvc.DepositMarket(ctx, req.GetMarket().GetBaseAsset(), req.GetMarket().GetQuoteAsset())
 	if err != nil {
 		return nil, status.Error(
 			codes.Internal,
@@ -198,12 +198,32 @@ func (o operatorHandler) ListSwaps(
 	ctx context.Context,
 	req *pb.ListSwapsRequest,
 ) (*pb.ListSwapsReply, error) {
-	swaps, err := o.operatorSvc.ListSwaps(ctx)
+	swapInfos, err := o.operatorSvc.ListSwaps(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return swaps, nil
+	pbSwapInfos := make([]*pb.SwapInfo, len(swapInfos), len(swapInfos))
+
+	for index, swapInfo := range swapInfos {
+		pbSwapInfos[index] = &pb.SwapInfo{
+			Status: pb.SwapStatus(swapInfo.Status),
+			AmountP: swapInfo.AmountP,
+			AssetP: swapInfo.AssetP,
+			AmountR: swapInfo.AmountR,
+			AssetR: swapInfo.AssetR,
+			MarketFee: &pbtypes.Fee{
+				Asset: swapInfo.MarketFee.FeeAsset,
+				BasisPoint: swapInfo.MarketFee.BasisPoint,
+			},
+			RequestTimeUnix: swapInfo.RequestTimeUnix,
+			AcceptTimeUnix: swapInfo.AcceptTimeUnix,
+			CompleteTimeUnix: swapInfo.RequestTimeUnix,
+			ExpiryTimeUnix: swapInfo.ExpiryTimeUnix,
+		}
+	}
+	
+	return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
 }
 
 func (o operatorHandler) WithdrawMarket(
@@ -262,7 +282,7 @@ func (o operatorHandler) ListMarket(ctx context.Context, req *pb.ListMarketReque
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos))
+	pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos), len(marketInfos))
 
 	for index, marketInfo := range marketInfos {
 		pbMarketInfos[index] = &pb.MarketInfo{
