@@ -11,7 +11,6 @@ import (
 )
 
 const marketRepoIsEmpty = true
-
 var baseAsset = config.GetString(config.BaseAssetKey)
 
 func TestListMarket(t *testing.T) {
@@ -149,5 +148,28 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 
 		close()
 		stopNigiri()
+	})
+}
+
+func TestUpdateMarketPrice(t *testing.T) {
+	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty)
+	defer close()
+
+	updateMarketPriceRequest := func() error {
+		args := MarketWithPrice{
+			Market: Market{
+				BaseAsset: "", 
+				QuoteAsset: "",
+			},
+			Price: Price{
+				BasePrice: 0, 
+				QuotePrice: 0,
+			},
+		}
+		return operatorService.UpdateMarketPrice(ctx, args)
+	}
+
+	t.Run("should set the market price if this one is valid", func(t *testing.T) {
+
 	})
 }
