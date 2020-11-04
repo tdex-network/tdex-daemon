@@ -397,7 +397,7 @@ func (o *operatorService) UpdateMarketPrice(
 	}
 
 	// validate the new prices amount
-	err := validateAmount(req.Price.BasePrice.IntPart());
+	err = validateAmount(req.Price.BasePrice.IntPart());
 	if err != nil {
 		return domain.ErrInvalidBasePrice
 	}
