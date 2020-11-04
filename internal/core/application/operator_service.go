@@ -344,6 +344,19 @@ func (o *operatorService) UpdateMarketPrice(
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
 		return domain.ErrMarketNotExist
 	}
+
+	// validate the new prices amount
+	err := validateAmount(req.Price.BasePrice.IntPart());
+	if err != nil {
+		return domain.ErrInvalidBasePrice
+	}
+
+	// validate the new prices amount
+	err = validateAmount(req.Price.QuotePrice.IntPart());
+	if err != nil {
+		return domain.ErrInvalidQuotePrice
+	}
+
 	//Checks if market exist
 	_, accountIndex, err := o.marketRepository.GetMarketByAsset(
 		ctx,

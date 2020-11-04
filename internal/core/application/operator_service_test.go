@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -12,6 +13,11 @@ import (
 
 const marketRepoIsEmpty = true
 var baseAsset = config.GetString(config.BaseAssetKey)
+
+const (
+	LBTC = "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
+	USDT = "7151f4f38f546c3084afa957c5a0b914b4af5726065b450edad1fc11b8dbe900"
+)
 
 func TestListMarket(t *testing.T) {
 	t.Run("ListMarket should return an empty list and a nil error if market repository is empty", func(t *testing.T) {
@@ -29,7 +35,6 @@ func TestListMarket(t *testing.T) {
 		assert.Equal(t, nil, err)
 		assert.Equal(t, 2, len(marketInfos))
 	})
-
 }
 
 func TestDepositMarket(t *testing.T) {
@@ -154,22 +159,25 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 func TestUpdateMarketPrice(t *testing.T) {
 	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty)
 	defer close()
-
-	updateMarketPriceRequest := func() error {
+	
+	updateMarketPriceRequest := func(basePrice int, quotePrice int) error {
 		args := MarketWithPrice{
 			Market: Market{
-				BaseAsset: "", 
-				QuoteAsset: "",
+				BaseAsset: USDT, 
+				QuoteAsset: LBTC,
 			},
 			Price: Price{
-				BasePrice: 0, 
-				QuotePrice: 0,
+				BasePrice: decimal.NewFromInt(int64(basePrice)), 
+				QuotePrice: decimal.NewFromInt(int64(quotePrice)),
 			},
 		}
 		return operatorService.UpdateMarketPrice(ctx, args)
 	}
 
-	t.Run("should set the market price if this one is valid", func(t *testing.T) {
-
+	t.Run("should not return an error if the price is valid and market is found", func (t *testing.T) {
+		err := updateMarketPriceRequest(10, 1000)
+		assert.Equal(t, nil, err)
 	})
+
+
 }

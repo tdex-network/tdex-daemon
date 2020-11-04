@@ -25,6 +25,10 @@ var (
 	ErrPriceExists = errors.New("price has been inserted already")
 	//ErrNotPriced is thrown when the price is still 0 (ie. not initialized)
 	ErrNotPriced = errors.New("price must be inserted")
+	//ErrInvalidBasePrice is thrown when the amount for Base price is an invalid satoshis value.
+	ErrInvalidBasePrice = errors.New("the amount for base price is invalid")
+	//ErrInvalidQuotePrice is thrown when the amount for Quote price is an invalid satoshis value.
+	ErrInvalidQuotePrice = errors.New("the amount for base price is invalid")
 	// ErrMustBeEmpty ...
 	ErrMustBeEmpty = errors.New(
 		"trade must be empty for parsing a proposal",
