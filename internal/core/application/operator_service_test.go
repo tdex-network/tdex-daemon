@@ -9,6 +9,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 const marketRepoIsEmpty = true
@@ -159,14 +160,14 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 }
 
 func TestUpdateMarketPrice(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty)
+	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty)
 	defer close()
 	
 	updateMarketPriceRequest := func(basePrice int, quotePrice int) error {
 		args := MarketWithPrice{
 			Market: Market{
-				BaseAsset: USDT, 
-				QuoteAsset: LBTC,
+				BaseAsset: network.Regtest.AssetID, 
+				QuoteAsset: marketUnspents[1].AssetHash,
 			},
 			Price: Price{
 				BasePrice: decimal.NewFromInt(int64(basePrice)), 
@@ -175,13 +176,26 @@ func TestUpdateMarketPrice(t *testing.T) {
 		}
 		return operatorService.UpdateMarketPrice(ctx, args)
 	}
-
+	
 	t.Run("should not return an error if the price is valid and market is found", func (t *testing.T) {
 		err := updateMarketPriceRequest(10, 1000)
 		assert.Equal(t, nil, err)
 	})
 
+	t.Run("should return an error if the prices are <= 0", func(t *testing.T) {
+		err := updateMarketPriceRequest(-1, 10000)
+		assert.NotEqual(t, nil, err)
+	})
 
+	t.Run("should return an error if the prices are greater than 2099999997690000", func(t *testing.T) {
+		err := updateMarketPriceRequest(1,  2099999997690000 + 1)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return an error if one of the prices are equal to zero", func(t *testing.T) {
+		err := updateMarketPriceRequest(102, 0)
+		assert.NotEqual(t, nil, err)
+	})
 }
 func TestListSwap(t *testing.T) {
 	t.Run("ListSwap should return an empty list and a nil error if there is not trades in TradeRepository", func(t *testing.T) {
