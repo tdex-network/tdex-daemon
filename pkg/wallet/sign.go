@@ -48,7 +48,7 @@ func (o SignTransactionOpts) validate() error {
 			return fmt.Errorf(
 				"derivation path not found in list for input %d with script '%s'",
 				i,
-				script,
+				hex.EncodeToString(script),
 			)
 		}
 	}

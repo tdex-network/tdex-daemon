@@ -226,6 +226,55 @@ func (o operatorHandler) ListSwaps(
 	return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
 }
 
+func (o operatorHandler) WithdrawMarket(
+	ctx context.Context,
+	req *pb.WithdrawMarketRequest,
+) (*pb.WithdrawMarketReply, error) {
+	market := req.GetMarket()
+	if err := validateMarket(market); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	rawTx, err := o.operatorSvc.WithdrawMarketFunds(
+		ctx,
+		application.WithdrawMarketReq{
+			Market: application.Market{
+				BaseAsset:  req.GetMarket().GetBaseAsset(),
+				QuoteAsset: req.GetMarket().GetQuoteAsset(),
+			},
+			BalanceToWithdraw: application.Balance{
+				BaseAmount:  req.GetBalanceToWithdraw().GetBaseAmount(),
+				QuoteAmount: req.GetBalanceToWithdraw().GetQuoteAmount(),
+			},
+			MillisatPerByte: req.GetMillisatPerByte(),
+			Address:         req.GetAddress(),
+			Push:            req.GetPush(),
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.WithdrawMarketReply{
+		RawTx: rawTx,
+	}, nil
+}
+
+func (o operatorHandler) BalanceFeeAccount(
+	ctx context.Context,
+	req *pb.BalanceFeeAccountRequest,
+) (*pb.BalanceFeeAccountReply, error) {
+
+	balance, err := o.operatorSvc.FeeAccountBalance(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.BalanceFeeAccountReply{
+		Balance: balance,
+	}, nil
+}
+
 // ListMarket returns the result of the ListMarket method of the operator service.
 func (o operatorHandler) ListMarket(ctx context.Context, req *pb.ListMarketRequest) (*pb.ListMarketReply, error) {
 	marketInfos, err := o.operatorSvc.ListMarket(ctx)

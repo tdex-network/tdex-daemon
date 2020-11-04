@@ -62,70 +62,67 @@ events:
 		case crawler.FeeAccountDeposit:
 			e := event.(crawler.AddressEvent)
 			unspents := make([]domain.Unspent, 0)
-			if len(e.Utxos) > 0 {
-
-			utxoLoop:
-				for _, utxo := range e.Utxos {
-					isTrxConfirmed, err := b.explorerSvc.IsTransactionConfirmed(
-						utxo.Hash(),
-					)
-					if err != nil {
-						tx.Discard()
-						log.Warn(err)
-						continue utxoLoop
-					}
-
-					u := domain.Unspent{
-						TxID:            utxo.Hash(),
-						VOut:            utxo.Index(),
-						Value:           utxo.Value(),
-						AssetHash:       utxo.Asset(),
-						ValueCommitment: utxo.ValueCommitment(),
-						AssetCommitment: utxo.AssetCommitment(),
-						ScriptPubKey:    utxo.Script(),
-						Nonce:           utxo.Nonce(),
-						RangeProof:      utxo.RangeProof(),
-						SurjectionProof: utxo.SurjectionProof(),
-						Address:         e.Address,
-						Spent:           false,
-						Locked:          false,
-						LockedBy:        nil,
-						Confirmed:       isTrxConfirmed,
-					}
-					unspents = append(unspents, u)
-				}
-				if err := b.UpdateUnspentsForAddress(ctx, unspents, e.Address); err != nil {
-					tx.Discard()
-					log.Warn(err)
-					continue events
-				}
-
-				addresses, _, err := b.vaultRepository.
-					GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
-				if err != nil {
-					tx.Discard()
-					log.Warn(err)
-					continue events
-				}
-
-				feeAccountBalance, err := b.unspentRepository.GetBalance(
-					ctx,
-					addresses,
-					config.GetString(config.BaseAssetKey),
+		utxoLoop:
+			for _, utxo := range e.Utxos {
+				isTrxConfirmed, err := b.explorerSvc.IsTransactionConfirmed(
+					utxo.Hash(),
 				)
 				if err != nil {
 					tx.Discard()
 					log.Warn(err)
-					continue events
+					continue utxoLoop
 				}
 
-				if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-					log.Warn(
-						"fee account balance too low. Trades for markets won't be " +
-							"served properly. Fund the fee account as soon as possible",
-					)
-					continue events
+				u := domain.Unspent{
+					TxID:            utxo.Hash(),
+					VOut:            utxo.Index(),
+					Value:           utxo.Value(),
+					AssetHash:       utxo.Asset(),
+					ValueCommitment: utxo.ValueCommitment(),
+					AssetCommitment: utxo.AssetCommitment(),
+					ScriptPubKey:    utxo.Script(),
+					Nonce:           utxo.Nonce(),
+					RangeProof:      utxo.RangeProof(),
+					SurjectionProof: utxo.SurjectionProof(),
+					Address:         e.Address,
+					Spent:           false,
+					Locked:          false,
+					LockedBy:        nil,
+					Confirmed:       isTrxConfirmed,
 				}
+				unspents = append(unspents, u)
+			}
+			if err := b.UpdateUnspentsForAddress(ctx, unspents, e.Address); err != nil {
+				tx.Discard()
+				log.Warn(err)
+				continue events
+			}
+
+			addresses, _, err := b.vaultRepository.
+				GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
+			if err != nil {
+				tx.Discard()
+				log.Warn(err)
+				continue events
+			}
+
+			feeAccountBalance, err := b.unspentRepository.GetBalance(
+				ctx,
+				addresses,
+				config.GetString(config.BaseAssetKey),
+			)
+			if err != nil {
+				tx.Discard()
+				log.Warn(err)
+				continue events
+			}
+
+			if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
+				log.Warn(
+					"fee account balance too low. Trades for markets won't be " +
+						"served properly. Fund the fee account as soon as possible",
+				)
+				continue events
 			}
 
 		case crawler.MarketAccountDeposit:
@@ -257,8 +254,10 @@ func (b *blockchainListener) UpdateUnspentsForAddress(
 		}
 	}
 
-	if err := b.unspentRepository.AddUnspents(ctx, unspentsToAdd); err != nil {
-		return err
+	if len(unspentsToAdd) > 0 {
+		if err := b.unspentRepository.AddUnspents(ctx, unspentsToAdd); err != nil {
+			return err
+		}
 	}
 
 	//update spent
@@ -271,13 +270,15 @@ func (b *blockchainListener) UpdateUnspentsForAddress(
 				break
 			}
 		}
-		if !exist {
+		if !existingUnspent.IsSpent() && !exist {
 			unspentsToMarkAsSpent = append(unspentsToMarkAsSpent, existingUnspent.Key())
 		}
 	}
 
-	if err := b.unspentRepository.SpendUnspents(ctx, unspentsToMarkAsSpent); err != nil {
-		return err
+	if len(unspentsToMarkAsSpent) > 0 {
+		if err := b.unspentRepository.SpendUnspents(ctx, unspentsToMarkAsSpent); err != nil {
+			return err
+		}
 	}
 	return nil
 }
