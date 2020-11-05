@@ -533,6 +533,8 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 		ChangePathsByAsset: map[string]string{
 			network.AssetID: opts.feeChangeDerivationPath,
 		},
+		WantPrivateBlindKeys: true,
+		WantChangeForFees:    true,
 	})
 	if err != nil {
 		return

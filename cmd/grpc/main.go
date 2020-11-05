@@ -23,7 +23,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"google.golang.org/grpc"
 
-	pbhandshake "github.com/tdex-network/tdex-protobuf/generated/go/handshake"
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtrader "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	pbwallet "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
@@ -102,7 +101,6 @@ func main() {
 
 	// Register proto implementations on Trader interface
 	pbtrader.RegisterTradeServer(traderGrpcServer, traderHandler)
-	pbhandshake.RegisterHandshakeServer(traderGrpcServer, &pbhandshake.UnimplementedHandshakeServer{})
 	// Register proto implementations on Operator interface
 	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorHandler)
 	pbwallet.RegisterWalletServer(operatorGrpcServer, walletHandler)

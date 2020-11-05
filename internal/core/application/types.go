@@ -73,3 +73,11 @@ type BalanceWithFee struct {
 	Balance
 	Fee
 }
+
+type WithdrawMarketReq struct {
+	Market
+	BalanceToWithdraw Balance
+	MillisatPerByte   int64
+	Address           string
+	Push              bool
+}
