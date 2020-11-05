@@ -3,8 +3,8 @@ package grpchandler
 import (
 	"context"
 	"errors"
-
 	"github.com/shopspring/decimal"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -18,8 +18,11 @@ type operatorHandler struct {
 	operatorSvc application.OperatorService
 }
 
-// NewOperatorHandler is a constructor function returning an protobuf OperatorServer.
-func NewOperatorHandler(operatorSvc application.OperatorService) pb.OperatorServer {
+// NewOperatorHandler is a constructor function returning an
+// protobuf OperatorServer.
+func NewOperatorHandler(
+	operatorSvc application.OperatorService,
+) pb.OperatorServer {
 	return &operatorHandler{
 		operatorSvc: operatorSvc,
 	}
@@ -29,7 +32,11 @@ func (o operatorHandler) DepositMarket(
 	ctx context.Context,
 	req *pb.DepositMarketRequest,
 ) (*pb.DepositMarketReply, error) {
-	address, err := o.operatorSvc.DepositMarket(ctx, req.GetMarket().GetBaseAsset(), req.GetMarket().GetQuoteAsset())
+	address, err := o.operatorSvc.DepositMarket(
+		ctx,
+		req.GetMarket().GetBaseAsset(),
+		req.GetMarket().GetQuoteAsset(),
+	)
 	if err != nil {
 		return nil, status.Error(
 			codes.Internal,
@@ -207,22 +214,22 @@ func (o operatorHandler) ListSwaps(
 
 	for index, swapInfo := range swapInfos {
 		pbSwapInfos[index] = &pb.SwapInfo{
-			Status: pb.SwapStatus(swapInfo.Status),
+			Status:  pb.SwapStatus(swapInfo.Status),
 			AmountP: swapInfo.AmountP,
-			AssetP: swapInfo.AssetP,
+			AssetP:  swapInfo.AssetP,
 			AmountR: swapInfo.AmountR,
-			AssetR: swapInfo.AssetR,
+			AssetR:  swapInfo.AssetR,
 			MarketFee: &pbtypes.Fee{
-				Asset: swapInfo.MarketFee.FeeAsset,
+				Asset:      swapInfo.MarketFee.FeeAsset,
 				BasisPoint: swapInfo.MarketFee.BasisPoint,
 			},
-			RequestTimeUnix: swapInfo.RequestTimeUnix,
-			AcceptTimeUnix: swapInfo.AcceptTimeUnix,
+			RequestTimeUnix:  swapInfo.RequestTimeUnix,
+			AcceptTimeUnix:   swapInfo.AcceptTimeUnix,
 			CompleteTimeUnix: swapInfo.RequestTimeUnix,
-			ExpiryTimeUnix: swapInfo.ExpiryTimeUnix,
+			ExpiryTimeUnix:   swapInfo.ExpiryTimeUnix,
 		}
 	}
-	
+
 	return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
 }
 
@@ -275,7 +282,32 @@ func (o operatorHandler) BalanceFeeAccount(
 	}, nil
 }
 
-// ListMarket returns the result of the ListMarket method of the operator service.
+func (o operatorHandler) ListDepositMarket(
+	ctx context.Context,
+	req *pb.ListDepositMarketRequest,
+) (*pb.ListDepositMarketReply, error) {
+	if err := validateMarket(req.GetMarket()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	addresses, err := o.operatorSvc.ListMarketExternalAddresses(
+		ctx,
+		application.Market{
+			BaseAsset:  req.GetMarket().GetBaseAsset(),
+			QuoteAsset: req.GetMarket().GetQuoteAsset(),
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.ListDepositMarketReply{
+		Address: addresses,
+	}, nil
+}
+
+// ListMarket returns the result of the ListMarket method of the operator
+// service.
 func (o operatorHandler) ListMarket(
 	ctx context.Context,
 	req *pb.ListMarketRequest,
@@ -360,6 +392,10 @@ func validateMarket(market *pbtypes.Market) error {
 	}
 	if len(market.GetBaseAsset()) <= 0 || len(market.GetQuoteAsset()) <= 0 {
 		return errors.New("base asset or quote asset are null")
+	}
+
+	if market.GetBaseAsset() != config.GetString(config.BaseAssetKey) {
+		return domain.ErrInvalidBaseAsset
 	}
 	return nil
 }
