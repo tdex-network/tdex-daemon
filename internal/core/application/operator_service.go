@@ -532,9 +532,15 @@ func (o *operatorService) ListMarketExternalAddresses(
 	ctx context.Context,
 	req Market,
 ) ([]string, error) {
+	// check the asset strings
+	err := validateAssetString(req.BaseAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidBaseAsset
+	}
 
-	if len(req.BaseAsset) <= 0 || len(req.QuoteAsset) <= 0 {
-		return nil, errors.New("base asset or quote asset are null")
+	err = validateAssetString(req.QuoteAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidQuoteAsset
 	}
 
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
