@@ -107,7 +107,7 @@ func (v vaultRepositoryImpl) GetAllDerivedExternalAddressesForAccount(
 		return nil, err
 	}
 
-	return vault.AllDerivedEternalAddressesForAccount(accountIndex)
+	return vault.AllDerivedExternalAddressesForAccount(accountIndex)
 }
 
 func (v vaultRepositoryImpl) GetDerivationPathByScript(

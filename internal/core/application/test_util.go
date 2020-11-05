@@ -504,7 +504,7 @@ func (r *mockedVaultRepository) GetAllDerivedExternalAddressesForAccount(
 	ctx context.Context,
 	accountIndex int,
 ) ([]string, error) {
-	return nil, nil
+	return r.vault.AllDerivedExternalAddressesForAccount(accountIndex)
 }
 
 func (r *mockedVaultRepository) GetOrCreateVault(ctx context.Context, mnemonic []string, passphrase string) (*domain.Vault, error) {

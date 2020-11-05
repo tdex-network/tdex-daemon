@@ -157,9 +157,9 @@ func (v *Vault) AllDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 	return v.allDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
-// AllDerivedEternalAddressesForAccount returns all the external
+// AllDerivedExternalAddressesForAccount returns all the external
 // derived for the provided account
-func (v *Vault) AllDerivedEternalAddressesForAccount(accountIndex int) (
+func (v *Vault) AllDerivedExternalAddressesForAccount(accountIndex int) (
 	[]string,
 	error,
 ) {
