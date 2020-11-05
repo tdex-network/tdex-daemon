@@ -3,7 +3,6 @@ package grpchandler
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -136,77 +135,46 @@ func (o operatorHandler) depositMarket(
 	reqCtx context.Context,
 	req *pb.DepositMarketRequest,
 ) (*pb.DepositMarketReply, error) {
-	var reply *pb.DepositMarketReply
-
-	for {
-		tx := o.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
+	res, err := o.dbManager.RunTransaction(reqCtx, func(ctx context.Context) (interface{}, error) {
 		addr, err := o.operatorSvc.DepositMarket(
 			ctx,
 			req.GetMarket().GetBaseAsset(),
 			req.GetMarket().GetQuoteAsset(),
 		)
 		if err != nil {
-			log.Debug("trying to derive new address for market account: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+			return nil, err
 		}
 
-		if err := tx.Commit(); err != nil {
-			if !o.dbManager.IsTransactionConflict(err) {
-				log.Debug(
-					"trying to commit changes after deriving new address for market account: ",
-					err,
-				)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-
-		reply = &pb.DepositMarketReply{Address: addr}
-		break
+		return &pb.DepositMarketReply{Address: addr}, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return reply, nil
+	return res.(*pb.DepositMarketReply), nil
 }
 
 func (o operatorHandler) depositFeeAccount(
 	reqCtx context.Context,
 	req *pb.DepositFeeAccountRequest,
 ) (*pb.DepositFeeAccountReply, error) {
-	var reply *pb.DepositFeeAccountReply
-
-	for {
-		tx := o.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
+	res, err := o.dbManager.RunTransaction(reqCtx, func(ctx context.Context) (interface{}, error) {
 		addr, blindingKey, err := o.operatorSvc.DepositFeeAccount(ctx)
 		if err != nil {
-			log.Debug("trying to derive new address for fee account: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+			return nil, err
 		}
 
-		if err := tx.Commit(); err != nil {
-			if !o.dbManager.IsTransactionConflict(err) {
-				log.Debug(
-					"trying to commit changes after deriving new address for fee account: ",
-					err,
-				)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-
-		reply = &pb.DepositFeeAccountReply{
+		return &pb.DepositFeeAccountReply{
 			Address:  addr,
 			Blinding: blindingKey,
-		}
-		break
+		}, nil
+	})
+	if err != nil {
+		log.Debug("trying to derive new address for fee account: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return reply, nil
+	return res.(*pb.DepositFeeAccountReply), nil
 }
 
 func (o operatorHandler) openMarket(
@@ -218,32 +186,23 @@ func (o operatorHandler) openMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	for {
-		tx := o.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
+	res, err := o.dbManager.RunTransaction(reqCtx, func(ctx context.Context) (interface{}, error) {
 		if err := o.operatorSvc.OpenMarket(
 			ctx,
 			market.GetBaseAsset(),
 			market.GetQuoteAsset(),
 		); err != nil {
-			log.Debug("trying to open market: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+			return nil, err
 		}
 
-		if err := tx.Commit(); err != nil {
-			if !o.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after opening market: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-
-		break
+		return &pb.OpenMarketReply{}, nil
+	})
+	if err != nil {
+		log.Debug("trying to open market: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return &pb.OpenMarketReply{}, nil
+	return res.(*pb.OpenMarketReply), nil
 }
 
 func (o operatorHandler) closeMarket(
@@ -255,32 +214,23 @@ func (o operatorHandler) closeMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	for {
-		tx := o.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
+	res, err := o.dbManager.RunTransaction(reqCtx, func(ctx context.Context) (interface{}, error) {
 		if err := o.operatorSvc.CloseMarket(
 			ctx,
 			market.GetBaseAsset(),
 			market.GetQuoteAsset(),
 		); err != nil {
-			log.Debug("trying to close market: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+			return nil, err
 		}
 
-		if err := tx.Commit(); err != nil {
-			if !o.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after closing market: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-
-		break
+		return &pb.CloseMarketReply{}, nil
+	})
+	if err != nil {
+		log.Debug("trying to close market: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return &pb.CloseMarketReply{}, nil
+	return res.(*pb.CloseMarketReply), nil
 }
 
 func (o operatorHandler) updateMarketFee(
@@ -303,43 +253,31 @@ func (o operatorHandler) updateMarketFee(
 		},
 	}
 
-	var reply *pb.UpdateMarketFeeReply
-
-	for {
-		tx := o.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
-		res, err := o.operatorSvc.UpdateMarketFee(ctx, mwf)
+	res, err := o.dbManager.RunTransaction(reqCtx, func(ctx context.Context) (interface{}, error) {
+		result, err := o.operatorSvc.UpdateMarketFee(ctx, mwf)
 		if err != nil {
-			log.Debug("trying to update market fee: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+			return nil, err
 		}
 
-		if err := tx.Commit(); err != nil {
-			if !o.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after updating market fee: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-
-		reply = &pb.UpdateMarketFeeReply{
+		return &pb.UpdateMarketFeeReply{
 			MarketWithFee: &pbtypes.MarketWithFee{
 				Market: &pbtypes.Market{
-					BaseAsset:  res.BaseAsset,
-					QuoteAsset: res.QuoteAsset,
+					BaseAsset:  result.BaseAsset,
+					QuoteAsset: result.QuoteAsset,
 				},
 				Fee: &pbtypes.Fee{
-					Asset:      res.FeeAsset,
-					BasisPoint: res.BasisPoint,
+					Asset:      result.FeeAsset,
+					BasisPoint: result.BasisPoint,
 				},
 			},
-		}
-		break
+		}, nil
+	})
+	if err != nil {
+		log.Debug("trying to update market fee: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return reply, nil
+	return res.(*pb.UpdateMarketFeeReply), nil
 }
 
 func (o operatorHandler) updateMarketPrice(
@@ -366,28 +304,19 @@ func (o operatorHandler) updateMarketPrice(
 		},
 	}
 
-	for {
-		tx := o.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
+	res, err := o.dbManager.RunTransaction(reqCtx, func(ctx context.Context) (interface{}, error) {
 		if err := o.operatorSvc.UpdateMarketPrice(ctx, mwp); err != nil {
-			log.Debug("trying to update market price: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+			return nil, err
 		}
 
-		if err := tx.Commit(); err != nil {
-			if !o.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after updating market price: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-
-		break
+		return &pb.UpdateMarketPriceReply{}, nil
+	})
+	if err != nil {
+		log.Debug("trying to update market price: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return &pb.UpdateMarketPriceReply{}, nil
+	return res.(*pb.UpdateMarketPriceReply), nil
 }
 
 func (o operatorHandler) updateMarketStrategy(
@@ -411,28 +340,19 @@ func (o operatorHandler) updateMarketStrategy(
 		Strategy: domain.StrategyType(strategyType),
 	}
 
-	for {
-		tx := o.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
+	res, err := o.dbManager.RunTransaction(reqCtx, func(ctx context.Context) (interface{}, error) {
 		if err := o.operatorSvc.UpdateMarketStrategy(ctx, ms); err != nil {
-			log.Debug("trying to update market strategy: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+			return nil, err
 		}
 
-		if err := tx.Commit(); err != nil {
-			if !o.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after updating market strategy: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-
-		break
+		return &pb.UpdateMarketStrategyReply{}, nil
+	})
+	if err != nil {
+		log.Debug("trying to update market strategy: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return &pb.UpdateMarketStrategyReply{}, nil
+	return res.(*pb.UpdateMarketStrategyReply), nil
 }
 
 func (o operatorHandler) listSwaps(
@@ -477,7 +397,7 @@ func (o operatorHandler) withdrawMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	var wm = application.WithdrawMarketReq{
+	wm := application.WithdrawMarketReq{
 		Market: application.Market{
 			BaseAsset:  req.GetMarket().GetBaseAsset(),
 			QuoteAsset: req.GetMarket().GetQuoteAsset(),
@@ -490,32 +410,21 @@ func (o operatorHandler) withdrawMarket(
 		Address:         req.GetAddress(),
 		Push:            req.GetPush(),
 	}
-	var reply *pb.WithdrawMarketReply
 
-	for {
-		tx := o.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
+	res, err := o.dbManager.RunTransaction(reqCtx, func(ctx context.Context) (interface{}, error) {
 		rawTx, err := o.operatorSvc.WithdrawMarketFunds(ctx, wm)
 		if err != nil {
-			log.Debug("trying to withdraw from market: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+			return nil, err
 		}
 
-		if err := tx.Commit(); err != nil {
-			if !o.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after withdrawing from market: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-
-		reply = &pb.WithdrawMarketReply{RawTx: rawTx}
-		break
+		return &pb.WithdrawMarketReply{RawTx: rawTx}, nil
+	})
+	if err != nil {
+		log.Debug("trying to withdraw from market: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return reply, nil
+	return res.(*pb.WithdrawMarketReply), nil
 }
 
 func (o operatorHandler) balanceFeeAccount(

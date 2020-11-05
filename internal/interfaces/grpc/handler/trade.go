@@ -3,7 +3,6 @@ package grpchandler
 import (
 	"context"
 	"errors"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -214,40 +213,33 @@ func (t traderHandler) tradePropose(
 		BaseAsset:  mkt.GetBaseAsset(),
 		QuoteAsset: mkt.GetQuoteAsset(),
 	}
-	var reply *pb.TradeProposeReply
 
-	for {
-		tx := t.dbManager.NewTransaction()
-		ctx := context.WithValue(stream.Context(), "tx", tx)
-
-		swapAccept, swapFail, swapExpiryTime, err := t.traderSvc.TradePropose(
-			ctx,
-			market,
-			int(tradeType),
-			swapRequest,
-		)
-		if err != nil {
-			log.Debug("trying to process trade proposal: ", err)
-			return status.Error(codes.Internal, ErrCannotServeRequest)
-		}
-		if err := tx.Commit(); err != nil {
-			if !t.dbManager.IsTransactionConflict(err) {
-				log.Warn("trying to commit changes after accepting trade proposal: ", err)
-				return status.Error(codes.Internal, ErrCannotServeRequest)
+	res, err := t.dbManager.RunTransaction(
+		stream.Context(),
+		func(ctx context.Context) (interface{}, error) {
+			swapAccept, swapFail, swapExpiryTime, err := t.traderSvc.TradePropose(
+				ctx,
+				market,
+				int(tradeType),
+				swapRequest,
+			)
+			if err != nil {
+				return nil, err
 			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
 
-		reply = &pb.TradeProposeReply{
-			SwapAccept:     swapAccept,
-			SwapFail:       swapFail,
-			ExpiryTimeUnix: swapExpiryTime,
-		}
-		break
+			return &pb.TradeProposeReply{
+				SwapAccept:     swapAccept,
+				SwapFail:       swapFail,
+				ExpiryTimeUnix: swapExpiryTime,
+			}, nil
+		},
+	)
+	if err != nil {
+		log.Debug("trying to process trade proposal: ", err)
+		return status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	if err := stream.Send(reply); err != nil {
+	if err := stream.Send(res.(*pb.TradeProposeReply)); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 	return nil
@@ -257,38 +249,30 @@ func (t traderHandler) tradeComplete(
 	req *pb.TradeCompleteRequest,
 	stream pb.Trade_TradeCompleteServer,
 ) error {
-	var reply *pb.TradeCompleteReply
-
-	for {
-		tx := t.dbManager.NewTransaction()
-		ctx := context.WithValue(stream.Context(), "tx", tx)
-
-		txID, swapFail, err := t.traderSvc.TradeComplete(
-			ctx,
-			req.GetSwapComplete(),
-			req.GetSwapFail(),
-		)
-		if err != nil {
-			log.Debug("trying to complete trade: ", err)
-			return status.Error(codes.Internal, ErrCannotServeRequest)
-		}
-		if err := tx.Commit(); err != nil {
-			if !t.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after completing a trade: ", err)
-				return status.Error(codes.Internal, ErrCannotServeRequest)
+	res, err := t.dbManager.RunTransaction(
+		stream.Context(),
+		func(ctx context.Context) (interface{}, error) {
+			txID, swapFail, err := t.traderSvc.TradeComplete(
+				ctx,
+				req.GetSwapComplete(),
+				req.GetSwapFail(),
+			)
+			if err != nil {
+				return nil, err
 			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
 
-		reply = &pb.TradeCompleteReply{
-			Txid:     txID,
-			SwapFail: swapFail,
-		}
-		break
+			return &pb.TradeCompleteReply{
+				Txid:     txID,
+				SwapFail: swapFail,
+			}, nil
+		},
+	)
+	if err != nil {
+		log.Debug("trying to complete trade: ", err)
+		return status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	if err := stream.Send(reply); err != nil {
+	if err := stream.Send(res.(*pb.TradeCompleteReply)); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 	return nil

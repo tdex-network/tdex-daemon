@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -79,23 +78,13 @@ func (b *blockchainListener) handleBlockChainEvents() {
 			continue
 		}
 
-		for {
-			tx := b.dbManager.NewUnspentsTransaction()
-			ctx := context.WithValue(context.Background(), "utx", tx)
-
-			if err := eventHandler(ctx, event); err != nil {
-				log.Warnf("trying to handle event %s: %s\n", event.Type(), err.Error())
-				break
-			}
-			if err := tx.Commit(); err != nil {
-				if !b.dbManager.IsTransactionConflict(err) {
-					tx.Discard()
-					log.Warnf("trying to commit changes after handling event %s: %s\n", event.Type(), err.Error())
-					break
-				}
-				time.Sleep(50 * time.Millisecond)
-				continue
-			}
+		if _, err := b.dbManager.RunTransaction(
+			context.Background(),
+			func(ctx context.Context) (interface{}, error) {
+				return nil, eventHandler(ctx, event)
+			},
+		); err != nil {
+			log.Warnf("trying to handle event %s: %s\n", event.Type(), err.Error())
 			break
 		}
 	}

@@ -2,9 +2,11 @@ package dbbadger
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -58,9 +60,34 @@ func (d DbManager) NewUnspentsTransaction() ports.Transaction {
 	return d.UnspentStore.Badger().NewTransaction(true)
 }
 
-// IsTransactionConflict returns wheter the error occured when commiting a
+// RunTransaction invokes the given handler and retries in case the transaction
+// returns a conflict error
+func (d DbManager) RunTransaction(
+	reqCtx context.Context,
+	handler func(ctx context.Context) (interface{}, error),
+) (interface{}, error) {
+	for {
+		tx := d.NewTransaction()
+		ctx := context.WithValue(reqCtx, "tx", tx)
+
+		res, err := handler(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if err := tx.Commit(); err != nil {
+			if !d.isTransactionConflict(err) {
+				return nil, err
+			}
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
+		return res, nil
+	}
+}
+
+// isTransactionConflict returns wheter the error occured when commiting a
 // transacton is a conflict
-func (d DbManager) IsTransactionConflict(err error) bool {
+func (d DbManager) isTransactionConflict(err error) bool {
 	return err == badger.ErrConflict
 }
 

@@ -3,7 +3,6 @@ package grpchandler
 import (
 	"context"
 	"errors"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -111,31 +110,26 @@ func (w walletHandler) initWallet(
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	for {
-		tx := w.dbManager.NewTransaction()
-		ctx := context.WithValue(stream.Context(), "tx", tx)
-
-		if err := w.walletSvc.InitWallet(
-			ctx,
-			mnemonic,
-			string(password),
-		); err != nil {
-			log.Debug("trying to initialize wallet: ", err)
-			return status.Error(codes.Internal, ErrCannotServeRequest)
-		}
-
-		if err := tx.Commit(); err != nil {
-			if !w.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after initializing wallet: ", err)
-				return status.Error(codes.Internal, ErrCannotServeRequest)
+	res, err := w.dbManager.RunTransaction(
+		stream.Context(),
+		func(ctx context.Context) (interface{}, error) {
+			if err := w.walletSvc.InitWallet(
+				ctx,
+				mnemonic,
+				string(password),
+			); err != nil {
+				return nil, err
 			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-		break
+
+			return &pb.InitWalletReply{}, nil
+		},
+	)
+	if err != nil {
+		log.Debug("trying to initialize wallet: ", err)
+		return status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	if err := stream.Send(&pb.InitWalletReply{}); err != nil {
+	if err := stream.Send(res.(*pb.InitWalletReply)); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 	return nil
@@ -150,26 +144,22 @@ func (w walletHandler) unlockWallet(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	for {
-		tx := w.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
-		if err := w.walletSvc.UnlockWallet(ctx, string(password)); err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
-		if err := tx.Commit(); err != nil {
-			if !w.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after unlocking wallet: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+	res, err := w.dbManager.RunTransaction(
+		reqCtx,
+		func(ctx context.Context) (interface{}, error) {
+			if err := w.walletSvc.UnlockWallet(ctx, string(password)); err != nil {
+				return nil, err
 			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-		break
+
+			return &pb.UnlockWalletReply{}, nil
+		},
+	)
+	if err != nil {
+		log.Debug("trying to unlock wallet: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return &pb.UnlockWalletReply{}, nil
+	return res.(*pb.UnlockWalletReply), nil
 }
 
 func (w walletHandler) changePassword(
@@ -185,66 +175,52 @@ func (w walletHandler) changePassword(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	for {
-		tx := w.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
-		if err := w.walletSvc.ChangePassword(
-			ctx,
-			string(currentPwd),
-			string(newPwd),
-		); err != nil {
-			log.Debug("trying to change password: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-		}
-
-		if err := tx.Commit(); err != nil {
-			if !w.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after unlocking wallet: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+	res, err := w.dbManager.RunTransaction(
+		reqCtx,
+		func(ctx context.Context) (interface{}, error) {
+			if err := w.walletSvc.ChangePassword(
+				ctx,
+				string(currentPwd),
+				string(newPwd),
+			); err != nil {
+				return nil, err
 			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-		break
+
+			return &pb.ChangePasswordReply{}, nil
+		},
+	)
+	if err != nil {
+		log.Debug("trying to change password: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return &pb.ChangePasswordReply{}, nil
+	return res.(*pb.ChangePasswordReply), nil
 }
 
 func (w walletHandler) walletAddress(
 	reqCtx context.Context,
 	req *pb.WalletAddressRequest,
 ) (*pb.WalletAddressReply, error) {
-	var reply *pb.WalletAddressReply
-
-	for {
-		tx := w.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
-		addr, blindingKey, err := w.walletSvc.GenerateAddressAndBlindingKey(ctx)
-		if err != nil {
-			log.Debug("trying to derive new address: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-		}
-
-		if err := tx.Commit(); err != nil {
-			if !w.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after deriving new address: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+	res, err := w.dbManager.RunTransaction(
+		reqCtx,
+		func(ctx context.Context) (interface{}, error) {
+			addr, blindingKey, err := w.walletSvc.GenerateAddressAndBlindingKey(ctx)
+			if err != nil {
+				return nil, err
 			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
 
-		reply = &pb.WalletAddressReply{
-			Address:  addr,
-			Blinding: blindingKey,
-		}
-		break
+			return &pb.WalletAddressReply{
+				Address:  addr,
+				Blinding: blindingKey,
+			}, nil
+		},
+	)
+	if err != nil {
+		log.Debug("trying to derive new address: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return reply, nil
+	return res.(*pb.WalletAddressReply), nil
 }
 
 func (w walletHandler) walletBalance(
@@ -292,36 +268,28 @@ func (w walletHandler) sendToMany(
 		outputs = append(outputs, output)
 	}
 
-	var reply *pb.SendToManyReply
-	for {
-		tx := w.dbManager.NewTransaction()
-		ctx := context.WithValue(reqCtx, "tx", tx)
-
-		walletReq := application.SendToManyRequest{
-			Outputs:         outputs,
-			MillisatPerByte: msatPerByte,
-			Push:            req.GetPush(),
-		}
-		rawTx, err := w.walletSvc.SendToMany(ctx, walletReq)
-		if err != nil {
-			log.Debug("trying to send to many: ", err)
-			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
-		}
-
-		if err := tx.Commit(); err != nil {
-			if !w.dbManager.IsTransactionConflict(err) {
-				log.Debug("trying to commit changes after sending to many: ", err)
-				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+	res, err := w.dbManager.RunTransaction(
+		reqCtx,
+		func(ctx context.Context) (interface{}, error) {
+			walletReq := application.SendToManyRequest{
+				Outputs:         outputs,
+				MillisatPerByte: msatPerByte,
+				Push:            req.GetPush(),
 			}
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
+			rawTx, err := w.walletSvc.SendToMany(ctx, walletReq)
+			if err != nil {
+				return nil, err
+			}
 
-		reply = &pb.SendToManyReply{RawTx: rawTx}
-		break
+			return &pb.SendToManyReply{RawTx: rawTx}, nil
+		},
+	)
+	if err != nil {
+		log.Debug("trying to send to many: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return reply, nil
+	return res.(*pb.SendToManyReply), nil
 }
 
 func validateMnemonic(mnemonic []string) error {
