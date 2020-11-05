@@ -67,6 +67,8 @@ type Trade struct {
 	PsetBase64       string
 	TxID             string
 	Price            float32
+	MarketFee        int64
+	MarketFeeAsset   string
 	Timestamp        Timestamp
 	SwapRequest      Swap
 	SwapAccept       Swap
