@@ -575,6 +575,39 @@ func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketReque
 	return &pb.ListMarketReply{Markets: pbMarketInfos}, nil
 }
 
+func (o operatorHandler) ReportMarketFee(
+	ctx context.Context,
+	req *pb.ReportMarketFeeRequest,
+) (*pb.ReportMarketFeeReply, error) {
+	if err := validateMarket(req.GetMarket()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	report, err := o.operatorSvc.GetCollectedMarketFee(
+		ctx,
+		application.Market{
+			BaseAsset:  req.GetMarket().GetBaseAsset(),
+			QuoteAsset: req.GetMarket().GetQuoteAsset(),
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	collectedFees := make([]*pbtypes.Fee, 0)
+	for _, v := range report.CollectedFees {
+		collectedFees = append(collectedFees, &pbtypes.Fee{
+			Asset:      v.FeeAsset,
+			BasisPoint: v.BasisPoint,
+		})
+	}
+
+	return &pb.ReportMarketFeeReply{
+		CollectedFees:              collectedFees,
+		TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
+	}, nil
+}
+
 func validateMarketWithFee(marketWithFee *pbtypes.MarketWithFee) error {
 	if marketWithFee == nil {
 		return errors.New("market with fee is null")
