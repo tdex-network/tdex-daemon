@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 
@@ -56,6 +57,7 @@ func main() {
 		vaultRepository,
 		unspentRepository,
 		explorerSvc,
+		crawlerSvc,
 	)
 	walletSvc := application.NewWalletService(
 		vaultRepository,
@@ -96,9 +98,9 @@ func main() {
 		interceptor.StreamInterceptor(dbManager),
 	)
 
-	traderHandler := grpchandler.NewTraderHandler(traderSvc)
-	walletHandler := grpchandler.NewWalletHandler(walletSvc)
-	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc)
+	traderHandler := grpchandler.NewTraderHandler(traderSvc, dbManager)
+	walletHandler := grpchandler.NewWalletHandler(walletSvc, dbManager)
+	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc, dbManager)
 
 	// Register proto implementations on Trader interface
 	pbtrader.RegisterTradeServer(traderGrpcServer, traderHandler)
@@ -111,7 +113,7 @@ func main() {
 
 	defer stop(
 		dbManager,
-		crawlerSvc,
+		blockchainListener,
 		traderGrpcServer,
 		operatorGrpcServer,
 	)
@@ -136,16 +138,23 @@ func main() {
 
 func stop(
 	dbManager *dbbadger.DbManager,
-	crawlerSvc crawler.Service,
+	blockchainListener application.BlockchainListener,
 	traderServer *grpc.Server,
 	operatorServer *grpc.Server,
 ) {
 	operatorServer.Stop()
 	log.Debug("disabled operator interface")
+
 	traderServer.Stop()
 	log.Debug("disabled trader interface")
-	crawlerSvc.Stop()
-	log.Debug("stop observing blockchain")
+
+	blockchainListener.StopObserveBlockchain()
+	// give the crawler the time to terminate
+	time.Sleep(
+		time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond,
+	)
+	log.Debug("stopped observing blockchain")
+
 	dbManager.Store.Close()
 	dbManager.UnspentStore.Close()
 	dbManager.PriceStore.Close()
