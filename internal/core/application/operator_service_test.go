@@ -357,11 +357,17 @@ func TestListMarketExternalAddresses(t *testing.T) {
 		invalidAsset = "aaa001zzzDL"
 	)
 
+	const (
+		vaultIsEmpty = true
+		vaultIsNotEmpty = false
+	)
+
 	listMarketExternalRequest := func(
 		baseAsset string, 
 		quoteAsset string,
+		repoIsEmpty bool,
 	) ([]string, error) {
-		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, repoIsEmpty)
 		defer close()
 		market := Market{
 			QuoteAsset: quoteAsset,
@@ -372,22 +378,27 @@ func TestListMarketExternalAddresses(t *testing.T) {
 
 
 	t.Run("should return error if baseAsset is an invalid asset string", func(t *testing.T) {
-		_, err := listMarketExternalRequest(invalidAsset, validQuoteAsset)
+		_, err := listMarketExternalRequest(invalidAsset, validQuoteAsset, vaultIsNotEmpty)
 		assert.NotEqual(t, nil, err)
 	})
 
 	t.Run("should return error if quoteAsset is an invalid asset string", func(t *testing.T) {
-		_, err := listMarketExternalRequest(validBaseAsset, invalidAsset)
+		_, err := listMarketExternalRequest(validBaseAsset, invalidAsset, vaultIsNotEmpty)
 		assert.NotEqual(t, nil, err)
 	})
 
 	t.Run("should return error if market is not found for the given quoteAsset", func(t *testing.T) {
-		_, err := listMarketExternalRequest(validBaseAsset, validQuoteAssetWithNoMarket)
+		_, err := listMarketExternalRequest(validBaseAsset, validQuoteAssetWithNoMarket, vaultIsNotEmpty)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return an error if the Vault repository is empty", func(t *testing.T) {
+		_, err := listMarketExternalRequest(validBaseAsset, validQuoteAsset, vaultIsEmpty)
 		assert.NotEqual(t, nil, err)
 	})
 
 	t.Run("should return a list of addresses and a nil error if the market argument is valid", func(t *testing.T) {
-		addresses, err := listMarketExternalRequest(validBaseAsset, validQuoteAsset)
+		addresses, err := listMarketExternalRequest(validBaseAsset, validQuoteAsset, vaultIsNotEmpty)
 		assert.Equal(t, nil, err)
 		assert.NotEqual(t, nil, addresses)
 		assert.Equal(t, 1, len(addresses))
