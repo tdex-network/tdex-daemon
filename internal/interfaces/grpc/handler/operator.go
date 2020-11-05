@@ -205,12 +205,81 @@ func (o operatorHandler) ListSwaps(
 	ctx context.Context,
 	req *pb.ListSwapsRequest,
 ) (*pb.ListSwapsReply, error) {
-	swaps, err := o.operatorSvc.ListSwaps(ctx)
+	swapInfos, err := o.operatorSvc.ListSwaps(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return swaps, nil
+	pbSwapInfos := make([]*pb.SwapInfo, len(swapInfos), len(swapInfos))
+
+	for index, swapInfo := range swapInfos {
+		pbSwapInfos[index] = &pb.SwapInfo{
+			Status: pb.SwapStatus(swapInfo.Status),
+			AmountP: swapInfo.AmountP,
+			AssetP: swapInfo.AssetP,
+			AmountR: swapInfo.AmountR,
+			AssetR: swapInfo.AssetR,
+			MarketFee: &pbtypes.Fee{
+				Asset: swapInfo.MarketFee.FeeAsset,
+				BasisPoint: swapInfo.MarketFee.BasisPoint,
+			},
+			RequestTimeUnix: swapInfo.RequestTimeUnix,
+			AcceptTimeUnix: swapInfo.AcceptTimeUnix,
+			CompleteTimeUnix: swapInfo.RequestTimeUnix,
+			ExpiryTimeUnix: swapInfo.ExpiryTimeUnix,
+		}
+	}
+	
+	return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
+}
+
+func (o operatorHandler) WithdrawMarket(
+	ctx context.Context,
+	req *pb.WithdrawMarketRequest,
+) (*pb.WithdrawMarketReply, error) {
+	market := req.GetMarket()
+	if err := validateMarket(market); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	rawTx, err := o.operatorSvc.WithdrawMarketFunds(
+		ctx,
+		application.WithdrawMarketReq{
+			Market: application.Market{
+				BaseAsset:  req.GetMarket().GetBaseAsset(),
+				QuoteAsset: req.GetMarket().GetQuoteAsset(),
+			},
+			BalanceToWithdraw: application.Balance{
+				BaseAmount:  req.GetBalanceToWithdraw().GetBaseAmount(),
+				QuoteAmount: req.GetBalanceToWithdraw().GetQuoteAmount(),
+			},
+			MillisatPerByte: req.GetMillisatPerByte(),
+			Address:         req.GetAddress(),
+			Push:            req.GetPush(),
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.WithdrawMarketReply{
+		RawTx: rawTx,
+	}, nil
+}
+
+func (o operatorHandler) BalanceFeeAccount(
+	ctx context.Context,
+	req *pb.BalanceFeeAccountRequest,
+) (*pb.BalanceFeeAccountReply, error) {
+
+	balance, err := o.operatorSvc.FeeAccountBalance(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.BalanceFeeAccountReply{
+		Balance: balance,
+	}, nil
 }
 
 func (o operatorHandler) ListDepositMarket(
@@ -248,7 +317,7 @@ func (o operatorHandler) ListMarket(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos))
+	pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos), len(marketInfos))
 
 	for index, marketInfo := range marketInfos {
 		pbMarketInfos[index] = &pb.MarketInfo{
