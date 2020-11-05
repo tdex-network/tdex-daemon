@@ -68,7 +68,7 @@ func runCommand(cmd *exec.Cmd) {
 	}
 }
 
-func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
+func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, vaultRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
 	if _, err := os.Stat(testDir); os.IsNotExist(err) {
 		os.Mkdir(testDir, os.ModePerm)
 	}
@@ -97,13 +97,16 @@ func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool) 
 	}
 
 	vaultRepo := newMockedVaultRepositoryImpl(tradeWallet)
-	vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
-		v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
-		v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart)
-		v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart + 1)
-		return v, nil
-	})
-	
+
+	if !vaultRepositoryIsEmpty {
+		vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
+			v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
+			v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart)
+			v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart + 1)
+			return v, nil
+		})
+	}
+
 	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
 
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
