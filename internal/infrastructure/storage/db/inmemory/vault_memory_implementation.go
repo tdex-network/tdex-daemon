@@ -42,7 +42,7 @@ func NewVaultRepositoryImpl() domain.VaultRepository {
 	}
 }
 
-func (r VaultRepositoryImpl) GetAllDerivedEternalAddressesForAccount(ctx context.Context, accountIndex int) ([]string, error) {
+func (r VaultRepositoryImpl) GetAllDerivedExternalAddressesForAccount(ctx context.Context, accountIndex int) ([]string, error) {
 	return nil, nil
 }
 

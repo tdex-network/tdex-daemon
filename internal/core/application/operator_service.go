@@ -556,7 +556,7 @@ func (o *operatorService) ListMarketExternalAddresses(
 		return nil, domain.ErrMarketNotExist
 	}
 
-	return o.vaultRepository.GetAllDerivedEternalAddressesForAccount(
+	return o.vaultRepository.GetAllDerivedExternalAddressesForAccount(
 		ctx,
 		market.AccountIndex,
 	)

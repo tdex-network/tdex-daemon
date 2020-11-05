@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"os"
 	"os/exec"
 	"time"
+
+	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/shopspring/decimal"
@@ -499,7 +500,7 @@ func newMockedVaultRepositoryImpl(w mockedWallet) domain.VaultRepository {
 	}
 }
 
-func (r *mockedVaultRepository) GetAllDerivedEternalAddressesForAccount(
+func (r *mockedVaultRepository) GetAllDerivedExternalAddressesForAccount(
 	ctx context.Context,
 	accountIndex int,
 ) ([]string, error) {

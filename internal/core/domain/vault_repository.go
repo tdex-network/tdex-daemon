@@ -27,7 +27,7 @@ type VaultRepository interface {
 		accountIndex int,
 		scripts []string,
 	) (map[string]string, error)
-	GetAllDerivedEternalAddressesForAccount(
+	GetAllDerivedExternalAddressesForAccount(
 		ctx context.Context,
 		accountIndex int,
 	) ([]string, error)

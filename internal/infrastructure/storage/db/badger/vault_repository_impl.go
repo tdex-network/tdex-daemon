@@ -98,7 +98,7 @@ func (v vaultRepositoryImpl) GetAllDerivedAddressesAndBlindingKeysForAccount(
 	return vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
-func (v vaultRepositoryImpl) GetAllDerivedEternalAddressesForAccount(
+func (v vaultRepositoryImpl) GetAllDerivedExternalAddressesForAccount(
 	ctx context.Context,
 	accountIndex int,
 ) ([]string, error) {
