@@ -409,11 +409,6 @@ func TestGetCollectedMarketFee(t *testing.T) {
 
 		assert.Equal(t, 0, len(fee.CollectedFees))
 
-		fee, err = operatorService.GetCollectedMarketFee(ctx, market)
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 		trades, err := tradeRepo.GetAllTradesByMarket(ctx, market.QuoteAsset)
 		if err != nil {
