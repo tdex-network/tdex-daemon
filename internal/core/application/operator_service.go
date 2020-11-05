@@ -397,13 +397,13 @@ func (o *operatorService) UpdateMarketPrice(
 	}
 
 	// validate the new prices amount
-	err = validateAmount(req.Price.BasePrice.IntPart());
+	err = validateAmount(req.Price.BasePrice);
 	if err != nil {
 		return domain.ErrInvalidBasePrice
 	}
 
 	// validate the new prices amount
-	err = validateAmount(req.Price.QuotePrice.IntPart());
+	err = validateAmount(req.Price.QuotePrice);
 	if err != nil {
 		return domain.ErrInvalidQuotePrice
 	}

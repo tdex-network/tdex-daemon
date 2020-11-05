@@ -159,22 +159,27 @@ func TestUpdateMarketPrice(t *testing.T) {
 	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty)
 	defer close()
 	
-	updateMarketPriceRequest := func(basePrice int, quotePrice int) error {
+	updateMarketPriceRequest := func(basePrice float64, quotePrice float64) error {
 		args := MarketWithPrice{
 			Market: Market{
 				BaseAsset: network.Regtest.AssetID, 
 				QuoteAsset: marketUnspents[1].AssetHash,
 			},
 			Price: Price{
-				BasePrice: decimal.NewFromInt(int64(basePrice)), 
-				QuotePrice: decimal.NewFromInt(int64(quotePrice)),
+				BasePrice: decimal.NewFromFloat(basePrice), 
+				QuotePrice: decimal.NewFromFloat(quotePrice),
 			},
 		}
 		return operatorService.UpdateMarketPrice(ctx, args)
 	}
 	
 	t.Run("should not return an error if the price is valid and market is found", func (t *testing.T) {
-		err := updateMarketPriceRequest(10, 1000)
+		err := updateMarketPriceRequest(10.01, 1000)
+		assert.Equal(t, nil, err)
+	})
+
+	t.Run("shoud not return an error if the price is valid and > 0 && < 1", func(t *testing.T) {
+		err := updateMarketPriceRequest(0.4, 1)
 		assert.Equal(t, nil, err)
 	})
 
@@ -189,9 +194,10 @@ func TestUpdateMarketPrice(t *testing.T) {
 	})
 
 	t.Run("should return an error if one of the prices are equal to zero", func(t *testing.T) {
-		err := updateMarketPriceRequest(102, 0)
+		err := updateMarketPriceRequest(102.1293, 0)
 		assert.NotEqual(t, nil, err)
 	})
+
 }
 func TestListSwap(t *testing.T) {
 	t.Run("ListSwap should return an empty list and a nil error if there is not trades in TradeRepository", func(t *testing.T) {
