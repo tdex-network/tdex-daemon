@@ -111,6 +111,13 @@ func (o operatorHandler) BalanceFeeAccount(
 	return o.balanceFeeAccount(ctx, req)
 }
 
+func (o operatorHandler) ListDepositMarket(
+	ctx context.Context,
+	req *pb.ListDepositMarketRequest,
+) (*pb.ListDepositMarketReply, error) {
+	return o.listDepositMarket(ctx, req)
+}
+
 func (o operatorHandler) ListMarket(
 	ctx context.Context,
 	req *pb.ListMarketRequest,
@@ -515,6 +522,29 @@ func (o operatorHandler) balanceFeeAccount(
 	}
 
 	return &pb.BalanceFeeAccountReply{Balance: balance}, nil
+}
+
+func (o operatorHandler) listDepositMarket(
+	ctx context.Context,
+	req *pb.ListDepositMarketRequest,
+) (*pb.ListDepositMarketReply, error) {
+	if err := validateMarket(req.GetMarket()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	addresses, err := o.operatorSvc.ListMarketExternalAddresses(
+		ctx,
+		application.Market{
+			BaseAsset:  req.GetMarket().GetBaseAsset(),
+			QuoteAsset: req.GetMarket().GetQuoteAsset(),
+		},
+	)
+	if err != nil {
+		log.Debug("trying to list all derived addresses for account: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+	}
+
+	return &pb.ListDepositMarketReply{Address: addresses}, nil
 }
 
 // ListMarket returns the result of the ListMarket method of the operator service.
