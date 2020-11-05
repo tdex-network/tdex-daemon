@@ -1,6 +1,11 @@
 package application
 
 import (
+	"context"
+	"fmt"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"os"
 	"testing"
 	"time"
 
@@ -11,12 +16,13 @@ import (
 )
 
 const marketRepoIsEmpty = true
+const tradeRepoIsEmpty = true
 
 var baseAsset = config.GetString(config.BaseAssetKey)
 
 func TestListMarket(t *testing.T) {
 	t.Run("ListMarket should return an empty list and a nil error if market repository is empty", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
 		marketInfos, err := operatorService.ListMarket(ctx)
 		close()
 		assert.Equal(t, nil, err)
@@ -24,7 +30,7 @@ func TestListMarket(t *testing.T) {
 	})
 
 	t.Run("ListMarket should return the number of markets in the market repository", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty)
 		marketInfos, err := operatorService.ListMarket(ctx)
 		close()
 		assert.Equal(t, nil, err)
@@ -36,7 +42,7 @@ func TestListMarket(t *testing.T) {
 func TestDepositMarket(t *testing.T) {
 
 	t.Run("DepositMarket with new market", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
 
 		address, err := operatorService.DepositMarket(ctx, "", "")
 		assert.Equal(t, nil, err)
@@ -51,9 +57,10 @@ func TestDepositMarket(t *testing.T) {
 	})
 
 	t.Run("DepositMarket with invalid base asset", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
 
-		emptyAddress, err := operatorService.DepositMarket(ctx, "", "validQuoteAsset")
+		validQuoteAsset := "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
+		emptyAddress, err := operatorService.DepositMarket(ctx, "", validQuoteAsset)
 		assert.Equal(t, domain.ErrInvalidBaseAsset, err)
 		assert.Equal(
 			t,
@@ -65,10 +72,10 @@ func TestDepositMarket(t *testing.T) {
 	})
 
 	t.Run("DepositMarket with valid base asset and empty quote asset", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(ctx, baseAsset, "")
-		assert.Equal(t, domain.ErrMarketNotExist, err)
+		assert.Equal(t, domain.ErrInvalidQuoteAsset, err)
 		assert.Equal(
 			t,
 			"",
@@ -79,10 +86,10 @@ func TestDepositMarket(t *testing.T) {
 	})
 
 	t.Run("DepositMarket with valid base asset and invalid quote asset", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(ctx, baseAsset, "ldjbwjkbfjksdbjkvcsbdjkbcdsjkb")
-		assert.Equal(t, domain.ErrMarketNotExist, err)
+		assert.Equal(t, domain.ErrInvalidQuoteAsset, err)
 		assert.Equal(
 			t,
 			"",
@@ -103,7 +110,7 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 
 		startNigiriAndWait()
 
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
 
 		address, err := operatorService.DepositMarket(ctx, "", "")
 		assert.Equal(t, nil, err)
@@ -150,4 +157,190 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 		close()
 		stopNigiri()
 	})
+}
+
+func TestListSwap(t *testing.T) {
+	t.Run("ListSwap should return an empty list and a nil error if there is not trades in TradeRepository", func(t *testing.T) {
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
+		defer close()
+
+		swapInfos, err := operatorService.ListSwaps(ctx)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 0, len(swapInfos))
+	})
+
+	t.Run("ListSwap should return the SwapInfo according to the number of trades in the TradeRepository", func(t *testing.T) {
+		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, !tradeRepoIsEmpty)
+		defer close()
+
+		swapInfos, err := operatorService.ListSwaps(ctx)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 1, len(swapInfos))
+	})
+}
+
+func TestWithdrawMarket(t *testing.T) {
+	dbManager, err := mockDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	vaultRepo := dbbadger.NewVaultRepositoryImpl(dbManager)
+	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:            nil,
+		Observables:            []crawler.Observable{},
+		ErrorHandler:           func(err error) { fmt.Println(err) },
+		IntervalInMilliseconds: 100,
+	})
+	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
+
+	operatorService := NewOperatorService(
+		marketRepo,
+		vaultRepo,
+		nil,
+		unspentRepo,
+		nil,
+		crawlerSvc,
+	)
+
+	t.Run(
+		"WithdrawMarketFunds should return raw transaction",
+		func(t *testing.T) {
+			tx := dbManager.NewTransaction()
+			ctx := context.WithValue(context.Background(), "tx", tx)
+			rawTx, err := operatorService.WithdrawMarketFunds(ctx, WithdrawMarketReq{
+				Market: Market{
+					BaseAsset:  "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
+					QuoteAsset: "d73f5cd0954c1bf325f85d7a7ff43a6eb3ea3b516fd57064b85306d43bc1c9ff",
+				},
+				BalanceToWithdraw: Balance{
+					BaseAmount:  4200,
+					QuoteAmount: 2300,
+				},
+				MillisatPerByte: 20,
+				Address:         "el1qq22f83p6asdy7jsp4tuke0d9emvxhcenqee5umsn88fsn8gggzlrx0md4hp38rnwcnu9lusmzhmktlt3h5q0gecfpfvx6uac2",
+				Push:            false,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, true, len(rawTx) > 0)
+		},
+	)
+
+	t.Run(
+		"WithdrawMarketFunds should return error for wrong base asset",
+		func(t *testing.T) {
+			tx := dbManager.NewTransaction()
+			ctx := context.WithValue(context.Background(), "tx", tx)
+			_, err := operatorService.WithdrawMarketFunds(ctx,
+				WithdrawMarketReq{
+					Market: Market{
+						BaseAsset:  "4144",
+						QuoteAsset: "d73f5cd0954c1bf325f85d7a7ff43a6eb3ea3b516fd57064b85306d43bc1c9ff",
+					},
+					BalanceToWithdraw: Balance{
+						BaseAmount:  4200,
+						QuoteAmount: 2300,
+					},
+					MillisatPerByte: 20,
+					Address:         "el1qq22f83p6asdy7jsp4tuke0d9emvxhcenqee5umsn88fsn8gggzlrx0md4hp38rnwcnu9lusmzhmktlt3h5q0gecfpfvx6uac2",
+					Push:            false,
+				})
+			assert.Error(t, err)
+			assert.Equal(t, err, domain.ErrInvalidBaseAsset)
+		},
+	)
+
+	t.Run(
+		"WithdrawMarketFunds should return error for wrong qoute asset",
+		func(t *testing.T) {
+			tx := dbManager.NewTransaction()
+			ctx := context.WithValue(context.Background(), "tx", tx)
+			_, err := operatorService.WithdrawMarketFunds(ctx,
+				WithdrawMarketReq{
+					Market: Market{
+						BaseAsset:  "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
+						QuoteAsset: "eqwqw",
+					},
+					BalanceToWithdraw: Balance{
+						BaseAmount:  4200,
+						QuoteAmount: 2300,
+					},
+					MillisatPerByte: 20,
+					Address:         "el1qq22f83p6asdy7jsp4tuke0d9emvxhcenqee5umsn88fsn8gggzlrx0md4hp38rnwcnu9lusmzhmktlt3h5q0gecfpfvx6uac2",
+					Push:            false,
+				})
+			assert.Error(t, err)
+			assert.Equal(t, err, domain.ErrMarketNotExist)
+		},
+	)
+
+	t.Run(
+		"WithdrawMarketFunds should return error, not enough money",
+		func(t *testing.T) {
+			tx := dbManager.NewTransaction()
+			ctx := context.WithValue(context.Background(), "tx", tx)
+			_, err := operatorService.WithdrawMarketFunds(ctx,
+				WithdrawMarketReq{
+					Market: Market{
+						BaseAsset:  "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
+						QuoteAsset: "d73f5cd0954c1bf325f85d7a7ff43a6eb3ea3b516fd57064b85306d43bc1c9ff",
+					},
+					BalanceToWithdraw: Balance{
+						BaseAmount:  1000000000000,
+						QuoteAmount: 2300,
+					},
+					MillisatPerByte: 20,
+					Address:         "el1qq22f83p6asdy7jsp4tuke0d9emvxhcenqee5umsn88fsn8gggzlrx0md4hp38rnwcnu9lusmzhmktlt3h5q0gecfpfvx6uac2",
+					Push:            false,
+				})
+			assert.Error(t, err)
+		},
+	)
+
+	dbManager.Store.Close()
+	dbManager.UnspentStore.Close()
+	os.RemoveAll(testDir)
+}
+
+func TestBalanceFeeAccount(t *testing.T) {
+	dbManager, err := mockDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	vaultRepo := dbbadger.NewVaultRepositoryImpl(dbManager)
+	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:            nil,
+		Observables:            []crawler.Observable{},
+		ErrorHandler:           func(err error) { fmt.Println(err) },
+		IntervalInMilliseconds: 100,
+	})
+	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
+
+	operatorService := NewOperatorService(
+		marketRepo,
+		vaultRepo,
+		nil,
+		unspentRepo,
+		nil,
+		crawlerSvc,
+	)
+
+	t.Run(
+		"FeeAccountBalance should return fee account balance",
+		func(t *testing.T) {
+			tx := dbManager.NewTransaction()
+			ctx := context.WithValue(context.Background(), "tx", tx)
+			balance, err := operatorService.FeeAccountBalance(ctx)
+
+			assert.NoError(t, err)
+			assert.Equal(t, balance, int64(100000000))
+		},
+	)
+
+	dbManager.Store.Close()
+	dbManager.UnspentStore.Close()
+	os.RemoveAll(testDir)
 }

@@ -5,6 +5,21 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
+// SwapInfo is the data struct returned by ListSwap RPC.
+type SwapInfo struct {
+	Status           int32
+	AmountP          uint64
+	AssetP           string
+	AmountR          uint64
+	AssetR           string
+	MarketFee        Fee
+	RequestTimeUnix  uint64
+	AcceptTimeUnix   uint64
+	CompleteTimeUnix uint64
+	ExpiryTimeUnix   uint64
+}
+
+// MarketInfo is the data struct returned by ListMarket RPC.
 type MarketInfo struct {
 	Market       Market
 	Fee          Fee
@@ -22,6 +37,7 @@ type MarketWithFee struct {
 	Fee
 }
 
+// Fee is a couple amount / asset type and represents fees in a transaction.
 type Fee struct {
 	FeeAsset   string
 	BasisPoint int64
@@ -56,6 +72,14 @@ type Balance struct {
 type BalanceWithFee struct {
 	Balance
 	Fee
+}
+
+type WithdrawMarketReq struct {
+	Market
+	BalanceToWithdraw Balance
+	MillisatPerByte   int64
+	Address           string
+	Push              bool
 }
 
 type ReportMarketFee struct {
