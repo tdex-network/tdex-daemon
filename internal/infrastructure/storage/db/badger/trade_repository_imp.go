@@ -3,6 +3,7 @@ package dbbadger
 import (
 	"context"
 	"errors"
+	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
@@ -92,6 +93,25 @@ func (t tradeRepositoryImpl) UpdateTrade(
 	}
 
 	return t.updateTrade(ctx, updatedTrade.ID, *updatedTrade)
+}
+
+func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
+	ctx context.Context,
+	marketQuoteAsset string,
+) ([]*domain.Trade, error) {
+	query := badgerhold.
+		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
+		And("Status.Code").Eq(pb.SwapStatus_COMPLETE)
+	tr, err := t.findTrades(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	trades := make([]*domain.Trade, 0, len(tr))
+	for _, v := range tr {
+		trades = append(trades, &v)
+	}
+
+	return trades, nil
 }
 
 func (t tradeRepositoryImpl) getOrCreateTrade(

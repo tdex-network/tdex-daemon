@@ -5,6 +5,8 @@ import (
 	"fmt"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/trade"
+	"github.com/vulpemventures/go-elements/network"
 	"os"
 	"testing"
 	"time"
@@ -343,4 +345,101 @@ func TestBalanceFeeAccount(t *testing.T) {
 	dbManager.Store.Close()
 	dbManager.UnspentStore.Close()
 	os.RemoveAll(testDir)
+}
+
+func TestGetCollectedMarketFee(t *testing.T) {
+
+	operatorService, ctx, closeOperato := newTestOperator(
+		marketRepoIsEmpty,
+		tradeRepoIsEmpty,
+	)
+
+	defer closeOperato()
+
+	traderSvc, ctx, closeTrader := newTestTrader()
+	defer closeTrader()
+
+	markets, err := traderSvc.GetTradableMarkets(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	market := markets[0].Market
+	preview, err := traderSvc.GetMarketPrice(ctx, market, TradeSell, 30000000)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	proposerWallet, err := trade.NewRandomWallet(&network.Regtest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("GetCollectedMarketFee", func(t *testing.T) {
+		swapRequest, err := newSwapRequest(
+			proposerWallet,
+			market.BaseAsset, 30000000,
+			market.QuoteAsset, preview.Amount,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, swapFail, _, err := traderSvc.TradePropose(
+			ctx,
+			market,
+			TradeSell,
+			swapRequest,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if swapFail != nil {
+			t.Fatal(swapFail.GetFailureMessage())
+		}
+
+		fee, err := operatorService.GetCollectedMarketFee(ctx, market)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Equal(t, 0, len(fee.CollectedFees))
+
+		fee, err = operatorService.GetCollectedMarketFee(ctx, market)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
+		trades, err := tradeRepo.GetAllTradesByMarket(ctx, market.QuoteAsset)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		tr := trades[0]
+		err = tradeRepo.UpdateTrade(
+			ctx,
+			&tr.ID,
+			func(trade *domain.Trade) (*domain.Trade, error) {
+				trade.Status = domain.CompletedStatus
+				return trade, nil
+			},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		fee, err = operatorService.GetCollectedMarketFee(ctx, market)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Equal(t, 1, len(fee.CollectedFees))
+		assert.Equal(
+			t,
+			int64(25),
+			fee.TotalCollectedFeesPerAsset[network.Regtest.AssetID],
+		)
+	})
+
 }

@@ -340,7 +340,7 @@ func (t *tradeService) TradePropose(
 			}
 
 			trade.MarketFee = mkt.Fee
-			trade.MarketQuoteAsset = mkt.FeeAsset
+			trade.MarketFeeAsset = mkt.FeeAsset
 
 			return trade, nil
 		}); err != nil {
