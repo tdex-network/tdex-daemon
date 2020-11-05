@@ -3,11 +3,12 @@ package application
 import (
 	"context"
 	"fmt"
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"os"
 	"testing"
 	"time"
+
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -49,7 +50,7 @@ func TestDepositMarket(t *testing.T) {
 
 		assert.Equal(
 			t,
-			"el1qqvead5fpxkjyyl3zwukr7twqrnag40ls0y052s547smxdyeus209ppkmtdyemgkz4rjn8ss8fhjrzc3q9evt7atrgtpff2thf",
+			"el1qqfzjp0y057j60avxqgmj9aycqhlq7ke20v20c8dkml68jjs0fu09u9sn55uduay46yyt25tcny0rfqejly5x6dgjw44uk9p8r",
 			address,
 		)
 
@@ -343,4 +344,49 @@ func TestBalanceFeeAccount(t *testing.T) {
 	dbManager.Store.Close()
 	dbManager.UnspentStore.Close()
 	os.RemoveAll(testDir)
+}
+
+func TestListMarketExternalAddresses(t *testing.T) {
+	const (
+		validQuoteAsset = "d090c403610fe8a9e31967355929833bc8a8fe08429e630162d1ecbf29fdf28b"
+		validBaseAsset = "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
+		validQuoteAssetWithNoMarket = "0ddfa690c7b2ba3b8ecee8200da2420fc502f57f8312c83d466b6f8dced70441"
+		invalidAsset = "aaa001zzzDL"
+	)
+
+	listMarketExternalRequest := func(
+		baseAsset string, 
+		quoteAsset string,
+	) ([]string, error) {
+		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty)
+		defer close()
+		market := Market{
+			QuoteAsset: quoteAsset,
+			BaseAsset: baseAsset,
+		}
+		return operatorService.ListMarketExternalAddresses(ctx, market)
+	}
+
+
+	t.Run("should return error if baseAsset is an invalid asset string", func(t *testing.T) {
+		_, err := listMarketExternalRequest(invalidAsset, validQuoteAsset)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return error if quoteAsset is an invalid asset string", func(t *testing.T) {
+		_, err := listMarketExternalRequest(validBaseAsset, invalidAsset)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return error if market is not found for the given quoteAsset", func(t *testing.T) {
+		_, err := listMarketExternalRequest(validBaseAsset, validQuoteAssetWithNoMarket)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return a list of addresses and a nil error if the market argument is valid", func(t *testing.T) {
+		addresses, err := listMarketExternalRequest(validBaseAsset, validQuoteAsset)
+		assert.Equal(t, nil, err)
+		assert.NotEqual(t, nil, addresses)
+		assert.Equal(t, 1, len(addresses))
+	})
 }
