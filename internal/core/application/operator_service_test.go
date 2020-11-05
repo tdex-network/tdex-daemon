@@ -349,12 +349,12 @@ func TestBalanceFeeAccount(t *testing.T) {
 
 func TestGetCollectedMarketFee(t *testing.T) {
 
-	operatorService, ctx, closeOperato := newTestOperator(
+	operatorService, ctx, closeOperator := newTestOperator(
 		marketRepoIsEmpty,
 		tradeRepoIsEmpty,
 	)
 
-	defer closeOperato()
+	defer closeOperator()
 
 	traderSvc, ctx, closeTrader := newTestTrader()
 	defer closeTrader()
