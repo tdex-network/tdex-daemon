@@ -223,24 +223,12 @@ func TestUpdateTx(t *testing.T) {
 		unspents             []explorer.Utxo
 		outputs              outputList
 		changePathsByAsset   map[string]string
+		wantChangeForFees    bool
 		expectedIns          int
 		expectedOuts         int
 		expectedBlindingKeys int
 	}{
-		{
-			nil, // no unspents
-			outputList{
-				{
-					network.Regtest.AssetID,
-					1,
-					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
-				},
-			},
-			nil, // no changed derivation map
-			0,
-			1, // outputs
-			0,
-		},
+		// without change for network fees
 		{
 			mockUnspentsForUpdateTx(),
 			outputList{
@@ -253,6 +241,57 @@ func TestUpdateTx(t *testing.T) {
 			map[string]string{
 				network.Regtest.AssetID: "0'/1/1",
 			},
+			false, // without change for network fees
+			1,     // no input for change added
+			1,     // outputs (no LBTC change!)
+			0,     // no change is added becaus 1 lbtc in = 1 lbtc out
+		},
+		{
+			mockUnspentsForUpdateTx(),
+			outputList{
+				{
+					network.Regtest.AssetID,
+					0.3,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+			},
+			map[string]string{
+				network.Regtest.AssetID: "0'/1/1",
+			},
+			false, // without change for network fees
+			1,     // no input for change added
+			2,     // outputs (out + change -> 1 lbtc in - 0.3 out = 0.7 change)
+			1,     // change output added
+		},
+		{
+			nil, // no unspents
+			outputList{
+				{
+					network.Regtest.AssetID,
+					1,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+			},
+			nil, // no changed derivation map
+			false,
+			0,
+			1, // outputs
+			0,
+		},
+		// with change network fees
+		{
+			mockUnspentsForUpdateTx(),
+			outputList{
+				{
+					network.Regtest.AssetID,
+					1,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+			},
+			map[string]string{
+				network.Regtest.AssetID: "0'/1/1",
+			},
+			true,
 			2,
 			2, // outputs + LBTC change
 			1,
@@ -270,6 +309,7 @@ func TestUpdateTx(t *testing.T) {
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
+			true,
 			2,
 			2, // outputs + LBTC change
 			1,
@@ -287,6 +327,7 @@ func TestUpdateTx(t *testing.T) {
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
+			true,
 			2,
 			3, // outputs + asset change + lbtc change
 			2,
@@ -309,6 +350,7 @@ func TestUpdateTx(t *testing.T) {
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
+			true,
 			2,
 			3, // outputs + lbtc change
 			1,
@@ -337,6 +379,7 @@ func TestUpdateTx(t *testing.T) {
 				"3be6cc6330799ea0a1ae2b7a950ba983e88f41b75a0cb36342e7a039903e7d55": "0'/1/1",
 				network.Regtest.AssetID: "0'/1/2",
 			},
+			true,
 			3,
 			6, // outputs + asset1 change + asset2 change + lbtc change
 			3,
@@ -349,6 +392,7 @@ func TestUpdateTx(t *testing.T) {
 			Unspents:           tt.unspents,
 			Outputs:            tt.outputs.TxOutputs(),
 			ChangePathsByAsset: tt.changePathsByAsset,
+			WantChangeForFees:  tt.wantChangeForFees,
 			MilliSatsPerBytes:  100,
 			Network:            &network.Regtest,
 		}
@@ -361,7 +405,7 @@ func TestUpdateTx(t *testing.T) {
 		assert.Equal(t, tt.expectedOuts, len(ptx.Outputs))
 		assert.Equal(t, tt.expectedIns, len(res.SelectedUnspents))
 		assert.Equal(t, tt.expectedBlindingKeys, len(res.ChangeOutputsBlindingKeys))
-		if len(tt.unspents) > 0 {
+		if len(tt.unspents) > 0 && tt.wantChangeForFees {
 			assert.Equal(t, true, res.FeeAmount > 0)
 		} else {
 			assert.Equal(t, uint64(0), res.FeeAmount)
