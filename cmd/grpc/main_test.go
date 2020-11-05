@@ -105,7 +105,7 @@ func initWallet() error {
 		return err
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(8 * time.Second)
 
 	if _, err := client.UnlockWallet(context.Background(), &pbwallet.UnlockWalletRequest{
 		WalletPassword: []byte(walletPassword),
