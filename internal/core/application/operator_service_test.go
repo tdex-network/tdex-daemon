@@ -165,7 +165,7 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 }
 
 func TestUpdateMarketPrice(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty)
+	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 	defer close()
 	
 	updateMarketPriceRequest := func(basePrice float64, quotePrice float64) error {
