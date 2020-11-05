@@ -58,6 +58,12 @@ func (d DbManager) NewUnspentsTransaction() ports.Transaction {
 	return d.UnspentStore.Badger().NewTransaction(true)
 }
 
+// IsTransactionConflict returns wheter the error occured when commiting a
+// transacton is a conflict
+func (d DbManager) IsTransactionConflict(err error) bool {
+	return err == badger.ErrConflict
+}
+
 // JSONEncode is a custom JSON based encoder for badger
 func JSONEncode(value interface{}) ([]byte, error) {
 	var buff bytes.Buffer

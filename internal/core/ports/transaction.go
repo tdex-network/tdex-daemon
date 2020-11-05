@@ -5,6 +5,7 @@ type DbManager interface {
 	NewTransaction() Transaction
 	NewPricesTransaction() Transaction
 	NewUnspentsTransaction() Transaction
+	IsTransactionConflict(err error) bool
 }
 
 // Transaction interface defines the method to commit or discard a database transaction.
