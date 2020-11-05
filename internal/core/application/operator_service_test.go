@@ -17,11 +17,6 @@ const tradeRepoIsEmpty = true
 
 var baseAsset = config.GetString(config.BaseAssetKey)
 
-const (
-	LBTC = "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
-	USDT = "7151f4f38f546c3084afa957c5a0b914b4af5726065b450edad1fc11b8dbe900"
-)
-
 func TestListMarket(t *testing.T) {
 	t.Run("ListMarket should return an empty list and a nil error if market repository is empty", func(t *testing.T) {
 		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
