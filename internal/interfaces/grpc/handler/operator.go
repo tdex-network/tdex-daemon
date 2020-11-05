@@ -7,6 +7,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -94,6 +95,20 @@ func (o operatorHandler) ListSwaps(
 	req *pb.ListSwapsRequest,
 ) (*pb.ListSwapsReply, error) {
 	return o.listSwaps(ctx, req)
+}
+
+func (o operatorHandler) WithdrawMarket(
+	ctx context.Context,
+	req *pb.WithdrawMarketRequest,
+) (*pb.WithdrawMarketReply, error) {
+	return o.withdrawMarket(ctx, req)
+}
+
+func (o operatorHandler) BalanceFeeAccount(
+	ctx context.Context,
+	req *pb.BalanceFeeAccountRequest,
+) (*pb.BalanceFeeAccountReply, error) {
+	return o.balanceFeeAccount(ctx, req)
 }
 
 func (o operatorHandler) ListMarket(
@@ -420,27 +435,27 @@ func (o operatorHandler) listSwaps(
 
 	for index, swapInfo := range swapInfos {
 		pbSwapInfos[index] = &pb.SwapInfo{
-			Status: pb.SwapStatus(swapInfo.Status),
+			Status:  pb.SwapStatus(swapInfo.Status),
 			AmountP: swapInfo.AmountP,
-			AssetP: swapInfo.AssetP,
+			AssetP:  swapInfo.AssetP,
 			AmountR: swapInfo.AmountR,
-			AssetR: swapInfo.AssetR,
+			AssetR:  swapInfo.AssetR,
 			MarketFee: &pbtypes.Fee{
-				Asset: swapInfo.MarketFee.FeeAsset,
+				Asset:      swapInfo.MarketFee.FeeAsset,
 				BasisPoint: swapInfo.MarketFee.BasisPoint,
 			},
-			RequestTimeUnix: swapInfo.RequestTimeUnix,
-			AcceptTimeUnix: swapInfo.AcceptTimeUnix,
+			RequestTimeUnix:  swapInfo.RequestTimeUnix,
+			AcceptTimeUnix:   swapInfo.AcceptTimeUnix,
 			CompleteTimeUnix: swapInfo.RequestTimeUnix,
-			ExpiryTimeUnix: swapInfo.ExpiryTimeUnix,
+			ExpiryTimeUnix:   swapInfo.ExpiryTimeUnix,
 		}
 	}
-	
+
 	return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
 }
 
-func (o operatorHandler) WithdrawMarket(
-	ctx context.Context,
+func (o operatorHandler) withdrawMarket(
+	reqCtx context.Context,
 	req *pb.WithdrawMarketRequest,
 ) (*pb.WithdrawMarketReply, error) {
 	market := req.GetMarket()
@@ -448,44 +463,58 @@ func (o operatorHandler) WithdrawMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	rawTx, err := o.operatorSvc.WithdrawMarketFunds(
-		ctx,
-		application.WithdrawMarketReq{
-			Market: application.Market{
-				BaseAsset:  req.GetMarket().GetBaseAsset(),
-				QuoteAsset: req.GetMarket().GetQuoteAsset(),
-			},
-			BalanceToWithdraw: application.Balance{
-				BaseAmount:  req.GetBalanceToWithdraw().GetBaseAmount(),
-				QuoteAmount: req.GetBalanceToWithdraw().GetQuoteAmount(),
-			},
-			MillisatPerByte: req.GetMillisatPerByte(),
-			Address:         req.GetAddress(),
-			Push:            req.GetPush(),
+	var wm = application.WithdrawMarketReq{
+		Market: application.Market{
+			BaseAsset:  req.GetMarket().GetBaseAsset(),
+			QuoteAsset: req.GetMarket().GetQuoteAsset(),
 		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		BalanceToWithdraw: application.Balance{
+			BaseAmount:  req.GetBalanceToWithdraw().GetBaseAmount(),
+			QuoteAmount: req.GetBalanceToWithdraw().GetQuoteAmount(),
+		},
+		MillisatPerByte: req.GetMillisatPerByte(),
+		Address:         req.GetAddress(),
+		Push:            req.GetPush(),
+	}
+	var reply *pb.WithdrawMarketReply
+
+	for {
+		tx := o.dbManager.NewTransaction()
+		ctx := context.WithValue(reqCtx, "tx", tx)
+
+		rawTx, err := o.operatorSvc.WithdrawMarketFunds(ctx, wm)
+		if err != nil {
+			log.Debug("trying to withdraw from market: ", err)
+			return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+		}
+
+		if err := tx.Commit(); err != nil {
+			if !o.dbManager.IsTransactionConflict(err) {
+				log.Debug("trying to commit changes after withdrawing from market: ", err)
+				return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+			}
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
+
+		reply = &pb.WithdrawMarketReply{RawTx: rawTx}
+		break
 	}
 
-	return &pb.WithdrawMarketReply{
-		RawTx: rawTx,
-	}, nil
+	return reply, nil
 }
 
-func (o operatorHandler) BalanceFeeAccount(
+func (o operatorHandler) balanceFeeAccount(
 	ctx context.Context,
 	req *pb.BalanceFeeAccountRequest,
 ) (*pb.BalanceFeeAccountReply, error) {
-
 	balance, err := o.operatorSvc.FeeAccountBalance(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		log.Debug("trying to retrieve fee account balance: ", err)
+		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	return &pb.BalanceFeeAccountReply{
-		Balance: balance,
-	}, nil
+	return &pb.BalanceFeeAccountReply{Balance: balance}, nil
 }
 
 // ListMarket returns the result of the ListMarket method of the operator service.
@@ -538,6 +567,10 @@ func validateMarket(market *pbtypes.Market) error {
 	}
 	if len(market.GetBaseAsset()) <= 0 || len(market.GetQuoteAsset()) <= 0 {
 		return errors.New("base asset or quote asset are null")
+	}
+
+	if market.GetBaseAsset() != config.GetString(config.BaseAssetKey) {
+		return domain.ErrInvalidBaseAsset
 	}
 	return nil
 }

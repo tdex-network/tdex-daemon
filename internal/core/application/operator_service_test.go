@@ -3,11 +3,12 @@ package application
 import (
 	"context"
 	"fmt"
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"os"
 	"testing"
 	"time"
+
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -15,14 +16,17 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
-const marketRepoIsEmpty = true
-const tradeRepoIsEmpty = true
+const (
+	marketRepoIsEmpty = true
+	tradeRepoIsEmpty = true
+	vaultRepoIsEmpty = true
+)
 
 var baseAsset = config.GetString(config.BaseAssetKey)
 
 func TestListMarket(t *testing.T) {
 	t.Run("ListMarket should return an empty list and a nil error if market repository is empty", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 		marketInfos, err := operatorService.ListMarket(ctx)
 		close()
 		assert.Equal(t, nil, err)
@@ -30,7 +34,7 @@ func TestListMarket(t *testing.T) {
 	})
 
 	t.Run("ListMarket should return the number of markets in the market repository", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 		marketInfos, err := operatorService.ListMarket(ctx)
 		close()
 		assert.Equal(t, nil, err)
@@ -42,7 +46,7 @@ func TestListMarket(t *testing.T) {
 func TestDepositMarket(t *testing.T) {
 
 	t.Run("DepositMarket with new market", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		address, err := operatorService.DepositMarket(ctx, "", "")
 		assert.Equal(t, nil, err)
@@ -57,7 +61,7 @@ func TestDepositMarket(t *testing.T) {
 	})
 
 	t.Run("DepositMarket with invalid base asset", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		validQuoteAsset := "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
 		emptyAddress, err := operatorService.DepositMarket(ctx, "", validQuoteAsset)
@@ -72,7 +76,7 @@ func TestDepositMarket(t *testing.T) {
 	})
 
 	t.Run("DepositMarket with valid base asset and empty quote asset", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(ctx, baseAsset, "")
 		assert.Equal(t, domain.ErrInvalidQuoteAsset, err)
@@ -86,7 +90,7 @@ func TestDepositMarket(t *testing.T) {
 	})
 
 	t.Run("DepositMarket with valid base asset and invalid quote asset", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(ctx, baseAsset, "ldjbwjkbfjksdbjkvcsbdjkbcdsjkb")
 		assert.Equal(t, domain.ErrInvalidQuoteAsset, err)
@@ -110,7 +114,7 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 
 		startNigiriAndWait()
 
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
 
 		address, err := operatorService.DepositMarket(ctx, "", "")
 		assert.Equal(t, nil, err)
@@ -161,7 +165,7 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 
 func TestListSwap(t *testing.T) {
 	t.Run("ListSwap should return an empty list and a nil error if there is not trades in TradeRepository", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 		defer close()
 
 		swapInfos, err := operatorService.ListSwaps(ctx)
@@ -170,7 +174,7 @@ func TestListSwap(t *testing.T) {
 	})
 
 	t.Run("ListSwap should return the SwapInfo according to the number of trades in the TradeRepository", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, !tradeRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, !tradeRepoIsEmpty, vaultRepoIsEmpty)
 		defer close()
 
 		swapInfos, err := operatorService.ListSwaps(ctx)
@@ -343,4 +347,60 @@ func TestBalanceFeeAccount(t *testing.T) {
 	dbManager.Store.Close()
 	dbManager.UnspentStore.Close()
 	os.RemoveAll(testDir)
+}
+
+func TestListMarketExternalAddresses(t *testing.T) {
+	const (
+		validQuoteAsset = "d090c403610fe8a9e31967355929833bc8a8fe08429e630162d1ecbf29fdf28b"
+		validBaseAsset = "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
+		validQuoteAssetWithNoMarket = "0ddfa690c7b2ba3b8ecee8200da2420fc502f57f8312c83d466b6f8dced70441"
+		invalidAsset = "aaa001zzzDL"
+	)
+
+	const (
+		vaultIsEmpty = true
+		vaultIsNotEmpty = false
+	)
+
+	listMarketExternalRequest := func(
+		baseAsset string, 
+		quoteAsset string,
+		repoIsEmpty bool,
+	) ([]string, error) {
+		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, repoIsEmpty)
+		defer close()
+		market := Market{
+			QuoteAsset: quoteAsset,
+			BaseAsset: baseAsset,
+		}
+		return operatorService.ListMarketExternalAddresses(ctx, market)
+	}
+
+
+	t.Run("should return error if baseAsset is an invalid asset string", func(t *testing.T) {
+		_, err := listMarketExternalRequest(invalidAsset, validQuoteAsset, vaultIsNotEmpty)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return error if quoteAsset is an invalid asset string", func(t *testing.T) {
+		_, err := listMarketExternalRequest(validBaseAsset, invalidAsset, vaultIsNotEmpty)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return error if market is not found for the given quoteAsset", func(t *testing.T) {
+		_, err := listMarketExternalRequest(validBaseAsset, validQuoteAssetWithNoMarket, vaultIsNotEmpty)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return an error if the Vault repository is empty", func(t *testing.T) {
+		_, err := listMarketExternalRequest(validBaseAsset, validQuoteAsset, vaultIsEmpty)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return a list of addresses and a nil error if the market argument is valid", func(t *testing.T) {
+		addresses, err := listMarketExternalRequest(validBaseAsset, validQuoteAsset, vaultIsNotEmpty)
+		assert.Equal(t, nil, err)
+		assert.NotEqual(t, nil, addresses)
+		assert.Equal(t, 1, len(addresses))
+	})
 }

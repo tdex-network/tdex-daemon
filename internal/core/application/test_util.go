@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"os"
 	"os/exec"
 	"time"
+
+	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/shopspring/decimal"
@@ -67,7 +68,7 @@ func runCommand(cmd *exec.Cmd) {
 	}
 }
 
-func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
+func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, vaultRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
 	if _, err := os.Stat(testDir); os.IsNotExist(err) {
 		os.Mkdir(testDir, os.ModePerm)
 	}
@@ -96,6 +97,16 @@ func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool) 
 	}
 
 	vaultRepo := newMockedVaultRepositoryImpl(tradeWallet)
+
+	if !vaultRepositoryIsEmpty {
+		vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
+			v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
+			v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart)
+			v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart + 1)
+			return v, nil
+		})
+	}
+
 	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
 
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
@@ -504,6 +515,13 @@ func newMockedVaultRepositoryImpl(w mockedWallet) domain.VaultRepository {
 			AccountAndKeyByAddress: map[string]domain.AccountAndKey{},
 		},
 	}
+}
+
+func (r *mockedVaultRepository) GetAllDerivedExternalAddressesForAccount(
+	ctx context.Context,
+	accountIndex int,
+) ([]string, error) {
+	return r.vault.AllDerivedExternalAddressesForAccount(accountIndex)
 }
 
 func (r *mockedVaultRepository) GetOrCreateVault(ctx context.Context, mnemonic []string, passphrase string) (*domain.Vault, error) {
