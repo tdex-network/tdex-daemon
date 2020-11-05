@@ -125,6 +125,13 @@ func (o operatorHandler) ListMarket(
 	return o.listMarket(ctx, req)
 }
 
+func (o operatorHandler) ReportMarketFee(
+	ctx context.Context,
+	req *pb.ReportMarketFeeRequest,
+) (*pb.ReportMarketFeeReply, error) {
+	return o.reportMarketFee(ctx, req)
+}
+
 func (o operatorHandler) depositMarket(
 	reqCtx context.Context,
 	req *pb.DepositMarketRequest,
@@ -575,7 +582,7 @@ func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketReque
 	return &pb.ListMarketReply{Markets: pbMarketInfos}, nil
 }
 
-func (o operatorHandler) ReportMarketFee(
+func (o operatorHandler) reportMarketFee(
 	ctx context.Context,
 	req *pb.ReportMarketFeeRequest,
 ) (*pb.ReportMarketFeeReply, error) {
