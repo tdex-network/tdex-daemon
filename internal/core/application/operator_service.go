@@ -46,6 +46,10 @@ type OperatorService interface {
 	ListSwaps(
 		ctx context.Context,
 	) ([]SwapInfo, error)
+	ListMarketExternalAddresses(
+		ctx context.Context,
+		req Market,
+	) ([]string, error)
 	WithdrawMarketFunds(
 		ctx context.Context,
 		req WithdrawMarketReq,
@@ -522,6 +526,40 @@ func (o *operatorService) ListSwaps(
 
 	swaps := tradesToSwapInfo(markets, trades)
 	return swaps, nil
+}
+
+func (o *operatorService) ListMarketExternalAddresses(
+	ctx context.Context,
+	req Market,
+) ([]string, error) {
+	// check the asset strings
+	err := validateAssetString(req.BaseAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(req.QuoteAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidQuoteAsset
+	}
+
+	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+		return nil, domain.ErrInvalidBaseAsset
+	}
+
+	market, _, err := o.marketRepository.GetMarketByAsset(ctx, req.QuoteAsset)
+	if err != nil {
+		return nil, err
+	}
+
+	if market == nil {
+		return nil, domain.ErrMarketNotExist
+	}
+
+	return o.vaultRepository.GetAllDerivedExternalAddressesForAccount(
+		ctx,
+		market.AccountIndex,
+	)
 }
 
 //ListMarket a set of informations about all the markets.
