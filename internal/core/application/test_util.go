@@ -68,7 +68,7 @@ func runCommand(cmd *exec.Cmd) {
 	}
 }
 
-func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, vaultRepositoryIsEmpty bool) (OperatorService, context.Context, func()) {
+func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, vaultRepositoryIsEmpty bool) (OperatorService, TradeService, context.Context, func()) {
 	if _, err := os.Stat(testDir); os.IsNotExist(err) {
 		os.Mkdir(testDir, os.ModePerm)
 	}
@@ -86,6 +86,8 @@ func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, 
 			panic(err)
 		}
 	}
+
+	
 
 	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 
@@ -116,6 +118,15 @@ func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, 
 		ErrorHandler:           func(err error) { fmt.Println(err) },
 		IntervalInMilliseconds: 100,
 	})
+
+	tradeSvc := newTradeService(
+		marketRepo,
+		tradeRepo,
+		vaultRepo,
+		unspentRepo,
+		explorerSvc,
+	)
+
 	operatorService := NewOperatorService(
 		marketRepo,
 		vaultRepo,
@@ -142,7 +153,7 @@ func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, 
 		os.RemoveAll(testDir)
 	}
 
-	return operatorService, ctx, close
+	return operatorService, tradeSvc, ctx, close
 }
 
 // returns a TradeService intialized with some mocked data:
@@ -184,7 +195,6 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	// market repo with open market
 	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
 	fillMarketRepo(ctx, &marketRepo)
-
 	// trade repo, this doesn't need to be prepared
 	tradeRepo := inmemory.NewTradeRepositoryImpl()
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
@@ -196,11 +206,13 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 		unspentsRepo,
 		explorerSvc,
 	)
+
 	close := func() {
 		dbManager.Store.Close()
 		dbManager.UnspentStore.Close()
 		os.RemoveAll(testDir)
 	}
+
 	return traderSvc, ctx, close
 }
 
@@ -223,7 +235,11 @@ func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) er
 					Vout:  int(marketUnspents[1].VOut),
 				},
 			})
-			market.MakeTradable()
+			err := market.MakeTradable()
+			if err != nil {
+				return nil, err
+			}
+
 			return market, nil
 		},
 	)

@@ -15,7 +15,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/vulpemventures/go-elements/network"
 )
 
 const (
@@ -28,7 +27,7 @@ var baseAsset = config.GetString(config.BaseAssetKey)
 
 func TestListMarket(t *testing.T) {
 	t.Run("ListMarket should return an empty list and a nil error if market repository is empty", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 		marketInfos, err := operatorService.ListMarket(ctx)
 		close()
 		assert.Equal(t, nil, err)
@@ -36,7 +35,7 @@ func TestListMarket(t *testing.T) {
 	})
 
 	t.Run("ListMarket should return the number of markets in the market repository", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 		marketInfos, err := operatorService.ListMarket(ctx)
 		close()
 		assert.Equal(t, nil, err)
@@ -47,7 +46,7 @@ func TestListMarket(t *testing.T) {
 func TestDepositMarket(t *testing.T) {
 
 	t.Run("DepositMarket with new market", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		address, err := operatorService.DepositMarket(ctx, "", "")
 		assert.Equal(t, nil, err)
@@ -62,7 +61,7 @@ func TestDepositMarket(t *testing.T) {
 	})
 
 	t.Run("DepositMarket with invalid base asset", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		validQuoteAsset := "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
 		emptyAddress, err := operatorService.DepositMarket(ctx, "", validQuoteAsset)
@@ -77,7 +76,7 @@ func TestDepositMarket(t *testing.T) {
 	})
 
 	t.Run("DepositMarket with valid base asset and empty quote asset", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(ctx, baseAsset, "")
 		assert.Equal(t, domain.ErrInvalidQuoteAsset, err)
@@ -91,7 +90,7 @@ func TestDepositMarket(t *testing.T) {
 	})
 
 	t.Run("DepositMarket with valid base asset and invalid quote asset", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(ctx, baseAsset, "ldjbwjkbfjksdbjkvcsbdjkbcdsjkb")
 		assert.Equal(t, domain.ErrInvalidQuoteAsset, err)
@@ -115,7 +114,7 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 
 		startNigiriAndWait()
 
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
 
 		address, err := operatorService.DepositMarket(ctx, "", "")
 		assert.Equal(t, nil, err)
@@ -165,26 +164,68 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 }
 
 func TestUpdateMarketPrice(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+	operatorService, tradeService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
 	defer close()
-	
+
+	market := Market{
+		BaseAsset: marketUnspents[0].AssetHash, 
+		QuoteAsset: marketUnspents[1].AssetHash,
+	}
+
+	// update price function
 	updateMarketPriceRequest := func(basePrice float64, quotePrice float64) error {
 		args := MarketWithPrice{
-			Market: Market{
-				BaseAsset: network.Regtest.AssetID, 
-				QuoteAsset: marketUnspents[1].AssetHash,
-			},
+			Market: market,
 			Price: Price{
 				BasePrice: decimal.NewFromFloat(basePrice), 
 				QuotePrice: decimal.NewFromFloat(quotePrice),
 			},
 		}
-		return operatorService.UpdateMarketPrice(ctx, args)
+
+		// close the market
+		err := operatorService.CloseMarket(ctx, market.BaseAsset, market.QuoteAsset)
+		if err != nil {
+			return err
+		}
+
+		// make the strategy to pluggable
+		err = operatorService.UpdateMarketStrategy(ctx, MarketStrategy{Market: market, Strategy: domain.StrategyTypePluggable})
+		if err != nil {
+			return err
+		}
+
+		// update the price
+		err = operatorService.UpdateMarketPrice(ctx, args)
+		if err != nil {
+			return err
+		}
+
+		// reopen the market
+		err = operatorService.OpenMarket(ctx, market.BaseAsset, market.QuoteAsset)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	// get market price function
+	getMarketPrice := func() Price {
+		priceWithFee, err := tradeService.GetMarketPrice(ctx, market, 1, 1)
+		if err != nil {
+			panic(err)
+		}
+		return priceWithFee.Price
 	}
 	
 	t.Run("should not return an error if the price is valid and market is found", func (t *testing.T) {
 		err := updateMarketPriceRequest(10.01, 1000)
+		priceAfter := getMarketPrice()
 		assert.Equal(t, nil, err)
+		basePrice, _ := priceAfter.BasePrice.Float64()
+		quotePrice, _ := priceAfter.QuotePrice.Float64()
+		assert.Equal(t, basePrice, float64(10.01))
+		assert.Equal(t, quotePrice, float64(1000))
 	})
 
 	t.Run("shoud not return an error if the price is valid and > 0 && < 1", func(t *testing.T) {
@@ -210,7 +251,7 @@ func TestUpdateMarketPrice(t *testing.T) {
 }
 func TestListSwap(t *testing.T) {
 	t.Run("ListSwap should return an empty list and a nil error if there is not trades in TradeRepository", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 		defer close()
 
 		swapInfos, err := operatorService.ListSwaps(ctx)
@@ -219,7 +260,7 @@ func TestListSwap(t *testing.T) {
 	})
 
 	t.Run("ListSwap should return the SwapInfo according to the number of trades in the TradeRepository", func(t *testing.T) {
-		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, !tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(!marketRepoIsEmpty, !tradeRepoIsEmpty, vaultRepoIsEmpty)
 		defer close()
 
 		swapInfos, err := operatorService.ListSwaps(ctx)
@@ -412,7 +453,7 @@ func TestListMarketExternalAddresses(t *testing.T) {
 		quoteAsset string,
 		repoIsEmpty bool,
 	) ([]string, error) {
-		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, repoIsEmpty)
+		operatorService, _, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, repoIsEmpty)
 		defer close()
 		market := Market{
 			QuoteAsset: quoteAsset,
@@ -420,7 +461,6 @@ func TestListMarketExternalAddresses(t *testing.T) {
 		}
 		return operatorService.ListMarketExternalAddresses(ctx, market)
 	}
-
 
 	t.Run("should return error if baseAsset is an invalid asset string", func(t *testing.T) {
 		_, err := listMarketExternalRequest(invalidAsset, validQuoteAsset, vaultIsNotEmpty)
