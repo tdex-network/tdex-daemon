@@ -3,13 +3,14 @@ package application
 import (
 	"context"
 	"fmt"
+	"os"
+	"testing"
+	"time"
+
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/vulpemventures/go-elements/network"
-	"os"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -495,5 +496,60 @@ func TestListMarketExternalAddresses(t *testing.T) {
 		assert.Equal(t, nil, err)
 		assert.NotEqual(t, nil, addresses)
 		assert.Equal(t, 1, len(addresses))
+	})
+}
+
+func TestOpenMarket(t *testing.T) {
+	const depositFeeAccount = true
+
+	validBaseAsset := marketUnspents[0].AssetHash
+	validQuoteAsset := marketUnspents[1].AssetHash
+
+	const (
+		validQuoteAssetWithNoMarket = "0ddfa690c7b2ba3b8ecee8200da2420fc502f57f8312c83d466b6f8dced70441"
+		invalidAsset                = "allezlafrance"
+	)
+
+	openMarketRequest := func(
+		baseAsset string,
+		quoteAsset string,
+		depositFeeAccountBefore bool,
+	) error {
+		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		defer close()
+		
+		if depositFeeAccountBefore {
+			_, _, err := operatorService.DepositFeeAccount(ctx)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		return operatorService.OpenMarket(ctx, baseAsset, quoteAsset)
+	}
+
+	t.Run("should return an error if the crawler does not observe any addresses", func(t *testing.T) {
+		err := openMarketRequest(validBaseAsset, validQuoteAsset, !depositFeeAccount)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return an error if the base asset is not valid", func(t *testing.T) {
+		err := openMarketRequest(invalidAsset, validQuoteAsset, depositFeeAccount)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return an error if the quote asset is not valid", func(t *testing.T) {
+		err := openMarketRequest(validBaseAsset, invalidAsset, depositFeeAccount)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should return an error if the market is not found", func(t *testing.T) {
+		err := openMarketRequest(validBaseAsset, validQuoteAssetWithNoMarket, depositFeeAccount)
+		assert.NotEqual(t, nil, err)
+	})
+
+	t.Run("should NOT return an error if someone have deposited an address and assets string are valid", func(t *testing.T) {
+		err := openMarketRequest(validBaseAsset, validQuoteAsset, depositFeeAccount)
+		assert.Equal(t, nil, err)
 	})
 }
