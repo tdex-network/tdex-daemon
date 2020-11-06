@@ -20,6 +20,8 @@ var (
 	ErrAmountTooLow = errors.New("provided amount is too low")
 	// ErrAmountTooBig ...
 	ErrAmountTooBig = errors.New("provided amount is too big")
+	// ErrBalanceTooLow ...
+	ErrBalanceTooLow = errors.New("reserve balance amount is too low")
 )
 
 //BalancedReserves defines an AMM strategy with fixed 50/50 reserves
