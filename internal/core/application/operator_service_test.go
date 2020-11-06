@@ -165,6 +165,9 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 }
 
 func TestUpdateMarketPrice(t *testing.T) {
+	// use to only update the market's strategy one time (we test updateMarketPrice here, not updateMarketStrategy)
+	marketStrategyIsPluggable := false
+
 	operatorService, tradeService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
 	defer close()
 
@@ -182,29 +185,33 @@ func TestUpdateMarketPrice(t *testing.T) {
 				QuotePrice: decimal.NewFromFloat(quotePrice),
 			},
 		}
+		if !marketStrategyIsPluggable {
+			// close the market
+			err := operatorService.CloseMarket(ctx, market.BaseAsset, market.QuoteAsset)
+			if err != nil {
+				return err
+			}
 
-		// close the market
-		err := operatorService.CloseMarket(ctx, market.BaseAsset, market.QuoteAsset)
-		if err != nil {
-			return err
-		}
-
-		// make the strategy to pluggable
-		err = operatorService.UpdateMarketStrategy(ctx, MarketStrategy{Market: market, Strategy: domain.StrategyTypePluggable})
-		if err != nil {
-			return err
+			// make the strategy to pluggable
+			err = operatorService.UpdateMarketStrategy(ctx, MarketStrategy{Market: market, Strategy: domain.StrategyTypePluggable})
+			if err != nil {
+				return err
+			}
 		}
 
 		// update the price
-		err = operatorService.UpdateMarketPrice(ctx, args)
+		err := operatorService.UpdateMarketPrice(ctx, args)
 		if err != nil {
 			return err
 		}
 
-		// reopen the market
-		err = operatorService.OpenMarket(ctx, market.BaseAsset, market.QuoteAsset)
-		if err != nil {
-			return err
+		if !marketStrategyIsPluggable {
+			// reopen the market
+			err := operatorService.OpenMarket(ctx, market.BaseAsset, market.QuoteAsset)
+			if err != nil {
+				return err
+			}
+			marketStrategyIsPluggable = true
 		}
 
 		return nil
