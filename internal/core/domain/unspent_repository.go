@@ -36,6 +36,10 @@ type UnspentRepository interface {
 		ctx context.Context,
 		unspentKeys []UnspentKey,
 	) error
+	ConfirmUnspents(
+		ctx context.Context,
+		unspentKeys []UnspentKey,
+	) error
 	LockUnspents(
 		ctx context.Context,
 		unspentKeys []UnspentKey,

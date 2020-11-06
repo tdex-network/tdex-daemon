@@ -200,6 +200,12 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	// trade repo, this doesn't need to be prepared
 	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:            explorerSvc,
+		Observables:            []crawler.Observable{},
+		ErrorHandler:           func(err error) { fmt.Println(err) },
+		IntervalInMilliseconds: 100,
+	})
 
 	traderSvc := newTradeService(
 		marketRepo,
@@ -207,6 +213,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 		vaultRepo,
 		unspentsRepo,
 		explorerSvc,
+		crawlerSvc,
 	)
 	close := func() {
 		if connectedToTestDb {

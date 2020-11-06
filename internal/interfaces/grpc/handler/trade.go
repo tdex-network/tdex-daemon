@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	"github.com/tdex-network/tdex-protobuf/generated/go/types"
@@ -13,14 +15,28 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const ErrCannotServeRequest = "cannot serve request, please retry"
+
 type traderHandler struct {
 	pb.UnimplementedTradeServer
 	traderSvc application.TradeService
+	dbManager ports.DbManager
 }
 
-func NewTraderHandler(traderSvc application.TradeService) pb.TradeServer {
+func NewTraderHandler(
+	traderSvc application.TradeService,
+	dbManager ports.DbManager,
+) pb.TradeServer {
+	return newTraderHandler(traderSvc, dbManager)
+}
+
+func newTraderHandler(
+	traderSvc application.TradeService,
+	dbManager ports.DbManager,
+) *traderHandler {
 	return &traderHandler{
 		traderSvc: traderSvc,
+		dbManager: dbManager,
 	}
 }
 
@@ -28,69 +44,125 @@ func (t traderHandler) Markets(
 	ctx context.Context,
 	req *pb.MarketsRequest,
 ) (*pb.MarketsReply, error) {
-	markets, err := t.traderSvc.GetTradableMarkets(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	marketsWithFee := make([]*types.MarketWithFee, 0, len(markets))
-	for _, v := range markets {
-		m := &types.MarketWithFee{
-			Market: &types.Market{
-				BaseAsset:  v.BaseAsset,
-				QuoteAsset: v.QuoteAsset,
-			},
-			Fee: &types.Fee{
-				Asset:      v.FeeAsset,
-				BasisPoint: v.BasisPoint,
-			},
-		}
-		marketsWithFee = append(marketsWithFee, m)
-	}
-
-	return &pb.MarketsReply{Markets: marketsWithFee}, nil
+	return t.markets(ctx, req)
 }
 
 func (t traderHandler) Balances(
 	ctx context.Context,
 	req *pb.BalancesRequest,
 ) (*pb.BalancesReply, error) {
+	return t.balances(ctx, req)
+}
 
-	mkt := req.GetMarket()
-	if err := validateMarket(mkt); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
+func (t traderHandler) MarketPrice(
+	ctx context.Context,
+	req *pb.MarketPriceRequest,
+) (*pb.MarketPriceReply, error) {
+	return t.marketPrice(ctx, req)
+}
 
-	balance, err := t.traderSvc.GetMarketBalance(
-		ctx,
-		application.Market{
-			BaseAsset:  req.Market.BaseAsset,
-			QuoteAsset: req.Market.QuoteAsset,
+func (t traderHandler) TradePropose(
+	req *pb.TradeProposeRequest,
+	stream pb.Trade_TradeProposeServer,
+) error {
+	return t.tradePropose(req, stream)
+}
+
+func (t traderHandler) TradeComplete(
+	req *pb.TradeCompleteRequest,
+	stream pb.Trade_TradeCompleteServer,
+) error {
+	return t.tradeComplete(req, stream)
+}
+
+func (t traderHandler) markets(
+	reqCtx context.Context,
+	req *pb.MarketsRequest,
+) (*pb.MarketsReply, error) {
+	res, err := t.dbManager.RunTransaction(
+		reqCtx,
+		readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			markets, err := t.traderSvc.GetTradableMarkets(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			marketsWithFee := make([]*types.MarketWithFee, 0, len(markets))
+			for _, v := range markets {
+				m := &types.MarketWithFee{
+					Market: &types.Market{
+						BaseAsset:  v.BaseAsset,
+						QuoteAsset: v.QuoteAsset,
+					},
+					Fee: &types.Fee{
+						Asset:      v.FeeAsset,
+						BasisPoint: v.BasisPoint,
+					},
+				}
+				marketsWithFee = append(marketsWithFee, m)
+			}
+
+			return &pb.MarketsReply{Markets: marketsWithFee}, nil
 		},
 	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	balancesWithFee := make([]*types.BalanceWithFee, 0)
-	balancesWithFee = append(balancesWithFee, &types.BalanceWithFee{
-		Balance: &types.Balance{
-			BaseAmount:  balance.BaseAmount,
-			QuoteAmount: balance.QuoteAmount,
-		},
-		Fee: &types.Fee{
-			Asset:      balance.FeeAsset,
-			BasisPoint: balance.BasisPoint,
-		},
-	})
-
-	return &pb.BalancesReply{
-		Balances: balancesWithFee,
-	}, nil
+	return res.(*pb.MarketsReply), nil
 }
 
-func (t traderHandler) MarketPrice(
-	ctx context.Context,
+func (t traderHandler) balances(
+	reqCtx context.Context,
+	req *pb.BalancesRequest,
+) (*pb.BalancesReply, error) {
+	mkt := req.GetMarket()
+	if err := validateMarket(mkt); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	res, err := t.dbManager.RunTransaction(
+		reqCtx,
+		readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			balance, err := t.traderSvc.GetMarketBalance(
+				ctx,
+				application.Market{
+					BaseAsset:  req.Market.BaseAsset,
+					QuoteAsset: req.Market.QuoteAsset,
+				},
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			balancesWithFee := make([]*types.BalanceWithFee, 0)
+			balancesWithFee = append(balancesWithFee, &types.BalanceWithFee{
+				Balance: &types.Balance{
+					BaseAmount:  balance.BaseAmount,
+					QuoteAmount: balance.QuoteAmount,
+				},
+				Fee: &types.Fee{
+					Asset:      balance.FeeAsset,
+					BasisPoint: balance.BasisPoint,
+				},
+			})
+
+			return &pb.BalancesReply{
+				Balances: balancesWithFee,
+			}, nil
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return res.(*pb.BalancesReply), nil
+}
+
+func (t traderHandler) marketPrice(
+	reqCtx context.Context,
 	req *pb.MarketPriceRequest,
 ) (*pb.MarketPriceReply, error) {
 	market := req.GetMarket()
@@ -106,40 +178,51 @@ func (t traderHandler) MarketPrice(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	price, err := t.traderSvc.GetMarketPrice(
-		ctx,
-		application.Market{
-			BaseAsset:  market.GetBaseAsset(),
-			QuoteAsset: market.GetQuoteAsset(),
+	res, err := t.dbManager.RunTransaction(
+		reqCtx,
+		readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			price, err := t.traderSvc.GetMarketPrice(
+				ctx,
+				application.Market{
+					BaseAsset:  market.GetBaseAsset(),
+					QuoteAsset: market.GetQuoteAsset(),
+				},
+				int(tradeType),
+				amount,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			basePrice, _ := price.BasePrice.Float64()
+			quotePrice, _ := price.QuotePrice.Float64()
+
+			return &pb.MarketPriceReply{
+				Prices: []*pbtypes.PriceWithFee{
+					{
+						Price: &pbtypes.Price{
+							BasePrice:  float32(basePrice),
+							QuotePrice: float32(quotePrice),
+						},
+						Fee: &pbtypes.Fee{
+							Asset:      price.FeeAsset,
+							BasisPoint: price.BasisPoint,
+						},
+						Amount: price.Amount,
+					},
+				},
+			}, nil
 		},
-		int(tradeType),
-		amount,
 	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	basePrice, _ := price.BasePrice.Float64()
-	quotePrice, _ := price.QuotePrice.Float64()
-
-	return &pb.MarketPriceReply{
-		Prices: []*pbtypes.PriceWithFee{
-			{
-				Price: &pbtypes.Price{
-					BasePrice:  float32(basePrice),
-					QuotePrice: float32(quotePrice),
-				},
-				Fee: &pbtypes.Fee{
-					Asset:      price.FeeAsset,
-					BasisPoint: price.BasisPoint,
-				},
-				Amount: price.Amount,
-			},
-		},
-	}, nil
+	return res.(*pb.MarketPriceReply), nil
 }
 
-func (t traderHandler) TradePropose(
+func (t traderHandler) tradePropose(
 	req *pb.TradeProposeRequest,
 	stream pb.Trade_TradeProposeServer,
 ) error {
@@ -156,48 +239,72 @@ func (t traderHandler) TradePropose(
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	market := application.Market{
+	var market = application.Market{
 		BaseAsset:  mkt.GetBaseAsset(),
 		QuoteAsset: mkt.GetQuoteAsset(),
 	}
-	swapAccept, swapFail, swapExpiryTime, err := t.traderSvc.TradePropose(
+
+	res, err := t.dbManager.RunTransaction(
 		stream.Context(),
-		market,
-		int(tradeType),
-		swapRequest,
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			swapAccept, swapFail, swapExpiryTime, err := t.traderSvc.TradePropose(
+				ctx,
+				market,
+				int(tradeType),
+				swapRequest,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return &pb.TradeProposeReply{
+				SwapAccept:     swapAccept,
+				SwapFail:       swapFail,
+				ExpiryTimeUnix: swapExpiryTime,
+			}, nil
+		},
 	)
 	if err != nil {
-		return status.Error(codes.Internal, err.Error())
+		log.Debug("trying to process trade proposal: ", err)
+		return status.Error(codes.Internal, ErrCannotServeRequest)
 	}
-	reply := &pb.TradeProposeReply{
-		SwapAccept:     swapAccept,
-		SwapFail:       swapFail,
-		ExpiryTimeUnix: swapExpiryTime,
-	}
-	if err := stream.Send(reply); err != nil {
+
+	if err := stream.Send(res.(*pb.TradeProposeReply)); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 	return nil
 }
 
-func (t traderHandler) TradeComplete(
+func (t traderHandler) tradeComplete(
 	req *pb.TradeCompleteRequest,
 	stream pb.Trade_TradeCompleteServer,
 ) error {
-	txID, swapFail, err := t.traderSvc.TradeComplete(
+	res, err := t.dbManager.RunTransaction(
 		stream.Context(),
-		req.GetSwapComplete(),
-		req.GetSwapFail(),
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			txID, swapFail, err := t.traderSvc.TradeComplete(
+				ctx,
+				req.GetSwapComplete(),
+				req.GetSwapFail(),
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return &pb.TradeCompleteReply{
+				Txid:     txID,
+				SwapFail: swapFail,
+			}, nil
+		},
 	)
 	if err != nil {
-		return status.Error(codes.Internal, err.Error())
+		log.Debug("trying to complete trade: ", err)
+		return status.Error(codes.Internal, ErrCannotServeRequest)
 	}
 
-	reply := &pb.TradeCompleteReply{
-		Txid:     txID,
-		SwapFail: swapFail,
-	}
-	if err := stream.Send(reply); err != nil {
+	if err := stream.Send(res.(*pb.TradeCompleteReply)); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 	return nil

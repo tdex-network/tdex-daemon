@@ -20,13 +20,19 @@ var (
 	ErrAmountTooLow = errors.New("provided amount is too low")
 	// ErrAmountTooBig ...
 	ErrAmountTooBig = errors.New("provided amount is too big")
+	// ErrBalanceTooLow ...
+	ErrBalanceTooLow = errors.New("reserve balance amount is too low")
 )
 
 //BalancedReserves defines an AMM strategy with fixed 50/50 reserves
 type BalancedReserves struct{}
 
 // SpotPrice calculates the spot price (without fees) given the balances fo the two reserves. The weight reserve ratio is fixed at 50/50
-func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice decimal.Decimal) {
+func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice decimal.Decimal, err error) {
+	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
+		err = ErrBalanceTooLow
+		return
+	}
 	// 2 : 20k = 1 : x
 	// BI : BO = OneInput : SpotPrice
 	numer := mathutil.Div(opts.BalanceOut, balancedWeightOut)
@@ -64,6 +70,11 @@ func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut uin
 	}
 	if amountOut >= opts.BalanceOut {
 		err = ErrAmountTooBig
+		return
+	}
+
+	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
+		err = ErrBalanceTooLow
 		return
 	}
 
