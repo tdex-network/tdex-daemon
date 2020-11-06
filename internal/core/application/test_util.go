@@ -357,11 +357,17 @@ func newSwapRequest(
 	blindKeyMap := map[string][]byte{
 		b2h(witnessScript): w.BlindingKey(),
 	}
+	
 	msg, err := swap.Request(swap.RequestOpts{
-		assetP, amountP,
-		assetR, amountR,
-		psetBase64, blindKeyMap, blindKeyMap,
+		AssetToBeSent: assetP, 
+		AmountToBeSent: amountP,
+		AssetToReceive: assetR, 
+		AmountToReceive: amountR,
+		PsetBase64: psetBase64,
+		InputBlindingKeys: blindKeyMap, 
+		OutputBlindingKeys: blindKeyMap,
 	})
+
 	if err != nil {
 		return nil, err
 	}

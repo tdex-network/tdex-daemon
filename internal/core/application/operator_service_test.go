@@ -438,7 +438,7 @@ func TestBalanceFeeAccount(t *testing.T) {
 
 func TestGetCollectedMarketFee(t *testing.T) {
 
-	operatorService, ctx, closeOperator := newTestOperator(
+	operatorService, _, ctx, closeOperator := newTestOperator(
 		marketRepoIsEmpty,
 		tradeRepoIsEmpty,
 		vaultRepoIsEmpty,
