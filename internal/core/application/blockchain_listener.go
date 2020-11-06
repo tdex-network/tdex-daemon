@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -10,6 +11,8 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
+
+const readOnlyTx = false
 
 type BlockchainListener interface {
 	ObserveBlockchain()
@@ -72,43 +75,50 @@ func (b *blockchainListener) StopObserveBlockchain() {
 
 func (b *blockchainListener) handleBlockChainEvents() {
 	for event := range b.crawlerSvc.GetEventChannel() {
-		eventHandler := b.getHandlerForEvent(event.Type())
-		if eventHandler == nil {
-			log.Warnf("unkonwn event of type %s\n", event.Type())
-			continue
-		}
+		e := event.(crawler.AddressEvent)
+		unspents := unspentsFromEvent(e)
+		ctx := context.Background()
 
-		if _, err := b.dbManager.RunTransaction(
-			context.Background(),
+		if _, err := b.dbManager.RunUnspentsTransaction(
+			ctx,
+			!readOnlyTx,
 			func(ctx context.Context) (interface{}, error) {
-				return nil, eventHandler(ctx, event)
+				return nil, b.updateUnspentsForAddress(ctx, unspents, e.Address)
 			},
 		); err != nil {
-			log.Warnf("trying to handle event %s: %s\n", event.Type(), err.Error())
+			log.Warnf("trying to update unspents for address %s: %s\n", e.Address, err.Error())
 			break
+		}
+
+		switch event.Type() {
+		case crawler.FeeAccountDeposit:
+			if _, err := b.dbManager.RunTransaction(
+				ctx,
+				readOnlyTx,
+				func(ctx context.Context) (interface{}, error) {
+					return nil, b.checkFeeAccountBalance(ctx, event)
+				},
+			); err != nil {
+				log.Warnf("trying to check balance for fee account: %s\n", err.Error())
+				break
+			}
+
+		case crawler.MarketAccountDeposit:
+			if _, err := b.dbManager.RunTransaction(
+				ctx,
+				!readOnlyTx,
+				func(ctx context.Context) (interface{}, error) {
+					return nil, b.checkMarketAccountFundings(ctx, e.AccountIndex)
+				},
+			); err != nil {
+				log.Warnf("trying to check fundings for market account %d: %s\n", e.AccountIndex, err.Error())
+				break
+			}
 		}
 	}
 }
 
-func (b *blockchainListener) getHandlerForEvent(eventType crawler.EventType) func(context.Context, crawler.Event) error {
-	switch eventType {
-	case crawler.FeeAccountDeposit:
-		return b.handleFeeDepositEvent
-	case crawler.MarketAccountDeposit:
-		return b.handleMarketDepositEvent
-	default:
-		return nil
-	}
-}
-
-func (b *blockchainListener) handleFeeDepositEvent(ctx context.Context, event crawler.Event) error {
-	e := event.(crawler.AddressEvent)
-	unspents := unspentsFromEvent(e)
-
-	if err := b.updateUnspentsForAddress(ctx, unspents, e.Address); err != nil {
-		return err
-	}
-
+func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event crawler.Event) error {
 	addresses, _, err := b.vaultRepository.
 		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
 	if err != nil {
@@ -133,15 +143,8 @@ func (b *blockchainListener) handleFeeDepositEvent(ctx context.Context, event cr
 	return nil
 }
 
-func (b *blockchainListener) handleMarketDepositEvent(ctx context.Context, event crawler.Event) error {
-	e := event.(crawler.AddressEvent)
-	unspents := unspentsFromEvent(e)
-
-	if err := b.updateUnspentsForAddress(ctx, unspents, e.Address); err != nil {
-		return err
-	}
-
-	market, err := b.marketRepository.GetMarketByAccount(ctx, e.AccountIndex)
+func (b *blockchainListener) checkMarketAccountFundings(ctx context.Context, accountIndex int) error {
+	market, err := b.marketRepository.GetMarketByAccount(ctx, accountIndex)
 	if err != nil {
 		return err
 	}
@@ -150,7 +153,7 @@ func (b *blockchainListener) handleMarketDepositEvent(ctx context.Context, event
 	// let's notify whether the market can be safely opened, base or quote
 	// asset are missing, or if the market account owns too many assets.
 	if market == nil || !market.IsFunded() {
-		addresses, _, err := b.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, e.AccountIndex)
+		addresses, _, err := b.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, accountIndex)
 		if err != nil {
 			return err
 		}
@@ -165,7 +168,7 @@ func (b *blockchainListener) handleMarketDepositEvent(ctx context.Context, event
 
 		switch len(unspentsAssetType) {
 		case 0:
-			log.Warnf("no funds detected for market %d", e.AccountIndex)
+			log.Warnf("no funds detected for market %d", accountIndex)
 		case 1:
 			asset := "base"
 			for k := range unspentsAssetType {
@@ -173,7 +176,7 @@ func (b *blockchainListener) handleMarketDepositEvent(ctx context.Context, event
 					asset = "quote"
 				}
 			}
-			log.Warnf("%s asset is missing for market %d", asset, e.AccountIndex)
+			log.Warnf("%s asset is missing for market %d", asset, accountIndex)
 		case 2:
 			var asset string
 			for k := range unspentsAssetType {
@@ -196,7 +199,7 @@ func (b *blockchainListener) handleMarketDepositEvent(ctx context.Context, event
 			// Update the market trying to funding attaching the newly found quote asset.
 			if err := b.marketRepository.UpdateMarket(
 				ctx,
-				e.AccountIndex,
+				accountIndex,
 				func(m *domain.Market) (*domain.Market, error) {
 					if err := m.FundMarket(outpoints); err != nil {
 						return nil, err
@@ -214,7 +217,7 @@ func (b *blockchainListener) handleMarketDepositEvent(ctx context.Context, event
 					"It will be impossible to determine the correct quote asset "+
 					"and market won't be opened. Funds must be moved away from "+
 					"this account so that it owns only unspents of 2 type of assets",
-				e.AccountIndex,
+				accountIndex,
 			)
 		}
 	}
@@ -255,6 +258,7 @@ func (b *blockchainListener) updateUnspentsForAddress(
 		}
 	}
 
+	fmt.Println(address, len(existingUnspents), len(unspents), len(unspentsToAdd))
 	if len(unspentsToAdd) > 0 {
 		if err := b.unspentRepository.AddUnspents(ctx, unspentsToAdd); err != nil {
 			return err
