@@ -49,4 +49,6 @@ var (
 	)
 	// ErrMarketNotExist ...
 	ErrMarketNotExist = errors.New("market does not exists")
+	// ErrCrawlerDoesNotObserveAddresses
+	ErrCrawlerDoesNotObserveAddresses = errors.New("crawler does not observe any addresses")
 )
