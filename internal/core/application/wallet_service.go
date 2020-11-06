@@ -517,10 +517,16 @@ func extractBlindingKey(addr string, script []byte) ([]byte, error) {
 	addrType, _ := address.DecodeType(addr, *config.GetNetwork())
 	switch addrType {
 	case address.ConfidentialP2Pkh, address.ConfidentialP2Sh:
-		decoded, _ := address.FromBase58(addr)
+		decoded, err := address.FromBase58(addr)
+		if err != nil {
+			return nil, err
+		}
 		return decoded.Data[1:34], nil
 	case address.ConfidentialP2Wpkh, address.ConfidentialP2Wsh:
-		decoded, _ := address.FromBlech32(addr)
+		decoded, err := address.FromBlech32(addr)
+		if err != nil {
+			return nil, err
+		}
 		return decoded.PublicKey, nil
 	default:
 		return nil, fmt.Errorf("failed to extract blinding key from address '%s'", addr)
