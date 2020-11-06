@@ -206,8 +206,11 @@ func (u *utxoCrawler) GetEventChannel() chan Event {
 func (u *utxoCrawler) IsObservingAddresses() bool {
 	observables := u.getObservable()
 	for _, observable := range observables {
-		if _, isAddressObservable := observable.(*AddressObservable); isAddressObservable {
-			return true
+		switch observable.(type) {
+		case *AddressObservable:
+		       return true
+		default:
+		       continue
 		}
 	}
 	return false
