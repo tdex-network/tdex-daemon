@@ -92,7 +92,6 @@ func (d DbManager) RunUnspentsTransaction(
 		return tx, _ctx
 	}
 
-	fmt.Println("commit tx??")
 	return d.runTransaction(runTransactionArgs{
 		ctxMaker: ctxMaker,
 		readOnly: readOnly,

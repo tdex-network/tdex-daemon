@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -12,7 +11,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
-const readOnlyTx = false
+const readOnlyTx = true
 
 type BlockchainListener interface {
 	ObserveBlockchain()
@@ -258,7 +257,6 @@ func (b *blockchainListener) updateUnspentsForAddress(
 		}
 	}
 
-	fmt.Println(address, len(existingUnspents), len(unspents), len(unspentsToAdd))
 	if len(unspentsToAdd) > 0 {
 		if err := b.unspentRepository.AddUnspents(ctx, unspentsToAdd); err != nil {
 			return err
