@@ -7,23 +7,23 @@ import (
 
 // SwapInfo is the data struct returned by ListSwap RPC.
 type SwapInfo struct {
-	Status int32
-	AmountP uint64
-	AssetP string
-	AmountR uint64
-	AssetR string
-	MarketFee Fee
-	RequestTimeUnix uint64
-	AcceptTimeUnix uint64
+	Status           int32
+	AmountP          uint64
+	AssetP           string
+	AmountR          uint64
+	AssetR           string
+	MarketFee        Fee
+	RequestTimeUnix  uint64
+	AcceptTimeUnix   uint64
 	CompleteTimeUnix uint64
-	ExpiryTimeUnix uint64
+	ExpiryTimeUnix   uint64
 }
 
 // MarketInfo is the data struct returned by ListMarket RPC.
 type MarketInfo struct {
-	Market Market
-	Fee Fee
-	Tradable bool
+	Market       Market
+	Fee          Fee
+	Tradable     bool
 	StrategyType int
 }
 
@@ -80,4 +80,9 @@ type WithdrawMarketReq struct {
 	MillisatPerByte   int64
 	Address           string
 	Push              bool
+}
+
+type ReportMarketFee struct {
+	CollectedFees              []Fee
+	TotalCollectedFeesPerAsset map[string]int64
 }

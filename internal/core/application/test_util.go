@@ -14,7 +14,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
@@ -30,6 +29,9 @@ const testDir = "testDatadir"
 
 //RegtestExplorerAPI ...
 const RegtestExplorerAPI = "http://127.0.0.1:3001"
+
+var connectedToTestDb = false
+var dbManager *dbbadger.DbManager
 
 type mockedWallet struct {
 	mnemonic          []string
@@ -68,14 +70,31 @@ func runCommand(cmd *exec.Cmd) {
 	}
 }
 
-func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, vaultRepositoryIsEmpty bool) (OperatorService, TradeService, context.Context, func()) {
-	if _, err := os.Stat(testDir); os.IsNotExist(err) {
-		os.Mkdir(testDir, os.ModePerm)
+func connectToTestDb() {
+	if !connectedToTestDb {
+		var err error
+		if _, err := os.Stat(testDir); os.IsNotExist(err) {
+			os.Mkdir(testDir, os.ModePerm)
+		}
+		dbManager, err = dbbadger.NewDbManager(testDir, nil)
+		if err != nil {
+			panic(err)
+		}
+		connectedToTestDb = true
 	}
-	dbManager, err := dbbadger.NewDbManager(testDir, nil)
-	if err != nil {
-		panic(err)
-	}
+}
+
+func newTestOperator(
+	marketRepositoryIsEmpty bool, 
+	tradeRepositoryIsEmpty bool, 
+	vaultRepositoryIsEmpty bool,
+) (
+	OperatorService, 
+	TradeService,
+	context.Context, 
+	func(),
+) {
+	connectToTestDb()
 	tx := dbManager.NewTransaction()
 	ctx := context.WithValue(context.Background(), "tx", tx)
 
@@ -86,8 +105,6 @@ func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, 
 			panic(err)
 		}
 	}
-
-	
 
 	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 
@@ -147,8 +164,11 @@ func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, 
 	blockchainListener.ObserveBlockchain()
 
 	close := func() {
-		dbManager.Store.Close()
-		dbManager.UnspentStore.Close()
+		if connectedToTestDb {
+			dbManager.Store.Close()
+			dbManager.UnspentStore.Close()
+			connectedToTestDb = false
+		}
 		crawlerSvc.Stop()
 		os.RemoveAll(testDir)
 	}
@@ -164,13 +184,7 @@ func newTestOperator(marketRepositoryIsEmpty bool, tradeRepositoryIsEmpty bool, 
 // 	- unspents funding the close market (1 LBTC utxo of amount 1 BTC)
 //	- unspents funding the fee account (1 LBTC utxo of amount 1 BTC)
 func newTestTrader() (*tradeService, context.Context, func()) {
-	if _, err := os.Stat(testDir); os.IsNotExist(err) {
-		os.Mkdir(testDir, os.ModePerm)
-	}
-	dbManager, err := dbbadger.NewDbManager(testDir, nil)
-	if err != nil {
-		panic(err)
-	}
+	connectToTestDb()
 
 	tx := dbManager.NewTransaction()
 	ctx := context.WithValue(context.Background(), "tx", tx)
@@ -196,7 +210,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
 	fillMarketRepo(ctx, &marketRepo)
 	// trade repo, this doesn't need to be prepared
-	tradeRepo := inmemory.NewTradeRepositoryImpl()
+	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
 
 	traderSvc := newTradeService(
@@ -208,8 +222,11 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	)
 
 	close := func() {
-		dbManager.Store.Close()
-		dbManager.UnspentStore.Close()
+		if connectedToTestDb {
+			dbManager.Store.Close()
+			dbManager.UnspentStore.Close()
+			connectedToTestDb = false
+		}
 		os.RemoveAll(testDir)
 	}
 

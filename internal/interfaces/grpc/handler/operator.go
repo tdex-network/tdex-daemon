@@ -214,22 +214,22 @@ func (o operatorHandler) ListSwaps(
 
 	for index, swapInfo := range swapInfos {
 		pbSwapInfos[index] = &pb.SwapInfo{
-			Status: pb.SwapStatus(swapInfo.Status),
+			Status:  pb.SwapStatus(swapInfo.Status),
 			AmountP: swapInfo.AmountP,
-			AssetP: swapInfo.AssetP,
+			AssetP:  swapInfo.AssetP,
 			AmountR: swapInfo.AmountR,
-			AssetR: swapInfo.AssetR,
+			AssetR:  swapInfo.AssetR,
 			MarketFee: &pbtypes.Fee{
-				Asset: swapInfo.MarketFee.FeeAsset,
+				Asset:      swapInfo.MarketFee.FeeAsset,
 				BasisPoint: swapInfo.MarketFee.BasisPoint,
 			},
-			RequestTimeUnix: swapInfo.RequestTimeUnix,
-			AcceptTimeUnix: swapInfo.AcceptTimeUnix,
+			RequestTimeUnix:  swapInfo.RequestTimeUnix,
+			AcceptTimeUnix:   swapInfo.AcceptTimeUnix,
 			CompleteTimeUnix: swapInfo.RequestTimeUnix,
-			ExpiryTimeUnix: swapInfo.ExpiryTimeUnix,
+			ExpiryTimeUnix:   swapInfo.ExpiryTimeUnix,
 		}
 	}
-	
+
 	return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
 }
 
@@ -335,6 +335,39 @@ func (o operatorHandler) ListMarket(
 	}
 
 	return &pb.ListMarketReply{Markets: pbMarketInfos}, nil
+}
+
+func (o operatorHandler) ReportMarketFee(
+	ctx context.Context,
+	req *pb.ReportMarketFeeRequest,
+) (*pb.ReportMarketFeeReply, error) {
+	if err := validateMarket(req.GetMarket()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	report, err := o.operatorSvc.GetCollectedMarketFee(
+		ctx,
+		application.Market{
+			BaseAsset:  req.GetMarket().GetBaseAsset(),
+			QuoteAsset: req.GetMarket().GetQuoteAsset(),
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	collectedFees := make([]*pbtypes.Fee, 0)
+	for _, v := range report.CollectedFees {
+		collectedFees = append(collectedFees, &pbtypes.Fee{
+			Asset:      v.FeeAsset,
+			BasisPoint: v.BasisPoint,
+		})
+	}
+
+	return &pb.ReportMarketFeeReply{
+		CollectedFees:              collectedFees,
+		TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
+	}, nil
 }
 
 func validateMarketWithFee(marketWithFee *pbtypes.MarketWithFee) error {
