@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -91,8 +90,7 @@ func (w walletHandler) genSeed(
 ) (*pb.GenSeedReply, error) {
 	mnemonic, err := w.walletSvc.GenSeed(ctx)
 	if err != nil {
-		log.Debug("trying to generate new seed: ", err)
-		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &pb.GenSeedReply{SeedMnemonic: mnemonic}, nil
 }
@@ -112,6 +110,7 @@ func (w walletHandler) initWallet(
 
 	res, err := w.dbManager.RunTransaction(
 		stream.Context(),
+		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
 			if err := w.walletSvc.InitWallet(
 				ctx,
@@ -125,8 +124,7 @@ func (w walletHandler) initWallet(
 		},
 	)
 	if err != nil {
-		log.Debug("trying to initialize wallet: ", err)
-		return status.Error(codes.Internal, ErrCannotServeRequest)
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	if err := stream.Send(res.(*pb.InitWalletReply)); err != nil {
@@ -146,6 +144,7 @@ func (w walletHandler) unlockWallet(
 
 	res, err := w.dbManager.RunTransaction(
 		reqCtx,
+		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
 			if err := w.walletSvc.UnlockWallet(ctx, string(password)); err != nil {
 				return nil, err
@@ -155,8 +154,7 @@ func (w walletHandler) unlockWallet(
 		},
 	)
 	if err != nil {
-		log.Debug("trying to unlock wallet: ", err)
-		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return res.(*pb.UnlockWalletReply), nil
@@ -177,6 +175,7 @@ func (w walletHandler) changePassword(
 
 	res, err := w.dbManager.RunTransaction(
 		reqCtx,
+		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
 			if err := w.walletSvc.ChangePassword(
 				ctx,
@@ -190,8 +189,7 @@ func (w walletHandler) changePassword(
 		},
 	)
 	if err != nil {
-		log.Debug("trying to change password: ", err)
-		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return res.(*pb.ChangePasswordReply), nil
@@ -203,6 +201,7 @@ func (w walletHandler) walletAddress(
 ) (*pb.WalletAddressReply, error) {
 	res, err := w.dbManager.RunTransaction(
 		reqCtx,
+		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
 			addr, blindingKey, err := w.walletSvc.GenerateAddressAndBlindingKey(ctx)
 			if err != nil {
@@ -216,33 +215,42 @@ func (w walletHandler) walletAddress(
 		},
 	)
 	if err != nil {
-		log.Debug("trying to derive new address: ", err)
-		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return res.(*pb.WalletAddressReply), nil
 }
 
 func (w walletHandler) walletBalance(
-	ctx context.Context,
+	reqCtx context.Context,
 	req *pb.WalletBalanceRequest,
 ) (*pb.WalletBalanceReply, error) {
-	b, err := w.walletSvc.GetWalletBalance(ctx)
+	res, err := w.dbManager.RunTransaction(
+		reqCtx,
+		readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			b, err := w.walletSvc.GetWalletBalance(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			balance := make(map[string]*pb.BalanceInfo)
+			for k, v := range b {
+				balance[k] = &pb.BalanceInfo{
+					TotalBalance:       v.TotalBalance,
+					ConfirmedBalance:   v.ConfirmedBalance,
+					UnconfirmedBalance: v.UnconfirmedBalance,
+				}
+			}
+
+			return &pb.WalletBalanceReply{Balance: balance}, nil
+		},
+	)
 	if err != nil {
-		log.Debug("trying to get balance: ", err)
-		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	balance := make(map[string]*pb.BalanceInfo)
-	for k, v := range b {
-		balance[k] = &pb.BalanceInfo{
-			TotalBalance:       v.TotalBalance,
-			ConfirmedBalance:   v.ConfirmedBalance,
-			UnconfirmedBalance: v.UnconfirmedBalance,
-		}
-	}
-
-	return &pb.WalletBalanceReply{Balance: balance}, nil
+	return res.(*pb.WalletBalanceReply), nil
 }
 
 func (w walletHandler) sendToMany(
@@ -270,6 +278,7 @@ func (w walletHandler) sendToMany(
 
 	res, err := w.dbManager.RunTransaction(
 		reqCtx,
+		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
 			walletReq := application.SendToManyRequest{
 				Outputs:         outputs,
@@ -285,8 +294,7 @@ func (w walletHandler) sendToMany(
 		},
 	)
 	if err != nil {
-		log.Debug("trying to send to many: ", err)
-		return nil, status.Error(codes.Internal, ErrCannotServeRequest)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return res.(*pb.SendToManyReply), nil
