@@ -240,7 +240,7 @@ func (o *operatorService) OpenMarket(
 
 	// check if the crawler is observing at least one addresse
 	if !o.crawlerSvc.IsObservingAddresses() {
-		return domain.ErrCrawlerDoesNotObserveAddresses
+		return ErrCrawlerDoesNotObserveAddresses
 	}
 
 	// fetch market
