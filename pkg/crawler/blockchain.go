@@ -16,6 +16,7 @@ type Service interface {
 	AddObservable(observable Observable)
 	RemoveObservable(observable Observable)
 	GetEventChannel() chan Event
+	IsObservingAddresses() bool
 }
 
 const (
@@ -198,6 +199,18 @@ func (u *utxoCrawler) removeTransactionObservable(
 //blockchain events
 func (u *utxoCrawler) GetEventChannel() chan Event {
 	return u.eventChan
+}
+
+//IsObservingAddresses returns true if the crawler is observing at least one address
+//false in the other case
+func (u *utxoCrawler) IsObservingAddresses() bool {
+	observables := u.getObservable()
+	for _, observable := range observables {
+		if _, isAddressObservable := observable.(*AddressObservable); isAddressObservable {
+			return true
+		}
+	}
+	return false
 }
 
 func (u *utxoCrawler) observeAll(w *sync.WaitGroup) {
