@@ -5,15 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"reflect"
-	"sort"
-	"strings"
-
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
+	"reflect"
+	"sort"
 )
 
 // IsZero returns whether the Vault is initialized without holding any data
@@ -27,7 +25,7 @@ func (v *Vault) GetMnemonicSafe() ([]string, error) {
 		return nil, ErrMustBeUnlocked
 	}
 
-	return v.Mnemonic, nil
+	return config.GetMnemonic(), nil
 }
 
 // Lock locks the Vault by wiping its mnemonic field
@@ -36,7 +34,7 @@ func (v *Vault) Lock() error {
 		return nil
 	}
 	// flush mnemonic in plain text
-	v.Mnemonic = nil
+	config.Set(config.Mnemonic, "")
 	return nil
 }
 
@@ -54,7 +52,7 @@ func (v *Vault) Unlock(passphrase string) error {
 		return err
 	}
 
-	v.Mnemonic = strings.Split(mnemonic, " ")
+	config.Set(config.Mnemonic, mnemonic)
 	return nil
 }
 
@@ -179,7 +177,7 @@ func (v *Vault) isInitialized() bool {
 
 // isLocked returns whether the Vault is initialized and locked
 func (v *Vault) isLocked() bool {
-	return !v.isInitialized() || len(v.Mnemonic) == 0
+	return !v.isInitialized() || len(config.GetMnemonic()) == 0
 }
 
 func (v *Vault) isValidPassphrase(passphrase string) bool {
@@ -192,7 +190,7 @@ func (v *Vault) isPassphraseSet() bool {
 
 func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (string, string, []byte, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: v.Mnemonic,
+		SigningMnemonic: config.GetMnemonic(),
 	})
 	if err != nil {
 		return "", "", nil, err
@@ -271,7 +269,7 @@ func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 	}
 
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: v.Mnemonic,
+		SigningMnemonic: config.GetMnemonic(),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -317,7 +315,7 @@ func (v *Vault) allDerivedExternalAddressesForAccount(accountIndex int) (
 	}
 
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: v.Mnemonic,
+		SigningMnemonic: config.GetMnemonic(),
 	})
 	if err != nil {
 		return nil, err

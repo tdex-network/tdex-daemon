@@ -209,6 +209,21 @@ func TestWithdrawMarket(t *testing.T) {
 		crawlerSvc,
 	)
 
+	walletService := NewWalletService(
+		vaultRepo,
+		unspentRepo,
+		crawlerSvc,
+		nil,
+	)
+
+	tx := dbManager.NewTransaction()
+	ctx := context.WithValue(context.Background(), "tx", tx)
+	pass := []byte{72, 101, 108, 108, 11}
+	err = walletService.UnlockWallet(ctx, string(pass))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run(
 		"WithdrawMarketFunds should return raw transaction",
 		func(t *testing.T) {
@@ -332,6 +347,21 @@ func TestBalanceFeeAccount(t *testing.T) {
 		nil,
 		crawlerSvc,
 	)
+
+	walletService := NewWalletService(
+		vaultRepo,
+		unspentRepo,
+		crawlerSvc,
+		nil,
+	)
+
+	tx := dbManager.NewTransaction()
+	ctx := context.WithValue(context.Background(), "tx", tx)
+	pass := []byte{72, 101, 108, 108, 11}
+	err = walletService.UnlockWallet(ctx, string(pass))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run(
 		"FeeAccountBalance should return fee account balance",

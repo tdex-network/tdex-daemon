@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/btcsuite/btcutil"
@@ -39,6 +40,8 @@ const (
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey ...
 	PriceSlippageKey = "PRICE_SLIPPAGE"
+	// Mnemonic
+	Mnemonic = "MNEMONIC"
 )
 
 var vip *viper.Viper
@@ -107,6 +110,19 @@ func GetNetwork() *network.Network {
 		return &network.Regtest
 	}
 	return &network.Liquid
+}
+
+func Set(key string, value interface{}) {
+	vip.Set(key, value)
+}
+
+func GetMnemonic() []string {
+	var mnemonic []string
+	if vip.GetString(Mnemonic) != "" {
+		mnemonic = strings.Split(vip.GetString(Mnemonic), " ")
+	}
+
+	return mnemonic
 }
 
 // Validate method of config will panic
