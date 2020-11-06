@@ -9,6 +9,17 @@ type DbManager interface {
 	NewUnspentsTransaction() Transaction
 	RunTransaction(
 		ctx context.Context,
+		readOnly bool,
+		handler func(ctx context.Context) (interface{}, error),
+	) (interface{}, error)
+	RunUnspentsTransaction(
+		ctx context.Context,
+		readOnly bool,
+		handler func(ctx context.Context) (interface{}, error),
+	) (interface{}, error)
+	RunPricesTransaction(
+		ctx context.Context,
+		readOnly bool,
 		handler func(ctx context.Context) (interface{}, error),
 	) (interface{}, error)
 }
