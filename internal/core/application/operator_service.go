@@ -222,7 +222,7 @@ func (o *operatorService) OpenMarket(
 	ctx context.Context,
 	baseAsset string,
 	quoteAsset string,
-) error {
+) error {	
 	// check the asset strings
 	err := validateAssetString(baseAsset)
 	if err != nil {
@@ -238,6 +238,12 @@ func (o *operatorService) OpenMarket(
 		return domain.ErrInvalidBaseAsset
 	}
 
+	// check if the crawler is observing at least one addresse
+	if !o.crawlerSvc.IsObservingAddresses() {
+		return domain.ErrCrawlerDoesNotObserveAddresses
+	}
+
+	// fetch market
 	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(
 		ctx,
 		quoteAsset,
