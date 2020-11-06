@@ -24,7 +24,7 @@ type FormulaOpts struct {
 
 // MakingFormula defines the interface for implementing the formula to derive the spot price
 type MakingFormula interface {
-	SpotPrice(spotPriceOpts *FormulaOpts) (spotPrice decimal.Decimal)
+	SpotPrice(spotPriceOpts *FormulaOpts) (spotPrice decimal.Decimal, err error)
 	OutGivenIn(outGivenInOpts *FormulaOpts, amountIn uint64) (amountOut uint64, err error)
 	InGivenOut(inGivenOutOpts *FormulaOpts, amountOut uint64) (amountIn uint64, err error)
 	FormulaType() int

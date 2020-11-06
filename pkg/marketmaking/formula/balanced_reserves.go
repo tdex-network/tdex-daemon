@@ -28,7 +28,11 @@ var (
 type BalancedReserves struct{}
 
 // SpotPrice calculates the spot price (without fees) given the balances fo the two reserves. The weight reserve ratio is fixed at 50/50
-func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice decimal.Decimal) {
+func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice decimal.Decimal, err error) {
+	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
+		err = ErrBalanceTooLow
+		return
+	}
 	// 2 : 20k = 1 : x
 	// BI : BO = OneInput : SpotPrice
 	numer := mathutil.Div(opts.BalanceOut, balancedWeightOut)

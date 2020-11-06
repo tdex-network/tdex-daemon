@@ -856,15 +856,24 @@ func previewFromFormula(
 		return
 	}
 
+	basePrice, err := formula.SpotPrice(&mm.FormulaOpts{
+		BalanceIn:  quoteBalanceAvailable,
+		BalanceOut: baseBalanceAvailable,
+	})
+	if err != nil {
+		return
+	}
+	quotePrice, err := formula.SpotPrice(&mm.FormulaOpts{
+		BalanceIn:  baseBalanceAvailable,
+		BalanceOut: quoteBalanceAvailable,
+	})
+	if err != nil {
+		return
+	}
+
 	price = Price{
-		BasePrice: formula.SpotPrice(&mm.FormulaOpts{
-			BalanceIn:  quoteBalanceAvailable,
-			BalanceOut: baseBalanceAvailable,
-		}),
-		QuotePrice: formula.SpotPrice(&mm.FormulaOpts{
-			BalanceIn:  baseBalanceAvailable,
-			BalanceOut: quoteBalanceAvailable,
-		}),
+		BasePrice:  basePrice,
+		QuotePrice: quotePrice,
 	}
 
 	return price, previewAmount, nil
