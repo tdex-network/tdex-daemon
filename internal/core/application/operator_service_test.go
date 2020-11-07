@@ -514,57 +514,60 @@ func TestOpenMarket(t *testing.T) {
 		baseAsset string,
 		quoteAsset string,
 		depositFeeAccountBefore bool,
-	) (error, error) {
+	) (error, error, func()) {
 		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
-		defer close()
-		
 		if depositFeeAccountBefore {
 			_, _, err := operatorService.DepositFeeAccount(ctx)
 			if err != nil {
-				return err, nil
+				return err, nil, close
 			}
 		}
 
-		return nil, operatorService.OpenMarket(ctx, baseAsset, quoteAsset)
+		return nil, operatorService.OpenMarket(ctx, baseAsset, quoteAsset), close
 	}
 
 	t.Run("should return an error if the crawler does not observe any addresses", func(t *testing.T) {
-		failErr, err := openMarketRequest(validBaseAsset, validQuoteAsset, !depositFeeAccount)
+		failErr, err, close := openMarketRequest(validBaseAsset, validQuoteAsset, !depositFeeAccount)
 		if failErr != nil {
 			t.Error(failErr)
 		}
 		assert.NotEqual(t, nil, err)
+		close()
 	})
 
 	t.Run("should return an error if the base asset is not valid", func(t *testing.T) {
-		failErr, err := openMarketRequest(invalidAsset, validQuoteAsset, depositFeeAccount)
+		failErr, err, close := openMarketRequest(invalidAsset, validQuoteAsset, depositFeeAccount)
 		if failErr != nil {
 			t.Error(failErr)
 		}
 		assert.NotEqual(t, nil, err)
+		close()
 	})
 
 	t.Run("should return an error if the quote asset is not valid", func(t *testing.T) {
-		failErr, err := openMarketRequest(validBaseAsset, invalidAsset, depositFeeAccount)
+		failErr, err, close := openMarketRequest(validBaseAsset, invalidAsset, depositFeeAccount)
 		if failErr != nil {
 			t.Error(failErr)
 		}
 		assert.NotEqual(t, nil, err)
+		close()
 	})
 
 	t.Run("should return an error if the market is not found", func(t *testing.T) {
-		failErr, err := openMarketRequest(validBaseAsset, validQuoteAssetWithNoMarket, depositFeeAccount)
+		failErr, err, close := openMarketRequest(validBaseAsset, validQuoteAssetWithNoMarket, depositFeeAccount)
 		if failErr != nil {
 			t.Error(failErr)
 		}
 		assert.NotEqual(t, nil, err)
+		close()
 	})
 
 	t.Run("should NOT return an error if someone have deposited an address and assets string are valid", func(t *testing.T) {
-		failErr, err := openMarketRequest(validBaseAsset, validQuoteAsset, depositFeeAccount)
+		failErr, err, close := openMarketRequest(validBaseAsset, validQuoteAsset, depositFeeAccount)
 		if failErr != nil {
 			t.Error(failErr)
 		}
 		assert.Equal(t, nil, err)
+		close()
 	})
 }
