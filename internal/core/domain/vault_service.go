@@ -5,13 +5,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"reflect"
+	"sort"
+
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
-	"reflect"
-	"sort"
 )
 
 // IsZero returns whether the Vault is initialized without holding any data
@@ -19,7 +20,7 @@ func (v *Vault) IsZero() bool {
 	return reflect.DeepEqual(*v, Vault{})
 }
 
-// Mnemonic is getter for Vault's mnemonic in plain text
+// GetMnemonicSafe is getter for Vault's mnemonic in plain text
 func (v *Vault) GetMnemonicSafe() ([]string, error) {
 	if v.isLocked() {
 		return nil, ErrMustBeUnlocked
@@ -34,7 +35,7 @@ func (v *Vault) Lock() error {
 		return nil
 	}
 	// flush mnemonic in plain text
-	config.Set(config.Mnemonic, "")
+	config.Set(config.MnemonicKey, "")
 	return nil
 }
 
@@ -52,7 +53,7 @@ func (v *Vault) Unlock(passphrase string) error {
 		return err
 	}
 
-	config.Set(config.Mnemonic, mnemonic)
+	config.Set(config.MnemonicKey, mnemonic)
 	return nil
 }
 

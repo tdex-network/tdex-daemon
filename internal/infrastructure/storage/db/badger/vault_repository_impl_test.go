@@ -1,10 +1,11 @@
 package dbbadger
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"testing"
 )
 
 func TestAll(t *testing.T) {
@@ -13,7 +14,7 @@ func TestAll(t *testing.T) {
 
 	var addr string
 
-	config.Set(config.Mnemonic,
+	config.Set(config.MnemonicKey,
 		"leave dice fine decrease dune ribbon ocean earn lunar account silver"+
 			" admit cheap fringe disorder trade because trade steak clock grace video jacket equal")
 
