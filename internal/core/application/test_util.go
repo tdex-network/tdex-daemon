@@ -85,13 +85,13 @@ func connectToTestDb() {
 }
 
 func newTestOperator(
-	marketRepositoryIsEmpty bool, 
-	tradeRepositoryIsEmpty bool, 
+	marketRepositoryIsEmpty bool,
+	tradeRepositoryIsEmpty bool,
 	vaultRepositoryIsEmpty bool,
 ) (
-	OperatorService, 
+	OperatorService,
 	TradeService,
-	context.Context, 
+	context.Context,
 	func(),
 ) {
 	connectToTestDb()
@@ -142,6 +142,7 @@ func newTestOperator(
 		vaultRepo,
 		unspentRepo,
 		explorerSvc,
+		crawlerSvc,
 	)
 
 	operatorService := NewOperatorService(
@@ -368,14 +369,14 @@ func newSwapRequest(
 	blindKeyMap := map[string][]byte{
 		b2h(witnessScript): w.BlindingKey(),
 	}
-	
+
 	msg, err := swap.Request(swap.RequestOpts{
-		AssetToBeSent: assetP, 
-		AmountToBeSent: amountP,
-		AssetToReceive: assetR, 
-		AmountToReceive: amountR,
-		PsetBase64: psetBase64,
-		InputBlindingKeys: blindKeyMap, 
+		AssetToBeSent:      assetP,
+		AmountToBeSent:     amountP,
+		AssetToReceive:     assetR,
+		AmountToReceive:    amountR,
+		PsetBase64:         psetBase64,
+		InputBlindingKeys:  blindKeyMap,
 		OutputBlindingKeys: blindKeyMap,
 	})
 

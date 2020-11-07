@@ -367,17 +367,17 @@ func (o *operatorService) UpdateMarketPrice(
 
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return domain.ErrMarketNotExist
+		return domain.ErrInvalidBaseAsset
 	}
 
 	// validate the new prices amount
-	err = validateAmount(req.Price.BasePrice);
+	err = validateAmount(req.Price.BasePrice)
 	if err != nil {
 		return domain.ErrInvalidBasePrice
 	}
 
 	// validate the new prices amount
-	err = validateAmount(req.Price.QuotePrice);
+	err = validateAmount(req.Price.QuotePrice)
 	if err != nil {
 		return domain.ErrInvalidQuotePrice
 	}
