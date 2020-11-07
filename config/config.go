@@ -70,6 +70,7 @@ func init() {
 	if err := initDataDir(); err != nil {
 		log.WithError(err).Panic("error while init data dir")
 	}
+	vip.Set(Mnemonic, "")
 }
 
 func makeDirectoryIfNotExists(path string) error {
