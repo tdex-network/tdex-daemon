@@ -205,7 +205,8 @@ func (w *walletService) UnlockWallet(
 func (w *walletService) ChangePassword(
 	ctx context.Context,
 	currentPassphrase string,
-	newPassphrase string) error {
+	newPassphrase string,
+) error {
 	if w.walletIsSyncing {
 		return ErrWalletIsSyncing
 	}
