@@ -321,7 +321,7 @@ func (o operatorHandler) updateMarketPrice(
 		},
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.dbManager.RunPricesTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {

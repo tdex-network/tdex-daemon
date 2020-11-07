@@ -30,6 +30,9 @@ const testDir = "testDatadir"
 //RegtestExplorerAPI ...
 const RegtestExplorerAPI = "http://127.0.0.1:3001"
 
+var connectedToTestDb = false
+var dbManager *dbbadger.DbManager
+
 type mockedWallet struct {
 	mnemonic          []string
 	encryptedMnemonic string
@@ -67,9 +70,6 @@ func runCommand(cmd *exec.Cmd) {
 	}
 }
 
-var connectedToTestDb = false
-var dbManager *dbbadger.DbManager
-
 func connectToTestDb() {
 	if !connectedToTestDb {
 		var err error
@@ -82,14 +82,18 @@ func connectToTestDb() {
 		}
 		connectedToTestDb = true
 	}
-
 }
 
 func newTestOperator(
 	marketRepositoryIsEmpty bool,
 	tradeRepositoryIsEmpty bool,
 	vaultRepositoryIsEmpty bool,
-) (OperatorService, context.Context, func()) {
+) (
+	OperatorService,
+	TradeService,
+	context.Context,
+	func(),
+) {
 	connectToTestDb()
 	tx := dbManager.NewTransaction()
 	ctx := context.WithValue(context.Background(), "tx", tx)
@@ -131,6 +135,16 @@ func newTestOperator(
 		ErrorHandler:           func(err error) { fmt.Println(err) },
 		IntervalInMilliseconds: 100,
 	})
+
+	tradeSvc := newTradeService(
+		marketRepo,
+		tradeRepo,
+		vaultRepo,
+		unspentRepo,
+		explorerSvc,
+		crawlerSvc,
+	)
+
 	operatorService := NewOperatorService(
 		marketRepo,
 		vaultRepo,
@@ -160,7 +174,7 @@ func newTestOperator(
 		os.RemoveAll(testDir)
 	}
 
-	return operatorService, ctx, close
+	return operatorService, tradeSvc, ctx, close
 }
 
 // returns a TradeService intialized with some mocked data:
@@ -196,7 +210,6 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	// market repo with open market
 	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
 	fillMarketRepo(ctx, &marketRepo)
-
 	// trade repo, this doesn't need to be prepared
 	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
@@ -215,6 +228,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 		explorerSvc,
 		crawlerSvc,
 	)
+
 	close := func() {
 		if connectedToTestDb {
 			dbManager.Store.Close()
@@ -223,6 +237,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 		}
 		os.RemoveAll(testDir)
 	}
+
 	return traderSvc, ctx, close
 }
 
@@ -245,7 +260,11 @@ func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) er
 					Vout:  int(marketUnspents[1].VOut),
 				},
 			})
-			market.MakeTradable()
+			err := market.MakeTradable()
+			if err != nil {
+				return nil, err
+			}
+
 			return market, nil
 		},
 	)
@@ -350,11 +369,17 @@ func newSwapRequest(
 	blindKeyMap := map[string][]byte{
 		b2h(witnessScript): w.BlindingKey(),
 	}
+
 	msg, err := swap.Request(swap.RequestOpts{
-		assetP, amountP,
-		assetR, amountR,
-		psetBase64, blindKeyMap, blindKeyMap,
+		AssetToBeSent:      assetP,
+		AmountToBeSent:     amountP,
+		AssetToReceive:     assetR,
+		AmountToReceive:    amountR,
+		PsetBase64:         psetBase64,
+		InputBlindingKeys:  blindKeyMap,
+		OutputBlindingKeys: blindKeyMap,
 	})
+
 	if err != nil {
 		return nil, err
 	}

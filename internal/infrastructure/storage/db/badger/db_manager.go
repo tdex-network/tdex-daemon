@@ -108,7 +108,7 @@ func (d DbManager) RunPricesTransaction(
 ) (interface{}, error) {
 	ctxMaker := func() (ports.Transaction, context.Context) {
 		tx := d.NewPricesTransaction()
-		_ctx := context.WithValue(ctx, "tx", tx)
+		_ctx := context.WithValue(ctx, "ptx", tx)
 		return tx, _ctx
 	}
 
