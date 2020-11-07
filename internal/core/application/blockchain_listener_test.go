@@ -23,7 +23,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		"utx",
 		tx,
 	)
-	l := NewBlockchainListener(
+	l := newBlockchainListener(
 		unspentRepository,
 		nil,
 		nil,
@@ -58,7 +58,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		},
 	}
 
-	err = l.UpdateUnspentsForAddress(
+	err = l.updateUnspentsForAddress(
 		ctx,
 		unspents,
 		"a",
@@ -104,7 +104,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		},
 	}
 
-	err = l.UpdateUnspentsForAddress(
+	err = l.updateUnspentsForAddress(
 		ctx,
 		unspents,
 		"a",

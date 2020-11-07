@@ -223,6 +223,36 @@ func TestSpendUnspents(t *testing.T) {
 	assert.Equal(t, true, unspent.IsSpent())
 }
 
+func TestConfirmUnspents(t *testing.T) {
+	before()
+	defer after()
+
+	unspentKey := domain.UnspentKey{
+		TxID: "2",
+		VOut: 1,
+	}
+	unspent, err := unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, false, unspent.IsConfirmed())
+
+	if err = unspentRepository.ConfirmUnspents(
+		ctx,
+		[]domain.UnspentKey{unspentKey},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	unspent, err = unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, true, unspent.IsConfirmed())
+}
+
 func TestGetUnlockedBalance(t *testing.T) {
 	before()
 	defer after()

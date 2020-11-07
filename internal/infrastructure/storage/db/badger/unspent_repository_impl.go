@@ -142,6 +142,13 @@ func (u unspentRepositoryImpl) SpendUnspents(
 	return u.spendUnspents(ctx, unspentKeys)
 }
 
+func (u unspentRepositoryImpl) ConfirmUnspents(
+	ctx context.Context,
+	unspentKeys []domain.UnspentKey,
+) error {
+	return u.confirmUnspents(ctx, unspentKeys)
+}
+
 func (u unspentRepositoryImpl) LockUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
@@ -271,6 +278,37 @@ func (u unspentRepositoryImpl) spendUnspent(
 	}
 
 	unspent.Spend()
+	unspent.UnLock() // prevent conflict, locks not stored under unspent prefix
+
+	return u.updateUnspent(ctx, key, *unspent)
+}
+
+func (u unspentRepositoryImpl) confirmUnspents(
+	ctx context.Context,
+	unspentKeys []domain.UnspentKey,
+) error {
+	for _, key := range unspentKeys {
+		if err := u.confirmUnspent(ctx, key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (u unspentRepositoryImpl) confirmUnspent(
+	ctx context.Context,
+	key domain.UnspentKey,
+) error {
+	unspent, err := u.getUnspent(ctx, key)
+	if err != nil {
+		return err
+	}
+
+	if unspent == nil {
+		return nil
+	}
+
+	unspent.Confirm()
 	unspent.UnLock() // prevent conflict, locks not stored under unspent prefix
 
 	return u.updateUnspent(ctx, key, *unspent)

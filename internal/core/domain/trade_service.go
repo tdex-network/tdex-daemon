@@ -86,6 +86,10 @@ type CompleteResult struct {
 // of the tx in the blockchain. The trade must be in Accepted or
 // FailedToComplete status for being completed, otherwise an error is thrown
 func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error) {
+	if t.IsCompleted() {
+		return &CompleteResult{OK: true, TxHex: t.TxHex, TxID: t.TxID}, nil
+	}
+
 	if !t.IsAccepted() {
 		return nil, ErrMustBeAccepted
 	}
@@ -138,6 +142,7 @@ func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error
 	t.SwapComplete.Message = swapCompleteMsg
 	t.PsetBase64 = psetBase64
 	t.TxID = txID
+	t.TxHex = txHex
 	return &CompleteResult{OK: true, TxHex: txHex, TxID: txHash}, nil
 }
 
