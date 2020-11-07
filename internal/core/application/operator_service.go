@@ -242,6 +242,21 @@ func (o *operatorService) OpenMarket(
 	if !o.crawlerSvc.IsObservingAddresses() {
 		return ErrCrawlerDoesNotObserveAddresses
 	}
+
+	// check if market exists
+	market, _, err := o.marketRepository.GetMarketByAsset(
+		ctx,
+		quoteAsset,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if market == nil {
+		return domain.ErrMarketNotExist
+	}
+
 		
 	// open the market
 	if err := o.marketRepository.OpenMarket(ctx, quoteAsset); err != nil {
