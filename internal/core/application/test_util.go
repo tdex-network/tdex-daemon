@@ -115,7 +115,7 @@ func newTestOperator(
 		}
 	}
 
-	vaultRepo := newMockedVaultRepositoryImpl(tradeWallet)
+	vaultRepo := newMockedVaultRepositoryImpl(*tradeWallet)
 
 	if !vaultRepositoryIsEmpty {
 		vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
@@ -191,7 +191,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 
 	// vault repo with fee and markets (1 open and 1 closed) accounts initialized
 	// with some derived addresses
-	vaultRepo := newMockedVaultRepositoryImpl(tradeWallet)
+	vaultRepo := newMockedVaultRepositoryImpl(*tradeWallet)
 	vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
 		v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
 		v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart)
@@ -212,6 +212,12 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	// trade repo, this doesn't need to be prepared
 	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:            explorerSvc,
+		Observables:            []crawler.Observable{},
+		ErrorHandler:           func(err error) { fmt.Println(err) },
+		IntervalInMilliseconds: 100,
+	})
 
 	traderSvc := newTradeService(
 		marketRepo,
@@ -219,6 +225,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 		vaultRepo,
 		unspentsRepo,
 		explorerSvc,
+		crawlerSvc,
 	)
 
 	close := func() {
@@ -302,6 +309,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	if w != nil {
 		vaultRepo = newMockedVaultRepositoryImpl(*w)
 	}
+	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
@@ -311,7 +319,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	})
 	walletSvc := newWalletService(
 		vaultRepo,
-		dbbadger.NewUnspentRepositoryImpl(dbManager),
+		unspentRepo,
 		crawlerSvc,
 		explorerSvc,
 	)
@@ -324,7 +332,10 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		recover()
 		dbManager.Store.Close()
 		dbManager.UnspentStore.Close()
-		crawlerSvc.Stop()
+		dbManager.PriceStore.Close()
+		if w == nil {
+			crawlerSvc.Stop()
+		}
 		os.RemoveAll(testDir)
 	}
 	return walletSvc, ctx, close
@@ -631,7 +642,7 @@ var (
 		password:          "Sup3rS3cr3tP4ssw0rd!",
 		encryptedMnemonic: "46OIUILJEmvmdb/BbaTOEjMM743D5TnfqLBhl9c+E/PSG+7miMCpP3maRNttCP3RF/jdJnbzG6KkAbcKGXJROpF9tSGV5oizjp07lRG85fQH8OSJajn515sclXlKjX2aaB76b3Vt3a94pIzeZrQ2g5c8voupYnL0TDAjLd1Iltl5ApKLuPf5WfEJtvZ5Klb4rF+cLlvIjPtdqFHIwjotB8fR0LGr9yw1hfduDOWe+DPyNCkgbtKBKe0qWjBnnng88eMdlD8bsanuEkoiDlyHDnIvZ+JwgYOOUw==",
 	}
-	tradeWallet = mockedWallet{
+	tradeWallet = &mockedWallet{
 		mnemonic: []string{
 			"useful", "crime", "awful", "net", "paper", "beef", "cousin", "kid",
 			"theory", "ski", "sponsor", "april", "stable", "device", "sadness", "radio",

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -41,21 +42,39 @@ func TestGrpcMain(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	if err := initWallet(); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := initFeeAndMarketAccounts(); err != nil {
+	if err := initFee(); err != nil {
 		t.Fatal(err)
 	}
 
-	tradeTxID, err := tradeLBTCPerUSDT()
-	if err != nil {
+	if err := initMarketAccounts(); err != nil {
 		t.Fatal(err)
 	}
-	t.Log("swap transaction confirmed with id:", tradeTxID)
+
+	Parallelize(
+		func() {
+			for i := 0; i < 5; i++ {
+				tradeTxID, err := tradeLBTCPerUSDT()
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Log("swap transaction confirmed with id:", tradeTxID)
+				time.Sleep(6 * time.Second)
+			}
+		},
+		func() {
+			for i := 0; i < 5; i++ {
+				if err := initMarketAccounts(); err != nil {
+					t.Fatal(err)
+				}
+			}
+		},
+	)
 }
 
 func startDaemon() {
@@ -86,7 +105,7 @@ func initWallet() error {
 		return err
 	}
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(8 * time.Second)
 
 	if _, err := client.UnlockWallet(context.Background(), &pbwallet.UnlockWalletRequest{
 		WalletPassword: []byte(walletPassword),
@@ -97,7 +116,7 @@ func initWallet() error {
 	return nil
 }
 
-func initFeeAndMarketAccounts() error {
+func initFee() error {
 	client, err := newOperatorClient()
 	if err != nil {
 		return err
@@ -113,6 +132,19 @@ func initFeeAndMarketAccounts() error {
 	if _, err := explorerSvc.Faucet(depositFeeReply.GetAddress()); err != nil {
 		return err
 	}
+
+	time.Sleep(2 * time.Second)
+
+	return nil
+}
+
+func initMarketAccounts() error {
+	client, err := newOperatorClient()
+	if err != nil {
+		return err
+	}
+	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	ctx := context.Background()
 
 	// create a new market
 	depositMarketReply, err := client.DepositMarket(ctx, &pboperator.DepositMarketRequest{})
@@ -130,7 +162,7 @@ func initFeeAndMarketAccounts() error {
 	}
 	lbtc := config.GetNetwork().AssetID
 
-	time.Sleep(15 * time.Second)
+	time.Sleep(8 * time.Second)
 
 	// ...finally, open the market
 	if _, err := client.OpenMarket(ctx, &pboperator.OpenMarketRequest{
@@ -235,4 +267,19 @@ func newSingleKeyWallet() (signingKey []byte, blindingKey []byte, addr string, e
 	blindingKey = blindkey.Serialize()
 	addr = ctAddress
 	return
+}
+
+// Parallelize parallelizes the function calls
+func Parallelize(functions ...func()) {
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(functions))
+
+	defer waitGroup.Wait()
+
+	for _, function := range functions {
+		go func(copy func()) {
+			defer waitGroup.Done()
+			copy()
+		}(function)
+	}
 }

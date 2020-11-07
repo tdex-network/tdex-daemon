@@ -66,6 +66,7 @@ type Trade struct {
 	Status           Status
 	PsetBase64       string
 	TxID             string
+	TxHex            string
 	Price            float32
 	MarketFee        int64
 	MarketFeeAsset   string

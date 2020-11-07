@@ -4,51 +4,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
-type Service interface {
-	Start()
-	Stop()
-	AddObservable(observable Observable)
-	RemoveObservable(observable Observable)
-	GetEventChannel() chan Event
-}
-
-const (
-	FeeAccountDeposit = iota
-	MarketAccountDeposit
-	TransactionConfirmed
-	TransactionUnConfirmed
-)
-
 type Event interface {
-	Type() int
-}
-
-type AddressEvent struct {
-	EventType    int
-	AccountIndex int
-	Address      string
-	Utxos        []explorer.Utxo
-}
-
-func (a AddressEvent) Type() int {
-	return a.EventType
-}
-
-type TransactionEvent struct {
-	TxID      string
-	EventType int
-	BlockHash string
-	BlockTime float64
-}
-
-func (t TransactionEvent) Type() int {
-	return t.EventType
+	Type() EventType
 }
 
 type Observable interface {
@@ -58,16 +19,15 @@ type Observable interface {
 		errChan chan error,
 		eventChan chan Event,
 	)
+	isEqual(observable Observable) bool
 }
 
-type AddressObservable struct {
-	AccountIndex int
-	Address      string
-	BlindingKey  []byte
-}
-
-type TransactionObservable struct {
-	TxID string
+type Service interface {
+	Start()
+	Stop()
+	AddObservable(observable Observable)
+	RemoveObservable(observable Observable)
+	GetEventChannel() chan Event
 }
 
 type utxoCrawler struct {
@@ -106,8 +66,8 @@ func NewService(opts Opts) Service {
 	}
 }
 
-//Start starts crawler which periodically "scans" blockchain for specific
-//events/Observable object
+// Start starts crawler which periodically "scans" blockchain for specific
+// events/Observable object
 func (u *utxoCrawler) Start() {
 	var wg sync.WaitGroup
 	log.Debug("start observe")
@@ -128,26 +88,28 @@ func (u *utxoCrawler) Start() {
 	}
 }
 
-//Stop stops crawler
+// Stop stops crawler
 func (u *utxoCrawler) Stop() {
 	u.quitChan <- 1
 }
 
-func (u *utxoCrawler) getObservable() []Observable {
-	u.mutex.RLock()
-	defer u.mutex.RUnlock()
-	return u.observables
+// GetEventChannel returns Event channel which can be used to "listen" to
+// blockchain events
+func (u *utxoCrawler) GetEventChannel() chan Event {
+	return u.eventChan
 }
 
-//AddObservable adds new Observable to the list of Observables to be "watched
-//over"
+// AddObservable adds new Observable to the list of Observables to be "watched
+// over" only if the same Observable is not already in the list
 func (u *utxoCrawler) AddObservable(observable Observable) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
-	u.observables = append(u.observables, observable)
+	if !contains(u.observables, observable) {
+		u.observables = append([]Observable{observable}, u.observables...)
+	}
 }
 
-//RemoveObservable stops "watching" given Observable
+// RemoveObservable stops "watching" given Observable
 func (u *utxoCrawler) RemoveObservable(observable Observable) {
 	observables := u.getObservable()
 
@@ -160,6 +122,20 @@ func (u *utxoCrawler) RemoveObservable(observable Observable) {
 		u.removeTransactionObservable(*obs, observables)
 	}
 	u.mutex.Unlock()
+}
+
+func (u *utxoCrawler) observeAll(w *sync.WaitGroup) {
+	observables := u.getObservable()
+	for _, o := range observables {
+		w.Add(1)
+		go o.observe(w, u.explorerSvc, u.errChan, u.eventChan)
+	}
+}
+
+func (u *utxoCrawler) getObservable() []Observable {
+	u.mutex.RLock()
+	defer u.mutex.RUnlock()
+	return u.observables
 }
 
 func (u *utxoCrawler) removeAddressObservable(
@@ -194,102 +170,11 @@ func (u *utxoCrawler) removeTransactionObservable(
 	u.observables = newObservableList
 }
 
-//GetEventChannel returns Event channel which can be used to "listen" to
-//blockchain events
-func (u *utxoCrawler) GetEventChannel() chan Event {
-	return u.eventChan
-}
-
-func (u *utxoCrawler) observeAll(w *sync.WaitGroup) {
-	observables := u.getObservable()
+func contains(observables []Observable, observable Observable) bool {
 	for _, o := range observables {
-		w.Add(1)
-		go o.observe(w, u.explorerSvc, u.errChan, u.eventChan)
-	}
-}
-
-func (a *AddressObservable) observe(
-	w *sync.WaitGroup,
-	explorerSvc explorer.Service,
-	errChan chan error,
-	eventChan chan Event,
-) {
-	defer w.Done()
-
-	if a == nil {
-		return
-	}
-
-	unspents, err := explorerSvc.GetUnspents(a.Address, [][]byte{a.BlindingKey})
-	if err != nil {
-		errChan <- err
-	}
-	var eventType int
-	switch a.AccountIndex {
-	case domain.FeeAccount:
-		eventType = FeeAccountDeposit
-	default:
-		eventType = MarketAccountDeposit
-	}
-	event := AddressEvent{
-		EventType:    eventType,
-		AccountIndex: a.AccountIndex,
-		Address:      a.Address,
-		Utxos:        unspents,
-	}
-	eventChan <- event
-}
-
-func (a *TransactionObservable) observe(
-	w *sync.WaitGroup,
-	explorerSvc explorer.Service,
-	errChan chan error,
-	eventChan chan Event,
-) {
-	defer w.Done()
-
-	if a == nil {
-		return
-	}
-
-	txStatus, err := explorerSvc.GetTransactionStatus(a.TxID)
-	if err != nil {
-		errChan <- err
-	}
-
-	var confirmed bool
-	var blockHash string
-	var blockTime float64
-
-	for k, v := range txStatus {
-		switch value := v.(type) {
-		case bool:
-			if k == "confirmed" {
-				confirmed = value
-			}
-		case string:
-			if k == "block_hash" {
-				blockHash = value
-			}
-		case float64:
-			if k == "block_time" {
-				blockTime = value
-			}
+		if o.isEqual(observable) {
+			return true
 		}
-
 	}
-
-	trxStatus := TransactionUnConfirmed
-	if confirmed {
-		trxStatus = TransactionConfirmed
-	}
-
-	event := TransactionEvent{
-		TxID:      a.TxID,
-		EventType: trxStatus,
-		BlockHash: blockHash,
-		BlockTime: blockTime,
-	}
-
-	eventChan <- event
+	return false
 }

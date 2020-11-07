@@ -52,6 +52,10 @@ func (u *Unspent) Spend() {
 	u.Spent = true
 }
 
+func (u *Unspent) Confirm() {
+	u.Confirmed = true
+}
+
 func (u *Unspent) IsSpent() bool {
 	return u.Spent
 }
