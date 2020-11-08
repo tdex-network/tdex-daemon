@@ -724,6 +724,11 @@ func TestUpdateMarketStrategy (t *testing.T) {
 		}
 
 		// reopen the market
+		_, _, err = operatorService.DepositFeeAccount(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		err = operatorService.OpenMarket(ctx, market.BaseAsset, market.QuoteAsset)
 		if err != nil {
 			return nil, err
@@ -790,7 +795,7 @@ func TestUpdateMarketStrategy (t *testing.T) {
 				BaseAsset: validMarket.BaseAsset, 
 				QuoteAsset: invalidAsset,
 			},
-			letsCloseTheMarketBefore,
+			dontCloseTheMarketBefore,
 		)
 		if failErr != nil {
 			t.Error(failErr)
@@ -805,7 +810,7 @@ func TestUpdateMarketStrategy (t *testing.T) {
 				BaseAsset: invalidAsset, 
 				QuoteAsset: validMarket.QuoteAsset,
 			},
-			letsCloseTheMarketBefore,
+			dontCloseTheMarketBefore,
 		)
 		if failErr != nil {
 			t.Error(failErr)
