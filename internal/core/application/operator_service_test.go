@@ -208,7 +208,11 @@ func TestUpdateMarketPrice(t *testing.T) {
 
 		if !marketStrategyIsPluggable {
 			// reopen the market
-			err := operatorService.OpenMarket(ctx, market.BaseAsset, market.QuoteAsset)
+			_, _, err := operatorService.DepositFeeAccount(ctx)
+			if err != nil {
+				return err
+			}
+			err = operatorService.OpenMarket(ctx, market.BaseAsset, market.QuoteAsset)
 			if err != nil {
 				return err
 			}
