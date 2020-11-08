@@ -684,12 +684,12 @@ func TestUpdateMarketStrategy (t *testing.T) {
 	}
 
 	// update price function
-	updateMarketStrategy := func(strategy domain.StrategyType, market Market, closeTheMarket bool) error {
+	updateMarketStrategy := func(strategy domain.StrategyType, market Market, closeTheMarket bool) (error, error) {
 		// close the market
 		if closeTheMarket {
 			err := operatorService.CloseMarket(ctx, market.BaseAsset, market.QuoteAsset)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
@@ -703,7 +703,7 @@ func TestUpdateMarketStrategy (t *testing.T) {
 		)
 
 		if err != nil {
-			return err
+			return err, nil
 		}
 
 		// if pluggable set prices
@@ -719,56 +719,72 @@ func TestUpdateMarketStrategy (t *testing.T) {
 			)
 
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 		}
 
 		// reopen the market
 		err = operatorService.OpenMarket(ctx, market.BaseAsset, market.QuoteAsset)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		return nil
+		return nil, nil
 	}
 
 	// get market price function
-	getMarketStrategy := func() domain.StrategyType {
+	getMarketStrategy := func() (domain.StrategyType, error) {
 		marketsInfos, err := operatorService.ListMarket(ctx)
 		if err != nil {
-			panic(err)
+			return -1, err
 		}
 
 		for _, marketInfo := range marketsInfos {
 			if (marketInfo.Market.BaseAsset == validMarket.BaseAsset && marketInfo.Market.QuoteAsset == validMarket.QuoteAsset) {
-					return domain.StrategyType(marketInfo.StrategyType)
+					return domain.StrategyType(marketInfo.StrategyType), err
 			}
 		}
 
-		panic(errors.New("market not found"))
+		err = errors.New("market not found")
+		return -1, err
 	}
 
 	t.Run("should update the strategy to PLUGGABLE", func(t *testing.T) {
-		err := updateMarketStrategy(domain.StrategyTypePluggable, validMarket, letsCloseTheMarketBefore)
-		strategy := getMarketStrategy()
+		err, failErr := updateMarketStrategy(domain.StrategyTypePluggable, validMarket, letsCloseTheMarketBefore)
+		if failErr != nil {
+			t.Error(failErr)
+		}
+		strategy, failErr := getMarketStrategy()
+		if failErr != nil {
+			t.Error(failErr)
+		}
 		assert.Equal(t, nil, err)
 		assert.Equal(t, domain.StrategyTypePluggable, strategy)
 	})
 
 	t.Run("should update the strategy to BALANCED", func(t *testing.T) {
-		err := updateMarketStrategy(domain.StrategyTypeBalanced, validMarket, letsCloseTheMarketBefore)
-		strategy := getMarketStrategy()
+		err, failErr := updateMarketStrategy(domain.StrategyTypeBalanced, validMarket, letsCloseTheMarketBefore)
+		if failErr != nil {
+			t.Error(failErr)
+		}
+		strategy, failErr := getMarketStrategy()
+		if failErr != nil {
+			t.Error(failErr)
+		}
 		assert.Equal(t, nil, err)
 		assert.Equal(t, domain.StrategyTypeBalanced, strategy)
 	})
 
 	t.Run("should return an error if the new strategy is not supported", func(t *testing.T) {
-		err := updateMarketStrategy(domain.StrategyTypeUnbalanced, validMarket, letsCloseTheMarketBefore)
+		err, failErr := updateMarketStrategy(domain.StrategyTypeUnbalanced, validMarket, letsCloseTheMarketBefore)
+		if failErr != nil {
+			t.Error(failErr)
+		}
 		assert.NotEqual(t, nil, err)
 	})
 
 	t.Run("should return an error if the market quote asset is invalid", func(t *testing.T) {
-		err := updateMarketStrategy(
+		err, failErr := updateMarketStrategy(
 			domain.StrategyTypePluggable, 
 			Market{
 				BaseAsset: validMarket.BaseAsset, 
@@ -776,11 +792,14 @@ func TestUpdateMarketStrategy (t *testing.T) {
 			},
 			letsCloseTheMarketBefore,
 		)
+		if failErr != nil {
+			t.Error(failErr)
+		}
 		assert.NotEqual(t, nil, err)
 	})
 
 	t.Run("should return an error if the market base asset is invalid", func(t *testing.T) {
-		err := updateMarketStrategy(
+		err, failErr := updateMarketStrategy(
 			domain.StrategyTypePluggable, 
 			Market{
 				BaseAsset: invalidAsset, 
@@ -788,11 +807,14 @@ func TestUpdateMarketStrategy (t *testing.T) {
 			},
 			letsCloseTheMarketBefore,
 		)
+		if failErr != nil {
+			t.Error(failErr)
+		}
 		assert.NotEqual(t, nil, err)
 	})
 
 	t.Run("should return an error if the market does not exist", func(t *testing.T) {
-		err := updateMarketStrategy(
+		err, failErr := updateMarketStrategy(
 			domain.StrategyTypePluggable, 
 			Market{
 				BaseAsset: validMarket.BaseAsset, 
@@ -800,11 +822,14 @@ func TestUpdateMarketStrategy (t *testing.T) {
 			},
 			letsCloseTheMarketBefore,
 		)
+		if failErr != nil {
+			t.Error(failErr)
+		}
 		assert.NotEqual(t, nil, err)
 	})
 
 	t.Run("should return an error if the market is not closed", func(t *testing.T) {
-		err := updateMarketStrategy(
+		err, failErr := updateMarketStrategy(
 			domain.StrategyTypePluggable, 
 			Market{
 				BaseAsset: validMarket.BaseAsset, 
@@ -812,6 +837,9 @@ func TestUpdateMarketStrategy (t *testing.T) {
 			},
 			dontCloseTheMarketBefore,
 		)
+		if failErr != nil {
+			t.Error(failErr)
+		}
 		assert.NotEqual(t, nil, err)
 	})
 }
