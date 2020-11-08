@@ -619,7 +619,7 @@ func TestOpenMarket(t *testing.T) {
 		return nil, operatorService.OpenMarket(ctx, baseAsset, quoteAsset), close
 	}
 
-	t.Run("should return an error if the crawler does not observe any addresses", func(t *testing.T) {
+	t.Run("should return an error if the crawler does not observe any fee account addresses", func(t *testing.T) {
 		failErr, err, close := openMarketRequest(validBaseAsset, validQuoteAsset, !depositFeeAccount)
 		if failErr != nil {
 			t.Error(failErr)

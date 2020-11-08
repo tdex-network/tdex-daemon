@@ -29,7 +29,7 @@ type Service interface {
 	Stop()
 	AddObservable(observable Observable)
 	RemoveObservable(observable Observable)
-	IsObservingAddresses() bool
+	IsObservingAddresses(addresses []string) bool
 	GetEventChannel() chan Event
 }
 
@@ -127,16 +127,21 @@ func (u *utxoCrawler) RemoveObservable(observable Observable) {
 	u.mutex.Unlock()
 }
 
-//IsObservingAddresses returns true if the crawler is observing at least one address
+//IsObservingAddresses returns true if the crawler is observing at least one address given as parameter.
 //false in the other case
-func (u *utxoCrawler) IsObservingAddresses() bool {
+func (u *utxoCrawler) IsObservingAddresses(addresses []string) bool {
 	observables := u.getObservable()
 	for _, observable := range observables {
 		switch observable.(type) {
 		case *AddressObservable:
-		       return true
+			for _, addr := range addresses {
+				if observable.(*AddressObservable).Address == addr {
+					return true
+				}
+			}
+			continue
 		default:
-		       continue
+			continue
 		}
 	}
 	return false

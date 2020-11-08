@@ -239,7 +239,12 @@ func (o *operatorService) OpenMarket(
 	}
 
 	// check if the crawler is observing at least one addresse
-	if !o.crawlerSvc.IsObservingAddresses() {
+	feeAccountAddresses, _, err := o.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return err
+	}
+
+	if !o.crawlerSvc.IsObservingAddresses(feeAccountAddresses) {
 		return ErrCrawlerDoesNotObserveAddresses
 	}
 
