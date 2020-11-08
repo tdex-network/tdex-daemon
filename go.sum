@@ -322,6 +322,8 @@ github.com/vulpemventures/go-bip39 v1.0.2 h1:+BgKOVo04okKf1wA4Fhv8ccvql+qFyzVUdV
 github.com/vulpemventures/go-bip39 v1.0.2/go.mod h1:mjFmuv9D6BtANI6iscMmbHhmBOwjMCFfny3mxHnuDrk=
 github.com/vulpemventures/go-elements v0.0.4-0.20200901152827-3e772f50e0dc h1:kydqLEuoFrijcDY+akX0syl14dUiMvWCWR3ib1KI01M=
 github.com/vulpemventures/go-elements v0.0.4-0.20200901152827-3e772f50e0dc/go.mod h1:fqCaLizJz7kopPsW8jetD2FgKQGm1bM2ON9/5rZskOc=
+github.com/vulpemventures/go-elements v0.0.4-0.20201106204020-f8c27152329e h1:2s7kksEA6FwzQx9NpJV4UZHjqHJOnviIlSbXskVKQyA=
+github.com/vulpemventures/go-elements v0.0.4-0.20201106204020-f8c27152329e/go.mod h1:fqCaLizJz7kopPsW8jetD2FgKQGm1bM2ON9/5rZskOc=
 github.com/vulpemventures/go-secp256k1-zkp v1.0.1 h1:myxKDZRR9CEj7Tz262lb6CIsmROFnYIZz7ySt79WtVw=
 github.com/vulpemventures/go-secp256k1-zkp v1.0.1/go.mod h1:zo7CpgkuPgoe7fAV+inyxsI9IhGmcoFgyD8nqZaPSOM=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
