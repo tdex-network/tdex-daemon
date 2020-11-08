@@ -130,6 +130,9 @@ func (u *utxoCrawler) RemoveObservable(observable Observable) {
 //IsObservingAddresses returns true if the crawler is observing at least one address given as parameter.
 //false in the other case
 func (u *utxoCrawler) IsObservingAddresses(addresses []string) bool {
+	if len(addresses) == 0 {
+		return false
+	}
 	observables := u.getObservable()
 	for _, observable := range observables {
 		switch observable.(type) {
