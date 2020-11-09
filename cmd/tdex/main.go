@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
 
+	"github.com/btcsuite/btcutil"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/grpc"
@@ -35,6 +39,9 @@ var (
 	// maxMsgRecvSize is the largest message our client will receive. We
 	// set this to 200MiB atm.
 	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 200)
+
+	tdexDataDir = btcutil.AppDataDir("tdex-operator", false)
+	statePath   = path.Join(tdexDataDir, "state.json")
 )
 
 func main() {
@@ -54,6 +61,7 @@ func main() {
 		&unlockwallet,
 		&depositfee,
 		&depositmarket,
+		&market,
 		&openmarket,
 		&closemarket,
 		&updatestrategy,
@@ -63,6 +71,53 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
+
+	if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
+		os.Mkdir(tdexDataDir, os.ModeDir|0755)
+	}
+}
+
+func getMarketFromState() (string, string, error) {
+	state, err := getState()
+	if err != nil {
+		return "", "", errors.New("a market must be selected")
+	}
+	baseAsset := state["base_asset"].(string)
+	quoteAsset := state["quote_asset"].(string)
+
+	return baseAsset, quoteAsset, nil
+}
+
+func setMarketIntoState(baseAsset, quoteAsset string) error {
+	return setState(map[string]string{
+		"base_asset":  baseAsset,
+		"quote_asset": quoteAsset,
+	})
+}
+
+func getState() (map[string]interface{}, error) {
+	data := map[string]interface{}{}
+
+	file, err := ioutil.ReadFile(statePath)
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal(file, &data)
+
+	return data, nil
+}
+
+func setState(data map[string]string) error {
+	jsonString, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(statePath, jsonString, 0755)
+	if err != nil {
+		return fmt.Errorf("writing to file: %w", err)
+	}
+
+	return nil
 }
 
 func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),

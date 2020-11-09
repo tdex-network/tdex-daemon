@@ -11,20 +11,8 @@ import (
 )
 
 var openmarket = cli.Command{
-	Name:  "open",
-	Usage: "open a market",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "base_asset",
-			Usage: "the base asset hash of an existent market",
-			Value: "",
-		},
-		&cli.StringFlag{
-			Name:  "quote_asset",
-			Usage: "the base asset hash of an existent market",
-			Value: "",
-		},
-	},
+	Name:   "open",
+	Usage:  "open a market",
 	Action: openMarketAction,
 }
 
@@ -35,11 +23,16 @@ func openMarketAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
 	_, err = client.OpenMarket(
 		context.Background(), &pboperator.OpenMarketRequest{
 			Market: &pbtypes.Market{
-				BaseAsset:  ctx.String("base_asset"),
-				QuoteAsset: ctx.String("quote_asset"),
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
 			},
 		},
 	)

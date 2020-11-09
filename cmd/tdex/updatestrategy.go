@@ -14,16 +14,6 @@ var updatestrategy = cli.Command{
 	Name:  "strategy",
 	Usage: "updates the current market making strategy, either automated or pluggable market making",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "base_asset",
-			Usage: "the base asset hash of an existent market",
-			Value: "",
-		},
-		&cli.StringFlag{
-			Name:  "quote_asset",
-			Usage: "the base asset hash of an existent market",
-			Value: "",
-		},
 		&cli.BoolFlag{
 			Name:  "pluggable",
 			Usage: "set the strategy as pluggable",
@@ -40,6 +30,11 @@ func updateStrategyAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
 	strategy := pboperator.StrategyType_BALANCED
 	if ctx.Bool("pluggable") {
 		strategy = pboperator.StrategyType_PLUGGABLE
@@ -48,8 +43,8 @@ func updateStrategyAction(ctx *cli.Context) error {
 	_, err = client.UpdateMarketStrategy(
 		context.Background(), &pboperator.UpdateMarketStrategyRequest{
 			Market: &pbtypes.Market{
-				BaseAsset:  ctx.String("base_asset"),
-				QuoteAsset: ctx.String("quote_asset"),
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
 			},
 			StrategyType: strategy,
 		},

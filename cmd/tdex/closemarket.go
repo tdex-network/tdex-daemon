@@ -11,20 +11,8 @@ import (
 )
 
 var closemarket = cli.Command{
-	Name:  "close",
-	Usage: "close a market",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "base_asset",
-			Usage: "the base asset hash of an existent market",
-			Value: "",
-		},
-		&cli.StringFlag{
-			Name:  "quote_asset",
-			Usage: "the base asset hash of an existent market",
-			Value: "",
-		},
-	},
+	Name:   "close",
+	Usage:  "close a market",
 	Action: closeMarketAction,
 }
 
@@ -35,11 +23,16 @@ func closeMarketAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
 	_, err = client.CloseMarket(
 		context.Background(), &pboperator.CloseMarketRequest{
 			Market: &pbtypes.Market{
-				BaseAsset:  ctx.String("base_asset"),
-				QuoteAsset: ctx.String("quote_asset"),
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
 			},
 		},
 	)
