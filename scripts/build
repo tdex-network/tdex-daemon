@@ -9,5 +9,5 @@ PARENT_PATH=$(dirname $(
 
 pushd $PARENT_PATH
 mkdir -p build
-GOOS=$1 GOARCH=$2 go build -ldflags="-s -w" -o build/tdexd-$1-$2 cmd/grpc/main.go
+GOOS=$1 GOARCH=$2 go build -ldflags="-s -w" -o build/tdexd-$1-$2 cmd/tdexd/main.go
 popd
