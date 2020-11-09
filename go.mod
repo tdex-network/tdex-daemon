@@ -21,6 +21,7 @@ require (
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
+	github.com/urfave/cli/v2 v2.3.0
 	github.com/vulpemventures/go-bip39 v1.0.2
 	github.com/vulpemventures/go-elements v0.0.4-0.20201106204020-f8c27152329e
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
