@@ -13,7 +13,7 @@ type AccountAndKey struct {
 }
 
 type Vault struct {
-	Mnemonic               []string
+	//Mnemonic               []string
 	EncryptedMnemonic      string
 	PassphraseHash         []byte
 	Accounts               map[int]*Account
@@ -59,7 +59,6 @@ func NewVault(mnemonic []string, passphrase string) (*Vault, error) {
 	}
 
 	return &Vault{
-		Mnemonic:               mnemonic,
 		EncryptedMnemonic:      encryptedMnemonic,
 		PassphraseHash:         btcutil.Hash160([]byte(passphrase)),
 		Accounts:               map[int]*Account{},

@@ -564,7 +564,6 @@ type mockedVaultRepository struct {
 func newMockedVaultRepositoryImpl(w mockedWallet) domain.VaultRepository {
 	return &mockedVaultRepository{
 		vault: &domain.Vault{
-			Mnemonic:               w.mnemonic,
 			EncryptedMnemonic:      w.encryptedMnemonic,
 			PassphraseHash:         btcutil.Hash160([]byte(w.password)),
 			Accounts:               map[int]*domain.Account{},
@@ -725,31 +724,6 @@ func mockDb() (*dbbadger.DbManager, string, error) {
 	bk1, _ := hex.DecodeString("0da00604f2f3fdf33d3dae4bf5edb755218c72e904175f4981a8ad8271b6207b")
 	bk2, _ := hex.DecodeString("4c4a998378accfac4bce02a3404b55f1ec2e1b3b26309958c697b097f1c7e216")
 	v := domain.Vault{
-		Mnemonic: []string{"gun",
-			"transfer",
-			"capable",
-			"insane",
-			"daring",
-			"october",
-			"dwarf",
-			"useless",
-			"dizzy",
-			"infant",
-			"green",
-			"person",
-			"resemble",
-			"exchange",
-			"bleak",
-			"latin",
-			"jacket",
-			"hint",
-			"oil",
-			"lens",
-			"demand",
-			"feature",
-			"caught",
-			"tunnel",
-		},
 		EncryptedMnemonic: "htT+VEkwzI7hiehnxK09rQ6vIC0yc5VuDcVW/QVNwaAjApzoiGQBXIHRafMNVv2ih+8NluGCH3ePBqAQaoSVhBaXjXCT3TgOKf8lv1xw9amQQYgk7JKp5/8AmH4xjsCFPRzfXAaEZjJsU4yXoGZxXABDvSTtf9TPmcL2n3EmRUnZhI6LqJPvNb4LurqblZbBN5W0KhaRzS9kKEUh8rEEO8o2U7/qhzl0gSIPAu4pMso3acTjEg7SBhb6V/ZwyF+d/FTrNVDy6AxMwFtlIYzv8ITeSLP8e3jAxxNNOhVt",
 		PassphraseHash:    passHash,
 		Accounts: map[int]*domain.Account{

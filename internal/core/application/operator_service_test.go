@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,6 +48,8 @@ func TestListMarket(t *testing.T) {
 
 func TestDepositMarket(t *testing.T) {
 	operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+
+	config.Set(config.MnemonicKey, strings.Join(newTradeWallet().mnemonic, " "))
 
 	t.Run("DepositMarket with new market", func(t *testing.T) {
 		address, err := operatorService.DepositMarket(ctx, "", "")
@@ -271,6 +274,21 @@ func TestWithdrawMarket(t *testing.T) {
 		crawlerSvc,
 	)
 
+	walletService := NewWalletService(
+		vaultRepo,
+		unspentRepo,
+		crawlerSvc,
+		nil,
+	)
+
+	tx := dbManager.NewTransaction()
+	ctx := context.WithValue(context.Background(), "tx", tx)
+	pass := []byte{72, 101, 108, 108, 11}
+	err = walletService.UnlockWallet(ctx, string(pass))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run(
 		"WithdrawMarketFunds should return raw transaction",
 		func(t *testing.T) {
@@ -393,6 +411,21 @@ func TestBalanceFeeAccount(t *testing.T) {
 		nil,
 		crawlerSvc,
 	)
+
+	walletService := NewWalletService(
+		vaultRepo,
+		unspentRepo,
+		crawlerSvc,
+		nil,
+	)
+
+	tx := dbManager.NewTransaction()
+	ctx := context.WithValue(context.Background(), "tx", tx)
+	pass := []byte{72, 101, 108, 108, 11}
+	err = walletService.UnlockWallet(ctx, string(pass))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run(
 		"FeeAccountBalance should return fee account balance",
