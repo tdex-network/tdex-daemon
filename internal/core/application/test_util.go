@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"sync"
@@ -77,7 +76,6 @@ func runCommand(cmd *exec.Cmd) {
 
 func newTestDb() (*dbbadger.DbManager, string) {
 	path := "testDatadir-" + uuidgen()
-	log.Printf("--------------------------------------------- " + path)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		os.Mkdir(path, os.ModePerm)
 	}
