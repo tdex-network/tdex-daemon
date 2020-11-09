@@ -74,6 +74,9 @@ func runCommand(cmd *exec.Cmd) {
 	}
 }
 
+// newTestDb is an util function using to create a new database
+// the function returns a DbManager pointer + the name of the database directory
+// --> use these informations to close and remove db directory using the closeDbAndRemoveDir function (see below)
 func newTestDb() (*dbbadger.DbManager, string) {
 	path := "testDatadir-" + uuidgen()
 	if _, err := os.Stat(path); os.IsNotExist(err) {
