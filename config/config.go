@@ -113,10 +113,12 @@ func GetNetwork() *network.Network {
 	return &network.Liquid
 }
 
+// Set a value for the given key
 func Set(key string, value interface{}) {
 	vip.Set(key, value)
 }
 
+// GetMnemonic returns the current set mnemonic
 func GetMnemonic() []string {
 	var mnemonic []string
 	if vip.GetString(MnemonicKey) != "" {

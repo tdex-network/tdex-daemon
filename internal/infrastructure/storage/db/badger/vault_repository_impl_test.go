@@ -1,10 +1,11 @@
 package dbbadger
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"testing"
 )
 
 func TestAll(t *testing.T) {
