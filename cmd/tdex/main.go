@@ -56,6 +56,7 @@ func main() {
 		&depositmarket,
 		&openmarket,
 		&closemarket,
+		&updatestrategy,
 	)
 
 	err := app.Run(os.Args)
