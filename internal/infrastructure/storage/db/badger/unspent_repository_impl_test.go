@@ -280,13 +280,13 @@ func TestLockUnlockUnspents(t *testing.T) {
 		},
 	}
 
-	err := unspentRepository.LockUnspents(context.Background(), unpsentsKeys, uuid.New())
+	err := unspentRepository.LockUnspents(ctx, unpsentsKeys, uuid.New())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	lockedCount := 0
-	unspents := unspentRepository.GetAllUnspents(context.Background())
+	unspents := unspentRepository.GetAllUnspents(ctx)
 	for _, v := range unspents {
 		if v.IsLocked() == true {
 			lockedCount++
@@ -295,19 +295,59 @@ func TestLockUnlockUnspents(t *testing.T) {
 
 	assert.Equal(t, 2, lockedCount)
 
-	err = unspentRepository.UnlockUnspents(context.Background(), unpsentsKeys)
+	err = unspentRepository.UnlockUnspents(ctx, unpsentsKeys)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	lockedCount = 0
-	unspents = unspentRepository.GetAllUnspents(context.Background())
+	unspents = unspentRepository.GetAllUnspents(ctx)
 	for _, v := range unspents {
 		if v.IsLocked() == true {
 			lockedCount++
 		}
 	}
 
+	assert.Equal(t, 0, lockedCount)
+}
+
+func TestUnspentLockTTL(t *testing.T) {
+	before()
+	defer after()
+
+	unpsentsKeys := []domain.UnspentKey{
+		{
+			TxID: "1",
+			VOut: 1,
+		},
+		{
+			TxID: "2",
+			VOut: 1,
+		},
+	}
+
+	err := unspentRepository.LockUnspents(ctx, unpsentsKeys, uuid.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lockedCount := 0
+	unspents := unspentRepository.GetAllUnspents(ctx)
+	for _, v := range unspents {
+		if v.IsLocked() == true {
+			lockedCount++
+		}
+	}
+
+	time.Sleep(3 * time.Second)
+
+	lockedCount = 0
+	unspents = unspentRepository.GetAllUnspents(ctx)
+	for _, v := range unspents {
+		if v.IsLocked() == true {
+			lockedCount++
+		}
+	}
 	assert.Equal(t, 0, lockedCount)
 }
 
