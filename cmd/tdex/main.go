@@ -65,6 +65,7 @@ func main() {
 		&depositmarket,
 		&market,
 		&listmarket,
+		&listswaps,
 		&openmarket,
 		&closemarket,
 		&updatestrategy,
@@ -134,6 +135,10 @@ func merge(maps ...map[string]string) map[string]string {
 	return merge
 }
 
+/*
+Modified from https://github.com/lightninglabs/pool/blob/master/cmd/pool/main.go
+Original Copyright 2017 Oliver Gugger. All Rights Reserved.
+*/
 func printRespJSON(resp interface{}) {
 	jsonMarshaler := &jsonpb.Marshaler{
 		EmitDefaults: true,
