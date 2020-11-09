@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
@@ -47,6 +46,7 @@ func depositMarketAction(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println("Address", resp.GetAddress())
+	printRespJSON(resp)
+
 	return nil
 }

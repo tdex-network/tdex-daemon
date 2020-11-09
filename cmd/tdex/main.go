@@ -9,6 +9,8 @@ import (
 	"path"
 
 	"github.com/btcsuite/btcutil"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/grpc"
@@ -62,6 +64,7 @@ func main() {
 		&depositfee,
 		&depositmarket,
 		&market,
+		&listmarket,
 		&openmarket,
 		&closemarket,
 		&updatestrategy,
@@ -129,6 +132,22 @@ func merge(maps ...map[string]string) map[string]string {
 		}
 	}
 	return merge
+}
+
+func printRespJSON(resp interface{}) {
+	jsonMarshaler := &jsonpb.Marshaler{
+		EmitDefaults: true,
+		OrigName:     true,
+		Indent:       "\t", // Matches indentation of printJSON.
+	}
+
+	jsonStr, err := jsonMarshaler.MarshalToString(resp.(proto.Message))
+	if err != nil {
+		fmt.Println("unable to decode response: ", err)
+		return
+	}
+
+	fmt.Println(jsonStr)
 }
 
 func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),

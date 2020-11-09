@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 
@@ -29,8 +28,7 @@ func depositFeeAction(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println("Address", resp.GetAddress())
-	fmt.Println("Blinding", resp.GetBlinding())
+	printRespJSON(resp)
 
 	return nil
 }
