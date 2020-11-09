@@ -59,7 +59,7 @@ clean-test:
 	rm -rf ./internal/infrastructure/storage/db/badger/testdb
 
 ## test: runs go unit test with default values
-test: clean-test shorttest
+test: clean-test shorttest 
 
 ## shorttest: runs unit tests by skipping those that are time expensive
 shorttest:

@@ -173,34 +173,14 @@ func TestUpdateMarketPrice(t *testing.T) {
 				QuotePrice: decimal.NewFromFloat(quotePrice),
 			},
 		}
-		// close the market
-		err := operatorService.CloseMarket(ctx, market.BaseAsset, market.QuoteAsset)
-		if err != nil {
-			return nil, err
-		}
-
-		// make the strategy to pluggable
-		err = operatorService.UpdateMarketStrategy(ctx, MarketStrategy{Market: market, Strategy: domain.StrategyTypePluggable})
-		if err != nil {
-			return nil, err
-		}
 
 		// update the price
-		err = operatorService.UpdateMarketPrice(ctx, args)
+		err := operatorService.UpdateMarketPrice(ctx, args)
 		if err != nil {
 			return nil, err
 		}
 
-		// reopen the market
-		_, _, err = operatorService.DepositFeeAccount(ctx)
-		if err != nil {
-			return nil, err
-		}
-		err = operatorService.OpenMarket(ctx, market.BaseAsset, market.QuoteAsset)
-		if err != nil {
-			return nil, err
-		}
-
+		// get the price if flag is specified
 		if getPrice {
 			priceWithFee, err := tradeService.GetMarketPrice(ctx, market, 1, 1)
 			if err != nil {

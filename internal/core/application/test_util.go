@@ -113,6 +113,7 @@ func newTestOperator(
 	ctx := context.WithValue(context.Background(), "tx", tx)
 
 	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
+
 	if marketRepositoryIsEmpty == false {
 		err := fillMarketRepo(ctx, &marketRepo)
 		if err != nil {
@@ -248,6 +249,7 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 
 func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) error {
 	// TODO: create and open market
+	// 0f1fb27fc3dbbc50f20e36487c5615785e268fc6a23642e41175afdd6285b346
 	// opened market
 	(*marketRepo).UpdateMarket(
 		ctx,
@@ -265,7 +267,10 @@ func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) er
 					Vout:  int(marketUnspents[1].VOut),
 				},
 			})
-			err := market.MakeTradable()
+			err := market.MakeStrategyPluggable()
+			market.ChangeBasePrice(decimal.NewFromFloat(1.90))
+			market.ChangeQuotePrice(decimal.NewFromFloat(4.32))
+			err = market.MakeTradable()
 			if err != nil {
 				return nil, err
 			}
