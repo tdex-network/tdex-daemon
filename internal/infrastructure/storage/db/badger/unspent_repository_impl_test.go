@@ -315,7 +315,7 @@ func TestUnspentLockTTL(t *testing.T) {
 	before()
 	defer after()
 
-	unpsentsKeys := []domain.UnspentKey{
+	unspentsKeys := []domain.UnspentKey{
 		{
 			TxID: "1",
 			VOut: 1,
@@ -326,7 +326,7 @@ func TestUnspentLockTTL(t *testing.T) {
 		},
 	}
 
-	err := unspentRepository.LockUnspents(ctx, unpsentsKeys, uuid.New())
+	err := unspentRepository.LockUnspents(ctx, unspentsKeys, uuid.New())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,6 +338,7 @@ func TestUnspentLockTTL(t *testing.T) {
 			lockedCount++
 		}
 	}
+	assert.Equal(t, 2, lockedCount)
 
 	time.Sleep(3 * time.Second)
 

@@ -66,7 +66,7 @@ func init() {
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
-	vip.SetDefault(UnspentTtlKey, 60)
+	vip.SetDefault(UnspentTtlKey, 300)
 
 	validate()
 
