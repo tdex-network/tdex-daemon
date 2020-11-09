@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/urfave/cli/v2"
@@ -8,7 +9,7 @@ import (
 
 var market = cli.Command{
 	Name:  "market",
-	Usage: "select market",
+	Usage: "select a market to run commands against",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "base_asset",
@@ -42,4 +43,22 @@ func marketAction(ctx *cli.Context) error {
 
 	fmt.Println("market has been selected")
 	return nil
+}
+
+func getMarketFromState() (string, string, error) {
+	state, err := getState()
+	if err != nil {
+		return "", "", errors.New("a market must be selected")
+	}
+	baseAsset := state["base_asset"]
+	quoteAsset := state["quote_asset"]
+
+	return baseAsset, quoteAsset, nil
+}
+
+func setMarketIntoState(baseAsset, quoteAsset string) error {
+	return setState(map[string]string{
+		"base_asset":  baseAsset,
+		"quote_asset": quoteAsset,
+	})
 }

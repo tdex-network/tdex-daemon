@@ -65,38 +65,17 @@ func main() {
 		&openmarket,
 		&closemarket,
 		&updatestrategy,
+		&updateprice,
 	)
 
 	err := app.Run(os.Args)
 	if err != nil {
 		fatal(err)
 	}
-
-	if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
-		os.Mkdir(tdexDataDir, os.ModeDir|0755)
-	}
 }
 
-func getMarketFromState() (string, string, error) {
-	state, err := getState()
-	if err != nil {
-		return "", "", errors.New("a market must be selected")
-	}
-	baseAsset := state["base_asset"].(string)
-	quoteAsset := state["quote_asset"].(string)
-
-	return baseAsset, quoteAsset, nil
-}
-
-func setMarketIntoState(baseAsset, quoteAsset string) error {
-	return setState(map[string]string{
-		"base_asset":  baseAsset,
-		"quote_asset": quoteAsset,
-	})
-}
-
-func getState() (map[string]interface{}, error) {
-	data := map[string]interface{}{}
+func getState() (map[string]string, error) {
+	data := map[string]string{}
 
 	file, err := ioutil.ReadFile(statePath)
 	if err != nil {
@@ -108,7 +87,29 @@ func getState() (map[string]interface{}, error) {
 }
 
 func setState(data map[string]string) error {
-	jsonString, err := json.Marshal(data)
+
+	if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
+		os.Mkdir(tdexDataDir, os.ModeDir|0755)
+	}
+
+	file, err := os.OpenFile(statePath, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	err = file.Close()
+	if err != nil {
+		return err
+	}
+
+	currentData, err := getState()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	mergedData := merge(currentData, data)
+
+	jsonString, err := json.Marshal(mergedData)
 	if err != nil {
 		return err
 	}
@@ -118,6 +119,16 @@ func setState(data map[string]string) error {
 	}
 
 	return nil
+}
+
+func merge(maps ...map[string]string) map[string]string {
+	merge := make(map[string]string, 0)
+	for _, m := range maps {
+		for k, v := range m {
+			merge[k] = v
+		}
+	}
+	return merge
 }
 
 func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),
