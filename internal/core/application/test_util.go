@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
@@ -25,13 +27,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const testDir = "testDatadir"
-
 //RegtestExplorerAPI ...
 const RegtestExplorerAPI = "http://127.0.0.1:3001"
-
-var connectedToTestDb = false
-var dbManager *dbbadger.DbManager
 
 type mockedWallet struct {
 	mnemonic          []string
@@ -59,6 +56,14 @@ func stopNigiri() {
 	runCommand(cmd)
 }
 
+func uuidgen() string {
+	val, err := exec.Command("uuidgen").Output()
+	if err != nil {
+		panic(err)
+	}
+	return string(val)
+}
+
 func runCommand(cmd *exec.Cmd) {
 	// configure `Stderr`
 	cmd.Stdout = nil
@@ -70,18 +75,26 @@ func runCommand(cmd *exec.Cmd) {
 	}
 }
 
-func connectToTestDb() {
-	if !connectedToTestDb {
-		var err error
-		if _, err := os.Stat(testDir); os.IsNotExist(err) {
-			os.Mkdir(testDir, os.ModePerm)
-		}
-		dbManager, err = dbbadger.NewDbManager(testDir, nil)
-		if err != nil {
-			panic(err)
-		}
-		connectedToTestDb = true
+func newTestDb() (*dbbadger.DbManager, string) {
+	path := "testDatadir-" + uuidgen()
+	log.Printf("--------------------------------------------- " + path)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		os.Mkdir(path, os.ModePerm)
 	}
+
+	dbManager, err := dbbadger.NewDbManager(path, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return dbManager, path
+}
+
+func closeDbAndRemoveDir(db *dbbadger.DbManager, path string) {
+	db.Store.Close()
+	db.PriceStore.Close()
+	db.UnspentStore.Close()
+	os.RemoveAll(path)
 }
 
 func newTestOperator(
@@ -94,7 +107,8 @@ func newTestOperator(
 	context.Context,
 	func(),
 ) {
-	connectToTestDb()
+	dbManager, dir := newTestDb()
+
 	tx := dbManager.NewTransaction()
 	ctx := context.WithValue(context.Background(), "tx", tx)
 
@@ -115,7 +129,7 @@ func newTestOperator(
 		}
 	}
 
-	vaultRepo := newMockedVaultRepositoryImpl(*tradeWallet)
+	vaultRepo := newMockedVaultRepositoryImpl(*newTradeWallet())
 
 	if !vaultRepositoryIsEmpty {
 		vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
@@ -165,13 +179,8 @@ func newTestOperator(
 	blockchainListener.ObserveBlockchain()
 
 	close := func() {
-		if connectedToTestDb {
-			dbManager.Store.Close()
-			dbManager.UnspentStore.Close()
-			connectedToTestDb = false
-		}
 		crawlerSvc.Stop()
-		os.RemoveAll(testDir)
+		closeDbAndRemoveDir(dbManager, dir)
 	}
 
 	return operatorService, tradeSvc, ctx, close
@@ -185,14 +194,14 @@ func newTestOperator(
 // 	- unspents funding the close market (1 LBTC utxo of amount 1 BTC)
 //	- unspents funding the fee account (1 LBTC utxo of amount 1 BTC)
 func newTestTrader() (*tradeService, context.Context, func()) {
-	connectToTestDb()
+	dbManager, dir := newTestDb()
 
 	tx := dbManager.NewTransaction()
 	ctx := context.WithValue(context.Background(), "tx", tx)
 
 	// vault repo with fee and markets (1 open and 1 closed) accounts initialized
 	// with some derived addresses
-	vaultRepo := newMockedVaultRepositoryImpl(*tradeWallet)
+	vaultRepo := newMockedVaultRepositoryImpl(*newTradeWallet())
 	vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
 		v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
 		v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart)
@@ -230,12 +239,8 @@ func newTestTrader() (*tradeService, context.Context, func()) {
 	)
 
 	close := func() {
-		if connectedToTestDb {
-			dbManager.Store.Close()
-			dbManager.UnspentStore.Close()
-			connectedToTestDb = false
-		}
-		os.RemoveAll(testDir)
+		crawlerSvc.Stop()
+		closeDbAndRemoveDir(dbManager, dir)
 	}
 
 	return traderSvc, ctx, close
@@ -298,13 +303,7 @@ func fillTradeRepo(ctx context.Context, tradeRepo domain.TradeRepository, quoteA
 }
 
 func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
-	if _, err := os.Stat(testDir); os.IsNotExist(err) {
-		os.Mkdir(testDir, os.ModePerm)
-	}
-	dbManager, err := dbbadger.NewDbManager(testDir, nil)
-	if err != nil {
-		panic(err)
-	}
+	dbManager, dir := newTestDb()
 
 	vaultRepo := dbbadger.NewVaultRepositoryImpl(dbManager)
 	if w != nil {
@@ -331,13 +330,8 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	)
 	close := func() {
 		recover()
-		dbManager.Store.Close()
-		dbManager.UnspentStore.Close()
-		dbManager.PriceStore.Close()
-		if w == nil {
-			crawlerSvc.Stop()
-		}
-		os.RemoveAll(testDir)
+		crawlerSvc.Stop()
+		closeDbAndRemoveDir(dbManager, dir)
 	}
 	return walletSvc, ctx, close
 }
@@ -515,6 +509,18 @@ func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData
 	}, nil
 }
 
+func newTradeWallet() *mockedWallet {
+	return &mockedWallet{
+		mnemonic: []string{
+			"useful", "crime", "awful", "net", "paper", "beef", "cousin", "kid",
+			"theory", "ski", "sponsor", "april", "stable", "device", "sadness", "radio",
+			"outdoor", "cook", "spare", "critic", "situate", "girl", "trend", "noise",
+		},
+		password:          "Sup3rS3cr3tP4ssw0rd!",
+		encryptedMnemonic: "HI4irZdJa+4t/JEeFbZyehyuFb0pUmbaK+wpWUNZOBW72r8XgwTe8lpVciD7jCgDDFiy5oR/SuS+WAerfH3jAr4VU7lidptY1Ru4IbMS2o0nX3wtycdOEQJB4tD3Z8eGQC5ULZkPzk0cZKN5xF1+cwQMz/xe0x7C0St5Gkb0FjMKf/o0NGJO1DbrE71QV6ouECjxL9SpjIRb5aRvi5TsUgR7ZlOq7fHD0oVaDL/AMzZGlAtHIQJdXKb+SkzMD8JO2HFTnUns7PTGfMysOK6bZw==",
+	}
+}
+
 func mockWrongSwapComplete() *pb.SwapComplete {
 	mockedSwapAccept := &pb.SwapAccept{
 		Id:          "6c563406c0a840f5",
@@ -547,17 +553,19 @@ func mockWrongSwapComplete() *pb.SwapComplete {
 // mnemonic. It can be initialized either locked or unlocked
 type mockedVaultRepository struct {
 	vault *domain.Vault
+	lock  sync.Mutex
 }
 
 func newMockedVaultRepositoryImpl(w mockedWallet) domain.VaultRepository {
 	return &mockedVaultRepository{
-		&domain.Vault{
+		vault: &domain.Vault{
 			Mnemonic:               w.mnemonic,
 			EncryptedMnemonic:      w.encryptedMnemonic,
 			PassphraseHash:         btcutil.Hash160([]byte(w.password)),
 			Accounts:               map[int]*domain.Account{},
 			AccountAndKeyByAddress: map[string]domain.AccountAndKey{},
 		},
+		lock: sync.Mutex{},
 	}
 }
 
@@ -565,6 +573,8 @@ func (r *mockedVaultRepository) GetAllDerivedExternalAddressesForAccount(
 	ctx context.Context,
 	accountIndex int,
 ) ([]string, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	return r.vault.AllDerivedExternalAddressesForAccount(accountIndex)
 }
 
@@ -578,6 +588,8 @@ func (r *mockedVaultRepository) UpdateVault(
 	passphrase string,
 	updateFn func(v *domain.Vault) (*domain.Vault, error),
 ) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	v, err := updateFn(r.vault)
 	if err != nil {
 		return err
@@ -598,6 +610,8 @@ func (r *mockedVaultRepository) GetAllDerivedAddressesAndBlindingKeysForAccount(
 	ctx context.Context,
 	accountIndex int,
 ) ([]string, [][]byte, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	return r.vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
@@ -642,15 +656,6 @@ var (
 		},
 		password:          "Sup3rS3cr3tP4ssw0rd!",
 		encryptedMnemonic: "46OIUILJEmvmdb/BbaTOEjMM743D5TnfqLBhl9c+E/PSG+7miMCpP3maRNttCP3RF/jdJnbzG6KkAbcKGXJROpF9tSGV5oizjp07lRG85fQH8OSJajn515sclXlKjX2aaB76b3Vt3a94pIzeZrQ2g5c8voupYnL0TDAjLd1Iltl5ApKLuPf5WfEJtvZ5Klb4rF+cLlvIjPtdqFHIwjotB8fR0LGr9yw1hfduDOWe+DPyNCkgbtKBKe0qWjBnnng88eMdlD8bsanuEkoiDlyHDnIvZ+JwgYOOUw==",
-	}
-	tradeWallet = &mockedWallet{
-		mnemonic: []string{
-			"useful", "crime", "awful", "net", "paper", "beef", "cousin", "kid",
-			"theory", "ski", "sponsor", "april", "stable", "device", "sadness", "radio",
-			"outdoor", "cook", "spare", "critic", "situate", "girl", "trend", "noise",
-		},
-		password:          "Sup3rS3cr3tP4ssw0rd!",
-		encryptedMnemonic: "HI4irZdJa+4t/JEeFbZyehyuFb0pUmbaK+wpWUNZOBW72r8XgwTe8lpVciD7jCgDDFiy5oR/SuS+WAerfH3jAr4VU7lidptY1Ru4IbMS2o0nX3wtycdOEQJB4tD3Z8eGQC5ULZkPzk0cZKN5xF1+cwQMz/xe0x7C0St5Gkb0FjMKf/o0NGJO1DbrE71QV6ouECjxL9SpjIRb5aRvi5TsUgR7ZlOq7fHD0oVaDL/AMzZGlAtHIQJdXKb+SkzMD8JO2HFTnUns7PTGfMysOK6bZw==",
 	}
 
 	feeUnspents = []domain.Unspent{
@@ -710,7 +715,7 @@ var (
 	}
 )
 
-func mockDb() (*dbbadger.DbManager, error) {
+func mockDb() (*dbbadger.DbManager, string, error) {
 	passHash, _ := hex.DecodeString("5321bd178a39c442833d1f8327b567b46cdffd86")
 	bk1, _ := hex.DecodeString("0da00604f2f3fdf33d3dae4bf5edb755218c72e904175f4981a8ad8271b6207b")
 	bk2, _ := hex.DecodeString("4c4a998378accfac4bce02a3404b55f1ec2e1b3b26309958c697b097f1c7e216")
@@ -847,16 +852,11 @@ func mockDb() (*dbbadger.DbManager, error) {
 		Price: domain.Prices{},
 	}
 
-	if _, err := os.Stat(testDir); os.IsNotExist(err) {
-		os.Mkdir(testDir, os.ModePerm)
-	}
-	dbManager, err := dbbadger.NewDbManager(testDir, nil)
+	dbManager, path := newTestDb()
+
+	err := dbManager.Store.Insert("vault", &v)
 	if err != nil {
-		panic(err)
-	}
-	err = dbManager.Store.Insert("vault", &v)
-	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	err = dbManager.PriceStore.Insert(market.AccountIndex, &domain.Prices{
@@ -864,20 +864,20 @@ func mockDb() (*dbbadger.DbManager, error) {
 		QuotePrice: decimal.Decimal{},
 	})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	for _, val := range unsp {
 		err = dbManager.UnspentStore.Insert(val.Key(), &val)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 
 	err = dbManager.Store.Insert(market.AccountIndex, &market)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return dbManager, nil
+	return dbManager, path, nil
 }

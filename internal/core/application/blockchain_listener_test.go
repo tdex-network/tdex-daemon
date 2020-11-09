@@ -11,11 +11,7 @@ import (
 )
 
 func TestUpdateUnspentsForAddress(t *testing.T) {
-	os.Mkdir(testDir, os.ModePerm)
-	dbManager, err := dbbadger.NewDbManager(testDir, nil)
-	if err != nil {
-		panic(err)
-	}
+	dbManager, path := newTestDb()
 	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	tx := dbManager.Store.Badger().NewTransaction(true)
 	ctx := context.WithValue(
@@ -58,7 +54,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		},
 	}
 
-	err = l.updateUnspentsForAddress(
+	err := l.updateUnspentsForAddress(
 		ctx,
 		unspents,
 		"a",
@@ -138,7 +134,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 	}
 	dbManager.Store.Close()
 
-	err = os.RemoveAll(testDir)
+	err = os.RemoveAll(path)
 	if err != nil {
 		panic(err)
 	}
