@@ -40,8 +40,8 @@ const (
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey ...
 	PriceSlippageKey = "PRICE_SLIPPAGE"
-	// Mnemonic
-	Mnemonic = "MNEMONIC"
+	// MnemonicKey ...
+	MnemonicKey = "MNEMONIC"
 )
 
 var vip *viper.Viper
@@ -70,7 +70,7 @@ func init() {
 	if err := initDataDir(); err != nil {
 		log.WithError(err).Panic("error while init data dir")
 	}
-	vip.Set(Mnemonic, "")
+	vip.Set(MnemonicKey, "")
 }
 
 func makeDirectoryIfNotExists(path string) error {
@@ -119,8 +119,8 @@ func Set(key string, value interface{}) {
 
 func GetMnemonic() []string {
 	var mnemonic []string
-	if vip.GetString(Mnemonic) != "" {
-		mnemonic = strings.Split(vip.GetString(Mnemonic), " ")
+	if vip.GetString(MnemonicKey) != "" {
+		mnemonic = strings.Split(vip.GetString(MnemonicKey), " ")
 	}
 
 	return mnemonic

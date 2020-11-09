@@ -34,7 +34,7 @@ func (v *Vault) Lock() error {
 		return nil
 	}
 	// flush mnemonic in plain text
-	config.Set(config.Mnemonic, "")
+	config.Set(config.MnemonicKey, "")
 	return nil
 }
 
@@ -52,7 +52,7 @@ func (v *Vault) Unlock(passphrase string) error {
 		return err
 	}
 
-	config.Set(config.Mnemonic, mnemonic)
+	config.Set(config.MnemonicKey, mnemonic)
 	return nil
 }
 
