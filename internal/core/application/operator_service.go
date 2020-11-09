@@ -238,67 +238,7 @@ func (o *operatorService) OpenMarket(
 		return domain.ErrInvalidBaseAsset
 	}
 
-	_, marketAccountIndex, err := o.marketRepository.GetMarketByAsset(
-		ctx,
-		quoteAsset,
-	)
-	if err != nil {
-		return err
-	}
-
-	var outpoints []domain.OutpointWithAsset
-	if marketAccountIndex < 0 {
-		_, marketAccountIndex, err = o.marketRepository.GetLatestMarket(ctx)
-		if err != nil {
-			return err
-		}
-
-		addresses, _, err :=
-			o.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(
-				ctx,
-				marketAccountIndex,
-			)
-		if err != nil {
-			return err
-		}
-		unspents, err := o.unspentRepository.GetUnspentsForAddresses(
-			ctx,
-			addresses,
-		)
-		if err != nil {
-			return err
-		}
-
-		outpoints = make([]domain.OutpointWithAsset, 0, len(unspents))
-		for _, u := range unspents {
-			outpoints = append(outpoints, domain.OutpointWithAsset{
-				Txid:  u.TxID,
-				Vout:  int(u.VOut),
-				Asset: u.AssetHash,
-			})
-		}
-	}
-
-	if err := o.marketRepository.UpdateMarket(
-		ctx,
-		marketAccountIndex,
-		func(m *domain.Market) (*domain.Market, error) {
-			if m.IsTradable() {
-				return m, nil
-			}
-
-			if len(outpoints) > 0 {
-				if err := m.FundMarket(outpoints); err != nil {
-					return nil, err
-				}
-			}
-
-			if err := m.MakeTradable(); err != nil {
-				return nil, err
-			}
-			return m, nil
-		},
-	); err != nil {
+	if err := o.marketRepository.OpenMarket(ctx, quoteAsset); err != nil {
 		return err
 	}
 
@@ -427,8 +367,21 @@ func (o *operatorService) UpdateMarketPrice(
 
 	// Checks if base asset is correct
 	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return domain.ErrMarketNotExist
+		return domain.ErrInvalidBaseAsset
 	}
+
+	// validate the new prices amount
+	err = validateAmount(req.Price.BasePrice)
+	if err != nil {
+		return domain.ErrInvalidBasePrice
+	}
+
+	// validate the new prices amount
+	err = validateAmount(req.Price.QuotePrice)
+	if err != nil {
+		return domain.ErrInvalidQuotePrice
+	}
+
 	//Checks if market exist
 	_, accountIndex, err := o.marketRepository.GetMarketByAsset(
 		ctx,

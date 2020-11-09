@@ -175,7 +175,7 @@ func (m marketRepositoryImpl) CloseMarket(
 
 func (m marketRepositoryImpl) UpdatePrices(ctx context.Context, accountIndex int, prices domain.Prices) error {
 	//Now we update the price store as well only if market insertion went ok
-	err := m.updatePriceByAccountIndex(accountIndex, prices)
+	err := m.updatePriceByAccountIndex(ctx, accountIndex, prices)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (m marketRepositoryImpl) insertMarket(
 		tx := ctx.Value("tx").(*badger.Txn)
 		err = m.db.Store.TxInsert(tx, accountIndex, &market)
 	} else {
-		err = m.db.Store.Insert(vaultKey, &market)
+		err = m.db.Store.Insert(accountIndex, &market)
 	}
 	if err != nil {
 		if err != badgerhold.ErrKeyExists {
@@ -227,7 +227,7 @@ func (m marketRepositoryImpl) insertMarket(
 	}
 
 	//Now we update the price store as well only if market insertion went ok
-	err = m.updatePriceByAccountIndex(accountIndex, domain.Prices{})
+	err = m.updatePriceByAccountIndex(ctx, accountIndex, domain.Prices{})
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func (m marketRepositoryImpl) getMarket(
 	}
 
 	// Let's get the price from PriceStore
-	price, err := m.getPriceByAccountIndex(accountIndex)
+	price, err := m.getPriceByAccountIndex(ctx, accountIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +308,7 @@ func (m marketRepositoryImpl) findMarkets(
 	}
 	for i, mkt := range markets {
 		// Let's get the price from PriceStore
-		price, err := m.getPriceByAccountIndex(mkt.AccountIndex)
+		price, err := m.getPriceByAccountIndex(ctx, mkt.AccountIndex)
 		if err != nil {
 			return nil, err
 		}
@@ -323,10 +323,15 @@ func (m marketRepositoryImpl) findMarkets(
 	return markets, err
 }
 
-func (m marketRepositoryImpl) getPriceByAccountIndex(accountIndex int) (*domain.Prices, error) {
-	var prices *domain.Prices
+func (m marketRepositoryImpl) getPriceByAccountIndex(ctx context.Context, accountIndex int) (prices *domain.Prices, err error) {
 
-	err := m.db.PriceStore.Get(accountIndex, &prices)
+	if ctx.Value("ptx") != nil {
+		tx := ctx.Value("ptx").(*badger.Txn)
+		err = m.db.Store.TxGet(tx, accountIndex, &prices)
+	} else {
+		err = m.db.PriceStore.Get(accountIndex, &prices)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("trying to get price with account index %v %w", accountIndex, err)
 	}
@@ -334,11 +339,22 @@ func (m marketRepositoryImpl) getPriceByAccountIndex(accountIndex int) (*domain.
 	return prices, nil
 }
 
-func (m marketRepositoryImpl) updatePriceByAccountIndex(accountIndex int, prices domain.Prices) error {
-	err := m.db.PriceStore.Upsert(
-		accountIndex,
-		prices,
-	)
+func (m marketRepositoryImpl) updatePriceByAccountIndex(ctx context.Context, accountIndex int, prices domain.Prices) (err error) {
+
+	if ctx.Value("ptx") != nil {
+		tx := ctx.Value("ptx").(*badger.Txn)
+		err = m.db.Store.TxUpsert(
+			tx,
+			accountIndex,
+			prices,
+		)
+	} else {
+		err = m.db.PriceStore.Upsert(
+			accountIndex,
+			prices,
+		)
+	}
+
 	if err != nil {
 		return fmt.Errorf("trying to updating price with account index %v %w", accountIndex, err)
 	}

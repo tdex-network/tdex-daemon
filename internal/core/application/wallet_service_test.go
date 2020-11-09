@@ -173,11 +173,7 @@ func TestWalletChangePass(t *testing.T) {
 	assert.Equal(t, wallet.ErrInvalidPassphrase, err)
 }
 
-func TestWalletBalance(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
+func TestGenerateAddressAndWalletBalance(t *testing.T) {
 	walletSvc, ctx, close := newTestWallet(dryWallet)
 	defer close()
 
@@ -203,4 +199,77 @@ func TestWalletBalance(t *testing.T) {
 		true,
 		int(balance[network.Regtest.AssetID].ConfirmedBalance) >= 100000000,
 	)
+}
+
+func TestSendToMany(t *testing.T) {
+	reqs := []SendToManyRequest{
+		{
+			Outputs: []TxOut{
+				{
+					Asset:   network.Regtest.AssetID,
+					Value:   1000000,
+					Address: "el1qqf7z4k7tmarjcymzqtpy00chfl0qn0rx9f42ldw34l2teckh9csqumsc6s2k8nzpn8v5xyzd6pwxez0nlvt36338yzjrxptnk",
+				},
+			},
+			MillisatPerByte: 100,
+			Push:            false,
+		},
+		{
+			Outputs: []TxOut{
+				{
+					Asset:   network.Regtest.AssetID,
+					Value:   1000000,
+					Address: "CTEkZW2f7iixzWLkkoFeh85twpK7XYetyFmPqpQjCGdcEYUV1ZjyxqP6zc3qpBKEbdg6tjweJTC5yWrh",
+				},
+			},
+			MillisatPerByte: 100,
+			Push:            false,
+		},
+		{
+			Outputs: []TxOut{
+				{
+					Asset:   network.Regtest.AssetID,
+					Value:   1000000,
+					Address: "AzpnKwnveEJtDJNQVaTjcPNAJYDwWSYRMYaN2Y8crVFRBSZ4H2xM98WXy6seCR3mqCQFTRnJkfChFJpM",
+				},
+			},
+			MillisatPerByte: 100,
+			Push:            false,
+		},
+	}
+
+	walletSvc, ctx, close := newTestWallet(tradeWallet)
+	defer close()
+
+	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	walletSvc.vaultRepository.UpdateVault(
+		ctx,
+		nil,
+		"",
+		func(v *domain.Vault) (*domain.Vault, error) {
+			v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
+			return v, nil
+		},
+	)
+	walletSvc.unspentRepository.AddUnspents(ctx, feeUnspents)
+
+	_, err = walletSvc.explorerService.Faucet(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(5 * time.Second)
+
+	for _, req := range reqs {
+		rawTx, err := walletSvc.SendToMany(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, true, len(rawTx) > 0)
+	}
+
 }

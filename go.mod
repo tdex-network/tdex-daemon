@@ -22,7 +22,7 @@ require (
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
 	github.com/vulpemventures/go-bip39 v1.0.2
-	github.com/vulpemventures/go-elements v0.0.4-0.20200901152827-3e772f50e0dc
+	github.com/vulpemventures/go-elements v0.0.4-0.20201106204020-f8c27152329e
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	google.golang.org/grpc v1.32.0
 	google.golang.org/grpc/examples v0.0.0-20200925170654-e6c98a478e62 // indirect

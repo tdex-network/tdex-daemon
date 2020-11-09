@@ -57,7 +57,7 @@ func init() {
 	vip.SetDefault(ExplorerEndpointKey, "http://127.0.0.1:3001")
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)
-	vip.SetDefault(CrawlIntervalKey, 5000)              //TODO check this value
+	vip.SetDefault(CrawlIntervalKey, 1000)              //TODO check this value
 	vip.SetDefault(FeeAccountBalanceThresholdKey, 1000) //TODO check this value
 	vip.SetDefault(NetworkKey, network.Regtest.Name)
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)

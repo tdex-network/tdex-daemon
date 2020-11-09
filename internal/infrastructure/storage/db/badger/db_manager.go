@@ -2,9 +2,11 @@ package dbbadger
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -56,6 +58,104 @@ func (d DbManager) NewPricesTransaction() ports.Transaction {
 // NewUnspentsTransaction implements the DbManager interface
 func (d DbManager) NewUnspentsTransaction() ports.Transaction {
 	return d.UnspentStore.Badger().NewTransaction(true)
+}
+
+// RunTransaction invokes the given handler and retries in case the transaction
+// returns a conflict error
+func (d DbManager) RunTransaction(
+	ctx context.Context,
+	readOnly bool,
+	handler func(ctx context.Context) (interface{}, error),
+) (interface{}, error) {
+	ctxMaker := func() (ports.Transaction, context.Context) {
+		tx := d.NewTransaction()
+		_ctx := context.WithValue(ctx, "tx", tx)
+		return tx, _ctx
+	}
+	return d.runTransaction(runTransactionArgs{
+		ctxMaker: ctxMaker,
+		readOnly: readOnly,
+		handler:  handler,
+	})
+}
+
+// RunUnspentsTransaction invokes the given handler and retries in case the
+// unspents transaction returns a conflict error
+func (d DbManager) RunUnspentsTransaction(
+	ctx context.Context,
+	readOnly bool,
+	handler func(ctx context.Context) (interface{}, error),
+) (interface{}, error) {
+	ctxMaker := func() (ports.Transaction, context.Context) {
+		tx := d.NewUnspentsTransaction()
+		_ctx := context.WithValue(ctx, "utx", tx)
+		return tx, _ctx
+	}
+
+	return d.runTransaction(runTransactionArgs{
+		ctxMaker: ctxMaker,
+		readOnly: readOnly,
+		handler:  handler,
+	})
+}
+
+// RunPricesTransaction invokes the given handler and retries in case the
+// unspents transaction returns a conflict error
+func (d DbManager) RunPricesTransaction(
+	ctx context.Context,
+	readOnly bool,
+	handler func(ctx context.Context) (interface{}, error),
+) (interface{}, error) {
+	ctxMaker := func() (ports.Transaction, context.Context) {
+		tx := d.NewPricesTransaction()
+		_ctx := context.WithValue(ctx, "ptx", tx)
+		return tx, _ctx
+	}
+
+	return d.runTransaction(runTransactionArgs{
+		ctxMaker: ctxMaker,
+		readOnly: readOnly,
+		handler:  handler,
+	})
+}
+
+type runTransactionArgs struct {
+	ctxMaker func() (ports.Transaction, context.Context)
+	readOnly bool
+	handler  func(ctx context.Context) (interface{}, error)
+}
+
+func (d DbManager) runTransaction(
+	args runTransactionArgs,
+) (interface{}, error) {
+	for {
+		tx, ctx := args.ctxMaker()
+		res, err := args.handler(ctx)
+		if err != nil {
+			if args.readOnly && d.isTransactionConflict(err) {
+				time.Sleep(50 * time.Millisecond)
+				continue
+			}
+			return nil, err
+		}
+
+		if !args.readOnly {
+			if err := tx.Commit(); err != nil {
+				if !d.isTransactionConflict(err) {
+					return nil, err
+				}
+				time.Sleep(50 * time.Millisecond)
+				continue
+			}
+		}
+		return res, nil
+	}
+}
+
+// isTransactionConflict returns wheter the error occured when commiting a
+// transacton is a conflict
+func (d DbManager) isTransactionConflict(err error) bool {
+	return err == badger.ErrConflict
 }
 
 // JSONEncode is a custom JSON based encoder for badger
