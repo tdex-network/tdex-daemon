@@ -243,11 +243,6 @@ func insertUnspents(tx *badger.Txn, db *DbManager) error {
 
 func insertVault(tx *badger.Txn, db *DbManager) error {
 	vault := &domain.Vault{
-		Mnemonic: []string{
-			"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
-			"lunar", "account", "silver", "admit", "cheap", "fringe", "disorder", "trade",
-			"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
-		},
 		EncryptedMnemonic:      "dVoBFte1oeRkPl8Vf8DzBP3PRnzPA3fxtyvDHXFGYAS9MP8V2Sc9nHcQW4PrMkQNnf2uGrDg81dFgBrwqv1n3frXxRBKhp83fSsTm4xqj8+jdwTI3nouFmi1W/O4UqpHdQ62EYoabJQtKpptWO11TFJzw8WF02pfS6git8YjLR4xrnfp2LkOEjSU9CI82ZasF46WZFKcpeUJTAsxU/03ONpAdwwEsC96f1KAvh8tqaO0yLDOcmPf8a5B82jefgncCRrt32kCpbpIE4YiCFrqqdUHXKH+",
 		PassphraseHash:         []byte("pass"),
 		Accounts:               map[int]*domain.Account{},
