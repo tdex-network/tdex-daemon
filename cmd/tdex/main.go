@@ -54,6 +54,8 @@ func main() {
 		&unlockwallet,
 		&depositfee,
 		&depositmarket,
+		&openmarket,
+		&closemarket,
 	)
 
 	err := app.Run(os.Args)
