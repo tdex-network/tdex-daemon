@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/vulpemventures/go-elements/network"
@@ -20,6 +21,7 @@ const (
 	tradeRepoIsEmpty   = true
 	vaultRepoIsEmpty   = true
 	unspentRepoIsEmpty = true
+	marketPluggable    = true
 )
 
 var baseAsset = config.GetString(config.BaseAssetKey)
@@ -90,9 +92,7 @@ func TestDepositMarket(t *testing.T) {
 		)
 	})
 
-	t.Cleanup(func() {
-		close()
-	})
+	t.Cleanup(close)
 }
 
 func TestDepositMarketWithCrawler(t *testing.T) {
@@ -106,6 +106,11 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 		startNigiriAndWait()
 
 		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
+
+		t.Cleanup(func() {
+			close()
+			stopNigiri()
+		})
 
 		address, err := operatorService.DepositMarket(ctx, "", "")
 		assert.Equal(t, nil, err)
@@ -149,8 +154,6 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 			childAddress,
 		)
 
-		close()
-		stopNigiri()
 	})
 }
 
@@ -164,13 +167,17 @@ func TestUpdateMarketPrice(t *testing.T) {
 
 	// update price function
 	updateMarketPriceRequest := func(basePrice float64, quotePrice float64, getPrice bool) (*Price, error) {
-		operatorService, tradeService, _, ctx, close := newMockServices(
+		const initMarketAsPluggable = true
+
+		operatorService, tradeService, _, ctx, close, _ := newMockServices(
 			!marketRepoIsEmpty,
 			tradeRepoIsEmpty,
 			!vaultRepoIsEmpty,
 			!unspentRepoIsEmpty,
+			initMarketAsPluggable,
 		)
-		defer close()
+
+		t.Cleanup(close)
 		args := MarketWithPrice{
 			Market: market,
 			Price: Price{
@@ -248,11 +255,12 @@ func TestListSwap(t *testing.T) {
 }
 
 func TestWithdrawMarket(t *testing.T) {
-	operatorService, _, walletService, ctx, close := newMockServices(
+	operatorService, _, walletService, ctx, close, _ := newMockServices(
 		!marketRepoIsEmpty,
 		!tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 		!unspentRepoIsEmpty,
+		false,
 	)
 
 	err := walletService.UnlockWallet(ctx, "Sup3rS3cr3tP4ssw0rd!")
@@ -350,13 +358,14 @@ func TestWithdrawMarket(t *testing.T) {
 }
 
 func TestBalanceFeeAccount(t *testing.T) {
-	operatorService, _, walletSvc, ctx, close := newMockServices(
+	operatorService, _, walletSvc, ctx, close, _ := newMockServices(
 		!marketRepoIsEmpty,
 		tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 		!unspentRepoIsEmpty,
+		!marketPluggable,
 	)
-	defer close()
+	t.Cleanup(close)
 
 	err := walletSvc.UnlockWallet(ctx, "Sup3rS3cr3tP4ssw0rd!")
 	if err != nil {
@@ -374,11 +383,12 @@ func TestBalanceFeeAccount(t *testing.T) {
 }
 
 func TestGetCollectedMarketFee(t *testing.T) {
-	operatorService, traderSvc, _, ctx, closeOperator := newMockServices(
+	operatorService, traderSvc, _, ctx, closeOperator, dbManager := newMockServices(
 		!marketRepoIsEmpty,
 		!tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 		!unspentRepoIsEmpty,
+		!marketPluggable,
 	)
 
 	t.Cleanup(closeOperator)
@@ -429,6 +439,25 @@ func TestGetCollectedMarketFee(t *testing.T) {
 
 		assert.Equal(t, 0, len(fee.CollectedFees))
 
+		tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
+		trades, err := tradeRepo.GetAllTradesByMarket(ctx, market.QuoteAsset)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		tr := trades[0]
+		err = tradeRepo.UpdateTrade(
+			ctx,
+			&tr.ID,
+			func(trade *domain.Trade) (*domain.Trade, error) {
+				trade.Status = domain.CompletedStatus
+				return trade, nil
+			},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		fee, err = operatorService.GetCollectedMarketFee(ctx, market)
 		if err != nil {
 			t.Fatal(err)
@@ -437,7 +466,7 @@ func TestGetCollectedMarketFee(t *testing.T) {
 		assert.Equal(t, 1, len(fee.CollectedFees))
 		assert.Equal(
 			t,
-			int64(25),
+			int64(0),
 			fee.TotalCollectedFeesPerAsset[network.Regtest.AssetID],
 		)
 	})
@@ -463,7 +492,7 @@ func TestListMarketExternalAddresses(t *testing.T) {
 		repoIsEmpty bool,
 	) ([]string, error) {
 		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, repoIsEmpty)
-		defer close()
+		t.Cleanup(close)
 		market := Market{
 			QuoteAsset: quoteAsset,
 			BaseAsset:  baseAsset,
@@ -583,7 +612,7 @@ func TestUpdateMarketStrategy(t *testing.T) {
 	)
 
 	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
-	defer close()
+	t.Cleanup(close)
 
 	validMarket := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,

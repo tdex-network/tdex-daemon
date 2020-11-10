@@ -101,7 +101,8 @@ func newMockServices(
 	tradeRepositoryIsEmpty bool,
 	vaultRepositoryIsEmpty bool,
 	unspentRepositoryIsEmpty bool,
-) (OperatorService, TradeService, WalletService, context.Context, func()) {
+	initPluggableMarket bool,
+) (OperatorService, TradeService, WalletService, context.Context, func(), *dbbadger.DbManager) {
 	// generate a new database
 	dbManager, dir := newTestDb()
 	// set up context
@@ -111,7 +112,7 @@ func newMockServices(
 	// create a market repo
 	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
 	if marketRepositoryIsEmpty == false {
-		err := fillMarketRepo(ctx, &marketRepo)
+		err := fillMarketRepo(ctx, &marketRepo, initPluggableMarket)
 		if err != nil {
 			panic(err)
 		}
@@ -208,11 +209,14 @@ func newMockServices(
 	)
 
 	close := func() {
-		closeDbAndRemoveDir(dbManager, dir)
-		crawlerSvc.Stop()
+		go func() {
+			crawlerSvc.Stop()
+			time.Sleep(time.Duration(110 * time.Millisecond))
+			closeDbAndRemoveDir(dbManager, dir)
+		}()
 	}
 
-	return operatorSvc, tradeSvc, walletSvc, ctx, close
+	return operatorSvc, tradeSvc, walletSvc, ctx, close, dbManager
 }
 
 // returns a test operator service
@@ -223,7 +227,14 @@ func newTestOperator(
 	tradeRepositoryIsEmpty bool,
 	vaultRepositoryIsEmpty bool,
 ) (OperatorService, context.Context, func()) {
-	operatorSvc, _, _, ctx, closeFn := newMockServices(marketRepositoryIsEmpty, tradeRepositoryIsEmpty, vaultRepositoryIsEmpty, true)
+	operatorSvc, _, _, ctx, closeFn, _ := newMockServices(
+		marketRepositoryIsEmpty,
+		tradeRepositoryIsEmpty,
+		vaultRepositoryIsEmpty,
+		true,
+		false,
+	)
+
 	return operatorSvc, ctx, closeFn
 }
 
@@ -236,7 +247,7 @@ func newTestOperator(
 //	- unspents funding the fee account (1 LBTC utxo of amount 1 BTC)
 // creates a new  mock database at each call
 func newTestTrader() (TradeService, context.Context, func()) {
-	_, tradeSvc, _, ctx, closeFn := newMockServices(false, true, false, false)
+	_, tradeSvc, _, ctx, closeFn, _ := newMockServices(false, true, false, false, false)
 	return tradeSvc, ctx, closeFn
 }
 
@@ -276,7 +287,11 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	return walletSvc, ctx, closeFn
 }
 
-func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) error {
+func fillMarketRepo(
+	ctx context.Context,
+	marketRepo *domain.MarketRepository,
+	initPluggableMarket bool,
+) error {
 	// TODO: create and open market
 	// opened market
 	(*marketRepo).UpdateMarket(
@@ -284,6 +299,7 @@ func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) er
 		domain.MarketAccountStart,
 		func(market *domain.Market) (*domain.Market, error) {
 			market.AccountIndex = 5
+			market.ChangeFee(25)
 			market.FundMarket([]domain.OutpointWithAsset{
 				{
 					Asset: marketUnspents[0].AssetHash,
@@ -296,10 +312,17 @@ func fillMarketRepo(ctx context.Context, marketRepo *domain.MarketRepository) er
 					Vout:  int(marketUnspents[1].VOut),
 				},
 			})
-			err := market.MakeStrategyPluggable()
-			market.ChangeBasePrice(decimal.NewFromFloat(1.90))
-			market.ChangeQuotePrice(decimal.NewFromFloat(4.32))
-			err = market.MakeTradable()
+
+			if initPluggableMarket {
+				err := market.MakeStrategyPluggable()
+				market.ChangeBasePrice(decimal.NewFromFloat(1.90))
+				market.ChangeQuotePrice(decimal.NewFromFloat(4.32))
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			err := market.MakeTradable()
 			if err != nil {
 				return nil, err
 			}

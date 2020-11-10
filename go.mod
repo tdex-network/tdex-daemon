@@ -12,8 +12,9 @@ require (
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/magiconair/properties v1.8.1
 	github.com/rs/cors v1.7.0 // indirect
+	github.com/segmentio/golines v0.0.0-20200824192126-7f30d3046793 // indirect
 	github.com/shopspring/decimal v1.2.0
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.5.1
@@ -23,7 +24,8 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
 	github.com/vulpemventures/go-bip39 v1.0.2
 	github.com/vulpemventures/go-elements v0.0.4-0.20201106204020-f8c27152329e
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
+	golang.org/x/sys v0.0.0-20201109165425-215b40eba54c // indirect
 	google.golang.org/grpc v1.32.0
 	google.golang.org/grpc/examples v0.0.0-20200925170654-e6c98a478e62 // indirect
 	google.golang.org/protobuf v1.25.0
