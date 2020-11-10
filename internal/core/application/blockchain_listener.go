@@ -138,6 +138,8 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event c
 			"fee account balance too low. Trades for markets won't be " +
 				"served properly. Fund the fee account as soon as possible",
 		)
+	} else {
+		log.Info("fee account deposited, trades can be served")
 	}
 	return nil
 }

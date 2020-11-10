@@ -56,7 +56,7 @@ func (e *explorer) GetUnspents(addr string, blindingKeys [][]byte) (coins []Utxo
 	status, resp, err1 := httputil.NewHTTPRequest("GET", url, "", nil)
 	if err1 != nil {
 		coins = nil
-		err = fmt.Errorf("error on retrieving utxos: %s", err)
+		err = fmt.Errorf("error on retrieving utxos: %s", err1)
 		return
 	}
 	if status != http.StatusOK {
@@ -69,7 +69,7 @@ func (e *explorer) GetUnspents(addr string, blindingKeys [][]byte) (coins []Utxo
 	err1 = json.Unmarshal([]byte(resp), &witnessOuts)
 	if err1 != nil {
 		coins = nil
-		err = fmt.Errorf("error on retrieving utxos: %s", err)
+		err = fmt.Errorf("error on retrieving utxos: %s", err1)
 		return
 	}
 
