@@ -2,6 +2,7 @@ package dbbadger
 
 import (
 	"context"
+	"github.com/tdex-network/tdex-daemon/config"
 	"math/rand"
 	"os"
 	"time"
@@ -24,6 +25,8 @@ var (
 )
 
 func before() {
+	config.Set(config.UnspentTtlKey, 2)
+
 	var err error
 	os.Mkdir(testDbDir, os.ModePerm)
 	dbManager, err = NewDbManager(testDbDir, nil)

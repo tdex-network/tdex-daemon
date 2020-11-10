@@ -2,6 +2,8 @@ package dbbadger
 
 import (
 	"context"
+	"github.com/tdex-network/tdex-daemon/config"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
@@ -10,19 +12,22 @@ import (
 )
 
 const (
-	UnspentBadgerholdKeyPrefix = "bh_Unspent"
+	UnspentBadgerholdKeyPrefix       = "bh_Unspent"
+	LockedUnspentBadgerholdKeyPrefix = "bh_LockedUnspent"
 )
 
 //badgerhold internal implementation adds prefix to the key
 var unspentTablePrefixKey = []byte(UnspentBadgerholdKeyPrefix)
 
 type unspentRepositoryImpl struct {
-	db *DbManager
+	db         *DbManager
+	unspentTtl time.Duration
 }
 
 func NewUnspentRepositoryImpl(db *DbManager) domain.UnspentRepository {
 	return unspentRepositoryImpl{
-		db: db,
+		db:         db,
+		unspentTtl: time.Duration(config.GetInt(config.UnspentTtlKey)),
 	}
 }
 
@@ -481,22 +486,22 @@ func (u unspentRepositoryImpl) insertUnspent(
 	return nil
 }
 
-type storeTradeID struct {
-	UUID uuid.UUID
+type LockedUnspent struct {
+	TradeID uuid.UUID
 }
 
 func (u unspentRepositoryImpl) getLock(
 	ctx context.Context,
 	key domain.UnspentKey,
 ) (*uuid.UUID, error) {
-	var tradeID storeTradeID
+	var lockedUnspent LockedUnspent
 	var err error
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = u.db.Store.TxGet(tx, key, &tradeID)
+		err = u.db.Store.TxGet(tx, key, &lockedUnspent)
 	} else {
-		err = u.db.Store.Get(key, &tradeID)
+		err = u.db.Store.Get(key, &lockedUnspent)
 	}
 	if err != nil {
 		if err == badgerhold.ErrNotFound {
@@ -505,7 +510,7 @@ func (u unspentRepositoryImpl) getLock(
 		return nil, err
 	}
 
-	return &tradeID.UUID, nil
+	return &lockedUnspent.TradeID, nil
 }
 
 func (u unspentRepositoryImpl) insertLock(
@@ -515,11 +520,27 @@ func (u unspentRepositoryImpl) insertLock(
 ) error {
 	var err error
 
+	encKey, err := EncodeKey(key, LockedUnspentBadgerholdKeyPrefix)
+	if err != nil {
+		return err
+	}
+
+	encData, err := JSONEncode(LockedUnspent{tradeID})
+	if err != nil {
+		return err
+	}
+
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = u.db.Store.TxInsert(tx, key, storeTradeID{tradeID})
+		return tx.SetEntry(
+			badger.NewEntry(encKey, encData).WithTTL(u.unspentTtl * time.Second),
+		)
 	} else {
-		err = u.db.Store.Insert(key, storeTradeID{tradeID})
+		err = u.db.Store.Badger().Update(func(txn *badger.Txn) error {
+			return txn.SetEntry(
+				badger.NewEntry(encKey, encData).WithTTL(u.unspentTtl * time.Second),
+			)
+		})
 	}
 	if err != nil {
 		if err != badgerhold.ErrKeyExists {
@@ -537,9 +558,9 @@ func (u unspentRepositoryImpl) deleteLock(
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = u.db.Store.TxDelete(tx, key, storeTradeID{})
+		err = u.db.Store.TxDelete(tx, key, LockedUnspent{})
 	} else {
-		err = u.db.Store.Delete(key, storeTradeID{})
+		err = u.db.Store.Delete(key, LockedUnspent{})
 	}
 	if err != nil {
 		if err != badgerhold.ErrNotFound {
