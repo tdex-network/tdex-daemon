@@ -209,11 +209,9 @@ func newMockServices(
 	)
 
 	close := func() {
-		go func() {
-			crawlerSvc.Stop()
-			time.Sleep(time.Duration(110 * time.Millisecond))
-			closeDbAndRemoveDir(dbManager, dir)
-		}()
+		crawlerSvc.Stop()
+		time.Sleep(time.Duration(110 * time.Millisecond))
+		closeDbAndRemoveDir(dbManager, dir)
 	}
 
 	return operatorSvc, tradeSvc, walletSvc, ctx, close, dbManager
