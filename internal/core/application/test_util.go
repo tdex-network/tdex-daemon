@@ -208,8 +208,8 @@ func newMockServices(
 	)
 
 	close := func() {
-		crawlerSvc.Stop()
 		closeDbAndRemoveDir(dbManager, dir)
+		crawlerSvc.Stop()
 	}
 
 	return operatorSvc, tradeSvc, walletSvc, ctx, close

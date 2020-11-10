@@ -78,13 +78,16 @@ func TestGetPriceAndPreviewForMarket(t *testing.T) {
 
 func TestGetTradableMarkets(t *testing.T) {
 	traderSvc, ctx, close := newTestTrader()
-	defer close()
 
-	markets, err := traderSvc.GetTradableMarkets(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, 1, len(markets))
+	t.Cleanup(close)
+
+	t.Run("should return the tradable markets", func(t *testing.T) {
+		markets, err := traderSvc.GetTradableMarkets(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, 1, len(markets))
+	})
 }
 
 func TestGetMarketPrice(t *testing.T) {

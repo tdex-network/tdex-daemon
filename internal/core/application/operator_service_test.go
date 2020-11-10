@@ -351,9 +351,9 @@ func TestWithdrawMarket(t *testing.T) {
 
 func TestBalanceFeeAccount(t *testing.T) {
 	operatorService, _, walletSvc, ctx, close := newMockServices(
-		marketRepoIsEmpty,
+		!marketRepoIsEmpty,
 		tradeRepoIsEmpty,
-		vaultRepoIsEmpty,
+		!vaultRepoIsEmpty,
 		!unspentRepoIsEmpty,
 	)
 	defer close()
@@ -375,13 +375,13 @@ func TestBalanceFeeAccount(t *testing.T) {
 
 func TestGetCollectedMarketFee(t *testing.T) {
 	operatorService, traderSvc, _, ctx, closeOperator := newMockServices(
-		marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		vaultRepoIsEmpty,
-		unspentRepoIsEmpty,
+		!marketRepoIsEmpty,
+		!tradeRepoIsEmpty,
+		!vaultRepoIsEmpty,
+		!unspentRepoIsEmpty,
 	)
 
-	defer closeOperator()
+	t.Cleanup(closeOperator)
 
 	markets, err := traderSvc.GetTradableMarkets(ctx)
 	if err != nil {
