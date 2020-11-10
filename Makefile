@@ -18,6 +18,32 @@ build-mac:
 	chmod u+x ./scripts/build
 	./scripts/build darwin amd64
 
+## build-cli-arm: build CLI for ARM
+build-cli-arm:
+	export GO111MODULE=on
+	chmod u+x ./scripts/build
+	./scripts/build-cli linux arm
+
+## build-linux: build CLI for Linux
+build-cli-linux:
+	export GO111MODULE=on
+	chmod u+x ./scripts/build
+	./scripts/build-cli linux amd64
+
+## build-cli-mac: build CLI for Mac
+build-cli-mac:
+	export GO111MODULE=on
+	chmod u+x ./scripts/build
+	./scripts/build-cli darwin amd64
+
+
+## build: build for all platforms
+build: build-arm build-linux build-mac
+
+## build-cli: build CLI for all platforms
+build-cli: build-cli-arm build-cli-linux build-cli-mac
+
+
 ## clean: cleans the binary
 clean:
 	@echo "Cleaning..."
