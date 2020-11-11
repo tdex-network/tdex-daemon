@@ -209,7 +209,11 @@ func newMockServices(
 	)
 
 	close := func() {
-		crawlerSvc.Stop()
+		blockchainListener.StopObserveBlockchain()
+		// give the crawler the time to terminate
+		time.Sleep(
+			time.Duration(200) * time.Millisecond,
+		)
 		
 		closeDbAndRemoveDir(dbManager, dir)
 	}
