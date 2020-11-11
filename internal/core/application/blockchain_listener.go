@@ -25,6 +25,7 @@ type blockchainListener struct {
 	crawlerSvc        crawler.Service
 	explorerSvc       explorer.Service
 	dbManager         ports.DbManager
+	feeDepositLogged  bool
 }
 
 func NewBlockchainListener(
@@ -138,8 +139,12 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event c
 			"fee account balance too low. Trades for markets won't be " +
 				"served properly. Fund the fee account as soon as possible",
 		)
+		b.feeDepositLogged = false
 	} else {
-		log.Info("fee account deposited, trades can be served")
+		if !b.feeDepositLogged {
+			log.Info("fee account deposited, trades can be served")
+			b.feeDepositLogged = true
+		}
 	}
 	return nil
 }
