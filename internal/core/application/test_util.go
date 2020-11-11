@@ -214,7 +214,7 @@ func newMockServices(
 		time.Sleep(
 			time.Duration(200) * time.Millisecond,
 		)
-		
+
 		closeDbAndRemoveDir(dbManager, dir)
 	}
 
@@ -258,6 +258,7 @@ func newTestTrader() (TradeService, context.Context, func()) {
 func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	dbManager, dir := newTestDb()
 
+	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
 	vaultRepo := newMockedVaultRepositoryImpl(*w)
 	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
@@ -265,8 +266,19 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		ExplorerSvc:            explorerSvc,
 		Observables:            []crawler.Observable{},
 		ErrorHandler:           func(err error) { fmt.Println(err) },
-		IntervalInMilliseconds: 5000,
+		IntervalInMilliseconds: 100,
 	})
+
+	blockchainListener := NewBlockchainListener(
+		unspentRepo,
+		marketRepo,
+		vaultRepo,
+		crawlerSvc,
+		explorerSvc,
+		dbManager,
+	)
+	// observe the blockchain
+	blockchainListener.ObserveBlockchain()
 
 	walletSvc := newWalletService(
 		vaultRepo,
@@ -282,7 +294,10 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	)
 
 	closeFn := func() {
-		crawlerSvc.Stop()
+		blockchainListener.StopObserveBlockchain()
+		time.Sleep(
+			time.Duration(200) * time.Millisecond,
+		)
 		closeDbAndRemoveDir(dbManager, dir)
 	}
 

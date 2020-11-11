@@ -438,6 +438,11 @@ func TestGetCollectedMarketFee(t *testing.T) {
 		}
 
 		assert.Equal(t, 0, len(fee.CollectedFees))
+		assert.Equal(
+			t,
+			int64(0),
+			fee.TotalCollectedFeesPerAsset[network.Regtest.AssetID],
+		)
 
 		tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
 		trades, err := tradeRepo.GetAllTradesByMarket(ctx, market.QuoteAsset)
@@ -466,7 +471,7 @@ func TestGetCollectedMarketFee(t *testing.T) {
 		assert.Equal(t, 1, len(fee.CollectedFees))
 		assert.Equal(
 			t,
-			int64(0),
+			int64(25),
 			fee.TotalCollectedFeesPerAsset[network.Regtest.AssetID],
 		)
 	})
