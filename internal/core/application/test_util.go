@@ -210,7 +210,7 @@ func newMockServices(
 
 	close := func() {
 		crawlerSvc.Stop()
-		time.Sleep(time.Duration(110 * time.Millisecond))
+		
 		closeDbAndRemoveDir(dbManager, dir)
 	}
 
