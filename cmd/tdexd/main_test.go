@@ -56,26 +56,25 @@ func TestGrpcMain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//Parallelize(
-	//	func() {
-	//		for i := 0; i < 5; i++ {
-	//			tradeTxID, err := tradeLBTCPerUSDT()
-	//			if err != nil {
-	//				t.Fatal(err)
-	//			}
-	//			t.Log("swap transaction confirmed with id:", tradeTxID)
-	//			time.Sleep(6 * time.Second)
-	//		}
-	//	},
-	//	func() {
-	//		for i := 0; i < 5; i++ {
-	//			if err := initMarketAccounts(); err != nil {
-	//				t.Fatal(err)
-	//			}
-	//		}
-	//	},
-	//)
-	tradeLBTCPerUSDT()
+	Parallelize(
+		func() {
+			for i := 0; i < 5; i++ {
+				tradeTxID, err := tradeLBTCPerUSDT()
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Log("swap transaction confirmed with id:", tradeTxID)
+				time.Sleep(6 * time.Second)
+			}
+		},
+		func() {
+			for i := 0; i < 5; i++ {
+				if err := initMarketAccounts(); err != nil {
+					t.Fatal(err)
+				}
+			}
+		},
+	)
 }
 
 func startDaemon() {
