@@ -40,6 +40,7 @@ func openMarketAction(ctx *cli.Context) error {
 		return err
 	}
 
+	fmt.Println()
 	fmt.Println("market is open")
 	return nil
 }

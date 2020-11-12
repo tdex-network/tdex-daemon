@@ -58,6 +58,7 @@ func initWalletAction(ctx *cli.Context) error {
 		return err
 	}
 
+	fmt.Println()
 	fmt.Println("Wallet is initialized. You can unlock")
 	return nil
 }

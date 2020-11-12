@@ -53,6 +53,7 @@ func updateStrategyAction(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println("strategy has been update")
+	fmt.Println()
+	fmt.Println("strategy has been updated")
 	return nil
 }
