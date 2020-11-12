@@ -378,15 +378,13 @@ func TestBalanceFeeAccount(t *testing.T) {
 }
 
 func TestGetCollectedMarketFee(t *testing.T) {
-	operatorService, traderSvc, _, ctx, closeOperator, dbManager := newMockServices(
+	operatorService, traderSvc, _, ctx, _, dbManager := newMockServices(
 		!marketRepoIsEmpty,
 		!tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 		!unspentRepoIsEmpty,
 		!marketPluggable,
 	)
-
-	t.Cleanup(closeOperator)
 
 	markets, err := traderSvc.GetTradableMarkets(ctx)
 	if err != nil {

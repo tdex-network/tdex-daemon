@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"sync"
@@ -66,6 +67,7 @@ func runCommand(cmd *exec.Cmd) {
 // --> use these informations to close and remove db directory using the closeDbAndRemoveDir function (see below)
 func newTestDb() (*dbbadger.DbManager, string) {
 	path := "testDatadir-" + uuidgen()
+	log.Println("--------------------- OPEN:", path)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		os.Mkdir(path, os.ModePerm)
 	}
@@ -79,6 +81,10 @@ func newTestDb() (*dbbadger.DbManager, string) {
 }
 
 func closeDbAndRemoveDir(db *dbbadger.DbManager, path string) {
+	time.Sleep(
+		time.Duration(600) * time.Millisecond,
+	)
+	log.Println("------------------ CLOSE:", path)
 	db.Store.Close()
 	db.PriceStore.Close()
 	db.UnspentStore.Close()
@@ -100,7 +106,7 @@ func newMockServices(
 
 	// create a market repo
 	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
-	if marketRepositoryIsEmpty == false {
+	if !marketRepositoryIsEmpty {
 		err := fillMarketRepo(ctx, &marketRepo, initPluggableMarket)
 		if err != nil {
 			panic(err)
@@ -135,6 +141,7 @@ func newMockServices(
 		Observables:            []crawler.Observable{},
 		ErrorHandler:           func(err error) { fmt.Println(err) },
 		IntervalInMilliseconds: 100,
+		Id:                     dir,
 	})
 
 	walletSvc := newWalletService(
@@ -200,10 +207,6 @@ func newMockServices(
 	close := func() {
 		blockchainListener.StopObserveBlockchain()
 		// give the crawler the time to terminate
-		time.Sleep(
-			time.Duration(200) * time.Millisecond,
-		)
-
 		closeDbAndRemoveDir(dbManager, dir)
 	}
 
@@ -284,9 +287,6 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 
 	closeFn := func() {
 		blockchainListener.StopObserveBlockchain()
-		time.Sleep(
-			time.Duration(200) * time.Millisecond,
-		)
 		closeDbAndRemoveDir(dbManager, dir)
 	}
 

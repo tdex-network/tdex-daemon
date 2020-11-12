@@ -75,6 +75,7 @@ func (b *blockchainListener) StopObserveBlockchain() {
 func (b *blockchainListener) handleBlockChainEvents() {
 	for event := range b.crawlerSvc.GetEventChannel() {
 		e := event.(crawler.AddressEvent)
+		log.Println("---------------------- handle event !", b.crawlerSvc.GetId())
 		unspents := unspentsFromEvent(e)
 		ctx := context.Background()
 

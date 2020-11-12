@@ -117,8 +117,8 @@ func TestGetMarketPrice(t *testing.T) {
 }
 
 func TestTradePropose(t *testing.T) {
-	traderSvc, ctx, close := newTestTrader()
-	defer close()
+	traderSvc, ctx, _ := newTestTrader()
+	// defer close()
 
 	markets, err := traderSvc.GetTradableMarkets(ctx)
 	if err != nil {
