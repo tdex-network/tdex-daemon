@@ -56,6 +56,7 @@ func updatePriceAction(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println("price has been updates")
+	fmt.Println()
+	fmt.Println("price has been updated")
 	return nil
 }

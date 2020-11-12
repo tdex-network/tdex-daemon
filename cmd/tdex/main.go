@@ -59,6 +59,7 @@ func main() {
 	}
 	app.Commands = append(
 		app.Commands,
+		&genseed,
 		&initwallet,
 		&unlockwallet,
 		&depositfee,

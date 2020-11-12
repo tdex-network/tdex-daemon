@@ -38,6 +38,7 @@ func unlockWalletAction(ctx *cli.Context) error {
 		return err
 	}
 
+	fmt.Println()
 	fmt.Println("Wallet is unlocked")
 	return nil
 }
