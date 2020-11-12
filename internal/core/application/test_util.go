@@ -42,17 +42,6 @@ func b2h(b []byte) string {
 	return hex.EncodeToString(b)
 }
 
-func startNigiriAndWait() {
-	cmd := exec.Command("nigiri", "start", "--liquid")
-	runCommand(cmd)
-	time.Sleep(10000 * time.Millisecond)
-}
-
-func stopNigiri() {
-	cmd := exec.Command("nigiri", "stop", "--delete")
-	runCommand(cmd)
-}
-
 func uuidgen() string {
 	val, err := exec.Command("uuidgen").Output()
 	if err != nil {

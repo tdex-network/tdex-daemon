@@ -12,6 +12,7 @@ import (
 type Event interface {
 	Type() EventType
 }
+
 // Observable represent object that can be observe on the blockchain.
 type Observable interface {
 	observe(
@@ -83,6 +84,7 @@ func (u *utxoCrawler) Start() {
 			u.errorHandler(err)
 		case <-u.quitChan:
 			log.Debug("stop observe")
+			log.Warn("-------------------------------- QUIT")
 			u.interval.Stop()
 			wg.Wait()
 			close(u.eventChan)

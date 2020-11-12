@@ -27,7 +27,6 @@ const (
 var baseAsset = config.GetString(config.BaseAssetKey)
 
 func TestListMarket(t *testing.T) {
-
 	t.Run("ListMarket should return an empty list and a nil error if market repository is empty", func(t *testing.T) {
 		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 		defer close()
@@ -102,14 +101,10 @@ func TestDepositMarketWithCrawler(t *testing.T) {
 	}
 
 	t.Run("Get address to deposit, fund market and get next address for the market", func(t *testing.T) {
-
-		startNigiriAndWait()
-
 		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
 
 		t.Cleanup(func() {
 			close()
-			stopNigiri()
 		})
 
 		address, err := operatorService.DepositMarket(ctx, "", "")
