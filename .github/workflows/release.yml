@@ -2,10 +2,8 @@ name: goreleaser
 
 on:
   push:
-    branches: [release]
-  #push:
-  #tags:
-  # - "*"
+    tags:
+      - "*"
 
 jobs:
   goreleaser:
