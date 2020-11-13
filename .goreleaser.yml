@@ -63,5 +63,4 @@ archives:
     format: binary
     builds:
       - tdex
-      - tdex
     name_template: "tdex-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
