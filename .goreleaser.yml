@@ -1,6 +1,8 @@
 builds:
   - id: "tdexd"
-    main: ./cmd/tdexd/main.go
+    main: ./cmd/tdexd
+    ldflags:
+      - -s -w
     env:
       - CGO_ENABLED=1
     goos:
@@ -8,7 +10,7 @@ builds:
     goarch:
       - amd64
   - id: "tdex"
-    main: ./cmd/tdex/main.go
+    main: ./cmd/tdex
     env:
       - CGO_ENABLED=0
     goos:
