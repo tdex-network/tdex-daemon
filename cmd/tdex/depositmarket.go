@@ -6,7 +6,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
@@ -17,6 +16,7 @@ import (
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
 	"sort"
+	"time"
 
 	"github.com/vulpemventures/go-elements/network"
 
@@ -25,7 +25,7 @@ import (
 
 const (
 	MinMilliSatPerByte = 100
-	CrawlInterval      = 3000
+	CrawlInterval      = 3
 )
 
 var depositmarket = cli.Command{
@@ -153,25 +153,21 @@ func findAssetsUnspents(randomWallet *trade.Wallet, explorerSvc explorer.Service
 	AssetValuePair,
 	[]explorer.Utxo,
 ) {
-	crawlerSvc := crawler.NewService(crawler.Opts{
-		ExplorerSvc: explorerSvc,
-		Observables: []crawler.Observable{&crawler.AddressObservable{
-			AccountIndex: 0,
-			Address:      randomWallet.Address(),
-			BlindingKey:  randomWallet.BlindingKey(),
-		}},
-		ErrorHandler:           func(err error) { log.Warn(err) },
-		IntervalInMilliseconds: CrawlInterval,
-	})
-	go crawlerSvc.Start()
 
 	var assetValuePair AssetValuePair
 	var unspents []explorer.Utxo
+	var err error
 
 events:
-	for event := range crawlerSvc.GetEventChannel() {
-		e := event.(crawler.AddressEvent)
-		unspents = e.Utxos
+	for {
+		unspents, err = explorerSvc.GetUnspents(
+			randomWallet.Address(),
+			[][]byte{randomWallet.BlindingKey()},
+		)
+		if err != nil {
+			log.Warn(err)
+		}
+
 		if len(unspents) > 0 {
 
 			valuePerAsset := make(map[string]uint64, 0)
@@ -221,8 +217,9 @@ events:
 		} else {
 			log.Warnf("no funds detected for address %v", randomWallet.Address())
 		}
+
+		time.Sleep(time.Duration(CrawlInterval) * time.Second)
 	}
-	crawlerSvc.Stop()
 
 	return assetValuePair, unspents
 }
