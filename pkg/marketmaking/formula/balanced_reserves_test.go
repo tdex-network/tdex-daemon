@@ -34,7 +34,10 @@ func TestBalancedReserves_SpotPrice(t *testing.T) {
 	b := &BalancedReserves{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSpotPrice := b.SpotPrice(tt.args.opts)
+			gotSpotPrice, err := b.SpotPrice(tt.args.opts)
+			if err != nil {
+				t.Fatal(err)
+			}
 			assert.Equal(t, tt.wantSpotPrice.BigInt().Int64(), gotSpotPrice.BigInt().Int64())
 		})
 	}

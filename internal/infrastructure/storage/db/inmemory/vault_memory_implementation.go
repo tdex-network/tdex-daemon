@@ -42,6 +42,10 @@ func NewVaultRepositoryImpl() domain.VaultRepository {
 	}
 }
 
+func (r VaultRepositoryImpl) GetAllDerivedExternalAddressesForAccount(ctx context.Context, accountIndex int) ([]string, error) {
+	return nil, nil
+}
+
 // GetOrCreateVault returns the current Vault.
 // If not yet initialized, it creates a new Vault, initialized with the
 // mnemonic encrypted with the passphrase

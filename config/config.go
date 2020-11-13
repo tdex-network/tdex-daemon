@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/btcsuite/btcutil"
@@ -39,6 +40,10 @@ const (
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey ...
 	PriceSlippageKey = "PRICE_SLIPPAGE"
+	// MnemonicKey ...
+	MnemonicKey = "MNEMONIC"
+	//UnspentTtlKey ...
+	UnspentTtlKey = "UNSPENT_TTL"
 )
 
 var vip *viper.Viper
@@ -54,19 +59,21 @@ func init() {
 	vip.SetDefault(ExplorerEndpointKey, "http://127.0.0.1:3001")
 	vip.SetDefault(LogLevelKey, 5)
 	vip.SetDefault(DefaultFeeKey, 0.25)
-	vip.SetDefault(CrawlIntervalKey, 5)                 //TODO check this value
+	vip.SetDefault(CrawlIntervalKey, 1000)              //TODO check this value
 	vip.SetDefault(FeeAccountBalanceThresholdKey, 1000) //TODO check this value
 	vip.SetDefault(NetworkKey, network.Regtest.Name)
 	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
+	vip.SetDefault(UnspentTtlKey, 120)
 
 	validate()
 
 	if err := initDataDir(); err != nil {
 		log.WithError(err).Panic("error while init data dir")
 	}
+	vip.Set(MnemonicKey, "")
 }
 
 func makeDirectoryIfNotExists(path string) error {
@@ -107,6 +114,21 @@ func GetNetwork() *network.Network {
 		return &network.Regtest
 	}
 	return &network.Liquid
+}
+
+// Set a value for the given key
+func Set(key string, value interface{}) {
+	vip.Set(key, value)
+}
+
+// GetMnemonic returns the current set mnemonic
+func GetMnemonic() []string {
+	var mnemonic []string
+	if vip.GetString(MnemonicKey) != "" {
+		mnemonic = strings.Split(vip.GetString(MnemonicKey), " ")
+	}
+
+	return mnemonic
 }
 
 // Validate method of config will panic

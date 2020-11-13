@@ -40,7 +40,7 @@ $ make run-linux
 ```
 
 
-### Build
+### Build daemon
 
 Builds `tdexd` as static binary in the `./build` folder
 
@@ -52,9 +52,23 @@ $ make build-mac
 $ make build-linux
 
 # ARM
-$ make build-linux
+$ make build-arm
 ```
 
+### Build CLI
+
+Builds `tdex` as static binary in the `./build` folder
+
+```bash
+# Max OSX
+$ make build-cli-mac
+
+# Linux
+$ make build-cli-linux
+
+# ARM
+$ make build-cli-arm
+```
 
 ### Test
 

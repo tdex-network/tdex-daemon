@@ -3,6 +3,7 @@ package dbbadger
 import (
 	"context"
 	"fmt"
+
 	"github.com/dgraph-io/badger/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/timshannon/badgerhold/v2"
@@ -29,12 +30,7 @@ func (v vaultRepositoryImpl) GetOrCreateVault(
 	mnemonic []string,
 	passphrase string,
 ) (*domain.Vault, error) {
-	var tx *badger.Txn
-	if ctx.Value("tx") != nil {
-		tx = ctx.Value("tx").(*badger.Txn)
-	}
-
-	return v.getOrCreateVault(tx, mnemonic, passphrase)
+	return v.getOrCreateVault(ctx, mnemonic, passphrase)
 }
 
 func (v vaultRepositoryImpl) UpdateVault(
@@ -43,12 +39,7 @@ func (v vaultRepositoryImpl) UpdateVault(
 	passphrase string,
 	updateFn func(v *domain.Vault) (*domain.Vault, error),
 ) error {
-	var tx *badger.Txn
-	if ctx.Value("tx") != nil {
-		tx = ctx.Value("tx").(*badger.Txn)
-	}
-
-	vault, err := v.getOrCreateVault(tx, mnemonic, passphrase)
+	vault, err := v.getOrCreateVault(ctx, mnemonic, passphrase)
 	if err != nil {
 		return err
 	}
@@ -58,16 +49,14 @@ func (v vaultRepositoryImpl) UpdateVault(
 		return err
 	}
 
-	return v.updateVault(tx, *updatedVault)
+	return v.updateVault(ctx, *updatedVault)
 }
 
 func (v vaultRepositoryImpl) GetAccountByIndex(
 	ctx context.Context,
 	accountIndex int,
 ) (*domain.Account, error) {
-	tx := ctx.Value("tx").(*badger.Txn)
-
-	vault, err := v.getVault(tx)
+	vault, err := v.getVault(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -84,9 +73,7 @@ func (v vaultRepositoryImpl) GetAccountByAddress(
 	ctx context.Context,
 	addr string,
 ) (*domain.Account, int, error) {
-	tx := ctx.Value("tx").(*badger.Txn)
-
-	vault, err := v.getVault(tx)
+	vault, err := v.getVault(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -103,9 +90,7 @@ func (v vaultRepositoryImpl) GetAllDerivedAddressesAndBlindingKeysForAccount(
 	ctx context.Context,
 	accountIndex int,
 ) ([]string, [][]byte, error) {
-	tx := ctx.Value("tx").(*badger.Txn)
-
-	vault, err := v.getVault(tx)
+	vault, err := v.getVault(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -113,14 +98,24 @@ func (v vaultRepositoryImpl) GetAllDerivedAddressesAndBlindingKeysForAccount(
 	return vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 }
 
+func (v vaultRepositoryImpl) GetAllDerivedExternalAddressesForAccount(
+	ctx context.Context,
+	accountIndex int,
+) ([]string, error) {
+	vault, err := v.getVault(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return vault.AllDerivedExternalAddressesForAccount(accountIndex)
+}
+
 func (v vaultRepositoryImpl) GetDerivationPathByScript(
 	ctx context.Context,
 	accountIndex int,
 	scripts []string,
 ) (map[string]string, error) {
-	tx := ctx.Value("tx").(*badger.Txn)
-
-	vault, err := v.getVault(tx)
+	vault, err := v.getVault(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -154,11 +149,11 @@ func (v vaultRepositoryImpl) getDerivationPathByScript(
 }
 
 func (v vaultRepositoryImpl) getOrCreateVault(
-	tx *badger.Txn,
+	ctx context.Context,
 	mnemonic []string,
 	passphrase string,
 ) (*domain.Vault, error) {
-	vault, err := v.getVault(tx)
+	vault, err := v.getVault(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +164,7 @@ func (v vaultRepositoryImpl) getOrCreateVault(
 			return nil, err
 		}
 
-		err = v.insertVault(tx, *vault)
+		err = v.insertVault(ctx, *vault)
 		if err != nil {
 			return nil, err
 		}
@@ -179,21 +174,16 @@ func (v vaultRepositoryImpl) getOrCreateVault(
 }
 
 func (v vaultRepositoryImpl) insertVault(
-	tx *badger.Txn,
+	ctx context.Context,
 	vault domain.Vault,
 ) error {
 	var err error
-	if tx != nil {
-		err = v.db.Store.TxInsert(
-			tx,
-			vaultKey,
-			&vault,
-		)
+
+	if ctx.Value("tx") != nil {
+		tx := ctx.Value("tx").(*badger.Txn)
+		err = v.db.Store.TxInsert(tx, vaultKey, &vault)
 	} else {
-		err = v.db.Store.Insert(
-			vaultKey,
-			&vault,
-		)
+		err = v.db.Store.Insert(vaultKey, &vault)
 	}
 	if err != nil {
 		if err != badgerhold.ErrKeyExists {
@@ -204,22 +194,15 @@ func (v vaultRepositoryImpl) insertVault(
 	return nil
 }
 
-func (v vaultRepositoryImpl) getVault(
-	tx *badger.Txn,
-) (*domain.Vault, error) {
+func (v vaultRepositoryImpl) getVault(ctx context.Context) (*domain.Vault, error) {
 	var err error
 	var vault domain.Vault
-	if tx != nil {
-		err = v.db.Store.TxGet(
-			tx,
-			vaultKey,
-			&vault,
-		)
+
+	if ctx.Value("tx") != nil {
+		tx := ctx.Value("tx").(*badger.Txn)
+		err = v.db.Store.TxGet(tx, vaultKey, &vault)
 	} else {
-		err = v.db.Store.Get(
-			vaultKey,
-			&vault,
-		)
+		err = v.db.Store.Get(vaultKey, &vault)
 	}
 
 	if err != nil {
@@ -233,21 +216,12 @@ func (v vaultRepositoryImpl) getVault(
 }
 
 func (v vaultRepositoryImpl) updateVault(
-	tx *badger.Txn,
+	ctx context.Context,
 	vault domain.Vault,
 ) error {
-	var err error
-	if tx != nil {
-		err = v.db.Store.TxUpdate(
-			tx,
-			vaultKey,
-			vault,
-		)
-	} else {
-		err = v.db.Store.Update(
-			vaultKey,
-			vault,
-		)
+	if ctx.Value("tx") != nil {
+		tx := ctx.Value("tx").(*badger.Txn)
+		return v.db.Store.TxUpdate(tx, vaultKey, vault)
 	}
-	return err
+	return v.db.Store.Update(vaultKey, vault)
 }

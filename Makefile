@@ -18,6 +18,32 @@ build-mac:
 	chmod u+x ./scripts/build
 	./scripts/build darwin amd64
 
+## build-cli-arm: build CLI for ARM
+build-cli-arm:
+	export GO111MODULE=on
+	chmod u+x ./scripts/build
+	./scripts/build-cli linux arm
+
+## build-linux: build CLI for Linux
+build-cli-linux:
+	export GO111MODULE=on
+	chmod u+x ./scripts/build
+	./scripts/build-cli linux amd64
+
+## build-cli-mac: build CLI for Mac
+build-cli-mac:
+	export GO111MODULE=on
+	chmod u+x ./scripts/build
+	./scripts/build-cli darwin amd64
+
+
+## build: build for all platforms
+build: build-arm build-linux build-mac
+
+## build-cli: build CLI for all platforms
+build-cli: build-cli-arm build-cli-linux build-cli-mac
+
+
 ## clean: cleans the binary
 clean:
 	@echo "Cleaning..."
@@ -52,19 +78,22 @@ vet:
 	@echo "Vet..."
 	@go vet ./...
 
+## clean-test: remove test folders
+clean-test:
+	@echo "Deleting test folders..."
+	rm -rf ./internal/core/application/testDatadir
+	rm -rf ./internal/infrastructure/storage/db/badger/testdb
 
 ## test: runs go unit test with default values
-test: shorttest
+test: clean-test fmt shorttest
 
 ## shorttest: runs unit tests by skipping those that are time expensive
 shorttest:
 	@echo "Testing..."
-	rm -rf ./internal/core/application/testdb
-	rm -rf ./internal/infrastructure/storage/db/badger/testdb
 	go test -v -count=1 -race -short ./...
 
 ## integrationtest: runs e2e tests by
 integrationtest:
 	@echo "E2E Testing..."
-	go test -v -count=1 -race ./cmd/grpc
+	go test -v -count=1 -race ./cmd/tdexd
 

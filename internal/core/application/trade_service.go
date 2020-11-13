@@ -3,12 +3,14 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
@@ -50,6 +52,7 @@ type tradeService struct {
 	vaultRepository   domain.VaultRepository
 	unspentRepository domain.UnspentRepository
 	explorerSvc       explorer.Service
+	crawlerSvc        crawler.Service
 }
 
 func NewTradeService(
@@ -58,6 +61,7 @@ func NewTradeService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
+	crawlerSvc crawler.Service,
 ) TradeService {
 	return newTradeService(
 		marketRepository,
@@ -65,6 +69,7 @@ func NewTradeService(
 		vaultRepository,
 		unspentRepository,
 		explorerSvc,
+		crawlerSvc,
 	)
 }
 
@@ -74,6 +79,7 @@ func newTradeService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
+	crawlerSvc crawler.Service,
 ) *tradeService {
 	return &tradeService{
 		marketRepository:  marketRepository,
@@ -81,6 +87,7 @@ func newTradeService(
 		vaultRepository:   vaultRepository,
 		unspentRepository: unspentRepository,
 		explorerSvc:       explorerSvc,
+		crawlerSvc:        crawlerSvc,
 	}
 }
 
@@ -118,6 +125,16 @@ func (t *tradeService) GetMarketPrice(
 	tradeType int,
 	amount uint64,
 ) (*PriceWithFee, error) {
+	// check the asset strings
+	err := validateAssetString(market.BaseAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(market.QuoteAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidQuoteAsset
+	}
 
 	// Checks if base asset is correct
 	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
@@ -130,6 +147,9 @@ func (t *tradeService) GetMarketPrice(
 	)
 	if err != nil {
 		return nil, err
+	}
+	if mktAccountIndex < 0 {
+		return nil, domain.ErrMarketNotExist
 	}
 
 	if !mkt.IsTradable() {
@@ -168,6 +188,17 @@ func (t *tradeService) TradePropose(
 	swapExpiryTime uint64,
 	err error,
 ) {
+	// check the asset strings
+	_err := validateAssetString(market.BaseAsset)
+	if _err != nil {
+		return nil, nil, 0, domain.ErrInvalidBaseAsset
+	}
+
+	_err = validateAssetString(market.QuoteAsset)
+	if _err != nil {
+		return nil, nil, 0, domain.ErrInvalidQuoteAsset
+	}
+
 	mkt, marketAccountIndex, _err := t.marketRepository.GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
@@ -175,6 +206,9 @@ func (t *tradeService) TradePropose(
 	if _err != nil {
 		err = _err
 		return
+	}
+	if marketAccountIndex < 0 {
+		return nil, nil, 0, domain.ErrMarketNotExist
 	}
 
 	// get all unspents for market account (both as []domain.Unspents and as
@@ -187,11 +221,22 @@ func (t *tradeService) TradePropose(
 		return
 	}
 
+	// Check we got at least one
+	if len(marketUnspents) == 0 || len(marketUtxos) == 0 {
+		err = errors.New("market account is not funded")
+		return
+	}
+
 	// ... and the same for fee account (we'll need to top-up fees)
-	_, feeUtxos, feeBlindingKeysByScript, feeDerivationPaths, _err :=
+	feeUnspents, feeUtxos, feeBlindingKeysByScript, feeDerivationPaths, _err :=
 		t.getUnspentsBlindingsAndDerivationPathsForAccount(ctx, domain.FeeAccount)
 	if _err != nil {
 		err = _err
+		return
+	}
+	// Check we got at least one
+	if len(feeUnspents) == 0 || len(feeUtxos) == 0 {
+		err = errors.New("fee account is not funded")
 		return
 	}
 
@@ -214,6 +259,11 @@ func (t *tradeService) TradePropose(
 	var selectedUnspents []explorer.Utxo
 	var outputBlindingKeysByScript map[string][]byte
 	var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
+	type blindKeyAndAccountIndex struct {
+		blindkey     []byte
+		accountIndex int
+	}
+	var addressesToObserve map[string]blindKeyAndAccountIndex
 
 	// derive output and change address for market, and change address for fee account
 	if err := t.vaultRepository.UpdateVault(
@@ -225,15 +275,18 @@ func (t *tradeService) TradePropose(
 			if err != nil {
 				return nil, err
 			}
-			_, outputScript, outputBlindKey, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
+			outputAddress, outputScript, outputBlindKey, err :=
+				v.DeriveNextExternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			_, changeScript, changeBlindKey, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
+			changeAddress, changeScript, changeBlindKey, err :=
+				v.DeriveNextInternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			_, feeChangeScript, _, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			feeChangeAddress, feeChangeScript, feeChangeBlindKey, err :=
+				v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
@@ -243,6 +296,11 @@ func (t *tradeService) TradePropose(
 			outputBlindingKeysByScript = map[string][]byte{
 				outputScript: outputBlindKey,
 				changeScript: changeBlindKey,
+			}
+			addressesToObserve = map[string]blindKeyAndAccountIndex{
+				outputAddress:    blindKeyAndAccountIndex{outputBlindKey, marketAccountIndex},
+				changeAddress:    blindKeyAndAccountIndex{changeBlindKey, marketAccountIndex},
+				feeChangeAddress: blindKeyAndAccountIndex{feeChangeBlindKey, domain.FeeAccount},
 			}
 			outputDerivationPath, _ = marketAccount.DerivationPathByScript[outputScript]
 			changeDerivationPath, _ = marketAccount.DerivationPathByScript[changeScript]
@@ -312,6 +370,9 @@ func (t *tradeService) TradePropose(
 				selectedUnspents = acceptSwapResult.selectedUnspents
 			}
 
+			trade.MarketFee = mkt.Fee
+			trade.MarketFeeAsset = mkt.FeeAsset
+
 			return trade, nil
 		}); err != nil {
 		return nil, nil, 0, err
@@ -324,6 +385,14 @@ func (t *tradeService) TradePropose(
 		tradeID,
 	); err != nil {
 		return nil, nil, 0, err
+	}
+
+	for addr, info := range addressesToObserve {
+		t.crawlerSvc.AddObservable(&crawler.AddressObservable{
+			AccountIndex: info.accountIndex,
+			Address:      addr,
+			BlindingKey:  info.blindkey,
+		})
 	}
 
 	return
@@ -506,6 +575,8 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 		ChangePathsByAsset: map[string]string{
 			network.AssetID: opts.feeChangeDerivationPath,
 		},
+		WantPrivateBlindKeys: true,
+		WantChangeForFees:    true,
 	})
 	if err != nil {
 		return
@@ -785,15 +856,24 @@ func previewFromFormula(
 		return
 	}
 
+	basePrice, err := formula.SpotPrice(&mm.FormulaOpts{
+		BalanceIn:  quoteBalanceAvailable,
+		BalanceOut: baseBalanceAvailable,
+	})
+	if err != nil {
+		return
+	}
+	quotePrice, err := formula.SpotPrice(&mm.FormulaOpts{
+		BalanceIn:  baseBalanceAvailable,
+		BalanceOut: quoteBalanceAvailable,
+	})
+	if err != nil {
+		return
+	}
+
 	price = Price{
-		BasePrice: formula.SpotPrice(&mm.FormulaOpts{
-			BalanceIn:  quoteBalanceAvailable,
-			BalanceOut: baseBalanceAvailable,
-		}),
-		QuotePrice: formula.SpotPrice(&mm.FormulaOpts{
-			BalanceIn:  baseBalanceAvailable,
-			BalanceOut: quoteBalanceAvailable,
-		}),
+		BasePrice:  basePrice,
+		QuotePrice: quotePrice,
 	}
 
 	return price, previewAmount, nil
@@ -816,12 +896,26 @@ func (t *tradeService) GetMarketBalance(
 	ctx context.Context,
 	market Market,
 ) (*BalanceWithFee, error) {
-	m, _, err := t.marketRepository.GetMarketByAsset(
+	// check the asset strings
+	err := validateAssetString(market.BaseAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidBaseAsset
+	}
+
+	err = validateAssetString(market.QuoteAsset)
+	if err != nil {
+		return nil, domain.ErrInvalidQuoteAsset
+	}
+
+	m, accountIndex, err := t.marketRepository.GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if accountIndex < 0 {
+		return nil, domain.ErrMarketNotExist
 	}
 
 	marketAddresses, _, err := t.vaultRepository.
@@ -830,36 +924,28 @@ func (t *tradeService) GetMarketBalance(
 		return nil, err
 	}
 
-	var baseAmount int64
-	var quoteAmount int64
+	baseAssetBalance, err := t.unspentRepository.GetBalance(
+		ctx,
+		marketAddresses,
+		m.BaseAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, a := range marketAddresses {
-		baseAddressBalance, err := t.unspentRepository.GetBalance(
-			ctx,
-			a,
-			m.BaseAsset,
-		)
-		if err != nil {
-			return nil, err
-		}
-		baseAmount += int64(baseAddressBalance)
-
-		quoteAddressBalance, err := t.unspentRepository.GetBalance(
-			ctx,
-			a,
-			m.QuoteAsset,
-		)
-		if err != nil {
-			return nil, err
-		}
-		quoteAmount += int64(quoteAddressBalance)
-
+	quoteAssetBalance, err := t.unspentRepository.GetBalance(
+		ctx,
+		marketAddresses,
+		m.QuoteAsset,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	return &BalanceWithFee{
 		Balance: Balance{
-			BaseAmount:  baseAmount,
-			QuoteAmount: quoteAmount,
+			BaseAmount:  int64(baseAssetBalance),
+			QuoteAmount: int64(quoteAssetBalance),
 		},
 		Fee: Fee{
 			FeeAsset:   m.BaseAsset,

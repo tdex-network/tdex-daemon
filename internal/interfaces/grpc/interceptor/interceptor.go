@@ -11,7 +11,6 @@ func UnaryInterceptor(dbManager *dbbadger.DbManager) grpc.ServerOption {
 	return grpc.UnaryInterceptor(
 		middleware.ChainUnaryServer(
 			unaryLogger,
-			unaryTransactionHandler(dbManager),
 		),
 	)
 }
@@ -21,7 +20,6 @@ func StreamInterceptor(dbManager *dbbadger.DbManager) grpc.ServerOption {
 	return grpc.StreamInterceptor(
 		middleware.ChainStreamServer(
 			streamLogger,
-			streamTransactionHandler(dbManager),
 		),
 	)
 }

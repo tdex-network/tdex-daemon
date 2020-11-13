@@ -255,6 +255,9 @@ func (e *explorer) getUtxoDetails(
 ) {
 	unspent := out.(witnessUtxo)
 
+	// in case of error the status is defaulted to unconfirmed
+	confirmed, _ := e.IsTransactionConfirmed(unspent.Hash())
+
 	prevoutTxHex, err := e.GetTransactionHex(unspent.Hash())
 	if err != nil {
 		chErr <- err
@@ -269,6 +272,7 @@ func (e *explorer) getUtxoDetails(
 		unspent.USurjectionProof = prevout.SurjectionProof
 	}
 	unspent.UScript = prevout.Script
+	unspent.UStatus = status{Confirmed: confirmed}
 
 	chUnspents <- unspent
 }

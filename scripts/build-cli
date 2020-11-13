@@ -8,5 +8,6 @@ PARENT_PATH=$(dirname $(
 ))
 
 pushd $PARENT_PATH
-go test -v -count=1 -race ./...
+mkdir -p build
+GOOS=$1 GOARCH=$2 go build -ldflags="-s -w" -o build/tdex-$1-$2 ./cmd/tdex
 popd
