@@ -3,80 +3,84 @@ package inmemory
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
-	"sync"
 
 	"github.com/google/uuid"
 )
 
 // TradeRepositoryImpl represents an in memory storage
 type TradeRepositoryImpl struct {
-	trades               map[uuid.UUID]*domain.Trade
-	tradesBySwapAcceptID map[string]uuid.UUID
-	tradesByTrader       map[string][]uuid.UUID
-	tradesByMarket       map[string][]uuid.UUID
-
-	lock *sync.RWMutex
+	db *DbManager
 }
 
 // NewTradeRepositoryImpl returns a new empty TradeRepositoryImpl
-func NewTradeRepositoryImpl() *TradeRepositoryImpl {
+func NewTradeRepositoryImpl(db *DbManager) domain.TradeRepository {
 	return &TradeRepositoryImpl{
-		trades:               map[uuid.UUID]*domain.Trade{},
-		tradesBySwapAcceptID: map[string]uuid.UUID{},
-		tradesByTrader:       map[string][]uuid.UUID{},
-		tradesByMarket:       map[string][]uuid.UUID{},
-		lock:                 &sync.RWMutex{},
+		db: db,
 	}
+}
+
+// GetCompletedTradesByMarket returns the copmpleted trades for a given quote asset
+func (r TradeRepositoryImpl) GetCompletedTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
+	r.db.tradeStore.locker.Lock()
+	defer r.db.tradeStore.locker.Unlock()
+
+	tradesByMarkets, err := r.getAllTradesByMarket(marketQuoteAsset)
+	if err != nil {
+		return nil, err
+	}
+
+	completedTrades := make([]*domain.Trade, 0)
+	for _, trade := range tradesByMarkets {
+		if trade.Status.Code == domain.CompletedStatus.Code {
+			completedTrades = append(completedTrades, trade)
+		}
+	}
+
+	return completedTrades, nil
 }
 
 // GetOrCreateTrade gets a trade with a given swapID that can be either a
 // request, accept, or complete ID. They all identify the same Trade.
 // If not found, a new entry is inserted
-func (r TradeRepositoryImpl) GetOrCreateTrade(ctx context.Context, tradeID *uuid.UUID) (*domain.Trade, error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+func (r TradeRepositoryImpl) GetOrCreateTrade(_ context.Context, tradeID *uuid.UUID) (*domain.Trade, error) {
+	r.db.tradeStore.locker.Lock()
+	defer r.db.tradeStore.locker.Unlock()
 
-	trades, _, _, _ := r.storageByContext(ctx)
-	return getOrCreateTrade(trades, tradeID)
+	return r.getOrCreateTrade(tradeID)
 }
 
 // GetAllTrades returns all the trades processed by the daemon
-func (r TradeRepositoryImpl) GetAllTrades(ctx context.Context) ([]*domain.Trade, error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+func (r TradeRepositoryImpl) GetAllTrades(_ context.Context) ([]*domain.Trade, error) {
+	r.db.tradeStore.locker.Lock()
+	defer r.db.tradeStore.locker.Unlock()
 
-	trades, _, _, _ := r.storageByContext(ctx)
-	return getAllTrades(trades)
+	return r.getAllTrades()
 }
 
 // GetAllTradesByMarket returns all the trades processed for the given market
-func (r TradeRepositoryImpl) GetAllTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+func (r TradeRepositoryImpl) GetAllTradesByMarket(_ context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
+	r.db.tradeStore.locker.Lock()
+	defer r.db.tradeStore.locker.Unlock()
 
-	trades, _, tradesByMarket, _ := r.storageByContext(ctx)
-	return getAllTradesByMarket(trades, tradesByMarket, marketQuoteAsset)
+	return r.getAllTradesByMarket(marketQuoteAsset)
 }
 
 // GetAllTradesByTrader returns all the trades processed for the given trader
-func (r TradeRepositoryImpl) GetAllTradesByTrader(ctx context.Context, traderID string) ([]*domain.Trade, error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+func (r TradeRepositoryImpl) GetAllTradesByTrader(_ context.Context, traderID string) ([]*domain.Trade, error) {
+	r.db.tradeStore.locker.Lock()
+	defer r.db.tradeStore.locker.Unlock()
 
-	trades, _, _, tradesByTrader := r.storageByContext(ctx)
-	return getAllTradesByTrader(trades, tradesByTrader, traderID)
+	return r.getAllTradesByTrader(traderID)
 }
 
 // GetTradeBySwapAcceptID returns the trade idetified by the swap accept message's id
-func (r TradeRepositoryImpl) GetTradeBySwapAcceptID(ctx context.Context, swapAcceptID string) (*domain.Trade, error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+func (r TradeRepositoryImpl) GetTradeBySwapAcceptID(_ context.Context, swapAcceptID string) (*domain.Trade, error) {
+	r.db.tradeStore.locker.Lock()
+	defer r.db.tradeStore.locker.Unlock()
 
-	trades, tradesBySwapAcceptID, _, _ := r.storageByContext(ctx)
-	return getTradeBySwapAcceptID(trades, tradesBySwapAcceptID, swapAcceptID)
+	return r.getTradeBySwapAcceptID(swapAcceptID)
 }
 
 // UpdateTrade updates data to a trade identified by any of its swap ids (request, accept, complete) passing an update function
@@ -85,12 +89,10 @@ func (r TradeRepositoryImpl) UpdateTrade(
 	tradeID *uuid.UUID,
 	updateFn func(t *domain.Trade) (*domain.Trade, error),
 ) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	r.db.tradeStore.locker.Lock()
+	defer r.db.tradeStore.locker.Unlock()
 
-	trades, tradesBySwapAcceptID, tradesByTrader, tradesByMarket := r.storageByContext(ctx)
-
-	currentTrade, err := getOrCreateTrade(trades, tradeID)
+	currentTrade, err := r.getOrCreateTrade(tradeID)
 	if err != nil {
 		return err
 	}
@@ -101,160 +103,109 @@ func (r TradeRepositoryImpl) UpdateTrade(
 	}
 
 	if swapAccept := updatedTrade.SwapAcceptMessage(); swapAccept != nil {
-		if _, ok := tradesBySwapAcceptID[swapAccept.GetId()]; !ok {
-			tradesBySwapAcceptID[swapAccept.GetId()] = currentTrade.ID
+		if _, ok := r.db.tradeStore.tradesBySwapAcceptID[swapAccept.GetId()]; !ok {
+			r.db.tradeStore.tradesBySwapAcceptID[swapAccept.GetId()] = currentTrade.ID
 		}
 	}
 
-	addTradeIDByKeyString(tradesByMarket, updatedTrade.MarketQuoteAsset, currentTrade.ID)
-	addTradeIDByKeyString(tradesByTrader, hex.EncodeToString(updatedTrade.TraderPubkey), currentTrade.ID)
+	r.addTradeByMarket(updatedTrade.MarketQuoteAsset, currentTrade.ID)
+	r.addTradeByTrader(hex.EncodeToString(updatedTrade.TraderPubkey), currentTrade.ID)
+
+	r.db.tradeStore.trades[updatedTrade.ID] = *updatedTrade
+
 	return nil
 }
 
-// Begin returns a new TradeRepositoryTx
-func (r TradeRepositoryImpl) Begin() (uow.Tx, error) {
-	tx := &TradeRepositoryTx{
-		root:                 r,
-		trades:               map[uuid.UUID]*domain.Trade{},
-		tradesBySwapAcceptID: map[string]uuid.UUID{},
-		tradesByMarket:       map[string][]uuid.UUID{},
-		tradesByTrader:       map[string][]uuid.UUID{},
+func (r TradeRepositoryImpl) getOrCreateTrade(tradeID *uuid.UUID) (*domain.Trade, error) {
+	createTrade := func() (*domain.Trade, error) {
+		t := domain.NewTrade()
+		r.db.tradeStore.trades[t.ID] = *t
+		return t, nil
 	}
 
-	// copy the current state of the repo into the transaction
-	for k, v := range r.trades {
-		tx.trades[k] = v
-	}
-	for k, v := range r.tradesBySwapAcceptID {
-		tx.tradesBySwapAcceptID[k] = v
-	}
-	for k, v := range r.tradesByTrader {
-		cv := make([]uuid.UUID, len(v))
-		copy(cv, v)
-		tx.tradesByTrader[k] = cv
-	}
-	for k, v := range r.tradesByMarket {
-		cv := make([]uuid.UUID, len(v))
-		copy(cv, v)
-		tx.tradesByMarket[k] = cv
-	}
-
-	return tx, nil
-}
-
-// ContextKey returns the context key shared between in-memory repositories
-func (r TradeRepositoryImpl) ContextKey() interface{} {
-	return uow.InMemoryContextKey
-}
-
-func (r TradeRepositoryImpl) storageByContext(ctx context.Context) (
-	trades map[uuid.UUID]*domain.Trade,
-	tradesBySwapAcceptID map[string]uuid.UUID,
-	tradesByMarket map[string][]uuid.UUID,
-	tradesByTrader map[string][]uuid.UUID,
-) {
-	trades = r.trades
-	tradesBySwapAcceptID = r.tradesBySwapAcceptID
-	tradesByTrader = r.tradesByTrader
-	tradesByMarket = r.tradesByMarket
-	if tx, ok := ctx.Value(r).(*TradeRepositoryTx); ok {
-		trades = tx.trades
-		tradesBySwapAcceptID = tx.tradesBySwapAcceptID
-		tradesByMarket = tx.tradesByMarket
-		tradesByTrader = tx.tradesByTrader
-	}
-	return
-}
-
-func getOrCreateTrade(trades map[uuid.UUID]*domain.Trade, tradeID *uuid.UUID) (*domain.Trade, error) {
 	if tradeID == nil {
-		t := domain.NewTrade()
-		trades[t.ID] = t
-		return t, nil
+		return createTrade()
 	}
 
-	currentTrade, ok := trades[*tradeID]
+	currentTrade, ok := r.db.tradeStore.trades[*tradeID]
 	if !ok {
-		t := domain.NewTrade()
-		trades[t.ID] = t
-		return t, nil
+		return nil, ErrTradesNotFound
 	}
 
-	return currentTrade, nil
+	return &currentTrade, nil
 }
 
-func getAllTrades(trades map[uuid.UUID]*domain.Trade) ([]*domain.Trade, error) {
-	allTrades := make([]*domain.Trade, 0, len(trades))
-	for _, trade := range trades {
-		allTrades = append(allTrades, trade)
+func (r TradeRepositoryImpl) getAllTrades() ([]*domain.Trade, error) {
+	allTrades := make([]*domain.Trade, 0)
+	for _, trade := range r.db.tradeStore.trades {
+		allTrades = append(allTrades, &trade)
 	}
 	return allTrades, nil
 }
 
-func getAllTradesByMarket(
-	trades map[uuid.UUID]*domain.Trade,
-	tradesByMarket map[string][]uuid.UUID,
-	marketQuoteAsset string,
-) ([]*domain.Trade, error) {
-	tradeIDs, ok := tradesByMarket[marketQuoteAsset]
+func (r TradeRepositoryImpl) getAllTradesByMarket(marketQuoteAsset string) ([]*domain.Trade, error) {
+	tradeIDs, ok := r.db.tradeStore.tradesByMarket[marketQuoteAsset]
 	if !ok {
-		return nil, fmt.Errorf(
-			"no trades found for market with quote asset '%s'", marketQuoteAsset,
-		)
+		return nil, ErrMarketsNotFound
 	}
 
-	tradeList := tradesFromIDs(trades, tradeIDs)
+	tradeList := tradesFromIDs(r.db.tradeStore.trades, tradeIDs)
 	return tradeList, nil
 }
 
-func getAllTradesByTrader(
-	trades map[uuid.UUID]*domain.Trade,
-	tradesByTrader map[string][]uuid.UUID,
-	traderID string,
-) ([]*domain.Trade, error) {
-	tradeIDs, ok := tradesByTrader[traderID]
+func (r TradeRepositoryImpl) getAllTradesByTrader(traderID string) ([]*domain.Trade, error) {
+	tradeIDs, ok := r.db.tradeStore.tradesByTrader[traderID]
 	if !ok {
-		return nil, fmt.Errorf(
-			"no trades found for trader with pubkey '%s'", traderID,
-		)
+		return nil, ErrTradesNotFound
 	}
 
-	tradeList := tradesFromIDs(trades, tradeIDs)
+	tradeList := tradesFromIDs(r.db.tradeStore.trades, tradeIDs)
 	return tradeList, nil
 }
 
-func getTradeBySwapAcceptID(
-	trades map[uuid.UUID]*domain.Trade,
-	tradesBySwapAcceptID map[string]uuid.UUID,
-	swapAcceptID string,
-) (*domain.Trade, error) {
-	tradeID, ok := tradesBySwapAcceptID[swapAcceptID]
+func (r TradeRepositoryImpl) getTradeBySwapAcceptID(swapAcceptID string) (*domain.Trade, error) {
+	tradeID, ok := r.db.tradeStore.tradesBySwapAcceptID[swapAcceptID]
 	if !ok {
-		return nil, fmt.Errorf(
-			"trade not found for swap accept message with id '%s'", swapAcceptID,
-		)
+		return nil, ErrTradesNotFound
 	}
-	return trades[tradeID], nil
+	trade := r.db.tradeStore.trades[tradeID]
+	return &trade, nil
 }
 
-func tradesFromIDs(trades map[uuid.UUID]*domain.Trade, tradeIDs []uuid.UUID) []*domain.Trade {
+func tradesFromIDs(trades map[uuid.UUID]domain.Trade, tradeIDs []uuid.UUID) []*domain.Trade {
 	tradesByID := make([]*domain.Trade, 0, len(tradeIDs))
 	for _, tradeID := range tradeIDs {
-		tradesByID = append(tradesByID, trades[tradeID])
+		trade := trades[tradeID]
+		tradesByID = append(tradesByID, &trade)
 	}
 	return tradesByID
 }
 
-func addTradeIDByKeyString(tradeMap map[string][]uuid.UUID, key string, val uuid.UUID) {
-	trades, ok := tradeMap[key]
+func (r TradeRepositoryImpl) addTradeByMarket(key string, val uuid.UUID) {
+	trades, ok := r.db.tradeStore.tradesByMarket[key]
 	if !ok {
-		tradeMap[key] = []uuid.UUID{val}
+		r.db.tradeStore.tradesByMarket[key] = []uuid.UUID{val}
 		return
 	}
 
 	if !contain(trades, val) {
-		tradeMap[key] = append(
-			tradeMap[key],
+		r.db.tradeStore.tradesByMarket[key] = append(
+			r.db.tradeStore.tradesByMarket[key],
+			val,
+		)
+	}
+}
+
+func (r TradeRepositoryImpl) addTradeByTrader(key string, val uuid.UUID) {
+	trades, ok := r.db.tradeStore.tradesByTrader[key]
+	if !ok {
+		r.db.tradeStore.tradesByTrader[key] = []uuid.UUID{val}
+		return
+	}
+
+	if !contain(trades, val) {
+		r.db.tradeStore.tradesByTrader[key] = append(
+			r.db.tradeStore.tradesByTrader[key],
 			val,
 		)
 	}
@@ -267,88 +218,4 @@ func contain(list []uuid.UUID, id uuid.UUID) bool {
 		}
 	}
 	return false
-}
-
-// TradeRepositoryTx allows to make transactional read/write operation
-// on the in-memory repository
-type TradeRepositoryTx struct {
-	root                 TradeRepositoryImpl
-	trades               map[uuid.UUID]*domain.Trade
-	tradesBySwapAcceptID map[string]uuid.UUID
-	tradesByMarket       map[string][]uuid.UUID
-	tradesByTrader       map[string][]uuid.UUID
-}
-
-// Commit applies the updates made to the state of the transaction to its root
-func (tx *TradeRepositoryTx) Commit() error {
-	// update trades
-	// TODO: check if trade has changed and update overwrite only updated trades
-	for k, v := range tx.trades {
-		tx.root.trades[k] = v
-	}
-
-	// update tradesBySwapAcceptID by adding only new entries, if any
-	for k, v := range tx.tradesBySwapAcceptID {
-		if _, ok := tx.root.tradesBySwapAcceptID[k]; !ok {
-			tx.root.tradesBySwapAcceptID[k] = v
-		}
-	}
-
-	// update tradesByTrader by either adding new entries or updating the list
-	// of tradeIDs for each trader, if any has been added
-	for key, txTradeIds := range tx.tradesByTrader {
-		if rootTradeIDs, ok := tx.root.tradesByTrader[key]; !ok {
-			tx.root.tradesByTrader[key] = txTradeIds
-		} else {
-			if len(txTradeIds) > len(rootTradeIDs) {
-				for _, tradeID := range txTradeIds[len(rootTradeIDs):] {
-					tx.root.tradesByTrader[key] = append(tx.root.tradesByTrader[key], tradeID)
-				}
-			}
-		}
-	}
-
-	// update tradesByMarket by either adding new entries or updating the list
-	// of tradeIDs for each market, if any has been added
-	for key, txTradeIDs := range tx.tradesByMarket {
-		if rootTradeIDs, ok := tx.root.tradesByMarket[key]; !ok {
-			tx.root.tradesByMarket[key] = txTradeIDs
-		} else {
-			if len(txTradeIDs) > len(rootTradeIDs) {
-				for _, tradeID := range txTradeIDs[len(rootTradeIDs):] {
-					tx.root.tradesByMarket[key] = append(tx.root.tradesByTrader[key], tradeID)
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-// Rollback resets the state of the transaction to the state of its root
-func (tx *TradeRepositoryTx) Rollback() error {
-	tx.trades = map[uuid.UUID]*domain.Trade{}
-	for k, v := range tx.root.trades {
-		tx.trades[k] = v
-	}
-
-	tx.tradesBySwapAcceptID = map[string]uuid.UUID{}
-	for k, v := range tx.root.tradesBySwapAcceptID {
-		tx.tradesBySwapAcceptID[k] = v
-	}
-
-	tx.tradesByTrader = map[string][]uuid.UUID{}
-	for k, v := range tx.root.tradesByTrader {
-		cv := make([]uuid.UUID, len(v))
-		copy(cv, v)
-		tx.tradesByTrader[k] = cv
-	}
-
-	tx.tradesByMarket = map[string][]uuid.UUID{}
-	for k, v := range tx.root.tradesByMarket {
-		cv := make([]uuid.UUID, len(v))
-		copy(cv, v)
-		tx.tradesByMarket[k] = cv
-	}
-	return nil
 }

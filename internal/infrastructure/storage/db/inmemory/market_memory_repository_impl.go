@@ -13,7 +13,7 @@ type MarketRepositoryImpl struct {
 }
 
 //NewMemoryMarketRepository returns a new empty MarketRepositoryImpl
-func NewMarketRepositoryImpl(dbManager *DbManager) *MarketRepositoryImpl {
+func NewMarketRepositoryImpl(dbManager *DbManager) domain.MarketRepository {
 	return &MarketRepositoryImpl{
 		db: *dbManager,
 	}

@@ -30,9 +30,6 @@ func newMockDb() *DbManager {
 		panic(err)
 	}
 
-	// unspentRepository = NewUnspentRepositoryImpl(dbManager)
-	// vaultRepository = NewVaultRepositoryImpl(dbManager)
-	// tradeRepository = NewTradeRepositoryImpl(dbManager)
 	return dbManager
 }
 
@@ -253,8 +250,18 @@ func insertTrades(db *DbManager) error {
 
 	for _, v := range trades {
 		db.tradeStore.trades[v.ID] = v
-	}
 
+		if v.MarketQuoteAsset != "" {
+			if db.tradeStore.tradesByMarket[v.MarketQuoteAsset] == nil {
+				array := []uuid.UUID{v.ID}
+				db.tradeStore.tradesByMarket[v.MarketQuoteAsset] = array
+			}
+
+			db.tradeStore.tradesByMarket[v.MarketQuoteAsset] = append(db.tradeStore.tradesByMarket[v.MarketQuoteAsset], v.ID)
+		}
+
+		db.tradeStore.tradesBySwapAcceptID[v.SwapAccept.ID] = v.ID
+	}
 	return nil
 }
 

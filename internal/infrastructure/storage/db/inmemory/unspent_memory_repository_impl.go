@@ -2,12 +2,13 @@ package inmemory
 
 import (
 	"context"
-	"fmt"
-	"github.com/google/uuid"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
-	"sync"
 	"errors"
+	"fmt"
+	"sync"
+
+	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 )
 
 // UnspentRepositoryImpl represents an in memory storage
@@ -157,7 +158,7 @@ func (r UnspentRepositoryImpl) UpdateUnspent(
 	}
 
 	r.unspents[unspentKey] = *unspent
-	
+
 	return nil
 }
 
