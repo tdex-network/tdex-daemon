@@ -53,5 +53,15 @@ changelog:
       - "^docs:"
       - "^test:"
 archives:
-  - format: binary
-    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
+  - id: tdexd
+    format: binary
+    builds:
+      - tdexd-linux
+      - tdexd-darwin
+    name_template: "tdexd-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+  - id: tdex
+    format: binary
+    builds:
+      - tdex
+      - tdex
+    name_template: "tdex-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
