@@ -23,7 +23,7 @@ type tradeInmemoryStore struct {
 
 type unspentInmemoryStore struct {
 	unspents map[domain.UnspentKey]domain.Unspent
-	locker   *sync.Mutex
+	locker   *sync.RWMutex
 }
 
 type vaultInmemoryStore struct {
@@ -54,7 +54,7 @@ func NewDbManager() *DbManager {
 		},
 		unspentStore: &unspentInmemoryStore{
 			unspents: map[domain.UnspentKey]domain.Unspent{},
-			locker:   &sync.Mutex{},
+			locker:   &sync.RWMutex{},
 		},
 		vaultStore: &vaultInmemoryStore{
 			vault:  &domain.Vault{},

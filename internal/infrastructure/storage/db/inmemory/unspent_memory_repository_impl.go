@@ -4,24 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/uow"
 )
 
 // UnspentRepositoryImpl represents an in memory storage
 type UnspentRepositoryImpl struct {
-	unspents map[domain.UnspentKey]domain.Unspent
-	lock     *sync.RWMutex
+	db *DbManager
 }
 
 //NewUnspentRepositoryImpl returns a new empty MarketRepositoryImpl
-func NewUnspentRepositoryImpl() *UnspentRepositoryImpl {
+func NewUnspentRepositoryImpl(db *DbManager) domain.UnspentRepository {
 	return &UnspentRepositoryImpl{
-		unspents: map[domain.UnspentKey]domain.Unspent{},
-		lock:     &sync.RWMutex{},
+		db: db,
 	}
 }
 
@@ -32,102 +29,191 @@ func NewUnspentRepositoryImpl() *UnspentRepositoryImpl {
 //it adds non exiting unspent's to the memory
 //in case that unspent's, passed to the function, are not already in memory
 //it will mark unspent in memory, as spent
-func (r UnspentRepositoryImpl) AddUnspents(ctx context.Context, unspents []domain.Unspent) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+func (r UnspentRepositoryImpl) AddUnspents(_ context.Context, unspents []domain.Unspent) error {
+	r.db.unspentStore.locker.Lock()
+	defer r.db.unspentStore.locker.Unlock()
 
-	return addUnspents(r.storageByContext(ctx), unspents)
+	return r.addUnspents(unspents)
+}
+
+func (r UnspentRepositoryImpl) GetAllUnspentsForAddresses(
+	ctx context.Context,
+	addresses []string,
+) ([]domain.Unspent, error) {
+	r.db.unspentStore.locker.Lock()
+	defer r.db.unspentStore.locker.Unlock()
+
+	results := make([]domain.Unspent, 0)
+
+	for _, unspent := range r.db.unspentStore.unspents {
+		unspentAddress := unspent.Address
+		for _, addr := range addresses {
+			if unspentAddress == addr {
+				results = append(results, unspent)
+			}
+		}
+	}
+
+	return results, nil
+}
+
+func (r UnspentRepositoryImpl) SpendUnspents(
+	ctx context.Context,
+	unspentKeys []domain.UnspentKey,
+) error {
+	r.db.unspentStore.locker.Lock()
+	defer r.db.unspentStore.locker.Unlock()
+
+	for _, key := range unspentKeys {
+		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
+			if !unspent.IsSpent() {
+				unspent.Spend()
+				unspent.UnLock()
+				r.db.unspentStore.unspents[key] = unspent
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r UnspentRepositoryImpl) ConfirmUnspents(
+	ctx context.Context,
+	unspentKeys []domain.UnspentKey,
+) error {
+	r.db.unspentStore.locker.Lock()
+	defer r.db.unspentStore.locker.Unlock()
+
+	for _, key := range unspentKeys {
+		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
+			if !unspent.IsConfirmed() {
+				unspent.Confirm()
+				unspent.UnLock()
+				r.db.unspentStore.unspents[key] = unspent
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetAllUnspents returns all the unspents stored
-func (r UnspentRepositoryImpl) GetAllUnspents(ctx context.Context) []domain.Unspent {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+func (r UnspentRepositoryImpl) GetAllUnspents(_ context.Context) []domain.Unspent {
+	r.db.unspentStore.locker.RLock()
+	defer r.db.unspentStore.locker.RUnlock()
 
-	return getAllUnspents(r.storageByContext(ctx), false)
+	return r.getAllUnspents(false)
 }
 
 // GetAllSpents returns all the unspents that have been spent
-func (r UnspentRepositoryImpl) GetAllSpents(ctx context.Context) []domain.Unspent {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+func (r UnspentRepositoryImpl) GetAllSpents(_ context.Context) []domain.Unspent {
+	r.db.unspentStore.locker.RLock()
+	defer r.db.unspentStore.locker.RUnlock()
 
-	return getAllUnspents(r.storageByContext(ctx), true)
+	return r.getAllUnspents(true)
 }
 
 // GetBalance returns the balance of the given asset for the given address
 func (r UnspentRepositoryImpl) GetBalance(
-	ctx context.Context,
-	address, assetHash string,
+	_ context.Context,
+	addresses []string,
+	assetHash string,
 ) (uint64, error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+	balance := uint64(0)
 
-	return getBalance(r.storageByContext(ctx), address, assetHash), nil
+	r.db.unspentStore.locker.RLock()
+	defer r.db.unspentStore.locker.RUnlock()
+
+	for _, address := range addresses {
+		balance += r.getBalance(address, assetHash)
+	}
+
+	return balance, nil
 }
 
 // GetUnlockedBalance returns the total amount of unlocked unspents for the
 // given asset and address
 func (r UnspentRepositoryImpl) GetUnlockedBalance(
-	ctx context.Context,
-	address, assetHash string,
+	_ context.Context,
+	addresses []string,
+	assetHash string,
 ) (uint64, error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+	balance := uint64(0)
 
-	return getUnlockedBalance(r.storageByContext(ctx), address, assetHash), nil
+	r.db.unspentStore.locker.RLock()
+	defer r.db.unspentStore.locker.RUnlock()
+
+	for _, address := range addresses {
+		balance += r.getUnlockedBalance(address, assetHash)
+	}
+
+	return balance, nil
 }
 
 // GetAvailableUnspents returns the list of unlocked unspents
-func (r UnspentRepositoryImpl) GetAvailableUnspents(ctx context.Context) ([]domain.Unspent, error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+func (r UnspentRepositoryImpl) GetAvailableUnspents(_ context.Context) ([]domain.Unspent, error) {
+	r.db.unspentStore.locker.RLock()
+	defer r.db.unspentStore.locker.RUnlock()
 
-	return getAvailableUnspents(r.storageByContext(ctx), nil), nil
+	return r.getAvailableUnspents(nil), nil
 }
 
 // GetAvailableUnspentsForAddresses returns the list of unlocked unspents for
 // the given list of addresses
 func (r UnspentRepositoryImpl) GetAvailableUnspentsForAddresses(
-	ctx context.Context,
+	_ context.Context,
 	addresses []string,
 ) ([]domain.Unspent, error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+	r.db.unspentStore.locker.RLock()
+	defer r.db.unspentStore.locker.RUnlock()
 
-	return getAvailableUnspents(r.storageByContext(ctx), addresses), nil
+	return r.getAvailableUnspents(addresses), nil
 }
 
 // LockUnspents locks the given unspents associating them with the trade where
 // they'are currently used as inputs
 func (r UnspentRepositoryImpl) LockUnspents(
-	ctx context.Context,
+	_ context.Context,
 	unspentKeys []domain.UnspentKey,
 	tradeID uuid.UUID,
 ) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	r.db.unspentStore.locker.Lock()
+	defer r.db.unspentStore.locker.Unlock()
 
-	return lockUnspents(r.storageByContext(ctx), unspentKeys, tradeID)
+	go func() {
+		time.Sleep(3 * time.Second)
+		r.db.unspentStore.locker.Lock()
+		defer r.db.unspentStore.locker.Unlock()
+		for _, key := range unspentKeys {
+			unspent := r.db.unspentStore.unspents[key]
+			unspent.UnLock()
+			r.db.unspentStore.unspents[key] = unspent
+		}
+	}()
+
+	return r.lockUnspents(unspentKeys, tradeID)
 }
 
 // UnlockUnspents unlocks the given locked unspents
 func (r UnspentRepositoryImpl) UnlockUnspents(
-	ctx context.Context,
+	_ context.Context,
 	unspentKeys []domain.UnspentKey,
 ) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	r.db.unspentStore.locker.Lock()
+	defer r.db.unspentStore.locker.Unlock()
 
-	return unlockUnspents(r.storageByContext(ctx), unspentKeys)
+	return r.unlockUnspents(unspentKeys)
 }
 
 // GetUnspentForKey return unspent for a given key.
 func (r UnspentRepositoryImpl) GetUnspentForKey(
-	ctx context.Context,
+	_ context.Context,
 	unspentKey domain.UnspentKey,
 ) (*domain.Unspent, error) {
-	unspent, ok := r.unspents[unspentKey]
+	r.db.unspentStore.locker.RLock()
+	defer r.db.unspentStore.locker.RUnlock()
+
+	unspent, ok := r.db.unspentStore.unspents[unspentKey]
 	if !ok {
 		return nil, errors.New("Unspent not found")
 	}
@@ -136,19 +222,25 @@ func (r UnspentRepositoryImpl) GetUnspentForKey(
 
 // GetUnspentsForAddresses returns unspents for a list of addresses.
 func (r UnspentRepositoryImpl) GetUnspentsForAddresses(
-	ctx context.Context,
+	_ context.Context,
 	addresses []string,
 ) ([]domain.Unspent, error) {
-	return getUnspentsForAddresses(r.unspents, addresses), nil
+	r.db.unspentStore.locker.RLock()
+	defer r.db.unspentStore.locker.RUnlock()
+
+	return r.getUnspentsForAddresses(addresses), nil
 }
 
 // UpdateUnspent will update the Unspent model with the updateFn
 func (r UnspentRepositoryImpl) UpdateUnspent(
-	ctx context.Context,
+	_ context.Context,
 	unspentKey domain.UnspentKey,
 	updateFn func(m *domain.Unspent) (*domain.Unspent, error),
 ) error {
-	unspentToUpdate, ok := r.unspents[unspentKey]
+	r.db.unspentStore.locker.Lock()
+	defer r.db.unspentStore.locker.Unlock()
+
+	unspentToUpdate, ok := r.db.unspentStore.unspents[unspentKey]
 	if !ok {
 		return errors.New("No unspent for the given key")
 	}
@@ -157,52 +249,16 @@ func (r UnspentRepositoryImpl) UpdateUnspent(
 		return err
 	}
 
-	r.unspents[unspentKey] = *unspent
+	r.db.unspentStore.unspents[unspentKey] = *unspent
 
 	return nil
 }
 
-// Begin returns a new UnspentRepositoryTxImpl
-func (r UnspentRepositoryImpl) Begin() (uow.Tx, error) {
-	tx := &UnspentRepositoryTxImpl{
-		root:     r,
-		unspents: map[domain.UnspentKey]domain.Unspent{},
-	}
-
-	// copy the current state of the repo into the transaction
-	for k, v := range r.unspents {
-		tx.unspents[k] = v
-	}
-	return tx, nil
-}
-
-// ContextKey returns the context key shared between in-memory repositories
-func (r UnspentRepositoryImpl) ContextKey() interface{} {
-	return uow.InMemoryContextKey
-}
-
-func (r UnspentRepositoryImpl) storageByContext(ctx context.Context) (
-	unspents map[domain.UnspentKey]domain.Unspent,
-) {
-	unspents = r.unspents
-	if tx, ok := ctx.Value(r).(*UnspentRepositoryTxImpl); ok {
-		unspents = tx.unspents
-	}
-	return
-}
-
-func addUnspents(storage map[domain.UnspentKey]domain.Unspent, unspents []domain.Unspent) error {
-	addr := unspents[0].Address
-	for _, u := range unspents {
-		if u.Address != addr {
-			return fmt.Errorf("all unspent's must belong to the same address")
-		}
-	}
-
+func (r UnspentRepositoryImpl) addUnspents(unspents []domain.Unspent) error {
 	//add new unspent
 	for _, newUnspent := range unspents {
-		if _, ok := storage[newUnspent.Key()]; !ok {
-			storage[domain.UnspentKey{
+		if _, ok := r.db.unspentStore.unspents[newUnspent.Key()]; !ok {
+			r.db.unspentStore.unspents[domain.UnspentKey{
 				TxID: newUnspent.TxID,
 				VOut: newUnspent.VOut,
 			}] = newUnspent
@@ -210,27 +266,24 @@ func addUnspents(storage map[domain.UnspentKey]domain.Unspent, unspents []domain
 	}
 
 	//update spent
-	for key, oldUnspent := range storage {
-		if oldUnspent.Address == addr {
-			exist := false
-			for _, newUnspent := range unspents {
-				if newUnspent.IsKeyEqual(oldUnspent.Key()) {
-					exist = true
-				}
+	for key, oldUnspent := range r.db.unspentStore.unspents {
+		exist := false
+		for _, newUnspent := range unspents {
+			if newUnspent.IsKeyEqual(oldUnspent.Key()) {
+				exist = true
 			}
-			if !exist {
-				oldUnspent.Spend()
-				storage[key] = oldUnspent
-			}
+		}
+		if !exist {
+			r.db.unspentStore.unspents[key] = oldUnspent
 		}
 	}
 
 	return nil
 }
 
-func getAllUnspents(storage map[domain.UnspentKey]domain.Unspent, spent bool) []domain.Unspent {
+func (r UnspentRepositoryImpl) getAllUnspents(spent bool) []domain.Unspent {
 	unspents := make([]domain.Unspent, 0)
-	for _, u := range storage {
+	for _, u := range r.db.unspentStore.unspents {
 		if u.IsSpent() == spent {
 			unspents = append(unspents, u)
 		}
@@ -238,9 +291,9 @@ func getAllUnspents(storage map[domain.UnspentKey]domain.Unspent, spent bool) []
 	return unspents
 }
 
-func getBalance(storage map[domain.UnspentKey]domain.Unspent, address, assetHash string) uint64 {
+func (r UnspentRepositoryImpl) getBalance(address string, assetHash string) uint64 {
 	var balance uint64
-	for _, u := range storage {
+	for _, u := range r.db.unspentStore.unspents {
 		if u.Address == address && u.AssetHash == assetHash && !u.IsSpent() && u.IsConfirmed() {
 			balance += u.Value
 		}
@@ -248,30 +301,32 @@ func getBalance(storage map[domain.UnspentKey]domain.Unspent, address, assetHash
 	return balance
 }
 
-func getUnlockedBalance(storage map[domain.UnspentKey]domain.Unspent, address, assetHash string) uint64 {
+func (r UnspentRepositoryImpl) getUnlockedBalance(address string, assetHash string) uint64 {
 	var balance uint64
-	for _, u := range storage {
+
+	for _, u := range r.db.unspentStore.unspents {
 		if u.Address == address && u.AssetHash == assetHash &&
 			!u.IsSpent() && !u.IsLocked() && u.IsConfirmed() {
 			balance += u.Value
 		}
 	}
+
 	return balance
 }
 
-func getUnspentsForAddresses(storage map[domain.UnspentKey]domain.Unspent, addresses []string) []domain.Unspent {
-	unspentsUnlocked := getUnspents(storage, addresses, false)
-	unspentsLocked := getUnspents(storage, addresses, true)
+func (r UnspentRepositoryImpl) getUnspentsForAddresses(addresses []string) []domain.Unspent {
+	unspentsUnlocked := r.getUnspents(addresses, false)
+	unspentsLocked := r.getUnspents(addresses, true)
 	return append(unspentsUnlocked, unspentsLocked...)
 }
 
-func getAvailableUnspents(storage map[domain.UnspentKey]domain.Unspent, addresses []string) []domain.Unspent {
-	return getUnspents(storage, addresses, false)
+func (r UnspentRepositoryImpl) getAvailableUnspents(addresses []string) []domain.Unspent {
+	return r.getUnspents(addresses, false)
 }
 
-func getUnspents(storage map[domain.UnspentKey]domain.Unspent, addresses []string, isLocked bool) []domain.Unspent {
+func (r UnspentRepositoryImpl) getUnspents(addresses []string, isLocked bool) []domain.Unspent {
 	unspents := make([]domain.Unspent, 0)
-	for _, u := range storage {
+	for _, u := range r.db.unspentStore.unspents {
 		if !u.IsSpent() && u.IsLocked() == isLocked && u.IsConfirmed() {
 			if len(addresses) == 0 {
 				unspents = append(unspents, u)
@@ -288,63 +343,32 @@ func getUnspents(storage map[domain.UnspentKey]domain.Unspent, addresses []strin
 	return unspents
 }
 
-func lockUnspents(
-	storage map[domain.UnspentKey]domain.Unspent,
-	unspentKeys []domain.UnspentKey,
-	tradeID uuid.UUID,
-) error {
+func (r UnspentRepositoryImpl) lockUnspents(unspentKeys []domain.UnspentKey, tradeID uuid.UUID) error {
 	for _, key := range unspentKeys {
-		if _, ok := storage[key]; !ok {
+		if _, ok := r.db.unspentStore.unspents[key]; !ok {
 			return fmt.Errorf("unspent not found for key %v", key)
 		}
 	}
 
 	for _, key := range unspentKeys {
-		unspent := storage[key]
+		unspent := r.db.unspentStore.unspents[key]
 		unspent.Lock(&tradeID)
-		storage[key] = unspent
+		r.db.unspentStore.unspents[key] = unspent
 	}
 	return nil
 }
 
-func unlockUnspents(
-	storage map[domain.UnspentKey]domain.Unspent,
-	unspentKeys []domain.UnspentKey,
-) error {
+func (r UnspentRepositoryImpl) unlockUnspents(unspentKeys []domain.UnspentKey) error {
 	for _, key := range unspentKeys {
-		if _, ok := storage[key]; !ok {
+		if _, ok := r.db.unspentStore.unspents[key]; !ok {
 			return fmt.Errorf("unspent not found for key %v", key)
 		}
 	}
 
 	for _, key := range unspentKeys {
-		unspent := storage[key]
+		unspent := r.db.unspentStore.unspents[key]
 		unspent.UnLock()
-		storage[key] = unspent
-	}
-	return nil
-}
-
-// UnspentRepositoryTxImpl allows to make transactional read/write operation
-// on the in-memory repository
-type UnspentRepositoryTxImpl struct {
-	root     UnspentRepositoryImpl
-	unspents map[domain.UnspentKey]domain.Unspent
-}
-
-// Commit applies the updates made to the state of the transaction to its root
-func (tx *UnspentRepositoryTxImpl) Commit() error {
-	for k, v := range tx.unspents {
-		tx.root.unspents[k] = v
-	}
-	return nil
-}
-
-// Rollback resets the state of the transaction to the state of its root
-func (tx *UnspentRepositoryTxImpl) Rollback() error {
-	tx.unspents = map[domain.UnspentKey]domain.Unspent{}
-	for k, v := range tx.root.unspents {
-		tx.unspents[k] = v
+		r.db.unspentStore.unspents[key] = unspent
 	}
 	return nil
 }

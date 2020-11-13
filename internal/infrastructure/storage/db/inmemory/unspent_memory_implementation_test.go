@@ -1,138 +1,421 @@
 package inmemory
 
 import (
-	"context"
+	"math"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/vulpemventures/go-elements/network"
 )
 
-func TestAddUnspentAndBalance(t *testing.T) {
-	repo := NewUnspentRepositoryImpl()
-	ctx := context.Background()
+func TestAddUnspents(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
 
-	u1 := domain.Unspent{
-		TxID:            "0000000000000000000000000000000000000000000000000000000000000000",
-		VOut:            0,
-		Value:           100000000,
-		AssetHash:       network.Regtest.AssetID,
-		ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
-		AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
-		ScriptPubKey:    make([]byte, 22),
-		Nonce:           make([]byte, 33),
-		RangeProof:      make([]byte, 4174),
-		SurjectionProof: make([]byte, 64),
-		Address:         "el1qqfxwyst8u39d37k2mepqhlxhm9r00rqrnvhnqw444730a9frszjnw7ydmu8dm4j2n60asfw46ym6kum02e4pglsjdnyl68pfc",
-		Spent:           false,
-		Locked:          false,
-		LockedBy:        nil,
-		Confirmed:       true,
+	unspents := []domain.Unspent{
+		{
+			TxID:            "6",
+			VOut:            1,
+			Value:           0,
+			AssetHash:       "",
+			ValueCommitment: "",
+			AssetCommitment: "",
+			ScriptPubKey:    nil,
+			Nonce:           nil,
+			RangeProof:      nil,
+			SurjectionProof: nil,
+			Address:         "a",
+			Spent:           false,
+			Locked:          false,
+			LockedBy:        nil,
+			Confirmed:       false,
+		},
+		{
+			TxID:            "7",
+			VOut:            2,
+			Value:           0,
+			AssetHash:       "",
+			ValueCommitment: "",
+			AssetCommitment: "",
+			Nonce:           nil,
+			RangeProof:      nil,
+			SurjectionProof: nil,
+			Address:         "b",
+			Spent:           false,
+			Locked:          false,
+			ScriptPubKey:    nil,
+			LockedBy:        nil,
+			Confirmed:       false,
+		},
+	}
+	err := unspentRepository.AddUnspents(ctx, unspents)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	u2 := domain.Unspent{
-		TxID:            "0000000000000000000000000000000000000000000000000000000000000001",
-		VOut:            1,
-		Value:           150000000,
-		AssetHash:       network.Regtest.AssetID,
-		ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
-		AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
-		ScriptPubKey:    make([]byte, 22),
-		Nonce:           make([]byte, 33),
-		RangeProof:      make([]byte, 4174),
-		SurjectionProof: make([]byte, 64),
-		Address:         "el1qqfxwyst8u39d37k2mepqhlxhm9r00rqrnvhnqw444730a9frszjnw7ydmu8dm4j2n60asfw46ym6kum02e4pglsjdnyl68pfc",
-		Spent:           false,
-		Locked:          false,
-		LockedBy:        nil,
-		Confirmed:       true,
+	u := unspentRepository.GetAllUnspents(ctx)
+
+	assert.Equal(t, 8, len(u))
+	//repeat insertion of same keys to check if there will be errors
+	unspents = []domain.Unspent{
+		{
+			TxID:            "6",
+			VOut:            1,
+			Value:           0,
+			AssetHash:       "",
+			ValueCommitment: "",
+			AssetCommitment: "",
+			Nonce:           nil,
+			RangeProof:      nil,
+			SurjectionProof: nil,
+			Address:         "a",
+			Spent:           false,
+			Locked:          false,
+			ScriptPubKey:    nil,
+			LockedBy:        nil,
+			Confirmed:       false,
+		},
+		{
+			TxID:            "7",
+			VOut:            2,
+			Value:           0,
+			AssetHash:       "",
+			ValueCommitment: "",
+			AssetCommitment: "",
+			Nonce:           nil,
+			RangeProof:      nil,
+			SurjectionProof: nil,
+			Address:         "b",
+			Spent:           false,
+			Locked:          false,
+			ScriptPubKey:    nil,
+			LockedBy:        nil,
+			Confirmed:       false,
+		},
+	}
+	err = unspentRepository.AddUnspents(ctx, unspents)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	unspents := []domain.Unspent{u1, u2}
-	repo.AddUnspents(ctx, unspents)
+	u = unspentRepository.GetAllUnspents(ctx)
 
-	allUnspent := repo.GetAllUnspents(ctx)
-	allSpent := repo.GetAllSpents(ctx)
-	assert.Equal(t, 2, len(allUnspent))
-	assert.Equal(t, 0, len(allSpent))
+	assert.Equal(t, len(u), 8)
+}
 
-	unspents = []domain.Unspent{u2}
-	repo.AddUnspents(ctx, unspents)
+func TestGetBalance(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
 
-	allUnspent = repo.GetAllUnspents(ctx)
-	allSpent = repo.GetAllSpents(ctx)
-
-	assert.Equal(t, 1, len(allUnspent))
-	assert.Equal(t, 1, len(allSpent))
-
-	u3 := domain.Unspent{
-		TxID:            "0000000000000000000000000000000000000000000000000000000000000002",
-		VOut:            0,
-		Value:           10000000000,
-		AssetHash:       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
-		AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
-		ScriptPubKey:    make([]byte, 22),
-		Nonce:           make([]byte, 33),
-		RangeProof:      make([]byte, 4174),
-		SurjectionProof: make([]byte, 64),
-		Address:         "el1qqfxwyst8u39d37k2mepqhlxhm9r00rqrnvhnqw444730a9frszjnw7ydmu8dm4j2n60asfw46ym6kum02e4pglsjdnyl68pfc",
-		Spent:           false,
-		Locked:          false,
-		LockedBy:        nil,
-		Confirmed:       true,
+	balance, err := unspentRepository.GetBalance(ctx, []string{"a"}, "ah")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	u4 := domain.Unspent{
-		TxID:            "0000000000000000000000000000000000000000000000000000000000000003",
-		VOut:            1,
-		Value:           650000000000,
-		AssetHash:       "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-		ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
-		AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
-		ScriptPubKey:    make([]byte, 22),
-		Nonce:           make([]byte, 33),
-		RangeProof:      make([]byte, 4174),
-		SurjectionProof: make([]byte, 64),
-		Address:         "el1qqfxwyst8u39d37k2mepqhlxhm9r00rqrnvhnqw444730a9frszjnw7ydmu8dm4j2n60asfw46ym6kum02e4pglsjdnyl68pfc",
-		Spent:           false,
-		Locked:          false,
-		LockedBy:        nil,
-		Confirmed:       true,
+	assert.Equal(t, uint64(4), balance)
+}
+
+func TestGetAvailableUnspents(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	unspents, err := unspentRepository.GetAvailableUnspents(ctx)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	u5 := domain.Unspent{
-		TxID:            "0000000000000000000000000000000000000000000000000000000000000004",
-		VOut:            1,
-		Value:           30000000000,
-		AssetHash:       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
-		AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
-		ScriptPubKey:    make([]byte, 22),
-		Nonce:           make([]byte, 33),
-		RangeProof:      make([]byte, 4174),
-		SurjectionProof: make([]byte, 64),
-		Address:         "el1qqfxwyst8u39d37k2mepqhlxhm9r00rqrnvhnqw444730a9frszjnw7ydmu8dm4j2n60asfw46ym6kum02e4pglsjdnyl68pfc",
-		Spent:           false,
-		Locked:          false,
-		LockedBy:        nil,
-		Confirmed:       true,
-	}
-	unspents = []domain.Unspent{u3, u4, u5}
-	repo.AddUnspents(ctx, unspents)
+	assert.Equal(t, 2, len(unspents))
+}
 
-	allUnspent = repo.GetAllUnspents(ctx)
-	allSpent = repo.GetAllSpents(ctx)
+func TestGetAllUnspentsForAddresses(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
 
-	assert.Equal(t, 3, len(allUnspent))
-	assert.Equal(t, 2, len(allSpent))
-
-	balance, _ := repo.GetBalance(
+	unspents, err := unspentRepository.GetAllUnspentsForAddresses(
 		ctx,
-		"el1qqfxwyst8u39d37k2mepqhlxhm9r00rqrnvhnqw444730a9frszjnw7ydmu8dm4j2n60asfw46ym6kum02e4pglsjdnyl68pfc",
-		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		[]string{"a", "adr"},
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.Equal(t, 40000000000, int(balance))
+	assert.Equal(t, 4, len(unspents))
+
+}
+func TestGetUnspentsForAddresses(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	unspents, err := unspentRepository.GetUnspentsForAddresses(
+		ctx,
+		[]string{"a", "adr"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, len(unspents))
+}
+
+func TestGetAvailableUnspentsForAddresses(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	addresses := []string{"a", "adr"}
+	unspents, err := unspentRepository.GetAvailableUnspentsForAddresses(ctx, addresses)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, len(unspents))
+}
+
+func TestGetUnspentForKey(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	unspent, err := unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
+		TxID: "1",
+		VOut: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, uint64(2), unspent.Value)
+}
+
+func TestSpendUnspents(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	unspentKey := domain.UnspentKey{
+		TxID: "1",
+		VOut: 1,
+	}
+	unspent, err := unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, false, unspent.IsSpent())
+
+	if err = unspentRepository.SpendUnspents(
+		ctx,
+		[]domain.UnspentKey{unspentKey},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	unspent, err = unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, true, unspent.IsSpent())
+}
+
+func TestConfirmUnspents(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	unspentKey := domain.UnspentKey{
+		TxID: "2",
+		VOut: 1,
+	}
+	unspent, err := unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, false, unspent.IsConfirmed())
+
+	if err = unspentRepository.ConfirmUnspents(
+		ctx,
+		[]domain.UnspentKey{unspentKey},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	unspent, err = unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, true, unspent.IsConfirmed())
+}
+
+func TestGetUnlockedBalance(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	balance, err := unspentRepository.GetUnlockedBalance(ctx, []string{"a"}, "ah")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, uint64(4), balance)
+}
+
+func TestLockUnlockUnspents(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	unpsentsKeys := []domain.UnspentKey{
+		{
+			TxID: "1",
+			VOut: 1,
+		},
+		{
+			TxID: "2",
+			VOut: 1,
+		},
+	}
+
+	err := unspentRepository.LockUnspents(ctx, unpsentsKeys, uuid.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lockedCount := 0
+	unspents := unspentRepository.GetAllUnspents(ctx)
+	for _, v := range unspents {
+		if v.IsLocked() == true {
+			lockedCount++
+		}
+	}
+
+	assert.Equal(t, 2, lockedCount)
+
+	err = unspentRepository.UnlockUnspents(ctx, unpsentsKeys)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lockedCount = 0
+	unspents = unspentRepository.GetAllUnspents(ctx)
+	for _, v := range unspents {
+		if v.IsLocked() == true {
+			lockedCount++
+		}
+	}
+
+	assert.Equal(t, 0, lockedCount)
+}
+
+func TestUnspentLockTTL(t *testing.T) {
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	unspentsKeys := []domain.UnspentKey{
+		{
+			TxID: "1",
+			VOut: 1,
+		},
+		{
+			TxID: "2",
+			VOut: 1,
+		},
+	}
+
+	err := unspentRepository.LockUnspents(ctx, unspentsKeys, uuid.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lockedCount := 0
+	unspents := unspentRepository.GetAllUnspents(ctx)
+	for _, v := range unspents {
+		if v.Locked {
+			lockedCount++
+		}
+	}
+	assert.Equal(t, 2, lockedCount)
+
+	time.Sleep(5 * time.Second)
+
+	lockedCount = 0
+	unspents = unspentRepository.GetAllUnspents(ctx)
+	for _, v := range unspents {
+		if v.Locked == true {
+			lockedCount++
+		}
+	}
+	assert.Equal(t, 0, lockedCount)
+}
+
+func TestConcurrentGetUnspentsAddUnspents(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	dbManager := newMockDb()
+	unspentRepository := NewUnspentRepositoryImpl(dbManager)
+
+	go startWriter(t, dbManager, unspentRepository)
+	time.Sleep(1 * time.Millisecond)
+	startReader(t, dbManager, unspentRepository)
+}
+
+func startWriter(
+	t *testing.T,
+	dbManager *DbManager,
+	repo domain.UnspentRepository,
+) {
+	var unspents []domain.Unspent
+	var oldUnspentKeys []domain.UnspentKey
+	for {
+		if len(unspents) > 0 {
+			oldUnspentKeys = make([]domain.UnspentKey, 0, len(unspents))
+			for _, u := range unspents {
+				oldUnspentKeys = append(oldUnspentKeys, u.Key())
+			}
+		}
+
+		unspents = randUnspents()
+		if err := repo.AddUnspents(ctx, unspents); err != nil {
+			t.Log(err)
+			continue
+		}
+		if err := repo.SpendUnspents(ctx, oldUnspentKeys); err != nil {
+			t.Log(err)
+			continue
+		}
+
+		t.Log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+		t.Logf("%d new unspents added", len(unspents))
+		t.Logf("%d existing unspents marked as spent", len(oldUnspentKeys))
+		t.Log("+++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
+		time.Sleep(3 * time.Second)
+	}
+}
+
+func startReader(
+	t *testing.T,
+	dbManager *DbManager,
+	repo domain.UnspentRepository,
+) {
+	now := time.Now()
+
+	for {
+		if timeElapsed := time.Since(now); timeElapsed.Seconds() >= 20 {
+			break
+		}
+
+		allUnspents := repo.GetAllUnspents(ctx)
+		availableUnspents, err := repo.GetAvailableUnspents(ctx)
+		if err != nil {
+			panic(err)
+		}
+		t.Log("-------------------------------------------------------")
+		t.Log("all unspents/spents:", len(allUnspents))
+		t.Log("unspents:", len(availableUnspents))
+		t.Log("spents:", math.Abs(float64(len(allUnspents)-len(availableUnspents))))
+		t.Log("-------------------------------------------------------")
+
+		time.Sleep(3 * time.Second)
+	}
 }
