@@ -5,7 +5,6 @@ builds:
       - CGO_ENABLED=1
     goos:
       - linux
-      - darwin
     goarch:
       - amd64
   - id: "tdex"
@@ -14,7 +13,6 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
     goarch:
       - amd64
 checksum:
