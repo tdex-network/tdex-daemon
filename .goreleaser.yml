@@ -1,5 +1,5 @@
 builds:
-  - id: "tdexd"
+  - id: "tdexd-linux"
     main: ./cmd/tdexd
     ldflags:
       - -s -w
@@ -9,12 +9,25 @@ builds:
       - linux
     goarch:
       - amd64
+  - id: "tdexd-darwin"
+    main: ./cmd/tdexd
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/osxcross/target/bin/o64-clang
+      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
+    goos:
+      - darwin
+    goarch:
+      - amd64
   - id: "tdex"
     main: ./cmd/tdex
     env:
       - CGO_ENABLED=0
     goos:
       - linux
+      - darwin
     goarch:
       - amd64
 checksum:
