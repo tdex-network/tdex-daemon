@@ -17,7 +17,8 @@ type OperatorService interface {
 		ctx context.Context,
 		baseAsset string,
 		quoteAsset string,
-	) (string, error)
+		numberOfAddresses int,
+	) ([]string, error)
 	DepositFeeAccount(
 		ctx context.Context,
 	) (address string, blindingKey string, err error)
@@ -102,7 +103,13 @@ func (o *operatorService) DepositMarket(
 	ctx context.Context,
 	baseAsset string,
 	quoteAsset string,
-) (address string, err error) {
+	numberOfAddresses int,
+) ([]string, error) {
+	//default number of addresses to be generated
+	if numberOfAddresses == 0 {
+		numberOfAddresses = 1
+	}
+	addresses := make([]string, 0, numberOfAddresses)
 
 	var accountIndex int
 
@@ -111,17 +118,17 @@ func (o *operatorService) DepositMarket(
 		// check the asset strings
 		err := validateAssetString(baseAsset)
 		if err != nil {
-			return "", domain.ErrInvalidBaseAsset
+			return nil, domain.ErrInvalidBaseAsset
 		}
 
 		err = validateAssetString(quoteAsset)
 		if err != nil {
-			return "", domain.ErrInvalidQuoteAsset
+			return nil, domain.ErrInvalidQuoteAsset
 		}
 
 		// Checks if base asset is valid
 		if baseAsset != config.GetString(config.BaseAssetKey) {
-			return "", domain.ErrInvalidBaseAsset
+			return nil, domain.ErrInvalidBaseAsset
 		}
 
 		//Checks if quote asset exists
@@ -130,10 +137,10 @@ func (o *operatorService) DepositMarket(
 			quoteAsset,
 		)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		if accountOfExistentMarket == -1 {
-			return "", domain.ErrMarketNotExist
+			return nil, domain.ErrMarketNotExist
 		}
 
 		accountIndex = accountOfExistentMarket
@@ -143,50 +150,52 @@ func (o *operatorService) DepositMarket(
 			ctx,
 		)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		nextAccountIndex := latestAccountIndex + 1
 		_, err = o.marketRepository.GetOrCreateMarket(ctx, nextAccountIndex)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		accountIndex = nextAccountIndex
 	} else if baseAsset != config.GetString(config.BaseAssetKey) {
-		return "", domain.ErrInvalidBaseAsset
+		return nil, domain.ErrInvalidBaseAsset
 	} else {
-		return "", domain.ErrInvalidQuoteAsset
+		return nil, domain.ErrInvalidQuoteAsset
 	}
 
 	//Derive an address for that specific market
-	err = o.vaultRepository.UpdateVault(
+	err := o.vaultRepository.UpdateVault(
 		ctx,
 		nil,
 		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
-			addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(
-				accountIndex,
-			)
-			if err != nil {
-				return nil, err
+			for i := 0; i < numberOfAddresses; i++ {
+				addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(
+					accountIndex,
+				)
+				if err != nil {
+					return nil, err
+				}
+
+				addresses = append(addresses, addr)
+
+				o.crawlerSvc.AddObservable(&crawler.AddressObservable{
+					AccountIndex: accountIndex,
+					Address:      addr,
+					BlindingKey:  blindingKey,
+				})
 			}
-
-			address = addr
-
-			o.crawlerSvc.AddObservable(&crawler.AddressObservable{
-				AccountIndex: accountIndex,
-				Address:      addr,
-				BlindingKey:  blindingKey,
-			})
 
 			return v, nil
 		})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return address, nil
+	return addresses, nil
 }
 
 func (o *operatorService) DepositFeeAccount(

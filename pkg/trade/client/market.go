@@ -3,12 +3,12 @@ package tradeclient
 import (
 	"context"
 	"errors"
+	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	tradetype "github.com/tdex-network/tdex-daemon/pkg/trade/type"
 
 	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 )
 
 // Markets calls the Markets rpc and returns its response
@@ -74,7 +74,7 @@ func (c *Client) MarketPrice(opts MarketPriceOpts) (*pbtrade.MarketPriceReply, e
 			BaseAsset:  opts.Market.BaseAsset,
 			QuoteAsset: opts.Market.QuoteAsset,
 		},
-		Type:   pbtypes.TradeType(opts.TradeType),
+		Type:   pbtrade.TradeType(opts.TradeType),
 		Amount: opts.Amount,
 	}
 	return c.client.MarketPrice(context.Background(), request)

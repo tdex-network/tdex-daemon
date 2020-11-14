@@ -56,7 +56,7 @@ func (c *Client) TradePropose(opts TradeProposeOpts) (*pbtrade.TradeProposeReply
 	request := &pbtrade.TradeProposeRequest{
 		Market:      market,
 		SwapRequest: swapRequest,
-		Type:        pbtypes.TradeType(opts.TradeType),
+		Type:        pbtrade.TradeType(opts.TradeType),
 	}
 	stream, err := c.client.TradePropose(context.Background(), request)
 	if err != nil {

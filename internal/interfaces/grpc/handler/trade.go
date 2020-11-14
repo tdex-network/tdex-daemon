@@ -9,7 +9,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
-	"github.com/tdex-network/tdex-protobuf/generated/go/types"
+	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -88,14 +88,14 @@ func (t traderHandler) markets(
 				return nil, err
 			}
 
-			marketsWithFee := make([]*types.MarketWithFee, 0, len(markets))
+			marketsWithFee := make([]*pbtypes.MarketWithFee, 0, len(markets))
 			for _, v := range markets {
-				m := &types.MarketWithFee{
-					Market: &types.Market{
+				m := &pbtypes.MarketWithFee{
+					Market: &pbtypes.Market{
 						BaseAsset:  v.BaseAsset,
 						QuoteAsset: v.QuoteAsset,
 					},
-					Fee: &types.Fee{
+					Fee: &pbtypes.Fee{
 						Asset:      v.FeeAsset,
 						BasisPoint: v.BasisPoint,
 					},
@@ -137,13 +137,13 @@ func (t traderHandler) balances(
 				return nil, err
 			}
 
-			balancesWithFee := make([]*types.BalanceWithFee, 0)
-			balancesWithFee = append(balancesWithFee, &types.BalanceWithFee{
-				Balance: &types.Balance{
+			balancesWithFee := make([]*pbtypes.BalanceWithFee, 0)
+			balancesWithFee = append(balancesWithFee, &pbtypes.BalanceWithFee{
+				Balance: &pbtypes.Balance{
 					BaseAmount:  balance.BaseAmount,
 					QuoteAmount: balance.QuoteAmount,
 				},
-				Fee: &types.Fee{
+				Fee: &pbtypes.Fee{
 					Asset:      balance.FeeAsset,
 					BasisPoint: balance.BasisPoint,
 				},
@@ -310,7 +310,7 @@ func (t traderHandler) tradeComplete(
 	return nil
 }
 
-func validateTradeType(tType pbtypes.TradeType) error {
+func validateTradeType(tType pbtrade.TradeType) error {
 	if int(tType) < application.TradeBuy || int(tType) > application.TradeSell {
 		return errors.New("trade type is unknown")
 	}

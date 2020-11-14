@@ -140,16 +140,17 @@ func (o operatorHandler) depositMarket(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			addr, err := o.operatorSvc.DepositMarket(
+			addresses, err := o.operatorSvc.DepositMarket(
 				ctx,
 				req.GetMarket().GetBaseAsset(),
 				req.GetMarket().GetQuoteAsset(),
+				int(req.GetNumOfAddresses()),
 			)
 			if err != nil {
 				return nil, err
 			}
 
-			return &pb.DepositMarketReply{Address: addr}, nil
+			return &pb.DepositMarketReply{Addresses: addresses}, nil
 		},
 	)
 	if err != nil {

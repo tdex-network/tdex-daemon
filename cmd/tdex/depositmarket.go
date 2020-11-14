@@ -18,13 +18,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/vulpemventures/go-elements/network"
-
 	"github.com/urfave/cli/v2"
 )
 
 const (
-	MinMilliSatPerByte = 100
+	MinMilliSatPerByte = 150
 	CrawlInterval      = 3
 )
 
@@ -67,69 +65,138 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	//TODO change network
-	randomWallet, err := trade.NewRandomWallet(&network.Regtest)
+	randomWallet, err := trade.NewRandomWallet(config.GetNetwork())
 	if err != nil {
 		return err
 	}
 
 	log.Warnf("fund address: %v", randomWallet.Address())
-
-	//********
-	//TODO update url using config
-	explorerSvc := explorer.NewService("http://127.0.0.1:3001")
-	log.Info("start crafting transaction")
-	assetValuePair, unspents := findAssetsUnspents(randomWallet, explorerSvc)
-	//********
-
-	depositMarketResp, err := client.DepositMarket(
-		context.Background(), &pboperator.DepositMarketRequest{
-			Market: &pbtypes.Market{
-				BaseAsset:  ctx.String("base_asset"),
-				QuoteAsset: ctx.String("quote_asset"),
-			},
-		},
+	explorerSvc := explorer.NewService(
+		config.GetString(config.ExplorerEndpointKey),
 	)
+	assetValuePair, unspents := findAssetsUnspents(randomWallet, explorerSvc)
+
+	log.Info("calculating fragments ...")
+	baseFragments, quoteFragments := fragmentUnspents(assetValuePair)
+	outsLen := len(baseFragments) + len(quoteFragments)
+
+	log.Infof("base fragments: %v", baseFragments)
+	log.Infof("quote fragments: %v", quoteFragments)
+
+	feeAmount := wallet.EstimateTxSize(
+		len(unspents),
+		outsLen,
+		false,
+		MinMilliSatPerByte,
+	)
+
+	addresses, err := fetchMarketAddresses(outsLen, client, ctx)
 	if err != nil {
 		return err
 	}
-	log.Info(depositMarketResp)
 
-	//********
+	outputs := createOutputs(
+		baseFragments,
+		quoteFragments,
+		feeAmount,
+		addresses,
+		assetValuePair,
+	)
+
+	log.Info("crafting transaction ...")
 	txHex, err := craftTransaction(
 		randomWallet,
-		assetValuePair,
 		unspents,
-		depositMarketResp.GetAddress(),
+		outputs,
+		feeAmount,
 	)
 	if err != nil {
 		return err
 	}
 	log.Info(txHex)
-	//********
 
+	log.Info("broadcasting transaction ...")
 	resp, err := explorerSvc.BroadcastTransaction(txHex)
 	if err != nil {
 		return err
 	}
 
-	printRespJSON(resp)
+	log.Info(resp)
 
 	return nil
 }
 
-//TODO test, rethink
+func fetchMarketAddresses(
+	outsLen int,
+	client pboperator.OperatorClient,
+	ctx *cli.Context,
+) ([]string, error) {
+	depositMarket, err := client.DepositMarket(
+		context.Background(), &pboperator.DepositMarketRequest{
+			Market: &pbtypes.Market{
+				BaseAsset:  ctx.String("base_asset"),
+				QuoteAsset: ctx.String("quote_asset"),
+			},
+			NumOfAddresses: int64(outsLen),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return depositMarket.GetAddresses(), nil
+}
+
+func createOutputs(
+	baseFragments, quoteFragments []uint64,
+	feeAmount uint64,
+	addresses []string,
+	assetValuePair AssetValuePair,
+) []TxOut {
+	outsLen := len(baseFragments) + len(quoteFragments)
+	outputs := make([]TxOut, 0, outsLen)
+
+	index := 0
+	for i, v := range baseFragments {
+		value := int64(v)
+		//deduct fee from last(largest) fragment
+		if i == len(baseFragments)-1 {
+			value = int64(v) - int64(feeAmount)
+		}
+		outputs = append(outputs, TxOut{
+			Asset:   config.GetString(config.BaseAssetKey),
+			Value:   value,
+			Address: addresses[index],
+		})
+		index++
+	}
+	for _, v := range quoteFragments {
+		outputs = append(outputs, TxOut{
+			Asset:   assetValuePair.QuoteAsset,
+			Value:   int64(v),
+			Address: addresses[index],
+		})
+		index++
+	}
+
+	return outputs
+}
+
 func fragmentUnspents(pair AssetValuePair) ([]uint64, []uint64) {
 
 	baseAssetFragments := make([]uint64, 0)
 	quoteAssetFragments := make([]uint64, 0)
 
+	baseSum := uint64(0)
+	quoteSum := uint64(0)
 	for numOfUtxo, percentage := range fragmentationMap {
 		for ; numOfUtxo > 0; numOfUtxo-- {
 			baseAssetPart := percent(int(pair.BaseValue), percentage)
+			baseSum += uint64(baseAssetPart)
 			baseAssetFragments = append(baseAssetFragments, uint64(baseAssetPart))
 
 			quoteAssetPart := percent(int(pair.QuoteValue), percentage)
+			quoteSum += uint64(quoteAssetPart)
 			quoteAssetFragments = append(quoteAssetFragments, uint64(quoteAssetPart))
 		}
 	}
@@ -141,6 +208,26 @@ func fragmentUnspents(pair AssetValuePair) ([]uint64, []uint64) {
 	sort.Slice(quoteAssetFragments, func(i, j int) bool {
 		return quoteAssetFragments[i] < quoteAssetFragments[j]
 	})
+
+	//if there is rest, created when calculating percentage,
+	//add it to last fragment
+	if baseSum != pair.BaseValue {
+		baseRest := pair.BaseValue - baseSum
+		if baseRest > 0 {
+			baseAssetFragments[len(baseAssetFragments)-1] =
+				baseAssetFragments[len(baseAssetFragments)-1] + baseRest
+		}
+	}
+
+	//if there is rest, created when calculating percentage,
+	//add it to last fragment
+	if quoteSum != pair.QuoteValue {
+		quoteRest := pair.QuoteValue - quoteSum
+		if quoteRest > 0 {
+			quoteAssetFragments[len(quoteAssetFragments)-1] =
+				quoteAssetFragments[len(quoteAssetFragments)-1] + quoteRest
+		}
+	}
 
 	return baseAssetFragments, quoteAssetFragments
 }
@@ -226,39 +313,10 @@ events:
 
 func craftTransaction(
 	randomWallet *trade.Wallet,
-	assetValuePair AssetValuePair,
 	unspents []explorer.Utxo,
-	outAddress string,
+	outs []TxOut,
+	feeAmount uint64,
 ) (string, error) {
-	baseFragments, quoteFragments := fragmentUnspents(assetValuePair)
-	outsLen := len(baseFragments) + len(quoteFragments)
-
-	feeAmount := wallet.EstimateTxSize(
-		len(unspents),
-		outsLen,
-		false,
-		MinMilliSatPerByte,
-	)
-
-	outs := make([]TxOut, 0, outsLen)
-	for i, v := range baseFragments {
-		value := int64(v)
-		if i == len(baseFragments)-1 {
-			value = int64(v) - int64(feeAmount)
-		}
-		outs = append(outs, TxOut{
-			Asset:   config.GetString(config.BaseAssetKey),
-			Value:   value,
-			Address: outAddress,
-		})
-	}
-	for _, v := range quoteFragments {
-		outs = append(outs, TxOut{
-			Asset:   assetValuePair.QuoteAsset,
-			Value:   int64(v),
-			Address: outAddress,
-		})
-	}
 
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs)
 	if err != nil {

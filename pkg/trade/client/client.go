@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 
 	"google.golang.org/grpc"
 )
@@ -42,6 +41,6 @@ func isValidAsset(asset string) bool {
 }
 
 func isValidTradeType(tradeType int) bool {
-	return tradeType != int(pbtypes.TradeType_BUY) &&
-		tradeType != int(pbtypes.TradeType_SELL)
+	return tradeType != int(pbtrade.TradeType_BUY) &&
+		tradeType != int(pbtrade.TradeType_SELL)
 }
