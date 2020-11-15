@@ -13,7 +13,6 @@ require (
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/magiconair/properties v1.8.1
 	github.com/rs/cors v1.7.0 // indirect
-	github.com/segmentio/golines v0.0.0-20200824192126-7f30d3046793 // indirect
 	github.com/shopspring/decimal v1.2.0
 	github.com/sirupsen/logrus v1.7.0
 	github.com/soheilhy/cmux v0.1.4
