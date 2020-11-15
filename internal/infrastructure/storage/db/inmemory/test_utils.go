@@ -1,95 +1,39 @@
-package dbbadger
+package inmemory
 
 import (
-	"context"
-	"github.com/tdex-network/tdex-daemon/config"
 	"math/rand"
-	"os"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 )
 
-var (
-	ctx               context.Context
-	marketRepository  domain.MarketRepository
-	unspentRepository domain.UnspentRepository
-	vaultRepository   domain.VaultRepository
-	tradeRepository   domain.TradeRepository
-	dbManager         *DbManager
-	testDbDir         = "testdb"
-)
-
-func before() {
+func newMockDb() *DbManager {
 	config.Set(config.UnspentTtlKey, 2)
 
-	var err error
-	os.Mkdir(testDbDir, os.ModePerm)
-	dbManager, err = NewDbManager(testDbDir, nil)
-	if err != nil {
-		panic(err)
-	}
-	tx := dbManager.NewTransaction()
-	utx := dbManager.NewUnspentsTransaction()
+	dbManager := NewDbManager()
 
-	if err := insertMarkets(tx.(*badger.Txn), dbManager); err != nil {
+	if err := insertMarkets(dbManager); err != nil {
 		panic(err)
 	}
-	if err := insertUnspents(utx.(*badger.Txn), dbManager); err != nil {
+	if err := insertUnspents(dbManager); err != nil {
 		panic(err)
 	}
-	if err := insertTrades(tx.(*badger.Txn), dbManager); err != nil {
+	if err := insertTrades(dbManager); err != nil {
 		panic(err)
 	}
 
-	if err := insertVault(tx.(*badger.Txn), dbManager); err != nil {
+	if err := insertVault(dbManager); err != nil {
 		panic(err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		panic(err)
-	}
-	if err := utx.Commit(); err != nil {
-		panic(err)
-	}
-
-	marketRepository = NewMarketRepositoryImpl(dbManager)
-	unspentRepository = NewUnspentRepositoryImpl(dbManager)
-	vaultRepository = NewVaultRepositoryImpl(dbManager)
-	tradeRepository = NewTradeRepositoryImpl(dbManager)
-	ctx = context.WithValue(
-		context.Background(),
-		"tx",
-		dbManager.NewTransaction(),
-	)
-	ctx = context.WithValue(
-		ctx,
-		"utx",
-		dbManager.NewUnspentsTransaction(),
-	)
-
+	return dbManager
 }
 
-func after() {
-	tx := ctx.Value("tx").(*badger.Txn)
-	if err := tx.Commit(); err != nil {
-		panic(err)
-	}
-	utx := ctx.Value("utx").(*badger.Txn)
-	if err := utx.Commit(); err != nil {
-		panic(err)
-	}
-
-	dbManager.Store.Close()
-	dbManager.UnspentStore.Close()
-	os.RemoveAll(testDbDir)
-}
-
-func insertMarkets(tx *badger.Txn, db *DbManager) error {
+func insertMarkets(db *DbManager) error {
 	markets := []domain.Market{
 		{
 			AccountIndex: 5,
@@ -142,21 +86,18 @@ func insertMarkets(tx *badger.Txn, db *DbManager) error {
 			Price:        domain.Prices{},
 		},
 	}
+
 	for _, v := range markets {
-		err := db.Store.TxInsert(tx, v.AccountIndex, v)
-		if err != nil {
-			return err
-		}
-		err = db.PriceStore.Upsert(v.AccountIndex, v.Price)
-		if err != nil {
-			return err
+		db.marketStore.markets[v.AccountIndex] = v
+		if len(v.QuoteAsset) > 0 {
+			db.marketStore.accountsByAsset[v.QuoteAsset] = v.AccountIndex
 		}
 	}
 
 	return nil
 }
 
-func insertUnspents(tx *badger.Txn, db *DbManager) error {
+func insertUnspents(db *DbManager) error {
 	unspents := []domain.Unspent{
 		{
 			TxID:         "1",
@@ -232,19 +173,13 @@ func insertUnspents(tx *badger.Txn, db *DbManager) error {
 		},
 	}
 	for _, v := range unspents {
-		if err := db.Store.TxInsert(
-			tx,
-			v.Key(),
-			&v,
-		); err != nil {
-			return err
-		}
+		db.unspentStore.unspents[v.Key()] = v
 	}
 
 	return nil
 }
 
-func insertVault(tx *badger.Txn, db *DbManager) error {
+func insertVault(db *DbManager) error {
 	vault := &domain.Vault{
 		EncryptedMnemonic:      "dVoBFte1oeRkPl8Vf8DzBP3PRnzPA3fxtyvDHXFGYAS9MP8V2Sc9nHcQW4PrMkQNnf2uGrDg81dFgBrwqv1n3frXxRBKhp83fSsTm4xqj8+jdwTI3nouFmi1W/O4UqpHdQ62EYoabJQtKpptWO11TFJzw8WF02pfS6git8YjLR4xrnfp2LkOEjSU9CI82ZasF46WZFKcpeUJTAsxU/03ONpAdwwEsC96f1KAvh8tqaO0yLDOcmPf8a5B82jefgncCRrt32kCpbpIE4YiCFrqqdUHXKH+",
 		PassphraseHash:         []byte("pass"),
@@ -252,10 +187,11 @@ func insertVault(tx *badger.Txn, db *DbManager) error {
 		AccountAndKeyByAddress: map[string]domain.AccountAndKey{},
 	}
 
-	return db.Store.TxInsert(tx, vaultKey, vault)
+	db.vaultStore.vault = vault
+	return nil
 }
 
-func insertTrades(tx *badger.Txn, db *DbManager) error {
+func insertTrades(db *DbManager) error {
 	tradeID1, _ := uuid.Parse("cc913d4e-174e-449c-82b4-e848d57cbf2e")
 	tradeID2, _ := uuid.Parse("5440a53e-58d2-4e3d-8380-20410e687589")
 	tradeID3, _ := uuid.Parse("2a12e2a0-d99c-4bd3-ad99-03dd926ae080")
@@ -313,15 +249,19 @@ func insertTrades(tx *badger.Txn, db *DbManager) error {
 	}
 
 	for _, v := range trades {
-		if err := db.Store.TxInsert(
-			tx,
-			v.ID,
-			&v,
-		); err != nil {
-			return err
-		}
-	}
+		db.tradeStore.trades[v.ID] = v
 
+		if v.MarketQuoteAsset != "" {
+			if db.tradeStore.tradesByMarket[v.MarketQuoteAsset] == nil {
+				array := []uuid.UUID{v.ID}
+				db.tradeStore.tradesByMarket[v.MarketQuoteAsset] = array
+			}
+
+			db.tradeStore.tradesByMarket[v.MarketQuoteAsset] = append(db.tradeStore.tradesByMarket[v.MarketQuoteAsset], v.ID)
+		}
+
+		db.tradeStore.tradesBySwapAcceptID[v.SwapAccept.ID] = v.ID
+	}
 	return nil
 }
 

@@ -42,6 +42,8 @@ const (
 	PriceSlippageKey = "PRICE_SLIPPAGE"
 	// MnemonicKey ...
 	MnemonicKey = "MNEMONIC"
+	//UnspentTtlKey ...
+	UnspentTtlKey = "UNSPENT_TTL"
 )
 
 var vip *viper.Viper
@@ -64,6 +66,7 @@ func init() {
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
+	vip.SetDefault(UnspentTtlKey, 120)
 
 	validate()
 
