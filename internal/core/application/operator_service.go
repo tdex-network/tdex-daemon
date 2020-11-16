@@ -245,7 +245,7 @@ func (o *operatorService) OpenMarket(
 	}
 
 	if !o.crawlerSvc.IsObservingAddresses(feeAccountAddresses) {
-		return ErrCrawlerDoesNotObserveAddresses
+		return ErrCrawlerDoesNotObserveFeeAccount
 	}
 
 	// check if market exists
