@@ -238,6 +238,31 @@ func (o *operatorService) OpenMarket(
 		return domain.ErrInvalidBaseAsset
 	}
 
+	// check if the crawler is observing at least one addresse
+	feeAccountAddresses, err := o.vaultRepository.GetAllDerivedExternalAddressesForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return err
+	}
+
+	if !o.crawlerSvc.IsObservingAddresses(feeAccountAddresses) {
+		return ErrCrawlerDoesNotObserveFeeAccount
+	}
+
+	// check if market exists
+	market, _, err := o.marketRepository.GetMarketByAsset(
+		ctx,
+		quoteAsset,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if market == nil {
+		return domain.ErrMarketNotExist
+	}
+
+	// open the market
 	if err := o.marketRepository.OpenMarket(ctx, quoteAsset); err != nil {
 		return err
 	}
@@ -434,6 +459,7 @@ func (o *operatorService) UpdateMarketStrategy(
 	if err != nil {
 		return err
 	}
+
 	if accountIndex < 0 {
 		return domain.ErrMarketNotExist
 	}
@@ -528,7 +554,7 @@ func (o *operatorService) ListMarket(
 		return nil, err
 	}
 
-	marketInfos := make([]MarketInfo, len(markets), len(markets))
+	marketInfos := make([]MarketInfo, len(markets))
 
 	for index, market := range markets {
 		marketInfos[index] = MarketInfo{
@@ -739,7 +765,7 @@ func (o *operatorService) WithdrawMarketFunds(
 					return nil, err
 				}
 
-				derivationPath, _ := marketAccount.DerivationPathByScript[script]
+				derivationPath := marketAccount.DerivationPathByScript[script]
 				changePathsByAsset[asset] = derivationPath
 				addressesToObserve = append(
 					addressesToObserve,

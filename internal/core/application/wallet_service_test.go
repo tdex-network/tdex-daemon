@@ -238,7 +238,7 @@ func TestSendToMany(t *testing.T) {
 		},
 	}
 
-	walletSvc, ctx, close := newTestWallet(tradeWallet)
+	walletSvc, ctx, close := newTestWallet(newTradeWallet())
 	defer close()
 
 	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
