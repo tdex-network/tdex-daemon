@@ -222,7 +222,7 @@ func (o *operatorService) OpenMarket(
 	ctx context.Context,
 	baseAsset string,
 	quoteAsset string,
-) error {	
+) error {
 	// check the asset strings
 	err := validateAssetString(baseAsset)
 	if err != nil {
@@ -262,7 +262,6 @@ func (o *operatorService) OpenMarket(
 		return domain.ErrMarketNotExist
 	}
 
-		
 	// open the market
 	if err := o.marketRepository.OpenMarket(ctx, quoteAsset); err != nil {
 		return err
@@ -460,6 +459,7 @@ func (o *operatorService) UpdateMarketStrategy(
 	if err != nil {
 		return err
 	}
+
 	if accountIndex < 0 {
 		return domain.ErrMarketNotExist
 	}
@@ -554,7 +554,7 @@ func (o *operatorService) ListMarket(
 		return nil, err
 	}
 
-	marketInfos := make([]MarketInfo, len(markets), len(markets))
+	marketInfos := make([]MarketInfo, len(markets))
 
 	for index, market := range markets {
 		marketInfos[index] = MarketInfo{
@@ -765,7 +765,7 @@ func (o *operatorService) WithdrawMarketFunds(
 					return nil, err
 				}
 
-				derivationPath, _ := marketAccount.DerivationPathByScript[script]
+				derivationPath := marketAccount.DerivationPathByScript[script]
 				changePathsByAsset[asset] = derivationPath
 				addressesToObserve = append(
 					addressesToObserve,

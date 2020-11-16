@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/vulpemventures/go-elements/network"
@@ -437,7 +437,7 @@ func TestGetCollectedMarketFee(t *testing.T) {
 			fee.TotalCollectedFeesPerAsset[network.Regtest.AssetID],
 		)
 
-		tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
+		tradeRepo := inmemory.NewTradeRepositoryImpl(dbManager)
 		trades, err := tradeRepo.GetAllTradesByMarket(ctx, market.QuoteAsset)
 		if err != nil {
 			t.Fatal(err)
@@ -600,7 +600,7 @@ func TestOpenMarket(t *testing.T) {
 }
 func TestUpdateMarketStrategy(t *testing.T) {
 	const (
-		validQuoteAssetWithNoMarket = "0ddfa690c7b2ba3b8ecee8200da2420fc502f57f8312c83d466b6f8dced70441"
+		validQuoteAssetWithNoMarket = "0ddfa690c7b2ba3b8ecee8200da2420fc502f57f8312c83d466b6f8dced8a441"
 		invalidAsset                = "allezlesbleus"
 	)
 
@@ -610,7 +610,7 @@ func TestUpdateMarketStrategy(t *testing.T) {
 	)
 
 	operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, !vaultRepoIsEmpty)
-	t.Cleanup(close)
+	defer close()
 
 	validMarket := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -759,7 +759,7 @@ func TestUpdateMarketStrategy(t *testing.T) {
 				BaseAsset:  validMarket.BaseAsset,
 				QuoteAsset: validQuoteAssetWithNoMarket,
 			},
-			letsCloseTheMarketBefore,
+			dontCloseTheMarketBefore,
 		)
 		if failErr != nil {
 			t.Error(failErr)

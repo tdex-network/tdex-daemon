@@ -4,16 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"log"
-	"os"
-	"os/exec"
 	"sync"
 	"time"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
@@ -43,52 +40,12 @@ func b2h(b []byte) string {
 	return hex.EncodeToString(b)
 }
 
-func uuidgen() string {
-	val, err := exec.Command("uuidgen").Output()
-	if err != nil {
-		panic(err)
-	}
-	return string(val)
-}
-
-func runCommand(cmd *exec.Cmd) {
-	// configure `Stderr`
-	cmd.Stdout = nil
-	cmd.Stderr = os.Stdout
-
-	// run command
-	if err := cmd.Run(); err != nil {
-		panic(err)
-	}
-}
-
 // newTestDb is an util function using to create a new database
 // the function returns a DbManager pointer + the name of the database directory
 // --> use these informations to close and remove db directory using the closeDbAndRemoveDir function (see below)
-func newTestDb() (*dbbadger.DbManager, string) {
-	path := "testDatadir-" + uuidgen()
-	log.Println("--------------------- OPEN:", path)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		os.Mkdir(path, os.ModePerm)
-	}
-
-	dbManager, err := dbbadger.NewDbManager(path, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	return dbManager, path
-}
-
-func closeDbAndRemoveDir(db *dbbadger.DbManager, path string) {
-	time.Sleep(
-		time.Duration(600) * time.Millisecond,
-	)
-	log.Println("------------------ CLOSE:", path)
-	db.Store.Close()
-	db.PriceStore.Close()
-	db.UnspentStore.Close()
-	os.RemoveAll(path)
+func newTestDb() *inmemory.DbManager {
+	dbManager := inmemory.NewDbManager()
+	return dbManager
 }
 
 func newMockServices(
@@ -97,15 +54,14 @@ func newMockServices(
 	vaultRepositoryIsEmpty bool,
 	unspentRepositoryIsEmpty bool,
 	initPluggableMarket bool,
-) (OperatorService, TradeService, WalletService, context.Context, func(), *dbbadger.DbManager) {
+) (OperatorService, TradeService, WalletService, context.Context, func(), *inmemory.DbManager) {
 	// generate a new database
-	dbManager, dir := newTestDb()
+	dbManager := newTestDb()
 	// set up context
-	tx := dbManager.NewTransaction()
-	ctx := context.WithValue(context.Background(), "tx", tx)
+	ctx := context.Background()
 
 	// create a market repo
-	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
+	marketRepo := inmemory.NewMarketRepositoryImpl(dbManager)
 	if !marketRepositoryIsEmpty {
 		err := fillMarketRepo(ctx, &marketRepo, initPluggableMarket)
 		if err != nil {
@@ -114,7 +70,7 @@ func newMockServices(
 	}
 
 	// create a trade repo
-	tradeRepo := dbbadger.NewTradeRepositoryImpl(dbManager)
+	tradeRepo := inmemory.NewTradeRepositoryImpl(dbManager)
 	if !tradeRepositoryIsEmpty {
 		err := fillTradeRepo(ctx, tradeRepo, marketUnspents[1].AssetHash, network.Regtest.AssetID)
 		if err != nil {
@@ -126,12 +82,15 @@ func newMockServices(
 	vaultRepo := newMockedVaultRepositoryImpl(*newTradeWallet())
 
 	// create a new unspent repo
-	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
+	unspentRepo := inmemory.NewUnspentRepositoryImpl(dbManager)
 	if !unspentRepositoryIsEmpty {
 		unspents := []domain.Unspent{}
 		unspents = append(unspents, feeUnspents...)
 		unspents = append(unspents, marketUnspents...)
-		unspentRepo.AddUnspents(ctx, unspents)
+		err := unspentRepo.AddUnspents(ctx, unspents)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// create services associated with mocked repo
@@ -141,7 +100,6 @@ func newMockServices(
 		Observables:            []crawler.Observable{},
 		ErrorHandler:           func(err error) { fmt.Println(err) },
 		IntervalInMilliseconds: 100,
-		Id:                     dir,
 	})
 
 	walletSvc := newWalletService(
@@ -156,7 +114,7 @@ func newMockServices(
 			panic(err)
 		}
 
-		vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
+		err := vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
 			_, _, _, err := v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
@@ -172,6 +130,10 @@ func newMockServices(
 
 			return v, nil
 		})
+
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	blockchainListener := NewBlockchainListener(
@@ -206,8 +168,6 @@ func newMockServices(
 
 	close := func() {
 		blockchainListener.StopObserveBlockchain()
-		// give the crawler the time to terminate
-		closeDbAndRemoveDir(dbManager, dir)
 	}
 
 	return operatorSvc, tradeSvc, walletSvc, ctx, close, dbManager
@@ -248,11 +208,11 @@ func newTestTrader() (TradeService, context.Context, func()) {
 // Create a test wallet service
 // creates a new database at each call
 func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
-	dbManager, dir := newTestDb()
+	dbManager := newTestDb()
 
-	marketRepo := dbbadger.NewMarketRepositoryImpl(dbManager)
+	marketRepo := inmemory.NewMarketRepositoryImpl(dbManager)
 	vaultRepo := newMockedVaultRepositoryImpl(*w)
-	unspentRepo := dbbadger.NewUnspentRepositoryImpl(dbManager)
+	unspentRepo := inmemory.NewUnspentRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
@@ -279,15 +239,10 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		explorerSvc,
 	)
 
-	ctx := context.WithValue(
-		context.Background(),
-		"tx",
-		dbManager.NewTransaction(),
-	)
+	ctx := context.Background()
 
 	closeFn := func() {
 		blockchainListener.StopObserveBlockchain()
-		closeDbAndRemoveDir(dbManager, dir)
 	}
 
 	return walletSvc, ctx, closeFn
@@ -300,13 +255,11 @@ func fillMarketRepo(
 ) error {
 	// TODO: create and open market
 	// opened market
-	(*marketRepo).UpdateMarket(
+	err := (*marketRepo).UpdateMarket(
 		ctx,
 		domain.MarketAccountStart,
 		func(market *domain.Market) (*domain.Market, error) {
-			market.AccountIndex = 5
-			market.ChangeFee(25)
-			market.FundMarket([]domain.OutpointWithAsset{
+			err := market.FundMarket([]domain.OutpointWithAsset{
 				{
 					Asset: marketUnspents[0].AssetHash,
 					Txid:  marketUnspents[0].TxID,
@@ -318,17 +271,26 @@ func fillMarketRepo(
 					Vout:  int(marketUnspents[1].VOut),
 				},
 			})
+			if err != nil {
+				return nil, err
+			}
 
 			if initPluggableMarket {
 				err := market.MakeStrategyPluggable()
-				market.ChangeBasePrice(decimal.NewFromFloat(1.90))
-				market.ChangeQuotePrice(decimal.NewFromFloat(4.32))
+				if err != nil {
+					return nil, err
+				}
+				err = market.ChangeBasePrice(decimal.NewFromFloat(1.90))
+				if err != nil {
+					return nil, err
+				}
+				err = market.ChangeQuotePrice(decimal.NewFromFloat(4.32))
 				if err != nil {
 					return nil, err
 				}
 			}
 
-			err := market.MakeTradable()
+			err = market.MakeTradable()
 			if err != nil {
 				return nil, err
 			}
@@ -336,8 +298,19 @@ func fillMarketRepo(
 			return market, nil
 		},
 	)
+	if err != nil {
+		return err
+	}
+
 	// closed market (and also not funded)
-	(*marketRepo).GetOrCreateMarket(ctx, domain.MarketAccountStart+1)
+	err = (*marketRepo).UpdateMarket(ctx, domain.MarketAccountStart+1, func(m *domain.Market) (*domain.Market, error) {
+		return m, nil
+	})
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -357,10 +330,17 @@ func fillTradeRepo(ctx context.Context, tradeRepo domain.TradeRepository, quoteA
 		return err
 	}
 
-	tradeRepo.UpdateTrade(ctx, nil, func(trade *domain.Trade) (*domain.Trade, error) {
-		trade.Propose(swapRequest, quoteAsset, nil)
+	err = tradeRepo.UpdateTrade(ctx, nil, func(trade *domain.Trade) (*domain.Trade, error) {
+		_, err := trade.Propose(swapRequest, quoteAsset, nil)
+		if err != nil {
+			return nil, err
+		}
 		return trade, nil
 	})
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -408,7 +388,10 @@ func newSwapRequest(
 		return nil, err
 	}
 	req := &pb.SwapRequest{}
-	proto.Unmarshal(msg, req)
+	err = proto.Unmarshal(msg, req)
+	if err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 

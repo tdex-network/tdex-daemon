@@ -2,23 +2,18 @@ package application
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 )
 
 func TestUpdateUnspentsForAddress(t *testing.T) {
-	dbManager, path := newTestDb()
-	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
-	tx := dbManager.Store.Badger().NewTransaction(true)
-	ctx := context.WithValue(
-		context.Background(),
-		"utx",
-		tx,
-	)
+	dbManager := newTestDb()
+	unspentRepository := inmemory.NewUnspentRepositoryImpl(dbManager)
+	ctx := context.Background()
+
 	l := newBlockchainListener(
 		unspentRepository,
 		nil,
@@ -127,15 +122,4 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, count)
-
-	err = tx.Commit()
-	if err != nil {
-		t.Fatal(err)
-	}
-	dbManager.Store.Close()
-
-	err = os.RemoveAll(path)
-	if err != nil {
-		panic(err)
-	}
 }

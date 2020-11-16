@@ -32,7 +32,6 @@ type Service interface {
 	RemoveObservable(observable Observable)
 	IsObservingAddresses(addresses []string) bool
 	GetEventChannel() chan Event
-	GetId() string
 }
 
 type utxoCrawler struct {
@@ -44,7 +43,6 @@ type utxoCrawler struct {
 	observables  []Observable
 	errorHandler func(err error)
 	mutex        *sync.RWMutex
-	id           string
 }
 
 // Opts defines the parameters needed for creating a crawler service with NewService method
@@ -53,7 +51,6 @@ type Opts struct {
 	IntervalInMilliseconds int
 	Observables            []Observable
 	ErrorHandler           func(err error)
-	Id                     string
 }
 
 // NewService returns an utxoCrawelr that is ready for watch for blockchain activites. Use Start and Stop methods to manage it.
@@ -70,12 +67,7 @@ func NewService(opts Opts) Service {
 		observables:  opts.Observables,
 		errorHandler: opts.ErrorHandler,
 		mutex:        &sync.RWMutex{},
-		id:           opts.Id,
 	}
-}
-
-func (u *utxoCrawler) GetId() string {
-	return u.id
 }
 
 // Start starts crawler which periodically "scans" blockchain for specific
@@ -95,7 +87,6 @@ func (u *utxoCrawler) Start() {
 			u.interval.Stop()
 			wg.Wait()
 			close(u.eventChan)
-			log.Println("-------------------------------- QUIT", u.id)
 			return
 		}
 	}
@@ -145,10 +136,10 @@ func (u *utxoCrawler) IsObservingAddresses(addresses []string) bool {
 	}
 	observables := u.getObservable()
 	for _, observable := range observables {
-		switch observable.(type) {
+		switch observable := observable.(type) {
 		case *AddressObservable:
 			for _, addr := range addresses {
-				if observable.(*AddressObservable).Address == addr {
+				if observable.Address == addr {
 					return true
 				}
 			}
