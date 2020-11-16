@@ -40,6 +40,7 @@ func closeMarketAction(ctx *cli.Context) error {
 		return err
 	}
 
+	fmt.Println()
 	fmt.Println("market is closed")
 	return nil
 }

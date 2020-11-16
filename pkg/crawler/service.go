@@ -8,10 +8,12 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
+// Event are emitted through a channel during observation.
 type Event interface {
 	Type() EventType
 }
 
+// Observable represent object that can be observe on the blockchain.
 type Observable interface {
 	observe(
 		w *sync.WaitGroup,
@@ -22,11 +24,13 @@ type Observable interface {
 	isEqual(observable Observable) bool
 }
 
+// Service is the interface for Crawler
 type Service interface {
 	Start()
 	Stop()
 	AddObservable(observable Observable)
 	RemoveObservable(observable Observable)
+	IsObservingAddresses(addresses []string) bool
 	GetEventChannel() chan Event
 }
 
@@ -122,6 +126,29 @@ func (u *utxoCrawler) RemoveObservable(observable Observable) {
 		u.removeTransactionObservable(*obs, observables)
 	}
 	u.mutex.Unlock()
+}
+
+//IsObservingAddresses returns true if the crawler is observing at least one address given as parameter.
+//false in the other case
+func (u *utxoCrawler) IsObservingAddresses(addresses []string) bool {
+	if len(addresses) == 0 {
+		return false
+	}
+	observables := u.getObservable()
+	for _, observable := range observables {
+		switch observable := observable.(type) {
+		case *AddressObservable:
+			for _, addr := range addresses {
+				if observable.Address == addr {
+					return true
+				}
+			}
+			continue
+		default:
+			continue
+		}
+	}
+	return false
 }
 
 func (u *utxoCrawler) observeAll(w *sync.WaitGroup) {
