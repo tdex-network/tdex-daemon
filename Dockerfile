@@ -1,16 +1,15 @@
 # first image used to build the sources
-FROM golang:1.15.2-buster AS builder
+FROM golang:1.15.5-buster AS builder
 
 ENV GO111MODULE=on \
     GOOS=linux \
-    CGO_ENABLED=0 \
+    CGO_ENABLED=1 \
     GOARCH=amd64
 
 WORKDIR /tdex-daemon
 
 COPY go.mod .
 COPY go.sum .
-RUN go mod tidy
 RUN go mod download
 
 COPY . .
@@ -24,10 +23,12 @@ RUN cp /tdex-daemon/tdexd-linux .
 RUN cp /tdex-daemon/tdex .
 
 # Second image, running the tdexd executable
-FROM scratch
+FROM debian:buster
 
 COPY --from=builder /build/tdexd-linux /
 COPY --from=builder /build/tdex /
 
-ENTRYPOINT [ "/tdexd-linux" ]
+RUN install /tdex /bin
+
+CMD /tdexd-linux
 
