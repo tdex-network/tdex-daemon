@@ -153,10 +153,10 @@ func initMarketAccounts() error {
 	}
 
 	// and fund it with 1 LBTC and 6500 USDT
-	if _, err := explorerSvc.Faucet(depositMarketReply.GetAddress()); err != nil {
+	if _, err := explorerSvc.Faucet(depositMarketReply.GetAddresses()[0]); err != nil {
 		return err
 	}
-	_, usdt, err := explorerSvc.Mint(depositMarketReply.GetAddress(), 6500)
+	_, usdt, err := explorerSvc.Mint(depositMarketReply.GetAddresses()[0], 6500)
 	if err != nil {
 		return err
 	}

@@ -24,6 +24,8 @@ import (
 const (
 	MinMilliSatPerByte = 150
 	CrawlInterval      = 3
+	MinBaseDeposit     = 50000
+	MinQuoteDeposit    = 50000
 )
 
 var depositmarket = cli.Command{
@@ -39,6 +41,11 @@ var depositmarket = cli.Command{
 			Name:  "quote_asset",
 			Usage: "the base asset hash of an existent market",
 			Value: "",
+		},
+		&cli.BoolFlag{
+			Name:  "no-fragment",
+			Usage: "create fragments from utxo",
+			Value: false,
 		},
 	},
 	Action: depositMarketAction,
@@ -64,6 +71,25 @@ func depositMarketAction(ctx *cli.Context) error {
 		return err
 	}
 	defer cleanup()
+
+	if ctx.Bool("no-fragment") {
+		resp, err := client.DepositMarket(
+			context.Background(), &pboperator.DepositMarketRequest{
+				Market: &pbtypes.Market{
+					BaseAsset:  ctx.String("base_asset"),
+					QuoteAsset: ctx.String("quote_asset"),
+				},
+				NumOfAddresses: 1,
+			},
+		)
+		if err != nil {
+			return err
+		}
+
+		printRespJSON(resp)
+
+		return nil
+	}
 
 	randomWallet, err := trade.NewRandomWallet(config.GetNetwork())
 	if err != nil {
@@ -282,6 +308,13 @@ events:
 			case 2:
 				for k, v := range valuePerAsset {
 					if k == config.GetString(config.BaseAssetKey) {
+						if v < MinBaseDeposit {
+							log.Warnf(
+								"min base deposit is %v please top up",
+								MinBaseDeposit,
+							)
+							continue events
+						}
 						assetValuePair.BaseAsset = k
 						assetValuePair.BaseValue = v
 						log.Infof(
@@ -290,6 +323,13 @@ events:
 							v,
 						)
 					} else {
+						if v < MinBaseDeposit {
+							log.Warnf(
+								"min quote deposit is %v, please top up",
+								MinQuoteDeposit,
+							)
+							continue events
+						}
 						assetValuePair.QuoteAsset = k
 						assetValuePair.QuoteValue = v
 						log.Infof(
