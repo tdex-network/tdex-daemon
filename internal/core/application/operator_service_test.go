@@ -45,12 +45,10 @@ func TestListMarket(t *testing.T) {
 }
 
 func TestDepositMarket(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
-
 	config.Set(config.MnemonicKey, strings.Join(newTradeWallet().mnemonic, " "))
 
 	t.Run("DepositMarket with new market", func(t *testing.T) {
-		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		addresses, err := operatorService.DepositMarket(
 			ctx,
@@ -65,9 +63,13 @@ func TestDepositMarket(t *testing.T) {
 			"el1qqvead5fpxkjyyl3zwukr7twqrnag40ls0y052s547smxdyeus209ppkmtdyemgkz4rjn8ss8fhjrzc3q9evt7atrgtpff2thf",
 			addresses[0],
 		)
+
+		close()
 	})
 
 	t.Run("DepositMarket with invalid base asset", func(t *testing.T) {
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+
 		validQuoteAsset := "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
 		emptyAddress, err := operatorService.DepositMarket(
 			ctx,
@@ -80,10 +82,12 @@ func TestDepositMarket(t *testing.T) {
 			t,
 			emptyAddress,
 		)
+
+		close()
 	})
 
 	t.Run("DepositMarket with valid base asset and empty quote asset", func(t *testing.T) {
-		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(
 			ctx,
@@ -96,10 +100,12 @@ func TestDepositMarket(t *testing.T) {
 			t,
 			emptyAddress,
 		)
+
+		close()
 	})
 
 	t.Run("DepositMarket with valid base asset and invalid quote asset", func(t *testing.T) {
-		operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+		operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 		emptyAddress, err := operatorService.DepositMarket(
 			ctx,
@@ -119,7 +125,7 @@ func TestDepositMarket(t *testing.T) {
 	t.Run(
 		"DepositMarket with new market and derive multiple addresses",
 		func(t *testing.T) {
-			operatorService, _, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
+			operatorService, ctx, close := newTestOperator(marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 
 			addresses, err := operatorService.DepositMarket(
 				ctx,
