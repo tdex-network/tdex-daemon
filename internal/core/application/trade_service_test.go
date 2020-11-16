@@ -77,40 +77,48 @@ func TestGetPriceAndPreviewForMarket(t *testing.T) {
 }
 
 func TestGetTradableMarkets(t *testing.T) {
+	t.Parallel()
 	traderSvc, ctx, close := newTestTrader()
-	defer close()
+	t.Cleanup(close)
 
-	markets, err := traderSvc.GetTradableMarkets(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, 1, len(markets))
+	t.Run("should return the tradable markets", func(t *testing.T) {
+		markets, err := traderSvc.GetTradableMarkets(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, 1, len(markets))
+	})
 }
 
 func TestGetMarketPrice(t *testing.T) {
+	t.Parallel()
 	traderSvc, ctx, close := newTestTrader()
-	defer close()
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
 		QuoteAsset: marketUnspents[1].AssetHash,
 	}
-	sellPreview, err := traderSvc.GetMarketPrice(ctx, market, TradeSell, 30000000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.NotNil(t, sellPreview)
+	t.Run("with tradeSell", func(t *testing.T) {
+		sellPreview, err := traderSvc.GetMarketPrice(ctx, market, TradeSell, 30000000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.NotNil(t, sellPreview)
+	})
 
-	buyPreview, err := traderSvc.GetMarketPrice(ctx, market, TradeBuy, 30000000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.NotNil(t, buyPreview)
+	t.Run("With tradeBuy", func(t *testing.T) {
+		buyPreview, err := traderSvc.GetMarketPrice(ctx, market, TradeBuy, 30000000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.NotNil(t, buyPreview)
+	})
 }
 
 func TestTradePropose(t *testing.T) {
-	traderSvc, ctx, close := newTestTrader()
-	defer close()
+	traderSvc, ctx, _ := newTestTrader()
+	// defer close()
 
 	markets, err := traderSvc.GetTradableMarkets(ctx)
 	if err != nil {
@@ -129,11 +137,7 @@ func TestTradePropose(t *testing.T) {
 	}
 
 	t.Run("propose rejected", func(t *testing.T) {
-		swapRequest, err := newSwapRequest(
-			proposerWallet,
-			market.BaseAsset, 30000000,
-			market.QuoteAsset, preview.Amount,
-		)
+		swapRequest, err := newSwapRequest(proposerWallet, market.BaseAsset, 30000000, market.QuoteAsset, preview.Amount)
 		if err != nil {
 			t.Error(err)
 		}
