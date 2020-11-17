@@ -84,7 +84,7 @@ docker build --pull --rm -f "Dockerfile" -t tdexd:latest "."
 #### Run the daemon
 
 ```bash
-docker run -it --name tdex -p 9945:9945 -p 9000:9000 tdexdaemon:latest
+docker run -it --name tdex -p 9945:9945 -p 9000:9000 tdexd:latest
 ```
 
 #### Use the CLI
