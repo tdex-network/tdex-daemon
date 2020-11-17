@@ -72,17 +72,21 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	net, baseAsset := getNetworkAndBaseAsset(ctx.String("network"))
+	net, baseAssetKey := getNetworkAndBaseAssetKey(ctx.String("network"))
 	explorerUrl := ctx.String("explorer-url")
-	quoteAsset := ctx.String("quote_asset")
 	fragmentationDisabled := ctx.Bool("no-fragment")
+	quoteAssetOpt := ctx.String("quote_asset")
+	baseAssetOpt := ""
+	if quoteAssetOpt != "" {
+		baseAssetOpt = baseAssetKey
+	}
 
 	if fragmentationDisabled {
 		resp, err := client.DepositMarket(
 			context.Background(), &pboperator.DepositMarketRequest{
 				Market: &pbtypes.Market{
-					BaseAsset:  baseAsset,
-					QuoteAsset: quoteAsset,
+					BaseAsset:  baseAssetOpt,
+					QuoteAsset: quoteAssetOpt,
 				},
 				NumOfAddresses: 1,
 			},
@@ -106,7 +110,7 @@ func depositMarketAction(ctx *cli.Context) error {
 	assetValuePair, unspents := findAssetsUnspents(
 		randomWallet,
 		explorerSvc,
-		baseAsset,
+		baseAssetKey,
 	)
 
 	log.Info("calculating fragments ...")
@@ -123,7 +127,12 @@ func depositMarketAction(ctx *cli.Context) error {
 		MinMilliSatPerByte,
 	)
 
-	addresses, err := fetchMarketAddresses(outsLen, client, baseAsset, quoteAsset)
+	addresses, err := fetchMarketAddresses(
+		outsLen,
+		client,
+		baseAssetOpt,
+		quoteAssetOpt,
+	)
 	if err != nil {
 		return err
 	}
@@ -134,7 +143,7 @@ func depositMarketAction(ctx *cli.Context) error {
 		feeAmount,
 		addresses,
 		assetValuePair,
-		baseAsset,
+		baseAssetKey,
 	)
 
 	log.Info("crafting transaction ...")
@@ -144,7 +153,7 @@ func depositMarketAction(ctx *cli.Context) error {
 		outputs,
 		feeAmount,
 		net,
-		baseAsset,
+		baseAssetKey,
 	)
 	if err != nil {
 		return err
@@ -165,14 +174,14 @@ func depositMarketAction(ctx *cli.Context) error {
 func fetchMarketAddresses(
 	outsLen int,
 	client pboperator.OperatorClient,
-	baseAsset string,
-	quoteAsset string,
+	baseAssetOpt string,
+	quoteAssetOpt string,
 ) ([]string, error) {
 	depositMarket, err := client.DepositMarket(
 		context.Background(), &pboperator.DepositMarketRequest{
 			Market: &pbtypes.Market{
-				BaseAsset:  baseAsset,
-				QuoteAsset: quoteAsset,
+				BaseAsset:  baseAssetOpt,
+				QuoteAsset: quoteAssetOpt,
 			},
 			NumOfAddresses: int64(outsLen),
 		},
@@ -189,7 +198,7 @@ func createOutputs(
 	feeAmount uint64,
 	addresses []string,
 	assetValuePair AssetValuePair,
-	baseAsset string,
+	baseAssetKey string,
 ) []TxOut {
 	outsLen := len(baseFragments) + len(quoteFragments)
 	outputs := make([]TxOut, 0, outsLen)
@@ -202,7 +211,7 @@ func createOutputs(
 			value = int64(v) - int64(feeAmount)
 		}
 		outputs = append(outputs, TxOut{
-			Asset:   baseAsset,
+			Asset:   baseAssetKey,
 			Value:   value,
 			Address: addresses[index],
 		})
@@ -277,7 +286,7 @@ func percent(num int, percent int) float64 {
 func findAssetsUnspents(
 	randomWallet *trade.Wallet,
 	explorerSvc explorer.Service,
-	baseAsset string,
+	baseAssetKey string,
 ) (
 	AssetValuePair,
 	[]explorer.Utxo,
@@ -307,7 +316,7 @@ events:
 			switch len(valuePerAsset) {
 			case 1:
 				for k, v := range valuePerAsset {
-					if k == baseAsset {
+					if k == baseAssetKey {
 						log.Warnf(
 							"only base asset %v funded with value %v",
 							k,
@@ -323,7 +332,7 @@ events:
 				}
 			case 2:
 				for k, v := range valuePerAsset {
-					if k == baseAsset {
+					if k == baseAssetKey {
 						if v < MinBaseDeposit {
 							log.Warnf(
 								"min base deposit is %v please top up",
@@ -373,7 +382,7 @@ func craftTransaction(
 	outs []TxOut,
 	feeAmount uint64,
 	network network.Network,
-	baseAsset string,
+	baseAssetKey string,
 ) (string, error) {
 
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs, network)
@@ -422,7 +431,7 @@ func craftTransaction(
 	}
 
 	feeValue, _ := confidential.SatoshiToElementsValue(feeAmount)
-	lbtc, err := bufferutil.AssetHashToBytes(baseAsset)
+	lbtc, err := bufferutil.AssetHashToBytes(baseAssetKey)
 	if err != nil {
 		return "", err
 	}
@@ -550,7 +559,7 @@ func addInsAndOutsToPset(
 	return ptx, nil
 }
 
-func getNetworkAndBaseAsset(net string) (network.Network, string) {
+func getNetworkAndBaseAssetKey(net string) (network.Network, string) {
 	if net == network.Regtest.Name {
 		return network.Regtest, network.Regtest.AssetID
 	}
