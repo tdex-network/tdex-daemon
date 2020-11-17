@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
@@ -13,6 +12,7 @@ import (
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/confidential"
+	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
 	"sort"
@@ -33,19 +33,19 @@ var depositmarket = cli.Command{
 	Usage: "get a deposit address for a given market or create a new one",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "base_asset",
-			Usage: "the base asset hash of an existent market",
-			Value: "",
-		},
-		&cli.StringFlag{
 			Name:  "quote_asset",
-			Usage: "the base asset hash of an existent market",
+			Usage: "the quote asset hash of an existent market",
 			Value: "",
 		},
 		&cli.BoolFlag{
 			Name:  "no-fragment",
-			Usage: "create fragments from utxo",
+			Usage: "disable utxo fragmentation",
 			Value: false,
+		},
+		&cli.StringFlag{
+			Name:  "explorer-url",
+			Usage: "explorer endpoint url",
+			Value: "http://127.0.0.1:3001",
 		},
 	},
 	Action: depositMarketAction,
@@ -72,12 +72,17 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	if ctx.Bool("no-fragment") {
+	net, baseAsset := getNetworkAndBaseAsset(ctx.String("network"))
+	explorerUrl := ctx.String("explorer-url")
+	quoteAsset := ctx.String("quote_asset")
+	fragmentationDisabled := ctx.Bool("no-fragment")
+
+	if fragmentationDisabled {
 		resp, err := client.DepositMarket(
 			context.Background(), &pboperator.DepositMarketRequest{
 				Market: &pbtypes.Market{
-					BaseAsset:  ctx.String("base_asset"),
-					QuoteAsset: ctx.String("quote_asset"),
+					BaseAsset:  baseAsset,
+					QuoteAsset: quoteAsset,
 				},
 				NumOfAddresses: 1,
 			},
@@ -91,16 +96,18 @@ func depositMarketAction(ctx *cli.Context) error {
 		return nil
 	}
 
-	randomWallet, err := trade.NewRandomWallet(config.GetNetwork())
+	randomWallet, err := trade.NewRandomWallet(&net)
 	if err != nil {
 		return err
 	}
 
 	log.Warnf("fund address: %v", randomWallet.Address())
-	explorerSvc := explorer.NewService(
-		config.GetString(config.ExplorerEndpointKey),
+	explorerSvc := explorer.NewService(explorerUrl)
+	assetValuePair, unspents := findAssetsUnspents(
+		randomWallet,
+		explorerSvc,
+		baseAsset,
 	)
-	assetValuePair, unspents := findAssetsUnspents(randomWallet, explorerSvc)
 
 	log.Info("calculating fragments ...")
 	baseFragments, quoteFragments := fragmentUnspents(assetValuePair)
@@ -116,7 +123,7 @@ func depositMarketAction(ctx *cli.Context) error {
 		MinMilliSatPerByte,
 	)
 
-	addresses, err := fetchMarketAddresses(outsLen, client, ctx)
+	addresses, err := fetchMarketAddresses(outsLen, client, baseAsset, quoteAsset)
 	if err != nil {
 		return err
 	}
@@ -127,6 +134,7 @@ func depositMarketAction(ctx *cli.Context) error {
 		feeAmount,
 		addresses,
 		assetValuePair,
+		baseAsset,
 	)
 
 	log.Info("crafting transaction ...")
@@ -135,6 +143,8 @@ func depositMarketAction(ctx *cli.Context) error {
 		unspents,
 		outputs,
 		feeAmount,
+		net,
+		baseAsset,
 	)
 	if err != nil {
 		return err
@@ -155,13 +165,14 @@ func depositMarketAction(ctx *cli.Context) error {
 func fetchMarketAddresses(
 	outsLen int,
 	client pboperator.OperatorClient,
-	ctx *cli.Context,
+	baseAsset string,
+	quoteAsset string,
 ) ([]string, error) {
 	depositMarket, err := client.DepositMarket(
 		context.Background(), &pboperator.DepositMarketRequest{
 			Market: &pbtypes.Market{
-				BaseAsset:  ctx.String("base_asset"),
-				QuoteAsset: ctx.String("quote_asset"),
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
 			},
 			NumOfAddresses: int64(outsLen),
 		},
@@ -178,6 +189,7 @@ func createOutputs(
 	feeAmount uint64,
 	addresses []string,
 	assetValuePair AssetValuePair,
+	baseAsset string,
 ) []TxOut {
 	outsLen := len(baseFragments) + len(quoteFragments)
 	outputs := make([]TxOut, 0, outsLen)
@@ -190,7 +202,7 @@ func createOutputs(
 			value = int64(v) - int64(feeAmount)
 		}
 		outputs = append(outputs, TxOut{
-			Asset:   config.GetString(config.BaseAssetKey),
+			Asset:   baseAsset,
 			Value:   value,
 			Address: addresses[index],
 		})
@@ -262,7 +274,11 @@ func percent(num int, percent int) float64 {
 	return (float64(num) * float64(percent)) / float64(100)
 }
 
-func findAssetsUnspents(randomWallet *trade.Wallet, explorerSvc explorer.Service) (
+func findAssetsUnspents(
+	randomWallet *trade.Wallet,
+	explorerSvc explorer.Service,
+	baseAsset string,
+) (
 	AssetValuePair,
 	[]explorer.Utxo,
 ) {
@@ -291,7 +307,7 @@ events:
 			switch len(valuePerAsset) {
 			case 1:
 				for k, v := range valuePerAsset {
-					if k == config.GetString(config.BaseAssetKey) {
+					if k == baseAsset {
 						log.Warnf(
 							"only base asset %v funded with value %v",
 							k,
@@ -307,7 +323,7 @@ events:
 				}
 			case 2:
 				for k, v := range valuePerAsset {
-					if k == config.GetString(config.BaseAssetKey) {
+					if k == baseAsset {
 						if v < MinBaseDeposit {
 							log.Warnf(
 								"min base deposit is %v please top up",
@@ -356,9 +372,11 @@ func craftTransaction(
 	unspents []explorer.Utxo,
 	outs []TxOut,
 	feeAmount uint64,
+	network network.Network,
+	baseAsset string,
 ) (string, error) {
 
-	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs)
+	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs, network)
 	if err != nil {
 		return "", err
 	}
@@ -404,9 +422,7 @@ func craftTransaction(
 	}
 
 	feeValue, _ := confidential.SatoshiToElementsValue(feeAmount)
-	lbtc, err := bufferutil.AssetHashToBytes(
-		config.GetString(config.BaseAssetKey),
-	)
+	lbtc, err := bufferutil.AssetHashToBytes(baseAsset)
 	if err != nil {
 		return "", err
 	}
@@ -461,7 +477,7 @@ type TxOut struct {
 	Address string
 }
 
-func parseRequestOutputs(reqOutputs []TxOut) (
+func parseRequestOutputs(reqOutputs []TxOut, network network.Network) (
 	[]*transaction.TxOutput,
 	[][]byte,
 	error,
@@ -478,7 +494,10 @@ func parseRequestOutputs(reqOutputs []TxOut) (
 		if err != nil {
 			return nil, nil, err
 		}
-		script, blindingKey, err := parseConfidentialAddress(out.Address)
+		script, blindingKey, err := parseConfidentialAddress(
+			out.Address,
+			network,
+		)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -490,8 +509,11 @@ func parseRequestOutputs(reqOutputs []TxOut) (
 	return outputs, blindingKeys, nil
 }
 
-func parseConfidentialAddress(addr string) ([]byte, []byte, error) {
-	script, err := address.ToOutputScript(addr, *config.GetNetwork())
+func parseConfidentialAddress(
+	addr string,
+	network network.Network,
+) ([]byte, []byte, error) {
+	script, err := address.ToOutputScript(addr, network)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -526,4 +548,11 @@ func addInsAndOutsToPset(
 	}
 
 	return ptx, nil
+}
+
+func getNetworkAndBaseAsset(net string) (network.Network, string) {
+	if net == network.Regtest.Name {
+		return network.Regtest, network.Regtest.AssetID
+	}
+	return network.Liquid, network.Liquid.AssetID
 }

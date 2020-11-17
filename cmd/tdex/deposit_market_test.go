@@ -77,6 +77,9 @@ func TestFragmentation(t *testing.T) {
 }
 
 func TestDepositMarketCli(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 
 	rpc := cli.StringFlag{
 		Name:  "rpcserver",
