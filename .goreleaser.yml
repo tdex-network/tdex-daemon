@@ -22,8 +22,7 @@ builds:
       - darwin
     goarch:
       - amd64
-    binary:
-      - tdexd-darwin
+    binary: tdexd-darwin
   - id: "tdex"
     main: ./cmd/tdex
     env:
