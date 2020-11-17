@@ -18,7 +18,7 @@ ENV TDEX_UNSPENT_TTL=120
 
 WORKDIR /tdex-daemon
 
-COPY tdexd /
+COPY tdexd-linux /
 COPY tdex /
 
 RUN install /tdex /bin
