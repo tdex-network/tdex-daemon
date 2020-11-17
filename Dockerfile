@@ -25,21 +25,23 @@ RUN cp /tdex-daemon/tdex .
 # Second image, running the tdexd executable
 FROM debian:buster
 
-# TDEX environment variables with default values
-ENV TDEX_TRADER_LISTENING_PORT=9945
-ENV TDEX_OPERATOR_LISTENING_PORT=9000
-ENV TDEX_EXPLORER_ENDPOINT="http://127.0.0.1:3001"
-ENV TDEX_DATA_DIR_PATH="/.tdex-daemon"
-ENV TDEX_LOG_LEVEL=5
-ENV TDEX_DEFAULT_FEE=0.25
-ENV TDEX_NETWORK="regtest"
-ENV TDEX_BASE_ASSET="5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
-ENV TDEX_CRAWL_INTERVAL=1000
-ENV TDEX_FEE_ACCOUNT_BALANCE_TRESHOLD=1000
-ENV TDEX_TRADE_EXPIRY_TIME=120
-ENV TDEX_PRICE_SLIPPAGE=0.05
-ENV TDEX_MNEMONIC=""
-ENV TDEX_UNSPENT_TTL=120
+# TDEX environment variables 
+# default data directory path is overwrite
+# others ENV variables are initialized to empty values: viper will initialize them.
+ENV TDEX_DATA_DIR_PATH="/.tdex-daemon" \
+    TDEX_TRADER_LISTENING_PORT= \
+    TDEX_OPERATOR_LISTENING_PORT= \
+    TDEX_EXPLORER_ENDPOINT= \
+    TDEX_LOG_LEVEL= \
+    TDEX_DEFAULT_FEE= \
+    TDEX_NETWORK= \
+    TDEX_BASE_ASSET= \
+    TDEX_CRAWL_INTERVAL= \
+    TDEX_FEE_ACCOUNT_BALANCE_TRESHOLD= \
+    TDEX_TRADE_EXPIRY_TIME= \
+    TDEX_PRICE_SLIPPAGE= \
+    TDEX_MNEMONIC= \
+    TDEX_UNSPENT_TTL=
 
 COPY --from=builder /build/tdexd-linux /
 COPY --from=builder /build/tdex /
