@@ -77,10 +77,8 @@ dockers:
     - tdexd-linux
     - tdex
     image_templates:
-    - "docker.pkg.github.com/tdex-network/tdex-daemon/tdexdaemon:latest"
-    - "docker.pkg.github.com/tdex-network/tdex-daemon/tdexdaemon:{{ .Tag }}"
-    - "docker.io/tdex-network/tdexdaemon:latest"
-    - "docker.io/tdex-network/tdexdaemon:{{ .Tag }}"
+    - "docker.pkg.github.com/tdex-network/tdex-daemon/tdexd:latest"
+    - "docker.pkg.github.com/tdex-network/tdex-daemon/tdexd:{{ .Tag }}"
     dockerfile: goreleaser.Dockerfile
     build_flag_templates:
     - "--pull"
