@@ -73,12 +73,12 @@ $ make build-cli-arm
 
 Build and use `tdex` with docker.
 
-#### Build the tdexdaemon docker image
+#### Build tdexd docker image
 
 _At the root of the repository_
 
 ```bash
-docker build --pull --rm -f "Dockerfile" -t tdexdaemon:latest "."
+docker build --pull --rm -f "Dockerfile" -t tdexd:latest "."
 ```
 
 #### Run the daemon
