@@ -70,6 +70,30 @@ $ make build-cli-linux
 $ make build-cli-arm
 ```
 
+### Build and Run with docker
+
+Build and use `tdex` with docker.
+
+## Build the tdexdaemon docker image
+
+_At the root of the repository_
+
+```bash
+docker build --pull --rm -f "Dockerfile" -t tdexdaemon:latest "."
+```
+
+## Run the daemon
+
+```bash
+docker run -it --name tdex tdexdaemon:latest
+```
+
+## Use the CLI
+
+```bash
+alias tdex-cli="docker exec -it tdex tdex"
+```
+
 ### Test
 
 ```bash
