@@ -2,10 +2,8 @@ name: goreleaser
 
 on:
   push:
-    branches: [master]
-    # tags:
-      # - "*"
-
+    tags:
+      - "*"
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
