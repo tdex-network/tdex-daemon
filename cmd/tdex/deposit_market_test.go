@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/urfave/cli/v2"
+	"github.com/vulpemventures/go-elements/network"
 	"reflect"
 	"testing"
 )
@@ -81,7 +82,13 @@ func TestDepositMarketCli(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	rpc := cli.StringFlag{
+	networkFlag = cli.StringFlag{
+		Name:  "network, n",
+		Usage: "the network tdexd is running on: liquid or regtest",
+		Value: network.Regtest.Name,
+	}
+
+	rpcFlag = cli.StringFlag{
 		Name:  "rpcserver",
 		Usage: "tdexd daemon address host:port",
 		Value: "localhost:9000",
@@ -93,7 +100,8 @@ func TestDepositMarketCli(t *testing.T) {
 	app.Name = "tdex operator CLI"
 	app.Usage = "Command line interface for tdexd daemon operators"
 	app.Flags = []cli.Flag{
-		&rpc,
+		&rpcFlag,
+		&networkFlag,
 	}
 
 	app.Commands = append(
