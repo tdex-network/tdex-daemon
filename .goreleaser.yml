@@ -9,6 +9,7 @@ builds:
       - linux
     goarch:
       - amd64
+    binary: tdexd-linux
   - id: "tdexd-darwin"
     main: ./cmd/tdexd
     ldflags:
@@ -21,6 +22,7 @@ builds:
       - darwin
     goarch:
       - amd64
+    binary: tdexd-darwin
   - id: "tdex"
     main: ./cmd/tdex
     env:
@@ -30,6 +32,7 @@ builds:
       - darwin
     goarch:
       - amd64
+    binary: tdex
 checksum:
   name_template: "checksums.txt"
 signs:
@@ -64,3 +67,19 @@ archives:
     builds:
       - tdex
     name_template: "tdex-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+dockers:
+  - 
+    goos: linux
+    goarch: amd64
+    goarm: ''
+    binaries:
+    - tdexd-linux
+    - tdex
+    image_templates:
+    - "ghcr.io/tdex-network/tdexd:latest"
+    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
+    dockerfile: goreleaser.Dockerfile
+    build_flag_templates:
+    - "--pull"
+
+  

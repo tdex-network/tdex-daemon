@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - "*"
-
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
@@ -34,5 +33,6 @@ jobs:
           version: latest
           args: release --rm-dist --debug
         env:
+          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
