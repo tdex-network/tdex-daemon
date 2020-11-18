@@ -35,18 +35,18 @@ builds:
     binary: tdex
 checksum:
   name_template: "checksums.txt"
-# signs:
-#   - artifacts: checksum
-#     args:
-#       [
-#         "--batch",
-#         "-u",
-#         "{{ .Env.GPG_FINGERPRINT }}",
-#         "--output",
-#         "${signature}",
-#         "--detach-sign",
-#         "${artifact}",
-#       ]
+signs:
+  - artifacts: checksum
+    args:
+      [
+        "--batch",
+        "-u",
+        "{{ .Env.GPG_FINGERPRINT }}",
+        "--output",
+        "${signature}",
+        "--detach-sign",
+        "${artifact}",
+      ]
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
@@ -76,8 +76,8 @@ dockers:
     - tdexd-linux
     - tdex
     image_templates:
-    - "ghcr.io/louisinger/tdexd:latest"
-    - "ghcr.io/louisinger/tdexd:{{ .Tag }}"
+    - "ghcr.io/tdex-network/tdexd:latest"
+    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
     dockerfile: goreleaser.Dockerfile
     build_flag_templates:
     - "--pull"
