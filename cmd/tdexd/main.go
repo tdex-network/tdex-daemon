@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -165,19 +166,44 @@ func serveMux(address string, grpcServer *grpc.Server) error {
 	if err != nil {
 		return err
 	}
+
 	mux := cmux.New(lis)
 	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
 	httpL := mux.Match(cmux.HTTP1Fast())
 
-	grpcWebServer := grpcweb.WrapServer(grpcServer)
+	grpcWebServer := grpcweb.WrapServer(
+		grpcServer,
+		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
+		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
+	)
 
 	go grpcServer.Serve(grpcL)
 	go http.Serve(httpL, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if grpcWebServer.IsGrpcWebRequest(req) {
+		if isValidRequest(req) {
 			grpcWebServer.ServeHTTP(resp, req)
 		}
 	}))
 
 	go mux.Serve()
 	return nil
+}
+
+func isValidRequest(req *http.Request) bool {
+	return isValidGrpcWebOptionRequest(req) || isValidGrpcWebRequest(req)
+}
+
+func isValidGrpcWebRequest(req *http.Request) bool {
+	return req.Method == http.MethodPost && isValidGrpcContentTypeHeader(req.Header.Get("content-type"))
+}
+
+func isValidGrpcContentTypeHeader(contentType string) bool {
+	return strings.HasPrefix(contentType, "application/grpc-web-text") ||
+		strings.HasPrefix(contentType, "application/grpc-web")
+}
+
+func isValidGrpcWebOptionRequest(req *http.Request) bool {
+	accessControlHeader := req.Header.Get("Access-Control-Request-Headers")
+	return req.Method == http.MethodOptions &&
+		strings.Contains(accessControlHeader, "x-grpc-web") &&
+		strings.Contains(accessControlHeader, "content-type")
 }
