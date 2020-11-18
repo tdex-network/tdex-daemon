@@ -24,7 +24,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/vulpemventures/go-bip39 v1.0.2
-	github.com/vulpemventures/go-elements v0.0.4-0.20201106204020-f8c27152329e
+	github.com/vulpemventures/go-elements v0.0.4
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
 	golang.org/x/sys v0.0.0-20201109165425-215b40eba54c // indirect
 	google.golang.org/grpc v1.32.0
