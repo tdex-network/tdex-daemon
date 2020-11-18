@@ -107,7 +107,7 @@ func main() {
 	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorHandler)
 	pbwallet.RegisterWalletServer(operatorGrpcServer, walletHandler)
 
-	log.Debug("starting daemon")
+	log.Info("starting daemon")
 
 	defer stop(
 		dbManager,
@@ -124,14 +124,14 @@ func main() {
 		log.WithError(err).Panic("error listening on operator interface")
 	}
 
-	log.Debug("trader interface is listening on " + traderAddress)
-	log.Debug("operator interface is listening on " + operatorAddress)
+	log.Info("trader interface is listening on " + traderAddress)
+	log.Info("operator interface is listening on " + operatorAddress)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 	<-sigChan
 
-	log.Debug("shutting down daemon")
+	log.Info("shutting down daemon")
 }
 
 func stop(
