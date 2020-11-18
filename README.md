@@ -1,4 +1,5 @@
 # tdex-daemon
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/tdex-network/tdex-daemon?style=flat-square)](https://goreportcard.com/report/github.com/tdex-network/tdex-daemon)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/tdex-network/tdex-daemon)](https://pkg.go.dev/github.com/tdex-network/tdex-daemon)
 [![Release](https://img.shields.io/github/release/tdex-network/tdex-daemon.svg?style=flat-square)](https://github.com/tdex-network/tdex-daemon/releases/latest)
@@ -39,7 +40,6 @@ $ make run-mac
 $ make run-linux
 ```
 
-
 ### Build daemon
 
 Builds `tdexd` as static binary in the `./build` folder
@@ -70,6 +70,30 @@ $ make build-cli-linux
 $ make build-cli-arm
 ```
 
+### Build and Run with docker
+
+Build and use `tdex` with docker.
+
+#### Build tdexd docker image
+
+_At the root of the repository_
+
+```bash
+docker build --pull --rm -f "Dockerfile" -t tdexd:latest "."
+```
+
+#### Run the daemon
+
+```bash
+docker run -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex-daemon tdexd:latest
+```
+
+#### Use the CLI
+
+```bash
+alias tdex-cli="docker exec -it tdex tdex"
+```
+
 ### Test
 
 ```bash
@@ -93,3 +117,4 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 
 This project is licensed under the MIT License - see the
 [LICENSE](https://github.com/tdex-network/tdex-daemon/blob/master/LICENSE) file for details.
+
