@@ -165,17 +165,22 @@ func serveMux(address string, grpcServer *grpc.Server) error {
 	if err != nil {
 		return err
 	}
+
 	mux := cmux.New(lis)
 	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
 	httpL := mux.Match(cmux.HTTP1Fast())
 
-	grpcWebServer := grpcweb.WrapServer(grpcServer)
+	grpcWebServer := grpcweb.WrapServer(
+		grpcServer,
+		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
+		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
+	)
 
 	go grpcServer.Serve(grpcL)
 	go http.Serve(httpL, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if grpcWebServer.IsGrpcWebRequest(req) {
-			grpcWebServer.ServeHTTP(resp, req)
-		}
+		// if grpcWebServer.IsGrpcWebRequest(req) {
+		grpcWebServer.ServeHTTP(resp, req)
+		// }
 	}))
 
 	go mux.Serve()
