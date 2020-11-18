@@ -43,7 +43,7 @@ var depositmarket = cli.Command{
 			Value: false,
 		},
 		&cli.StringFlag{
-			Name:  "explorer-url",
+			Name:  "explorer",
 			Usage: "explorer endpoint url",
 			Value: "http://127.0.0.1:3001",
 		},
@@ -73,7 +73,7 @@ func depositMarketAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	net, baseAssetKey := getNetworkAndBaseAssetKey(ctx.String("network"))
-	explorerUrl := ctx.String("explorer-url")
+	explorerUrl := ctx.String("explorer")
 	fragmentationDisabled := ctx.Bool("no-fragment")
 	quoteAssetOpt := ctx.String("quote_asset")
 	baseAssetOpt := ""
@@ -158,15 +158,19 @@ func depositMarketAction(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Info(txHex)
 
 	log.Info("broadcasting transaction ...")
-	resp, err := explorerSvc.BroadcastTransaction(txHex)
-	if err != nil {
-		return err
-	}
 
-	log.Info(resp)
+	for {
+		resp, err := explorerSvc.BroadcastTransaction(txHex)
+		if err != nil {
+			log.Warn(err)
+			log.Info("transaction broadcast retry")
+			continue
+		}
+		log.Info(resp)
+		break
+	}
 
 	return nil
 }
@@ -366,8 +370,6 @@ events:
 				}
 				break events
 			}
-		} else {
-			log.Warnf("no funds detected for address %v", randomWallet.Address())
 		}
 
 		time.Sleep(time.Duration(CrawlInterval) * time.Second)
