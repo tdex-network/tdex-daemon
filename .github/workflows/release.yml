@@ -33,6 +33,5 @@ jobs:
           version: latest
           args: release --rm-dist --debug
         env:
-          GIT_AUTH_TOKEN: ${{ secrets.GIT_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.CR_PATH }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
