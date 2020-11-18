@@ -4,8 +4,6 @@ FROM debian:buster
 # default data directory path is overwrite
 # others ENV variables are initialized to empty values: viper will initialize them.
 ENV TDEX_DATA_DIR_PATH="/.tdex-daemon" \
-    TDEX_TRADER_LISTENING_PORT= \
-    TDEX_OPERATOR_LISTENING_PORT= \
     TDEX_EXPLORER_ENDPOINT= \
     TDEX_LOG_LEVEL= \
     TDEX_DEFAULT_FEE= \
@@ -29,5 +27,5 @@ RUN install /tdex /bin
 EXPOSE 9945
 EXPOSE 9000
 
-CMD /tdexd
+CMD /tdexd-linux
 
