@@ -23,11 +23,11 @@ In-depth documentation for installing and using the tdex-daemon is available at 
 
 Below is a list of commands you will probably find useful for development.
 
-## Requirements
+### Requirements
 
-* Go (^1.15.2)
+* Go (^1.15.*)
 
-### Run
+### Run daemon
 
 Builds `tdexd` as static binary and runs the project with default configuration.
 
@@ -79,3 +79,17 @@ $ make test
 # integration testing
 $ make integrationtest
 ```
+
+## Release
+
+Precompiled binaries are published with each [release](https://github.com/tdex-network/tdex-daemon/releases).
+
+## Versioning
+
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the
+[tags on this repository](https://github.com/tdex-network/tdex-daemon/tags). 
+
+## License
+
+This project is licensed under the MIT License - see the
+[LICENSE](https://github.com/tdex-network/tdex-daemon/blob/master/LICENSE) file for details.
