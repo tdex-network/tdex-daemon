@@ -54,17 +54,16 @@ func init() {
 
 	vip.SetDefault(TraderListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
-	vip.SetDefault(ExplorerEndpointKey, "http://127.0.0.1:3001")
-	vip.SetDefault(LogLevelKey, 5)
+	vip.SetDefault(ExplorerEndpointKey, "https://blockstream.com/liquid/api")
+	vip.SetDefault(LogLevelKey, 2)
 	vip.SetDefault(DefaultFeeKey, 0.25)
 	vip.SetDefault(CrawlIntervalKey, 1000)              //TODO check this value
-	vip.SetDefault(FeeAccountBalanceThresholdKey, 1000) //TODO check this value
-	vip.SetDefault(NetworkKey, network.Regtest.Name)
-	vip.SetDefault(BaseAssetKey, network.Regtest.AssetID)
+	vip.SetDefault(FeeAccountBalanceThresholdKey, 5000) //TODO check this value
+	vip.SetDefault(NetworkKey, network.Liquid.Name)
+	vip.SetDefault(BaseAssetKey, network.Liquid.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
-	vip.SetDefault(UnspentTtlKey, 120)
 
 	validate()
 
