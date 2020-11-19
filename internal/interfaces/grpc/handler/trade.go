@@ -310,7 +310,7 @@ func (t traderHandler) tradeComplete(
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	log.Info("Trade broadcasted: ", req.SwapComplete.Id)
+	log.Info("Trade broadcasted: ", req.SwapComplete.Id, " | txid ", res.(*pb.TradeCompleteReply).Txid)
 
 	return nil
 }
