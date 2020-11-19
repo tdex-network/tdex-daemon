@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
@@ -433,11 +434,16 @@ func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapC
 				return trade, nil
 			}
 
+			log.Info("trade with id ", tradeID, " completed")
+
 			if _, err := t.explorerSvc.BroadcastTransaction(res.TxHex); err != nil {
 				return nil, err
 			}
 
 			txID = res.TxID
+
+			log.Info("trade with id ", tradeID, " broadcasted: ", txID)
+
 			return trade, nil
 		},
 	)
