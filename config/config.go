@@ -57,8 +57,8 @@ func init() {
 	vip.SetDefault(ExplorerEndpointKey, "https://blockstream.com/liquid/api")
 	vip.SetDefault(LogLevelKey, 2)
 	vip.SetDefault(DefaultFeeKey, 0.25)
-	vip.SetDefault(CrawlIntervalKey, 1000)              //TODO check this value
-	vip.SetDefault(FeeAccountBalanceThresholdKey, 5000) //TODO check this value
+	vip.SetDefault(CrawlIntervalKey, 1000)               //TODO check this value
+	vip.SetDefault(FeeAccountBalanceThresholdKey, 50000) //TODO check this value
 	vip.SetDefault(NetworkKey, network.Liquid.Name)
 	vip.SetDefault(BaseAssetKey, network.Liquid.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
