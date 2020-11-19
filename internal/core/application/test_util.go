@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/shopspring/decimal"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -59,6 +61,8 @@ func newMockServices(
 	dbManager := newTestDb()
 	// set up context
 	ctx := context.Background()
+
+	log.Println(config.BaseAssetKey)
 
 	// create a market repo
 	marketRepo := inmemory.NewMarketRepositoryImpl(dbManager)

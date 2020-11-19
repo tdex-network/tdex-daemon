@@ -85,15 +85,14 @@ clean-test:
 	rm -rf ./internal/infrastructure/storage/db/badger/testdb
 
 ## test: runs go unit test with default values
-test: clean-test fmt shorttest
+test: clean-test  fmt shorttest
 
 ## shorttest: runs unit tests by skipping those that are time expensive
 shorttest:
 	@echo "Testing..."
-	go test -v -count=1 -race -short ./...
+	TDEX_NETWORK="regtest" TDEX_EXPLORER_ENDPOINT="http://127.0.0.1:3001"	TDEX_LOG_LEVEL=5 TDEX_BASE_ASSET="5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225" TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000	go test -v -count=1 -race -short ./...
 
 ## integrationtest: runs e2e tests by
 integrationtest:
 	@echo "E2E Testing..."
 	go test -v -count=1 -race ./cmd/tdexd
-
