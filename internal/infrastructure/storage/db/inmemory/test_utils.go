@@ -12,7 +12,7 @@ import (
 )
 
 func newMockDb() *DbManager {
-	config.Set(config.UnspentTtlKey, 2)
+	config.Set(config.TradeExpiryTimeKey, 2)
 
 	dbManager := NewDbManager()
 

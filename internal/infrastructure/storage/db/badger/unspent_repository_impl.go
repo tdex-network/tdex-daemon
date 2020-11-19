@@ -2,8 +2,9 @@ package dbbadger
 
 import (
 	"context"
-	"github.com/tdex-network/tdex-daemon/config"
 	"time"
+
+	"github.com/tdex-network/tdex-daemon/config"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
@@ -27,7 +28,7 @@ type unspentRepositoryImpl struct {
 func NewUnspentRepositoryImpl(db *DbManager) domain.UnspentRepository {
 	return unspentRepositoryImpl{
 		db:         db,
-		unspentTtl: time.Duration(config.GetInt(config.UnspentTtlKey)),
+		unspentTtl: time.Duration(config.GetInt(config.TradeExpiryTimeKey)),
 	}
 }
 
