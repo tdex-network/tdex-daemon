@@ -16,34 +16,32 @@ import (
 )
 
 const (
-	// TraderListeningPortKey ...
+	// TraderListeningPortKey is the port where the gRPC Trader interface will listen on
 	TraderListeningPortKey = "TRADER_LISTENING_PORT"
-	// OperatorListeningPortKey ...
+	// OperatorListeningPortKey is the port where the gRPC Operator interface will listen on
 	OperatorListeningPortKey = "OPERATOR_LISTENING_PORT"
-	// ExplorerEndpointKey ...
+	// ExplorerEndpointKey is the endpoint where the Electrs (for Liquid) REST API is listening
 	ExplorerEndpointKey = "EXPLORER_ENDPOINT"
-	// DataDirPathKey ...
+	// DataDirPathKey is the local data directory to store the internal state of daemon
 	DataDirPathKey = "DATA_DIR_PATH"
-	// LogLevelKey ...
+	// LogLevelKey are the different logging levels. For reference on the values https://godoc.org/github.com/sirupsen/logrus#Level
 	LogLevelKey = "LOG_LEVEL"
-	// DefaultFeeKey ...
+	// DefaultFeeKey is the default swap fee when creating a market
 	DefaultFeeKey = "DEFAULT_FEE"
-	// NetworkKey ...
+	// NetworkKey is the network to use. Either "liquid" or "regtest"
 	NetworkKey = "NETWORK"
-	// BaseAssetKey ...
+	// BaseAssetKey is the default asset hash to be used as base asset for all markets. Default is LBTC
 	BaseAssetKey = "BASE_ASSET"
-	// CrawlIntervalKey ...
+	// CrawlIntervalKey is the interval in milliseconds to be used when watching the blockchain via the explorer
 	CrawlIntervalKey = "CRAWL_INTERVAL"
-	// FeeAccountBalanceThresholdKey ...
+	// FeeAccountBalanceThresholdKey is the treshold of LBTC balance (in satoshis) for the fee account, after wich we alert the operator that it cannot subsidize anymore swaps
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
-	// TradeExpiryTimeKey ...
+	// TradeExpiryTimeKey is the duration in seconds of lock on unspents we reserve for accpeted trades, before eventually double spending it
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
-	// PriceSlippageKey ...
+	// PriceSlippageKey is the percentage of the slipage for accepting trades compared to current spot price
 	PriceSlippageKey = "PRICE_SLIPPAGE"
-	// MnemonicKey ...
+	// MnemonicKey is the mnemonic of the master private key of the daemon's wallet
 	MnemonicKey = "MNEMONIC"
-	//UnspentTtlKey ...
-	UnspentTtlKey = "UNSPENT_TTL"
 )
 
 var vip *viper.Viper
