@@ -50,6 +50,7 @@ var defaultDataDir = btcutil.AppDataDir("tdex-daemon", false)
 func init() {
 	vip = viper.New()
 	vip.SetEnvPrefix("TDEX")
+	vip.AutomaticEnv()
 
 	vip.SetDefault(TraderListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
@@ -69,9 +70,6 @@ func init() {
 	if err := initDataDir(); err != nil {
 		log.WithError(err).Panic("error while init data dir")
 	}
-
-	vip.AutomaticEnv()
-	log.Println(vip)
 
 	vip.Set(MnemonicKey, "")
 }
