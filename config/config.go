@@ -54,7 +54,7 @@ func init() {
 
 	vip.SetDefault(TraderListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
-	vip.SetDefault(ExplorerEndpointKey, "https://blockstream.com/liquid/api")
+	vip.SetDefault(ExplorerEndpointKey, "https://blockstream.info/liquid/api")
 	vip.SetDefault(LogLevelKey, 2)
 	vip.SetDefault(DefaultFeeKey, 0.25)
 	vip.SetDefault(CrawlIntervalKey, 1000)               //TODO check this value
