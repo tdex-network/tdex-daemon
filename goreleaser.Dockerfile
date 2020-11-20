@@ -18,6 +18,8 @@ ENV TDEX_DATA_DIR_PATH="/.tdex-daemon" \
 
 WORKDIR /tdex-daemon
 
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
+
 COPY tdexd-linux /
 COPY tdex /
 

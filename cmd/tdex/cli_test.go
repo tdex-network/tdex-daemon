@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const password = "hodlhodlhodl"
+
 func TestGenSeed(t *testing.T) {
 	container := runNewContainer(t)
 	defer stopAndDeleteContainer(container)
@@ -27,8 +29,6 @@ func TestInitWallet(t *testing.T) {
 	container := runNewContainer(t)
 	defer stopAndDeleteContainer(container)
 
-	const password = "lazez"
-
 	seed, err := runCLICommand(container, "genseed")
 	if err != nil {
 		t.Error(err)
@@ -36,6 +36,26 @@ func TestInitWallet(t *testing.T) {
 
 	t.Run("should init the wallet", func(t *testing.T) {
 		_, err := runCLICommand(container, "init", "--seed", seed, "--password", password)
+		assert.Nil(t, err)
+	})
+}
+
+func TestUnlockWallet(t *testing.T) {
+	container := runNewContainer(t)
+	defer stopAndDeleteContainer(container)
+
+	seed, err := runCLICommand(container, "genseed")
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = runCLICommand(container, "init", "--seed", seed, "--password", password)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Run("should not return error if password is ok", func(t *testing.T) {
+		_, err := runCLICommand(container, "unlock", "--password", password)
 		assert.Nil(t, err)
 	})
 }
