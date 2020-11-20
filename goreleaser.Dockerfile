@@ -14,7 +14,11 @@ ENV TDEX_DATA_DIR_PATH="/.tdex-daemon" \
     TDEX_TRADE_EXPIRY_TIME= \
     TDEX_PRICE_SLIPPAGE= \
     TDEX_MNEMONIC= \
-    TDEX_UNSPENT_TTL=
+    TDEX_UNSPENT_TTL= \
+    TDEX_SSL_KEY= \
+    TDEX_SSL_CERT=
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 WORKDIR /tdex-daemon
 
