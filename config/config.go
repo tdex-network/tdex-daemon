@@ -40,6 +40,10 @@ const (
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey is the percentage of the slipage for accepting trades compared to current spot price
 	PriceSlippageKey = "PRICE_SLIPPAGE"
+	// SSLCertPathKey ...
+	SSLCertPathKey = "SSL_CERT"
+	// SSLKeyPathKey ...
+	SSLKeyPathKey = "SSL_KEY"
 	// MnemonicKey is the mnemonic of the master private key of the daemon's wallet
 	MnemonicKey = "MNEMONIC"
 )
@@ -142,6 +146,10 @@ func validate() {
 		if err := validatePath(path); err != nil {
 			log.Fatalln(err)
 		}
+	}
+	certPath, keyPath := vip.GetString(SSLCertPathKey), vip.GetString(SSLKeyPathKey)
+	if (certPath != "" && keyPath == "") || (certPath == "" && keyPath != "") {
+		log.Fatalln("SSL requires both key and certificate when enabled")
 	}
 }
 
