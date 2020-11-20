@@ -168,14 +168,29 @@ func (o operatorHandler) depositFeeAccount(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			addr, blindingKey, err := o.operatorSvc.DepositFeeAccount(ctx)
+			addressesWithBlindingKey, err := o.operatorSvc.DepositFeeAccount(
+				ctx,
+				int(req.GetNumOfAddresses()),
+			)
 			if err != nil {
 				return nil, err
 			}
 
+			result := make(
+				[]*pbtypes.AddressWithBlindingKey,
+				0,
+				len(addressesWithBlindingKey),
+			)
+
+			for _, v := range addressesWithBlindingKey {
+				result = append(result, &pbtypes.AddressWithBlindingKey{
+					Address:  v.Address,
+					Blinding: v.BlindingKey,
+				})
+			}
+
 			return &pb.DepositFeeAccountReply{
-				Address:  addr,
-				Blinding: blindingKey,
+				AddressWithBlindingKey: result,
 			}, nil
 		},
 	)

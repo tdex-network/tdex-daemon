@@ -147,6 +147,10 @@ func depositMarketAction(ctx *cli.Context) error {
 	)
 
 	log.Info("crafting transaction ...")
+	inputBlindingKeys := [][]byte{
+		randomWallet.BlindingKey(),
+		randomWallet.BlindingKey(),
+	}
 	txHex, err := craftTransaction(
 		randomWallet,
 		unspents,
@@ -154,6 +158,7 @@ func depositMarketAction(ctx *cli.Context) error {
 		feeAmount,
 		net,
 		baseAssetKey,
+		inputBlindingKeys,
 	)
 	if err != nil {
 		return err
@@ -385,6 +390,7 @@ func craftTransaction(
 	feeAmount uint64,
 	network network.Network,
 	baseAssetKey string,
+	inputBlindingKeys [][]byte,
 ) (string, error) {
 
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs, network)
@@ -407,10 +413,6 @@ func craftTransaction(
 		return "", err
 	}
 
-	inputBlindingKeys := [][]byte{
-		randomWallet.BlindingKey(),
-		randomWallet.BlindingKey(),
-	}
 	blinder, err := pset.NewBlinder(
 		ptx,
 		inputBlindingKeys,

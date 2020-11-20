@@ -601,7 +601,7 @@ func TestOpenMarket(t *testing.T) {
 	) (error, error, func()) {
 		operatorService, ctx, close := newTestOperator(!marketRepoIsEmpty, tradeRepoIsEmpty, vaultRepoIsEmpty)
 		if depositFeeAccountBefore {
-			_, _, err := operatorService.DepositFeeAccount(ctx)
+			_, err := operatorService.DepositFeeAccount(ctx, 1)
 			if err != nil {
 				return err, nil, close
 			}
@@ -715,7 +715,7 @@ func TestUpdateMarketStrategy(t *testing.T) {
 		}
 
 		// reopen the market
-		_, _, err = operatorService.DepositFeeAccount(ctx)
+		_, err = operatorService.DepositFeeAccount(ctx, 1)
 		if err != nil {
 			return nil, err
 		}

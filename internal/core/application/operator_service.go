@@ -21,7 +21,8 @@ type OperatorService interface {
 	) ([]string, error)
 	DepositFeeAccount(
 		ctx context.Context,
-	) (address string, blindingKey string, err error)
+		numberOfAddresses int,
+	) ([]AddressWithBlindingKey, error)
 	OpenMarket(
 		ctx context.Context,
 		baseAsset string,
@@ -200,31 +201,42 @@ func (o *operatorService) DepositMarket(
 
 func (o *operatorService) DepositFeeAccount(
 	ctx context.Context,
-) (address string, blindingKey string, err error) {
-	err = o.vaultRepository.UpdateVault(
+	numberOfAddresses int,
+) ([]AddressWithBlindingKey, error) {
+	//default number of addresses to be generated
+	if numberOfAddresses == 0 {
+		numberOfAddresses = 1
+	}
+
+	addressesWithBlindingKey := make([]AddressWithBlindingKey, 0)
+	err := o.vaultRepository.UpdateVault(
 		ctx,
 		nil,
 		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
-			addr, _, blindKey, err := v.DeriveNextExternalAddressForAccount(
-				domain.FeeAccount,
-			)
-			if err != nil {
-				return nil, err
+			for i := 0; i < numberOfAddresses; i++ {
+				addr, _, blindKey, err := v.DeriveNextExternalAddressForAccount(
+					domain.FeeAccount,
+				)
+				if err != nil {
+					return nil, err
+				}
+				addressesWithBlindingKey = append(addressesWithBlindingKey, AddressWithBlindingKey{
+					Address:     addr,
+					BlindingKey: hex.EncodeToString(blindKey),
+				})
+
+				o.crawlerSvc.AddObservable(&crawler.AddressObservable{
+					AccountIndex: domain.FeeAccount,
+					Address:      addr,
+					BlindingKey:  blindKey,
+				})
 			}
-
-			address = addr
-			blindingKey = hex.EncodeToString(blindKey)
-
-			o.crawlerSvc.AddObservable(&crawler.AddressObservable{
-				AccountIndex: domain.FeeAccount,
-				Address:      addr,
-				BlindingKey:  blindKey,
-			})
 
 			return v, nil
 		})
-	return
+
+	return addressesWithBlindingKey, err
 }
 
 func (o *operatorService) OpenMarket(

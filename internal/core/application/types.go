@@ -86,3 +86,8 @@ type ReportMarketFee struct {
 	CollectedFees              []Fee
 	TotalCollectedFeesPerAsset map[string]int64
 }
+
+type AddressWithBlindingKey struct {
+	Address     string
+	BlindingKey string
+}

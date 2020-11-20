@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/urfave/cli/v2"
-	"github.com/vulpemventures/go-elements/network"
 	"reflect"
 	"testing"
 )
@@ -68,10 +67,10 @@ func TestFragmentation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := fragmentUnspents(tt.args.pair)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("fragmentUnspents() got = %v, want %v", got, tt.want)
+				t.Errorf("fragmentUnspents() got = %v, numOfTrx %v", got, tt.want)
 			}
 			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("fragmentUnspents() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("fragmentUnspents() got1 = %v, numOfTrx %v", got1, tt.want1)
 			}
 		})
 	}
@@ -80,18 +79,6 @@ func TestFragmentation(t *testing.T) {
 func TestDepositMarketCli(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
-	}
-
-	networkFlag = cli.StringFlag{
-		Name:  "network, n",
-		Usage: "the network tdexd is running on: liquid or regtest",
-		Value: network.Regtest.Name,
-	}
-
-	rpcFlag = cli.StringFlag{
-		Name:  "rpcserver",
-		Usage: "tdexd daemon address host:port",
-		Value: "localhost:9000",
 	}
 
 	app := cli.NewApp()

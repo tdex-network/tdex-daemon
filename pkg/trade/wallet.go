@@ -81,6 +81,7 @@ func NewRandomWallet(net *network.Network) (*Wallet, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &Wallet{prvkey, blindPrvkey, net}, nil
 }
 
