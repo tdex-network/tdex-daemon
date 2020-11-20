@@ -1,4 +1,5 @@
 # tdex-daemon
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/tdex-network/tdex-daemon?style=flat-square)](https://goreportcard.com/report/github.com/tdex-network/tdex-daemon)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/tdex-network/tdex-daemon)](https://pkg.go.dev/github.com/tdex-network/tdex-daemon)
 [![Release](https://img.shields.io/github/release/tdex-network/tdex-daemon.svg?style=flat-square)](https://github.com/tdex-network/tdex-daemon/releases/latest)
@@ -23,11 +24,11 @@ In-depth documentation for installing and using the tdex-daemon is available at 
 
 Below is a list of commands you will probably find useful for development.
 
-## Requirements
+### Requirements
 
-* Go (^1.15.2)
+* Go (^1.15.*)
 
-### Run
+### Run daemon
 
 Builds `tdexd` as static binary and runs the project with default configuration.
 
@@ -38,7 +39,6 @@ $ make run-mac
 # Linux
 $ make run-linux
 ```
-
 
 ### Build daemon
 
@@ -70,6 +70,30 @@ $ make build-cli-linux
 $ make build-cli-arm
 ```
 
+### Build and Run with docker
+
+Build and use `tdex` with docker.
+
+#### Build tdexd docker image
+
+_At the root of the repository_
+
+```bash
+docker build --pull --rm -f "Dockerfile" -t tdexd:latest "."
+```
+
+#### Run the daemon
+
+```bash
+docker run -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex-daemon tdexd:latest
+```
+
+#### Use the CLI
+
+```bash
+alias tdex-cli="docker exec -it tdex tdex"
+```
+
 ### Test
 
 ```bash
@@ -79,3 +103,18 @@ $ make test
 # integration testing
 $ make integrationtest
 ```
+
+## Release
+
+Precompiled binaries are published with each [release](https://github.com/tdex-network/tdex-daemon/releases).
+
+## Versioning
+
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the
+[tags on this repository](https://github.com/tdex-network/tdex-daemon/tags). 
+
+## License
+
+This project is licensed under the MIT License - see the
+[LICENSE](https://github.com/tdex-network/tdex-daemon/blob/master/LICENSE) file for details.
+

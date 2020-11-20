@@ -307,6 +307,7 @@ func (t traderHandler) tradeComplete(
 	if err := stream.Send(res.(*pb.TradeCompleteReply)); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
+
 	return nil
 }
 

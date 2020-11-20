@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -107,7 +108,7 @@ func main() {
 	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorHandler)
 	pbwallet.RegisterWalletServer(operatorGrpcServer, walletHandler)
 
-	log.Debug("starting daemon")
+	log.Info("starting daemon")
 
 	defer stop(
 		dbManager,
@@ -124,14 +125,14 @@ func main() {
 		log.WithError(err).Panic("error listening on operator interface")
 	}
 
-	log.Debug("trader interface is listening on " + traderAddress)
-	log.Debug("operator interface is listening on " + operatorAddress)
+	log.Info("trader interface is listening on " + traderAddress)
+	log.Info("operator interface is listening on " + operatorAddress)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 	<-sigChan
 
-	log.Debug("shutting down daemon")
+	log.Info("shutting down daemon")
 }
 
 func stop(
@@ -165,19 +166,44 @@ func serveMux(address string, grpcServer *grpc.Server) error {
 	if err != nil {
 		return err
 	}
+
 	mux := cmux.New(lis)
 	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
 	httpL := mux.Match(cmux.HTTP1Fast())
 
-	grpcWebServer := grpcweb.WrapServer(grpcServer)
+	grpcWebServer := grpcweb.WrapServer(
+		grpcServer,
+		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
+		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
+	)
 
 	go grpcServer.Serve(grpcL)
 	go http.Serve(httpL, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if grpcWebServer.IsGrpcWebRequest(req) {
+		if isValidRequest(req) {
 			grpcWebServer.ServeHTTP(resp, req)
 		}
 	}))
 
 	go mux.Serve()
 	return nil
+}
+
+func isValidRequest(req *http.Request) bool {
+	return isValidGrpcWebOptionRequest(req) || isValidGrpcWebRequest(req)
+}
+
+func isValidGrpcWebRequest(req *http.Request) bool {
+	return req.Method == http.MethodPost && isValidGrpcContentTypeHeader(req.Header.Get("content-type"))
+}
+
+func isValidGrpcContentTypeHeader(contentType string) bool {
+	return strings.HasPrefix(contentType, "application/grpc-web-text") ||
+		strings.HasPrefix(contentType, "application/grpc-web")
+}
+
+func isValidGrpcWebOptionRequest(req *http.Request) bool {
+	accessControlHeader := req.Header.Get("Access-Control-Request-Headers")
+	return req.Method == http.MethodOptions &&
+		strings.Contains(accessControlHeader, "x-grpc-web") &&
+		strings.Contains(accessControlHeader, "content-type")
 }

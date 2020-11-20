@@ -2,10 +2,11 @@ package dbbadger
 
 import (
 	"context"
-	"github.com/tdex-network/tdex-daemon/config"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/tdex-network/tdex-daemon/config"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
@@ -25,7 +26,7 @@ var (
 )
 
 func before() {
-	config.Set(config.UnspentTtlKey, 2)
+	config.Set(config.TradeExpiryTimeKey, 2)
 
 	var err error
 	os.Mkdir(testDbDir, os.ModePerm)
