@@ -121,10 +121,10 @@ func main() {
 	)
 
 	// Serve grpc and grpc-web multiplexed on the same port
-	if err := serveMux(traderAddress, traderGrpcServer); err != nil {
+	if err := serveMux(traderAddress, true, traderGrpcServer); err != nil {
 		log.WithError(err).Panic("error listening on trader interface")
 	}
-	if err := serveMux(operatorAddress, operatorGrpcServer); err != nil {
+	if err := serveMux(operatorAddress, false, operatorGrpcServer); err != nil {
 		log.WithError(err).Panic("error listening on operator interface")
 	}
 
@@ -164,13 +164,13 @@ func stop(
 	log.Debug("exiting")
 }
 
-func serveMux(address string, grpcServer *grpc.Server) error {
+func serveMux(address string, withSsl bool, grpcServer *grpc.Server) error {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 
-	if sslKey := config.GetString(config.SSLKeyPathKey); sslKey != "" {
+	if sslKey := config.GetString(config.SSLKeyPathKey); sslKey != "" && withSsl {
 		certificate, err := tls.LoadX509KeyPair(config.GetString(config.SSLCertPathKey), sslKey)
 		if err != nil {
 			return err

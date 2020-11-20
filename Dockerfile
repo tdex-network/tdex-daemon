@@ -41,6 +41,8 @@ ENV TDEX_DATA_DIR_PATH="/.tdex-daemon" \
     TDEX_MNEMONIC= \
     TDEX_UNSPENT_TTL=
 
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
+
 COPY --from=builder /build/tdexd-linux /
 COPY --from=builder /build/tdex /
 
