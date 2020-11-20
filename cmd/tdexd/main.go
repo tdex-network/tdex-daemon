@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	"golang.org/x/net/http2"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/soheilhy/cmux"
@@ -165,6 +168,23 @@ func serveMux(address string, grpcServer *grpc.Server) error {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
+	}
+
+	if sslKey := config.GetString(config.SSLKeyPathKey); sslKey != "" {
+		certificate, err := tls.LoadX509KeyPair(config.GetString(config.SSLCertPathKey), sslKey)
+		if err != nil {
+			return err
+		}
+
+		const requiredCipher = tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+		config := &tls.Config{
+			CipherSuites: []uint16{requiredCipher},
+			NextProtos:   []string{http2.NextProtoTLS, "h2-14"}, // h2-14 is just for compatibility. will be eventually removed.
+			Certificates: []tls.Certificate{certificate},
+		}
+		config.Rand = rand.Reader
+
+		lis = tls.NewListener(lis, config)
 	}
 
 	mux := cmux.New(lis)

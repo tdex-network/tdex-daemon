@@ -49,6 +49,11 @@ clean:
 	@echo "Cleaning..."
 	@go clean
 
+## create-cert: creates localhost ssl certficate and key
+create-cert:
+	chmod u+x ./scripts/sslcert
+	bash ./scripts/sslcert
+
 ## cov: generates coverage report
 cov:
 	@echo "Coverage..."
