@@ -179,7 +179,7 @@ func serveMux(address string, withSsl bool, grpcServer *grpc.Server) error {
 		const requiredCipher = tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 		config := &tls.Config{
 			CipherSuites: []uint16{requiredCipher},
-			NextProtos:   []string{http2.NextProtoTLS, "h2-14"}, // h2-14 is just for compatibility. will be eventually removed.
+			NextProtos:   []string{"http/1.1", http2.NextProtoTLS, "h2-14"}, // h2-14 is just for compatibility. will be eventually removed.
 			Certificates: []tls.Certificate{certificate},
 		}
 		config.Rand = rand.Reader
