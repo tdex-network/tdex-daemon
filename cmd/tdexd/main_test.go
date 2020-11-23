@@ -129,7 +129,7 @@ func initFee() error {
 	if err != nil {
 		return err
 	}
-	if _, err := explorerSvc.Faucet(depositFeeReply.GetAddress()); err != nil {
+	if _, err := explorerSvc.Faucet(depositFeeReply.GetAddressWithBlindingKey()[0].Address); err != nil {
 		return err
 	}
 
