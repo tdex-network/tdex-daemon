@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
+	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -91,7 +92,7 @@ func parseInput(i interface{}) *transaction.TxInput {
 
 	txid := interfaceToBytes(m["txid"])
 	vout := uint32(m["vout"].(float64))
-	in := transaction.NewTxInput(bufferutil.ReverseBytes(txid), vout)
+	in := transaction.NewTxInput(elementsutil.ReverseBytes(txid), vout)
 
 	in.Script = interfaceToBytes(m["scriptsig"])
 

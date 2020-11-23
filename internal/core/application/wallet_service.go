@@ -503,7 +503,7 @@ func parseRequestOutputs(reqOutputs []TxOut) (
 }
 
 func parseConfidentialAddress(addr string) ([]byte, []byte, error) {
-	script, err := address.ToOutputScript(addr, *config.GetNetwork())
+	script, err := address.ToOutputScript(addr)
 	if err != nil {
 		return nil, nil, err
 	}

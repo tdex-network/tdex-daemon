@@ -77,6 +77,11 @@ var (
 	ErrInvalidPassphrase = errors.New("passphrase provided is not correct")
 	// ErrInvalidSignatures ...
 	ErrInvalidSignatures = errors.New("transaction contains invalid signature(s)")
+	// ErrInvalidAttempts ...
+	ErrInvalidAttempts = fmt.Errorf(
+		"attempts must be a number in range [0, %d]",
+		MaxBlindingAttempts,
+	)
 
 	// ErrEmptyDerivationPaths ...
 	ErrEmptyDerivationPaths = errors.New("derivation path list must not be empty")
@@ -97,4 +102,9 @@ var (
 	ErrZeroInputAmount = errors.New("input amount must not be zero")
 	// ErrZeroOutputAmount ...
 	ErrZeroOutputAmount = errors.New("output amount must not be zero")
+
+	// ErrReachedMaxBlindingAttempts ...
+	ErrReachedMaxBlindingAttempts = errors.New(
+		"max number of attempts reached for blinding the transaction",
+	)
 )

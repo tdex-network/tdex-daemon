@@ -434,7 +434,7 @@ type priceAndPreviewTestData struct {
 
 func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData, error) {
 	addr := "el1qqfmmhdayrxdqs60hecn6yzfzmpquwlhn5m39ytngr8gu63ar6zhqngyj0ak7n3jr8ypfz7s6v7nmnkdvmu8n5pev33ac5thm7"
-	script, _ := address.ToOutputScript(addr, network.Regtest)
+	script, _ := address.ToOutputScript(addr)
 	unspents := []domain.Unspent{
 		{
 			TxID:            "0000000000000000000000000000000000000000000000000000000000000000",

@@ -1,12 +1,10 @@
 package explorer
 
 import (
-	"encoding/hex"
 	"errors"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
-	"github.com/vulpemventures/go-elements/confidential"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -170,19 +168,19 @@ func (wu witnessUtxo) SetConfidential(nonce, rangeProof, surjectionProof []byte)
 }
 
 func (wu witnessUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, error) {
-	inHash, err := hex.DecodeString(wu.UHash)
+	inHash, err := bufferutil.TxIDToBytes(wu.UHash)
 	if err != nil {
 		return nil, nil, err
 	}
-	input := transaction.NewTxInput(bufferutil.ReverseBytes(inHash), wu.UIndex)
+	input := transaction.NewTxInput(inHash, wu.UIndex)
 
 	var witnessUtxo *transaction.TxOutput
 	if len(wu.URangeProof) != 0 && len(wu.USurjectionProof) != 0 {
-		assetCommitment, err := hex.DecodeString(wu.UAssetCommitment)
+		assetCommitment, err := bufferutil.CommitmentToBytes(wu.UAssetCommitment)
 		if err != nil {
 			return nil, nil, err
 		}
-		valueCommitment, err := hex.DecodeString(wu.UValueCommitment)
+		valueCommitment, err := bufferutil.CommitmentToBytes(wu.UValueCommitment)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -195,17 +193,17 @@ func (wu witnessUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, erro
 			SurjectionProof: wu.USurjectionProof,
 		}
 	} else {
-		asset, err := hex.DecodeString(wu.UAsset)
+		asset, err := bufferutil.AssetHashToBytes(wu.UAsset)
 		if err != nil {
 			return nil, nil, err
 		}
-		value, err := confidential.SatoshiToElementsValue(wu.UValue)
-		if err != nil {
-			return nil, nil, err
-		}
-		asset = append([]byte{0x01}, bufferutil.ReverseBytes(asset)...)
 
-		witnessUtxo = transaction.NewTxOutput(asset, value[:], wu.UScript)
+		value, err := bufferutil.ValueToBytes(wu.UValue)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		witnessUtxo = transaction.NewTxOutput(asset, value, wu.UScript)
 	}
 
 	return input, witnessUtxo, nil
@@ -224,18 +222,18 @@ func unblindUtxo(
 		// asset and value commitments are defined. However, if a bad (nil) nonce
 		// is passed to the UnblindOutput function, this will not be able to reveal
 		// secrets of the output.
-		assetCommitment, _ := hex.DecodeString(utxo.AssetCommitment())
-		valueCommitment, _ := hex.DecodeString(utxo.ValueCommitment())
+		assetCommitment, _ := bufferutil.CommitmentToBytes(utxo.AssetCommitment())
+		valueCommitment, _ := bufferutil.CommitmentToBytes(utxo.ValueCommitment())
 
 		txOut := &transaction.TxOutput{
-			Nonce:      utxo.Nonce(),
-			Asset:      assetCommitment,
-			Value:      valueCommitment,
-			Script:     utxo.Script(),
-			RangeProof: utxo.RangeProof(),
+			Nonce:           utxo.Nonce(),
+			Asset:           assetCommitment,
+			Value:           valueCommitment,
+			Script:          utxo.Script(),
+			RangeProof:      utxo.RangeProof(),
+			SurjectionProof: utxo.SurjectionProof(),
 		}
 		unBlinded, ok := transactionutil.UnblindOutput(txOut, blindKey)
-
 		if ok {
 			asset := unBlinded.AssetHash
 			unspent.UAsset = asset
