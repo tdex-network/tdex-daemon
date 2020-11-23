@@ -12,7 +12,6 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/urfave/cli/v2"
-	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/grpc"
 
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -20,24 +19,6 @@ import (
 )
 
 var (
-	networkFlag = cli.StringFlag{
-		Name:  "network, n",
-		Usage: "the network tdexd is running on: liquid or regtest",
-		Value: network.Regtest.Name,
-	}
-
-	rpcFlag = cli.StringFlag{
-		Name:  "rpcserver",
-		Usage: "tdexd daemon address host:port",
-		Value: "localhost:9000",
-	}
-
-	macaroonFlag = cli.StringFlag{
-		Name:  "macaroon",
-		Usage: "hex encoded admin macaroon",
-		Value: "",
-	}
-
 	// maxMsgRecvSize is the largest message our client will receive. We
 	// set this to 200MiB atm.
 	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 200)
@@ -52,19 +33,14 @@ func main() {
 	app.Version = "0.0.1" //TODO use goreleaser for setting version
 	app.Name = "tdex operator CLI"
 	app.Usage = "Command line interface for tdexd daemon operators"
-	app.Flags = []cli.Flag{
-		&networkFlag,
-		&rpcFlag,
-		&macaroonFlag,
-	}
 	app.Commands = append(
 		app.Commands,
+		&config,
 		&genseed,
 		&initwallet,
 		&unlockwallet,
 		&depositfee,
 		&depositmarket,
-		&market,
 		&listmarket,
 		&listswaps,
 		&openmarket,
@@ -159,11 +135,7 @@ func printRespJSON(resp interface{}) {
 func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),
 	error) {
 
-	rpcServer := ctx.String("rpcserver")
-
-	var macaroonHex = ""
-
-	conn, err := getClientConn(rpcServer, macaroonHex)
+	conn, err := getClientConn()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -175,11 +147,7 @@ func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),
 func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(),
 	error) {
 
-	rpcServer := ctx.String("rpcserver")
-
-	var macaroonHex = ""
-
-	conn, err := getClientConn(rpcServer, macaroonHex)
+	conn, err := getClientConn()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -188,8 +156,18 @@ func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(),
 	return pbwallet.NewWalletClient(conn), cleanup, nil
 }
 
-func getClientConn(address, macaroonHex string) (*grpc.ClientConn,
+func getClientConn() (*grpc.ClientConn,
 	error) {
+
+	state, err := getState()
+	if err != nil {
+		return nil, err
+	}
+	address, ok := state["rpcserver"]
+	if !ok {
+		return nil, errors.New("set rpcserver with `config set rpcserver`")
+	}
+	//macaroon := state["macaroon"]
 
 	opts := []grpc.DialOption{grpc.WithDefaultCallOptions(maxMsgRecvSize), grpc.WithInsecure()}
 
