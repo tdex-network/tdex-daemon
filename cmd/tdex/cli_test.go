@@ -64,8 +64,6 @@ func TestUnlockWallet(t *testing.T) {
 }
 
 func TestCreateMarket(t *testing.T) {
-	explorerSvc := explorer.NewService("https://nigiri.network/liquid/api")
-
 	container := runNewContainer(t)
 	defer stopAndDeleteContainer(container)
 
@@ -124,6 +122,7 @@ func TestCreateMarket(t *testing.T) {
 	})
 
 	t.Run("should fund the market if the market's address is founded", func(t *testing.T) {
+		explorerSvc := explorer.NewService("https://nigiri.network/liquid/api")
 		_, err := explorerSvc.Faucet(address)
 		if err != nil {
 			t.Error(err)
@@ -139,6 +138,40 @@ func TestCreateMarket(t *testing.T) {
 		market := listMarket()[0]["market"].(map[string]interface{})
 		assert.NotNil(t, market["base_asset"])
 		assert.NotNil(t, market["quote_asset"])
+	})
+}
+
+func TestDepositFee(t *testing.T) {
+	container := runNewContainer(t)
+	defer stopAndDeleteContainer(container)
+
+	// init the wallet
+	seed, err := runCLICommand(container, "genseed")
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = runCLICommand(container, "init", "--seed", seed, "--password", password)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = runCLICommand(container, "unlock", "--password", password)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Run("should return an blinding address", func(t *testing.T) {
+		var depositFeeResult map[string]string
+		depositFeeJson, err := runCLICommand(container, "depositfee")
+		errUnmarshal := json.Unmarshal([]byte(depositFeeJson), &depositFeeResult)
+		if errUnmarshal != nil {
+			t.Error(errUnmarshal)
+		}
+
+		assert.Nil(t, err)
+		assert.NotNil(t, depositFeeResult["address"])
+		assert.NotNil(t, depositFeeResult["blinding"])
 	})
 }
 
