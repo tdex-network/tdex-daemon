@@ -17,6 +17,7 @@ import (
 
 const (
 	password       = "hodlhodlhodl"
+	badPassword    = "eth2.0released"
 	emptyAsset     = ""
 	LBTC           = "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
 	nigiriEndpoint = "https://nigiri.network/liquid/api"
@@ -49,22 +50,33 @@ func TestInitWallet(t *testing.T) {
 }
 
 func TestUnlockWallet(t *testing.T) {
-	container := runNewContainer(t)
-	defer stopAndDeleteContainer(container)
+	init := func() string {
+		container := runNewContainer(t)
 
-	seed, err := runCLICommand(container, "genseed")
-	if err != nil {
-		t.Error(err)
-	}
+		seed, err := runCLICommand(container, "genseed")
+		if err != nil {
+			t.Error(err)
+		}
 
-	_, err = runCLICommand(container, "init", "--seed", seed, "--password", password)
-	if err != nil {
-		t.Error(err)
+		_, err = runCLICommand(container, "init", "--seed", seed, "--password", password)
+		if err != nil {
+			t.Error(err)
+		}
+		return container
 	}
 
 	t.Run("should not return error if password is ok", func(t *testing.T) {
+		container := init()
+		defer stopAndDeleteContainer(container)
 		_, err := runCLICommand(container, "unlock", "--password", password)
 		assert.Nil(t, err)
+	})
+
+	t.Run("should return an error if the password is unlocked", func(t *testing.T) {
+		container := init()
+		defer stopAndDeleteContainer(container)
+		_, err := runCLICommand(container, "unlock", "--password", badPassword)
+		assert.NotNil(t, err)
 	})
 }
 
