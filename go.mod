@@ -25,8 +25,8 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/vulpemventures/go-bip39 v1.0.2
 	github.com/vulpemventures/go-elements v0.1.0
-	github.com/vulpemventures/go-secp256k1-zkp v1.0.2
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	google.golang.org/grpc v1.32.0
 	google.golang.org/grpc/examples v0.0.0-20200925170654-e6c98a478e62 // indirect
 	google.golang.org/protobuf v1.25.0
