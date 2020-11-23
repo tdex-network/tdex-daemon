@@ -8,9 +8,11 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
 const password = "hodlhodlhodl"
@@ -62,7 +64,7 @@ func TestUnlockWallet(t *testing.T) {
 }
 
 func TestCreateMarket(t *testing.T) {
-	// explorerSvc := explorer.NewService("https://nigiri.network/liquid/api")
+	explorerSvc := explorer.NewService("https://nigiri.network/liquid/api")
 
 	container := runNewContainer(t)
 	defer stopAndDeleteContainer(container)
@@ -83,12 +85,23 @@ func TestCreateMarket(t *testing.T) {
 		t.Error(err)
 	}
 
-	t.Run("should create a market in depositmarket is used with empty parameter", func(t *testing.T) {
-		var listMarketResult map[string][]map[string]interface{}
-		const emptyAsset = ""
+	// Create the market and store the address to found
+	var depositMarketResult map[string]interface{}
+	const emptyAsset = ""
+	depositMarketJson, err := runCLICommand(container, "depositmarket", "--base_asset", emptyAsset, "--quote_asset", emptyAsset)
+	if err != nil {
+		t.Error(t, err)
+	}
 
-		_, err := runCLICommand(container, "depositmarket", "--base_asset", emptyAsset, "--quote_asset", emptyAsset)
-		assert.Nil(t, err)
+	err = json.Unmarshal([]byte(depositMarketJson), &depositMarketResult)
+	if err != nil {
+		t.Error(t, err)
+	}
+
+	address := depositMarketResult["address"].(string)
+
+	listMarket := func() []map[string]interface{} {
+		var listMarketResult map[string][]map[string]interface{}
 
 		result, err := runCLICommand(container, "listmarket")
 		if err != nil {
@@ -102,7 +115,30 @@ func TestCreateMarket(t *testing.T) {
 
 		markets := listMarketResult["markets"]
 
+		return markets
+	}
+
+	t.Run("should create a market new market", func(t *testing.T) {
+		markets := listMarket()
 		assert.Equal(t, 1, len(markets))
+	})
+
+	t.Run("should fund the market if the market's address is founded", func(t *testing.T) {
+		_, err := explorerSvc.Faucet(address)
+		if err != nil {
+			t.Error(err)
+		}
+
+		_, _, err = explorerSvc.Mint(address, 100)
+		if err != nil {
+			t.Error(err)
+		}
+
+		time.Sleep(3 * time.Second)
+
+		market := listMarket()[0]["market"].(map[string]interface{})
+		assert.NotNil(t, market["base_asset"])
+		assert.NotNil(t, market["quote_asset"])
 	})
 }
 
