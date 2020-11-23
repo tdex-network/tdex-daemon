@@ -507,7 +507,7 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 
 	scripts := make([]string, 0, len(derivedAddresses))
 	for _, addr := range derivedAddresses {
-		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
+		script, _ := address.ToOutputScript(addr)
 		scripts = append(scripts, hex.EncodeToString(script))
 	}
 	derivationPaths, _ := t.vaultRepository.GetDerivationPathByScript(
@@ -518,7 +518,7 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 
 	blindingKeysByScript := map[string][]byte{}
 	for i, addr := range derivedAddresses {
-		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
+		script, _ := address.ToOutputScript(addr)
 		blindingKeysByScript[hex.EncodeToString(script)] = blindingKeys[i]
 	}
 

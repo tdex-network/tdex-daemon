@@ -245,7 +245,7 @@ func (v *Vault) allDerivedAddressesInfo() []AddressInfo {
 
 	for addr, info := range v.AccountAndKeyByAddress {
 		account, _ := v.AccountByIndex(info.AccountIndex)
-		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
+		script, _ := address.ToOutputScript(addr)
 		path, _ := account.DerivationPathByScript[hex.EncodeToString(script)]
 
 		list = append(list, AddressInfo{
@@ -296,7 +296,7 @@ func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 
 	blindingKeys := make([][]byte, 0, len(addresses))
 	for _, addr := range addresses {
-		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
+		script, _ := address.ToOutputScript(addr)
 		key, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
 			Script: script,
 		})

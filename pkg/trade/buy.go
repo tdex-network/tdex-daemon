@@ -12,7 +12,6 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/vulpemventures/go-elements/address"
-	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -45,10 +44,8 @@ func (o BuyOrSellOpts) validate() error {
 	if len(o.Address) <= 0 {
 		return ErrNullAddress
 	}
-	if _, err := address.ToOutputScript(o.Address, network.Liquid); err != nil {
-		if _, err := address.ToOutputScript(o.Address, network.Regtest); err != nil {
-			return ErrInvalidAddress
-		}
+	if _, err := address.ToOutputScript(o.Address); err != nil {
+		return ErrInvalidAddress
 	}
 	if len(o.BlindingKey) <= 0 {
 		return ErrNullBlindingKey
@@ -149,7 +146,7 @@ func (t *Trade) marketOrderRequest(
 		return nil, err
 	}
 
-	outputScript, _ := address.ToOutputScript(addr, *t.network)
+	outputScript, _ := address.ToOutputScript(addr)
 	outputScriptHex := hex.EncodeToString(outputScript)
 
 	psetBase64, err := NewSwapTx(
