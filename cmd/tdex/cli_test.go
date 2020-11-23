@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -60,6 +61,51 @@ func TestUnlockWallet(t *testing.T) {
 	})
 }
 
+func TestCreateMarket(t *testing.T) {
+	// explorerSvc := explorer.NewService("https://nigiri.network/liquid/api")
+
+	container := runNewContainer(t)
+	defer stopAndDeleteContainer(container)
+
+	// init the wallet
+	seed, err := runCLICommand(container, "genseed")
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = runCLICommand(container, "init", "--seed", seed, "--password", password)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = runCLICommand(container, "unlock", "--password", password)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Run("should create a market in depositmarket is used with empty parameter", func(t *testing.T) {
+		var listMarketResult map[string][]map[string]interface{}
+		const emptyAsset = ""
+
+		_, err := runCLICommand(container, "depositmarket", "--base_asset", emptyAsset, "--quote_asset", emptyAsset)
+		assert.Nil(t, err)
+
+		result, err := runCLICommand(container, "listmarket")
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = json.Unmarshal([]byte(result), &listMarketResult)
+		if err != nil {
+			t.Error(err)
+		}
+
+		markets := listMarketResult["markets"]
+
+		assert.Equal(t, 1, len(markets))
+	})
+}
+
 func execute(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
 	var out bytes.Buffer
@@ -98,7 +144,7 @@ func runDaemon(containerName string) error {
 		// "-p", "9945:9945", "-p", "9000:9000",
 		"-d",
 		"-e", "TDEX_NETWORK=regtest",
-		"-e", "TDEX_EXPLORER_ENDPOINT=http://127.0.0.1:3001",
+		"-e", "TDEX_EXPLORER_ENDPOINT=https://nigiri.network/liquid/api",
 		"-e", "TDEX_FEE_ACCOUNT_BALANCE_TRESHOLD=1000",
 		"-e", "TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
 		"-e", "TDEX_LOG_LEVEL=5",
