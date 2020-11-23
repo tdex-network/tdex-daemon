@@ -72,10 +72,20 @@ help:
 
 ## run-linux: Run locally with default configuration
 run-linux: clean build-linux
+	export TDEX_NETWORK=regtest; \
+	export TDEX_EXPLORER_ENDPOINT=http://127.0.0.1:3001; \
+	export TDEX_LOG_LEVEL=5; \
+	export TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225; \
+	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
 	./build/tdexd-linux-amd64
 
 ## run-mac: Run locally with default configuration
 run-mac: clean build-mac
+	export TDEX_NETWORK=regtest; \
+	export TDEX_EXPLORER_ENDPOINT=http://127.0.0.1:3001; \
+	export TDEX_LOG_LEVEL=5; \
+	export TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225; \
+	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
 	./build/tdexd-darwin-amd64
 
 ## vet: code analysis
