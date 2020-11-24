@@ -61,25 +61,24 @@ archives:
     builds:
       - tdexd-linux
       - tdexd-darwin
-    name_template: "tdexd-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    name_template: "tdexd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
   - id: tdex
     format: binary
     builds:
       - tdex
-    name_template: "tdex-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-dockers:
-  - 
-    goos: linux
-    goarch: amd64
-    goarm: ''
-    binaries:
-    - tdexd-linux
-    - tdex
-    image_templates:
-    - "ghcr.io/tdex-network/tdexd:latest"
-    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
-    dockerfile: goreleaser.Dockerfile
-    build_flag_templates:
-    - "--pull"
+    name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+#dockers:
+#  -
+#    goos: linux
+#    goarch: amd64
+#    goarm: ''
+#    binaries:
+#    - tdexd-linux
+#    - tdex
+#    image_templates:
+#    - "ghcr.io/tdex-network/tdexd:latest"
+#    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
+#    dockerfile: goreleaser.Dockerfile
+#    build_flag_templates:
+#    - "--pull"
 
-  
