@@ -60,7 +60,7 @@ func getState() (map[string]string, error) {
 
 	file, err := ioutil.ReadFile(statePath)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("get config state error: try 'config init'")
 	}
 	json.Unmarshal(file, &data)
 
