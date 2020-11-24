@@ -74,6 +74,7 @@ func (b *blockchainListener) StopObserveBlockchain() {
 }
 
 func (b *blockchainListener) handleBlockChainEvents() {
+	accountsAlreadyMet := make([]int, 0)
 	for event := range b.crawlerSvc.GetEventChannel() {
 		e := event.(crawler.AddressEvent)
 		unspents := unspentsFromEvent(e)
@@ -92,11 +93,15 @@ func (b *blockchainListener) handleBlockChainEvents() {
 
 		switch event.Type() {
 		case crawler.FeeAccountDeposit:
+			alreadyMet := isAlreadyMet(e.AccountIndex, accountsAlreadyMet)
+			if !alreadyMet {
+				accountsAlreadyMet = append(accountsAlreadyMet, e.AccountIndex)
+			}
 			if _, err := b.dbManager.RunTransaction(
 				ctx,
 				readOnlyTx,
 				func(ctx context.Context) (interface{}, error) {
-					return nil, b.checkFeeAccountBalance(ctx, event)
+					return nil, b.checkFeeAccountBalance(ctx, event, alreadyMet)
 				},
 			); err != nil {
 				log.Warnf("trying to check balance for fee account: %s\n", err.Error())
@@ -118,7 +123,16 @@ func (b *blockchainListener) handleBlockChainEvents() {
 	}
 }
 
-func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event crawler.Event) error {
+func isAlreadyMet(accountIndex int, accountsAlreadyMet []int) bool {
+	for _, account := range accountsAlreadyMet {
+		if account == accountIndex {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event crawler.Event, isAlreadyMet bool) error {
 	addresses, _, err := b.vaultRepository.
 		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
 	if err != nil {
@@ -135,6 +149,12 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event c
 	}
 
 	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
+		if !isAlreadyMet {
+			log.Warn(
+				"fee account balance for account index too low. Trades for markets won't be " +
+					"served properly. Fund the fee account as soon as possible",
+			)
+		}
 		b.feeDepositLogged = false
 	} else {
 		if !b.feeDepositLogged {

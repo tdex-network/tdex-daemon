@@ -113,11 +113,7 @@ func (u *utxoCrawler) AddObservable(observable Observable) {
 	if !contains(u.observables, observable) {
 		obs, ok := observable.(*AddressObservable)
 		if ok {
-			log.Warn(
-				"fee account balance for account index " + fmt.Sprint(obs.AccountIndex) +
-					" too low. Trades for markets won't be " +
-					"served properly. Fund the fee account as soon as possible",
-			)
+			log.Info("Start observing new account: " + fmt.Sprint(obs.AccountIndex))
 		}
 
 		u.observables = append([]Observable{observable}, u.observables...)
