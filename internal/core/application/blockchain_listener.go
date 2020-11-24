@@ -13,6 +13,7 @@ import (
 
 const readOnlyTx = true
 
+//BlockchainListener defines the needed method sto start and stop a blockchain listener
 type BlockchainListener interface {
 	ObserveBlockchain()
 	StopObserveBlockchain()
@@ -25,9 +26,12 @@ type blockchainListener struct {
 	crawlerSvc        crawler.Service
 	explorerSvc       explorer.Service
 	dbManager         ports.DbManager
-	feeDepositLogged  bool
+	// Loggers
+	feeDepositLogged    bool
+	feeBalanceLowLogged bool
 }
 
+// NewBlockchainListener returns a BlockchainListener with all the needed services
 func NewBlockchainListener(
 	unspentRepository domain.UnspentRepository,
 	marketRepository domain.MarketRepository,
@@ -74,7 +78,7 @@ func (b *blockchainListener) StopObserveBlockchain() {
 }
 
 func (b *blockchainListener) handleBlockChainEvents() {
-	accountsAlreadyMet := make([]int, 0)
+
 	for event := range b.crawlerSvc.GetEventChannel() {
 		e := event.(crawler.AddressEvent)
 		unspents := unspentsFromEvent(e)
@@ -93,15 +97,11 @@ func (b *blockchainListener) handleBlockChainEvents() {
 
 		switch event.Type() {
 		case crawler.FeeAccountDeposit:
-			alreadyMet := isAlreadyMet(e.AccountIndex, accountsAlreadyMet)
-			if !alreadyMet {
-				accountsAlreadyMet = append(accountsAlreadyMet, e.AccountIndex)
-			}
 			if _, err := b.dbManager.RunTransaction(
 				ctx,
 				readOnlyTx,
 				func(ctx context.Context) (interface{}, error) {
-					return nil, b.checkFeeAccountBalance(ctx, event, alreadyMet)
+					return nil, b.checkFeeAccountBalance(ctx, event)
 				},
 			); err != nil {
 				log.Warnf("trying to check balance for fee account: %s\n", err.Error())
@@ -123,16 +123,7 @@ func (b *blockchainListener) handleBlockChainEvents() {
 	}
 }
 
-func isAlreadyMet(accountIndex int, accountsAlreadyMet []int) bool {
-	for _, account := range accountsAlreadyMet {
-		if account == accountIndex {
-			return true
-		}
-	}
-	return false
-}
-
-func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event crawler.Event, isAlreadyMet bool) error {
+func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event crawler.Event) error {
 	addresses, _, err := b.vaultRepository.
 		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
 	if err != nil {
@@ -149,11 +140,12 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event c
 	}
 
 	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-		if !isAlreadyMet {
+		if !b.feeBalanceLowLogged {
 			log.Warn(
 				"fee account balance for account index too low. Trades for markets won't be " +
 					"served properly. Fund the fee account as soon as possible",
 			)
+			b.feeBalanceLowLogged = true
 		}
 		b.feeDepositLogged = false
 	} else {
@@ -161,6 +153,7 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event c
 			log.Info("fee account deposited, trades can be served")
 			b.feeDepositLogged = true
 		}
+		b.feeBalanceLowLogged = false
 	}
 	return nil
 }
