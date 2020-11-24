@@ -339,8 +339,12 @@ github.com/vulpemventures/go-bip39 v1.0.2 h1:+BgKOVo04okKf1wA4Fhv8ccvql+qFyzVUdV
 github.com/vulpemventures/go-bip39 v1.0.2/go.mod h1:mjFmuv9D6BtANI6iscMmbHhmBOwjMCFfny3mxHnuDrk=
 github.com/vulpemventures/go-elements v0.1.0 h1:GYaoXC1jsWTk7KxZSSuZPjo3iEuDQUUvLI2ZLfUmezo=
 github.com/vulpemventures/go-elements v0.1.0/go.mod h1:c3H5e0KoP12bSHebY8q540WUx2CmzHlzBNK4aFi7sOY=
+github.com/vulpemventures/go-elements v0.1.1 h1:x8xxc6FUBrbxasNw7v3wk8vICg1qvHlwY9JeTwEYgUM=
+github.com/vulpemventures/go-elements v0.1.1/go.mod h1:OtH2q9NiwybzT9X0AWvkNY+sbxy3okD+vC9oAu5hWhE=
 github.com/vulpemventures/go-secp256k1-zkp v1.0.2 h1:K8zh2NegPd3JzZXWMv+ikWPHx/yZkIZH+LjOKGYYvzA=
 github.com/vulpemventures/go-secp256k1-zkp v1.0.2/go.mod h1:zo7CpgkuPgoe7fAV+inyxsI9IhGmcoFgyD8nqZaPSOM=
+github.com/vulpemventures/go-secp256k1-zkp v1.1.0 h1:Z3qKc/lYxEQ1cukwwjD4n7EBCrg7N6of4hylVsD+lOA=
+github.com/vulpemventures/go-secp256k1-zkp v1.1.0/go.mod h1:zo7CpgkuPgoe7fAV+inyxsI9IhGmcoFgyD8nqZaPSOM=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

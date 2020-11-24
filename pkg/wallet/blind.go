@@ -159,35 +159,20 @@ func (w *Wallet) BlindSwapTransaction(opts BlindSwapTransactionOpts) (string, er
 		inputBlindingKeys = append(inputBlindingKeys, opts.InputBlindingKeys[script])
 	}
 
-	outputBlindingPrvKeys := make([][]byte, 0, len(ptx.Outputs))
-	outputBlindingPubKeys := make([][]byte, 0, len(ptx.Outputs))
+	outputBlindingKeys := make([][]byte, 0, len(ptx.Outputs))
 	for _, out := range ptx.UnsignedTx.Outputs {
 		script := hex.EncodeToString(out.Script)
-		prvKey, pubkey := btcec.PrivKeyFromBytes(btcec.S256(), opts.OutputBlindingKeys[script])
-		outputBlindingPrvKeys = append(outputBlindingPrvKeys, prvKey.Serialize())
-		outputBlindingPubKeys = append(outputBlindingPubKeys, pubkey.SerializeCompressed())
+		_, pubkey := btcec.PrivKeyFromBytes(btcec.S256(), opts.OutputBlindingKeys[script])
+		outputBlindingKeys = append(outputBlindingKeys, pubkey.SerializeCompressed())
 	}
 
-	retryCount := 0
-	for {
-		if retryCount >= opts.maxAttempts() {
-			return "", ErrReachedMaxBlindingAttempts
-		}
-		p, _ := pset.NewPsetFromBase64(opts.PsetBase64)
-		if err := w.blindTransaction(
-			p,
-			inputBlindingKeys,
-			outputBlindingPubKeys,
-			1,
-		); err != nil {
-			return "", err
-		}
-
-		if !pset.VerifyBlinding(p, inputBlindingKeys, outputBlindingPrvKeys, nil) {
-			continue
-		}
-		*ptx = *p
-		break
+	if err := w.blindTransaction(
+		ptx,
+		inputBlindingKeys,
+		outputBlindingKeys,
+		opts.maxAttempts(),
+	); err != nil {
+		return "", err
 	}
 
 	return ptx.ToBase64()

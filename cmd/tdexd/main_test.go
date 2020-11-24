@@ -59,11 +59,9 @@ func TestGrpcMain(t *testing.T) {
 	Parallelize(
 		func() {
 			for i := 0; i < 5; i++ {
-				tradeTxID, err := tradeLBTCPerUSDT()
-				if err != nil {
+				if _, err := tradeLBTCPerUSDT(); err != nil {
 					t.Fatal(err)
 				}
-				t.Log("swap transaction confirmed with id:", tradeTxID)
 				time.Sleep(6 * time.Second)
 			}
 		},
@@ -75,6 +73,8 @@ func TestGrpcMain(t *testing.T) {
 			}
 		},
 	)
+	// give the daemon the time to process last requests
+	time.Sleep(1 * time.Second)
 }
 
 func startDaemon() {
