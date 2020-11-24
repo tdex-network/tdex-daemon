@@ -135,10 +135,6 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event c
 	}
 
 	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-		log.Warn(
-			"fee account balance too low. Trades for markets won't be " +
-				"served properly. Fund the fee account as soon as possible",
-		)
 		b.feeDepositLogged = false
 	} else {
 		if !b.feeDepositLogged {
