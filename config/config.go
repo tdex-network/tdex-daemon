@@ -40,9 +40,9 @@ const (
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey is the percentage of the slipage for accepting trades compared to current spot price
 	PriceSlippageKey = "PRICE_SLIPPAGE"
-	// SSLCertPathKey ...
+	// SSLCertPathKey is the path to the SSL certificate
 	SSLCertPathKey = "SSL_CERT"
-	// SSLKeyPathKey ...
+	// SSLKeyPathKey is the path to the SSL private key
 	SSLKeyPathKey = "SSL_KEY"
 	// MnemonicKey is the mnemonic of the master private key of the daemon's wallet
 	MnemonicKey = "MNEMONIC"
@@ -61,8 +61,8 @@ func init() {
 	vip.SetDefault(ExplorerEndpointKey, "https://blockstream.info/liquid/api")
 	vip.SetDefault(LogLevelKey, 4)
 	vip.SetDefault(DefaultFeeKey, 0.25)
-	vip.SetDefault(CrawlIntervalKey, 1000)               //TODO check this value
-	vip.SetDefault(FeeAccountBalanceThresholdKey, 50000) //TODO check this value
+	vip.SetDefault(CrawlIntervalKey, 2000)
+	vip.SetDefault(FeeAccountBalanceThresholdKey, 5000)
 	vip.SetDefault(NetworkKey, network.Liquid.Name)
 	vip.SetDefault(BaseAssetKey, network.Liquid.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
