@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -108,7 +109,13 @@ func (u *utxoCrawler) GetEventChannel() chan Event {
 func (u *utxoCrawler) AddObservable(observable Observable) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
+
 	if !contains(u.observables, observable) {
+		obs, ok := observable.(*AddressObservable)
+		if ok {
+			log.Debug("Start observing new account: " + fmt.Sprint(obs.AccountIndex))
+		}
+
 		u.observables = append([]Observable{observable}, u.observables...)
 	}
 }

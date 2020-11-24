@@ -13,6 +13,7 @@ import (
 
 const readOnlyTx = true
 
+//BlockchainListener defines the needed method sto start and stop a blockchain listener
 type BlockchainListener interface {
 	ObserveBlockchain()
 	StopObserveBlockchain()
@@ -25,9 +26,12 @@ type blockchainListener struct {
 	crawlerSvc        crawler.Service
 	explorerSvc       explorer.Service
 	dbManager         ports.DbManager
-	feeDepositLogged  bool
+	// Loggers
+	feeDepositLogged    bool
+	feeBalanceLowLogged bool
 }
 
+// NewBlockchainListener returns a BlockchainListener with all the needed services
 func NewBlockchainListener(
 	unspentRepository domain.UnspentRepository,
 	marketRepository domain.MarketRepository,
@@ -74,6 +78,7 @@ func (b *blockchainListener) StopObserveBlockchain() {
 }
 
 func (b *blockchainListener) handleBlockChainEvents() {
+
 	for event := range b.crawlerSvc.GetEventChannel() {
 		e := event.(crawler.AddressEvent)
 		unspents := unspentsFromEvent(e)
@@ -135,16 +140,20 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event c
 	}
 
 	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-		log.Warn(
-			"fee account balance too low. Trades for markets won't be " +
-				"served properly. Fund the fee account as soon as possible",
-		)
+		if !b.feeBalanceLowLogged {
+			log.Warn(
+				"fee account balance for account index too low. Trades for markets won't be " +
+					"served properly. Fund the fee account as soon as possible",
+			)
+			b.feeBalanceLowLogged = true
+		}
 		b.feeDepositLogged = false
 	} else {
 		if !b.feeDepositLogged {
 			log.Info("fee account deposited, trades can be served")
 			b.feeDepositLogged = true
 		}
+		b.feeBalanceLowLogged = false
 	}
 	return nil
 }
