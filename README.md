@@ -1,6 +1,6 @@
 # tdex-daemon
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/tdex-network/tdex-daemon?style=flat-square)](https://goreportcard.com/report/github.com/tdex-network/tdex-daemon)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tdex-network/tdex-daemon)](https://goreportcard.com/report/github.com/tdex-network/tdex-daemon)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/tdex-network/tdex-daemon)](https://pkg.go.dev/github.com/tdex-network/tdex-daemon)
 [![Release](https://img.shields.io/github/release/tdex-network/tdex-daemon.svg?style=flat-square)](https://github.com/tdex-network/tdex-daemon/releases/latest)
 
