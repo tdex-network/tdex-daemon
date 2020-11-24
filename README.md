@@ -2,7 +2,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/tdex-network/tdex-daemon)](https://goreportcard.com/report/github.com/tdex-network/tdex-daemon)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/tdex-network/tdex-daemon)](https://pkg.go.dev/github.com/tdex-network/tdex-daemon)
-[![Release](https://img.shields.io/github/release/tdex-network/tdex-daemon.svg?style=flat-square)](https://github.com/tdex-network/tdex-daemon/releases/latest)
+[![Release](https://img.shields.io/github/release/tdex-network/tdex-daemon.svg)](https://github.com/tdex-network/tdex-daemon/releases/latest)
 
 Go implementation of the TDex Daemon
 
@@ -85,13 +85,13 @@ docker build --pull --rm -f "Dockerfile" -t tdexd:latest "."
 #### Run the daemon
 
 ```bash
-docker run -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex-daemon tdexd:latest
+docker run -d -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex-daemon tdexd:latest
 ```
 
 #### Use the CLI
 
 ```bash
-alias tdex-cli="docker exec -it tdex tdex"
+alias tdex="docker exec -it tdexd tdex"
 ```
 
 ### Test
