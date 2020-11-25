@@ -26,6 +26,7 @@ type blockchainListener struct {
 	crawlerSvc        crawler.Service
 	explorerSvc       explorer.Service
 	dbManager         ports.DbManager
+	started           bool
 	// Loggers
 	feeDepositLogged    bool
 	feeBalanceLowLogged bool
@@ -69,12 +70,18 @@ func newBlockchainListener(
 }
 
 func (b *blockchainListener) ObserveBlockchain() {
-	go b.crawlerSvc.Start()
-	go b.handleBlockChainEvents()
+	if !b.started {
+		go b.crawlerSvc.Start()
+		go b.handleBlockChainEvents()
+		b.started = true
+	}
 }
 
 func (b *blockchainListener) StopObserveBlockchain() {
-	b.crawlerSvc.Stop()
+	if b.started {
+		b.crawlerSvc.Stop()
+		b.started = false
+	}
 }
 
 func (b *blockchainListener) handleBlockChainEvents() {

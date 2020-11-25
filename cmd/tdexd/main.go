@@ -54,6 +54,15 @@ func main() {
 		ErrorHandler:           func(err error) { log.Warn(err) },
 		IntervalInMilliseconds: config.GetInt(config.CrawlIntervalKey),
 	})
+	blockchainListener := application.NewBlockchainListener(
+		unspentRepository,
+		marketRepository,
+		vaultRepository,
+		crawlerSvc,
+		explorerSvc,
+		dbManager,
+	)
+
 	traderSvc := application.NewTradeService(
 		marketRepository,
 		tradeRepository,
@@ -67,17 +76,8 @@ func main() {
 		unspentRepository,
 		crawlerSvc,
 		explorerSvc,
+		blockchainListener,
 	)
-
-	blockchainListener := application.NewBlockchainListener(
-		unspentRepository,
-		marketRepository,
-		vaultRepository,
-		crawlerSvc,
-		explorerSvc,
-		dbManager,
-	)
-	blockchainListener.ObserveBlockchain()
 
 	operatorSvc := application.NewOperatorService(
 		marketRepository,
