@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -150,6 +151,9 @@ func (w *walletService) InitWallet(
 			if err != nil {
 				return nil, err
 			}
+
+			// We unlock the vault setting the mnemonic in memory needed for restore
+			config.Set(config.MnemonicKey, strings.Join(mnemonic, " "))
 
 			feeLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.FeeAccount, w.explorerService)
 			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService)
