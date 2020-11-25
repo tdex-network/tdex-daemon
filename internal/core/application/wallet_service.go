@@ -141,6 +141,13 @@ func (w *walletService) InitWallet(
 		return nil
 	}
 
+	// lock vault no regardless an error occurs or not
+	var vault *domain.Vault
+	defer func() {
+		if vault != nil {
+			vault.Lock()
+		}
+	}()
 	w.walletIsSyncing = true
 
 	err := w.vaultRepository.UpdateVault(
@@ -148,6 +155,8 @@ func (w *walletService) InitWallet(
 		mnemonic,
 		passphrase,
 		func(v *domain.Vault) (*domain.Vault, error) {
+			vault = v
+
 			log.Debug("start syncing wallet")
 			ww, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 				SigningMnemonic: mnemonic,
@@ -172,7 +181,7 @@ func (w *walletService) InitWallet(
 					return nil, err
 				}
 			}
-			v.Lock()
+
 			w.walletInitialized = true
 			return v, nil
 		},
