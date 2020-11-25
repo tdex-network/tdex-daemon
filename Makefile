@@ -120,4 +120,4 @@ integrationtest:
 	export TDEX_LOG_LEVEL=5; \
 	export TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225; \
 	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
-	go test -v -count=1 -race ./cmd/tdexd
+	go test -v -count=1 ./cmd/tdexd
