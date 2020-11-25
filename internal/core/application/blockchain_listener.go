@@ -157,7 +157,7 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event c
 		b.feeDepositLogged = false
 	} else {
 		if !b.feeDepositLogged {
-			log.Info("fee account deposited, trades can be served")
+			log.Info("fee account funded. Trades can be served")
 			b.feeDepositLogged = true
 		}
 		b.feeBalanceLowLogged = false
