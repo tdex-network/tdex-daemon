@@ -1,7 +1,6 @@
 package crawler
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -113,7 +112,7 @@ func (u *utxoCrawler) AddObservable(observable Observable) {
 	if !contains(u.observables, observable) {
 		obs, ok := observable.(*AddressObservable)
 		if ok {
-			log.Debug("Start observing new account: " + fmt.Sprint(obs.AccountIndex))
+			log.Debugf("new address for account %d added to watchlist", obs.AccountIndex)
 		}
 
 		u.observables = append([]Observable{observable}, u.observables...)

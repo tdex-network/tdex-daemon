@@ -57,12 +57,13 @@ type WalletService interface {
 }
 
 type walletService struct {
-	vaultRepository   domain.VaultRepository
-	unspentRepository domain.UnspentRepository
-	crawlerService    crawler.Service
-	explorerService   explorer.Service
-	walletInitialized bool
-	walletIsSyncing   bool
+	vaultRepository    domain.VaultRepository
+	unspentRepository  domain.UnspentRepository
+	crawlerService     crawler.Service
+	explorerService    explorer.Service
+	blockchainListener BlockchainListener
+	walletInitialized  bool
+	walletIsSyncing    bool
 }
 
 func NewWalletService(
@@ -70,12 +71,14 @@ func NewWalletService(
 	unspentRepository domain.UnspentRepository,
 	crawlerService crawler.Service,
 	explorerService explorer.Service,
+	blockchainListener BlockchainListener,
 ) WalletService {
 	return newWalletService(
 		vaultRepository,
 		unspentRepository,
 		crawlerService,
 		explorerService,
+		blockchainListener,
 	)
 }
 
@@ -84,12 +87,14 @@ func newWalletService(
 	unspentRepository domain.UnspentRepository,
 	crawlerService crawler.Service,
 	explorerService explorer.Service,
+	blockchainListener BlockchainListener,
 ) *walletService {
 	w := &walletService{
-		vaultRepository:   vaultRepository,
-		unspentRepository: unspentRepository,
-		crawlerService:    crawlerService,
-		explorerService:   explorerService,
+		vaultRepository:    vaultRepository,
+		unspentRepository:  unspentRepository,
+		crawlerService:     crawlerService,
+		explorerService:    explorerService,
+		blockchainListener: blockchainListener,
 	}
 	// to understand if the service has an already initialized wallet we check
 	// if the inner vaultRepo is able to return a Vault without passing mnemonic
@@ -136,6 +141,13 @@ func (w *walletService) InitWallet(
 		return nil
 	}
 
+	// lock vault no regardless an error occurs or not
+	var vault *domain.Vault
+	defer func() {
+		if vault != nil {
+			vault.Lock()
+		}
+	}()
 	w.walletIsSyncing = true
 
 	err := w.vaultRepository.UpdateVault(
@@ -143,6 +155,8 @@ func (w *walletService) InitWallet(
 		mnemonic,
 		passphrase,
 		func(v *domain.Vault) (*domain.Vault, error) {
+			vault = v
+
 			log.Debug("start syncing wallet")
 			ww, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 				SigningMnemonic: mnemonic,
@@ -167,7 +181,7 @@ func (w *walletService) InitWallet(
 					return nil, err
 				}
 			}
-			v.Lock()
+
 			w.walletInitialized = true
 			return v, nil
 		},
@@ -189,7 +203,7 @@ func (w *walletService) UnlockWallet(
 		return ErrWalletNotInitialized
 	}
 
-	return w.vaultRepository.UpdateVault(
+	if err := w.vaultRepository.UpdateVault(
 		ctx,
 		nil,
 		"",
@@ -199,7 +213,12 @@ func (w *walletService) UnlockWallet(
 			}
 			return v, nil
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	w.blockchainListener.ObserveBlockchain()
+	return nil
 }
 
 func (w *walletService) ChangePassword(

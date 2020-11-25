@@ -101,12 +101,21 @@ func newMockServices(
 		ErrorHandler:           func(err error) { fmt.Println(err) },
 		IntervalInMilliseconds: 100,
 	})
+	blockchainListener := NewBlockchainListener(
+		unspentRepo,
+		marketRepo,
+		vaultRepo,
+		crawlerSvc,
+		explorerSvc,
+		dbManager,
+	)
 
 	walletSvc := newWalletService(
 		vaultRepo,
 		unspentRepo,
 		crawlerSvc,
 		explorerSvc,
+		blockchainListener,
 	)
 
 	if !vaultRepositoryIsEmpty {
@@ -135,17 +144,6 @@ func newMockServices(
 			panic(err)
 		}
 	}
-
-	blockchainListener := NewBlockchainListener(
-		unspentRepo,
-		marketRepo,
-		vaultRepo,
-		crawlerSvc,
-		explorerSvc,
-		dbManager,
-	)
-	// observe the blockchain
-	blockchainListener.ObserveBlockchain()
 
 	// create services to test
 	tradeSvc := newTradeService(
@@ -220,7 +218,6 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		ErrorHandler:           func(err error) { fmt.Println(err) },
 		IntervalInMilliseconds: 100,
 	})
-
 	blockchainListener := NewBlockchainListener(
 		unspentRepo,
 		marketRepo,
@@ -229,14 +226,13 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		explorerSvc,
 		dbManager,
 	)
-	// observe the blockchain
-	blockchainListener.ObserveBlockchain()
 
 	walletSvc := newWalletService(
 		vaultRepo,
 		unspentRepo,
 		crawlerSvc,
 		explorerSvc,
+		blockchainListener,
 	)
 
 	ctx := context.Background()

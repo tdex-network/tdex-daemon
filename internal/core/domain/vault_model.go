@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcutil"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 )
 
@@ -50,14 +51,16 @@ func NewVault(mnemonic []string, passphrase string) (*Vault, error) {
 		return nil, err
 	}
 
+	strMnemonic := strings.Join(mnemonic, " ")
 	encryptedMnemonic, err := wallet.Encrypt(wallet.EncryptOpts{
-		PlainText:  strings.Join(mnemonic, " "),
+		PlainText:  strMnemonic,
 		Passphrase: passphrase,
 	})
 	if err != nil {
 		return nil, err
 	}
 
+	config.Set(config.MnemonicKey, strMnemonic)
 	return &Vault{
 		EncryptedMnemonic:      encryptedMnemonic,
 		PassphraseHash:         btcutil.Hash160([]byte(passphrase)),
