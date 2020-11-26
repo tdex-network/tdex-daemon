@@ -109,7 +109,7 @@ func getMarketFromState() (string, string, error) {
 	}
 	quoteAsset, ok := state["quote_asset"]
 	if !ok {
-		return "", "", errors.New("set base asset with `config set quote_asset`")
+		return "", "", errors.New("set quote asset with `config set quote_asset`")
 	}
 
 	return baseAsset, quoteAsset, nil
