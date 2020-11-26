@@ -183,6 +183,8 @@ func (b *blockchainListener) updateTrade(
 		return err
 	}
 
+	log.Infof("trade %s completed", trade.ID)
+
 	return nil
 }
 
