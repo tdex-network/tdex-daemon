@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"github.com/vulpemventures/go-elements/pset"
 	"time"
 
 	"github.com/tdex-network/tdex-daemon/config"
@@ -72,6 +73,13 @@ func (t *Trade) Accept(
 	t.SwapAccept.Message = swapAcceptMsg
 	t.Timestamp.Accept = uint64(time.Now().Unix())
 	t.PsetBase64 = psetBase64
+
+	p, err := pset.NewPsetFromBase64(psetBase64)
+	if err != nil {
+		return false, err
+	}
+	t.TxID = p.UnsignedTx.TxHash().String()
+
 	return true, nil
 }
 
@@ -85,7 +93,7 @@ type CompleteResult struct {
 // Complete sets the status of the trade to Complete by adding the txID
 // of the tx in the blockchain. The trade must be in Accepted or
 // FailedToComplete status for being completed, otherwise an error is thrown
-func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error) {
+func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 	if t.IsCompleted() {
 		return &CompleteResult{OK: true, TxHex: t.TxHex, TxID: t.TxID}, nil
 	}
@@ -141,7 +149,7 @@ func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error
 	t.SwapComplete.ID = swapCompleteID
 	t.SwapComplete.Message = swapCompleteMsg
 	t.PsetBase64 = psetBase64
-	t.TxID = txID
+	t.TxID = txHash
 	t.TxHex = txHex
 	return &CompleteResult{OK: true, TxHex: txHex, TxID: txHash}, nil
 }

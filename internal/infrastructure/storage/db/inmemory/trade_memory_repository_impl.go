@@ -21,6 +21,26 @@ func NewTradeRepositoryImpl(db *DbManager) domain.TradeRepository {
 	}
 }
 
+func (r TradeRepositoryImpl) GetTradeByTxID(
+	ctx context.Context,
+	txID string,
+) (*domain.Trade, error) {
+	r.db.tradeStore.locker.Lock()
+	defer r.db.tradeStore.locker.Unlock()
+
+	trades, err := r.getAllTrades()
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range trades {
+		if t.TxID == txID {
+			return t, nil
+		}
+	}
+
+	return nil, nil
+}
+
 // GetCompletedTradesByMarket returns the copmpleted trades for a given quote asset
 func (r TradeRepositoryImpl) GetCompletedTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
 	r.db.tradeStore.locker.Lock()
