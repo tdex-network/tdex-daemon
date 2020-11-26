@@ -169,6 +169,8 @@ func (b *blockchainListener) updateTrade(
 		ctx,
 		&trade.ID,
 		func(t *domain.Trade) (*domain.Trade, error) {
+			t.Status = domain.CompletedStatus
+
 			err := t.AddBlocktime(uint64(event.BlockTime))
 			if err != nil {
 				return nil, err
