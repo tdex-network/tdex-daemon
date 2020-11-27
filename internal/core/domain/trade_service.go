@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"github.com/vulpemventures/go-elements/pset"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"time"
 
 	"github.com/tdex-network/tdex-daemon/config"
@@ -73,12 +73,11 @@ func (t *Trade) Accept(
 	t.SwapAccept.Message = swapAcceptMsg
 	t.Timestamp.Accept = uint64(time.Now().Unix())
 	t.PsetBase64 = psetBase64
-
-	p, err := pset.NewPsetFromBase64(psetBase64)
+	txID, err := transactionutil.GetTxIdFromPset(psetBase64)
 	if err != nil {
-		return false, err
+		return false, nil
 	}
-	t.TxID = p.UnsignedTx.TxHash().String()
+	t.TxID = txID
 
 	return true, nil
 }
@@ -148,14 +147,13 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 	t.SwapComplete.ID = swapCompleteID
 	t.SwapComplete.Message = swapCompleteMsg
 	t.PsetBase64 = psetBase64
-	t.TxID = txHash
 	t.TxHex = txHex
 	return &CompleteResult{OK: true, TxHex: txHex, TxID: txHash}, nil
 }
 
-func (t *Trade) Settle(settlementTime uint64) {
+func (t *Trade) Settle(settlementTime uint64) error {
 	t.Status = CompletedStatus
-	t.AddBlocktime(settlementTime)
+	return t.AddBlocktime(settlementTime)
 }
 
 // Fail sets the status of the trade to the provided status and creates the
@@ -172,8 +170,14 @@ func (t *Trade) Fail(swapID string, tradeStatus Status, errCode pkgswap.ErrCode,
 }
 
 // AddBlocktime sets the timestamp for a completed trade to the given blocktime.
-func (t *Trade) AddBlocktime(blocktime uint64) {
+// If the trade is not in Complete status, an error is thrown
+func (t *Trade) AddBlocktime(blocktime uint64) error {
+	if !t.IsCompleted() {
+		return ErrMustBeCompleted
+	}
+
 	t.Timestamp.Complete = blocktime
+	return nil
 }
 
 // IsEmpty returns whether the Trade is empty

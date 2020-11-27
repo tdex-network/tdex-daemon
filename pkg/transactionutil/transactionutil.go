@@ -2,6 +2,7 @@ package transactionutil
 
 import (
 	"encoding/hex"
+	"github.com/vulpemventures/go-elements/pset"
 
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
@@ -40,4 +41,13 @@ func NewFeeOutput(feeAmount uint64) []*transaction.TxOutput {
 	return []*transaction.TxOutput{
 		transaction.NewTxOutput(feeAsset, feeValue, feeScript),
 	}
+}
+
+func GetTxIdFromPset(psetBase64 string) (string, error) {
+	p, err := pset.NewPsetFromBase64(psetBase64)
+	if err != nil {
+		return "false", err
+	}
+
+	return p.UnsignedTx.TxHash().String(), nil
 }

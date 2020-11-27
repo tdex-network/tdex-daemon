@@ -169,7 +169,10 @@ func (b *blockchainListener) updateTrade(
 		ctx,
 		&trade.ID,
 		func(t *domain.Trade) (*domain.Trade, error) {
-			t.Settle(uint64(event.BlockTime))
+			err := t.Settle(uint64(event.BlockTime))
+			if err != nil {
+				return nil, err
+			}
 
 			return t, nil
 		},
