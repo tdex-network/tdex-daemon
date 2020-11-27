@@ -138,7 +138,7 @@ func TestWalletUnlock(t *testing.T) {
 	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
 	defer close()
 
-	address, blindingKey, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
+	_, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	assert.Equal(t, domain.ErrMustBeUnlocked, err)
 
 	err = walletSvc.UnlockWallet(ctx, dryLockedWallet.password)
@@ -146,7 +146,7 @@ func TestWalletUnlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	address, blindingKey, err = walletSvc.GenerateAddressAndBlindingKey(ctx)
+	address, blindingKey, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
