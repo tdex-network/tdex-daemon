@@ -177,10 +177,16 @@ func TestGenerateAddressAndWalletBalance(t *testing.T) {
 	walletSvc, ctx, close := newTestWallet(dryWallet)
 	defer close()
 
+	err := walletSvc.UnlockWallet(ctx, dryWallet.password)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 
 	_, err = walletSvc.explorerService.Faucet(address)
 	if err != nil {

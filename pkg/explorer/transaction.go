@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/tdex-network/tdex-daemon/pkg/httputil"
@@ -113,7 +114,11 @@ func (e *explorer) Faucet(address string) (string, error) {
 		return "", err
 	}
 	respBody := map[string]string{}
+
 	err = json.Unmarshal(data, &respBody)
+	if jsonErr, ok := err.(*json.SyntaxError); ok {
+        log.Printf("syntax error at byte offset %d", jsonErr.Offset)
+    }
 	if err != nil {
 		return "", err
 	}
