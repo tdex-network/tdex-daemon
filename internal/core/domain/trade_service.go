@@ -153,9 +153,9 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 	return &CompleteResult{OK: true, TxHex: txHex, TxID: txHash}, nil
 }
 
-func (t *Trade) Settle(settlementTime uint64) error {
+func (t *Trade) Settle(settlementTime uint64) {
 	t.Status = CompletedStatus
-	return t.AddBlocktime(settlementTime)
+	t.AddBlocktime(settlementTime)
 }
 
 // Fail sets the status of the trade to the provided status and creates the
@@ -172,9 +172,8 @@ func (t *Trade) Fail(swapID string, tradeStatus Status, errCode pkgswap.ErrCode,
 }
 
 // AddBlocktime sets the timestamp for a completed trade to the given blocktime.
-func (t *Trade) AddBlocktime(blocktime uint64) error {
+func (t *Trade) AddBlocktime(blocktime uint64) {
 	t.Timestamp.Complete = blocktime
-	return nil
 }
 
 // IsEmpty returns whether the Trade is empty
