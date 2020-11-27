@@ -244,8 +244,15 @@ func TestSendToMany(t *testing.T) {
 		},
 	}
 
-	walletSvc, ctx, close := newTestWallet(newTradeWallet())
+	wallet := newTradeWallet()
+
+	walletSvc, ctx, close := newTestWallet(wallet)
 	defer close()
+
+	err := walletSvc.UnlockWallet(ctx, wallet.password)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
