@@ -3,9 +3,9 @@ package explorer
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/tdex-network/tdex-daemon/pkg/httputil"
@@ -109,6 +109,11 @@ func (e *explorer) Faucet(address string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	if hasInternalServerError(resp) {
+		return "", errors.New("Faucet: Internal server error (500)")
+	}
+
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
@@ -116,9 +121,6 @@ func (e *explorer) Faucet(address string) (string, error) {
 	respBody := map[string]string{}
 
 	err = json.Unmarshal(data, &respBody)
-	if jsonErr, ok := err.(*json.SyntaxError); ok {
-        log.Printf("syntax error at byte offset %d", jsonErr.Offset)
-    }
 	if err != nil {
 		return "", err
 	}
@@ -134,6 +136,11 @@ func (e *explorer) Mint(address string, amount int) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+
+	if hasInternalServerError(resp) {
+		return "", "", errors.New("Mint: Internal server error (500)")
+	}
+
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", "", err
@@ -166,4 +173,8 @@ func parseTransactions(txList string) ([]Transaction, error) {
 		txs = append(txs, trx)
 	}
 	return txs, nil
+}
+
+func hasInternalServerError(response *http.Response) bool {
+	return response.StatusCode == 500
 }
