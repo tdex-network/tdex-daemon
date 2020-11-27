@@ -172,12 +172,7 @@ func (t *Trade) Fail(swapID string, tradeStatus Status, errCode pkgswap.ErrCode,
 }
 
 // AddBlocktime sets the timestamp for a completed trade to the given blocktime.
-// If the trade is not in Complete status, an error is thrown
 func (t *Trade) AddBlocktime(blocktime uint64) error {
-	if !t.IsCompleted() {
-		return ErrMustBeCompleted
-	}
-
 	t.Timestamp.Complete = blocktime
 	return nil
 }
