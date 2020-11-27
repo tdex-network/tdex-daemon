@@ -110,8 +110,8 @@ func (e *explorer) Faucet(address string) (string, error) {
 		return "", err
 	}
 
-	if hasInternalServerError(resp) {
-		return "", errors.New("Faucet: Internal server error (500)")
+	if isNotStatusOK(resp) {
+		return "", errors.New("Faucet: HTTP error. Error code = " + fmt.Sprint(resp.StatusCode))
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
@@ -137,8 +137,8 @@ func (e *explorer) Mint(address string, amount int) (string, string, error) {
 		return "", "", err
 	}
 
-	if hasInternalServerError(resp) {
-		return "", "", errors.New("Mint: Internal server error (500)")
+	if isNotStatusOK(resp) {
+		return "", "", errors.New("Mint: HTTP error. Error code = " + fmt.Sprint(resp.StatusCode))
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
@@ -175,6 +175,6 @@ func parseTransactions(txList string) ([]Transaction, error) {
 	return txs, nil
 }
 
-func hasInternalServerError(response *http.Response) bool {
-	return response.StatusCode == 500
+func isNotStatusOK(response *http.Response) bool {
+	return response.StatusCode != 200
 }
