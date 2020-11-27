@@ -145,13 +145,17 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 		return &CompleteResult{OK: false}, nil
 	}
 
-	t.Status = CompletedStatus
 	t.SwapComplete.ID = swapCompleteID
 	t.SwapComplete.Message = swapCompleteMsg
 	t.PsetBase64 = psetBase64
 	t.TxID = txHash
 	t.TxHex = txHex
 	return &CompleteResult{OK: true, TxHex: txHex, TxID: txHash}, nil
+}
+
+func (t *Trade) Settle(settlementTime uint64) error {
+	t.Status = CompletedStatus
+	return t.AddBlocktime(settlementTime)
 }
 
 // Fail sets the status of the trade to the provided status and creates the
