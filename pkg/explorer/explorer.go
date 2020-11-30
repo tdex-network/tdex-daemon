@@ -12,13 +12,13 @@ type Service interface {
 	GetTransactionStatus(txID string) (map[string]interface{}, error)
 	GetTransactionsForAddress(address string) ([]Transaction, error)
 	BroadcastTransaction(txHex string) (string, error)
-	// regtest only
-	Faucet(address string) (string, error)
-	Mint(address string, amount int) (string, string, error)
 	GetUnspentsForAddresses(
 		addresses []string,
 		blindingKeys [][]byte,
 	) ([]Utxo, error)
+	// regtest only
+	Faucet(address string) (string, error)
+	Mint(address string, amount int) (string, string, error)
 }
 
 type explorer struct {
