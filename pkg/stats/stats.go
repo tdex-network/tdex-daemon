@@ -70,7 +70,7 @@ func PrintMemoryStatistics() {
 // DumpPrometheusDefaults write default Prometheus metrics to a file
 func DumpPrometheusDefaults() error {
 	file, err := os.OpenFile(
-		"stats",
+		fmt.Sprintf("stats_%v", time.Now().Format(time.RFC3339)),
 		os.O_APPEND|os.O_CREATE|os.O_RDWR,
 		0644,
 	)
