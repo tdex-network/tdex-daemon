@@ -115,10 +115,12 @@ func main() {
 
 	log.Info("starting daemon")
 
+	statsDir := filepath.Join(config.GetString(config.DataDirPathKey), "stats")
 	ctx, cancelStats := context.WithCancel(context.Background())
 	stats.EnableMemoryStatistics(
 		ctx,
 		config.GetDuration(config.StatsIntervalKey)*time.Second,
+		statsDir,
 	)
 
 	defer stop(

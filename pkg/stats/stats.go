@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 )
@@ -21,7 +22,11 @@ const (
 
 // EnableMemoryStatistics enables go routine that periodically prints memory
 // usage of the go process.
-func EnableMemoryStatistics(ctx context.Context, interval time.Duration) {
+func EnableMemoryStatistics(
+	ctx context.Context,
+	interval time.Duration,
+	path string,
+) {
 
 	ticker := time.NewTicker(interval)
 
@@ -32,7 +37,7 @@ func EnableMemoryStatistics(ctx context.Context, interval time.Duration) {
 				PrintMemoryStatistics()
 				PrintNumOfRoutines()
 			case <-ctx.Done():
-				err := DumpPrometheusDefaults()
+				err := DumpPrometheusDefaults(path)
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -68,9 +73,11 @@ func PrintMemoryStatistics() {
 }
 
 // DumpPrometheusDefaults write default Prometheus metrics to a file
-func DumpPrometheusDefaults() error {
+func DumpPrometheusDefaults(path string) error {
 	file, err := os.OpenFile(
-		fmt.Sprintf("stats_%v", time.Now().Format(time.RFC3339)),
+		filepath.Join(
+			path,
+			time.Now().Format(time.RFC3339)),
 		os.O_APPEND|os.O_CREATE|os.O_RDWR,
 		0644,
 	)

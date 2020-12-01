@@ -200,6 +200,9 @@ func initDataDir() error {
 	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "db")); err != nil {
 		log.WithError(err).Panic("error while creating db folder")
 	}
+	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "stats")); err != nil {
+		log.WithError(err).Panic("error while creating stats folder")
+	}
 
 	return nil
 }
