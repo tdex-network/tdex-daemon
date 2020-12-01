@@ -46,6 +46,8 @@ const (
 	SSLKeyPathKey = "SSL_KEY"
 	// MnemonicKey is the mnemonic of the master private key of the daemon's wallet
 	MnemonicKey = "MNEMONIC"
+	// StatsIntervalKey defines interval for printing basic tdex statistics
+	StatsIntervalKey = "STATS_INTERVAL"
 )
 
 var vip *viper.Viper
@@ -68,6 +70,7 @@ func init() {
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
+	vip.SetDefault(StatsIntervalKey, 10)
 
 	validate()
 

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"fmt"
+	"github.com/tdex-network/tdex-daemon/pkg/stats"
 	"net"
 	"net/http"
 	"os"
@@ -113,11 +115,18 @@ func main() {
 
 	log.Info("starting daemon")
 
+	ctx, cancelStats := context.WithCancel(context.Background())
+	stats.EnableMemoryStatistics(
+		ctx,
+		config.GetDuration(config.StatsIntervalKey)*time.Second,
+	)
+
 	defer stop(
 		dbManager,
 		blockchainListener,
 		traderGrpcServer,
 		operatorGrpcServer,
+		cancelStats,
 	)
 
 	// Serve grpc and grpc-web multiplexed on the same port
@@ -143,7 +152,12 @@ func stop(
 	blockchainListener application.BlockchainListener,
 	traderServer *grpc.Server,
 	operatorServer *grpc.Server,
+	cancelStats context.CancelFunc,
 ) {
+	cancelStats()
+	time.Sleep(1 * time.Second)
+	log.Debug("cancel printing statistics")
+
 	operatorServer.Stop()
 	log.Debug("disabled operator interface")
 
@@ -161,6 +175,7 @@ func stop(
 	dbManager.UnspentStore.Close()
 	dbManager.PriceStore.Close()
 	log.Debug("closed connection with database")
+
 	log.Debug("exiting")
 }
 
