@@ -62,7 +62,7 @@ func PrintMemoryStatistics() {
 	countMalloc := memStats.Mallocs
 	countFrees := memStats.Frees
 
-	log.Infof(
+	log.Debugf(
 		"Total allocated: %.3fGB, Heap allocated: %.3fGB, "+
 			"Allocated objects count: %v, Freed objects count: %v",
 		toGigabytes(bytesTotalAllocated),
@@ -105,5 +105,5 @@ func DumpPrometheusDefaults(path string) error {
 
 // PrintNumOfRoutines prints number of go routines currently running
 func PrintNumOfRoutines() {
-	log.Infof("Num of go routines: %v\n", runtime.NumGoroutine())
+	log.Debugf("Num of go routines: %v\n", runtime.NumGoroutine())
 }
