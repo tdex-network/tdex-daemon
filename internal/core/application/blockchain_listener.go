@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -30,6 +31,8 @@ type blockchainListener struct {
 	// Loggers
 	feeDepositLogged    bool
 	feeBalanceLowLogged bool
+
+	mutex *sync.RWMutex
 }
 
 // NewBlockchainListener returns a BlockchainListener with all the needed services
@@ -66,6 +69,7 @@ func newBlockchainListener(
 		crawlerSvc:        crawlerSvc,
 		explorerSvc:       explorerSvc,
 		dbManager:         dbManager,
+		mutex:             &sync.RWMutex{},
 	}
 }
 
@@ -109,7 +113,7 @@ func (b *blockchainListener) handleBlockChainEvents() {
 					ctx,
 					readOnlyTx,
 					func(ctx context.Context) (interface{}, error) {
-						return nil, b.checkFeeAccountBalance(ctx, event)
+						return nil, b.checkFeeAccountBalance(ctx)
 					},
 				); err != nil {
 					log.Warnf("trying to check balance for fee account: %s\n", err.Error())
@@ -132,7 +136,7 @@ func (b *blockchainListener) handleBlockChainEvents() {
 	}
 }
 
-func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event crawler.Event) error {
+func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context) error {
 	addresses, _, err := b.vaultRepository.
 		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
 	if err != nil {
@@ -149,22 +153,46 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context, event c
 	}
 
 	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
-		if !b.feeBalanceLowLogged {
+		if !b.getSafeFeeBalanceLowLogged() {
 			log.Warn(
 				"fee account balance for account index too low. Trades for markets won't be " +
 					"served properly. Fund the fee account as soon as possible",
 			)
-			b.feeBalanceLowLogged = true
+			b.updateSafeFeeBalanceLowLogged(true)
 		}
-		b.feeDepositLogged = false
+		b.updateSafeFeeDepositLogged(false)
 	} else {
-		if !b.feeDepositLogged {
+		if !b.getSafeFeeDepositLogged() {
 			log.Info("fee account funded. Trades can be served")
-			b.feeDepositLogged = true
+			b.updateSafeFeeDepositLogged(true)
 		}
-		b.feeBalanceLowLogged = false
+		b.updateSafeFeeBalanceLowLogged(true)
 	}
 	return nil
+}
+
+func (b *blockchainListener) updateSafeFeeBalanceLowLogged(logged bool) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	b.feeBalanceLowLogged = logged
+}
+
+func (b *blockchainListener) updateSafeFeeDepositLogged(logged bool) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	b.feeDepositLogged = logged
+}
+
+func (b *blockchainListener) getSafeFeeBalanceLowLogged() bool {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.feeBalanceLowLogged
+}
+
+func (b *blockchainListener) getSafeFeeDepositLogged() bool {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.feeDepositLogged
 }
 
 func (b *blockchainListener) checkMarketAccountFundings(ctx context.Context, accountIndex int) error {
