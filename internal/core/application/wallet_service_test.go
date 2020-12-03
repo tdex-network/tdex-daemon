@@ -16,9 +16,11 @@ func TestNewWalletService(t *testing.T) {
 	}
 
 	ws, _, close := newTestWallet(nil)
-	defer close()
+
 	assert.Equal(t, false, ws.walletInitialized)
 	assert.Equal(t, false, ws.walletIsSyncing)
+
+	t.Cleanup(close)
 }
 
 func TestGenSeed(t *testing.T) {
@@ -27,14 +29,14 @@ func TestGenSeed(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(nil)
-	defer close()
 
 	seed, err := walletSvc.GenSeed(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	assert.Equal(t, 24, len(seed))
+
+	t.Cleanup(close)
 }
 
 func TestInitWalletWrongSeed(t *testing.T) {
@@ -43,11 +45,12 @@ func TestInitWalletWrongSeed(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(nil)
-	defer close()
 
 	wrongSeed := []string{"test"}
 	err := walletSvc.InitWallet(ctx, wrongSeed, "pass")
 	assert.Error(t, err)
+
+	t.Cleanup(close)
 }
 
 func TestInitEmptyWallet(t *testing.T) {
@@ -56,7 +59,6 @@ func TestInitEmptyWallet(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(emptyWallet)
-	defer close()
 	// If the vault repository is not empty when the wallet service is
 	// instantiated, this behaves like it  it was shut down and restarted again.
 	// Therefore, the service restores its previous state and "marks" the wallet
@@ -90,6 +92,8 @@ func TestInitEmptyWallet(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, firstWalletAccountAddr, addr)
+
+	t.Cleanup(close)
 }
 
 func TestInitUsedWallet(t *testing.T) {
@@ -98,7 +102,6 @@ func TestInitUsedWallet(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(usedWallet)
-	defer close()
 	walletSvc.walletInitialized = false
 
 	w, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
@@ -128,6 +131,8 @@ func TestInitUsedWallet(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, firstWalletAccountAddr, addr)
+
+	t.Cleanup(close)
 }
 
 func TestWalletUnlock(t *testing.T) {
@@ -136,7 +141,6 @@ func TestWalletUnlock(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
-	defer close()
 
 	address, blindingKey, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	assert.Equal(t, domain.ErrMustBeUnlocked, err)
@@ -153,6 +157,8 @@ func TestWalletUnlock(t *testing.T) {
 
 	assert.Equal(t, true, len(address) > 0)
 	assert.Equal(t, true, len(blindingKey) > 0)
+
+	t.Cleanup(close)
 }
 
 func TestWalletChangePass(t *testing.T) {
@@ -161,7 +167,6 @@ func TestWalletChangePass(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
-	defer close()
 
 	err := walletSvc.ChangePassword(ctx, "wrongPass", "newPass")
 	assert.Equal(t, domain.ErrInvalidPassphrase, err)
@@ -171,11 +176,12 @@ func TestWalletChangePass(t *testing.T) {
 
 	err = walletSvc.UnlockWallet(ctx, dryLockedWallet.password)
 	assert.Equal(t, wallet.ErrInvalidPassphrase, err)
+
+	t.Cleanup(close)
 }
 
 func TestGenerateAddressAndWalletBalance(t *testing.T) {
 	walletSvc, ctx, close := newTestWallet(dryWallet)
-	defer close()
 
 	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
@@ -199,6 +205,8 @@ func TestGenerateAddressAndWalletBalance(t *testing.T) {
 		true,
 		int(balance[network.Regtest.AssetID].ConfirmedBalance) >= 100000000,
 	)
+
+	t.Cleanup(close)
 }
 
 func TestSendToMany(t *testing.T) {
@@ -238,8 +246,7 @@ func TestSendToMany(t *testing.T) {
 		},
 	}
 
-	walletSvc, ctx, close := newTestWallet(newTradeWallet())
-	defer close()
+	walletSvc, ctx, close := newTestWallet(tradeWallet)
 
 	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
@@ -272,4 +279,5 @@ func TestSendToMany(t *testing.T) {
 		assert.Equal(t, true, len(rawTx) > 0)
 	}
 
+	t.Cleanup(close)
 }

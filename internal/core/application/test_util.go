@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/shopspring/decimal"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -16,7 +18,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
-	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 	"google.golang.org/protobuf/proto"
@@ -79,7 +80,8 @@ func newMockServices(
 	}
 
 	// create a new vault repo
-	vaultRepo := newMockedVaultRepositoryImpl(*newTradeWallet())
+	vaultRepo := newMockedVaultRepositoryImpl(*tradeWallet)
+	config.Set(config.MnemonicKey, strings.Join(tradeWallet.mnemonic, " "))
 
 	// create a new unspent repo
 	unspentRepo := inmemory.NewUnspentRepositoryImpl(dbManager)
@@ -120,11 +122,7 @@ func newMockServices(
 	)
 
 	if !vaultRepositoryIsEmpty {
-		if err := walletSvc.UnlockWallet(ctx, "Sup3rS3cr3tP4ssw0rd!"); err != nil {
-			panic(err)
-		}
-
-		err := vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
+		if err := vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
 			_, _, _, err := v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
@@ -139,9 +137,7 @@ func newMockServices(
 			}
 
 			return v, nil
-		})
-
-		if err != nil {
+		}); err != nil {
 			panic(err)
 		}
 	}
@@ -167,6 +163,7 @@ func newMockServices(
 
 	close := func() {
 		blockchainListener.StopObserveBlockchain()
+		config.Set(config.MnemonicKey, "")
 	}
 
 	return operatorSvc, tradeSvc, walletSvc, ctx, close, dbManager
@@ -199,8 +196,8 @@ func newTestOperator(
 // 	- unspents funding the close market (1 LBTC utxo of amount 1 BTC)
 //	- unspents funding the fee account (1 LBTC utxo of amount 1 BTC)
 // creates a new  mock database at each call
-func newTestTrader() (TradeService, context.Context, func()) {
-	_, tradeSvc, _, ctx, closeFn, _ := newMockServices(false, true, false, false, false)
+func newTestTrader(withPluggableMarket bool) (TradeService, context.Context, func()) {
+	_, tradeSvc, _, ctx, closeFn, _ := newMockServices(false, true, false, false, withPluggableMarket)
 	return tradeSvc, ctx, closeFn
 }
 
@@ -209,8 +206,12 @@ func newTestTrader() (TradeService, context.Context, func()) {
 func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	dbManager := newTestDb()
 
+	vaultRepo := inmemory.NewVaultRepositoryImpl(dbManager)
+	if w != nil {
+		vaultRepo = newMockedVaultRepositoryImpl(*w)
+		config.Set(config.MnemonicKey, strings.Join(w.mnemonic, " "))
+	}
 	marketRepo := inmemory.NewMarketRepositoryImpl(dbManager)
-	vaultRepo := newMockedVaultRepositoryImpl(*w)
 	unspentRepo := inmemory.NewUnspentRepositoryImpl(dbManager)
 	tradeRepository := inmemory.NewTradeRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
@@ -242,6 +243,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 
 	closeFn := func() {
 		blockchainListener.StopObserveBlockchain()
+		config.Set(config.MnemonicKey, "")
 	}
 
 	return walletSvc, ctx, closeFn
@@ -254,11 +256,11 @@ func fillMarketRepo(
 ) error {
 	// TODO: create and open market
 	// opened market
-	err := (*marketRepo).UpdateMarket(
+	if err := (*marketRepo).UpdateMarket(
 		ctx,
 		domain.MarketAccountStart,
 		func(market *domain.Market) (*domain.Market, error) {
-			err := market.FundMarket([]domain.OutpointWithAsset{
+			if err := market.FundMarket([]domain.OutpointWithAsset{
 				{
 					Asset: marketUnspents[0].AssetHash,
 					Txid:  marketUnspents[0].TxID,
@@ -269,51 +271,53 @@ func fillMarketRepo(
 					Txid:  marketUnspents[1].TxID,
 					Vout:  int(marketUnspents[1].VOut),
 				},
-			})
-			if err != nil {
+			},
+			); err != nil {
 				return nil, err
 			}
 
 			if initPluggableMarket {
-				err := market.MakeStrategyPluggable()
-				if err != nil {
+				if err := market.MakeStrategyPluggable(); err != nil {
 					return nil, err
 				}
-				err = market.ChangeBasePrice(decimal.NewFromFloat(1.90))
-				if err != nil {
+				if err := market.ChangeBasePrice(decimal.NewFromFloat(0.00015385)); err != nil {
 					return nil, err
 				}
-				err = market.ChangeQuotePrice(decimal.NewFromFloat(4.32))
-				if err != nil {
+				if err := market.ChangeQuotePrice(decimal.NewFromFloat(6500)); err != nil {
 					return nil, err
 				}
 			}
 
-			err = market.MakeTradable()
-			if err != nil {
+			if err := market.MakeTradable(); err != nil {
 				return nil, err
 			}
 
 			return market, nil
 		},
-	)
-	if err != nil {
+	); err != nil {
 		return err
 	}
 
 	// closed market (and also not funded)
-	err = (*marketRepo).UpdateMarket(ctx, domain.MarketAccountStart+1, func(m *domain.Market) (*domain.Market, error) {
-		return m, nil
-	})
-
-	if err != nil {
+	if err := (*marketRepo).UpdateMarket(
+		ctx,
+		domain.MarketAccountStart+1,
+		func(m *domain.Market) (*domain.Market, error) {
+			return m, nil
+		},
+	); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func fillTradeRepo(ctx context.Context, tradeRepo domain.TradeRepository, quoteAsset string, baseAsset string) error {
+func fillTradeRepo(
+	ctx context.Context,
+	tradeRepo domain.TradeRepository,
+	quoteAsset string,
+	baseAsset string,
+) error {
 	proposerWallet, err := trade.NewRandomWallet(&network.Regtest)
 	if err != nil {
 		return err
@@ -324,24 +328,16 @@ func fillTradeRepo(ctx context.Context, tradeRepo domain.TradeRepository, quoteA
 		baseAsset, 30000000,
 		quoteAsset, 20000000,
 	)
-
 	if err != nil {
 		return err
 	}
 
-	err = tradeRepo.UpdateTrade(ctx, nil, func(trade *domain.Trade) (*domain.Trade, error) {
-		_, err := trade.Propose(swapRequest, quoteAsset, nil)
-		if err != nil {
+	return tradeRepo.UpdateTrade(ctx, nil, func(trade *domain.Trade) (*domain.Trade, error) {
+		if _, err := trade.Propose(swapRequest, quoteAsset, nil); err != nil {
 			return nil, err
 		}
 		return trade, nil
 	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func newSwapRequest(
@@ -417,8 +413,11 @@ func newSwapComplete(
 }
 
 func isFinalizableTransaction(psetBase64 string) bool {
-	ptx, _ := pset.NewPsetFromBase64(psetBase64)
-	err := pset.MaybeFinalizeAll(ptx)
+	ptx, err := pset.NewPsetFromBase64(psetBase64)
+	if err != nil {
+		return false
+	}
+	err = pset.MaybeFinalizeAll(ptx)
 	return err == nil
 }
 
@@ -429,108 +428,6 @@ type priceAndPreviewTestData struct {
 	expectedBuyAmount  uint64
 	expectedSellAmount uint64
 	expectedPrice      Price
-}
-
-func mocksForPriceAndPreview(withDefaultStrategy bool) (*priceAndPreviewTestData, error) {
-	addr := "el1qqfmmhdayrxdqs60hecn6yzfzmpquwlhn5m39ytngr8gu63ar6zhqngyj0ak7n3jr8ypfz7s6v7nmnkdvmu8n5pev33ac5thm7"
-	script, _ := address.ToOutputScript(addr)
-	unspents := []domain.Unspent{
-		{
-			TxID:            "0000000000000000000000000000000000000000000000000000000000000000",
-			VOut:            0,
-			Value:           100000000,
-			AssetHash:       network.Regtest.AssetID,
-			ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
-			AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
-			ScriptPubKey:    script,
-			Nonce:           make([]byte, 33),
-			RangeProof:      make([]byte, 4174),
-			SurjectionProof: make([]byte, 64),
-			Address:         addr,
-			Spent:           false,
-			Locked:          false,
-			LockedBy:        nil,
-			Confirmed:       true,
-		},
-		{
-			TxID:            "0000000000000000000000000000000000000000000000000000000000000000",
-			VOut:            0,
-			Value:           650000000000,
-			AssetHash:       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			ValueCommitment: "080000000000000000000000000000000000000000000000000000000000000000",
-			AssetCommitment: "090000000000000000000000000000000000000000000000000000000000000000",
-			ScriptPubKey:    script,
-			Nonce:           make([]byte, 33),
-			RangeProof:      make([]byte, 4174),
-			SurjectionProof: make([]byte, 64),
-			Address:         addr,
-			Spent:           false,
-			Locked:          false,
-			LockedBy:        nil,
-			Confirmed:       true,
-		},
-	}
-
-	market, _ := domain.NewMarket(domain.MarketAccountStart)
-	market.FundMarket([]domain.OutpointWithAsset{
-		// LBTC
-		domain.OutpointWithAsset{
-			Asset: network.Regtest.AssetID,
-			Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-			Vout:  0,
-		},
-		// ASS
-		domain.OutpointWithAsset{
-			Asset: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-			Vout:  1,
-		},
-	})
-
-	bp, _ := decimal.NewFromString("0.00015385")
-	qp, _ := decimal.NewFromString("6500")
-	price := Price{
-		BasePrice:  bp,
-		QuotePrice: qp,
-	}
-
-	if withDefaultStrategy {
-		market.MakeTradable()
-
-		return &priceAndPreviewTestData{
-			unspents:           unspents,
-			market:             market,
-			lbtcAmount:         10000, // 0.0001 LBTC
-			expectedBuyAmount:  65169016,
-			expectedSellAmount: 65155984,
-			expectedPrice:      price,
-		}, nil
-	}
-
-	market.MakeStrategyPluggable()
-	market.ChangeBasePrice(bp)
-	market.ChangeQuotePrice(qp)
-
-	return &priceAndPreviewTestData{
-		unspents:           unspents,
-		market:             market,
-		lbtcAmount:         10000, // 0.0001 LBTC
-		expectedBuyAmount:  81250000,
-		expectedSellAmount: 48750000,
-		expectedPrice:      price,
-	}, nil
-}
-
-func newTradeWallet() *mockedWallet {
-	return &mockedWallet{
-		mnemonic: []string{
-			"useful", "crime", "awful", "net", "paper", "beef", "cousin", "kid",
-			"theory", "ski", "sponsor", "april", "stable", "device", "sadness", "radio",
-			"outdoor", "cook", "spare", "critic", "situate", "girl", "trend", "noise",
-		},
-		password:          "Sup3rS3cr3tP4ssw0rd!",
-		encryptedMnemonic: "HI4irZdJa+4t/JEeFbZyehyuFb0pUmbaK+wpWUNZOBW72r8XgwTe8lpVciD7jCgDDFiy5oR/SuS+WAerfH3jAr4VU7lidptY1Ru4IbMS2o0nX3wtycdOEQJB4tD3Z8eGQC5ULZkPzk0cZKN5xF1+cwQMz/xe0x7C0St5Gkb0FjMKf/o0NGJO1DbrE71QV6ouECjxL9SpjIRb5aRvi5TsUgR7ZlOq7fHD0oVaDL/AMzZGlAtHIQJdXKb+SkzMD8JO2HFTnUns7PTGfMysOK6bZw==",
-	}
 }
 
 func mockWrongSwapComplete() *pb.SwapComplete {
@@ -667,6 +564,16 @@ var (
 		},
 		password:          "Sup3rS3cr3tP4ssw0rd!",
 		encryptedMnemonic: "46OIUILJEmvmdb/BbaTOEjMM743D5TnfqLBhl9c+E/PSG+7miMCpP3maRNttCP3RF/jdJnbzG6KkAbcKGXJROpF9tSGV5oizjp07lRG85fQH8OSJajn515sclXlKjX2aaB76b3Vt3a94pIzeZrQ2g5c8voupYnL0TDAjLd1Iltl5ApKLuPf5WfEJtvZ5Klb4rF+cLlvIjPtdqFHIwjotB8fR0LGr9yw1hfduDOWe+DPyNCkgbtKBKe0qWjBnnng88eMdlD8bsanuEkoiDlyHDnIvZ+JwgYOOUw==",
+	}
+
+	tradeWallet = &mockedWallet{
+		mnemonic: []string{
+			"useful", "crime", "awful", "net", "paper", "beef", "cousin", "kid",
+			"theory", "ski", "sponsor", "april", "stable", "device", "sadness", "radio",
+			"outdoor", "cook", "spare", "critic", "situate", "girl", "trend", "noise",
+		},
+		password:          "Sup3rS3cr3tP4ssw0rd!",
+		encryptedMnemonic: "HI4irZdJa+4t/JEeFbZyehyuFb0pUmbaK+wpWUNZOBW72r8XgwTe8lpVciD7jCgDDFiy5oR/SuS+WAerfH3jAr4VU7lidptY1Ru4IbMS2o0nX3wtycdOEQJB4tD3Z8eGQC5ULZkPzk0cZKN5xF1+cwQMz/xe0x7C0St5Gkb0FjMKf/o0NGJO1DbrE71QV6ouECjxL9SpjIRb5aRvi5TsUgR7ZlOq7fHD0oVaDL/AMzZGlAtHIQJdXKb+SkzMD8JO2HFTnUns7PTGfMysOK6bZw==",
 	}
 
 	feeUnspents = []domain.Unspent{
