@@ -20,6 +20,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		nil,
 		nil,
 		nil,
+		nil,
 		dbManager)
 
 	unspents := []domain.Unspent{

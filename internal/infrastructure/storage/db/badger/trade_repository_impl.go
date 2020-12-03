@@ -77,6 +77,25 @@ func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
 	return trade, nil
 }
 
+func (t tradeRepositoryImpl) GetTradeByTxID(
+	ctx context.Context,
+	txID string,
+) (*domain.Trade, error) {
+	query := badgerhold.Where("TxID").Eq(txID)
+
+	trades, err := t.findTrades(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(trades) <= 0 {
+		return nil, errors.New("trade not found")
+	}
+
+	trade := &trades[0]
+	return trade, nil
+}
+
 func (t tradeRepositoryImpl) UpdateTrade(
 	ctx context.Context,
 	ID *uuid.UUID,
