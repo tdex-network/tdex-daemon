@@ -29,6 +29,7 @@ type TradeService interface {
 		market Market,
 		tradeType int,
 		amount uint64,
+		asset string,
 	) (*PriceWithFee, error)
 	TradePropose(
 		ctx context.Context,
@@ -125,15 +126,14 @@ func (t *tradeService) GetMarketPrice(
 	market Market,
 	tradeType int,
 	amount uint64,
+	asset string,
 ) (*PriceWithFee, error) {
 	// check the asset strings
-	err := validateAssetString(market.BaseAsset)
-	if err != nil {
+	if err := validateAssetString(market.BaseAsset); err != nil {
 		return nil, domain.ErrInvalidBaseAsset
 	}
 
-	err = validateAssetString(market.QuoteAsset)
-	if err != nil {
+	if err := validateAssetString(market.QuoteAsset); err != nil {
 		return nil, domain.ErrInvalidQuoteAsset
 	}
 
@@ -141,6 +141,14 @@ func (t *tradeService) GetMarketPrice(
 	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
 		return nil, domain.ErrMarketNotExist
 	}
+
+	if err := validateAssetString(asset); err != nil {
+		return nil, errors.New("invalid asset")
+	}
+	if asset != market.BaseAsset && asset != market.QuoteAsset {
+		return nil, errors.New("asset must match one of those of the market")
+	}
+
 	//Checks if market exist
 	mkt, mktAccountIndex, err := t.marketRepository.GetMarketByAsset(
 		ctx,
@@ -162,9 +170,14 @@ func (t *tradeService) GetMarketPrice(
 		return nil, err
 	}
 
-	price, previewAmount, err := getPriceAndPreviewForMarket(unspents, mkt, tradeType, amount)
+	price, previewAmount, err := getPriceAndPreviewForMarket(unspents, mkt, tradeType, amount, asset)
 	if err != nil {
 		return nil, err
+	}
+
+	previewAsset := market.BaseAsset
+	if asset == market.BaseAsset {
+		previewAsset = market.QuoteAsset
 	}
 
 	return &PriceWithFee{
@@ -174,6 +187,7 @@ func (t *tradeService) GetMarketPrice(
 			BasisPoint: mkt.Fee,
 		},
 		Amount: previewAmount,
+		Asset:  previewAsset,
 	}, nil
 }
 
@@ -238,20 +252,6 @@ func (t *tradeService) TradePropose(
 	// Check we got at least one
 	if len(feeUnspents) == 0 || len(feeUtxos) == 0 {
 		err = errors.New("fee account is not funded")
-		return
-	}
-
-	amount := swapRequest.AmountR
-	if tradeType == TradeSell {
-		amount = swapRequest.AmountP
-	}
-
-	_, previewAmount, _err := getPriceAndPreviewForMarket(
-		marketUnspents,
-		mkt, tradeType, amount,
-	)
-	if _err != nil {
-		err = _err
 		return
 	}
 
@@ -326,13 +326,14 @@ func (t *tradeService) TradePropose(
 				return trade, nil
 			}
 
-			if !isValidTradePrice(swapRequest, tradeType, previewAmount) {
+			if !isValidTradePrice(swapRequest, tradeType, mkt) {
 				trade.Fail(
 					swapRequest.GetId(),
 					domain.ProposalRejectedStatus,
 					pkgswap.ErrCodeInvalidSwapRequest,
 					"bad pricing",
 				)
+				swapFail = trade.SwapFailMessage()
 				return trade, nil
 			}
 			tradeID = trade.ID
@@ -734,13 +735,14 @@ func getPriceAndPreviewForMarket(
 	market *domain.Market,
 	tradeType int,
 	amount uint64,
+	asset string,
 ) (
 	price Price,
 	previewAmount uint64,
 	err error,
 ) {
 	if market.IsStrategyPluggable() {
-		previewAmount = calcPreviewAmount(market, tradeType, amount)
+		previewAmount = calcPreviewAmount(market, tradeType, amount, asset)
 		price = Price{
 			BasePrice:  market.BaseAssetPrice(),
 			QuotePrice: market.QuoteAssetPrice(),
@@ -748,7 +750,7 @@ func getPriceAndPreviewForMarket(
 		return
 	}
 
-	return previewFromFormula(unspents, market, tradeType, amount)
+	return previewFromFormula(unspents, market, tradeType, amount, asset)
 }
 
 func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
@@ -766,20 +768,20 @@ func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
 // depending on the trade type and the base asset amount provided.
 // The market fees are either added or subtracted to the converted amount
 // basing on the trade type.
-func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint64 {
-	if tradeType == TradeBuy {
-		return calcProposeAmount(
-			amount,
-			market.Fee,
-			market.QuoteAssetPrice(),
-		)
+func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64, asset string) uint64 {
+	var price decimal.Decimal
+	if asset == market.BaseAsset {
+		price = market.QuoteAssetPrice()
+	} else {
+		price = market.BaseAssetPrice()
 	}
 
-	return calcExpectedAmount(
-		amount,
-		market.Fee,
-		market.QuoteAssetPrice(),
-	)
+	chargeFeesOnTheWayIn := asset == market.BaseAsset
+	if tradeType == TradeBuy {
+		return calcProposeAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+	}
+
+	return calcExpectedAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
 }
 
 // calcProposeAmount returns the quote asset amount due for a BUY trade, that,
@@ -808,12 +810,19 @@ func calcProposeAmount(
 	amount uint64,
 	feeAmount int64,
 	price decimal.Decimal,
+	chargeFeesOnTheWayIn bool,
 ) uint64 {
+
 	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
 	amountR := decimal.NewFromInt(int64(amount))
 
-	// amountP = amountR * price * (1 + feePercentage)
-	amountP := amountR.Mul(price).Mul(decimal.NewFromInt(1).Add(feePercentage))
+	percentage := decimal.NewFromInt(1).Add(feePercentage)
+	if !chargeFeesOnTheWayIn {
+		percentage = decimal.NewFromInt(1).Sub(feePercentage)
+	}
+
+	// amountP = amountR * price * (1 ± feePercentage)
+	amountP := amountR.Mul(price).Mul(percentage)
 	return amountP.BigInt().Uint64()
 }
 
@@ -821,12 +830,18 @@ func calcExpectedAmount(
 	amount uint64,
 	feeAmount int64,
 	price decimal.Decimal,
+	chargeFeesOnTheWayIn bool,
 ) uint64 {
 	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
 	amountP := decimal.NewFromInt(int64(amount))
 
-	// amountR = amountP + price * (1 - feePercentage)
-	amountR := amountP.Mul(price).Mul(decimal.NewFromInt(1).Sub(feePercentage))
+	percentage := decimal.NewFromInt(1).Sub(feePercentage)
+	if !chargeFeesOnTheWayIn {
+		percentage = decimal.NewFromInt(1).Add(feePercentage)
+	}
+
+	// amountR = amountP + price * (1 ∓ feePercentage)
+	amountR := amountP.Mul(price).Mul(percentage)
 	return amountR.BigInt().Uint64()
 }
 
@@ -835,6 +850,7 @@ func previewFromFormula(
 	market *domain.Market,
 	tradeType int,
 	amount uint64,
+	asset string,
 ) (price Price, previewAmount uint64, err error) {
 	balances := getBalanceByAsset(unspents)
 	baseBalanceAvailable := balances[market.BaseAsset]
@@ -842,44 +858,65 @@ func previewFromFormula(
 	formula := market.Strategy.Formula()
 
 	if tradeType == TradeBuy {
-		previewAmount, err = formula.InGivenOut(
-			&mm.FormulaOpts{
-				BalanceIn:           quoteBalanceAvailable,
-				BalanceOut:          baseBalanceAvailable,
-				Fee:                 uint64(market.Fee),
-				ChargeFeeOnTheWayIn: market.FeeAsset == market.BaseAsset,
-			},
-			amount,
-		)
+		if asset == market.BaseAsset {
+			previewAmount, err = formula.InGivenOut(
+				&mm.FormulaOpts{
+					BalanceIn:           quoteBalanceAvailable,
+					BalanceOut:          baseBalanceAvailable,
+					Fee:                 uint64(market.Fee),
+					ChargeFeeOnTheWayIn: true,
+				},
+				amount,
+			)
+		} else {
+			previewAmount, err = formula.OutGivenIn(
+				&mm.FormulaOpts{
+					BalanceIn:           quoteBalanceAvailable,
+					BalanceOut:          baseBalanceAvailable,
+					Fee:                 uint64(market.Fee),
+					ChargeFeeOnTheWayIn: true,
+				},
+				amount,
+			)
+		}
 	} else {
-		previewAmount, err = formula.OutGivenIn(
-			&mm.FormulaOpts{
-				BalanceIn:           baseBalanceAvailable,
-				BalanceOut:          quoteBalanceAvailable,
-				Fee:                 uint64(market.Fee),
-				ChargeFeeOnTheWayIn: market.FeeAsset == market.QuoteAsset,
-			},
-			amount,
-		)
+		if asset == market.BaseAsset {
+			previewAmount, err = formula.OutGivenIn(
+				&mm.FormulaOpts{
+					BalanceIn:           baseBalanceAvailable,
+					BalanceOut:          quoteBalanceAvailable,
+					Fee:                 uint64(market.Fee),
+					ChargeFeeOnTheWayIn: true,
+				},
+				amount,
+			)
+		} else {
+			previewAmount, err = formula.InGivenOut(
+				&mm.FormulaOpts{
+					BalanceIn:           baseBalanceAvailable,
+					BalanceOut:          quoteBalanceAvailable,
+					Fee:                 uint64(market.Fee),
+					ChargeFeeOnTheWayIn: true,
+				},
+				amount,
+			)
+		}
 	}
 	if err != nil {
 		return
 	}
 
-	basePrice, err := formula.SpotPrice(&mm.FormulaOpts{
+	// we can ignore errors because if the above function calls do not return
+	// any, we can assume the following do the same because they all perform the
+	// same checks.
+	basePrice, _ := formula.SpotPrice(&mm.FormulaOpts{
 		BalanceIn:  quoteBalanceAvailable,
 		BalanceOut: baseBalanceAvailable,
 	})
-	if err != nil {
-		return
-	}
-	quotePrice, err := formula.SpotPrice(&mm.FormulaOpts{
+	quotePrice, _ := formula.SpotPrice(&mm.FormulaOpts{
 		BalanceIn:  baseBalanceAvailable,
 		BalanceOut: quoteBalanceAvailable,
 	})
-	if err != nil {
-		return
-	}
 
 	price = Price{
 		BasePrice:  basePrice,
@@ -889,7 +926,24 @@ func previewFromFormula(
 	return price, previewAmount, nil
 }
 
-func isValidTradePrice(swapRequest *pb.SwapRequest, tradeType int, previewAmount uint64) bool {
+func isValidTradePrice(swapRequest *pb.SwapRequest, tradeType int, market *domain.Market) bool {
+	amount := swapRequest.AmountR
+	if tradeType == TradeSell {
+		amount = swapRequest.AmountP
+	}
+
+	_, previewAmount, _ := getPriceAndPreviewForMarket(
+		marketUnspents,
+		market,
+		tradeType,
+		amount,
+		market.BaseAsset,
+	)
+
+	return isPriceInRange(swapRequest, tradeType, previewAmount)
+}
+
+func isPriceInRange(swapRequest *pb.SwapRequest, tradeType int, previewAmount uint64) bool {
 	amountToCheck := decimal.NewFromInt(int64(swapRequest.GetAmountP()))
 	if tradeType == TradeSell {
 		amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))

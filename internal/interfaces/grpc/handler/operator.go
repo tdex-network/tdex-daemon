@@ -140,16 +140,17 @@ func (o operatorHandler) depositMarket(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			addr, err := o.operatorSvc.DepositMarket(
+			addresses, err := o.operatorSvc.DepositMarket(
 				ctx,
 				req.GetMarket().GetBaseAsset(),
 				req.GetMarket().GetQuoteAsset(),
+				int(req.GetNumOfAddresses()),
 			)
 			if err != nil {
 				return nil, err
 			}
 
-			return &pb.DepositMarketReply{Address: addr}, nil
+			return &pb.DepositMarketReply{Addresses: addresses}, nil
 		},
 	)
 	if err != nil {
@@ -167,14 +168,24 @@ func (o operatorHandler) depositFeeAccount(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			addr, blindingKey, err := o.operatorSvc.DepositFeeAccount(ctx)
+			deposits, err := o.operatorSvc.DepositFeeAccount(
+				ctx,
+				int(req.GetNumOfAddresses()),
+			)
 			if err != nil {
 				return nil, err
 			}
 
+			addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(deposits))
+			for _, d := range deposits {
+				addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+					Address:  d.Address,
+					Blinding: d.BlindingKey,
+				})
+			}
+
 			return &pb.DepositFeeAccountReply{
-				Address:  addr,
-				Blinding: blindingKey,
+				AddressWithBlindingKey: addressesAndKeys,
 			}, nil
 		},
 	)

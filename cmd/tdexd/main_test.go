@@ -129,7 +129,9 @@ func initFee() error {
 	if err != nil {
 		return err
 	}
-	if _, err := explorerSvc.Faucet(depositFeeReply.GetAddress()); err != nil {
+	if _, err := explorerSvc.Faucet(
+		depositFeeReply.GetAddressWithBlindingKey()[0].GetAddress(),
+	); err != nil {
 		return err
 	}
 
@@ -152,11 +154,13 @@ func initMarketAccounts() error {
 		return err
 	}
 
+	addr := depositMarketReply.GetAddresses()[0]
+
 	// and fund it with 1 LBTC and 6500 USDT
-	if _, err := explorerSvc.Faucet(depositMarketReply.GetAddress()); err != nil {
+	if _, err := explorerSvc.Faucet(addr); err != nil {
 		return err
 	}
-	_, usdt, err := explorerSvc.Mint(depositMarketReply.GetAddress(), 6500)
+	_, usdt, err := explorerSvc.Mint(addr, 6500)
 	if err != nil {
 		return err
 	}

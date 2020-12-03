@@ -2,5 +2,11 @@ package application
 
 import "errors"
 
-// ErrCrawlerDoesNotObserveAddresses occurs when the crawler does not observe any address
-var	ErrCrawlerDoesNotObserveFeeAccount = errors.New("fee account needs to be funded to open a market")
+var (
+	// ErrFeeAccountNotFunded ...
+	ErrFeeAccountNotFunded = errors.New(
+		"fee account must be funded to perform the requested operation",
+	)
+	// ErrUnknownStrategy ...
+	ErrUnknownStrategy = errors.New("strategy not supported")
+)
