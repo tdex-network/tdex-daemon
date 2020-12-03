@@ -143,7 +143,7 @@ func (b *blockchainListener) handleBlockChainEvents() {
 				},
 			); err != nil {
 				log.Warnf(
-					"update trade completion status failed %s\n",
+					"trying to update trade completion status %s\n",
 					err.Error(),
 				)
 				break
