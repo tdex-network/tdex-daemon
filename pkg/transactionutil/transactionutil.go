@@ -46,7 +46,7 @@ func NewFeeOutput(feeAmount uint64) []*transaction.TxOutput {
 func GetTxIdFromPset(psetBase64 string) (string, error) {
 	p, err := pset.NewPsetFromBase64(psetBase64)
 	if err != nil {
-		return "false", err
+		return "", err
 	}
 
 	return p.UnsignedTx.TxHash().String(), nil
