@@ -8,6 +8,10 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
+const (
+	eventQueueSize = 100
+)
+
 // Event are emitted through a channel during observation.
 type Event interface {
 	Type() EventType
@@ -63,7 +67,7 @@ func NewService(opts Opts) Service {
 		explorerSvc:  opts.ExplorerSvc,
 		errChan:      make(chan error),
 		quitChan:     make(chan int),
-		eventChan:    make(chan Event),
+		eventChan:    make(chan Event, eventQueueSize),
 		observables:  opts.Observables,
 		errorHandler: opts.ErrorHandler,
 		mutex:        &sync.RWMutex{},

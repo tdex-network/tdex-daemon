@@ -87,46 +87,48 @@ func (b *blockchainListener) StopObserveBlockchain() {
 func (b *blockchainListener) handleBlockChainEvents() {
 
 	for event := range b.crawlerSvc.GetEventChannel() {
-		e := event.(crawler.AddressEvent)
-		unspents := unspentsFromEvent(e)
-		ctx := context.Background()
+		go func() {
+			e := event.(crawler.AddressEvent)
+			unspents := unspentsFromEvent(e)
+			ctx := context.Background()
 
-		if _, err := b.dbManager.RunUnspentsTransaction(
-			ctx,
-			!readOnlyTx,
-			func(ctx context.Context) (interface{}, error) {
-				return nil, b.updateUnspentsForAddress(ctx, unspents, e.Address)
-			},
-		); err != nil {
-			log.Warnf("trying to update unspents for address %s: %s\n", e.Address, err.Error())
-			break
-		}
-
-		switch event.Type() {
-		case crawler.FeeAccountDeposit:
-			if _, err := b.dbManager.RunTransaction(
-				ctx,
-				readOnlyTx,
-				func(ctx context.Context) (interface{}, error) {
-					return nil, b.checkFeeAccountBalance(ctx, event)
-				},
-			); err != nil {
-				log.Warnf("trying to check balance for fee account: %s\n", err.Error())
-				break
-			}
-
-		case crawler.MarketAccountDeposit:
-			if _, err := b.dbManager.RunTransaction(
+			if _, err := b.dbManager.RunUnspentsTransaction(
 				ctx,
 				!readOnlyTx,
 				func(ctx context.Context) (interface{}, error) {
-					return nil, b.checkMarketAccountFundings(ctx, e.AccountIndex)
+					return nil, b.updateUnspentsForAddress(ctx, unspents, e.Address)
 				},
 			); err != nil {
-				log.Warnf("trying to check fundings for market account %d: %s\n", e.AccountIndex, err.Error())
-				break
+				log.Warnf("trying to update unspents for address %s: %s\n", e.Address, err.Error())
+				return
 			}
-		}
+
+			switch event.Type() {
+			case crawler.FeeAccountDeposit:
+				if _, err := b.dbManager.RunTransaction(
+					ctx,
+					readOnlyTx,
+					func(ctx context.Context) (interface{}, error) {
+						return nil, b.checkFeeAccountBalance(ctx, event)
+					},
+				); err != nil {
+					log.Warnf("trying to check balance for fee account: %s\n", err.Error())
+					break
+				}
+
+			case crawler.MarketAccountDeposit:
+				if _, err := b.dbManager.RunTransaction(
+					ctx,
+					!readOnlyTx,
+					func(ctx context.Context) (interface{}, error) {
+						return nil, b.checkMarketAccountFundings(ctx, e.AccountIndex)
+					},
+				); err != nil {
+					log.Warnf("trying to check fundings for market account %d: %s\n", e.AccountIndex, err.Error())
+					break
+				}
+			}
+		}()
 	}
 }
 
