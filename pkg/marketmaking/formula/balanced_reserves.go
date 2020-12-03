@@ -43,8 +43,17 @@ func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice dec
 
 // OutGivenIn returns the amountOut of asset that will be exchanged for the given amountIn
 func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn uint64) (amountOut uint64, err error) {
+	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
+		err = ErrBalanceTooLow
+		return
+	}
+
 	if amountIn == 0 {
 		err = ErrAmountTooLow
+		return
+	}
+	if amountIn >= opts.BalanceIn {
+		err = ErrAmountTooBig
 		return
 	}
 
@@ -64,17 +73,17 @@ func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn uint
 
 // InGivenOut returns the amountIn of assets that will be needed for having the desired amountOut in return
 func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut uint64) (amountIn uint64, err error) {
+	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
+		err = ErrBalanceTooLow
+		return
+	}
+
 	if amountOut == 0 {
 		err = ErrAmountTooLow
 		return
 	}
 	if amountOut >= opts.BalanceOut {
 		err = ErrAmountTooBig
-		return
-	}
-
-	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
-		err = ErrBalanceTooLow
 		return
 	}
 
