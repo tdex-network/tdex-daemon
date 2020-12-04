@@ -57,16 +57,21 @@ func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn uint
 		return
 	}
 
-	invariant := mathutil.Mul(opts.BalanceIn, opts.BalanceOut)
-	nextInBalance := mathutil.Add(opts.BalanceIn, amountIn)
-	nextOutBalance := mathutil.DivDecimal(invariant, nextInBalance).BigInt().Uint64()
-	amountOutWithoutFees := mathutil.Sub(opts.BalanceOut, nextOutBalance).BigInt().Uint64()
-
-	if opts.ChargeFeeOnTheWayIn {
-		amountOut, _ = mathutil.LessFee(amountOutWithoutFees, opts.Fee)
-	} else {
-		amountOut, _ = mathutil.PlusFee(amountOutWithoutFees, opts.Fee)
+	amountInWithFees, _ := mathutil.LessFee(amountIn, opts.Fee)
+	if !opts.ChargeFeeOnTheWayIn {
+		amountInWithFees, _ = mathutil.PlusFee(amountIn, opts.Fee)
 	}
+
+	balanceIn := decimal.NewFromInt(int64(opts.BalanceIn))
+	balanceOut := decimal.NewFromInt(int64(opts.BalanceOut))
+	amountOutDecimal := balanceOut.Mul(
+		decimal.NewFromInt(1).Sub(
+			balanceIn.Div(
+				balanceIn.Add(decimal.NewFromInt(int64(amountInWithFees))),
+			),
+		),
+	)
+	amountOut = amountOutDecimal.BigInt().Uint64()
 
 	return
 }
@@ -87,16 +92,19 @@ func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut uin
 		return
 	}
 
-	invariant := mathutil.Mul(opts.BalanceIn, opts.BalanceOut)
-	nextOutBalance := mathutil.Sub(opts.BalanceOut, amountOut)
-	nextInBalance := mathutil.DivDecimal(invariant, nextOutBalance)
-	amountInWithoutFees := mathutil.Sub(nextInBalance.BigInt().Uint64(), opts.BalanceIn).BigInt().Uint64()
-
-	if opts.ChargeFeeOnTheWayIn {
-		amountIn, _ = mathutil.PlusFee(amountInWithoutFees, opts.Fee)
-	} else {
-		amountIn, _ = mathutil.LessFee(amountInWithoutFees, opts.Fee)
+	amountOutWithFees, _ := mathutil.PlusFee(amountOut, opts.Fee)
+	if !opts.ChargeFeeOnTheWayIn {
+		amountOutWithFees, _ = mathutil.LessFee(amountOut, opts.Fee)
 	}
+	balanceIn := decimal.NewFromInt(int64(opts.BalanceIn))
+	balanceOut := decimal.NewFromInt(int64(opts.BalanceOut))
+
+	amountInDecimal := balanceIn.Mul(
+		balanceOut.Div(
+			balanceOut.Sub(decimal.NewFromInt(int64(amountOutWithFees))),
+		).Sub(decimal.NewFromInt(1)),
+	)
+	amountIn = amountInDecimal.BigInt().Uint64()
 
 	return
 }

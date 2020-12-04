@@ -326,7 +326,7 @@ func (t *tradeService) TradePropose(
 				return trade, nil
 			}
 
-			if !isValidTradePrice(swapRequest, tradeType, mkt) {
+			if !isValidTradePrice(swapRequest, tradeType, mkt, marketUnspents) {
 				trade.Fail(
 					swapRequest.GetId(),
 					domain.ProposalRejectedStatus,
@@ -813,7 +813,7 @@ func calcProposeAmount(
 	chargeFeesOnTheWayIn bool,
 ) uint64 {
 
-	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
+	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(10000))
 	amountR := decimal.NewFromInt(int64(amount))
 
 	percentage := decimal.NewFromInt(1).Add(feePercentage)
@@ -832,7 +832,7 @@ func calcExpectedAmount(
 	price decimal.Decimal,
 	chargeFeesOnTheWayIn bool,
 ) uint64 {
-	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
+	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(10000))
 	amountP := decimal.NewFromInt(int64(amount))
 
 	percentage := decimal.NewFromInt(1).Sub(feePercentage)
@@ -926,14 +926,19 @@ func previewFromFormula(
 	return price, previewAmount, nil
 }
 
-func isValidTradePrice(swapRequest *pb.SwapRequest, tradeType int, market *domain.Market) bool {
+func isValidTradePrice(
+	swapRequest *pb.SwapRequest,
+	tradeType int,
+	market *domain.Market,
+	unspents []domain.Unspent,
+) bool {
 	amount := swapRequest.AmountR
 	if tradeType == TradeSell {
 		amount = swapRequest.AmountP
 	}
 
 	_, previewAmount, _ := getPriceAndPreviewForMarket(
-		marketUnspents,
+		unspents,
 		market,
 		tradeType,
 		amount,
@@ -948,10 +953,11 @@ func isPriceInRange(swapRequest *pb.SwapRequest, tradeType int, previewAmount ui
 	if tradeType == TradeSell {
 		amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
 	}
-	slippage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
+
+	slippage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey) / 100)
 	expectedAmount := decimal.NewFromInt(int64(previewAmount))
-	lowerBound := expectedAmount.Sub(expectedAmount.Mul(slippage))
-	upperBound := expectedAmount.Add(expectedAmount.Mul(slippage))
+	lowerBound := expectedAmount.Mul(decimal.NewFromInt(1).Sub(slippage))
+	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
 
 	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
 }
