@@ -40,11 +40,11 @@ func main() {
 	log.SetLevel(log.Level(config.GetInt(config.LogLevelKey)))
 
 	//http://localhost:{config.ProfilerPort}}/debug/pprof/
-	if config.GetBool(config.EnableProfiler) {
+	if config.GetBool(config.EnableProfilerKey) {
 		runtime.SetBlockProfileRate(1)
 		go func() {
 			http.ListenAndServe(
-				fmt.Sprintf(":%v", config.GetString(config.ProfilerPort)),
+				":8024",
 				nil,
 			)
 		}()
