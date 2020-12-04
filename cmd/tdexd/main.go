@@ -115,13 +115,17 @@ func main() {
 
 	log.Info("starting daemon")
 
-	statsDir := filepath.Join(config.GetString(config.DataDirPathKey), "stats")
-	ctx, cancelStats := context.WithCancel(context.Background())
-	stats.EnableMemoryStatistics(
-		ctx,
-		config.GetDuration(config.StatsIntervalKey)*time.Second,
-		statsDir,
-	)
+	var cancelStats context.CancelFunc
+	if log.GetLevel() >= log.DebugLevel {
+		statsDir := filepath.Join(config.GetString(config.DataDirPathKey), "stats")
+		var ctx context.Context
+		ctx, cancelStats = context.WithCancel(context.Background())
+		stats.EnableMemoryStatistics(
+			ctx,
+			config.GetDuration(config.StatsIntervalKey)*time.Second,
+			statsDir,
+		)
+	}
 
 	defer stop(
 		dbManager,
@@ -156,9 +160,11 @@ func stop(
 	operatorServer *grpc.Server,
 	cancelStats context.CancelFunc,
 ) {
-	cancelStats()
-	time.Sleep(1 * time.Second)
-	log.Debug("cancel printing statistics")
+	if log.GetLevel() >= log.DebugLevel {
+		cancelStats()
+		time.Sleep(1 * time.Second)
+		log.Debug("cancel printing statistics")
+	}
 
 	operatorServer.Stop()
 	log.Debug("disabled operator interface")
