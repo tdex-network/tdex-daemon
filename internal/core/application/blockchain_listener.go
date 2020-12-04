@@ -24,6 +24,7 @@ type blockchainListener struct {
 	unspentRepository domain.UnspentRepository
 	marketRepository  domain.MarketRepository
 	vaultRepository   domain.VaultRepository
+	tradeRepository   domain.TradeRepository
 	crawlerSvc        crawler.Service
 	explorerSvc       explorer.Service
 	dbManager         ports.DbManager
@@ -40,6 +41,7 @@ func NewBlockchainListener(
 	unspentRepository domain.UnspentRepository,
 	marketRepository domain.MarketRepository,
 	vaultRepository domain.VaultRepository,
+	tradeRepository domain.TradeRepository,
 	crawlerSvc crawler.Service,
 	explorerSvc explorer.Service,
 	dbManager ports.DbManager,
@@ -48,6 +50,7 @@ func NewBlockchainListener(
 		unspentRepository,
 		marketRepository,
 		vaultRepository,
+		tradeRepository,
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
@@ -58,6 +61,7 @@ func newBlockchainListener(
 	unspentRepository domain.UnspentRepository,
 	marketRepository domain.MarketRepository,
 	vaultRepository domain.VaultRepository,
+	tradeRepository domain.TradeRepository,
 	crawlerSvc crawler.Service,
 	explorerSvc explorer.Service,
 	dbManager ports.DbManager,
@@ -66,6 +70,7 @@ func newBlockchainListener(
 		unspentRepository: unspentRepository,
 		marketRepository:  marketRepository,
 		vaultRepository:   vaultRepository,
+		tradeRepository:   tradeRepository,
 		crawlerSvc:        crawlerSvc,
 		explorerSvc:       explorerSvc,
 		dbManager:         dbManager,
@@ -89,51 +94,122 @@ func (b *blockchainListener) StopObserveBlockchain() {
 }
 
 func (b *blockchainListener) handleBlockChainEvents() {
-
-	for crawlerEvent := range b.crawlerSvc.GetEventChannel() {
-		go func(event crawler.Event) {
-			e := event.(crawler.AddressEvent)
-			unspents := unspentsFromEvent(e)
-			ctx := context.Background()
-
-			if _, err := b.dbManager.RunUnspentsTransaction(
-				ctx,
-				!readOnlyTx,
-				func(ctx context.Context) (interface{}, error) {
-					return nil, b.updateUnspentsForAddress(ctx, unspents, e.Address)
-				},
-			); err != nil {
-				log.Warnf("trying to update unspents for address %s: %s\n", e.Address, err.Error())
-				return
-			}
-
-			switch event.Type() {
-			case crawler.FeeAccountDeposit:
-				if _, err := b.dbManager.RunTransaction(
-					ctx,
-					readOnlyTx,
-					func(ctx context.Context) (interface{}, error) {
-						return nil, b.checkFeeAccountBalance(ctx)
-					},
-				); err != nil {
-					log.Warnf("trying to check balance for fee account: %s\n", err.Error())
-					break
-				}
-
-			case crawler.MarketAccountDeposit:
-				if _, err := b.dbManager.RunTransaction(
-					ctx,
-					!readOnlyTx,
-					func(ctx context.Context) (interface{}, error) {
-						return nil, b.checkMarketAccountFundings(ctx, e.AccountIndex)
-					},
-				); err != nil {
-					log.Warnf("trying to check fundings for market account %d: %s\n", e.AccountIndex, err.Error())
-					break
-				}
-			}
-		}(crawlerEvent)
+	for event := range b.crawlerSvc.GetEventChannel() {
+		go b.handleEvent(event)
 	}
+}
+
+func (b *blockchainListener) handleEvent(event crawler.Event) {
+	switch event.Type() {
+	case crawler.FeeAccountDeposit:
+		ctx, err := b.handleUnspents(event)
+		if err != nil {
+			break
+		}
+		if _, err := b.dbManager.RunTransaction(
+			ctx,
+			readOnlyTx,
+			func(ctx context.Context) (interface{}, error) {
+				return nil, b.checkFeeAccountBalance(ctx)
+			},
+		); err != nil {
+			log.Warnf(
+				"trying to check balance for fee account: %s\n",
+				err.Error(),
+			)
+			break
+		}
+
+	case crawler.MarketAccountDeposit:
+		ctx, err := b.handleUnspents(event)
+		if err != nil {
+			break
+		}
+		e := event.(crawler.AddressEvent)
+		if _, err := b.dbManager.RunTransaction(
+			ctx,
+			!readOnlyTx,
+			func(ctx context.Context) (interface{}, error) {
+				return nil, b.checkMarketAccountFundings(ctx, e.AccountIndex)
+			},
+		); err != nil {
+			log.Warnf(
+				"trying to check fundings for market account %d: %s\n",
+				e.AccountIndex,
+				err.Error(),
+			)
+			break
+		}
+	case crawler.TransactionConfirmed:
+		e := event.(crawler.TransactionEvent)
+		ctx := context.Background()
+		if _, err := b.dbManager.RunTransaction(
+			ctx,
+			!readOnlyTx,
+			func(ctx context.Context) (interface{}, error) {
+				return nil, b.updateTrade(ctx, e)
+			},
+		); err != nil {
+			log.Warnf(
+				"trying to update trade completion status %s\n",
+				err.Error(),
+			)
+			break
+		}
+	}
+}
+
+func (b *blockchainListener) updateTrade(
+	ctx context.Context,
+	event crawler.TransactionEvent,
+) error {
+	trade, err := b.tradeRepository.GetTradeByTxID(ctx, event.TxID)
+	if err != nil {
+		return err
+	}
+
+	if trade.Status.Code == domain.CompletedStatus.Code {
+		return nil
+	}
+
+	err = b.tradeRepository.UpdateTrade(
+		ctx,
+		&trade.ID,
+		func(t *domain.Trade) (*domain.Trade, error) {
+			if err := t.Settle(uint64(event.BlockTime)); err != nil {
+				return nil, err
+			}
+
+			return t, nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("trade %s completed", trade.ID)
+
+	return nil
+}
+
+func (b *blockchainListener) handleUnspents(
+	event crawler.Event,
+) (context.Context, error) {
+	e := event.(crawler.AddressEvent)
+	unspents := unspentsFromEvent(e)
+	ctx := context.Background()
+
+	if _, err := b.dbManager.RunUnspentsTransaction(
+		ctx,
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			return nil, b.updateUnspentsForAddress(ctx, unspents, e.Address)
+		},
+	); err != nil {
+		log.Warnf("trying to update unspents for address %s: %s\n", e.Address, err.Error())
+		return nil, err
+	}
+	return ctx, nil
 }
 
 func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context) error {

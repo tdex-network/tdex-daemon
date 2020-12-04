@@ -20,4 +20,5 @@ type TradeRepository interface {
 		ctx context.Context,
 		marketQuoteAsset string,
 	) ([]*Trade, error)
+	GetTradeByTxID(ctx context.Context, txID string) (*Trade, error)
 }

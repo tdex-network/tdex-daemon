@@ -374,6 +374,10 @@ func (t *tradeService) TradePropose(
 			trade.MarketFee = mkt.Fee
 			trade.MarketFeeAsset = mkt.FeeAsset
 
+			t.crawlerSvc.AddObservable(&crawler.TransactionObservable{
+				TxID: trade.TxID,
+			})
+
 			return trade, nil
 		}); err != nil {
 		return nil, nil, 0, err
@@ -425,7 +429,7 @@ func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapC
 		&tradeID,
 		func(trade *domain.Trade) (*domain.Trade, error) {
 			psetBase64 := swapComplete.GetTransaction()
-			res, err := trade.Complete(psetBase64, txID)
+			res, err := trade.Complete(psetBase64)
 			if err != nil {
 				return nil, err
 			}

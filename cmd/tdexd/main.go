@@ -58,6 +58,7 @@ func main() {
 		unspentRepository,
 		marketRepository,
 		vaultRepository,
+		tradeRepository,
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
