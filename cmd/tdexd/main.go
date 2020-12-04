@@ -39,7 +39,7 @@ import (
 func main() {
 	log.SetLevel(log.Level(config.GetInt(config.LogLevelKey)))
 
-	//http://localhost:{config.ProfilerPort}}/debug/pprof/
+	//http://localhost:8024/debug/pprof/
 	if config.GetBool(config.EnableProfilerKey) {
 		runtime.SetBlockProfileRate(1)
 		go func() {
