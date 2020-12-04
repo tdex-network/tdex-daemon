@@ -12,6 +12,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/magiconair/properties v1.8.1
+	github.com/prometheus/client_golang v0.9.3
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/shopspring/decimal v1.2.0
 	github.com/sirupsen/logrus v1.7.0
