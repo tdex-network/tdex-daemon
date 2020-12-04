@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -926,12 +927,20 @@ func previewFromFormula(
 	return price, previewAmount, nil
 }
 
+// isValidPrice checks that the amounts of the trade are valid by
+// making a preview of each counter amounts of the swap given the
+// current price of the market.
+// Since the price is variable in time, the predicted amounts are not compared
+// against those of the swap, but rather they are used to create a range in
+// which the swap amounts must be included to be considered valid.
 func isValidTradePrice(
 	swapRequest *pb.SwapRequest,
 	tradeType int,
 	market *domain.Market,
 	unspents []domain.Unspent,
 ) bool {
+	// TODO: parallelize the 2 ways of calculating and valifdating the preview
+	// amount to speed up the process.
 	amount := swapRequest.AmountR
 	if tradeType == TradeSell {
 		amount = swapRequest.AmountP
@@ -945,19 +954,53 @@ func isValidTradePrice(
 		market.BaseAsset,
 	)
 
-	return isPriceInRange(swapRequest, tradeType, previewAmount)
+	if isPriceInRange(swapRequest, tradeType, previewAmount, true) {
+		return true
+	}
+
+	amount = swapRequest.AmountP
+	if tradeType == TradeSell {
+		amount = swapRequest.AmountR
+	}
+
+	_, previewAmount, _ = getPriceAndPreviewForMarket(
+		unspents,
+		market,
+		tradeType,
+		amount,
+		market.QuoteAsset,
+	)
+
+	return isPriceInRange(swapRequest, tradeType, previewAmount, false)
 }
 
-func isPriceInRange(swapRequest *pb.SwapRequest, tradeType int, previewAmount uint64) bool {
+func isPriceInRange(
+	swapRequest *pb.SwapRequest,
+	tradeType int,
+	previewAmount uint64,
+	isPreviewForQuoteAsset bool,
+) bool {
 	amountToCheck := decimal.NewFromInt(int64(swapRequest.GetAmountP()))
 	if tradeType == TradeSell {
-		amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
+		if isPreviewForQuoteAsset {
+			amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
+		}
+	} else {
+		if !isPreviewForQuoteAsset {
+			amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
+		}
 	}
+
+	fmt.Println("amountToCheck", amountToCheck.String())
+	fmt.Println("previewAmount", int64(previewAmount))
 
 	slippage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey) / 100)
 	expectedAmount := decimal.NewFromInt(int64(previewAmount))
 	lowerBound := expectedAmount.Mul(decimal.NewFromInt(1).Sub(slippage))
 	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
+
+	fmt.Println("lowerBound", lowerBound.String())
+	fmt.Println("upperBound", upperBound.String())
 
 	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
 }
