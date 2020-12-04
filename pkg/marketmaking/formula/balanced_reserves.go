@@ -92,18 +92,21 @@ func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut uin
 		return
 	}
 
-	amountOutWithFees, _ := mathutil.PlusFee(amountOut, opts.Fee)
+	one := decimal.NewFromInt(1)
+	feeDecimal := decimal.NewFromInt(int64(opts.Fee)).Div(decimal.NewFromInt(mathutil.TenThousands))
+	amountPercentage := one.Add(feeDecimal)
 	if !opts.ChargeFeeOnTheWayIn {
-		amountOutWithFees, _ = mathutil.LessFee(amountOut, opts.Fee)
+		amountPercentage = one.Sub(feeDecimal)
 	}
 	balanceIn := decimal.NewFromInt(int64(opts.BalanceIn))
 	balanceOut := decimal.NewFromInt(int64(opts.BalanceOut))
 
 	amountInDecimal := balanceIn.Mul(
 		balanceOut.Div(
-			balanceOut.Sub(decimal.NewFromInt(int64(amountOutWithFees))),
-		).Sub(decimal.NewFromInt(1)),
-	)
+			balanceOut.Sub(decimal.NewFromInt(int64(amountOut))),
+		).Sub(one),
+	).Mul(one.Div(amountPercentage))
+
 	amountIn = amountInDecimal.BigInt().Uint64()
 
 	return

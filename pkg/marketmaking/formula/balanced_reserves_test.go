@@ -143,7 +143,7 @@ func TestBalancedReserves_InGivenOut(t *testing.T) {
 				},
 				amountOut: 10000,
 			},
-			65169000,
+			64844388,
 		},
 		{
 			"InGivenOut with fee taken on the output",
@@ -157,7 +157,7 @@ func TestBalancedReserves_InGivenOut(t *testing.T) {
 				},
 				amountOut: 10000,
 			},
-			64844000,
+			65169423,
 		},
 	}
 
