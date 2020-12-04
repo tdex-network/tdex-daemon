@@ -8,6 +8,11 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
+const (
+	eventQueueMaxSize = 100
+	errorQueueMaxSize = 10
+)
+
 // Event are emitted through a channel during observation.
 type Event interface {
 	Type() EventType
@@ -61,9 +66,9 @@ func NewService(opts Opts) Service {
 	return &utxoCrawler{
 		interval:     interval,
 		explorerSvc:  opts.ExplorerSvc,
-		errChan:      make(chan error),
+		errChan:      make(chan error, errorQueueMaxSize),
 		quitChan:     make(chan int),
-		eventChan:    make(chan Event),
+		eventChan:    make(chan Event, eventQueueMaxSize),
 		observables:  opts.Observables,
 		errorHandler: opts.ErrorHandler,
 		mutex:        &sync.RWMutex{},
@@ -81,7 +86,7 @@ func (u *utxoCrawler) Start() {
 			log.Debug("observe interval")
 			u.observeAll(&wg)
 		case err := <-u.errChan:
-			u.errorHandler(err)
+			go u.errorHandler(err)
 		case <-u.quitChan:
 			log.Debug("stop observe")
 			u.interval.Stop()
