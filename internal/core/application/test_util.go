@@ -105,6 +105,7 @@ func newMockServices(
 		unspentRepo,
 		marketRepo,
 		vaultRepo,
+		tradeRepo,
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
@@ -211,6 +212,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	marketRepo := inmemory.NewMarketRepositoryImpl(dbManager)
 	vaultRepo := newMockedVaultRepositoryImpl(*w)
 	unspentRepo := inmemory.NewUnspentRepositoryImpl(dbManager)
+	tradeRepository := inmemory.NewTradeRepositoryImpl(dbManager)
 	explorerSvc := explorer.NewService(RegtestExplorerAPI)
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
@@ -222,6 +224,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		unspentRepo,
 		marketRepo,
 		vaultRepo,
+		tradeRepository,
 		crawlerSvc,
 		explorerSvc,
 		dbManager,

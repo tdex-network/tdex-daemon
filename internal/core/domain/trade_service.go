@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"time"
 
 	"github.com/tdex-network/tdex-daemon/config"
@@ -72,6 +73,12 @@ func (t *Trade) Accept(
 	t.SwapAccept.Message = swapAcceptMsg
 	t.Timestamp.Accept = uint64(time.Now().Unix())
 	t.PsetBase64 = psetBase64
+	txID, err := transactionutil.GetTxIdFromPset(psetBase64)
+	if err != nil {
+		return false, nil
+	}
+	t.TxID = txID
+
 	return true, nil
 }
 
@@ -85,7 +92,7 @@ type CompleteResult struct {
 // Complete sets the status of the trade to Complete by adding the txID
 // of the tx in the blockchain. The trade must be in Accepted or
 // FailedToComplete status for being completed, otherwise an error is thrown
-func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error) {
+func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 	if t.IsCompleted() {
 		return &CompleteResult{OK: true, TxHex: t.TxHex, TxID: t.TxID}, nil
 	}
@@ -137,13 +144,16 @@ func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error
 		return &CompleteResult{OK: false}, nil
 	}
 
-	t.Status = CompletedStatus
 	t.SwapComplete.ID = swapCompleteID
 	t.SwapComplete.Message = swapCompleteMsg
 	t.PsetBase64 = psetBase64
-	t.TxID = txID
 	t.TxHex = txHex
 	return &CompleteResult{OK: true, TxHex: txHex, TxID: txHash}, nil
+}
+
+func (t *Trade) Settle(settlementTime uint64) error {
+	t.Status = CompletedStatus
+	return t.AddBlocktime(settlementTime)
 }
 
 // Fail sets the status of the trade to the provided status and creates the

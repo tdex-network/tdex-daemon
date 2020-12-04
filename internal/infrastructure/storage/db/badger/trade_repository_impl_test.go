@@ -94,3 +94,15 @@ func TestUpdateTrade(t *testing.T) {
 
 	assert.Equal(t, float32(100), trade.Price)
 }
+
+func TestGetTradeByTxID(t *testing.T) {
+	before()
+	defer after()
+
+	trade, err := tradeRepository.GetTradeByTxID(ctx, "111")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotNil(t, trade)
+}

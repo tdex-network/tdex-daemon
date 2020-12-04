@@ -406,7 +406,7 @@ func (o operatorHandler) listSwaps(
 					},
 					RequestTimeUnix:  swapInfo.RequestTimeUnix,
 					AcceptTimeUnix:   swapInfo.AcceptTimeUnix,
-					CompleteTimeUnix: swapInfo.RequestTimeUnix,
+					CompleteTimeUnix: swapInfo.CompleteTimeUnix,
 					ExpiryTimeUnix:   swapInfo.ExpiryTimeUnix,
 				}
 			}

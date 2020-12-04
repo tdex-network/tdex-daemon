@@ -48,6 +48,8 @@ const (
 	MnemonicKey = "MNEMONIC"
 	// EnableProfilerKey nables profiler that can be used to investigate performance issues
 	EnableProfilerKey = "ENABLE_PROFILER"
+	// StatsIntervalKey defines interval for printing basic tdex statistics
+	StatsIntervalKey = "STATS_INTERVAL"
 )
 
 var vip *viper.Viper
@@ -71,6 +73,7 @@ func init() {
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
+	vip.SetDefault(StatsIntervalKey, 10)
 
 	validate()
 
@@ -199,6 +202,9 @@ func initDataDir() error {
 	}
 	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "db")); err != nil {
 		log.WithError(err).Panic("error while creating db folder")
+	}
+	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "stats")); err != nil {
+		log.WithError(err).Panic("error while creating stats folder")
 	}
 
 	return nil

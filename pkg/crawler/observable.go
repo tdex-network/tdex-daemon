@@ -29,6 +29,7 @@ func (a *AddressObservable) observe(
 	unspents, err := explorerSvc.GetUnspents(a.Address, [][]byte{a.BlindingKey})
 	if err != nil {
 		errChan <- err
+		return
 	}
 	var eventType EventType
 	switch a.AccountIndex {
@@ -80,6 +81,7 @@ func (t *TransactionObservable) observe(
 	txStatus, err := explorerSvc.GetTransactionStatus(t.TxID)
 	if err != nil {
 		errChan <- err
+		return
 	}
 
 	var confirmed bool

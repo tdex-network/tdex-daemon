@@ -46,7 +46,6 @@ func before() {
 	if err := insertTrades(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
-
 	if err := insertVault(tx.(*badger.Txn), dbManager); err != nil {
 		panic(err)
 	}
@@ -264,6 +263,7 @@ func insertTrades(tx *badger.Txn, db *DbManager) error {
 	trades := []domain.Trade{
 		{
 			ID:               tradeID1,
+			TxID:             "111",
 			MarketQuoteAsset: "mqa1",
 			SwapRequest: domain.Swap{
 				ID: "1",
