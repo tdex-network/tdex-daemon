@@ -34,7 +34,11 @@ func TestGrpcMain(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 	startDaemon()
-	t.Cleanup(stopDaemon)
+	t.Cleanup(func() {
+		// give the daemon the time to process last requests
+		time.Sleep(1 * time.Second)
+		stopDaemon()
+	})
 
 	time.Sleep(1 * time.Second)
 
@@ -82,8 +86,6 @@ func TestGrpcMain(t *testing.T) {
 			}
 		},
 	)
-	// give the daemon the time to process last requests
-	time.Sleep(1 * time.Second)
 }
 
 func startDaemon() {
