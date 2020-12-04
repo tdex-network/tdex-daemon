@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -33,10 +34,23 @@ import (
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtrader "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 	pbwallet "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
+
+	_ "net/http/pprof"
 )
 
 func main() {
 	log.SetLevel(log.Level(config.GetInt(config.LogLevelKey)))
+
+	//http://localhost:8024/debug/pprof/
+	if config.GetBool(config.EnableProfilerKey) {
+		runtime.SetBlockProfileRate(1)
+		go func() {
+			http.ListenAndServe(
+				":8024",
+				nil,
+			)
+		}()
+	}
 
 	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "db")
 	dbManager, err := dbbadger.NewDbManager(dbDir, log.New())
