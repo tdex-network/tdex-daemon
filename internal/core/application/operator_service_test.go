@@ -25,6 +25,7 @@ func TestListMarket(t *testing.T) {
 		tradeRepoIsEmpty,
 		vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	marketList, err := operatorService.ListMarket(ctx)
 	if err != nil {
@@ -32,8 +33,6 @@ func TestListMarket(t *testing.T) {
 	}
 
 	assert.Equal(t, 2, len(marketList))
-
-	t.Cleanup(close)
 }
 
 func TestDepositMarket(t *testing.T) {
@@ -42,6 +41,7 @@ func TestDepositMarket(t *testing.T) {
 		tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -81,8 +81,6 @@ func TestDepositMarket(t *testing.T) {
 		}
 		assert.Equal(t, expectedLen, len(addresses))
 	}
-
-	t.Cleanup(close)
 }
 
 func TestFailingDepositMarket(t *testing.T) {
@@ -91,6 +89,7 @@ func TestFailingDepositMarket(t *testing.T) {
 		tradeRepoIsEmpty,
 		vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -128,8 +127,6 @@ func TestFailingDepositMarket(t *testing.T) {
 		_, err := operatorService.DepositMarket(ctx, tt.baseAsset, tt.quoteAsset, 0)
 		assert.Equal(t, tt.expectedError, err)
 	}
-
-	t.Cleanup(close)
 }
 
 func TestUpdateMarketPrice(t *testing.T) {
@@ -138,6 +135,7 @@ func TestUpdateMarketPrice(t *testing.T) {
 		tradeRepoIsEmpty,
 		vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -156,8 +154,6 @@ func TestUpdateMarketPrice(t *testing.T) {
 	if err := operatorService.UpdateMarketPrice(ctx, args); err != nil {
 		t.Fatal(err)
 	}
-
-	t.Cleanup(close)
 }
 
 func TestFailingUpdateMarketPrice(t *testing.T) {
@@ -166,6 +162,7 @@ func TestFailingUpdateMarketPrice(t *testing.T) {
 		tradeRepoIsEmpty,
 		vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -221,8 +218,6 @@ func TestFailingUpdateMarketPrice(t *testing.T) {
 		err := operatorService.UpdateMarketPrice(ctx, args)
 		assert.Equal(t, tt.expectedError, err)
 	}
-
-	t.Cleanup(close)
 }
 func TestListSwap(t *testing.T) {
 	operatorService, ctx, close := newTestOperator(
@@ -230,6 +225,7 @@ func TestListSwap(t *testing.T) {
 		!tradeRepoIsEmpty,
 		vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	swapInfos, err := operatorService.ListSwaps(ctx)
 	if err != nil {
@@ -237,7 +233,6 @@ func TestListSwap(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, len(swapInfos))
-	t.Cleanup(close)
 }
 
 func TestWithdrawMarket(t *testing.T) {
@@ -248,6 +243,7 @@ func TestWithdrawMarket(t *testing.T) {
 		!unspentRepoIsEmpty,
 		false,
 	)
+	t.Cleanup(close)
 
 	rawTx, err := operatorService.WithdrawMarketFunds(ctx, WithdrawMarketReq{
 		Market: Market{
@@ -267,8 +263,6 @@ func TestWithdrawMarket(t *testing.T) {
 	}
 
 	assert.Equal(t, true, len(rawTx) > 0)
-
-	t.Cleanup(close)
 }
 
 func TestFailingWithdrawMarket(t *testing.T) {
@@ -277,6 +271,7 @@ func TestFailingWithdrawMarket(t *testing.T) {
 		!tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	tests := []struct {
 		args          WithdrawMarketReq
@@ -336,8 +331,6 @@ func TestFailingWithdrawMarket(t *testing.T) {
 		_, err := operatorService.WithdrawMarketFunds(ctx, tt.args)
 		assert.Equal(t, tt.expectedError, err)
 	}
-
-	t.Cleanup(close)
 }
 
 func TestBalanceFeeAccount(t *testing.T) {
@@ -348,14 +341,13 @@ func TestBalanceFeeAccount(t *testing.T) {
 		!unspentRepoIsEmpty,
 		false,
 	)
+	t.Cleanup(close)
 
 	balance, err := operatorService.FeeAccountBalance(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, int64(100000000), balance)
-
-	t.Cleanup(close)
 }
 
 func TestGetCollectedMarketFee(t *testing.T) {
@@ -364,6 +356,7 @@ func TestGetCollectedMarketFee(t *testing.T) {
 		!tradeRepoIsEmpty,
 		vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -376,8 +369,6 @@ func TestGetCollectedMarketFee(t *testing.T) {
 	}
 
 	assert.Equal(t, 0, len(fee.CollectedFees))
-
-	t.Cleanup(close)
 }
 
 func TestListMarketExternalAddresses(t *testing.T) {
@@ -386,6 +377,7 @@ func TestListMarketExternalAddresses(t *testing.T) {
 		tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -397,8 +389,6 @@ func TestListMarketExternalAddresses(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 1, len(addresses))
-
-	t.Cleanup(close)
 }
 
 func TestFailingListMarketExternalAddresses(t *testing.T) {
@@ -407,6 +397,7 @@ func TestFailingListMarketExternalAddresses(t *testing.T) {
 		tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	tests := []struct {
 		market        Market
@@ -439,8 +430,6 @@ func TestFailingListMarketExternalAddresses(t *testing.T) {
 		_, err := operatorService.ListMarketExternalAddresses(ctx, tt.market)
 		assert.Equal(t, tt.expectedError, err)
 	}
-
-	t.Cleanup(close)
 }
 
 func TestOpenMarket(t *testing.T) {
@@ -449,6 +438,7 @@ func TestOpenMarket(t *testing.T) {
 		tradeRepoIsEmpty,
 		vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -469,8 +459,6 @@ func TestOpenMarket(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-
-	t.Cleanup(close)
 }
 
 func TestFailingOpenMarket(t *testing.T) {
@@ -479,6 +467,7 @@ func TestFailingOpenMarket(t *testing.T) {
 		tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -521,8 +510,6 @@ func TestFailingOpenMarket(t *testing.T) {
 		err := operatorService.OpenMarket(ctx, tt.baseAsset, tt.quoteAsset)
 		assert.Equal(t, tt.expectedError, err)
 	}
-
-	t.Cleanup(close)
 }
 
 func TestUpdateMarketStrategy(t *testing.T) {
@@ -531,6 +518,7 @@ func TestUpdateMarketStrategy(t *testing.T) {
 		tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -573,8 +561,6 @@ func TestUpdateMarketStrategy(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-
-	t.Cleanup(close)
 }
 
 func TestFailingUpdateMarketStratergy(t *testing.T) {
@@ -583,6 +569,7 @@ func TestFailingUpdateMarketStratergy(t *testing.T) {
 		tradeRepoIsEmpty,
 		!vaultRepoIsEmpty,
 	)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -646,6 +633,4 @@ func TestFailingUpdateMarketStratergy(t *testing.T) {
 		)
 		assert.Equal(t, tt.expectedError, err)
 	}
-
-	t.Cleanup(close)
 }

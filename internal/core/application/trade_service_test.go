@@ -15,18 +15,18 @@ const marketWithPluggableStrategy = true
 
 func TestGetTradableMarkets(t *testing.T) {
 	traderSvc, ctx, close := newTestTrader(!marketWithPluggableStrategy)
+	t.Cleanup(close)
 
 	markets, err := traderSvc.GetTradableMarkets(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 1, len(markets))
-
-	t.Cleanup(close)
 }
 
 func TestGetMarketPrice_BalancedStrategy(t *testing.T) {
 	traderSvc, ctx, close := newTestTrader(!marketWithPluggableStrategy)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -64,14 +64,14 @@ func TestGetMarketPrice_BalancedStrategy(t *testing.T) {
 			150000000000,
 			market.QuoteAsset,
 			30000000,
-			97573,
+			74814,
 		},
 		{
 			TradeBuy,
 			30000000,
 			market.BaseAsset,
 			278571428571,
-			995963429,
+			694692145,
 		},
 		{
 			TradeBuy,
@@ -95,11 +95,10 @@ func TestGetMarketPrice_BalancedStrategy(t *testing.T) {
 			int(math.Abs(float64(tt.previewAmountWithoutFees)-float64(preview.Amount))),
 		)
 	}
-
-	t.Cleanup(close)
 }
 func TestGetMarketPrice_PluggableStrategy(t *testing.T) {
 	traderSvc, ctx, close := newTestTrader(marketWithPluggableStrategy)
+	t.Cleanup(close)
 
 	market := Market{
 		BaseAsset:  marketUnspents[0].AssetHash,
@@ -168,12 +167,11 @@ func TestGetMarketPrice_PluggableStrategy(t *testing.T) {
 			int(math.Abs(float64(tt.previewAmountWithoutFees)-float64(preview.Amount))),
 		)
 	}
-
-	t.Cleanup(close)
 }
 
 func TestTradePropose(t *testing.T) {
 	traderSvc, ctx, close := newTestTrader(!marketWithPluggableStrategy)
+	t.Cleanup(close)
 
 	markets, err := traderSvc.GetTradableMarkets(ctx)
 	if err != nil {
@@ -233,6 +231,4 @@ func TestTradePropose(t *testing.T) {
 		}
 		assert.Equal(t, true, isFinalizableTransaction(swapComplete.GetTransaction()))
 	})
-
-	t.Cleanup(close)
 }
