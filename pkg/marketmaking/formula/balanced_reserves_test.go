@@ -64,7 +64,7 @@ func TestBalancedReserves_OutGivenIn(t *testing.T) {
 				},
 				amountIn: 10000,
 			},
-			64831017,
+			64831000,
 		},
 		{
 			"OutGivenIn with the fee taken on the output",
@@ -77,7 +77,7 @@ func TestBalancedReserves_OutGivenIn(t *testing.T) {
 				},
 				amountIn: 10000,
 			},
-			65155984,
+			65156000,
 		},
 	}
 
@@ -108,7 +108,7 @@ func TestBalancedReserves_OutGivenIn(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-			assert.Equal(t, tt.wantAmountOut, gotAmountOut)
+			assert.Equal(t, int64(tt.wantAmountOut), int64(gotAmountOut))
 		})
 	}
 
@@ -143,7 +143,7 @@ func TestBalancedReserves_InGivenOut(t *testing.T) {
 				},
 				amountOut: 10000,
 			},
-			65169016,
+			65169000,
 		},
 		{
 			"InGivenOut with fee taken on the output",
@@ -157,7 +157,7 @@ func TestBalancedReserves_InGivenOut(t *testing.T) {
 				},
 				amountOut: 10000,
 			},
-			64843983,
+			64844000,
 		},
 	}
 
@@ -201,7 +201,7 @@ func TestBalancedReserves_InGivenOut(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-			assert.Equal(t, tt.wantAmountIn, gotAmountIn)
+			assert.Equal(t, int64(tt.wantAmountIn), int64(gotAmountIn))
 		})
 	}
 
