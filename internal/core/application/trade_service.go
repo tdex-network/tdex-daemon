@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
@@ -737,21 +736,61 @@ func getPriceAndPreviewForMarket(
 	tradeType int,
 	amount uint64,
 	asset string,
-) (
-	price Price,
-	previewAmount uint64,
-	err error,
-) {
+) (Price, uint64, error) {
+	balances := getBalanceByAsset(unspents)
+	baseAssetBalance := balances[market.BaseAsset]
+	quoteAssetBalance := balances[market.QuoteAsset]
+
+	if tradeType == TradeBuy {
+		if asset == market.BaseAsset && amount >= baseAssetBalance {
+			return Price{}, 0, errors.New("preovided amount is too big")
+		}
+	} else {
+		if asset == market.QuoteAsset && amount >= quoteAssetBalance {
+			return Price{}, 0, errors.New("preovided amount is too big")
+		}
+	}
+
 	if market.IsStrategyPluggable() {
-		previewAmount = calcPreviewAmount(market, tradeType, amount, asset)
-		price = Price{
+		previewAmount := calcPreviewAmount(
+			market,
+			baseAssetBalance,
+			quoteAssetBalance,
+			tradeType,
+			amount,
+			asset,
+		)
+
+		price := Price{
 			BasePrice:  market.BaseAssetPrice(),
 			QuotePrice: market.QuoteAssetPrice(),
 		}
-		return
+		return price, previewAmount, nil
 	}
 
-	return previewFromFormula(unspents, market, tradeType, amount, asset)
+	price, previewAmount, err := previewFromFormula(
+		market,
+		baseAssetBalance,
+		quoteAssetBalance,
+		tradeType,
+		amount,
+		asset,
+	)
+	if err != nil {
+		return Price{}, 0, err
+	}
+
+	if tradeType == TradeBuy {
+		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
+			return Price{}, 0, errors.New("preovided amount is too big")
+		}
+	} else {
+		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
+			return Price{}, 0, errors.New("preovided amount is too big")
+		}
+	}
+
+	return price, previewAmount, nil
 }
 
 func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
@@ -769,20 +808,27 @@ func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
 // depending on the trade type and the base asset amount provided.
 // The market fees are either added or subtracted to the converted amount
 // basing on the trade type.
-func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64, asset string) uint64 {
-	var price decimal.Decimal
-	if asset == market.BaseAsset {
-		price = market.QuoteAssetPrice()
-	} else {
+func calcPreviewAmount(
+	market *domain.Market,
+	baseAssetBalance, quoteAssetBalance uint64,
+	tradeType int,
+	amount uint64,
+	asset string,
+) uint64 {
+	price := market.QuoteAssetPrice()
+	if asset != market.BaseAsset {
 		price = market.BaseAssetPrice()
 	}
 
 	chargeFeesOnTheWayIn := asset == market.BaseAsset
+	var previewAmount uint64
 	if tradeType == TradeBuy {
-		return calcProposeAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+		previewAmount = calcProposeAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+	} else {
+		previewAmount = calcExpectedAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
 	}
 
-	return calcExpectedAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+	return previewAmount
 }
 
 // calcProposeAmount returns the quote asset amount due for a BUY trade, that,
@@ -847,23 +893,20 @@ func calcExpectedAmount(
 }
 
 func previewFromFormula(
-	unspents []domain.Unspent,
 	market *domain.Market,
+	baseAssetBalance, quoteAssetBalance uint64,
 	tradeType int,
 	amount uint64,
 	asset string,
 ) (price Price, previewAmount uint64, err error) {
-	balances := getBalanceByAsset(unspents)
-	baseBalanceAvailable := balances[market.BaseAsset]
-	quoteBalanceAvailable := balances[market.QuoteAsset]
 	formula := market.Strategy.Formula()
 
 	if tradeType == TradeBuy {
 		if asset == market.BaseAsset {
 			previewAmount, err = formula.InGivenOut(
 				&mm.FormulaOpts{
-					BalanceIn:           quoteBalanceAvailable,
-					BalanceOut:          baseBalanceAvailable,
+					BalanceIn:           quoteAssetBalance,
+					BalanceOut:          baseAssetBalance,
 					Fee:                 uint64(market.Fee),
 					ChargeFeeOnTheWayIn: true,
 				},
@@ -872,8 +915,8 @@ func previewFromFormula(
 		} else {
 			previewAmount, err = formula.OutGivenIn(
 				&mm.FormulaOpts{
-					BalanceIn:           quoteBalanceAvailable,
-					BalanceOut:          baseBalanceAvailable,
+					BalanceIn:           quoteAssetBalance,
+					BalanceOut:          baseAssetBalance,
 					Fee:                 uint64(market.Fee),
 					ChargeFeeOnTheWayIn: true,
 				},
@@ -884,8 +927,8 @@ func previewFromFormula(
 		if asset == market.BaseAsset {
 			previewAmount, err = formula.OutGivenIn(
 				&mm.FormulaOpts{
-					BalanceIn:           baseBalanceAvailable,
-					BalanceOut:          quoteBalanceAvailable,
+					BalanceIn:           baseAssetBalance,
+					BalanceOut:          quoteAssetBalance,
 					Fee:                 uint64(market.Fee),
 					ChargeFeeOnTheWayIn: true,
 				},
@@ -894,8 +937,8 @@ func previewFromFormula(
 		} else {
 			previewAmount, err = formula.InGivenOut(
 				&mm.FormulaOpts{
-					BalanceIn:           baseBalanceAvailable,
-					BalanceOut:          quoteBalanceAvailable,
+					BalanceIn:           baseAssetBalance,
+					BalanceOut:          quoteAssetBalance,
 					Fee:                 uint64(market.Fee),
 					ChargeFeeOnTheWayIn: true,
 				},
@@ -911,12 +954,12 @@ func previewFromFormula(
 	// any, we can assume the following do the same because they all perform the
 	// same checks.
 	basePrice, _ := formula.SpotPrice(&mm.FormulaOpts{
-		BalanceIn:  quoteBalanceAvailable,
-		BalanceOut: baseBalanceAvailable,
+		BalanceIn:  quoteAssetBalance,
+		BalanceOut: baseAssetBalance,
 	})
 	quotePrice, _ := formula.SpotPrice(&mm.FormulaOpts{
-		BalanceIn:  baseBalanceAvailable,
-		BalanceOut: quoteBalanceAvailable,
+		BalanceIn:  baseAssetBalance,
+		BalanceOut: quoteAssetBalance,
 	})
 
 	price = Price{
@@ -991,16 +1034,10 @@ func isPriceInRange(
 		}
 	}
 
-	fmt.Println("amountToCheck", amountToCheck.String())
-	fmt.Println("previewAmount", int64(previewAmount))
-
 	slippage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey) / 100)
 	expectedAmount := decimal.NewFromInt(int64(previewAmount))
 	lowerBound := expectedAmount.Mul(decimal.NewFromInt(1).Sub(slippage))
 	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
-
-	fmt.Println("lowerBound", lowerBound.String())
-	fmt.Println("upperBound", upperBound.String())
 
 	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
 }
