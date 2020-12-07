@@ -743,11 +743,11 @@ func getPriceAndPreviewForMarket(
 
 	if tradeType == TradeBuy {
 		if asset == market.BaseAsset && amount >= baseAssetBalance {
-			return Price{}, 0, errors.New("preovided amount is too big")
+			return Price{}, 0, errors.New("provided amount is too big")
 		}
 	} else {
 		if asset == market.QuoteAsset && amount >= quoteAssetBalance {
-			return Price{}, 0, errors.New("preovided amount is too big")
+			return Price{}, 0, errors.New("provided amount is too big")
 		}
 	}
 
@@ -782,11 +782,11 @@ func getPriceAndPreviewForMarket(
 
 	if tradeType == TradeBuy {
 		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
-			return Price{}, 0, errors.New("preovided amount is too big")
+			return Price{}, 0, errors.New("provided amount is too big")
 		}
 	} else {
 		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
-			return Price{}, 0, errors.New("preovided amount is too big")
+			return Price{}, 0, errors.New("provided amount is too big")
 		}
 	}
 
