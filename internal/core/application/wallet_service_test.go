@@ -16,7 +16,8 @@ func TestNewWalletService(t *testing.T) {
 	}
 
 	ws, _, close := newTestWallet(nil)
-	defer close()
+	t.Cleanup(close)
+
 	assert.Equal(t, false, ws.walletInitialized)
 	assert.Equal(t, false, ws.walletIsSyncing)
 }
@@ -27,13 +28,12 @@ func TestGenSeed(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(nil)
-	defer close()
+	t.Cleanup(close)
 
 	seed, err := walletSvc.GenSeed(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	assert.Equal(t, 24, len(seed))
 }
 
@@ -43,7 +43,7 @@ func TestInitWalletWrongSeed(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(nil)
-	defer close()
+	t.Cleanup(close)
 
 	wrongSeed := []string{"test"}
 	err := walletSvc.InitWallet(ctx, wrongSeed, "pass")
@@ -56,7 +56,8 @@ func TestInitEmptyWallet(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(emptyWallet)
-	defer close()
+	t.Cleanup(close)
+
 	// If the vault repository is not empty when the wallet service is
 	// instantiated, this behaves like it  it was shut down and restarted again.
 	// Therefore, the service restores its previous state and "marks" the wallet
@@ -98,8 +99,8 @@ func TestInitUsedWallet(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(usedWallet)
-	defer close()
 	walletSvc.walletInitialized = false
+	t.Cleanup(close)
 
 	w, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: usedWallet.mnemonic,
@@ -136,7 +137,7 @@ func TestWalletUnlock(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
-	defer close()
+	t.Cleanup(close)
 
 	address, blindingKey, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	assert.Equal(t, domain.ErrMustBeUnlocked, err)
@@ -161,7 +162,7 @@ func TestWalletChangePass(t *testing.T) {
 	}
 
 	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
-	defer close()
+	t.Cleanup(close)
 
 	err := walletSvc.ChangePassword(ctx, "wrongPass", "newPass")
 	assert.Equal(t, domain.ErrInvalidPassphrase, err)
@@ -175,7 +176,7 @@ func TestWalletChangePass(t *testing.T) {
 
 func TestGenerateAddressAndWalletBalance(t *testing.T) {
 	walletSvc, ctx, close := newTestWallet(dryWallet)
-	defer close()
+	t.Cleanup(close)
 
 	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
@@ -238,8 +239,8 @@ func TestSendToMany(t *testing.T) {
 		},
 	}
 
-	walletSvc, ctx, close := newTestWallet(newTradeWallet())
-	defer close()
+	walletSvc, ctx, close := newTestWallet(tradeWallet)
+	t.Cleanup(close)
 
 	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
@@ -271,5 +272,4 @@ func TestSendToMany(t *testing.T) {
 		}
 		assert.Equal(t, true, len(rawTx) > 0)
 	}
-
 }

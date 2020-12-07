@@ -3,7 +3,7 @@ package tradetype
 import (
 	"errors"
 
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/types"
+	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 )
 
 const (

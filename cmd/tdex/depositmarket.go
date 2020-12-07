@@ -23,6 +23,10 @@ var depositmarket = cli.Command{
 			Usage: "the base asset hash of an existent market",
 			Value: "",
 		},
+		&cli.IntFlag{
+			Name:  "num_of_addresses",
+			Usage: "the number of addresses to generate for the market",
+		},
 	},
 	Action: depositMarketAction,
 }
@@ -34,12 +38,15 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
+	numOfAddresses := ctx.Int64("num_of_addresses")
 	resp, err := client.DepositMarket(
-		context.Background(), &pboperator.DepositMarketRequest{
+		context.Background(),
+		&pboperator.DepositMarketRequest{
 			Market: &pbtypes.Market{
 				BaseAsset:  ctx.String("base_asset"),
 				QuoteAsset: ctx.String("quote_asset"),
 			},
+			NumOfAddresses: numOfAddresses,
 		},
 	)
 	if err != nil {

@@ -3,7 +3,7 @@ package application
 import (
 	"context"
 	"encoding/hex"
-	"errors"
+	"strings"
 
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -17,10 +17,12 @@ type OperatorService interface {
 		ctx context.Context,
 		baseAsset string,
 		quoteAsset string,
-	) (string, error)
+		numOfAddresses int,
+	) ([]string, error)
 	DepositFeeAccount(
 		ctx context.Context,
-	) (address string, blindingKey string, err error)
+		numOfAddresses int,
+	) ([]AddressAndBlindingKey, error)
 	OpenMarket(
 		ctx context.Context,
 		baseAsset string,
@@ -102,26 +104,24 @@ func (o *operatorService) DepositMarket(
 	ctx context.Context,
 	baseAsset string,
 	quoteAsset string,
-) (address string, err error) {
-
+	numOfAddresses int,
+) ([]string, error) {
 	var accountIndex int
 
 	// First case: the assets are given. If are valid and a market exist we need to derive a new address for that account.
 	if len(baseAsset) > 0 && len(quoteAsset) > 0 {
 		// check the asset strings
-		err := validateAssetString(baseAsset)
-		if err != nil {
-			return "", domain.ErrInvalidBaseAsset
+		if err := validateAssetString(baseAsset); err != nil {
+			return nil, domain.ErrInvalidBaseAsset
 		}
 
-		err = validateAssetString(quoteAsset)
-		if err != nil {
-			return "", domain.ErrInvalidQuoteAsset
+		if err := validateAssetString(quoteAsset); err != nil {
+			return nil, domain.ErrInvalidQuoteAsset
 		}
 
 		// Checks if base asset is valid
 		if baseAsset != config.GetString(config.BaseAssetKey) {
-			return "", domain.ErrInvalidBaseAsset
+			return nil, domain.ErrInvalidBaseAsset
 		}
 
 		//Checks if quote asset exists
@@ -130,10 +130,10 @@ func (o *operatorService) DepositMarket(
 			quoteAsset,
 		)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		if accountOfExistentMarket == -1 {
-			return "", domain.ErrMarketNotExist
+			return nil, domain.ErrMarketNotExist
 		}
 
 		accountIndex = accountOfExistentMarket
@@ -143,79 +143,104 @@ func (o *operatorService) DepositMarket(
 			ctx,
 		)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		nextAccountIndex := latestAccountIndex + 1
-		_, err = o.marketRepository.GetOrCreateMarket(ctx, nextAccountIndex)
-		if err != nil {
-			return "", err
+		if _, err := o.marketRepository.GetOrCreateMarket(ctx, nextAccountIndex); err != nil {
+			return nil, err
 		}
 
 		accountIndex = nextAccountIndex
 	} else if baseAsset != config.GetString(config.BaseAssetKey) {
-		return "", domain.ErrInvalidBaseAsset
+		return nil, domain.ErrInvalidBaseAsset
 	} else {
-		return "", domain.ErrInvalidQuoteAsset
+		return nil, domain.ErrInvalidQuoteAsset
+	}
+	if numOfAddresses == 0 {
+		numOfAddresses = 1
 	}
 
+	addresses := make([]string, 0, numOfAddresses)
+	blindingKeys := make([][]byte, 0, numOfAddresses)
 	//Derive an address for that specific market
-	err = o.vaultRepository.UpdateVault(
+	if err := o.vaultRepository.UpdateVault(
 		ctx,
 		nil,
 		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
-			addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(
-				accountIndex,
-			)
-			if err != nil {
-				return nil, err
+			for i := 0; i < numOfAddresses; i++ {
+				addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(
+					accountIndex,
+				)
+				if err != nil {
+					return nil, err
+				}
+
+				addresses = append(addresses, addr)
+				blindingKeys = append(blindingKeys, blindingKey)
 			}
 
-			address = addr
-
-			o.crawlerSvc.AddObservable(&crawler.AddressObservable{
-				AccountIndex: accountIndex,
-				Address:      addr,
-				BlindingKey:  blindingKey,
-			})
-
 			return v, nil
-		})
-	if err != nil {
-		return "", err
+		}); err != nil {
+		return nil, err
 	}
 
-	return address, nil
+	for i, addr := range addresses {
+		o.crawlerSvc.AddObservable(&crawler.AddressObservable{
+			AccountIndex: accountIndex,
+			Address:      addr,
+			BlindingKey:  blindingKeys[i],
+		})
+	}
+
+	return addresses, nil
 }
 
 func (o *operatorService) DepositFeeAccount(
 	ctx context.Context,
-) (address string, blindingKey string, err error) {
-	err = o.vaultRepository.UpdateVault(
+	numOfAddresses int,
+) ([]AddressAndBlindingKey, error) {
+	if numOfAddresses == 0 {
+		numOfAddresses = 1
+	}
+
+	list := make([]AddressAndBlindingKey, 0, numOfAddresses)
+	if err := o.vaultRepository.UpdateVault(
 		ctx,
 		nil,
 		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
-			addr, _, blindKey, err := v.DeriveNextExternalAddressForAccount(
-				domain.FeeAccount,
-			)
-			if err != nil {
-				return nil, err
+			for i := 0; i < numOfAddresses; i++ {
+				addr, _, blindKey, err := v.DeriveNextExternalAddressForAccount(
+					domain.FeeAccount,
+				)
+				if err != nil {
+					return nil, err
+				}
+
+				list = append(list, AddressAndBlindingKey{
+					Address:     addr,
+					BlindingKey: hex.EncodeToString(blindKey),
+				})
 			}
 
-			address = addr
-			blindingKey = hex.EncodeToString(blindKey)
-
-			o.crawlerSvc.AddObservable(&crawler.AddressObservable{
-				AccountIndex: domain.FeeAccount,
-				Address:      addr,
-				BlindingKey:  blindKey,
-			})
-
 			return v, nil
+		},
+	); err != nil {
+		return nil, err
+	}
+
+	for _, l := range list {
+		key, _ := hex.DecodeString(l.BlindingKey)
+		o.crawlerSvc.AddObservable(&crawler.AddressObservable{
+			AccountIndex: domain.FeeAccount,
+			Address:      l.Address,
+			BlindingKey:  key,
 		})
-	return
+	}
+
+	return list, nil
 }
 
 func (o *operatorService) OpenMarket(
@@ -239,13 +264,15 @@ func (o *operatorService) OpenMarket(
 	}
 
 	// check if the crawler is observing at least one addresse
-	feeAccountAddresses, err := o.vaultRepository.GetAllDerivedExternalAddressesForAccount(ctx, domain.FeeAccount)
-	if err != nil {
+	if _, err := o.vaultRepository.GetAllDerivedExternalAddressesForAccount(
+		ctx,
+		domain.FeeAccount,
+	); err != nil {
+		// TODO: replace this with a variable that must be created at domain level
+		if strings.Contains(err.Error(), "account not found") {
+			return ErrFeeAccountNotFunded
+		}
 		return err
-	}
-
-	if !o.crawlerSvc.IsObservingAddresses(feeAccountAddresses) {
-		return ErrCrawlerDoesNotObserveFeeAccount
 	}
 
 	// check if market exists
@@ -485,7 +512,7 @@ func (o *operatorService) UpdateMarketStrategy(
 				}
 
 			default:
-				return nil, errors.New("strategy not supported")
+				return nil, ErrUnknownStrategy
 			}
 
 			return m, nil

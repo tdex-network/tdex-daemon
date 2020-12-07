@@ -2,6 +2,7 @@ package grpchandler
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 
 	log "github.com/sirupsen/logrus"
@@ -177,6 +178,10 @@ func (t traderHandler) marketPrice(
 	if err := validateAmount(amount); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	asset := req.GetAsset()
+	if err := validateAsset(asset); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	res, err := t.dbManager.RunTransaction(
 		reqCtx,
@@ -190,6 +195,7 @@ func (t traderHandler) marketPrice(
 				},
 				int(tradeType),
 				amount,
+				asset,
 			)
 			if err != nil {
 				return nil, err
@@ -210,6 +216,7 @@ func (t traderHandler) marketPrice(
 							BasisPoint: price.BasisPoint,
 						},
 						Amount: price.Amount,
+						Asset:  price.Asset,
 					},
 				},
 			}, nil
@@ -311,7 +318,7 @@ func (t traderHandler) tradeComplete(
 	return nil
 }
 
-func validateTradeType(tType pbtypes.TradeType) error {
+func validateTradeType(tType pb.TradeType) error {
 	if int(tType) < application.TradeBuy || int(tType) > application.TradeSell {
 		return errors.New("trade type is unknown")
 	}
@@ -337,6 +344,13 @@ func validateSwapRequest(swapRequest *pbswap.SwapRequest) error {
 		len(swapRequest.GetInputBlindingKey()) <= 0 ||
 		len(swapRequest.GetOutputBlindingKey()) <= 0 {
 		return errors.New("swap request is malformed")
+	}
+	return nil
+}
+
+func validateAsset(asset string) error {
+	if buf, err := hex.DecodeString(asset); err != nil || len(buf) != 32 {
+		return errors.New("invalid asset")
 	}
 	return nil
 }

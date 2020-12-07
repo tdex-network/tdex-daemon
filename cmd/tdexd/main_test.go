@@ -34,13 +34,11 @@ func TestGrpcMain(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 	startDaemon()
-	defer stopDaemon()
-	defer func() {
-		if rec := recover(); rec != nil {
-			stopDaemon()
-			t.Fatal(errors.New("execution panicked"))
-		}
-	}()
+	t.Cleanup(func() {
+		// give the daemon the time to process last requests
+		time.Sleep(1 * time.Second)
+		stopDaemon()
+	})
 
 	time.Sleep(1 * time.Second)
 
@@ -56,13 +54,28 @@ func TestGrpcMain(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	clientWallet, err := newSingleKeyWallet()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	Parallelize(
 		func() {
-			for i := 0; i < 5; i++ {
-				if _, err := tradeLBTCPerUSDT(); err != nil {
+			for i := 0; i < 3; i++ {
+				market, err := getTradableMarket()
+				if err != nil {
 					t.Fatal(err)
 				}
-				time.Sleep(6 * time.Second)
+
+				if _, err := tradeLBTCPerUSDTFixedLBTC(clientWallet, market); err != nil {
+					t.Fatal(err)
+				}
+				time.Sleep(7 * time.Second)
+
+				if _, err := tradeLBTCPerUSDTFixedUSDT(clientWallet, market); err != nil {
+					t.Fatal(err)
+				}
+				time.Sleep(7 * time.Second)
 			}
 		},
 		func() {
@@ -73,8 +86,6 @@ func TestGrpcMain(t *testing.T) {
 			}
 		},
 	)
-	// give the daemon the time to process last requests
-	time.Sleep(1 * time.Second)
 }
 
 func startDaemon() {
@@ -129,7 +140,9 @@ func initFee() error {
 	if err != nil {
 		return err
 	}
-	if _, err := explorerSvc.Faucet(depositFeeReply.GetAddress()); err != nil {
+	if _, err := explorerSvc.Faucet(
+		depositFeeReply.GetAddressWithBlindingKey()[0].GetAddress(),
+	); err != nil {
 		return err
 	}
 
@@ -152,11 +165,13 @@ func initMarketAccounts() error {
 		return err
 	}
 
+	addr := depositMarketReply.GetAddresses()[0]
+
 	// and fund it with 1 LBTC and 6500 USDT
-	if _, err := explorerSvc.Faucet(depositMarketReply.GetAddress()); err != nil {
+	if _, err := explorerSvc.Faucet(addr); err != nil {
 		return err
 	}
-	_, usdt, err := explorerSvc.Mint(depositMarketReply.GetAddress(), 6500)
+	_, usdt, err := explorerSvc.Mint(addr, 6500)
 	if err != nil {
 		return err
 	}
@@ -177,18 +192,42 @@ func initMarketAccounts() error {
 	return nil
 }
 
-func tradeLBTCPerUSDT() (string, error) {
-	// create a single-key wallet for the trader and fund it with 1 LBTC
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
-	signingKey, blindingKey, addr, err := newSingleKeyWallet()
+func getTradableMarket() (m trademarket.Market, err error) {
+	client, err := tradeclient.NewTradeClient("localhost", config.GetInt(config.TraderListeningPortKey))
+	if err != nil {
+		return
+	}
+
+	// get trading market from the list of all those tradable
+	marketsReply, err := client.Markets()
+	if err != nil {
+		return
+	}
+	if len(marketsReply.GetMarkets()) <= 0 {
+		err = errors.New("no open markets found")
+		return
+	}
+
+	m = trademarket.Market{
+		BaseAsset:  marketsReply.GetMarkets()[0].GetMarket().GetBaseAsset(),
+		QuoteAsset: marketsReply.GetMarkets()[0].GetMarket().GetQuoteAsset(),
+	}
+
+	return
+}
+
+func tradeLBTCPerUSDTFixedLBTC(w wallet, market trademarket.Market) (string, error) {
+	balances, err := w.getWalletBalance()
 	if err != nil {
 		return "", err
 	}
-	if _, err := explorerSvc.Faucet(addr); err != nil {
-		return "", err
-	}
 
-	time.Sleep(5 * time.Second)
+	if balances[config.GetNetwork().AssetID] == 0 {
+		if _, err := w.explorer.Faucet(w.address); err != nil {
+			return "", err
+		}
+		time.Sleep(5 * time.Second)
+	}
 
 	client, err := tradeclient.NewTradeClient("localhost", config.GetInt(config.TraderListeningPortKey))
 	if err != nil {
@@ -203,27 +242,39 @@ func tradeLBTCPerUSDT() (string, error) {
 		return "", err
 	}
 
-	// get trading market from the list of all those tradable
-	marketsReply, err := client.Markets()
-	if err != nil {
-		return "", err
-	}
-	if len(marketsReply.GetMarkets()) <= 0 {
-		return "", errors.New("no open markets found")
-	}
-
-	// Trade 0.3 LBTCs for USDTs
-	market := trademarket.Market{
-		BaseAsset:  marketsReply.GetMarkets()[0].GetMarket().GetBaseAsset(),
-		QuoteAsset: marketsReply.GetMarkets()[0].GetMarket().GetQuoteAsset(),
-	}
-
+	// SELL LBTC specifing the will of sending 0.1 LBTC
 	return tr.SellAndComplete(pkgtrade.BuyOrSellAndCompleteOpts{
 		Market:      market,
 		TradeType:   int(tradetype.Sell),
-		Amount:      30000000,
-		PrivateKey:  signingKey,
-		BlindingKey: blindingKey,
+		Amount:      10000000,
+		Asset:       market.BaseAsset,
+		PrivateKey:  w.signingKey,
+		BlindingKey: w.blindingKey,
+	})
+}
+
+func tradeLBTCPerUSDTFixedUSDT(w wallet, market trademarket.Market) (string, error) {
+	client, err := tradeclient.NewTradeClient("localhost", config.GetInt(config.TraderListeningPortKey))
+	if err != nil {
+		return "", err
+	}
+	tr, err := pkgtrade.NewTrade(trade.NewTradeOpts{
+		Chain:       "regtest",
+		ExplorerURL: config.GetString(config.ExplorerEndpointKey),
+		Client:      client,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// SELL LBTC specifing the will of buying 400 USDT
+	return tr.SellAndComplete(pkgtrade.BuyOrSellAndCompleteOpts{
+		Market:      market,
+		TradeType:   int(tradetype.Sell),
+		Amount:      40000000000,
+		Asset:       market.QuoteAsset,
+		PrivateKey:  w.signingKey,
+		BlindingKey: w.blindingKey,
 	})
 }
 
@@ -247,7 +298,14 @@ func newOperatorClient() (pboperator.OperatorClient, error) {
 	return pboperator.NewOperatorClient(conn), nil
 }
 
-func newSingleKeyWallet() (signingKey []byte, blindingKey []byte, addr string, err error) {
+type wallet struct {
+	signingKey  []byte
+	blindingKey []byte
+	address     string
+	explorer    explorer.Service
+}
+
+func newSingleKeyWallet() (w wallet, err error) {
 	prvkey, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		return
@@ -263,10 +321,27 @@ func newSingleKeyWallet() (signingKey []byte, blindingKey []byte, addr string, e
 		return
 	}
 
-	signingKey = prvkey.Serialize()
-	blindingKey = blindkey.Serialize()
-	addr = ctAddress
+	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+
+	w = wallet{
+		signingKey:  prvkey.Serialize(),
+		blindingKey: blindkey.Serialize(),
+		address:     ctAddress,
+		explorer:    explorerSvc,
+	}
 	return
+}
+
+func (w wallet) getWalletBalance() (map[string]uint64, error) {
+	unspents, err := w.explorer.GetUnspents(w.address, [][]byte{w.blindingKey})
+	if err != nil {
+		return nil, err
+	}
+	balances := map[string]uint64{}
+	for _, u := range unspents {
+		balances[u.Asset()] += u.Value()
+	}
+	return balances, nil
 }
 
 // Parallelize parallelizes the function calls

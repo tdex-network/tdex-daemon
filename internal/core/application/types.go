@@ -57,6 +57,7 @@ type PriceWithFee struct {
 	Price
 	Fee
 	Amount uint64
+	Asset  string
 }
 
 type MarketStrategy struct {
@@ -85,4 +86,9 @@ type WithdrawMarketReq struct {
 type ReportMarketFee struct {
 	CollectedFees              []Fee
 	TotalCollectedFeesPerAsset map[string]int64
+}
+
+type AddressAndBlindingKey struct {
+	Address     string
+	BlindingKey string
 }
