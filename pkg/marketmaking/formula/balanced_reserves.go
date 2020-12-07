@@ -52,10 +52,6 @@ func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn uint
 		err = ErrAmountTooLow
 		return
 	}
-	if amountIn >= opts.BalanceIn {
-		err = ErrAmountTooBig
-		return
-	}
 
 	amountInWithFees, _ := mathutil.LessFee(amountIn, opts.Fee)
 	if !opts.ChargeFeeOnTheWayIn {
