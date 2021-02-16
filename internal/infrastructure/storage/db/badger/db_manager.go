@@ -202,6 +202,7 @@ func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
 	opts := badger.DefaultOptions(dbDir)
 	opts.Logger = logger
 	opts.ValueLogLoadingMode = options.FileIO
+	opts.Compression = options.ZSTD
 
 	db, err := badgerhold.Open(badgerhold.Options{
 		Encoder:          badgerhold.DefaultEncode,
