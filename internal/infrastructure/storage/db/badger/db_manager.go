@@ -190,7 +190,7 @@ func JSONDecode(data []byte, value interface{}) error {
 // EncodeKey encodes key values with a type prefix which allows multiple
 //different types to exist in the badger DB
 func EncodeKey(key interface{}, typeName string) ([]byte, error) {
-	encoded, err := JSONEncode(key)
+	encoded, err := badgerhold.DefaultEncode(key)
 	if err != nil {
 		return nil, err
 	}
