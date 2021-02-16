@@ -67,18 +67,3 @@ archives:
     builds:
       - tdex
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-#dockers:
-#  -
-#    goos: linux
-#    goarch: amd64
-#    goarm: ''
-#    binaries:
-#    - tdexd-linux
-#    - tdex
-#    image_templates:
-#    - "ghcr.io/tdex-network/tdexd:latest"
-#    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
-#    dockerfile: goreleaser.Dockerfile
-#    build_flag_templates:
-#    - "--pull"
-
