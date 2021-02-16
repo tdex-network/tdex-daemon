@@ -12,5 +12,5 @@ ARCH=$(eval "go env GOARCH")
 
 pushd $PARENT_PATH
 mkdir -p build
-go build -ldflags="-s -w" -o build/tdex-$OS-$ARCH ./cmd/tdex
+GO111MODULE=on go build -ldflags="-s -w" -o build/tdex-$OS-$ARCH ./cmd/tdex
 popd
