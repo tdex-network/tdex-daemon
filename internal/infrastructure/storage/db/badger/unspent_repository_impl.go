@@ -202,7 +202,7 @@ func (u unspentRepositoryImpl) getAllUnspents(ctx context.Context) []domain.Unsp
 			item := it.Item()
 			data, _ := item.ValueCopy(nil)
 			var unspent domain.Unspent
-			err := JSONDecode(data, &unspent)
+			err := badgerhold.DefaultDecode(data, &unspent)
 			if err == nil {
 				tradeID, err := u.getLock(ctx, unspent.Key())
 				if err == nil {
@@ -526,7 +526,7 @@ func (u unspentRepositoryImpl) insertLock(
 		return err
 	}
 
-	encData, err := JSONEncode(LockedUnspent{tradeID})
+	encData, err := badgerhold.DefaultEncode(LockedUnspent{tradeID})
 	if err != nil {
 		return err
 	}

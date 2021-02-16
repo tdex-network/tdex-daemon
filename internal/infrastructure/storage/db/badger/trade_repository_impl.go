@@ -3,6 +3,7 @@ package dbbadger
 import (
 	"context"
 	"errors"
+
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 
 	"github.com/dgraph-io/badger/v2"
@@ -227,7 +228,7 @@ func (t tradeRepositoryImpl) getAllTrades(ctx context.Context) []*domain.Trade {
 			item := it.Item()
 			data, _ := item.ValueCopy(nil)
 			var trade domain.Trade
-			err := JSONDecode(data, &trade)
+			err := badgerhold.DefaultDecode(data, &trade)
 			if err == nil {
 				trades = append(trades, &trade)
 			}

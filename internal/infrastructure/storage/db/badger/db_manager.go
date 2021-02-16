@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/options"
+	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/timshannon/badgerhold/v2"
 )
@@ -188,7 +190,7 @@ func JSONDecode(data []byte, value interface{}) error {
 // EncodeKey encodes key values with a type prefix which allows multiple
 //different types to exist in the badger DB
 func EncodeKey(key interface{}, typeName string) ([]byte, error) {
-	encoded, err := JSONEncode(key)
+	encoded, err := badgerhold.DefaultEncode(key)
 	if err != nil {
 		return nil, err
 	}
@@ -196,16 +198,34 @@ func EncodeKey(key interface{}, typeName string) ([]byte, error) {
 	return append([]byte(typeName), encoded...), nil
 }
 
-func createDb(dbDir string, logger badger.Logger) (db *badgerhold.Store, err error) {
+func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
 	opts := badger.DefaultOptions(dbDir)
 	opts.Logger = logger
+	opts.ValueLogLoadingMode = options.FileIO
+	opts.Compression = options.ZSTD
 
-	db, err = badgerhold.Open(badgerhold.Options{
-		Encoder:          JSONEncode,
-		Decoder:          JSONDecode,
+	db, err := badgerhold.Open(badgerhold.Options{
+		Encoder:          badgerhold.DefaultEncode,
+		Decoder:          badgerhold.DefaultDecode,
 		SequenceBandwith: 100,
 		Options:          opts,
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	ticker := time.NewTicker(30 * time.Minute)
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := db.Badger().RunValueLogGC(0.5); err != nil && err != badger.ErrNoRewrite {
+					log.Error(err)
+				}
+			}
+		}
+	}()
+
+	return db, nil
 }
