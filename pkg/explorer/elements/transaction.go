@@ -29,7 +29,7 @@ func (e *elements) IsTransactionConfirmed(txid string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return data["confirmed"].(bool), nil
+	return data["confirmations"].(float64) > 0, nil
 }
 
 // GetTransactionStatus returns info about the status of a transaction. In case
