@@ -7,6 +7,8 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
+// GetTransactionHex returns the hex of the transaction indentified by its hash
+// by calling the getrawtrancation RPC
 func (e *elements) GetTransactionHex(txid string) (string, error) {
 	r, err := e.client.call("getrawtransaction", []interface{}{txid})
 	if err = handleError(err, &r); err != nil {
@@ -20,14 +22,21 @@ func (e *elements) GetTransactionHex(txid string) (string, error) {
 	return txhex, nil
 }
 
+// IsTransactionConfirmed returns whether a tx is already confirmed by calling
+// the gettransaction RPC
 func (e *elements) IsTransactionConfirmed(txid string) (bool, error) {
-	data, err := e.GetTransactionStatus(txid)
+	data, err := e.getTransaction(txid)
 	if err != nil {
 		return false, err
 	}
 	return data["confirmed"].(bool), nil
 }
 
+// GetTransactionStatus returns info about the status of a transaction. In case
+// it's not yet conifrmed a {"confirmed": false} response is returned.
+// Otherwise some other info about the block that includes the tx are returned
+// along with its confirmation status. This method makes use of gettransaction
+// and getblock RPCs.
 func (e *elements) GetTransactionStatus(txid string) (map[string]interface{}, error) {
 	data, err := e.getTransaction(txid)
 	if err != nil {
@@ -58,6 +67,12 @@ func (e *elements) GetTransactionStatus(txid string) (map[string]interface{}, er
 	}, nil
 }
 
+// GetTransactionsForAddress returns all the transactions for the provided
+// address. It makes use of importaddress to add the address to those
+// tracked by the Elements node. A label, (ie. the resulting output script) is
+// associated with it when importing to prevent doing this operation for those
+// already tracked. The transactions are retrieved via the
+// listreceivedbyaddress RPC.
 func (e *elements) GetTransactionsForAddress(addr string) ([]explorer.Transaction, error) {
 	addrLabel, err := addressLabel(addr)
 	if err != nil {
@@ -91,6 +106,9 @@ func (e *elements) GetTransactionsForAddress(addr string) ([]explorer.Transactio
 		chTxs := make(chan explorer.Transaction)
 		chErr := make(chan error, 1)
 
+		// TODO: this can be skipped as soon as the wallet pkg supports using
+		// blinders for blinding instead of forcing to unblind inputs with
+		// blinding private keys.
 		for _, txid := range txids {
 			go e.getTxDetails(txid.(string), confirmations, chTxs, chErr)
 			select {
@@ -109,6 +127,8 @@ func (e *elements) GetTransactionsForAddress(addr string) ([]explorer.Transactio
 	return nil, nil
 }
 
+// BroadcastTransaction publishes a new transaction (provided in hex format) to
+// the network by calling the sendrawtransaction RPC.
 func (e *elements) BroadcastTransaction(txhex string) (string, error) {
 	r, err := e.client.call("sendrawtransaction", []interface{}{txhex})
 	if err = handleError(err, &r); err != nil {
@@ -122,7 +142,11 @@ func (e *elements) BroadcastTransaction(txhex string) (string, error) {
 	return txid, nil
 }
 
-// Regtest only
+/**** Regtest only ****/
+
+// Faucet sends 1 LBTC to the given address using the sendtoaddress RPC.
+// Also, 1 block is mined with generatetoaddress to get the faucet tx
+// confirmed.
 func (e *elements) Faucet(address string) (string, error) {
 	r, err := e.client.call("sendtoaddress", []interface{}{address, 1})
 	if err = handleError(err, &r); err != nil {
@@ -140,6 +164,10 @@ func (e *elements) Faucet(address string) (string, error) {
 	return txid, nil
 }
 
+// Mint issues a new asset with the given issuance amount and send it to the
+// provided address. It uses issueasset RPC for minting a new asset, and
+// sendtoaddress for funding the provided address. Simalrly to Faucet, also
+// this mines 1 block to confirm the mint tx.
 func (e *elements) Mint(address string, amount int) (string, string, error) {
 	r, err := e.client.call("issueasset", []interface{}{amount, 0})
 	if err = handleError(err, &r); err != nil {

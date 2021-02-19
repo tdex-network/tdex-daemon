@@ -8,7 +8,7 @@ import (
 
 // SelectUnspents performs a coin selection over the given list of Utxos and
 // returns a subset of them of type targetAsset to cover the targetAmount.
-// A list of blindKeys is required in case any of them needs to be unblinded.
+// In case any utxo is confidential, it's required that's already unblinded
 func SelectUnspents(
 	utxos []Utxo,
 	targetAmount uint64,
@@ -33,18 +33,18 @@ func SelectUnspents(
 	indexes := getCoinsIndexes(targetAmount, unblindedUtxos)
 
 	selectedUtxos := make([]Utxo, 0)
-	if len(indexes) > 0 {
-		for _, v := range indexes {
-			totalAmount += unblindedUtxos[v].Value()
-			selectedUtxos = append(selectedUtxos, unblindedUtxos[v])
-		}
-	} else {
+	if len(indexes) <= 0 {
 		coins = nil
 		change = 0
 		err = errors.New(
 			"error on target amount: total utxo amount does not cover target amount",
 		)
 		return
+	}
+
+	for _, v := range indexes {
+		totalAmount += unblindedUtxos[v].Value()
+		selectedUtxos = append(selectedUtxos, unblindedUtxos[v])
 	}
 
 	changeAmount := totalAmount - targetAmount

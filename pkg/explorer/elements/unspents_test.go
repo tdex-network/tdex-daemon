@@ -10,7 +10,7 @@ import (
 )
 
 func TestGetUnspents(t *testing.T) {
-	elementsSvc, err := NewService("localhost", 7041, "admin1", "123")
+	elementsSvc, err := NewService(rpcEndpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestGetUnspents(t *testing.T) {
 }
 
 func TestGetUnspentsForAddresses(t *testing.T) {
-	elementsSvc, err := NewService("localhost", 7041, "admin1", "123")
+	elementsSvc, err := NewService(rpcEndpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
