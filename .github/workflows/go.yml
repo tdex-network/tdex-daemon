@@ -30,4 +30,6 @@ jobs:
         run: go get -v -t -d ./...
 
       - name: Test
-        run: make test
+        run: |
+          export TDEX_ELEMENTS_RPC_ENDPOINT='http://admin1:123@localhost:18884'
+          make test
