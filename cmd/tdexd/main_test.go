@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/vulpemventures/go-elements/payment"
 	"google.golang.org/grpc"
@@ -132,20 +133,21 @@ func initFee() error {
 	if err != nil {
 		return err
 	}
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc := esplora.NewService(config.GetString(config.ExplorerEndpointKey))
 	ctx := context.Background()
 
 	// get an address for funding the fee account
-	depositFeeReply, err := client.DepositFeeAccount(ctx, &pboperator.DepositFeeAccountRequest{})
+	depositFeeReply, err := client.DepositFeeAccount(ctx, &pboperator.DepositFeeAccountRequest{
+		NumOfAddresses: 2,
+	})
 	if err != nil {
 		return err
 	}
-	if _, err := explorerSvc.Faucet(
-		depositFeeReply.GetAddressWithBlindingKey()[0].GetAddress(),
-	); err != nil {
-		return err
+	for _, addr := range depositFeeReply.GetAddressWithBlindingKey() {
+		if _, err := explorerSvc.Faucet(addr.GetAddress()); err != nil {
+			return err
+		}
 	}
-
 	time.Sleep(2 * time.Second)
 
 	return nil
@@ -156,7 +158,7 @@ func initMarketAccounts() error {
 	if err != nil {
 		return err
 	}
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc := esplora.NewService(config.GetString(config.ExplorerEndpointKey))
 	ctx := context.Background()
 
 	// create a new market
@@ -234,9 +236,9 @@ func tradeLBTCPerUSDTFixedLBTC(w wallet, market trademarket.Market) (string, err
 		return "", err
 	}
 	tr, err := pkgtrade.NewTrade(trade.NewTradeOpts{
-		Chain:       "regtest",
-		ExplorerURL: config.GetString(config.ExplorerEndpointKey),
-		Client:      client,
+		Chain:           "regtest",
+		ExplorerService: esplora.NewService(config.GetString(config.ExplorerEndpointKey)),
+		Client:          client,
 	})
 	if err != nil {
 		return "", err
@@ -259,9 +261,9 @@ func tradeLBTCPerUSDTFixedUSDT(w wallet, market trademarket.Market) (string, err
 		return "", err
 	}
 	tr, err := pkgtrade.NewTrade(trade.NewTradeOpts{
-		Chain:       "regtest",
-		ExplorerURL: config.GetString(config.ExplorerEndpointKey),
-		Client:      client,
+		Chain:           "regtest",
+		ExplorerService: esplora.NewService(config.GetString(config.ExplorerEndpointKey)),
+		Client:          client,
 	})
 	if err != nil {
 		return "", err
@@ -321,7 +323,7 @@ func newSingleKeyWallet() (w wallet, err error) {
 		return
 	}
 
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc := esplora.NewService(config.GetString(config.ExplorerEndpointKey))
 
 	w = wallet{
 		signingKey:  prvkey.Serialize(),
