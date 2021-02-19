@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"fmt"
-	"github.com/tdex-network/tdex-daemon/pkg/stats"
 	"net"
 	"net/http"
 	"os"
@@ -15,6 +14,11 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/elements"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
+	"github.com/tdex-network/tdex-daemon/pkg/stats"
 
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"golang.org/x/net/http2"
@@ -28,7 +32,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"google.golang.org/grpc"
 
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -63,7 +66,21 @@ func main() {
 	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
 
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
+	var explorerSvc explorer.Service
+	if config.GetInt(config.ExperimentalKey) > 0 {
+		explorerSvc, err = elements.NewService(
+			config.GetString(config.ElementsRPCHostKey),
+			config.GetInt(config.ElementsRPCPortKey),
+			config.GetString(config.ElementsRPCUserKey),
+			config.GetString(config.ElementsRPCPasswordKey),
+		)
+		if err != nil {
+			log.WithError(err).Panic("error while setting up explorer service")
+		}
+	} else {
+		explorerSvc = esplora.NewService(config.GetString(config.ExplorerEndpointKey))
+	}
+
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
 		Observables:            []crawler.Observable{},

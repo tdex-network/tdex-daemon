@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// A RpcClient represents a JSON RPC client (over HTTP(s)).
-type RpcClient struct {
+// A RPCClient represents a JSON RPC client (over HTTP(s)).
+type RPCClient struct {
 	serverAddr string
 	user       string
 	passwd     string
@@ -57,7 +57,7 @@ type rpcResponse struct {
 }
 
 // NewClient retursn an RpcClient
-func NewClient(host string, port int, user, passwd string, useSSL bool, timeout int) (c *RpcClient, err error) {
+func NewClient(host string, port int, user, passwd string, useSSL bool, timeout int) (c *RPCClient, err error) {
 	if len(host) == 0 {
 		err = errors.New("Bad call missing argument host")
 		return
@@ -74,12 +74,12 @@ func NewClient(host string, port int, user, passwd string, useSSL bool, timeout 
 		serverAddr = "http://"
 		httpClient = &http.Client{}
 	}
-	c = &RpcClient{serverAddr: fmt.Sprintf("%s%s:%d", serverAddr, host, port), user: user, passwd: passwd, httpClient: httpClient, timeout: timeout}
+	c = &RPCClient{serverAddr: fmt.Sprintf("%s%s:%d", serverAddr, host, port), user: user, passwd: passwd, httpClient: httpClient, timeout: timeout}
 	return
 }
 
 // doTimeoutRequest process a HTTP request with timeout
-func (c *RpcClient) doTimeoutRequest(timer *time.Timer, req *http.Request) (*http.Response, error) {
+func (c *RPCClient) doTimeoutRequest(timer *time.Timer, req *http.Request) (*http.Response, error) {
 	type result struct {
 		resp *http.Response
 		err  error
@@ -99,7 +99,7 @@ func (c *RpcClient) doTimeoutRequest(timer *time.Timer, req *http.Request) (*htt
 }
 
 // call prepare & exec the request
-func (c *RpcClient) call(method string, params interface{}) (rr rpcResponse, err error) {
+func (c *RPCClient) call(method string, params interface{}) (rr rpcResponse, err error) {
 	connectTimer := time.NewTimer(time.Duration(c.timeout) * time.Second)
 	rpcR := rpcRequest{method, params, time.Now().UnixNano(), "1.0"}
 	payloadBuffer := &bytes.Buffer{}
@@ -132,6 +132,9 @@ func (c *RpcClient) call(method string, params interface{}) (rr rpcResponse, err
 	}
 
 	err = json.Unmarshal(data, &rr)
+	if err != nil {
+		err = errors.New(string(data))
+	}
 	return
 }
 

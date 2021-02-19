@@ -181,6 +181,14 @@ func (m MockUtxo) AssetCommitment() string {
 	panic("implement me")
 }
 
+func (m MockUtxo) ValueBlinder() []byte {
+	panic("implement me")
+}
+
+func (m MockUtxo) AssetBlinder() []byte {
+	panic("implement me")
+}
+
 func (m MockUtxo) Nonce() []byte {
 	panic("implement me")
 }
@@ -201,15 +209,7 @@ func (m MockUtxo) IsConfidential() bool {
 	panic("implement me")
 }
 
-func (m MockUtxo) SetScript(script []byte) {
-	panic("implement me")
-}
-
-func (m MockUtxo) SetUnconfidential(asset string, value uint64) {
-	panic("implement me")
-}
-
-func (m MockUtxo) SetConfidential(nonce, rangeProof, surjectionProof []byte) {
+func (m MockUtxo) IsRevealed() bool {
 	panic("implement me")
 }
 

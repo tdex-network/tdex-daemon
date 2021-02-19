@@ -414,6 +414,8 @@ func unspentsFromEvent(event crawler.AddressEvent) []domain.Unspent {
 			AssetHash:       utxo.Asset(),
 			ValueCommitment: utxo.ValueCommitment(),
 			AssetCommitment: utxo.AssetCommitment(),
+			ValueBlinder:    utxo.ValueBlinder(),
+			AssetBlinder:    utxo.AssetBlinder(),
 			ScriptPubKey:    utxo.Script(),
 			Nonce:           utxo.Nonce(),
 			RangeProof:      utxo.RangeProof(),

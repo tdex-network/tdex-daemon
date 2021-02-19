@@ -33,7 +33,7 @@ const (
 	// BaseAssetKey is the default asset hash to be used as base asset for all markets. Default is LBTC
 	BaseAssetKey = "BASE_ASSET"
 	// CrawlIntervalKey is the interval in milliseconds to be used when watching the blockchain via the explorer
-	CrawlIntervalKey = "CRAWL_INTERVAL"
+	CrawlIntervalKey = "CRAWL_INTERVAL_IN_MILLISECS"
 	// FeeAccountBalanceThresholdKey is the treshold of LBTC balance (in satoshis) for the fee account, after wich we alert the operator that it cannot subsidize anymore swaps
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
 	// TradeExpiryTimeKey is the duration in seconds of lock on unspents we reserve for accpeted trades, before eventually double spending it
@@ -50,6 +50,17 @@ const (
 	EnableProfilerKey = "ENABLE_PROFILER"
 	// StatsIntervalKey defines interval for printing basic tdex statistics
 	StatsIntervalKey = "STATS_INTERVAL"
+	// ExperimentalKey defines wether to use an Elements node as the daemon's
+	// block explorer instead of the default Esplora service.
+	ExperimentalKey = "EXPERIMENTAL"
+	// ElementsRPCHostKey is the RPC host of the Elements node. Experimental ONLY.
+	ElementsRPCHostKey = "ELEMENTS_RPC_HOST"
+	// ElementsRPCPortKey is the RPC port of the Elements node. Experimental ONLY.
+	ElementsRPCPortKey = "ELEMENTS_RPC_PORT"
+	// ElementsRPCUserKey is the RPC username of the Elements node. Experimental ONLY.
+	ElementsRPCUserKey = "ELEMENTS_RPC_USER"
+	// ElementsRPCPasswordKey is the RPC password of the Elements node. Experimental ONLY.
+	ElementsRPCPasswordKey = "ELEMENTS_RPC_PASSWORD"
 )
 
 var vip *viper.Viper
@@ -73,7 +84,7 @@ func init() {
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
-	vip.SetDefault(StatsIntervalKey, 10)
+	vip.SetDefault(StatsIntervalKey, 600)
 
 	validate()
 
@@ -156,6 +167,21 @@ func validate() {
 	certPath, keyPath := vip.GetString(SSLCertPathKey), vip.GetString(SSLKeyPathKey)
 	if (certPath != "" && keyPath == "") || (certPath == "" && keyPath != "") {
 		log.Fatalln("SSL requires both key and certificate when enabled")
+	}
+
+	if vip.GetInt(ExperimentalKey) > 0 {
+		if len(vip.GetString(ElementsRPCHostKey)) <= 0 {
+			log.Fatalln("Elements RPC host is required in Experimental mode")
+		}
+		if vip.GetInt(ElementsRPCPortKey) <= 0 {
+			log.Fatalln("Elements RPC port is required in Experimental mode")
+		}
+		if len(vip.GetString(ElementsRPCUserKey)) <= 0 {
+			log.Fatalln("Elements RPC user is required in Experimental mode")
+		}
+		if len(vip.GetString(ElementsRPCPasswordKey)) <= 0 {
+			log.Fatalln("Elements RPC password is required in Experimental mode")
+		}
 	}
 }
 
