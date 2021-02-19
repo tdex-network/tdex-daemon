@@ -67,13 +67,8 @@ func main() {
 	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
 
 	var explorerSvc explorer.Service
-	if config.GetInt(config.ExperimentalKey) > 0 {
-		explorerSvc, err = elements.NewService(
-			config.GetString(config.ElementsRPCHostKey),
-			config.GetInt(config.ElementsRPCPortKey),
-			config.GetString(config.ElementsRPCUserKey),
-			config.GetString(config.ElementsRPCPasswordKey),
-		)
+	if rpcEndpoint := config.GetString(config.ElementsRPCEndpointKey); len(rpcEndpoint) > 0 {
+		explorerSvc, err = elements.NewService(rpcEndpoint)
 		if err != nil {
 			log.WithError(err).Panic("error while setting up explorer service")
 		}

@@ -2,12 +2,16 @@ package elements
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tdex-network/tdex-daemon/config"
 )
 
+var rpcEndpoint = config.GetString(config.ElementsRPCEndpointKey)
+
 func TestGetTransactionHex(t *testing.T) {
-	elementsSvc, err := NewService("localhost", 7041, "admin1", "123")
+	elementsSvc, err := NewService(rpcEndpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +35,7 @@ func TestGetTransactionHex(t *testing.T) {
 }
 
 func TestIsTransactionConfirmed(t *testing.T) {
-	elementsSvc, err := NewService("localhost", 7041, "admin1", "123")
+	elementsSvc, err := NewService(rpcEndpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,6 +49,8 @@ func TestIsTransactionConfirmed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	time.Sleep(500 * time.Millisecond)
 
 	isConfirmed, err := elementsSvc.IsTransactionConfirmed(txid)
 	if err != nil {
@@ -54,7 +60,7 @@ func TestIsTransactionConfirmed(t *testing.T) {
 	assert.Equal(t, true, isConfirmed)
 }
 func TestGetTransactionStatus(t *testing.T) {
-	elementsSvc, err := NewService("localhost", 7041, "admin1", "123")
+	elementsSvc, err := NewService(rpcEndpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,6 +74,8 @@ func TestGetTransactionStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	time.Sleep(500 * time.Millisecond)
 
 	status, err := elementsSvc.GetTransactionStatus(txid)
 	if err != nil {
@@ -81,7 +89,7 @@ func TestGetTransactionStatus(t *testing.T) {
 }
 
 func TestGetTransactionsForAddress(t *testing.T) {
-	elementsSvc, err := NewService("localhost", 7041, "admin1", "123")
+	elementsSvc, err := NewService(rpcEndpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,6 +105,8 @@ func TestGetTransactionsForAddress(t *testing.T) {
 	if _, _, err := elementsSvc.Mint(addr, 10); err != nil {
 		t.Fatal(err)
 	}
+
+	time.Sleep(500 * time.Millisecond)
 
 	txs, err := elementsSvc.GetTransactionsForAddress(addr)
 	if err != nil {
