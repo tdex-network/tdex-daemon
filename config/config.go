@@ -33,7 +33,7 @@ const (
 	// BaseAssetKey is the default asset hash to be used as base asset for all markets. Default is LBTC
 	BaseAssetKey = "BASE_ASSET"
 	// CrawlIntervalKey is the interval in milliseconds to be used when watching the blockchain via the explorer
-	CrawlIntervalKey = "CRAWL_INTERVAL_IN_MILLISECS"
+	CrawlIntervalKey = "CRAWL_INTERVAL"
 	// FeeAccountBalanceThresholdKey is the treshold of LBTC balance (in satoshis) for the fee account, after wich we alert the operator that it cannot subsidize anymore swaps
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
 	// TradeExpiryTimeKey is the duration in seconds of lock on unspents we reserve for accpeted trades, before eventually double spending it
