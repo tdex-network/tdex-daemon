@@ -1,17 +1,14 @@
 package elements
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-var rpcEndpoint = os.Getenv("TDEX_ELEMENTS_RPC_ENDPOINT")
-
 func TestGetTransactionHex(t *testing.T) {
-	elementsSvc, err := NewService(rpcEndpoint)
+	elementsSvc, err := newService()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +32,7 @@ func TestGetTransactionHex(t *testing.T) {
 }
 
 func TestIsTransactionConfirmed(t *testing.T) {
-	elementsSvc, err := NewService(rpcEndpoint)
+	elementsSvc, err := newService()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +57,7 @@ func TestIsTransactionConfirmed(t *testing.T) {
 	assert.Equal(t, true, isConfirmed)
 }
 func TestGetTransactionStatus(t *testing.T) {
-	elementsSvc, err := NewService(rpcEndpoint)
+	elementsSvc, err := newService()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +86,7 @@ func TestGetTransactionStatus(t *testing.T) {
 }
 
 func TestGetTransactionsForAddress(t *testing.T) {
-	elementsSvc, err := NewService(rpcEndpoint)
+	elementsSvc, err := newService()
 	if err != nil {
 		t.Fatal(err)
 	}

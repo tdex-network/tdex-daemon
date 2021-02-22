@@ -1,16 +1,18 @@
 package elements
 
 import (
+	"os"
 	"testing"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/stretchr/testify/assert"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
 )
 
 func TestGetUnspents(t *testing.T) {
-	elementsSvc, err := NewService(rpcEndpoint)
+	elementsSvc, err := newService()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +42,7 @@ func TestGetUnspents(t *testing.T) {
 }
 
 func TestGetUnspentsForAddresses(t *testing.T) {
-	elementsSvc, err := NewService(rpcEndpoint)
+	elementsSvc, err := newService()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,6 +73,17 @@ func TestGetUnspentsForAddresses(t *testing.T) {
 		assert.Equal(t, true, utxo.IsRevealed())
 		assert.Equal(t, true, utxo.IsConfidential())
 	}
+}
+
+func newService() (explorer.Service, error) {
+	// TDEX_ELEMENTS_RPC_ENDPOINT is set only for CI, which uses a different port
+	// for the nodes' RPC interface. Locally, there's no need to export such var
+	// because the endpoint is defualted to the Nigiri one.
+	rpcEndpoint := os.Getenv("TDEX_ELEMENTS_RPC_ENDPOINT")
+	if rpcEndpoint == "" {
+		rpcEndpoint = "http://admin1:123@127.0.0.1:7041"
+	}
+	return NewService(rpcEndpoint)
 }
 
 func newTestData() (string, []byte, error) {
