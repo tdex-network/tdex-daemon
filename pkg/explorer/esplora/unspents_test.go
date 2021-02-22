@@ -1,4 +1,4 @@
-package esplora
+package esplora_test
 
 import (
 	"math"
@@ -8,6 +8,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
 )
@@ -48,7 +49,7 @@ func TestGetUnspents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	explorerSvc := NewService(explorerURL)
+	explorerSvc := esplora.NewService(explorerURL)
 
 	_, err = explorerSvc.Faucet(address)
 	if err != nil {
@@ -62,9 +63,12 @@ func TestGetUnspents(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, len(utxos))
-	assert.Equal(t, true, len(utxos[0].Nonce()) > 1)
-	assert.Equal(t, true, len(utxos[0].RangeProof()) > 0)
-	assert.Equal(t, true, len(utxos[0].SurjectionProof()) > 0)
+
+	if len(utxos) > 0 {
+		assert.Equal(t, true, len(utxos[0].Nonce()) > 1)
+		assert.Equal(t, true, len(utxos[0].RangeProof()) > 0)
+		assert.Equal(t, true, len(utxos[0].SurjectionProof()) > 0)
+	}
 }
 
 func TestSelectUnspents(t *testing.T) {
@@ -72,7 +76,7 @@ func TestSelectUnspents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	explorerSvc := NewService(explorerURL)
+	explorerSvc := esplora.NewService(explorerURL)
 
 	_, err = explorerSvc.Faucet(address)
 	if err != nil {

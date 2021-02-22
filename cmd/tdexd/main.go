@@ -15,9 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/elements"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/stats"
 
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
@@ -66,14 +63,9 @@ func main() {
 	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
 
-	var explorerSvc explorer.Service
-	if rpcEndpoint := config.GetString(config.ElementsRPCEndpointKey); len(rpcEndpoint) > 0 {
-		explorerSvc, err = elements.NewService(rpcEndpoint)
-		if err != nil {
-			log.WithError(err).Panic("error while setting up explorer service")
-		}
-	} else {
-		explorerSvc = esplora.NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc, err := config.GetExplorer()
+	if err != nil {
+		log.WithError(err).Panic("error while setting up explorer service")
 	}
 
 	crawlerSvc := crawler.NewService(crawler.Opts{

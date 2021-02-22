@@ -17,6 +17,9 @@ type elements struct {
 // It establishes an insecure connection with the JSON-RPC interface of the
 // node with no TLS termination.
 func NewService(endpoint string) (explorer.Service, error) {
+	if endpoint == "" {
+		return nil, fmt.Errorf("missing endpoint")
+	}
 	parsedEndpoint, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("invalid endpoint: %w", err)
@@ -26,7 +29,19 @@ func NewService(endpoint string) (explorer.Service, error) {
 	port, _ := strconv.Atoi(parsedEndpoint.Port())
 	user := parsedEndpoint.User.Username()
 	password, _ := parsedEndpoint.User.Password()
+
+	if host == "" {
+		return nil, fmt.Errorf("missing host")
+	}
+	if user == "" {
+		return nil, fmt.Errorf("missing RPC user")
+	}
+	if password == "" {
+		return nil, fmt.Errorf("missing RPC password")
+	}
+
 	client, err := NewClient(host, port, user, password, false, 30)
+
 	if err != nil {
 		return nil, err
 	}

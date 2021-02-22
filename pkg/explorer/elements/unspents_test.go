@@ -30,11 +30,13 @@ func TestGetUnspents(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, len(utxos))
-	assert.Equal(t, true, utxos[0].IsConfidential())
-	assert.Equal(t, true, utxos[0].IsRevealed())
-	assert.Equal(t, true, len(utxos[0].Nonce()) > 0)
-	assert.Equal(t, true, len(utxos[0].RangeProof()) > 0)
-	assert.Equal(t, true, len(utxos[0].SurjectionProof()) > 0)
+	if len(utxos) > 0 {
+		assert.Equal(t, true, utxos[0].IsConfidential())
+		assert.Equal(t, true, utxos[0].IsRevealed())
+		assert.Equal(t, true, len(utxos[0].Nonce()) > 0)
+		assert.Equal(t, true, len(utxos[0].RangeProof()) > 0)
+		assert.Equal(t, true, len(utxos[0].SurjectionProof()) > 0)
+	}
 }
 
 func TestGetUnspentsForAddresses(t *testing.T) {

@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcutil"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/elements"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -125,6 +128,14 @@ func GetNetwork() *network.Network {
 		return &network.Regtest
 	}
 	return &network.Liquid
+}
+
+//GetExplorer ...
+func GetExplorer() (explorer.Service, error) {
+	if rpcEndpoint := GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
+		return elements.NewService(rpcEndpoint)
+	}
+	return esplora.NewService(GetString(ExplorerEndpointKey)), nil
 }
 
 // Set a value for the given key

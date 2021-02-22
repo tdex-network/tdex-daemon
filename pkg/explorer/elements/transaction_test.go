@@ -1,14 +1,14 @@
 package elements
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tdex-network/tdex-daemon/config"
 )
 
-var rpcEndpoint = config.GetString(config.ElementsRPCEndpointKey)
+var rpcEndpoint = os.Getenv("TDEX_ELEMENTS_RPC_ENDPOINT")
 
 func TestGetTransactionHex(t *testing.T) {
 	elementsSvc, err := NewService(rpcEndpoint)

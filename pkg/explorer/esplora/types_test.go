@@ -1,4 +1,4 @@
-package esplora
+package esplora_test
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 )
 
 func TestNewTxFromJSON(t *testing.T) {
@@ -21,7 +22,7 @@ func TestNewTxFromJSON(t *testing.T) {
 
 	for _, test := range tests {
 		tt := test.(map[string]interface{})
-		trx, err := NewTxFromJSON(tt["tx"].(string))
+		trx, err := esplora.NewTxFromJSON(tt["tx"].(string))
 		if err != nil {
 			t.Fatal(err)
 		}
