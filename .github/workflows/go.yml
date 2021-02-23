@@ -30,7 +30,9 @@ jobs:
         run: go get -v -t -d ./...
 
       - name: Test with esplora
-        run: make test
+        run: |
+        export TEST_ELEMENTS_ENDPOINT='http://admin1:123@localhost:18884'
+        make test
 
       - name: Test with elements
         run: |
