@@ -166,12 +166,12 @@ func (eu elementsUnspent) Parse() (*transaction.TxInput, *transaction.TxOutput, 
 			return nil, nil, err
 		}
 		witnessUtxo = &transaction.TxOutput{
-			Nonce:           make([]byte, 1),
+			Nonce:           eu.Nonce(),
 			Script:          eu.Script(),
 			Asset:           assetCommitment,
 			Value:           valueCommitment,
-			RangeProof:      make([]byte, 1),
-			SurjectionProof: make([]byte, 1),
+			RangeProof:      eu.RangeProof(),
+			SurjectionProof: eu.SurjectionProof(),
 		}
 	} else {
 		asset, err := bufferutil.AssetHashToBytes(eu.UAsset)

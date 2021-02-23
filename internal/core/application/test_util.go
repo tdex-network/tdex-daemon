@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +15,8 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/elements"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
@@ -96,7 +99,7 @@ func newMockServices(
 	}
 
 	// create services associated with mocked repo
-	explorerSvc, err := esplora.NewService(RegtestExplorerAPI)
+	explorerSvc, err := getExplorer()
 	if err != nil {
 		panic(err)
 	}
@@ -217,7 +220,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	marketRepo := inmemory.NewMarketRepositoryImpl(dbManager)
 	unspentRepo := inmemory.NewUnspentRepositoryImpl(dbManager)
 	tradeRepository := inmemory.NewTradeRepositoryImpl(dbManager)
-	explorerSvc, _ := esplora.NewService(RegtestExplorerAPI)
+	explorerSvc, _ := getExplorer()
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
 		Observables:            []crawler.Observable{},
@@ -250,6 +253,16 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	}
 
 	return walletSvc, ctx, closeFn
+}
+
+func getExplorer() (explorer.Service, error) {
+	if endpoint := os.Getenv("TDEX_ELEMENTS_RPC_ENDPOINT"); endpoint != "" {
+		return elements.NewService(endpoint)
+	}
+	if endpoint := os.Getenv("TDEX_EXPLORER_ENDPOINT"); endpoint != "" {
+		return esplora.NewService(endpoint)
+	}
+	return nil, fmt.Errorf("Esplora or Elements endpoint must be set")
 }
 
 func fillMarketRepo(
@@ -348,7 +361,7 @@ func newSwapRequest(
 	assetP string, amountP uint64,
 	assetR string, amountR uint64,
 ) (*pb.SwapRequest, error) {
-	explorerSvc, err := esplora.NewService(RegtestExplorerAPI)
+	explorerSvc, err := getExplorer()
 	if err != nil {
 		return nil, err
 	}
@@ -384,10 +397,10 @@ func newSwapRequest(
 		InputBlindingKeys:  blindKeyMap,
 		OutputBlindingKeys: blindKeyMap,
 	})
-
 	if err != nil {
 		return nil, err
 	}
+
 	req := &pb.SwapRequest{}
 	err = proto.Unmarshal(msg, req)
 	if err != nil {
