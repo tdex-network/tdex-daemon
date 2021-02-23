@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -135,7 +136,7 @@ func GetExplorer() (explorer.Service, error) {
 	if rpcEndpoint := GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
 		return elements.NewService(rpcEndpoint)
 	}
-	return esplora.NewService(GetString(ExplorerEndpointKey)), nil
+	return esplora.NewService(GetString(ExplorerEndpointKey))
 }
 
 // Set a value for the given key
@@ -171,6 +172,16 @@ func validate() {
 	if (certPath != "" && keyPath == "") || (certPath == "" && keyPath != "") {
 		log.Fatalln("SSL requires both key and certificate when enabled")
 	}
+
+	if rpcEndpoint := vip.GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
+		if err := validateEndpoint(rpcEndpoint); err != nil {
+			log.WithError(err).Panic("Elements RPC endpoint is not a valid url")
+		}
+	} else {
+		if err := validateEndpoint(vip.GetString(ExplorerEndpointKey)); err != nil {
+			log.WithError(err).Panic("explorer endpoint is not a valid url")
+		}
+	}
 }
 
 func validateDefaultFee(fee float64) error {
@@ -205,6 +216,11 @@ func validatePath(path string) error {
 	}
 
 	return nil
+}
+
+func validateEndpoint(endpoint string) error {
+	_, err := url.Parse(endpoint)
+	return err
 }
 
 func initDataDir() error {

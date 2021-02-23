@@ -22,7 +22,10 @@ func TestGetTransactionStatus(t *testing.T) {
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
 
-	explorerSvc := esplora.NewService(explorerURL)
+	explorerSvc, err := esplora.NewService(explorerURL)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Fund sender address.
 	txID, err := explorerSvc.Faucet(address)
@@ -56,7 +59,10 @@ func TestGetTransactionsForAddress(t *testing.T) {
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
 
-	explorerSvc := esplora.NewService(explorerURL)
+	explorerSvc, err := esplora.NewService(explorerURL)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Fund sender address.
 	if _, err := explorerSvc.Faucet(address); err != nil {

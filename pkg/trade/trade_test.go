@@ -4,13 +4,24 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
 )
 
-var explorerSvc = esplora.NewService("http://localhost:3001")
+var explorerSvc explorer.Service
+
+func initExplorer() error {
+	var err error
+	explorerSvc, err = esplora.NewService("http://localhost:3001")
+	return err
+}
 
 func TestNewTrade(t *testing.T) {
+	if err := initExplorer(); err != nil {
+		t.Fatal(err)
+	}
+
 	client, err := tradeclient.NewTradeClient("localhost", 9000)
 	if err != nil {
 		t.Fatal(err)

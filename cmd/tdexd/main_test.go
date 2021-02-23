@@ -30,6 +30,8 @@ import (
 
 const walletPassword = "Sup3rS3cr3tP4ssw0rd!"
 
+var explorerSvc explorer.Service
+
 func TestGrpcMain(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
@@ -40,6 +42,10 @@ func TestGrpcMain(t *testing.T) {
 		time.Sleep(1 * time.Second)
 		stopDaemon()
 	})
+
+	if err := initExplorer(); err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -99,6 +105,12 @@ func stopDaemon() {
 	os.RemoveAll(config.GetString(config.DataDirPathKey))
 }
 
+func initExplorer() error {
+	var err error
+	explorerSvc, err = esplora.NewService(config.GetString(config.ExplorerEndpointKey))
+	return err
+}
+
 func initWallet() error {
 	client, err := newWalletClient()
 	if err != nil {
@@ -133,7 +145,6 @@ func initFee() error {
 	if err != nil {
 		return err
 	}
-	explorerSvc := esplora.NewService(config.GetString(config.ExplorerEndpointKey))
 	ctx := context.Background()
 
 	// get an address for funding the fee account
@@ -158,7 +169,6 @@ func initMarketAccounts() error {
 	if err != nil {
 		return err
 	}
-	explorerSvc := esplora.NewService(config.GetString(config.ExplorerEndpointKey))
 	ctx := context.Background()
 
 	// create a new market
@@ -237,7 +247,7 @@ func tradeLBTCPerUSDTFixedLBTC(w wallet, market trademarket.Market) (string, err
 	}
 	tr, err := pkgtrade.NewTrade(trade.NewTradeOpts{
 		Chain:           "regtest",
-		ExplorerService: esplora.NewService(config.GetString(config.ExplorerEndpointKey)),
+		ExplorerService: explorerSvc,
 		Client:          client,
 	})
 	if err != nil {
@@ -262,7 +272,7 @@ func tradeLBTCPerUSDTFixedUSDT(w wallet, market trademarket.Market) (string, err
 	}
 	tr, err := pkgtrade.NewTrade(trade.NewTradeOpts{
 		Chain:           "regtest",
-		ExplorerService: esplora.NewService(config.GetString(config.ExplorerEndpointKey)),
+		ExplorerService: explorerSvc,
 		Client:          client,
 	})
 	if err != nil {
@@ -322,8 +332,6 @@ func newSingleKeyWallet() (w wallet, err error) {
 	if err != nil {
 		return
 	}
-
-	explorerSvc := esplora.NewService(config.GetString(config.ExplorerEndpointKey))
 
 	w = wallet{
 		signingKey:  prvkey.Serialize(),

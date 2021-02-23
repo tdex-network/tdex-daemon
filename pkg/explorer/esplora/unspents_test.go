@@ -49,7 +49,10 @@ func TestGetUnspents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	explorerSvc := esplora.NewService(explorerURL)
+	explorerSvc, err := esplora.NewService(explorerURL)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = explorerSvc.Faucet(address)
 	if err != nil {
@@ -76,7 +79,10 @@ func TestSelectUnspents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	explorerSvc := esplora.NewService(explorerURL)
+	explorerSvc, err := esplora.NewService(explorerURL)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = explorerSvc.Faucet(address)
 	if err != nil {

@@ -96,7 +96,10 @@ func newMockServices(
 	}
 
 	// create services associated with mocked repo
-	explorerSvc := esplora.NewService(RegtestExplorerAPI)
+	explorerSvc, err := esplora.NewService(RegtestExplorerAPI)
+	if err != nil {
+		panic(err)
+	}
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
 		Observables:            []crawler.Observable{},
@@ -214,7 +217,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	marketRepo := inmemory.NewMarketRepositoryImpl(dbManager)
 	unspentRepo := inmemory.NewUnspentRepositoryImpl(dbManager)
 	tradeRepository := inmemory.NewTradeRepositoryImpl(dbManager)
-	explorerSvc := esplora.NewService(RegtestExplorerAPI)
+	explorerSvc, _ := esplora.NewService(RegtestExplorerAPI)
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
 		Observables:            []crawler.Observable{},
@@ -345,7 +348,10 @@ func newSwapRequest(
 	assetP string, amountP uint64,
 	assetR string, amountR uint64,
 ) (*pb.SwapRequest, error) {
-	explorerSvc := esplora.NewService(RegtestExplorerAPI)
+	explorerSvc, err := esplora.NewService(RegtestExplorerAPI)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := explorerSvc.Faucet(w.Address()); err != nil {
 		return nil, err
 	}
