@@ -10,8 +10,6 @@ import (
 	"github.com/vulpemventures/go-elements/payment"
 )
 
-const explorerURL = "http://localhost:3001"
-
 func TestGetTransactionStatus(t *testing.T) {
 	privkey, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
@@ -21,7 +19,7 @@ func TestGetTransactionStatus(t *testing.T) {
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
 
-	explorerSvc, err := NewService(explorerURL)
+	explorerSvc, err := newService()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +56,7 @@ func TestGetTransactionsForAddress(t *testing.T) {
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
 
-	explorerSvc, err := NewService(explorerURL)
+	explorerSvc, err := newService()
 	if err != nil {
 		t.Fatal(err)
 	}

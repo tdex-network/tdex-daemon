@@ -2,6 +2,7 @@ package esplora
 
 import (
 	"math"
+	"os"
 	"testing"
 	"time"
 
@@ -11,6 +12,81 @@ import (
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
 )
+
+func TestGetUnspents(t *testing.T) {
+	address, blindKey, err := newTestData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	explorerSvc, err := newService()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = explorerSvc.Faucet(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Second)
+
+	utxos, err := explorerSvc.GetUnspents(address, [][]byte{blindKey})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, len(utxos))
+
+	if len(utxos) > 0 {
+		assert.Equal(t, true, len(utxos[0].Nonce()) > 1)
+		assert.Equal(t, true, len(utxos[0].RangeProof()) > 0)
+		assert.Equal(t, true, len(utxos[0].SurjectionProof()) > 0)
+	}
+}
+
+func TestSelectUnspents(t *testing.T) {
+	address, key1, err := newTestData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	explorerSvc, err := newService()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = explorerSvc.Faucet(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Second)
+
+	utxos, err := explorerSvc.GetUnspents(address, [][]byte{key1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	targetAmount := uint64(1.5 * math.Pow10(8))
+
+	selectedUtxos, change, err := explorer.SelectUnspents(
+		utxos,
+		targetAmount,
+		network.Regtest.AssetID,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedChange := uint64(0.5 * math.Pow10(8))
+	assert.Equal(t, 2, len(selectedUtxos))
+	assert.Equal(t, expectedChange, change)
+}
+
+func newService() (explorer.Service, error) {
+	endpoint := os.Getenv("TEST_EXPLORER_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "http://127.0.0.1:3001"
+	}
+	return NewService(endpoint)
+}
 
 var testKey []byte
 var testAddress string
@@ -41,71 +117,4 @@ func newTestData() (string, []byte, error) {
 	testAddress = addr
 	testKey = blindKey.Serialize()
 	return testAddress, testKey, nil
-}
-
-func TestGetUnspents(t *testing.T) {
-	address, blindKey, err := newTestData()
-	if err != nil {
-		t.Fatal(err)
-	}
-	explorerSvc, err := NewService(explorerURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = explorerSvc.Faucet(address)
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(5 * time.Second)
-
-	utxos, err := explorerSvc.GetUnspents(address, [][]byte{blindKey})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 1, len(utxos))
-
-	if len(utxos) > 0 {
-		assert.Equal(t, true, len(utxos[0].Nonce()) > 1)
-		assert.Equal(t, true, len(utxos[0].RangeProof()) > 0)
-		assert.Equal(t, true, len(utxos[0].SurjectionProof()) > 0)
-	}
-}
-
-func TestSelectUnspents(t *testing.T) {
-	address, key1, err := newTestData()
-	if err != nil {
-		t.Fatal(err)
-	}
-	explorerSvc, err := NewService(explorerURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = explorerSvc.Faucet(address)
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(5 * time.Second)
-
-	utxos, err := explorerSvc.GetUnspents(address, [][]byte{key1})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	targetAmount := uint64(1.5 * math.Pow10(8))
-
-	selectedUtxos, change, err := explorer.SelectUnspents(
-		utxos,
-		targetAmount,
-		network.Regtest.AssetID,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expectedChange := uint64(0.5 * math.Pow10(8))
-	assert.Equal(t, 2, len(selectedUtxos))
-	assert.Equal(t, expectedChange, change)
 }

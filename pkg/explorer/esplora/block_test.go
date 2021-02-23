@@ -7,7 +7,7 @@ import (
 )
 
 func TestGetBlockHeight(t *testing.T) {
-	explorerSvc, err := NewService(explorerURL)
+	explorerSvc, err := newService()
 	if err != nil {
 		t.Fatal(err)
 	}

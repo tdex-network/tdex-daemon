@@ -76,10 +76,7 @@ func TestGetUnspentsForAddresses(t *testing.T) {
 }
 
 func newService() (explorer.Service, error) {
-	// TDEX_ELEMENTS_RPC_ENDPOINT is set only for CI, which uses a different port
-	// for the nodes' RPC interface. Locally, there's no need to export such var
-	// because the endpoint is defualted to the Nigiri one.
-	rpcEndpoint := os.Getenv("TDEX_ELEMENTS_RPC_ENDPOINT")
+	rpcEndpoint := os.Getenv("TEST_ELEMENTS_ENDPOINT")
 	if rpcEndpoint == "" {
 		rpcEndpoint = "http://admin1:123@127.0.0.1:7041"
 	}
