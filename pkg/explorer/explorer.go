@@ -19,6 +19,7 @@ type Service interface {
 		addresses []string,
 		blindingKeys [][]byte,
 	) ([]Utxo, error)
+	GetBlockHeight() (int, error)
 }
 
 type explorer struct {
