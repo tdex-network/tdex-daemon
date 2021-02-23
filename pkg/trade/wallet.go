@@ -16,7 +16,6 @@ import (
 
 func NewSwapTx(
 	unspents []explorer.Utxo,
-	blindingKey []byte,
 	inAsset string,
 	inAmount uint64,
 	outAsset string,
@@ -30,7 +29,6 @@ func NewSwapTx(
 
 	selectedUnspents, change, err := explorer.SelectUnspents(
 		unspents,
-		[][]byte{blindingKey},
 		inAmount,
 		inAsset,
 	)

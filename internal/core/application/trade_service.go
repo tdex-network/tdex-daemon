@@ -623,7 +623,7 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 	// add the explicit fee output to the tx
 	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64: blindedPset,
-		Outputs:    transactionutil.NewFeeOutput(psetWithFeesResult.FeeAmount),
+		Outputs:    transactionutil.NewFeeOutput(psetWithFeesResult.FeeAmount, network),
 		Network:    network,
 	})
 	if err != nil {

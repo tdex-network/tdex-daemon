@@ -165,7 +165,6 @@ func (t *Trade) marketOrderRequest(
 
 	psetBase64, err := NewSwapTx(
 		unspents,
-		blindingKey,
 		preview.AssetToSend,
 		preview.AmountToSend,
 		preview.AssetToReceive,

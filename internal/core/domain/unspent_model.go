@@ -3,6 +3,7 @@ package domain
 import (
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 )
 
 type UnspentKey struct {
@@ -17,6 +18,8 @@ type Unspent struct {
 	AssetHash       string
 	ValueCommitment string
 	AssetCommitment string
+	ValueBlinder    []byte
+	AssetBlinder    []byte
 	ScriptPubKey    []byte
 	Nonce           []byte
 	RangeProof      []byte
@@ -76,13 +79,15 @@ func (u *Unspent) IsKeyEqual(key UnspentKey) bool {
 }
 
 func (u *Unspent) ToUtxo() explorer.Utxo {
-	return explorer.NewWitnessUtxo(
+	return esplora.NewWitnessUtxo(
 		u.TxID,
 		u.VOut,
 		u.Value,
 		u.AssetHash,
 		u.ValueCommitment,
 		u.AssetCommitment,
+		u.ValueBlinder,
+		u.AssetBlinder,
 		u.ScriptPubKey,
 		u.Nonce,
 		u.RangeProof,

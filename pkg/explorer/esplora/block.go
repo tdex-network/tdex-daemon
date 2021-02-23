@@ -1,28 +1,29 @@
-package explorer
+package esplora
 
 import (
 	"fmt"
-	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 	"net/http"
 	"strconv"
+
+	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
-func (e *explorer) GetBlockHeight() (int, error) {
+func (e *esplora) GetBlockHeight() (int, error) {
 	url := fmt.Sprintf(
 		"%v/blocks/tip/height",
-		e.apiUrl,
+		e.apiURL,
 	)
 	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
 		return -1, err
 	}
 	if status != http.StatusOK {
-		return 0, fmt.Errorf(resp)
+		return -1, fmt.Errorf(resp)
 	}
 
 	blockHeight, err := strconv.Atoi(resp)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 
 	return blockHeight, nil

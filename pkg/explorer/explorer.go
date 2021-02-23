@@ -1,94 +1,72 @@
 package explorer
 
 import (
-	"errors"
-	"fmt"
+	"github.com/vulpemventures/go-elements/transaction"
 )
 
+// Utxo represents a transaction output in the elements chain.
+type Utxo interface {
+	Hash() string
+	Index() uint32
+	Value() uint64
+	Asset() string
+	ValueCommitment() string
+	AssetCommitment() string
+	ValueBlinder() []byte
+	AssetBlinder() []byte
+	Script() []byte
+	Nonce() []byte
+	RangeProof() []byte
+	SurjectionProof() []byte
+	IsConfidential() bool
+	IsConfirmed() bool
+	IsRevealed() bool
+	Parse() (*transaction.TxInput, *transaction.TxOutput, error)
+}
+
+// Transaction represents a transaction in the elements chain.
+type Transaction interface {
+	Hash() string
+	Version() int
+	Locktime() int
+	Inputs() []*transaction.TxInput
+	Outputs() []*transaction.TxOutput
+	Size() int
+	Weight() int
+	Fee() int
+	Confirmed() bool
+}
+
+// Service is representation of an explorer that allows to fetch data from the
+// blockchain, to broadcast transactions, and for regtest ONLY, to fund and
+// and address with LBTC or some other asset.
 type Service interface {
-	GetUnspents(addr string, blindKeys [][]byte) ([]Utxo, error)
-	GetTransactionHex(hash string) (string, error)
-	IsTransactionConfirmed(txID string) (bool, error)
-	GetTransactionStatus(txID string) (map[string]interface{}, error)
-	GetTransactionsForAddress(address string) ([]Transaction, error)
-	BroadcastTransaction(txHex string) (string, error)
-	// regtest only
-	Faucet(address string) (string, error)
-	Mint(address string, amount int) (string, string, error)
+	// GetUnspents fetches and optionally unblinds utxos for the given address.
+	GetUnspents(addr string, blindKeys [][]byte) (unspents []Utxo, err error)
+	// GetUnspentsForAddresses fetches and optionally unblinds utxos of the given
+	// list of addresses.
 	GetUnspentsForAddresses(
 		addresses []string,
 		blindingKeys [][]byte,
-	) ([]Utxo, error)
+	) (unspents []Utxo, err error)
+	// GetTransactionHex fetches the transaction in hex format given its hash.
+	GetTransactionHex(txid string) (txhex string, err error)
+	// IsTransactionConfirmed returns whether the tx identified by its hash has
+	// been included in the blockchain.
+	IsTransactionConfirmed(txid string) (confirmed bool, err error)
+	// GetTransactionStatus returns the status of the tx identified by its hash.
+	GetTransactionStatus(txid string) (status map[string]interface{}, err error)
+	// GetTransactionsForAddress returns the list of all txs relative to the
+	// given address.
+	GetTransactionsForAddress(address string) (txs []Transaction, err error)
+	// BroadcastTransaction attempts to add the given tx in hex format to the
+	// mempool and returns its tx hash.
+	BroadcastTransaction(txhex string) (txid string, err error)
+	/**** REGTEST ONLY ****/
+	// Faucet funds the given address with 1 LBTC
+	Faucet(address string) (txid string, err error)
+	// Mint funds the given address with a certain amount of a new issued asset.
+	Mint(address string, amount int) (txid string, asset string, err error)
+	// GetBlockHeight returns the the number of block of the blockchain.
 	GetBlockHeight() (int, error)
-}
-
-type explorer struct {
-	apiUrl string
-}
-
-func NewService(apiUrl string) Service {
-	return &explorer{apiUrl}
-}
-
-func SelectUnspents(
-	utxos []Utxo,
-	blindKeys [][]byte,
-	targetAmount uint64,
-	targetAsset string,
-) (coins []Utxo, change uint64, err error) {
-	chUnspents := make(chan Utxo, len(utxos))
-	chErr := make(chan error, 1)
-
-	unblindedUtxos := make([]Utxo, 0)
-	totalAmount := uint64(0)
-
-	for i := range utxos {
-		utxo := utxos[i]
-		if utxo.IsConfidential() {
-			go unblindUtxo(utxo, blindKeys, chUnspents, chErr)
-			select {
-
-			case err1 := <-chErr:
-				close(chErr)
-				close(chUnspents)
-				coins = nil
-				change = 0
-				err = fmt.Errorf("error on unblinding utxos: %s", err1)
-				return
-
-			case unspent := <-chUnspents:
-				if unspent.Asset() == targetAsset {
-					unblindedUtxos = append(unblindedUtxos, unspent)
-				}
-			}
-
-		} else {
-			if utxo.Asset() == targetAsset {
-				unblindedUtxos = append(unblindedUtxos, utxo)
-			}
-		}
-	}
-
-	indexes := getCoinsIndexes(targetAmount, unblindedUtxos)
-
-	selectedUtxos := make([]Utxo, 0)
-	if len(indexes) > 0 {
-		for _, v := range indexes {
-			totalAmount += unblindedUtxos[v].Value()
-			selectedUtxos = append(selectedUtxos, unblindedUtxos[v])
-		}
-	} else {
-		coins = nil
-		change = 0
-		err = errors.New(
-			"error on target amount: total utxo amount does not cover target amount",
-		)
-		return
-	}
-
-	changeAmount := totalAmount - targetAmount
-	coins = selectedUtxos
-	change = changeAmount
-
-	return
 }

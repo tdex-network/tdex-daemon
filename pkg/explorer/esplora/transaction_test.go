@@ -1,4 +1,4 @@
-package explorer
+package esplora
 
 import (
 	"testing"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/magiconair/properties/assert"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
 )
@@ -20,7 +19,10 @@ func TestGetTransactionStatus(t *testing.T) {
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
 
-	explorerSvc := NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc, err := newService()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Fund sender address.
 	txID, err := explorerSvc.Faucet(address)
@@ -54,7 +56,10 @@ func TestGetTransactionsForAddress(t *testing.T) {
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
 
-	explorerSvc := NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc, err := newService()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Fund sender address.
 	if _, err := explorerSvc.Faucet(address); err != nil {

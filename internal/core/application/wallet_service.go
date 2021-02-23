@@ -605,13 +605,15 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 		outputsBlindingKeys = append(outputsBlindingKeys, v)
 	}
 
+	network := config.GetNetwork()
+
 	// add inputs for paying network fees
 	updateResult, err = w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64:         updateResult.PsetBase64,
 		Unspents:           opts.feeUnspents,
 		ChangePathsByAsset: opts.feeChangePathByAsset,
 		MilliSatsPerBytes:  milliSatPerByte,
-		Network:            config.GetNetwork(),
+		Network:            network,
 		WantChangeForFees:  true,
 	})
 	if err != nil {
@@ -635,8 +637,8 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 	// add the explicit fee amount
 	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64: blindedPset,
-		Outputs:    transactionutil.NewFeeOutput(updateResult.FeeAmount),
-		Network:    config.GetNetwork(),
+		Outputs:    transactionutil.NewFeeOutput(updateResult.FeeAmount, network),
+		Network:    network,
 	})
 	if err != nil {
 		return "", "", err

@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/vulpemventures/go-elements/payment"
 	"google.golang.org/grpc"
@@ -29,6 +30,8 @@ import (
 
 const walletPassword = "Sup3rS3cr3tP4ssw0rd!"
 
+var explorerSvc explorer.Service
+
 func TestGrpcMain(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
@@ -39,6 +42,10 @@ func TestGrpcMain(t *testing.T) {
 		time.Sleep(1 * time.Second)
 		stopDaemon()
 	})
+
+	if err := initExplorer(); err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -98,6 +105,12 @@ func stopDaemon() {
 	os.RemoveAll(config.GetString(config.DataDirPathKey))
 }
 
+func initExplorer() error {
+	var err error
+	explorerSvc, err = esplora.NewService(config.GetString(config.ExplorerEndpointKey))
+	return err
+}
+
 func initWallet() error {
 	client, err := newWalletClient()
 	if err != nil {
@@ -132,20 +145,20 @@ func initFee() error {
 	if err != nil {
 		return err
 	}
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	ctx := context.Background()
 
 	// get an address for funding the fee account
-	depositFeeReply, err := client.DepositFeeAccount(ctx, &pboperator.DepositFeeAccountRequest{})
+	depositFeeReply, err := client.DepositFeeAccount(ctx, &pboperator.DepositFeeAccountRequest{
+		NumOfAddresses: 2,
+	})
 	if err != nil {
 		return err
 	}
-	if _, err := explorerSvc.Faucet(
-		depositFeeReply.GetAddressWithBlindingKey()[0].GetAddress(),
-	); err != nil {
-		return err
+	for _, addr := range depositFeeReply.GetAddressWithBlindingKey() {
+		if _, err := explorerSvc.Faucet(addr.GetAddress()); err != nil {
+			return err
+		}
 	}
-
 	time.Sleep(2 * time.Second)
 
 	return nil
@@ -156,7 +169,6 @@ func initMarketAccounts() error {
 	if err != nil {
 		return err
 	}
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 	ctx := context.Background()
 
 	// create a new market
@@ -234,9 +246,9 @@ func tradeLBTCPerUSDTFixedLBTC(w wallet, market trademarket.Market) (string, err
 		return "", err
 	}
 	tr, err := pkgtrade.NewTrade(trade.NewTradeOpts{
-		Chain:       "regtest",
-		ExplorerURL: config.GetString(config.ExplorerEndpointKey),
-		Client:      client,
+		Chain:           "regtest",
+		ExplorerService: explorerSvc,
+		Client:          client,
 	})
 	if err != nil {
 		return "", err
@@ -259,9 +271,9 @@ func tradeLBTCPerUSDTFixedUSDT(w wallet, market trademarket.Market) (string, err
 		return "", err
 	}
 	tr, err := pkgtrade.NewTrade(trade.NewTradeOpts{
-		Chain:       "regtest",
-		ExplorerURL: config.GetString(config.ExplorerEndpointKey),
-		Client:      client,
+		Chain:           "regtest",
+		ExplorerService: explorerSvc,
+		Client:          client,
 	})
 	if err != nil {
 		return "", err
@@ -320,8 +332,6 @@ func newSingleKeyWallet() (w wallet, err error) {
 	if err != nil {
 		return
 	}
-
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
 
 	w = wallet{
 		signingKey:  prvkey.Serialize(),

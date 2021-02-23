@@ -3,12 +3,16 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/btcsuite/btcutil"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/elements"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -50,6 +54,9 @@ const (
 	EnableProfilerKey = "ENABLE_PROFILER"
 	// StatsIntervalKey defines interval for printing basic tdex statistics
 	StatsIntervalKey = "STATS_INTERVAL"
+	// ElementsRPCEndpointKey is the url for the RPC interface of the Elements
+	// node in the form protocol://user:password@host:port
+	ElementsRPCEndpointKey = "ELEMENTS_RPC_ENDPOINT"
 )
 
 var vip *viper.Viper
@@ -73,7 +80,7 @@ func init() {
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
-	vip.SetDefault(StatsIntervalKey, 10)
+	vip.SetDefault(StatsIntervalKey, 600)
 
 	validate()
 
@@ -124,6 +131,14 @@ func GetNetwork() *network.Network {
 	return &network.Liquid
 }
 
+//GetExplorer ...
+func GetExplorer() (explorer.Service, error) {
+	if rpcEndpoint := GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
+		return elements.NewService(rpcEndpoint)
+	}
+	return esplora.NewService(GetString(ExplorerEndpointKey))
+}
+
 // Set a value for the given key
 func Set(key string, value interface{}) {
 	vip.Set(key, value)
@@ -156,6 +171,16 @@ func validate() {
 	certPath, keyPath := vip.GetString(SSLCertPathKey), vip.GetString(SSLKeyPathKey)
 	if (certPath != "" && keyPath == "") || (certPath == "" && keyPath != "") {
 		log.Fatalln("SSL requires both key and certificate when enabled")
+	}
+
+	if rpcEndpoint := vip.GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
+		if err := validateEndpoint(rpcEndpoint); err != nil {
+			log.WithError(err).Panic("Elements RPC endpoint is not a valid url")
+		}
+	} else {
+		if err := validateEndpoint(vip.GetString(ExplorerEndpointKey)); err != nil {
+			log.WithError(err).Panic("explorer endpoint is not a valid url")
+		}
 	}
 }
 
@@ -191,6 +216,11 @@ func validatePath(path string) error {
 	}
 
 	return nil
+}
+
+func validateEndpoint(endpoint string) error {
+	_, err := url.Parse(endpoint)
+	return err
 }
 
 func initDataDir() error {
