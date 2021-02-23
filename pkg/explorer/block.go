@@ -14,7 +14,7 @@ func (e *explorer) GetBlockHeight() (int, error) {
 	)
 	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	if status != http.StatusOK {
 		return 0, fmt.Errorf(resp)
