@@ -29,7 +29,10 @@ jobs:
       - name: Get dependencies
         run: go get -v -t -d ./...
 
-      - name: Test
+      - name: Test with esplora
+        run: make test
+        
+      - name: Test with elements
         run: |
           export TDEX_ELEMENTS_RPC_ENDPOINT='http://admin1:123@localhost:18884'
           make test
