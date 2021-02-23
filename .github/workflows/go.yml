@@ -35,4 +35,5 @@ jobs:
       - name: Test with elements
         run: |
           export TEST_ELEMENTS_ENDPOINT='http://admin1:123@localhost:18884'
+          export TDEX_ELEMENTS_RPC_ENDPOINT='http://admin1:123@localhost:18884'
           make test
