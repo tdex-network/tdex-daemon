@@ -1,4 +1,4 @@
-package esplora_test
+package esplora
 
 import (
 	"testing"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/magiconair/properties/assert"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
 )
@@ -22,7 +21,7 @@ func TestGetTransactionStatus(t *testing.T) {
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
 
-	explorerSvc, err := esplora.NewService(explorerURL)
+	explorerSvc, err := NewService(explorerURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +58,7 @@ func TestGetTransactionsForAddress(t *testing.T) {
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
 
-	explorerSvc, err := esplora.NewService(explorerURL)
+	explorerSvc, err := NewService(explorerURL)
 	if err != nil {
 		t.Fatal(err)
 	}

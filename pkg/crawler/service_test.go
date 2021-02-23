@@ -92,6 +92,10 @@ func addObservableAfterTimeout(crawler Service) {
 
 type MockExplorer struct{}
 
+func (m MockExplorer) GetBlockHeight() (int, error) {
+	panic("implement me")
+}
+
 func (m MockExplorer) GetUnspentsForAddresses(addresses []string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
 	panic("implement me")
 }

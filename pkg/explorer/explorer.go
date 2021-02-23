@@ -67,4 +67,6 @@ type Service interface {
 	Faucet(address string) (txid string, err error)
 	// Mint funds the given address with a certain amount of a new issued asset.
 	Mint(address string, amount int) (txid string, asset string, err error)
+	// GetBlockHeight returns the the number of block of the blockchain.
+	GetBlockHeight() (int, error)
 }

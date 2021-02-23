@@ -47,18 +47,10 @@ func NewService(endpoint string) (explorer.Service, error) {
 	}
 
 	service := &elements{client}
-	if err := service.healthCheck(); err != nil {
+	if _, err := service.GetBlockHeight(); err != nil {
 		return nil, fmt.Errorf("healt check: %w", err)
 	}
 	return service, nil
-}
-
-func (e *elements) healthCheck() error {
-	r, err := e.client.call("getblockcount", nil)
-	if err = handleError(err, &r); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (e *elements) importAddress(addr, label string) error {

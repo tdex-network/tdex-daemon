@@ -1,4 +1,4 @@
-package esplora_test
+package esplora
 
 import (
 	"math"
@@ -8,7 +8,6 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
 )
@@ -49,7 +48,7 @@ func TestGetUnspents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	explorerSvc, err := esplora.NewService(explorerURL)
+	explorerSvc, err := NewService(explorerURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +78,7 @@ func TestSelectUnspents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	explorerSvc, err := esplora.NewService(explorerURL)
+	explorerSvc, err := NewService(explorerURL)
 	if err != nil {
 		t.Fatal(err)
 	}
