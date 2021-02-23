@@ -31,8 +31,8 @@ jobs:
 
       - name: Test with esplora
         run: |
-        export TEST_ELEMENTS_ENDPOINT='http://admin1:123@localhost:18884'
-        make test
+          export TEST_ELEMENTS_ENDPOINT='http://admin1:123@localhost:18884'
+          make test
 
       - name: Test with elements
         run: |
