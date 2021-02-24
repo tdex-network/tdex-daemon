@@ -1,8 +1,8 @@
 package crawler
 
 import (
-	"bytes"
 	"sync"
+	"time"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -15,13 +15,10 @@ type AddressObservable struct {
 }
 
 func (a *AddressObservable) observe(
-	w *sync.WaitGroup,
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
 ) {
-	defer w.Done()
-
 	if a == nil {
 		return
 	}
@@ -47,19 +44,8 @@ func (a *AddressObservable) observe(
 	eventChan <- event
 }
 
-func (a *AddressObservable) isEqual(observable Observable) bool {
-	switch observable.(type) {
-	case *AddressObservable:
-		return a.equalsTo(observable.(*AddressObservable))
-	default:
-		return false
-	}
-}
-
-func (a *AddressObservable) equalsTo(o *AddressObservable) bool {
-	return a.AccountIndex == o.AccountIndex &&
-		a.Address == o.Address &&
-		bytes.Equal(a.BlindingKey, o.BlindingKey)
+func (a *AddressObservable) key() string {
+	return a.Address
 }
 
 type TransactionObservable struct {
@@ -67,13 +53,10 @@ type TransactionObservable struct {
 }
 
 func (t *TransactionObservable) observe(
-	w *sync.WaitGroup,
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
 ) {
-	defer w.Done()
-
 	if t == nil {
 		return
 	}
@@ -121,15 +104,56 @@ func (t *TransactionObservable) observe(
 	eventChan <- event
 }
 
-func (t *TransactionObservable) isEqual(observable Observable) bool {
-	switch observable.(type) {
-	case *TransactionObservable:
-		return t.equalsTo(observable.(*TransactionObservable))
-	default:
-		return false
+func (t *TransactionObservable) key() string {
+	return t.TxID
+}
+
+type observableHandler struct {
+	observable  Observable
+	explorerSvc explorer.Service
+	wg          *sync.WaitGroup
+	ticker      *time.Ticker
+	eventChan   chan Event
+	errChan     chan error
+	stopChan    chan int
+}
+
+func newObservableHandler(
+	observable Observable,
+	explorerSvc explorer.Service,
+	wg *sync.WaitGroup,
+	interval int,
+	eventChan chan Event,
+	errChan chan error,
+) *observableHandler {
+	ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
+	stopChan := make(chan int, 1)
+	return &observableHandler{
+		observable,
+		explorerSvc,
+		wg,
+		ticker,
+		eventChan,
+		errChan,
+		stopChan,
 	}
 }
 
-func (t *TransactionObservable) equalsTo(o *TransactionObservable) bool {
-	return t.TxID == o.TxID
+func (oh *observableHandler) start() {
+	oh.wg.Add(1)
+	for {
+		select {
+		case <-oh.ticker.C:
+			oh.observable.observe(oh.explorerSvc, oh.errChan, oh.eventChan)
+		case <-oh.stopChan:
+			oh.ticker.Stop()
+			close(oh.stopChan)
+			return
+		}
+	}
+}
+
+func (oh *observableHandler) stop() {
+	oh.stopChan <- 1
+	oh.wg.Done()
 }
