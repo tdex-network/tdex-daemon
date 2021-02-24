@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
@@ -49,12 +48,12 @@ type TradeService interface {
 }
 
 type tradeService struct {
-	marketRepository  domain.MarketRepository
-	tradeRepository   domain.TradeRepository
-	vaultRepository   domain.VaultRepository
-	unspentRepository domain.UnspentRepository
-	explorerSvc       explorer.Service
-	crawlerSvc        crawler.Service
+	marketRepository   domain.MarketRepository
+	tradeRepository    domain.TradeRepository
+	vaultRepository    domain.VaultRepository
+	unspentRepository  domain.UnspentRepository
+	explorerSvc        explorer.Service
+	blockchainListener BlockchainListener
 }
 
 func NewTradeService(
@@ -63,7 +62,7 @@ func NewTradeService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
-	crawlerSvc crawler.Service,
+	bcListener BlockchainListener,
 ) TradeService {
 	return newTradeService(
 		marketRepository,
@@ -71,7 +70,7 @@ func NewTradeService(
 		vaultRepository,
 		unspentRepository,
 		explorerSvc,
-		crawlerSvc,
+		bcListener,
 	)
 }
 
@@ -81,15 +80,15 @@ func newTradeService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
-	crawlerSvc crawler.Service,
+	bcListener BlockchainListener,
 ) *tradeService {
 	return &tradeService{
-		marketRepository:  marketRepository,
-		tradeRepository:   tradeRepository,
-		vaultRepository:   vaultRepository,
-		unspentRepository: unspentRepository,
-		explorerSvc:       explorerSvc,
-		crawlerSvc:        crawlerSvc,
+		marketRepository:   marketRepository,
+		tradeRepository:    tradeRepository,
+		vaultRepository:    vaultRepository,
+		unspentRepository:  unspentRepository,
+		explorerSvc:        explorerSvc,
+		blockchainListener: bcListener,
 	}
 }
 
@@ -256,15 +255,14 @@ func (t *tradeService) TradePropose(
 	}
 
 	var mnemonic []string
-	var tradeID uuid.UUID
-	var selectedUnspents []explorer.Utxo
+	var tradeTxID string
 	var outputBlindingKeysByScript map[string][]byte
 	var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
 	type blindKeyAndAccountIndex struct {
 		blindkey     []byte
 		accountIndex int
 	}
-	var addressesToObserve map[string]blindKeyAndAccountIndex
+	var addressesToObserve []domain.AddressInfo
 
 	// derive output and change address for market, and change address for fee account
 	if err := t.vaultRepository.UpdateVault(
@@ -298,10 +296,22 @@ func (t *tradeService) TradePropose(
 				outputScript: outputBlindKey,
 				changeScript: changeBlindKey,
 			}
-			addressesToObserve = map[string]blindKeyAndAccountIndex{
-				outputAddress:    blindKeyAndAccountIndex{outputBlindKey, marketAccountIndex},
-				changeAddress:    blindKeyAndAccountIndex{changeBlindKey, marketAccountIndex},
-				feeChangeAddress: blindKeyAndAccountIndex{feeChangeBlindKey, domain.FeeAccount},
+			addressesToObserve = []domain.AddressInfo{
+				{
+					AccountIndex: marketAccountIndex,
+					Address:      outputAddress,
+					BlindingKey:  outputBlindKey,
+				},
+				{
+					AccountIndex: marketAccountIndex,
+					Address:      changeAddress,
+					BlindingKey:  changeBlindKey,
+				},
+				{
+					AccountIndex: domain.FeeAccount,
+					Address:      feeChangeAddress,
+					BlindingKey:  feeChangeBlindKey,
+				},
 			}
 			outputDerivationPath, _ = marketAccount.DerivationPathByScript[outputScript]
 			changeDerivationPath, _ = marketAccount.DerivationPathByScript[changeScript]
@@ -336,7 +346,6 @@ func (t *tradeService) TradePropose(
 				swapFail = trade.SwapFailMessage()
 				return trade, nil
 			}
-			tradeID = trade.ID
 
 			acceptSwapResult, err := acceptSwap(acceptSwapOpts{
 				mnemonic:                   mnemonic,
@@ -366,40 +375,32 @@ func (t *tradeService) TradePropose(
 			}
 			if !ok {
 				swapFail = trade.SwapFailMessage()
-			} else {
-				swapAccept = trade.SwapAcceptMessage()
-				swapExpiryTime = trade.SwapExpiryTime()
-				selectedUnspents = acceptSwapResult.selectedUnspents
+				return trade, nil
+			}
+			swapAccept = trade.SwapAcceptMessage()
+			swapExpiryTime = trade.SwapExpiryTime()
+
+			// Last thing to do is to lock the unspents. In case something goes wrong
+			// here, an error is returned and the accepted trade is discarded.
+			selectedUnspentKeys := getUnspentKeys(acceptSwapResult.selectedUnspents)
+			if err := t.unspentRepository.LockUnspents(
+				ctx,
+				selectedUnspentKeys,
+				trade.ID,
+			); err != nil {
+				return nil, err
 			}
 
 			trade.MarketFee = mkt.Fee
 			trade.MarketFeeAsset = mkt.FeeAsset
-
-			t.crawlerSvc.AddObservable(&crawler.TransactionObservable{
-				TxID: trade.TxID,
-			})
+			tradeTxID = trade.TxID
 
 			return trade, nil
 		}); err != nil {
 		return nil, nil, 0, err
 	}
 
-	selectedUnspentKeys := getUnspentKeys(selectedUnspents)
-	if err := t.unspentRepository.LockUnspents(
-		ctx,
-		selectedUnspentKeys,
-		tradeID,
-	); err != nil {
-		return nil, nil, 0, err
-	}
-
-	for addr, info := range addressesToObserve {
-		t.crawlerSvc.AddObservable(&crawler.AddressObservable{
-			AccountIndex: info.accountIndex,
-			Address:      addr,
-			BlindingKey:  info.blindkey,
-		})
-	}
+	go t.startObservingAddressesAndTx(addressesToObserve, tradeTxID)
 
 	return
 }
@@ -528,6 +529,19 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 	}
 
 	return unspents, utxos, blindingKeysByScript, derivationPaths, nil
+}
+
+func (t *tradeService) startObservingAddressesAndTx(addressesToObserve []domain.AddressInfo, txid string) {
+	t.blockchainListener.StartObserveTx(txid)
+
+	for _, info := range addressesToObserve {
+		t.blockchainListener.StartObserveAddress(
+			info.AccountIndex,
+			info.Address,
+			info.BlindingKey,
+		)
+		time.Sleep(200 * time.Millisecond)
+	}
 }
 
 type acceptSwapOpts struct {
