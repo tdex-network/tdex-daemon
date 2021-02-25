@@ -37,13 +37,10 @@ func listen(t *testing.T, crawlSvc Service) {
 loop:
 	for {
 		select {
-		case event, more := <-eventChan:
-			if !more {
-				break loop
-			}
+		case event := <-eventChan:
 			switch e := event.(type) {
-			// case QuitEvent:
-			// 	break
+			case CloseEvent:
+				break loop
 			case AddressEvent:
 				for _, u := range e.Utxos {
 					t.Log(fmt.Sprintf("%v %v %v", "ADR", e.EventType, u.Value()))

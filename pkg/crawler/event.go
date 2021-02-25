@@ -3,7 +3,7 @@ package crawler
 import "github.com/tdex-network/tdex-daemon/pkg/explorer"
 
 const (
-	QuitSignal EventType = iota
+	CloseSignal EventType = iota
 	FeeAccountDeposit
 	MarketAccountDeposit
 	TransactionConfirmed
@@ -14,8 +14,8 @@ type EventType int
 
 func (et EventType) String() string {
 	switch et {
-	case QuitSignal:
-		return "QuitSignal"
+	case CloseSignal:
+		return "CloseSignal"
 	case FeeAccountDeposit:
 		return "FeeAccountDeposit"
 	case MarketAccountDeposit:
@@ -29,10 +29,10 @@ func (et EventType) String() string {
 	}
 }
 
-type QuitEvent struct{}
+type CloseEvent struct{}
 
-func (q QuitEvent) Type() EventType {
-	return QuitSignal
+func (q CloseEvent) Type() EventType {
+	return CloseSignal
 }
 
 type AddressEvent struct {

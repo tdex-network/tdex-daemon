@@ -161,8 +161,8 @@ func (b *blockchainListener) listentToEventChannel() {
 		select {
 		case event := <-b.crawlerSvc.GetEventChannel():
 			switch event.Type() {
-			case crawler.QuitSignal:
-				log.Debug("QuitEvent detected")
+			case crawler.CloseSignal:
+				log.Debug("CloseEvent detected")
 				log.Debug("stop listening on event channel")
 				return
 			case crawler.FeeAccountDeposit:

@@ -65,7 +65,7 @@ func (bc *blockchainCrawler) Stop() {
 		go obsHandler.stop()
 	}
 	bc.wg.Wait()
-	bc.eventChan <- QuitEvent{}
+	bc.eventChan <- CloseEvent{}
 	close(bc.errChan)
 	return
 }
