@@ -273,7 +273,6 @@ func (o operatorHandler) updateMarketFee(
 			QuoteAsset: marketWithFee.GetMarket().GetQuoteAsset(),
 		},
 		Fee: application.Fee{
-			FeeAsset:   marketWithFee.GetFee().GetAsset(),
 			BasisPoint: marketWithFee.GetFee().GetBasisPoint(),
 		},
 	}
@@ -294,7 +293,6 @@ func (o operatorHandler) updateMarketFee(
 						QuoteAsset: result.QuoteAsset,
 					},
 					Fee: &pbtypes.Fee{
-						Asset:      result.FeeAsset,
 						BasisPoint: result.BasisPoint,
 					},
 				},
@@ -412,7 +410,6 @@ func (o operatorHandler) listSwaps(
 					AmountR: swapInfo.AmountR,
 					AssetR:  swapInfo.AssetR,
 					MarketFee: &pbtypes.Fee{
-						Asset:      swapInfo.MarketFee.FeeAsset,
 						BasisPoint: swapInfo.MarketFee.BasisPoint,
 					},
 					RequestTimeUnix:  swapInfo.RequestTimeUnix,
@@ -547,7 +544,6 @@ func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketReque
 				pbMarketInfos[index] = &pb.MarketInfo{
 					Fee: &pbtypes.Fee{
 						BasisPoint: marketInfo.Fee.BasisPoint,
-						Asset:      marketInfo.Fee.FeeAsset,
 					},
 					Market: &pbtypes.Market{
 						BaseAsset:  marketInfo.Market.BaseAsset,
@@ -591,11 +587,15 @@ func (o operatorHandler) reportMarketFee(
 				return nil, err
 			}
 
-			collectedFees := make([]*pbtypes.Fee, 0)
-			for _, v := range report.CollectedFees {
-				collectedFees = append(collectedFees, &pbtypes.Fee{
-					Asset:      v.FeeAsset,
-					BasisPoint: v.BasisPoint,
+			collectedFees := make([]*pb.FeeInfo, 0)
+			for _, fee := range report.CollectedFees {
+				marketPrice, _ := fee.MarketPrice.Float64()
+				collectedFees = append(collectedFees, &pb.FeeInfo{
+					TradeId:     fee.TradeID,
+					BasisPoint:  fee.BasisPoint,
+					Asset:       fee.Asset,
+					Amount:      fee.Amount,
+					MarketPrice: float32(marketPrice),
 				})
 			}
 
@@ -645,9 +645,6 @@ func validateMarket(market *pbtypes.Market) error {
 func validateFee(fee *pbtypes.Fee) error {
 	if fee == nil {
 		return errors.New("fee is null")
-	}
-	if len(fee.GetAsset()) <= 0 {
-		return errors.New("fee asset is null")
 	}
 	if fee.GetBasisPoint() <= 0 {
 		return errors.New("fee basis point is too low")

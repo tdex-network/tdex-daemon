@@ -39,7 +39,6 @@ type MarketWithFee struct {
 
 // Fee is a couple amount / asset type and represents fees in a transaction.
 type Fee struct {
-	FeeAsset   string
 	BasisPoint int64
 }
 
@@ -84,11 +83,19 @@ type WithdrawMarketReq struct {
 }
 
 type ReportMarketFee struct {
-	CollectedFees              []Fee
+	CollectedFees              []FeeInfo
 	TotalCollectedFeesPerAsset map[string]int64
 }
 
 type AddressAndBlindingKey struct {
 	Address     string
 	BlindingKey string
+}
+
+type FeeInfo struct {
+	TradeID     string
+	BasisPoint  int64
+	Asset       string
+	Amount      uint64
+	MarketPrice decimal.Decimal
 }
