@@ -589,13 +589,13 @@ func (o operatorHandler) reportMarketFee(
 
 			collectedFees := make([]*pb.FeeInfo, 0)
 			for _, fee := range report.CollectedFees {
-				marketPrice, _ := fee.MarketPrice.Float64()
+				marketPrice, _ := fee.MarketPrice.BigFloat().Float32()
 				collectedFees = append(collectedFees, &pb.FeeInfo{
 					TradeId:     fee.TradeID,
 					BasisPoint:  fee.BasisPoint,
 					Asset:       fee.Asset,
 					Amount:      fee.Amount,
-					MarketPrice: float32(marketPrice),
+					MarketPrice: marketPrice,
 				})
 			}
 

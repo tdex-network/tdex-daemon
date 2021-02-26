@@ -51,10 +51,10 @@ func (t *Trade) Propose(
 	var price Prices
 	pricePR := decimal.NewFromInt(int64(swapRequest.GetAmountP())).Div(
 		decimal.NewFromInt(int64(swapRequest.GetAmountR())),
-	)
+	).Truncate(8)
 	priceRP := decimal.NewFromInt(int64(swapRequest.GetAmountR())).Div(
 		decimal.NewFromInt(int64(swapRequest.GetAmountP())),
-	)
+	).Truncate(8)
 
 	if swapRequest.GetAssetP() == marketQuoteAsset {
 		price = Prices{
