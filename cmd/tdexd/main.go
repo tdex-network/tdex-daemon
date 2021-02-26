@@ -70,7 +70,6 @@ func main() {
 
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
-		Observables:            []crawler.Observable{},
 		ErrorHandler:           func(err error) { log.Warn(err) },
 		IntervalInMilliseconds: config.GetInt(config.CrawlIntervalKey),
 	})
@@ -90,12 +89,11 @@ func main() {
 		vaultRepository,
 		unspentRepository,
 		explorerSvc,
-		crawlerSvc,
+		blockchainListener,
 	)
 	walletSvc := application.NewWalletService(
 		vaultRepository,
 		unspentRepository,
-		crawlerSvc,
 		explorerSvc,
 		blockchainListener,
 	)
@@ -106,7 +104,7 @@ func main() {
 		tradeRepository,
 		unspentRepository,
 		explorerSvc,
-		crawlerSvc,
+		blockchainListener,
 	)
 
 	// Ports
@@ -191,12 +189,11 @@ func stop(
 	traderServer.Stop()
 	log.Debug("disabled trader interface")
 
-	blockchainListener.StopObserveBlockchain()
+	blockchainListener.StopObservation()
 	// give the crawler the time to terminate
 	time.Sleep(
 		time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond,
 	)
-	log.Debug("stopped observing blockchain")
 
 	dbManager.Store.Close()
 	dbManager.UnspentStore.Close()

@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
@@ -59,7 +59,6 @@ type WalletService interface {
 type walletService struct {
 	vaultRepository    domain.VaultRepository
 	unspentRepository  domain.UnspentRepository
-	crawlerService     crawler.Service
 	explorerService    explorer.Service
 	blockchainListener BlockchainListener
 	walletInitialized  bool
@@ -69,14 +68,12 @@ type walletService struct {
 func NewWalletService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
-	crawlerService crawler.Service,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
 ) WalletService {
 	return newWalletService(
 		vaultRepository,
 		unspentRepository,
-		crawlerService,
 		explorerService,
 		blockchainListener,
 	)
@@ -85,14 +82,12 @@ func NewWalletService(
 func newWalletService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
-	crawlerService crawler.Service,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
 ) *walletService {
 	w := &walletService{
 		vaultRepository:    vaultRepository,
 		unspentRepository:  unspentRepository,
-		crawlerService:     crawlerService,
 		explorerService:    explorerService,
 		blockchainListener: blockchainListener,
 	}
@@ -104,16 +99,11 @@ func newWalletService(
 	if vault, err := w.vaultRepository.GetOrCreateVault(
 		context.Background(), nil, "",
 	); err == nil {
-		addressesInfo := vault.AllDerivedAddressesInfo()
-		for _, info := range addressesInfo {
-			if info.AccountIndex != domain.WalletAccount {
-				w.crawlerService.AddObservable(&crawler.AddressObservable{
-					AccountIndex: info.AccountIndex,
-					Address:      info.Address,
-					BlindingKey:  info.BlindingKey,
-				})
-			}
-		}
+		addresses := vault.AllDerivedAddressesInfo()
+		// the addresses' observation is required to be blocking here because the
+		// wallet can be considered initialized after the listener had started
+		// watching for all derived addresses.
+		w.startObservingAddresses(addresses)
 		w.walletInitialized = true
 	}
 	return w
@@ -149,6 +139,7 @@ func (w *walletService) InitWallet(
 		}
 	}()
 	w.walletIsSyncing = true
+	walletAddresses := make([]domain.AddressInfo, 0)
 
 	err := w.vaultRepository.UpdateVault(
 		ctx,
@@ -169,24 +160,31 @@ func (w *walletService) InitWallet(
 			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService)
 			marketsLastDerivedIndex := getLatestDerivationIndexForMarkets(ww, w.explorerService)
 
-			if err := initVaultAccount(v, domain.FeeAccount, feeLastDerivedIndex, w.crawlerService); err != nil {
+			feeAddresses, err := initVaultAccount(v, domain.FeeAccount, feeLastDerivedIndex)
+			if err != nil {
 				return nil, err
 			}
 			// we dont't want to let the crawler watch for WalletAccount addresses
-			if err := initVaultAccount(v, domain.WalletAccount, walletLastDerivedIndex, nil); err != nil {
+			if _, err := initVaultAccount(v, domain.WalletAccount, walletLastDerivedIndex); err != nil {
 				return nil, err
 			}
+			marketAddresses := make([]domain.AddressInfo, 0)
 			for i, m := range marketsLastDerivedIndex {
-				if err := initVaultAccount(v, domain.MarketAccountStart+i, m, w.crawlerService); err != nil {
+				addresses, err := initVaultAccount(v, domain.MarketAccountStart+i, m)
+				if err != nil {
 					return nil, err
 				}
+				marketAddresses = append(marketAddresses, addresses...)
 			}
 
+			walletAddresses = append(walletAddresses, feeAddresses...)
+			walletAddresses = append(walletAddresses, marketAddresses...)
 			w.walletInitialized = true
 			return v, nil
 		},
 	)
 
+	go w.startObservingAddresses(walletAddresses)
 	w.walletIsSyncing = false
 	log.Debug("ended syncing wallet")
 	return err
@@ -217,7 +215,7 @@ func (w *walletService) UnlockWallet(
 		return err
 	}
 
-	w.blockchainListener.ObserveBlockchain()
+	w.blockchainListener.StartObservation()
 	return nil
 }
 
@@ -351,7 +349,8 @@ func (w *walletService) SendToMany(
 	}
 
 	var rawTx []byte
-	var addressToObserve *crawler.AddressObservable
+	var addressToObserve string
+	var blindkeyToObserve []byte
 
 	err = w.vaultRepository.UpdateVault(
 		ctx,
@@ -388,11 +387,8 @@ func (w *walletService) SendToMany(
 				return nil, err
 			}
 			feeChangePathByAsset[config.GetNetwork().AssetID] = feeAccount.DerivationPathByScript[script]
-			addressToObserve = &crawler.AddressObservable{
-				AccountIndex: domain.FeeAccount,
-				Address:      feeAddress,
-				BlindingKey:  feeBlindkey,
-			}
+			addressToObserve = feeAddress
+			blindkeyToObserve = feeBlindkey
 
 			txHex, _, err := sendToMany(sendToManyOpts{
 				mnemonic:              mnemonic,
@@ -430,7 +426,13 @@ func (w *walletService) SendToMany(
 	}
 
 	// of course, do not forget of starting watching new address of fee account
-	w.crawlerService.AddObservable(addressToObserve)
+	go w.startObservingAddresses([]domain.AddressInfo{
+		{
+			AccountIndex: int(domain.FeeAccount),
+			Address:      addressToObserve,
+			BlindingKey:  blindkeyToObserve,
+		},
+	})
 
 	return rawTx, nil
 }
@@ -490,6 +492,21 @@ func (w *walletService) getUnspentsForAddress(addr string, blindingKeys [][]byte
 		return
 	}
 	chUnspents <- unspents
+}
+
+func (w *walletService) startObservingAddresses(addresses []domain.AddressInfo) {
+	if len(addresses) <= 0 {
+		return
+	}
+
+	for _, info := range addresses {
+		w.blockchainListener.StartObserveAddress(
+			info.AccountIndex,
+			info.Address,
+			info.BlindingKey,
+		)
+		time.Sleep(200 * time.Millisecond)
+	}
 }
 
 func parseRequestOutputs(reqOutputs []TxOut) (
@@ -681,6 +698,10 @@ type accountLastDerivedIndex struct {
 	internal int
 }
 
+func (a *accountLastDerivedIndex) total() int {
+	return a.external + a.internal
+}
+
 func getLatestDerivationIndexForAccount(w *wallet.Wallet, accountIndex int, explorerSvc explorer.Service) *accountLastDerivedIndex {
 	lastDerivedIndex := &accountLastDerivedIndex{}
 	for chainIndex := 0; chainIndex <= 1; chainIndex++ {
@@ -736,39 +757,40 @@ func getLatestDerivationIndexForMarkets(w *wallet.Wallet, explorerSvc explorer.S
 	return marketsLastIndex
 }
 
-func initVaultAccount(v *domain.Vault, accountIndex int, lastDerivedIndex *accountLastDerivedIndex, crawlerSvc crawler.Service) error {
+func initVaultAccount(
+	v *domain.Vault,
+	accountIndex int,
+	lastDerivedIndex *accountLastDerivedIndex,
+) ([]domain.AddressInfo, error) {
 	if lastDerivedIndex == nil {
 		v.InitAccount(accountIndex)
-		return nil
+		return nil, nil
 	}
 
+	addresses := make([]domain.AddressInfo, 0, lastDerivedIndex.total())
 	for i := 0; i <= lastDerivedIndex.external; i++ {
 		addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(accountIndex)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if crawlerSvc != nil {
-			crawlerSvc.AddObservable(&crawler.AddressObservable{
-				AccountIndex: accountIndex,
-				Address:      addr,
-				BlindingKey:  blindingKey,
-			})
-		}
+		addresses = append(addresses, domain.AddressInfo{
+			AccountIndex: accountIndex,
+			Address:      addr,
+			BlindingKey:  blindingKey,
+		})
 	}
 	for i := 0; i <= lastDerivedIndex.internal; i++ {
 		addr, _, blindingKey, err := v.DeriveNextInternalAddressForAccount(accountIndex)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if crawlerSvc != nil {
-			crawlerSvc.AddObservable(&crawler.AddressObservable{
-				AccountIndex: accountIndex,
-				Address:      addr,
-				BlindingKey:  blindingKey,
-			})
-		}
+		addresses = append(addresses, domain.AddressInfo{
+			AccountIndex: accountIndex,
+			Address:      addr,
+			BlindingKey:  blindingKey,
+		})
 	}
-	return nil
+	return addresses, nil
 }
 
 func isAddressFunded(addr string, explorerSvc explorer.Service) bool {

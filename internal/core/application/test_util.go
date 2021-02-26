@@ -105,7 +105,6 @@ func newMockServices(
 	}
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
-		Observables:            []crawler.Observable{},
 		ErrorHandler:           func(err error) { fmt.Println(err) },
 		IntervalInMilliseconds: 100,
 	})
@@ -122,7 +121,6 @@ func newMockServices(
 	walletSvc := newWalletService(
 		vaultRepo,
 		unspentRepo,
-		crawlerSvc,
 		explorerSvc,
 		blockchainListener,
 	)
@@ -155,7 +153,7 @@ func newMockServices(
 		vaultRepo,
 		unspentRepo,
 		explorerSvc,
-		crawlerSvc,
+		blockchainListener,
 	)
 
 	operatorSvc := NewOperatorService(
@@ -164,11 +162,11 @@ func newMockServices(
 		tradeRepo,
 		unspentRepo,
 		explorerSvc,
-		crawlerSvc,
+		blockchainListener,
 	)
 
 	close := func() {
-		blockchainListener.StopObserveBlockchain()
+		blockchainListener.StopObservation()
 		config.Set(config.MnemonicKey, "")
 	}
 
@@ -223,7 +221,6 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	explorerSvc, _ := getExplorer()
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:            explorerSvc,
-		Observables:            []crawler.Observable{},
 		ErrorHandler:           func(err error) { fmt.Println(err) },
 		IntervalInMilliseconds: 100,
 	})
@@ -240,7 +237,6 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	walletSvc := newWalletService(
 		vaultRepo,
 		unspentRepo,
-		crawlerSvc,
 		explorerSvc,
 		blockchainListener,
 	)
@@ -248,7 +244,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	ctx := context.Background()
 
 	closeFn := func() {
-		blockchainListener.StopObserveBlockchain()
+		blockchainListener.StopObservation()
 		config.Set(config.MnemonicKey, "")
 	}
 

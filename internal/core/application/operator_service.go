@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"strings"
+	"time"
 
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
@@ -73,12 +73,12 @@ type OperatorService interface {
 }
 
 type operatorService struct {
-	marketRepository  domain.MarketRepository
-	vaultRepository   domain.VaultRepository
-	tradeRepository   domain.TradeRepository
-	unspentRepository domain.UnspentRepository
-	explorerSvc       explorer.Service
-	crawlerSvc        crawler.Service
+	marketRepository   domain.MarketRepository
+	vaultRepository    domain.VaultRepository
+	tradeRepository    domain.TradeRepository
+	unspentRepository  domain.UnspentRepository
+	explorerSvc        explorer.Service
+	blockchainListener BlockchainListener
 }
 
 // NewOperatorService is a constructor function for OperatorService.
@@ -88,15 +88,15 @@ func NewOperatorService(
 	tradeRepository domain.TradeRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
-	crawlerSvc crawler.Service,
+	bcListener BlockchainListener,
 ) OperatorService {
 	return &operatorService{
-		marketRepository:  marketRepository,
-		vaultRepository:   vaultRepository,
-		tradeRepository:   tradeRepository,
-		unspentRepository: unspentRepository,
-		explorerSvc:       explorerSvc,
-		crawlerSvc:        crawlerSvc,
+		marketRepository:   marketRepository,
+		vaultRepository:    vaultRepository,
+		tradeRepository:    tradeRepository,
+		unspentRepository:  unspentRepository,
+		explorerSvc:        explorerSvc,
+		blockchainListener: bcListener,
 	}
 }
 
@@ -161,8 +161,8 @@ func (o *operatorService) DepositMarket(
 		numOfAddresses = 1
 	}
 
-	addresses := make([]string, 0, numOfAddresses)
-	blindingKeys := make([][]byte, 0, numOfAddresses)
+	list := make([]AddressAndBlindingKey, numOfAddresses, numOfAddresses)
+	addresses := make([]string, numOfAddresses, numOfAddresses)
 	//Derive an address for that specific market
 	if err := o.vaultRepository.UpdateVault(
 		ctx,
@@ -177,8 +177,11 @@ func (o *operatorService) DepositMarket(
 					return nil, err
 				}
 
-				addresses = append(addresses, addr)
-				blindingKeys = append(blindingKeys, blindingKey)
+				list[i] = AddressAndBlindingKey{
+					Address:     addr,
+					BlindingKey: hex.EncodeToString(blindingKey),
+				}
+				addresses[i] = addr
 			}
 
 			return v, nil
@@ -186,13 +189,7 @@ func (o *operatorService) DepositMarket(
 		return nil, err
 	}
 
-	for i, addr := range addresses {
-		o.crawlerSvc.AddObservable(&crawler.AddressObservable{
-			AccountIndex: accountIndex,
-			Address:      addr,
-			BlindingKey:  blindingKeys[i],
-		})
-	}
+	go o.observeAddressesForAccount(accountIndex, list)
 
 	return addresses, nil
 }
@@ -231,14 +228,7 @@ func (o *operatorService) DepositFeeAccount(
 		return nil, err
 	}
 
-	for _, l := range list {
-		key, _ := hex.DecodeString(l.BlindingKey)
-		o.crawlerSvc.AddObservable(&crawler.AddressObservable{
-			AccountIndex: domain.FeeAccount,
-			Address:      l.Address,
-			BlindingKey:  key,
-		})
-	}
+	go o.observeAddressesForAccount(domain.FeeAccount, list)
 
 	return list, nil
 }
@@ -646,61 +636,6 @@ func (o *operatorService) GetCollectedMarketFee(
 	}, nil
 }
 
-func (o *operatorService) getMarketsForTrades(
-	ctx context.Context,
-	trades []*domain.Trade,
-) (map[string]*domain.Market, error) {
-	markets := map[string]*domain.Market{}
-	for _, trade := range trades {
-		market, accountIndex, err := o.marketRepository.GetMarketByAsset(
-			ctx,
-			trade.MarketQuoteAsset,
-		)
-		if err != nil {
-			return nil, err
-		}
-		if accountIndex < 0 {
-			return nil, domain.ErrMarketNotExist
-		}
-		if _, ok := markets[trade.MarketQuoteAsset]; !ok {
-			markets[trade.MarketQuoteAsset] = market
-		}
-	}
-	return markets, nil
-}
-
-func tradesToSwapInfo(
-	markets map[string]*domain.Market,
-	trades []*domain.Trade,
-) []SwapInfo {
-	swapInfos := make([]SwapInfo, 0, len(trades))
-	for _, trade := range trades {
-		requestMsg := trade.SwapRequestMessage()
-
-		fee := Fee{
-			FeeAsset:   markets[trade.MarketQuoteAsset].FeeAsset,
-			BasisPoint: markets[trade.MarketQuoteAsset].Fee,
-		}
-
-		newSwapInfo := SwapInfo{
-			Status:           int32(trade.Status.Code),
-			AmountP:          requestMsg.GetAmountP(),
-			AssetP:           requestMsg.GetAssetP(),
-			AmountR:          requestMsg.GetAmountR(),
-			AssetR:           requestMsg.GetAssetR(),
-			MarketFee:        fee,
-			RequestTimeUnix:  trade.SwapRequestTime(),
-			AcceptTimeUnix:   trade.SwapAcceptTime(),
-			CompleteTimeUnix: trade.SwapCompleteTime(),
-			ExpiryTimeUnix:   trade.SwapExpiryTime(),
-		}
-
-		swapInfos = append(swapInfos, newSwapInfo)
-	}
-
-	return swapInfos
-}
-
 func (o *operatorService) WithdrawMarketFunds(
 	ctx context.Context,
 	req WithdrawMarketReq,
@@ -762,7 +697,7 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, ErrWalletNotFunded
 	}
 
-	var addressesToObserve []*crawler.AddressObservable
+	addressesToObserve := make([]AddressAndBlindingKey, 0)
 	err = o.vaultRepository.UpdateVault(
 		ctx,
 		nil,
@@ -784,10 +719,9 @@ func (o *operatorService) WithdrawMarketFunds(
 			changePathsByAsset := map[string]string{}
 			feeChangePathByAsset := map[string]string{}
 			for _, asset := range getAssetsOfOutputs(outputs) {
-				addr, script, blindkey, err :=
-					v.DeriveNextInternalAddressForAccount(
-						market.AccountIndex,
-					)
+				addr, script, blindkey, err := v.DeriveNextInternalAddressForAccount(
+					market.AccountIndex,
+				)
 				if err != nil {
 					return nil, err
 				}
@@ -796,10 +730,9 @@ func (o *operatorService) WithdrawMarketFunds(
 				changePathsByAsset[asset] = derivationPath
 				addressesToObserve = append(
 					addressesToObserve,
-					&crawler.AddressObservable{
-						AccountIndex: market.AccountIndex,
-						Address:      addr,
-						BlindingKey:  blindkey,
+					AddressAndBlindingKey{
+						Address:     addr,
+						BlindingKey: hex.EncodeToString(blindkey),
 					},
 				)
 			}
@@ -814,10 +747,9 @@ func (o *operatorService) WithdrawMarketFunds(
 
 			addressesToObserve = append(
 				addressesToObserve,
-				&crawler.AddressObservable{
-					AccountIndex: market.AccountIndex,
-					Address:      feeAddress,
-					BlindingKey:  feeBlindkey,
+				AddressAndBlindingKey{
+					Address:     feeAddress,
+					BlindingKey: hex.EncodeToString(feeBlindkey),
 				},
 			)
 
@@ -852,9 +784,7 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, err
 	}
 
-	for _, obs := range addressesToObserve {
-		o.crawlerSvc.AddObservable(obs)
-	}
+	go o.observeAddressesForAccount(market.AccountIndex, addressesToObserve)
 
 	return rawTx, nil
 }
@@ -903,4 +833,67 @@ func (o *operatorService) getAllUnspentsForAccount(
 		utxos = append(utxos, u.ToUtxo())
 	}
 	return utxos, nil
+}
+
+func (o *operatorService) observeAddressesForAccount(accountIndex int, list []AddressAndBlindingKey) {
+	for _, l := range list {
+		blindkey, _ := hex.DecodeString(l.BlindingKey)
+		o.blockchainListener.StartObserveAddress(accountIndex, l.Address, blindkey)
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+func (o *operatorService) getMarketsForTrades(
+	ctx context.Context,
+	trades []*domain.Trade,
+) (map[string]*domain.Market, error) {
+	markets := map[string]*domain.Market{}
+	for _, trade := range trades {
+		market, accountIndex, err := o.marketRepository.GetMarketByAsset(
+			ctx,
+			trade.MarketQuoteAsset,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if accountIndex < 0 {
+			return nil, domain.ErrMarketNotExist
+		}
+		if _, ok := markets[trade.MarketQuoteAsset]; !ok {
+			markets[trade.MarketQuoteAsset] = market
+		}
+	}
+	return markets, nil
+}
+
+func tradesToSwapInfo(
+	markets map[string]*domain.Market,
+	trades []*domain.Trade,
+) []SwapInfo {
+	swapInfos := make([]SwapInfo, 0, len(trades))
+	for _, trade := range trades {
+		requestMsg := trade.SwapRequestMessage()
+
+		fee := Fee{
+			FeeAsset:   markets[trade.MarketQuoteAsset].FeeAsset,
+			BasisPoint: markets[trade.MarketQuoteAsset].Fee,
+		}
+
+		newSwapInfo := SwapInfo{
+			Status:           int32(trade.Status.Code),
+			AmountP:          requestMsg.GetAmountP(),
+			AssetP:           requestMsg.GetAssetP(),
+			AmountR:          requestMsg.GetAmountR(),
+			AssetR:           requestMsg.GetAssetR(),
+			MarketFee:        fee,
+			RequestTimeUnix:  trade.SwapRequestTime(),
+			AcceptTimeUnix:   trade.SwapAcceptTime(),
+			CompleteTimeUnix: trade.SwapCompleteTime(),
+			ExpiryTimeUnix:   trade.SwapExpiryTime(),
+		}
+
+		swapInfos = append(swapInfos, newSwapInfo)
+	}
+
+	return swapInfos
 }

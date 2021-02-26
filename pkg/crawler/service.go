@@ -2,9 +2,7 @@ package crawler
 
 import (
 	"sync"
-	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
@@ -13,206 +11,120 @@ const (
 	errorQueueMaxSize = 10
 )
 
-// Event are emitted through a channel during observation.
-type Event interface {
-	Type() EventType
-}
-
-// Observable represent object that can be observe on the blockchain.
-type Observable interface {
-	observe(
-		w *sync.WaitGroup,
-		explorerSvc explorer.Service,
-		errChan chan error,
-		eventChan chan Event,
-	)
-	isEqual(observable Observable) bool
-}
-
-// Service is the interface for Crawler
-type Service interface {
-	Start()
-	Stop()
-	AddObservable(observable Observable)
-	RemoveObservable(observable Observable)
-	IsObservingAddresses(addresses []string) bool
-	GetEventChannel() chan Event
-}
-
-type utxoCrawler struct {
-	interval     *time.Ticker
+type blockchainCrawler struct {
+	interval     int
 	explorerSvc  explorer.Service
 	errChan      chan error
-	quitChan     chan int
 	eventChan    chan Event
-	observables  []Observable
+	observables  map[string]*observableHandler
 	errorHandler func(err error)
 	mutex        *sync.RWMutex
+	wg           *sync.WaitGroup
 }
 
 // Opts defines the parameters needed for creating a crawler service with NewService method
 type Opts struct {
 	ExplorerSvc            explorer.Service
 	IntervalInMilliseconds int
-	Observables            []Observable
 	ErrorHandler           func(err error)
 }
 
 // NewService returns an utxoCrawelr that is ready for watch for blockchain activites. Use Start and Stop methods to manage it.
 func NewService(opts Opts) Service {
-
-	interval := time.NewTicker(time.Duration(opts.IntervalInMilliseconds) * time.Millisecond)
-
-	return &utxoCrawler{
-		interval:     interval,
+	return &blockchainCrawler{
+		interval:     opts.IntervalInMilliseconds,
 		explorerSvc:  opts.ExplorerSvc,
 		errChan:      make(chan error, errorQueueMaxSize),
-		quitChan:     make(chan int),
 		eventChan:    make(chan Event, eventQueueMaxSize),
-		observables:  opts.Observables,
+		observables:  map[string]*observableHandler{},
 		errorHandler: opts.ErrorHandler,
 		mutex:        &sync.RWMutex{},
+		wg:           &sync.WaitGroup{},
 	}
 }
 
 // Start starts crawler which periodically "scans" blockchain for specific
 // events/Observable object
-func (u *utxoCrawler) Start() {
-	var wg sync.WaitGroup
-	log.Debug("start observe")
+func (bc *blockchainCrawler) Start() {
 	for {
 		select {
-		case <-u.interval.C:
-			log.Debug("observe interval")
-			u.observeAll(&wg)
-		case err := <-u.errChan:
-			go u.errorHandler(err)
-		case <-u.quitChan:
-			log.Debug("stop observe")
-			u.interval.Stop()
-			wg.Wait()
-			close(u.eventChan)
-			return
+		case err, more := <-bc.errChan:
+			if !more {
+				return
+			}
+			go bc.errorHandler(err)
 		}
 	}
 }
 
 // Stop stops crawler
-func (u *utxoCrawler) Stop() {
-	u.quitChan <- 1
+func (bc *blockchainCrawler) Stop() {
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
+	for _, obsHandler := range bc.observables {
+		go obsHandler.stop()
+	}
+	bc.wg.Wait()
+	bc.eventChan <- CloseEvent{}
+	close(bc.errChan)
+	return
 }
 
 // GetEventChannel returns Event channel which can be used to "listen" to
 // blockchain events
-func (u *utxoCrawler) GetEventChannel() chan Event {
-	return u.eventChan
+func (bc *blockchainCrawler) GetEventChannel() chan Event {
+	bc.mutex.RLock()
+	defer bc.mutex.RUnlock()
+	return bc.eventChan
 }
 
 // AddObservable adds new Observable to the list of Observables to be "watched
 // over" only if the same Observable is not already in the list
-func (u *utxoCrawler) AddObservable(observable Observable) {
-	u.mutex.Lock()
-	defer u.mutex.Unlock()
+func (bc *blockchainCrawler) AddObservable(observable Observable) {
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
 
-	if !contains(u.observables, observable) {
-		obs, ok := observable.(*AddressObservable)
-		if ok {
-			log.Debugf("new address for account %d added to watchlist", obs.AccountIndex)
-		}
+	if _, ok := bc.observables[observable.key()]; !ok {
+		obsHandler := newObservableHandler(
+			observable,
+			bc.explorerSvc,
+			bc.wg,
+			bc.interval,
+			bc.eventChan,
+			bc.errChan,
+		)
 
-		u.observables = append([]Observable{observable}, u.observables...)
+		bc.observables[observable.key()] = obsHandler
+		go obsHandler.start()
 	}
 }
 
 // RemoveObservable stops "watching" given Observable
-func (u *utxoCrawler) RemoveObservable(observable Observable) {
-	observables := u.getObservable()
+func (bc *blockchainCrawler) RemoveObservable(observable Observable) {
+	bc.mutex.Lock()
+	defer bc.mutex.Unlock()
 
-	u.mutex.Lock()
+	if obsHandler, ok := bc.observables[observable.key()]; ok {
 
-	switch obs := observable.(type) {
-	case *AddressObservable:
-		u.removeAddressObservable(*obs, observables)
-	case *TransactionObservable:
-		u.removeTransactionObservable(*obs, observables)
+		obsHandler.stop()
+		delete(bc.observables, observable.key())
 	}
-	u.mutex.Unlock()
 }
 
 //IsObservingAddresses returns true if the crawler is observing at least one address given as parameter.
 //false in the other case
-func (u *utxoCrawler) IsObservingAddresses(addresses []string) bool {
+func (bc *blockchainCrawler) IsObservingAddresses(addresses []string) bool {
 	if len(addresses) == 0 {
 		return false
 	}
-	observables := u.getObservable()
-	for _, observable := range observables {
-		switch observable := observable.(type) {
-		case *AddressObservable:
-			for _, addr := range addresses {
-				if observable.Address == addr {
-					return true
-				}
-			}
-			continue
-		default:
-			continue
+
+	bc.mutex.RLock()
+	defer bc.mutex.RUnlock()
+
+	for _, addr := range addresses {
+		if _, ok := bc.observables[addr]; !ok {
+			return false
 		}
 	}
-	return false
-}
-
-func (u *utxoCrawler) observeAll(w *sync.WaitGroup) {
-	observables := u.getObservable()
-	for _, o := range observables {
-		w.Add(1)
-		go o.observe(w, u.explorerSvc, u.errChan, u.eventChan)
-	}
-}
-
-func (u *utxoCrawler) getObservable() []Observable {
-	u.mutex.RLock()
-	defer u.mutex.RUnlock()
-	return u.observables
-}
-
-func (u *utxoCrawler) removeAddressObservable(
-	observable AddressObservable,
-	observables []Observable) {
-	newObservableList := make([]Observable, 0)
-	for _, obs := range observables {
-		if o, ok := obs.(*AddressObservable); ok {
-			if o.Address != observable.Address {
-				newObservableList = append(newObservableList, o)
-			}
-		} else {
-			newObservableList = append(newObservableList, o)
-		}
-	}
-	u.observables = newObservableList
-}
-
-func (u *utxoCrawler) removeTransactionObservable(
-	observable TransactionObservable,
-	observables []Observable) {
-	newObservableList := make([]Observable, 0)
-	for _, obs := range observables {
-		if o, ok := obs.(*TransactionObservable); ok {
-			if o.TxID != observable.TxID {
-				newObservableList = append(newObservableList, o)
-			}
-		} else {
-			newObservableList = append(newObservableList, o)
-		}
-	}
-	u.observables = newObservableList
-}
-
-func contains(observables []Observable, observable Observable) bool {
-	for _, o := range observables {
-		if o.isEqual(observable) {
-			return true
-		}
-	}
-	return false
+	return true
 }
