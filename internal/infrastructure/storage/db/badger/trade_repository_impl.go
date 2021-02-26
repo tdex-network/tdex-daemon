@@ -47,16 +47,7 @@ func (t tradeRepositoryImpl) GetAllTradesByMarket(
 	marketQuoteAsset string,
 ) ([]*domain.Trade, error) {
 	query := badgerhold.Where("MarketQuoteAsset").Eq(marketQuoteAsset)
-	tr, err := t.findTrades(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	trades := make([]*domain.Trade, 0, len(tr))
-	for _, v := range tr {
-		trades = append(trades, &v)
-	}
-
-	return trades, nil
+	return t.findTrades(ctx, query)
 }
 
 func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
@@ -74,8 +65,7 @@ func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
 		return nil, errors.New("trade not found")
 	}
 
-	trade := &trades[0]
-	return trade, nil
+	return trades[0], nil
 }
 
 func (t tradeRepositoryImpl) GetTradeByTxID(
@@ -93,8 +83,7 @@ func (t tradeRepositoryImpl) GetTradeByTxID(
 		return nil, errors.New("trade not found")
 	}
 
-	trade := &trades[0]
-	return trade, nil
+	return trades[0], nil
 }
 
 func (t tradeRepositoryImpl) UpdateTrade(
@@ -122,16 +111,7 @@ func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
 	query := badgerhold.
 		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
 		And("Status.Code").Eq(pb.SwapStatus_COMPLETE)
-	tr, err := t.findTrades(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	trades := make([]*domain.Trade, 0, len(tr))
-	for _, v := range tr {
-		trades = append(trades, &v)
-	}
-
-	return trades, nil
+	return t.findTrades(ctx, query)
 }
 
 func (t tradeRepositoryImpl) getOrCreateTrade(
@@ -152,14 +132,20 @@ func (t tradeRepositoryImpl) getOrCreateTrade(
 func (t tradeRepositoryImpl) findTrades(
 	ctx context.Context,
 	query *badgerhold.Query,
-) ([]domain.Trade, error) {
-	var trades []domain.Trade
+) ([]*domain.Trade, error) {
+	var tr []domain.Trade
 	var err error
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = t.db.Store.TxFind(tx, &trades, query)
+		err = t.db.Store.TxFind(tx, &tr, query)
 	} else {
-		err = t.db.Store.Find(&trades, query)
+		err = t.db.Store.Find(&tr, query)
+	}
+
+	trades := make([]*domain.Trade, len(tr), len(tr))
+	for i := range tr {
+		trade := tr[i]
+		trades[i] = &trade
 	}
 
 	return trades, err
