@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -618,11 +617,10 @@ func (o *operatorService) GetCollectedMarketFee(
 		feeAsset := swapRequest.GetAssetP()
 		amountP := swapRequest.GetAmountP()
 		_, feeAmount := mathutil.LessFee(amountP, uint64(feeBasisPoint))
-		var marketPrice decimal.Decimal
+
+		marketPrice := trade.MarketPrice.QuotePrice
 		if feeAsset == m.BaseAsset {
 			marketPrice = trade.MarketPrice.BasePrice
-		} else {
-			marketPrice = trade.MarketPrice.QuotePrice
 		}
 
 		fees = append(fees, FeeInfo{
