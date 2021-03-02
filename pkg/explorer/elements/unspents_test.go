@@ -80,7 +80,7 @@ func newService() (explorer.Service, error) {
 	if rpcEndpoint == "" {
 		rpcEndpoint = "http://admin1:123@127.0.0.1:7041"
 	}
-	return NewService(rpcEndpoint)
+	return NewService(rpcEndpoint, 0)
 }
 
 func newTestData() (string, []byte, error) {

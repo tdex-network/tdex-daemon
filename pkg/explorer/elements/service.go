@@ -5,39 +5,44 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
 type elements struct {
-	client *RPCClient
+	client          *RPCClient
+	rescanTimestamp interface{}
 }
 
 // NewService returns the Elements implementation of the Explorer interface.
 // It establishes an insecure connection with the JSON-RPC interface of the
 // node with no TLS termination.
-func NewService(endpoint string) (explorer.Service, error) {
-	if endpoint == "" {
-		return nil, fmt.Errorf("missing endpoint")
+func NewService(endpoint string, rescanTimestamp interface{}) (
+	explorer.Service,
+	error,
+) {
+	if err := validateEndpoint(endpoint); err != nil {
+		return nil, err
 	}
-	parsedEndpoint, err := url.Parse(endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("invalid endpoint: %w", err)
+	if err := validateRescanTimestamp(rescanTimestamp); err != nil {
+		return nil, err
 	}
 
+	parsedEndpoint, _ := url.Parse(endpoint)
 	host := parsedEndpoint.Hostname()
 	port, _ := strconv.Atoi(parsedEndpoint.Port())
 	user := parsedEndpoint.User.Username()
 	password, _ := parsedEndpoint.User.Password()
 
 	if host == "" {
-		return nil, fmt.Errorf("missing host")
+		return nil, ErrMissingRPCHost
 	}
 	if user == "" {
-		return nil, fmt.Errorf("missing RPC user")
+		return nil, ErrMissingRPCUser
 	}
 	if password == "" {
-		return nil, fmt.Errorf("missing RPC password")
+		return nil, ErrMissingRPCPassword
 	}
 
 	client, err := NewClient(host, port, user, password, false, 30)
@@ -46,7 +51,7 @@ func NewService(endpoint string) (explorer.Service, error) {
 		return nil, err
 	}
 
-	service := &elements{client}
+	service := &elements{client, rescanTimestamp}
 	if _, err := service.GetBlockHeight(); err != nil {
 		return nil, fmt.Errorf("healt check: %w", err)
 	}
@@ -54,7 +59,21 @@ func NewService(endpoint string) (explorer.Service, error) {
 }
 
 func (e *elements) importAddress(addr, label string) error {
-	r, err := e.client.call("importaddress", []interface{}{addr, label, false})
+	r, err := e.client.call("importmulti", []interface{}{
+		[]map[string]interface{}{
+			{
+				"scriptPubKey": map[string]string{
+					"address": addr,
+				},
+				"watchonly": true,
+				"label":     label,
+				"timestamp": e.rescanTimestamp,
+			},
+		},
+		map[string]bool{
+			"rescan": true,
+		},
+	})
 	if err = handleError(err, &r); err != nil {
 		return err
 	}
@@ -125,4 +144,30 @@ func (e *elements) mine() (string, error) {
 		return "", fmt.Errorf("unmarshal: %w", err)
 	}
 	return blockHash[0], nil
+}
+
+func validateEndpoint(endpoint string) error {
+	if endpoint == "" {
+		return fmt.Errorf("missing endpoint")
+	}
+	if _, err := url.Parse(endpoint); err != nil {
+		return fmt.Errorf("invalid endpoint: %w", err)
+	}
+	return nil
+}
+
+func validateRescanTimestamp(timestamp interface{}) error {
+	switch timestamp.(type) {
+	case string:
+		if strings.ToLower(strings.Trim(timestamp.(string), " ")) != "now" {
+			return ErrInvalidRescaTimestamp
+		}
+	case int:
+		if timestamp.(int) < 0 {
+			return ErrInvalidRescaTimestamp
+		}
+	default:
+		return ErrInvalidRescaTimestamp
+	}
+	return nil
 }

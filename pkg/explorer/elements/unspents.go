@@ -146,7 +146,7 @@ func (e *elements) getUtxoDetails(unspent elementsUnspent, chUnspents chan explo
 func addressLabel(addr string) (string, error) {
 	script, err := address.ToOutputScript(addr)
 	if err != nil {
-		return "", fmt.Errorf("address is not valid")
+		return "", ErrInvalidAddress
 	}
 	return hex.EncodeToString(script), nil
 }
@@ -166,5 +166,5 @@ func findBlindKeyForAddress(addr string, blindKeys [][]byte) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("blindkey not found for address")
+	return "", ErrBlindKeyNotFound
 }
