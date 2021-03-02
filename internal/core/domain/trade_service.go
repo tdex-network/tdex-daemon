@@ -43,30 +43,7 @@ func (t *Trade) Propose(
 		return false, nil
 	}
 
-	// calculate the price from the amounts. Prices are calculated by comparing
-	// the market's quote asset and those of the swap request:
-	//   - assetP / assetR is either quote or base price depending on whether the
-	//		 assetP matches the market's quote asset or not.
-	//   - assetR / assetP follows as above accordingly.
-	var price Prices
-	pricePR := decimal.NewFromInt(int64(swapRequest.GetAmountP())).Div(
-		decimal.NewFromInt(int64(swapRequest.GetAmountR())),
-	).Truncate(8)
-	priceRP := decimal.NewFromInt(int64(swapRequest.GetAmountR())).Div(
-		decimal.NewFromInt(int64(swapRequest.GetAmountP())),
-	).Truncate(8)
-
-	if swapRequest.GetAssetP() == marketQuoteAsset {
-		price = Prices{
-			BasePrice:  priceRP,
-			QuotePrice: pricePR,
-		}
-	} else {
-		price = Prices{
-			BasePrice:  pricePR,
-			QuotePrice: priceRP,
-		}
-	}
+	price := calculateMarketPrices(swapRequest, marketQuoteAsset)
 
 	t.Status = ProposalStatus
 	t.SwapRequest.Message = msg
@@ -316,4 +293,34 @@ func (t *Trade) SwapCompleteTime() uint64 {
 // SwapExpiryTime returns the timestamp of when the current trade will expire
 func (t *Trade) SwapExpiryTime() uint64 {
 	return t.Timestamp.Expiry
+}
+
+// calculate the price from the amounts. Prices are calculated by comparing
+// the market's quote asset and those of the swap request:
+//   - assetP / assetR is either quote or base price depending on whether the
+//		 assetP matches the market's quote asset or not.
+//   - assetR / assetP follows as above accordingly.
+func calculateMarketPrices(
+	swapRequest *pb.SwapRequest,
+	marketQuoteAsset string,
+) (price Prices) {
+	pricePR := decimal.NewFromInt(int64(swapRequest.GetAmountP())).Div(
+		decimal.NewFromInt(int64(swapRequest.GetAmountR())),
+	).Truncate(8)
+	priceRP := decimal.NewFromInt(int64(swapRequest.GetAmountR())).Div(
+		decimal.NewFromInt(int64(swapRequest.GetAmountP())),
+	).Truncate(8)
+
+	if swapRequest.GetAssetP() == marketQuoteAsset {
+		price = Prices{
+			BasePrice:  priceRP,
+			QuotePrice: pricePR,
+		}
+	} else {
+		price = Prices{
+			BasePrice:  pricePR,
+			QuotePrice: priceRP,
+		}
+	}
+	return
 }

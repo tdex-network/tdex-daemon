@@ -37,7 +37,10 @@ type MarketWithFee struct {
 	Fee
 }
 
-// Fee is a couple amount / asset type and represents fees in a transaction.
+// Fee is the market fee percentage in basis point:
+// 	- 0,01% -> 1 bp
+//	- 1,00% -> 100 bp
+//	- 99,99% -> 9999 bp
 type Fee struct {
 	BasisPoint int64
 }
