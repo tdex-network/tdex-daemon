@@ -137,8 +137,8 @@ func GetNetwork() *network.Network {
 //GetExplorer ...
 func GetExplorer() (explorer.Service, error) {
 	if rpcEndpoint := GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
-		var rescanTime interface{} = "now"
-		if vip.GetString(ElementsStartRescanTimestampKey) != "" {
+		var rescanTime interface{}
+		if vip.IsSet(ElementsStartRescanTimestampKey) {
 			rescanTime = vip.GetInt(ElementsStartRescanTimestampKey)
 		}
 		return elements.NewService(rpcEndpoint, rescanTime)
@@ -186,7 +186,7 @@ func validate() {
 		}
 		// ElementsStartRescanTimestamp can assume the 0 value that means scanning
 		// the entire blockchain. This wil be used only in regtest mode
-		if vip.GetString(ElementsStartRescanTimestampKey) != "" {
+		if vip.IsSet(ElementsStartRescanTimestampKey) {
 			rescanTime := vip.GetInt(ElementsStartRescanTimestampKey)
 			if rescanTime < 0 {
 				log.WithError(

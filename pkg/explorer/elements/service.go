@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
@@ -34,15 +33,8 @@ func NewService(endpoint string, rescanTimestamp interface{}) (
 	port, _ := strconv.Atoi(parsedEndpoint.Port())
 	user := parsedEndpoint.User.Username()
 	password, _ := parsedEndpoint.User.Password()
-
-	if host == "" {
-		return nil, ErrMissingRPCHost
-	}
-	if user == "" {
-		return nil, ErrMissingRPCUser
-	}
-	if password == "" {
-		return nil, ErrMissingRPCPassword
+	if rescanTimestamp == nil {
+		rescanTimestamp = "now"
 	}
 
 	client, err := NewClient(host, port, user, password, false, 30)
@@ -150,18 +142,33 @@ func validateEndpoint(endpoint string) error {
 	if endpoint == "" {
 		return fmt.Errorf("missing endpoint")
 	}
-	if _, err := url.Parse(endpoint); err != nil {
+	parsedEndpoint, err := url.Parse(endpoint)
+	if err != nil {
 		return fmt.Errorf("invalid endpoint: %w", err)
 	}
+
+	if parsedEndpoint.Hostname() == "" {
+		return ErrMissingRPCHost
+	}
+	if parsedEndpoint.Port() == "" {
+		return ErrMissingRPCPort
+	}
+	if parsedEndpoint.User.Username() == "" {
+		return ErrMissingRPCUser
+	}
+	if _, ok := parsedEndpoint.User.Password(); !ok {
+		return ErrMissingRPCPassword
+	}
+
 	return nil
 }
 
 func validateRescanTimestamp(timestamp interface{}) error {
+	if timestamp == nil {
+		return nil
+	}
+
 	switch timestamp.(type) {
-	case string:
-		if strings.ToLower(strings.Trim(timestamp.(string), " ")) != "now" {
-			return ErrInvalidRescaTimestamp
-		}
 	case int:
 		if timestamp.(int) < 0 {
 			return ErrInvalidRescaTimestamp
