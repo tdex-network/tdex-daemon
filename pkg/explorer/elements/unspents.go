@@ -113,20 +113,6 @@ func (e *elements) GetUnspentsForAddresses(
 	return e.toUtxos(unspents)
 }
 
-func (e *elements) getUnspentsForAddress(
-	addr string,
-	blindingKeys [][]byte,
-	chUnspents chan []explorer.Utxo,
-	chErr chan error,
-) {
-	unspents, err := e.GetUnspents(addr, blindingKeys)
-	if err != nil {
-		chErr <- err
-		return
-	}
-	chUnspents <- unspents
-}
-
 func (e *elements) toUtxos(unspents []elementsUnspent) ([]explorer.Utxo, error) {
 	utxos := make([]explorer.Utxo, 0, len(unspents))
 	chUnspents := make(chan explorer.Utxo)
