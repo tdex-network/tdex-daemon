@@ -11,8 +11,7 @@ import (
 
 func TestTradePropose(t *testing.T) {
 	trade := NewTrade()
-	swapRequest, marketQuoteAsset, traderPubkey := mockProposeArgs()
-	ok, err := trade.Propose(swapRequest, marketQuoteAsset, traderPubkey)
+	ok, err := trade.Propose(mockProposeArgs())
 	assert.NoError(t, err)
 	assert.Equal(t, true, ok)
 }
@@ -41,7 +40,12 @@ func TestTradeComplete(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func mockProposeArgs() (swapRequest *pb.SwapRequest, marketQuoteAsset string, traderPubkey []byte) {
+func mockProposeArgs() (
+	swapRequest *pb.SwapRequest,
+	marketQuoteAsset string,
+	marketFee int64,
+	traderPubkey []byte,
+) {
 	blindPrvkey, _ := hex.DecodeString("6ae1530f2ecf4261f97aa8aae6218d8eb3f07ebbe7603e4d909bf4e554aa1d40")
 	blindPubkey, _ := hex.DecodeString("02a86a241c972dd22c4bbd2570f46faa144bcca1f49a8c13e90d51eca829b8a621")
 
@@ -60,6 +64,7 @@ func mockProposeArgs() (swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 	}
 	marketQuoteAsset = "358ec5d1fff7ff4c176a01ab4938b8e25fde6ef431cfadcc0bfe04770b113e68"
 	traderPubkey, _ = hex.DecodeString("033bbf33732c467e83f2500eaca8baf1a1da1709c74b5948935e2c059387e6fa87")
+	marketFee = 25
 	return
 }
 

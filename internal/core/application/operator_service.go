@@ -9,6 +9,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -361,11 +362,6 @@ func (o *operatorService) UpdateMarketFee(
 			if err := m.ChangeFee(req.BasisPoint); err != nil {
 				return nil, err
 			}
-
-			if err := m.ChangeFeeAsset(req.FeeAsset); err != nil {
-				return nil, err
-			}
-
 			return m, nil
 		},
 	)
@@ -385,7 +381,6 @@ func (o *operatorService) UpdateMarketFee(
 			QuoteAsset: mkt.QuoteAsset,
 		},
 		Fee: Fee{
-			FeeAsset:   mkt.FeeAsset,
 			BasisPoint: mkt.Fee,
 		},
 	}, nil
@@ -581,7 +576,6 @@ func (o *operatorService) ListMarket(
 			},
 			Fee: Fee{
 				BasisPoint: market.Fee,
-				FeeAsset:   market.FeeAsset,
 			},
 			Tradable:     market.Tradable,
 			StrategyType: market.Strategy.Type,
@@ -615,19 +609,29 @@ func (o *operatorService) GetCollectedMarketFee(
 		return nil, err
 	}
 
-	fees := make([]Fee, 0)
+	fees := make([]FeeInfo, 0, len(trades))
 	total := make(map[string]int64)
-	for _, v := range trades {
-		fees = append(fees, Fee{
-			FeeAsset:   v.MarketFeeAsset,
-			BasisPoint: v.MarketFee,
+	for _, trade := range trades {
+		feeBasisPoint := trade.MarketFee
+		swapRequest := trade.SwapRequestMessage()
+		feeAsset := swapRequest.GetAssetP()
+		amountP := swapRequest.GetAmountP()
+		_, feeAmount := mathutil.LessFee(amountP, uint64(feeBasisPoint))
+
+		marketPrice := trade.MarketPrice.QuotePrice
+		if feeAsset == m.BaseAsset {
+			marketPrice = trade.MarketPrice.BasePrice
+		}
+
+		fees = append(fees, FeeInfo{
+			TradeID:     trade.ID.String(),
+			BasisPoint:  feeBasisPoint,
+			Asset:       feeAsset,
+			Amount:      feeAmount,
+			MarketPrice: marketPrice,
 		})
 
-		if val, ok := total[v.MarketFeeAsset]; ok {
-			total[v.MarketFeeAsset] = val + v.MarketFee
-		} else {
-			total[v.MarketFeeAsset] = v.MarketFee
-		}
+		total[feeAsset] += int64(feeAmount)
 	}
 
 	return &ReportMarketFee{
@@ -875,7 +879,6 @@ func tradesToSwapInfo(
 		requestMsg := trade.SwapRequestMessage()
 
 		fee := Fee{
-			FeeAsset:   markets[trade.MarketQuoteAsset].FeeAsset,
 			BasisPoint: markets[trade.MarketQuoteAsset].Fee,
 		}
 

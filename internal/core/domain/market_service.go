@@ -117,30 +117,6 @@ func (m *Market) ChangeFee(fee int64) error {
 	return nil
 }
 
-// ChangeFeeAsset ...
-func (m *Market) ChangeFeeAsset(asset string) error {
-	// In case of empty asset hash, no updates happens and therefore it exit without error
-	if asset == "" {
-		return nil
-	}
-
-	if !m.IsFunded() {
-		return ErrNotFunded
-	}
-
-	if m.IsTradable() {
-		return ErrMarketMustBeClose
-	}
-
-	if asset != m.BaseAsset && asset != m.QuoteAsset {
-		return errors.New("the given asset must be either the base or quote" +
-			" asset in the pair")
-	}
-
-	m.FeeAsset = asset
-	return nil
-}
-
 // BaseAssetPrice returns the latest price for the base asset
 func (m *Market) BaseAssetPrice() decimal.Decimal {
 	basePrice, _ := getLatestPrice(m.Price)

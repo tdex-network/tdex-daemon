@@ -1,8 +1,10 @@
 package domain
 
 import (
-	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 
 	"github.com/tdex-network/tdex-daemon/config"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
@@ -12,7 +14,12 @@ import (
 )
 
 // Propose returns a new trade proposal for the given trader and market
-func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, traderPubkey []byte) (bool, error) {
+func (t *Trade) Propose(
+	swapRequest *pb.SwapRequest,
+	marketQuoteAsset string,
+	marketFeeBasisPoint int64,
+	traderPubkey []byte,
+) (bool, error) {
 	if !t.IsEmpty() {
 		return false, ErrMustBeEmpty
 	}
@@ -21,8 +28,8 @@ func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 	t.MarketQuoteAsset = marketQuoteAsset
 	t.SwapRequest.ID = swapRequest.GetId()
 	t.Timestamp.Request = uint64(time.Now().Unix())
-	t.Timestamp.Expiry = t.Timestamp.Request + uint64(config.GetInt(config.
-		TradeExpiryTimeKey))
+	t.Timestamp.Expiry = t.Timestamp.Request +
+		uint64(config.GetInt(config.TradeExpiryTimeKey))
 	t.PsetBase64 = swapRequest.GetTransaction()
 
 	msg, err := pkgswap.ParseSwapRequest(swapRequest)
@@ -36,8 +43,12 @@ func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 		return false, nil
 	}
 
+	price := calculateMarketPrices(swapRequest, marketQuoteAsset)
+
 	t.Status = ProposalStatus
 	t.SwapRequest.Message = msg
+	t.MarketPrice = price
+	t.MarketFee = marketFeeBasisPoint
 	return true, nil
 }
 
@@ -282,4 +293,34 @@ func (t *Trade) SwapCompleteTime() uint64 {
 // SwapExpiryTime returns the timestamp of when the current trade will expire
 func (t *Trade) SwapExpiryTime() uint64 {
 	return t.Timestamp.Expiry
+}
+
+// calculate the price from the amounts. Prices are calculated by comparing
+// the market's quote asset and those of the swap request:
+//   - assetP / assetR is either quote or base price depending on whether the
+//		 assetP matches the market's quote asset or not.
+//   - assetR / assetP follows as above accordingly.
+func calculateMarketPrices(
+	swapRequest *pb.SwapRequest,
+	marketQuoteAsset string,
+) (price Prices) {
+	pricePR := decimal.NewFromInt(int64(swapRequest.GetAmountP())).Div(
+		decimal.NewFromInt(int64(swapRequest.GetAmountR())),
+	).Truncate(8)
+	priceRP := decimal.NewFromInt(int64(swapRequest.GetAmountR())).Div(
+		decimal.NewFromInt(int64(swapRequest.GetAmountP())),
+	).Truncate(8)
+
+	if swapRequest.GetAssetP() == marketQuoteAsset {
+		price = Prices{
+			BasePrice:  priceRP,
+			QuotePrice: pricePR,
+		}
+	} else {
+		price = Prices{
+			BasePrice:  pricePR,
+			QuotePrice: priceRP,
+		}
+	}
+	return
 }
