@@ -62,24 +62,55 @@ func (e *elements) GetUnspentsForAddresses(
 	addresses []string,
 	blindingKeys [][]byte,
 ) ([]explorer.Utxo, error) {
-	chUnspents := make(chan []explorer.Utxo)
-	chErr := make(chan error, 1)
-	unspents := make([]explorer.Utxo, 0)
+	sortedBlindingKeys := make([]string, len(addresses), len(addresses))
+	for i, addr := range addresses {
+		blindKey, err := findBlindKeyForAddress(addr, blindingKeys)
+		if err != nil {
+			return nil, fmt.Errorf("find key: %w", err)
+		}
+		sortedBlindingKeys[i] = blindKey
+	}
 
 	for i, addr := range addresses {
-		go e.getUnspentsForAddress(addr, [][]byte{blindingKeys[i]}, chUnspents, chErr)
+		addrLabel, err := addressLabel(addr)
+		if err != nil {
+			return nil, fmt.Errorf("label: %w", err)
+		}
 
-		select {
-		case err := <-chErr:
-			close(chErr)
-			close(chUnspents)
-			return nil, err
-		case unspentsForAddress := <-chUnspents:
-			unspents = append(unspents, unspentsForAddress...)
+		isAddressImported, err := e.isAddressImported(addrLabel)
+		if err != nil {
+			return nil, fmt.Errorf("check import: %w", err)
+		}
+
+		if !isAddressImported {
+			if err := e.importAddress(addr, addrLabel); err != nil {
+				return nil, fmt.Errorf("import: %w", err)
+			}
+		}
+
+		isBlindKeyImported, err := e.isBlindKeyImported(addr)
+		if err != nil {
+			return nil, fmt.Errorf("check import key: %w", err)
+		}
+
+		if !isBlindKeyImported {
+			if err := e.importBlindKey(addr, sortedBlindingKeys[i]); err != nil {
+				return nil, fmt.Errorf("import key: %w", err)
+			}
 		}
 	}
 
-	return unspents, nil
+	r, err := e.client.call("listunspent", []interface{}{0, 9999999, addresses})
+	if err = handleError(err, &r); err != nil {
+		return nil, fmt.Errorf("list: %w", err)
+	}
+
+	var unspents []elementsUnspent
+	if err := json.Unmarshal(r.Result, &unspents); err != nil {
+		return nil, fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return e.toUtxos(unspents)
 }
 
 func (e *elements) getUnspentsForAddress(
