@@ -95,7 +95,7 @@ func (b *blockchainListener) StartObservation() {
 		log.Debug("start crawler")
 		go b.crawlerSvc.Start()
 		log.Debug("start listening on event channel")
-		go b.listentToEventChannel()
+		go b.listenToEventChannel()
 		go b.startPendingObservables()
 		b.started = true
 	}
@@ -156,7 +156,7 @@ func (b *blockchainListener) StopObserveTx(txid string) {
 	b.crawlerSvc.RemoveObservable(&crawler.TransactionObservable{TxID: txid})
 }
 
-func (b *blockchainListener) listentToEventChannel() {
+func (b *blockchainListener) listenToEventChannel() {
 	for {
 		select {
 		case event := <-b.crawlerSvc.GetEventChannel():
