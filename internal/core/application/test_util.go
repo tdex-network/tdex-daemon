@@ -253,7 +253,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 
 func getExplorer() (explorer.Service, error) {
 	if endpoint := os.Getenv("TDEX_ELEMENTS_RPC_ENDPOINT"); endpoint != "" {
-		return elements.NewService(endpoint)
+		return elements.NewService(endpoint, nil)
 	}
 	if endpoint := os.Getenv("TDEX_EXPLORER_ENDPOINT"); endpoint != "" {
 		return esplora.NewService(endpoint)

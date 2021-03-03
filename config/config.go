@@ -57,6 +57,9 @@ const (
 	// ElementsRPCEndpointKey is the url for the RPC interface of the Elements
 	// node in the form protocol://user:password@host:port
 	ElementsRPCEndpointKey = "ELEMENTS_RPC_ENDPOINT"
+	// ElementsStartRescanTimestampKey is the date in Unix seconds of the block
+	// from where the node should start rescanning addresses
+	ElementsStartRescanTimestampKey = "ELEMENTS_START_RESCAN_TIMESTAMP"
 )
 
 var vip *viper.Viper
@@ -134,7 +137,11 @@ func GetNetwork() *network.Network {
 //GetExplorer ...
 func GetExplorer() (explorer.Service, error) {
 	if rpcEndpoint := GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
-		return elements.NewService(rpcEndpoint)
+		var rescanTime interface{}
+		if vip.IsSet(ElementsStartRescanTimestampKey) {
+			rescanTime = vip.GetInt(ElementsStartRescanTimestampKey)
+		}
+		return elements.NewService(rpcEndpoint, rescanTime)
 	}
 	return esplora.NewService(GetString(ExplorerEndpointKey))
 }
@@ -157,15 +164,15 @@ func GetMnemonic() []string {
 // Validate method of config will panic
 func validate() {
 	if err := validateDefaultFee(vip.GetFloat64(DefaultFeeKey)); err != nil {
-		log.Fatalln(err)
+		log.WithError(err).Panic("default fee is not valid")
 	}
 	if err := validateDefaultNetwork(vip.GetString(NetworkKey)); err != nil {
-		log.Fatalln(err)
+		log.WithError(err).Panic("default network is not valid")
 	}
 	path := vip.GetString(DataDirPathKey)
 	if path != defaultDataDir {
 		if err := validatePath(path); err != nil {
-			log.Fatalln(err)
+			log.WithError(err).Panic("datadir is not valid")
 		}
 	}
 	certPath, keyPath := vip.GetString(SSLCertPathKey), vip.GetString(SSLKeyPathKey)
@@ -176,6 +183,16 @@ func validate() {
 	if rpcEndpoint := vip.GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
 		if err := validateEndpoint(rpcEndpoint); err != nil {
 			log.WithError(err).Panic("Elements RPC endpoint is not a valid url")
+		}
+		// ElementsStartRescanTimestamp can assume the 0 value that means scanning
+		// the entire blockchain. This wil be used only in regtest mode
+		if vip.IsSet(ElementsStartRescanTimestampKey) {
+			rescanTime := vip.GetInt(ElementsStartRescanTimestampKey)
+			if rescanTime < 0 {
+				log.WithError(
+					fmt.Errorf("timestamp must not be a negative number"),
+				).Panic("Elements rescan timestamp is not valid")
+			}
 		}
 	} else {
 		if err := validateEndpoint(vip.GetString(ExplorerEndpointKey)); err != nil {
