@@ -2,6 +2,7 @@ package crawler
 
 import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"golang.org/x/time/rate"
 )
 
 // Event are emitted through a channel during observation.
@@ -15,6 +16,8 @@ type Observable interface {
 		explorerSvc explorer.Service,
 		errChan chan error,
 		eventChan chan Event,
+		observableStatus *observableStatus,
+		rateLimiter *rate.Limiter,
 	)
 	key() string
 }

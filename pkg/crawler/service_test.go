@@ -20,7 +20,7 @@ func TestCrawler(t *testing.T) {
 				fmt.Println(err)
 			}
 		},
-		IntervalInMilliseconds: 500,
+		CrawlerInterval: 500,
 	})
 
 	go crawlSvc.Start()
