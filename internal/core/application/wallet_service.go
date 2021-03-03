@@ -35,6 +35,7 @@ type WalletService interface {
 		ctx context.Context,
 		mnemonic []string,
 		passphrase string,
+		restore bool,
 	) error
 	UnlockWallet(
 		ctx context.Context,
@@ -121,6 +122,7 @@ func (w *walletService) InitWallet(
 	ctx context.Context,
 	mnemonic []string,
 	passphrase string,
+	restore bool,
 ) error {
 	if w.walletInitialized {
 		return nil
@@ -156,9 +158,9 @@ func (w *walletService) InitWallet(
 				return nil, err
 			}
 
-			feeLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.FeeAccount, w.explorerService)
-			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService)
-			marketsLastDerivedIndex := getLatestDerivationIndexForMarkets(ww, w.explorerService)
+			feeLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.FeeAccount, w.explorerService, restore)
+			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService, restore)
+			marketsLastDerivedIndex := getLatestDerivationIndexForMarkets(ww, w.explorerService, restore)
 
 			feeAddresses, err := initVaultAccount(v, domain.FeeAccount, feeLastDerivedIndex)
 			if err != nil {
@@ -699,10 +701,20 @@ type accountLastDerivedIndex struct {
 }
 
 func (a *accountLastDerivedIndex) total() int {
-	return a.external + a.internal
+	return (a.external + 1) + (a.internal + 1)
 }
 
-func getLatestDerivationIndexForAccount(w *wallet.Wallet, accountIndex int, explorerSvc explorer.Service) *accountLastDerivedIndex {
+func getLatestDerivationIndexForAccount(
+	w *wallet.Wallet,
+	accountIndex int,
+	explorerSvc explorer.Service,
+	restore bool,
+) *accountLastDerivedIndex {
+	if !restore {
+		log.Debugf("skip restore - account %d empty", accountIndex)
+		return nil
+	}
+
 	lastDerivedIndex := &accountLastDerivedIndex{}
 	for chainIndex := 0; chainIndex <= 1; chainIndex++ {
 		firstUnfundedAddress := -1
@@ -742,12 +754,21 @@ func getLatestDerivationIndexForAccount(w *wallet.Wallet, accountIndex int, expl
 	return lastDerivedIndex
 }
 
-func getLatestDerivationIndexForMarkets(w *wallet.Wallet, explorerSvc explorer.Service) []*accountLastDerivedIndex {
+func getLatestDerivationIndexForMarkets(
+	w *wallet.Wallet,
+	explorerSvc explorer.Service,
+	restore bool,
+) []*accountLastDerivedIndex {
 	marketsLastIndex := make([]*accountLastDerivedIndex, 0)
 	i := 0
 	for {
 		marketIndex := domain.MarketAccountStart + i
-		lastDerivedIndex := getLatestDerivationIndexForAccount(w, marketIndex, explorerSvc)
+		lastDerivedIndex := getLatestDerivationIndexForAccount(
+			w,
+			marketIndex,
+			explorerSvc,
+			restore,
+		)
 		if lastDerivedIndex == nil {
 			break
 		}
