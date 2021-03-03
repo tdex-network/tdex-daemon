@@ -20,7 +20,7 @@ require (
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.5.1
-	github.com/tdex-network/tdex-protobuf v0.0.0-20210222134250-77814a8c3ea3
+	github.com/tdex-network/tdex-protobuf v0.0.0-20210303152020-690e6e604cae
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect

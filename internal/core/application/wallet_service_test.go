@@ -10,6 +10,8 @@ import (
 	"github.com/vulpemventures/go-elements/network"
 )
 
+const restoreWallet = true
+
 func TestNewWalletService(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
@@ -46,7 +48,7 @@ func TestInitWalletWrongSeed(t *testing.T) {
 	t.Cleanup(close)
 
 	wrongSeed := []string{"test"}
-	err := walletSvc.InitWallet(ctx, wrongSeed, "pass")
+	err := walletSvc.InitWallet(ctx, wrongSeed, "pass", !restoreWallet)
 	assert.Error(t, err)
 }
 
@@ -77,7 +79,7 @@ func TestInitEmptyWallet(t *testing.T) {
 		Network:        &network.Regtest,
 	})
 
-	err := walletSvc.InitWallet(ctx, emptyWallet.mnemonic, emptyWallet.password)
+	err := walletSvc.InitWallet(ctx, emptyWallet.mnemonic, emptyWallet.password, !restoreWallet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +119,7 @@ func TestInitUsedWallet(t *testing.T) {
 		Network:        &network.Regtest,
 	})
 
-	err := walletSvc.InitWallet(ctx, usedWallet.mnemonic, usedWallet.password)
+	err := walletSvc.InitWallet(ctx, usedWallet.mnemonic, usedWallet.password, restoreWallet)
 	if err != nil {
 		t.Fatal(err)
 	}
