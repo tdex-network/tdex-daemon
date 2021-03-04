@@ -33,11 +33,7 @@ Below is a list of commands you will probably find useful for development.
 Builds `tdexd` as static binary and runs the project with default configuration.
 
 ```bash
-# Max OSX
-$ make run-mac
-
-# Linux
-$ make run-linux
+$ make run
 ```
 
 ### Build daemon
@@ -45,14 +41,7 @@ $ make run-linux
 Builds `tdexd` as static binary in the `./build` folder
 
 ```bash
-# Max OSX
-$ make build-mac
-
-# Linux
-$ make build-linux
-
-# ARM
-$ make build-arm
+$ make build
 ```
 
 ### Build CLI
@@ -60,14 +49,7 @@ $ make build-arm
 Builds `tdex` as static binary in the `./build` folder
 
 ```bash
-# Max OSX
-$ make build-cli-mac
-
-# Linux
-$ make build-cli-linux
-
-# ARM
-$ make build-cli-arm
+$ make build-cli
 ```
 
 ### Build and Run with docker
