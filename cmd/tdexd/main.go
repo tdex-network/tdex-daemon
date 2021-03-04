@@ -72,8 +72,8 @@ func main() {
 		ExplorerSvc:        explorerSvc,
 		ErrorHandler:       func(err error) { log.Warn(err) },
 		CrawlerInterval:    config.GetInt(config.CrawlIntervalKey),
-		ExplorerLimit:      config.GetInt(config.ExplorerLimitKey),
-		ExplorerTokenBurst: config.GetInt(config.ExplorerTokenBurstKey),
+		ExplorerLimit:      config.GetInt(config.CrawlLimitKey),
+		ExplorerTokenBurst: config.GetInt(config.CrawlTokenBurst),
 	})
 	blockchainListener := application.NewBlockchainListener(
 		unspentRepository,

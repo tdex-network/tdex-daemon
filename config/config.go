@@ -57,12 +57,12 @@ const (
 	// ElementsRPCEndpointKey is the url for the RPC interface of the Elements
 	// node in the form protocol://user:password@host:port
 	ElementsRPCEndpointKey = "ELEMENTS_RPC_ENDPOINT"
-	// ExplorerLimit represents number of requests per second that crawler
+	// CrawlLimitKey represents number of requests per second that crawler
 	//makes to explorer
-	ExplorerLimitKey = "EXPLORER_LIMIT"
-	// ExplorerTokenBurst represents number of bursts tokens permitted from
+	CrawlLimitKey = "CRAWL_LIMIT"
+	// CrawlTokenBurst represents number of bursts tokens permitted from
 	//crawler to explorer
-	ExplorerTokenBurstKey = "EXPLORER_TOKEN_BURST"
+	CrawlTokenBurst = "CRAWL_TOKEN"
 )
 
 var vip *viper.Viper
@@ -87,8 +87,8 @@ func init() {
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
 	vip.SetDefault(StatsIntervalKey, 600)
-	vip.SetDefault(ExplorerLimitKey, 10)
-	vip.SetDefault(ExplorerTokenBurstKey, 1)
+	vip.SetDefault(CrawlLimitKey, 10)
+	vip.SetDefault(CrawlTokenBurst, 1)
 
 	validate()
 
