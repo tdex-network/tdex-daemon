@@ -30,14 +30,19 @@ type Opts struct {
 	ExplorerSvc explorer.Service
 	//crawler interval in milliseconds
 	CrawlerInterval int
-	ErrorHandler    func(err error)
+	//number of requests per second
+	ExplorerLimit int
+	//number of bursts tokens permitted
+	ExplorerTokenBurst int
+	ErrorHandler       func(err error)
 }
 
 // NewService returns an utxoCrawelr that is ready for watch for blockchain activites. Use Start and Stop methods to manage it.
 func NewService(opts Opts) Service {
-	//10 req per sec
-	rt := rate.Every(100 * time.Millisecond) //TODO config
-	rateLimiter := rate.NewLimiter(rt, 1)
+	oneSecInMillisecond := 1000
+	everyMillisecond := oneSecInMillisecond / opts.ExplorerLimit
+	rt := rate.Every(time.Duration(everyMillisecond) * time.Millisecond)
+	rateLimiter := rate.NewLimiter(rt, opts.ExplorerTokenBurst)
 
 	return &blockchainCrawler{
 		interval:     opts.CrawlerInterval,

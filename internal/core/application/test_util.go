@@ -104,9 +104,11 @@ func newMockServices(
 		panic(err)
 	}
 	crawlerSvc := crawler.NewService(crawler.Opts{
-		ExplorerSvc:     explorerSvc,
-		ErrorHandler:    func(err error) { fmt.Println(err) },
-		CrawlerInterval: 100,
+		ExplorerSvc:        explorerSvc,
+		ErrorHandler:       func(err error) { fmt.Println(err) },
+		CrawlerInterval:    100,
+		ExplorerLimit:      10,
+		ExplorerTokenBurst: 1,
 	})
 	blockchainListener := NewBlockchainListener(
 		unspentRepo,
@@ -220,9 +222,11 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	tradeRepository := inmemory.NewTradeRepositoryImpl(dbManager)
 	explorerSvc, _ := getExplorer()
 	crawlerSvc := crawler.NewService(crawler.Opts{
-		ExplorerSvc:     explorerSvc,
-		ErrorHandler:    func(err error) { fmt.Println(err) },
-		CrawlerInterval: 100,
+		ExplorerSvc:        explorerSvc,
+		ErrorHandler:       func(err error) { fmt.Println(err) },
+		CrawlerInterval:    100,
+		ExplorerLimit:      10,
+		ExplorerTokenBurst: 1,
 	})
 	blockchainListener := NewBlockchainListener(
 		unspentRepo,

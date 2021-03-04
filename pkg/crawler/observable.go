@@ -60,8 +60,7 @@ func (a *AddressObservable) observe(
 	}
 
 	observableStatus.Set(Waiting)
-	err := rateLimiter.Wait(context.Background())
-	if err != nil {
+	if err := rateLimiter.Wait(context.Background()); err != nil {
 		errChan <- err
 		return
 	}
@@ -111,8 +110,7 @@ func (t *TransactionObservable) observe(
 	}
 
 	observableStatus.Set(Waiting)
-	err := rateLimiter.Wait(context.Background())
-	if err != nil {
+	if err := rateLimiter.Wait(context.Background()); err != nil {
 		errChan <- err
 		return
 	}

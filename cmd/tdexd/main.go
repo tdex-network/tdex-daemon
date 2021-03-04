@@ -69,9 +69,11 @@ func main() {
 	}
 
 	crawlerSvc := crawler.NewService(crawler.Opts{
-		ExplorerSvc:     explorerSvc,
-		ErrorHandler:    func(err error) { log.Warn(err) },
-		CrawlerInterval: config.GetInt(config.CrawlIntervalKey),
+		ExplorerSvc:        explorerSvc,
+		ErrorHandler:       func(err error) { log.Warn(err) },
+		CrawlerInterval:    config.GetInt(config.CrawlIntervalKey),
+		ExplorerLimit:      config.GetInt(config.ExplorerLimitKey),
+		ExplorerTokenBurst: config.GetInt(config.ExplorerTokenBurstKey),
 	})
 	blockchainListener := application.NewBlockchainListener(
 		unspentRepository,
