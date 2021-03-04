@@ -87,7 +87,7 @@ func (e *elements) GetTransactionsForAddress(addr string) ([]explorer.Transactio
 		return nil, fmt.Errorf("check import: %w", err)
 	}
 	if !isImportedAddress {
-		if err := e.importAddress(addr, addrLabel); err != nil {
+		if err := e.importAddress(addr, addrLabel, true); err != nil {
 			return nil, fmt.Errorf("import: %w", err)
 		}
 	}

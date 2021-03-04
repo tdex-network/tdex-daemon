@@ -24,7 +24,7 @@ func (e *elements) GetUnspents(addr string, blindKeys [][]byte) ([]explorer.Utxo
 	}
 
 	if !isAddressImported {
-		if err := e.importAddress(addr, addrLabel); err != nil {
+		if err := e.importAddress(addr, addrLabel, false); err != nil {
 			return nil, fmt.Errorf("import: %w", err)
 		}
 	}
@@ -83,7 +83,7 @@ func (e *elements) GetUnspentsForAddresses(
 		}
 
 		if !isAddressImported {
-			if err := e.importAddress(addr, addrLabel); err != nil {
+			if err := e.importAddress(addr, addrLabel, false); err != nil {
 				return nil, fmt.Errorf("import: %w", err)
 			}
 		}
