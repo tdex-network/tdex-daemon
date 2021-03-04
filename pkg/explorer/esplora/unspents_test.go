@@ -44,10 +44,6 @@ func TestGetUnspents(t *testing.T) {
 }
 
 func TestSelectUnspents(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
 	address, key1, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
