@@ -257,7 +257,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 
 func getExplorer() (explorer.Service, error) {
 	if endpoint := os.Getenv("TDEX_ELEMENTS_RPC_ENDPOINT"); endpoint != "" {
-		return elements.NewService(endpoint)
+		return elements.NewService(endpoint, nil)
 	}
 	if endpoint := os.Getenv("TDEX_EXPLORER_ENDPOINT"); endpoint != "" {
 		return esplora.NewService(endpoint)
@@ -349,7 +349,7 @@ func fillTradeRepo(
 	}
 
 	return tradeRepo.UpdateTrade(ctx, nil, func(trade *domain.Trade) (*domain.Trade, error) {
-		if _, err := trade.Propose(swapRequest, quoteAsset, nil); err != nil {
+		if _, err := trade.Propose(swapRequest, quoteAsset, 25, nil); err != nil {
 			return nil, err
 		}
 		return trade, nil

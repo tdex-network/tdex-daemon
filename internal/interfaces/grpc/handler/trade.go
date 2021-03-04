@@ -97,7 +97,6 @@ func (t traderHandler) markets(
 						QuoteAsset: v.QuoteAsset,
 					},
 					Fee: &types.Fee{
-						Asset:      v.FeeAsset,
 						BasisPoint: v.BasisPoint,
 					},
 				}
@@ -145,7 +144,6 @@ func (t traderHandler) balances(
 					QuoteAmount: balance.QuoteAmount,
 				},
 				Fee: &types.Fee{
-					Asset:      balance.FeeAsset,
 					BasisPoint: balance.BasisPoint,
 				},
 			})
@@ -212,7 +210,6 @@ func (t traderHandler) marketPrice(
 							QuotePrice: float32(quotePrice),
 						},
 						Fee: &pbtypes.Fee{
-							Asset:      price.FeeAsset,
 							BasisPoint: price.BasisPoint,
 						},
 						Amount: price.Amount,

@@ -10,34 +10,31 @@ import (
 )
 
 type elements struct {
-	client *RPCClient
+	client          *RPCClient
+	rescanTimestamp interface{}
 }
 
 // NewService returns the Elements implementation of the Explorer interface.
 // It establishes an insecure connection with the JSON-RPC interface of the
 // node with no TLS termination.
-func NewService(endpoint string) (explorer.Service, error) {
-	if endpoint == "" {
-		return nil, fmt.Errorf("missing endpoint")
+func NewService(endpoint string, rescanTimestamp interface{}) (
+	explorer.Service,
+	error,
+) {
+	if err := validateEndpoint(endpoint); err != nil {
+		return nil, err
 	}
-	parsedEndpoint, err := url.Parse(endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("invalid endpoint: %w", err)
+	if err := validateRescanTimestamp(rescanTimestamp); err != nil {
+		return nil, err
 	}
 
+	parsedEndpoint, _ := url.Parse(endpoint)
 	host := parsedEndpoint.Hostname()
 	port, _ := strconv.Atoi(parsedEndpoint.Port())
 	user := parsedEndpoint.User.Username()
 	password, _ := parsedEndpoint.User.Password()
-
-	if host == "" {
-		return nil, fmt.Errorf("missing host")
-	}
-	if user == "" {
-		return nil, fmt.Errorf("missing RPC user")
-	}
-	if password == "" {
-		return nil, fmt.Errorf("missing RPC password")
+	if rescanTimestamp == nil {
+		rescanTimestamp = "now"
 	}
 
 	client, err := NewClient(host, port, user, password, false, 30)
@@ -46,7 +43,7 @@ func NewService(endpoint string) (explorer.Service, error) {
 		return nil, err
 	}
 
-	service := &elements{client}
+	service := &elements{client, rescanTimestamp}
 	if _, err := service.GetBlockHeight(); err != nil {
 		return nil, fmt.Errorf("healt check: %w", err)
 	}
@@ -54,7 +51,21 @@ func NewService(endpoint string) (explorer.Service, error) {
 }
 
 func (e *elements) importAddress(addr, label string) error {
-	r, err := e.client.call("importaddress", []interface{}{addr, label, false})
+	r, err := e.client.call("importmulti", []interface{}{
+		[]map[string]interface{}{
+			{
+				"scriptPubKey": map[string]string{
+					"address": addr,
+				},
+				"watchonly": true,
+				"label":     label,
+				"timestamp": e.rescanTimestamp,
+			},
+		},
+		map[string]bool{
+			"rescan": true,
+		},
+	})
 	if err = handleError(err, &r); err != nil {
 		return err
 	}
@@ -125,4 +136,45 @@ func (e *elements) mine() (string, error) {
 		return "", fmt.Errorf("unmarshal: %w", err)
 	}
 	return blockHash[0], nil
+}
+
+func validateEndpoint(endpoint string) error {
+	if endpoint == "" {
+		return fmt.Errorf("missing endpoint")
+	}
+	parsedEndpoint, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("invalid endpoint: %w", err)
+	}
+
+	if parsedEndpoint.Hostname() == "" {
+		return ErrMissingRPCHost
+	}
+	if parsedEndpoint.Port() == "" {
+		return ErrMissingRPCPort
+	}
+	if parsedEndpoint.User.Username() == "" {
+		return ErrMissingRPCUser
+	}
+	if _, ok := parsedEndpoint.User.Password(); !ok {
+		return ErrMissingRPCPassword
+	}
+
+	return nil
+}
+
+func validateRescanTimestamp(timestamp interface{}) error {
+	if timestamp == nil {
+		return nil
+	}
+
+	switch timestamp.(type) {
+	case int:
+		if timestamp.(int) < 0 {
+			return ErrInvalidRescaTimestamp
+		}
+	default:
+		return ErrInvalidRescaTimestamp
+	}
+	return nil
 }

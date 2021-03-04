@@ -5,7 +5,6 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
@@ -25,7 +24,7 @@ func TestGetCreateOrUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, config.GetString(config.BaseAssetKey), market.FeeAsset)
+	assert.Equal(t, "", market.BaseAsset)
 }
 
 func TestGetAll(t *testing.T) {
