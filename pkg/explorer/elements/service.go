@@ -50,7 +50,11 @@ func NewService(endpoint string, rescanTimestamp interface{}) (
 	return service, nil
 }
 
-func (e *elements) importAddress(addr, label string) error {
+func (e *elements) importAddress(addr, label string, rescan bool) error {
+	rescanTime := e.rescanTimestamp
+	if !rescan {
+		rescanTime = "now"
+	}
 	r, err := e.client.call("importmulti", []interface{}{
 		[]map[string]interface{}{
 			{
@@ -59,11 +63,11 @@ func (e *elements) importAddress(addr, label string) error {
 				},
 				"watchonly": true,
 				"label":     label,
-				"timestamp": e.rescanTimestamp,
+				"timestamp": rescanTime,
 			},
 		},
 		map[string]bool{
-			"rescan": true,
+			"rescan": rescan,
 		},
 	})
 	if err = handleError(err, &r); err != nil {
