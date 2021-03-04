@@ -22,6 +22,11 @@ var initwallet = cli.Command{
 			Name:  "seed",
 			Usage: "the mnemonic seed of the daemon wallet",
 		},
+		&cli.BoolFlag{
+			Name:  "restore",
+			Value: false,
+			Usage: "whether restore existing funds for the wallet",
+		},
 	},
 	Action: initWalletAction,
 }
@@ -37,11 +42,13 @@ func initWalletAction(ctx *cli.Context) error {
 
 	password := ctx.String("password")
 	seed := ctx.String("seed")
+	restore := ctx.Bool("restore")
 
 	if len(password) > 0 && len(seed) > 0 {
 		req = &pbwallet.InitWalletRequest{
 			WalletPassword: []byte(password),
 			SeedMnemonic:   strings.Split(seed, " "),
+			Restore:        restore,
 		}
 	}
 
@@ -53,8 +60,7 @@ func initWalletAction(ctx *cli.Context) error {
 		return err
 	}
 
-	_, err = stream.Recv()
-	if err != nil {
+	if _, err := stream.Recv(); err != nil {
 		return err
 	}
 
