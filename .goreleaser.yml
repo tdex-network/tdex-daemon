@@ -10,6 +10,19 @@ builds:
     goarch:
       - amd64
     binary: tdexd-linux
+  - id: "tdexd-darwin"
+    main: ./cmd/tdexd
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/osxcross/target/bin/o64-clang
+      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    binary: tdexd-darwin
   - id: "tdex"
     main: ./cmd/tdex
     env:
@@ -25,6 +38,18 @@ release:
   prerelease: auto
 checksum:
   name_template: "checksums.txt"
+signs:
+  - artifacts: checksum
+    args:
+      [
+        "--batch",
+        "-u",
+        "{{ .Env.GPG_FINGERPRINT }}",
+        "--output",
+        "${signature}",
+        "--detach-sign",
+        "${artifact}",
+      ]
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
