@@ -60,6 +60,12 @@ const (
 	// ElementsStartRescanTimestampKey is the date in Unix seconds of the block
 	// from where the node should start rescanning addresses
 	ElementsStartRescanTimestampKey = "ELEMENTS_START_RESCAN_TIMESTAMP"
+	// CrawlLimitKey represents number of requests per second that crawler
+	//makes to explorer
+	CrawlLimitKey = "CRAWL_LIMIT"
+	// CrawlTokenBurst represents number of bursts tokens permitted from
+	//crawler to explorer
+	CrawlTokenBurst = "CRAWL_TOKEN"
 )
 
 var vip *viper.Viper
@@ -84,6 +90,8 @@ func init() {
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
 	vip.SetDefault(StatsIntervalKey, 600)
+	vip.SetDefault(CrawlLimitKey, 10)
+	vip.SetDefault(CrawlTokenBurst, 1)
 
 	validate()
 

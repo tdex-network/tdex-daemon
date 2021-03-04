@@ -25,6 +25,7 @@ jobs:
           mkdir ~/.nigiri; cd ~/.nigiri
           curl https://travis.nigiri.network | bash; cd
           docker-compose -f ~/.nigiri/docker-compose.yml up -d
+          sleep 5
 
       - name: Get dependencies
         run: go get -v -t -d ./...

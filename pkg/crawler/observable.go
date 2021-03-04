@@ -1,12 +1,46 @@
 package crawler
 
 import (
+	"context"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 	"sync"
 	"time"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
+
+const (
+	New       Status = "NEW"
+	Waiting   Status = "WAITING"
+	Processed Status = "PROCESSED"
+)
+
+type Status string
+
+type observableStatus struct {
+	sync.RWMutex
+	status Status
+}
+
+func NewObservableStatus() *observableStatus {
+	return &observableStatus{
+		status: New,
+	}
+}
+
+func (o *observableStatus) Get() Status {
+	o.RLock()
+	defer o.RUnlock()
+	return o.status
+}
+
+func (o *observableStatus) Set(status Status) {
+	o.Lock()
+	defer o.Unlock()
+	o.status = status
+}
 
 type AddressObservable struct {
 	AccountIndex int
@@ -18,8 +52,16 @@ func (a *AddressObservable) observe(
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
+	observableStatus *observableStatus,
+	rateLimiter *rate.Limiter,
 ) {
 	if a == nil {
+		return
+	}
+
+	observableStatus.Set(Waiting)
+	if err := rateLimiter.Wait(context.Background()); err != nil {
+		errChan <- err
 		return
 	}
 
@@ -28,6 +70,10 @@ func (a *AddressObservable) observe(
 		errChan <- err
 		return
 	}
+	log.Debugf("address observer: %v", a.Address)
+
+	observableStatus.Set(Processed)
+
 	var eventType EventType
 	switch a.AccountIndex {
 	case domain.FeeAccount:
@@ -56,8 +102,16 @@ func (t *TransactionObservable) observe(
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
+	observableStatus *observableStatus,
+	rateLimiter *rate.Limiter,
 ) {
 	if t == nil {
+		return
+	}
+
+	observableStatus.Set(Waiting)
+	if err := rateLimiter.Wait(context.Background()); err != nil {
+		errChan <- err
 		return
 	}
 
@@ -66,6 +120,8 @@ func (t *TransactionObservable) observe(
 		errChan <- err
 		return
 	}
+
+	observableStatus.Set(Processed)
 
 	var confirmed bool
 	var blockHash string
@@ -109,13 +165,15 @@ func (t *TransactionObservable) key() string {
 }
 
 type observableHandler struct {
-	observable  Observable
-	explorerSvc explorer.Service
-	wg          *sync.WaitGroup
-	ticker      *time.Ticker
-	eventChan   chan Event
-	errChan     chan error
-	stopChan    chan int
+	observable       Observable
+	explorerSvc      explorer.Service
+	wg               *sync.WaitGroup
+	ticker           *time.Ticker
+	eventChan        chan Event
+	errChan          chan error
+	stopChan         chan int
+	observableStatus *observableStatus
+	rateLimiter      *rate.Limiter
 }
 
 func newObservableHandler(
@@ -125,9 +183,11 @@ func newObservableHandler(
 	interval int,
 	eventChan chan Event,
 	errChan chan error,
+	rateLimiter *rate.Limiter,
 ) *observableHandler {
 	ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
 	stopChan := make(chan int, 1)
+
 	return &observableHandler{
 		observable,
 		explorerSvc,
@@ -136,6 +196,8 @@ func newObservableHandler(
 		eventChan,
 		errChan,
 		stopChan,
+		NewObservableStatus(),
+		rateLimiter,
 	}
 }
 
@@ -144,7 +206,15 @@ func (oh *observableHandler) start() {
 	for {
 		select {
 		case <-oh.ticker.C:
-			oh.observable.observe(oh.explorerSvc, oh.errChan, oh.eventChan)
+			if oh.observableStatus.Get() != Waiting {
+				oh.observable.observe(
+					oh.explorerSvc,
+					oh.errChan,
+					oh.eventChan,
+					oh.observableStatus,
+					oh.rateLimiter,
+				)
+			}
 		case <-oh.stopChan:
 			oh.ticker.Stop()
 			close(oh.stopChan)
