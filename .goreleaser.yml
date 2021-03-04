@@ -10,19 +10,6 @@ builds:
     goarch:
       - amd64
     binary: tdexd-linux
-  - id: "tdexd-darwin"
-    main: ./cmd/tdexd
-    ldflags:
-      - -s -w
-    env:
-      - CGO_ENABLED=1
-      - CC=/home/runner/work/osxcross/target/bin/o64-clang
-      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
-    goos:
-      - darwin
-    goarch:
-      - amd64
-    binary: tdexd-darwin
   - id: "tdex"
     main: ./cmd/tdex
     env:
@@ -33,20 +20,11 @@ builds:
     goarch:
       - amd64
     binary: tdex
+## flag the semver v**.**.**-<tag>.* as pre-release on Github
+release:
+  prerelease: auto
 checksum:
   name_template: "checksums.txt"
-signs:
-  - artifacts: checksum
-    args:
-      [
-        "--batch",
-        "-u",
-        "{{ .Env.GPG_FINGERPRINT }}",
-        "--output",
-        "${signature}",
-        "--detach-sign",
-        "${artifact}",
-      ]
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
@@ -68,10 +46,35 @@ archives:
       - tdex
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 dockers:
-  - dockerfile: Dockerfile
+  # push always either release or prerelease with a docker tag with the semver only
+  - skip_push: false
+    dockerfile: Dockerfile
     # image templates
     image_templates:
       - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
+    # GOOS of the built binaries/packages that should be used.
+    goos: linux
+    # GOARCH of the built binaries/packages that should be used.
+    goarch: amd64
+    # Template of the docker build flags.
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - go.mod
+      - go.sum
+      - internal
+      - config
+      - pkg
+      - cmd
+  # push only release with both a docker tag latest and one with the semver
+  - skip_push: auto
+    dockerfile: Dockerfile
+    # image templates
+    image_templates:
       - "ghcr.io/tdex-network/tdexd:latest"
     # GOOS of the built binaries/packages that should be used.
     goos: linux
