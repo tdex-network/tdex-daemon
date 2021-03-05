@@ -159,6 +159,11 @@ func Set(key string, value interface{}) {
 	vip.Set(key, value)
 }
 
+// IsSet returns whether the give key is set
+func IsSet(key string) bool {
+	return vip.IsSet(key)
+}
+
 // GetMnemonic returns the current set mnemonic
 func GetMnemonic() []string {
 	var mnemonic []string

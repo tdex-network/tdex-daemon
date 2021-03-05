@@ -133,6 +133,13 @@ func (w *walletService) InitWallet(
 		return nil
 	}
 
+	if restore && config.IsSet(config.ElementsRPCEndpointKey) {
+		return fmt.Errorf(
+			"Restoring a wallet through the Elements explorer is not availble at the " +
+				"moment. Please restart the daemon using the Esplora block explorer.",
+		)
+	}
+
 	// lock vault no regardless an error occurs or not
 	var vault *domain.Vault
 	defer func() {
