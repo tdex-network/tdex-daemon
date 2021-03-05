@@ -2,7 +2,7 @@ builds:
   - id: "tdexd-linux"
     main: ./cmd/tdexd
     ldflags:
-      - -s -w
+      - -s -w -X github.com/TDex-network/tdex-daemon/cmd/tdex.version={{.Version}} -X github.com/TDex-network/tdex-daemon/cmd/tdex.commit={{.Commit}} -X github.com/TDex-network/tdex-daemon/cmd/tdex.date={{.Date}}
     env:
       - CGO_ENABLED=1
     goos:
