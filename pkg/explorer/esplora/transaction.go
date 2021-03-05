@@ -66,7 +66,7 @@ func (e *esplora) GetTransactionStatus(txID string) (map[string]interface{}, err
 	return trxStatus, nil
 }
 
-func (e *esplora) GetTransactionsForAddress(address string) ([]explorer.Transaction, error) {
+func (e *esplora) GetTransactionsForAddress(address string, _ []byte) ([]explorer.Transaction, error) {
 	url := fmt.Sprintf("%s/address/%s/txs", e.apiURL, address)
 	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {

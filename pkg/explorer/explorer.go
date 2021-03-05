@@ -58,7 +58,7 @@ type Service interface {
 	GetTransactionStatus(txid string) (status map[string]interface{}, err error)
 	// GetTransactionsForAddress returns the list of all txs relative to the
 	// given address.
-	GetTransactionsForAddress(address string) (txs []Transaction, err error)
+	GetTransactionsForAddress(address string, blindingKey []byte) (txs []Transaction, err error)
 	// BroadcastTransaction attempts to add the given tx in hex format to the
 	// mempool and returns its tx hash.
 	BroadcastTransaction(txhex string) (txid string, err error)

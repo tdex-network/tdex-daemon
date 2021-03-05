@@ -91,7 +91,7 @@ func TestGetTransactionsForAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addr, _, err := newTestData()
+	addr, blindKey, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestGetTransactionsForAddress(t *testing.T) {
 
 	time.Sleep(500 * time.Millisecond)
 
-	txs, err := elementsSvc.GetTransactionsForAddress(addr)
+	txs, err := elementsSvc.GetTransactionsForAddress(addr, blindKey)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package elements
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -50,7 +51,7 @@ func NewService(endpoint string, rescanTimestamp interface{}) (
 	return service, nil
 }
 
-func (e *elements) importAddress(addr, label string, rescan bool) error {
+func (e *elements) importAddress(addr, label string, blindKey []byte, rescan bool) error {
 	rescanTime := e.rescanTimestamp
 	if !rescan {
 		rescanTime = "now"
@@ -61,23 +62,16 @@ func (e *elements) importAddress(addr, label string, rescan bool) error {
 				"scriptPubKey": map[string]string{
 					"address": addr,
 				},
-				"watchonly": true,
-				"label":     label,
-				"timestamp": rescanTime,
+				"watchonly":        true,
+				"label":            label,
+				"timestamp":        rescanTime,
+				"blinding_privkey": hex.EncodeToString(blindKey),
 			},
 		},
 		map[string]bool{
 			"rescan": rescan,
 		},
 	})
-	if err = handleError(err, &r); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (e *elements) importBlindKey(addr, blindKey string) error {
-	r, err := e.client.call("importblindingkey", []interface{}{addr, blindKey})
 	if err = handleError(err, &r); err != nil {
 		return err
 	}
@@ -101,17 +95,6 @@ func (e *elements) isAddressImported(targetLabel string) (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-// isBlindKeyImported returns whether the blinding private key relative to an
-// address has already been imported. It accomplishes that by checking if the
-// `dumpblindingkey` RPC returns an error in its response.
-func (e *elements) isBlindKeyImported(addr string) (bool, error) {
-	r, err := e.client.call("dumpblindingkey", []interface{}{addr})
-	if err != nil {
-		return false, err
-	}
-	return r.Err == nil, nil
 }
 
 /**** Regtest only ****/
