@@ -47,7 +47,7 @@ func TestIsTransactionConfirmed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 
 	isConfirmed, err := elementsSvc.IsTransactionConfirmed(txid)
 	if err != nil {
@@ -72,7 +72,7 @@ func TestGetTransactionStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 
 	status, err := elementsSvc.GetTransactionStatus(txid)
 	if err != nil {
@@ -103,7 +103,7 @@ func TestGetTransactionsForAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 
 	txs, err := elementsSvc.GetTransactionsForAddress(addr, blindKey)
 	if err != nil {
