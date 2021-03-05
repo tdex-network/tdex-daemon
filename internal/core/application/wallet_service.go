@@ -721,12 +721,15 @@ func getLatestDerivationIndexForAccount(
 		unfundedAddressesCounter := 0
 		i := 0
 		for unfundedAddressesCounter < 20 {
-			ctAddress, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
+			ctAddress, script, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 				DerivationPath: fmt.Sprintf("%d'/%d/%d", accountIndex, chainIndex, i),
 				Network:        config.GetNetwork(),
 			})
+			blindKey, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
+				Script: script,
+			})
 
-			if !isAddressFunded(ctAddress, explorerSvc) {
+			if !isAddressFunded(ctAddress, blindKey.Serialize(), explorerSvc) {
 				if firstUnfundedAddress < 0 {
 					firstUnfundedAddress = i
 				}
@@ -814,8 +817,8 @@ func initVaultAccount(
 	return addresses, nil
 }
 
-func isAddressFunded(addr string, explorerSvc explorer.Service) bool {
-	txs, err := explorerSvc.GetTransactionsForAddress(addr)
+func isAddressFunded(addr string, blindKey []byte, explorerSvc explorer.Service) bool {
+	txs, err := explorerSvc.GetTransactionsForAddress(addr, blindKey)
 	if err != nil {
 		// should we retry?
 		return false
