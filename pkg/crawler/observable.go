@@ -2,11 +2,12 @@ package crawler
 
 import (
 	"context"
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/time/rate"
 	"sync"
 	"time"
 
+	"golang.org/x/time/rate"
+
+	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
@@ -70,7 +71,6 @@ func (a *AddressObservable) observe(
 		errChan <- err
 		return
 	}
-	log.Debugf("address observer: %v", a.Address)
 
 	observableStatus.Set(Processed)
 
@@ -202,6 +202,7 @@ func newObservableHandler(
 }
 
 func (oh *observableHandler) start() {
+	oh.logAction("start")
 	oh.wg.Add(1)
 	for {
 		select {
@@ -224,6 +225,17 @@ func (oh *observableHandler) start() {
 }
 
 func (oh *observableHandler) stop() {
+	oh.logAction("stop")
 	oh.stopChan <- 1
 	oh.wg.Done()
+}
+
+func (oh *observableHandler) logAction(action string) {
+	obs := oh.observable
+	switch obs.(type) {
+	case *AddressObservable:
+		log.Debugf("%s observing address: %v", action, obs.key())
+	case *TransactionObservable:
+		log.Debugf("%s observing tx: %v", action, obs.key())
+	}
 }

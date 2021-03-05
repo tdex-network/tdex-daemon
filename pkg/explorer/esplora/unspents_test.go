@@ -44,7 +44,7 @@ func TestGetUnspents(t *testing.T) {
 }
 
 func TestSelectUnspents(t *testing.T) {
-	address, key1, err := newTestData()
+	addr, blindKey, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,18 +53,17 @@ func TestSelectUnspents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = explorerSvc.Faucet(address)
-	if err != nil {
+	if _, err := explorerSvc.Faucet(addr); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Second)
 
-	utxos, err := explorerSvc.GetUnspents(address, [][]byte{key1})
+	utxos, err := explorerSvc.GetUnspents(addr, [][]byte{blindKey})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	targetAmount := uint64(1.5 * math.Pow10(8))
+	targetAmount := uint64(0.7 * math.Pow10(8))
 
 	selectedUtxos, change, err := explorer.SelectUnspents(
 		utxos,
@@ -75,8 +74,8 @@ func TestSelectUnspents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedChange := uint64(0.5 * math.Pow10(8))
-	assert.Equal(t, 2, len(selectedUtxos))
+	expectedChange := uint64(0.3 * math.Pow10(8))
+	assert.Equal(t, 1, len(selectedUtxos))
 	assert.Equal(t, expectedChange, change)
 }
 
@@ -88,14 +87,7 @@ func newService() (explorer.Service, error) {
 	return NewService(endpoint)
 }
 
-var testKey []byte
-var testAddress string
-
 func newTestData() (string, []byte, error) {
-	if len(testKey) > 0 && len(testAddress) > 0 {
-		return testAddress, testKey, nil
-	}
-
 	key, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		return "", nil, err
@@ -114,7 +106,5 @@ func newTestData() (string, []byte, error) {
 		return "", nil, err
 	}
 
-	testAddress = addr
-	testKey = blindKey.Serialize()
-	return testAddress, testKey, nil
+	return addr, blindKey.Serialize(), nil
 }

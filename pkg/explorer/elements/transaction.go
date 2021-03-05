@@ -77,7 +77,7 @@ func (e *elements) GetTransactionStatus(txid string) (map[string]interface{}, er
 // associated with it when importing to prevent doing this operation for those
 // already tracked. The transactions are retrieved via the
 // listreceivedbyaddress RPC.
-func (e *elements) GetTransactionsForAddress(addr string) ([]explorer.Transaction, error) {
+func (e *elements) GetTransactionsForAddress(addr string, blindingKey []byte) ([]explorer.Transaction, error) {
 	addrLabel, err := addressLabel(addr)
 	if err != nil {
 		return nil, fmt.Errorf("label: %w", err)
@@ -87,7 +87,7 @@ func (e *elements) GetTransactionsForAddress(addr string) ([]explorer.Transactio
 		return nil, fmt.Errorf("check import: %w", err)
 	}
 	if !isImportedAddress {
-		if err := e.importAddress(addr, addrLabel, true); err != nil {
+		if err := e.importAddress(addr, addrLabel, blindingKey, true); err != nil {
 			return nil, fmt.Errorf("import: %w", err)
 		}
 	}

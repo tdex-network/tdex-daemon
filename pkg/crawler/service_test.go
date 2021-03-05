@@ -136,7 +136,7 @@ func (m MockExplorer) GetUnspents(addr string, blindKeys [][]byte) (
 func (m MockExplorer) GetTransactionHex(txID string) (string, error) {
 	return "", errors.New("implement me")
 }
-func (m MockExplorer) GetTransactionsForAddress(addr string) ([]explorer.Transaction, error) {
+func (m MockExplorer) GetTransactionsForAddress(addr string, blindingKey []byte) ([]explorer.Transaction, error) {
 	return nil, errors.New("implement me")
 }
 func (m MockExplorer) BroadcastTransaction(txHex string) (string, error) {

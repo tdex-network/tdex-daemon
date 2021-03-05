@@ -4,20 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/magiconair/properties/assert"
-	"github.com/vulpemventures/go-elements/network"
-	"github.com/vulpemventures/go-elements/payment"
 )
 
 func TestGetTransactionStatus(t *testing.T) {
-	privkey, err := btcec.NewPrivateKey(btcec.S256())
+	addr, _, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
 	}
-	pubkey := privkey.PubKey()
-	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
-	address, _ := p2wpkh.WitnessPubKeyHash()
 
 	explorerSvc, err := newService()
 	if err != nil {
@@ -25,7 +19,7 @@ func TestGetTransactionStatus(t *testing.T) {
 	}
 
 	// Fund sender address.
-	txID, err := explorerSvc.Faucet(address)
+	txID, err := explorerSvc.Faucet(addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,13 +42,10 @@ func TestGetTransactionStatus(t *testing.T) {
 }
 
 func TestGetTransactionsForAddress(t *testing.T) {
-	privkey, err := btcec.NewPrivateKey(btcec.S256())
+	addr, blindKey, err := newTestData()
 	if err != nil {
 		t.Fatal(err)
 	}
-	pubkey := privkey.PubKey()
-	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
-	address, _ := p2wpkh.WitnessPubKeyHash()
 
 	explorerSvc, err := newService()
 	if err != nil {
@@ -62,13 +53,13 @@ func TestGetTransactionsForAddress(t *testing.T) {
 	}
 
 	// Fund sender address.
-	if _, err := explorerSvc.Faucet(address); err != nil {
+	if _, err := explorerSvc.Faucet(addr); err != nil {
 		t.Fatal(err)
 	}
 
 	time.Sleep(5 * time.Second)
 
-	txs, err := explorerSvc.GetTransactionsForAddress(address)
+	txs, err := explorerSvc.GetTransactionsForAddress(addr, blindKey)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,24 +24,13 @@ func (e *elements) GetUnspents(addr string, blindKeys [][]byte) ([]explorer.Utxo
 	}
 
 	if !isAddressImported {
-		if err := e.importAddress(addr, addrLabel, false); err != nil {
-			return nil, fmt.Errorf("import: %w", err)
+		blindKey, err := findBlindKeyForAddress(addr, blindKeys)
+		if err != nil {
+			return nil, fmt.Errorf("find key: %w", err)
 		}
-	}
 
-	isBlindKeyImported, err := e.isBlindKeyImported(addr)
-	if err != nil {
-		return nil, fmt.Errorf("check import key: %w", err)
-	}
-
-	blindKey, err := findBlindKeyForAddress(addr, blindKeys)
-	if err != nil {
-		return nil, fmt.Errorf("find key: %w", err)
-	}
-
-	if !isBlindKeyImported {
-		if err := e.importBlindKey(addr, blindKey); err != nil {
-			return nil, fmt.Errorf("import key: %w", err)
+		if err := e.importAddress(addr, addrLabel, blindKey, false); err != nil {
+			return nil, fmt.Errorf("import: %w", err)
 		}
 	}
 
@@ -62,7 +51,7 @@ func (e *elements) GetUnspentsForAddresses(
 	addresses []string,
 	blindingKeys [][]byte,
 ) ([]explorer.Utxo, error) {
-	sortedBlindingKeys := make([]string, len(addresses), len(addresses))
+	sortedBlindingKeys := make([][]byte, len(addresses), len(addresses))
 	for i, addr := range addresses {
 		blindKey, err := findBlindKeyForAddress(addr, blindingKeys)
 		if err != nil {
@@ -83,19 +72,8 @@ func (e *elements) GetUnspentsForAddresses(
 		}
 
 		if !isAddressImported {
-			if err := e.importAddress(addr, addrLabel, false); err != nil {
+			if err := e.importAddress(addr, addrLabel, sortedBlindingKeys[i], false); err != nil {
 				return nil, fmt.Errorf("import: %w", err)
-			}
-		}
-
-		isBlindKeyImported, err := e.isBlindKeyImported(addr)
-		if err != nil {
-			return nil, fmt.Errorf("check import key: %w", err)
-		}
-
-		if !isBlindKeyImported {
-			if err := e.importBlindKey(addr, sortedBlindingKeys[i]); err != nil {
-				return nil, fmt.Errorf("import key: %w", err)
 			}
 		}
 	}
@@ -168,10 +146,10 @@ func addressLabel(addr string) (string, error) {
 	return hex.EncodeToString(script), nil
 }
 
-func findBlindKeyForAddress(addr string, blindKeys [][]byte) (string, error) {
+func findBlindKeyForAddress(addr string, blindKeys [][]byte) ([]byte, error) {
 	data, err := address.FromConfidential(addr)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	for _, key := range blindKeys {
@@ -179,9 +157,9 @@ func findBlindKeyForAddress(addr string, blindKeys [][]byte) (string, error) {
 		prvkeyBytes := prvkey.Serialize()
 		pubkeyBytes := pubkey.SerializeCompressed()
 		if bytes.Equal(data.BlindingKey, pubkeyBytes) {
-			return hex.EncodeToString(prvkeyBytes), nil
+			return prvkeyBytes, nil
 		}
 	}
 
-	return "", ErrBlindKeyNotFound
+	return nil, ErrBlindKeyNotFound
 }
