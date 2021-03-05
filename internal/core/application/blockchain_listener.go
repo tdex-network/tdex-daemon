@@ -161,6 +161,10 @@ func (b *blockchainListener) listenToEventChannel() {
 		select {
 		case event := <-b.crawlerSvc.GetEventChannel():
 			switch event.Type() {
+			default:
+				// unnoticeable sleep to prevent high cpu usage
+				// https://github.com/golang/go/issues/27707#issuecomment-698487427
+				time.Sleep(time.Microsecond)
 			case crawler.CloseSignal:
 				log.Debug("CloseEvent detected")
 				log.Debug("stop listening on event channel")
@@ -223,7 +227,6 @@ func (b *blockchainListener) listenToEventChannel() {
 				// stop watching for a tx after it's confirmed
 				b.StopObserveTx(e.TxID)
 			}
-		default:
 		}
 	}
 }
