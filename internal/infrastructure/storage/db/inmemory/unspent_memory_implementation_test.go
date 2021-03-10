@@ -144,6 +144,7 @@ func TestGetAllUnspentsForAddresses(t *testing.T) {
 	assert.Equal(t, 4, len(unspents))
 
 }
+
 func TestGetUnspentsForAddresses(t *testing.T) {
 	dbManager := newMockDb()
 	unspentRepository := NewUnspentRepositoryImpl(dbManager)
@@ -176,7 +177,7 @@ func TestGetUnspentForKey(t *testing.T) {
 	dbManager := newMockDb()
 	unspentRepository := NewUnspentRepositoryImpl(dbManager)
 
-	unspent, err := unspentRepository.GetUnspentForKey(ctx, domain.UnspentKey{
+	unspent, err := unspentRepository.GetUnspentWithKey(ctx, domain.UnspentKey{
 		TxID: "1",
 		VOut: 1,
 	})
@@ -195,7 +196,7 @@ func TestSpendUnspents(t *testing.T) {
 		TxID: "1",
 		VOut: 1,
 	}
-	unspent, err := unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	unspent, err := unspentRepository.GetUnspentWithKey(ctx, unspentKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +210,7 @@ func TestSpendUnspents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unspent, err = unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	unspent, err = unspentRepository.GetUnspentWithKey(ctx, unspentKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +226,7 @@ func TestConfirmUnspents(t *testing.T) {
 		TxID: "2",
 		VOut: 1,
 	}
-	unspent, err := unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	unspent, err := unspentRepository.GetUnspentWithKey(ctx, unspentKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +240,7 @@ func TestConfirmUnspents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unspent, err = unspentRepository.GetUnspentForKey(ctx, unspentKey)
+	unspent, err = unspentRepository.GetUnspentWithKey(ctx, unspentKey)
 	if err != nil {
 		t.Fatal(err)
 	}

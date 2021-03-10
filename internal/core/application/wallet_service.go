@@ -50,7 +50,7 @@ type WalletService interface {
 	) (address string, blindingKey string, err error)
 	GetWalletBalance(
 		ctx context.Context,
-	) (map[string]domain.BalanceInfo, error)
+	) (map[string]BalanceInfo, error)
 	SendToMany(
 		ctx context.Context,
 		req SendToManyRequest,
@@ -289,7 +289,7 @@ func (w *walletService) GenerateAddressAndBlindingKey(
 
 func (w *walletService) GetWalletBalance(
 	ctx context.Context,
-) (map[string]domain.BalanceInfo, error) {
+) (map[string]BalanceInfo, error) {
 	if w.walletIsSyncing {
 		return nil, ErrWalletIsSyncing
 	}
@@ -833,11 +833,11 @@ func isAddressFunded(addr string, blindKey []byte, explorerSvc explorer.Service)
 	return len(txs) > 0
 }
 
-func getBalancesByAsset(unspents []explorer.Utxo) map[string]domain.BalanceInfo {
-	balances := map[string]domain.BalanceInfo{}
+func getBalancesByAsset(unspents []explorer.Utxo) map[string]BalanceInfo {
+	balances := map[string]BalanceInfo{}
 	for _, unspent := range unspents {
 		if _, ok := balances[unspent.Asset()]; !ok {
-			balances[unspent.Asset()] = domain.BalanceInfo{}
+			balances[unspent.Asset()] = BalanceInfo{}
 		}
 
 		balance := balances[unspent.Asset()]

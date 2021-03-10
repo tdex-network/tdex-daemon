@@ -38,6 +38,11 @@ var (
 )
 
 var (
+	// ErrUnspentAlreadyLocked ...
+	ErrUnspentAlreadyLocked = errors.New("cannot lock an already locked unspent")
+)
+
+var (
 	// ErrMustBeLocked is thrown when trying to change the passphrase with an unlocked wallet
 	ErrMustBeLocked = errors.New("wallet must be locked to perform this operation")
 	// ErrMustBeUnlocked is thrown when trying to make an operation that requires the wallet to be unlocked

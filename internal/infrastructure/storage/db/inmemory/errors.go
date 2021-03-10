@@ -2,11 +2,23 @@ package inmemory
 
 import "errors"
 
+// Market errors
 var (
 	// ErrMarketNotExist is thrown when a market is not found
 	ErrMarketNotExist = errors.New("market does not exists")
 	// ErrMarketNotFound is thrown when there is no market associated to a given quote asset
 	ErrMarketNotFound = errors.New("no market found")
+	// ErrMarketInvalidRequest ...
+	ErrMarketInvalidRequest = errors.New("requested market is null")
+)
+
+// Unspent repo errors
+var (
+	// ErrUnspentNotFound ...
+	ErrUnspentNotFound = errors.New("Unspent not found")
+)
+
+var (
 	// ErrTradesNotFound is thrown when there is no trades associated to a given trade or swap ID
 	ErrTradesNotFound = errors.New("no trades found for the given tradeID/SwapID")
 	// ErrAlreadyLocked is thrown when trying to lock an already locked wallet
@@ -23,6 +35,4 @@ var (
 	ErrMustBeUnlocked = errors.New("wallet must be unlocked to perform this operation")
 	// ErrAccountNotExist is thrown when account is not found
 	ErrAccountNotExist = errors.New("account does not exist")
-	// ErrMarketInvalidRequest ...
-	ErrMarketInvalidRequest = errors.New("requested market is null")
 )

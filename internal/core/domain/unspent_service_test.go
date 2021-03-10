@@ -16,7 +16,7 @@ func TestLockUnlockUnSpents(t *testing.T) {
 
 	u.Spend()
 	assert.Equal(t, true, u.IsSpent())
-	u.UnLock()
+	u.Unlock()
 	assert.Equal(t, false, u.IsLocked())
 	u.Lock(&tradeID)
 	assert.Equal(t, true, u.IsLocked())
