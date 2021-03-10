@@ -12,12 +12,6 @@ var (
 	ErrMarketInvalidRequest = errors.New("requested market is null")
 )
 
-// Unspent repo errors
-var (
-	// ErrUnspentNotFound ...
-	ErrUnspentNotFound = errors.New("Unspent not found")
-)
-
 var (
 	// ErrTradesNotFound is thrown when there is no trades associated to a given trade or swap ID
 	ErrTradesNotFound = errors.New("no trades found for the given tradeID/SwapID")

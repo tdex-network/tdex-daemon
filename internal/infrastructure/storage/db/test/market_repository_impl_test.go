@@ -19,8 +19,8 @@ var (
 	ctx      = context.Background()
 )
 
-func TestRepositoryImplementations(t *testing.T) {
-	repositories, cancel := createRepos(t)
+func TestMarketRepositoryImplementations(t *testing.T) {
+	repositories, cancel := createMarketRepositories(t)
 	t.Cleanup(cancel)
 
 	for i := range repositories {
@@ -72,8 +72,8 @@ func TestRepositoryImplementations(t *testing.T) {
 	}
 }
 
-func createRepos(t *testing.T) ([]repository, func()) {
-	datadir := "testdb"
+func createMarketRepositories(t *testing.T) ([]marketRepository, func()) {
+	datadir := "marketdb"
 	err := os.Mkdir(datadir, os.ModePerm)
 	require.NoError(t, err)
 
@@ -81,31 +81,31 @@ func createRepos(t *testing.T) ([]repository, func()) {
 	badgerDBManager, err := dbbadger.NewDbManager(datadir, nil)
 	require.NoError(t, err)
 
-	return []repository{
+	return []marketRepository{
 			{
 				Name:       "badger",
 				DBManager:  badgerDBManager,
-				Repository: newBadgerRepository(badgerDBManager),
+				Repository: newBadgerMarketRepository(badgerDBManager),
 			},
 			{
 				Name:       "inmemory",
 				DBManager:  inmemoryDBManager,
-				Repository: newInMemoryRepository(inmemoryDBManager),
+				Repository: newInMemoryMarketRepository(inmemoryDBManager),
 			},
 		}, func() {
 			os.RemoveAll(datadir)
 		}
 }
 
-func newBadgerRepository(dbmanager *dbbadger.DbManager) domain.MarketRepository {
+func newBadgerMarketRepository(dbmanager *dbbadger.DbManager) domain.MarketRepository {
 	return dbbadger.NewMarketRepositoryImpl(dbmanager)
 }
 
-func newInMemoryRepository(dbmanager *inmemory.DbManager) domain.MarketRepository {
+func newInMemoryMarketRepository(dbmanager *inmemory.DbManager) domain.MarketRepository {
 	return inmemory.NewMarketRepositoryImpl(dbmanager)
 }
 
-func testGetOrCreateMarket(t *testing.T, repo repository) {
+func testGetOrCreateMarket(t *testing.T, repo marketRepository) {
 	// to create a market is mandatory to specify the AccountIndex and Fee
 	accountIndex := domain.MarketAccountStart
 	fee := int64(25)
@@ -150,7 +150,7 @@ func testGetOrCreateMarket(t *testing.T, repo repository) {
 	require.Exactly(t, newMarket, existingMarket)
 }
 
-func testGetMarketByAccount(t *testing.T, repo repository) {
+func testGetMarketByAccount(t *testing.T, repo marketRepository) {
 	accountIndex := domain.MarketAccountStart + 1
 
 	market, err := repo.read(
@@ -180,7 +180,7 @@ func testGetMarketByAccount(t *testing.T, repo repository) {
 	require.NotNil(t, market)
 }
 
-func testGetMarketByAsset(t *testing.T, repo repository) {
+func testGetMarketByAsset(t *testing.T, repo marketRepository) {
 	accountIndex := domain.MarketAccountStart + 2
 	baseAsset := "0000000000000000000000000000000000000000000000000000000000000000"
 	quoteAsset := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -242,7 +242,7 @@ func testGetMarketByAsset(t *testing.T, repo repository) {
 	require.Equal(t, accountIndex, resp.(response).accountIndex)
 }
 
-func testGetLatestMarket(t *testing.T, repo repository) {
+func testGetLatestMarket(t *testing.T, repo marketRepository) {
 	resp, err := repo.read(func(ctx context.Context) (interface{}, error) {
 		market, accountIndex, err := repo.Repository.GetLatestMarket(ctx)
 		if err != nil {
@@ -257,14 +257,14 @@ func testGetLatestMarket(t *testing.T, repo repository) {
 	require.NotNil(t, resp)
 }
 
-func testGetAllMarkets(t *testing.T, repo repository) {
+func testGetAllMarkets(t *testing.T, repo marketRepository) {
 	_, err := repo.read(func(ctx context.Context) (interface{}, error) {
 		return repo.Repository.GetAllMarkets(ctx)
 	})
 	require.NoError(t, err)
 }
 
-func testOpenCloseMarket(t *testing.T, repo repository) {
+func testOpenCloseMarket(t *testing.T, repo marketRepository) {
 	accountIndex := domain.MarketAccountStart + 4
 	baseAsset := "0000000000000000000000000000000000000000000000000000000000000000"
 	quoteAsset := "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
@@ -313,7 +313,7 @@ func testOpenCloseMarket(t *testing.T, repo repository) {
 	require.Len(t, markets, 0)
 }
 
-func testUpdatePrices(t *testing.T, repo repository) {
+func testUpdatePrices(t *testing.T, repo marketRepository) {
 	accountIndex := domain.MarketAccountStart + 5
 	iNewMarket, err := repo.write(func(ctx context.Context) (interface{}, error) {
 		return repo.Repository.GetOrCreateMarket(
@@ -352,7 +352,7 @@ func testUpdatePrices(t *testing.T, repo repository) {
 	require.False(t, market.Price.AreZero())
 }
 
-func testWriteRollback(t *testing.T, repo repository) {
+func testWriteRollback(t *testing.T, repo marketRepository) {
 	accountIndex := domain.MarketAccountStart + 4
 	mockedError := errors.New("somehting went wrong")
 
@@ -391,21 +391,21 @@ func testWriteRollback(t *testing.T, repo repository) {
 	require.Nil(t, market)
 }
 
-type repository struct {
+type marketRepository struct {
 	Name       string
 	DBManager  ports.DbManager
 	Repository domain.MarketRepository
 }
 
-func (r repository) read(query func(context.Context) (interface{}, error)) (interface{}, error) {
+func (r marketRepository) read(query func(context.Context) (interface{}, error)) (interface{}, error) {
 	return r.DBManager.RunTransaction(context.Background(), true, query)
 }
 
-func (r repository) write(query func(context.Context) (interface{}, error)) (interface{}, error) {
+func (r marketRepository) write(query func(context.Context) (interface{}, error)) (interface{}, error) {
 	return r.DBManager.RunTransaction(context.Background(), false, query)
 }
 
-func (r repository) writePrice(query func(context.Context) (interface{}, error)) (interface{}, error) {
+func (r marketRepository) writePrice(query func(context.Context) (interface{}, error)) (interface{}, error) {
 	return r.DBManager.RunPricesTransaction(context.Background(), false, query)
 }
 

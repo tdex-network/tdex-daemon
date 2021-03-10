@@ -106,7 +106,7 @@ func (r UnspentRepositoryImpl) GetUnspentWithKey(
 
 	unspent, ok := r.db.unspentStore.unspents[unspentKey]
 	if !ok {
-		return nil, ErrUnspentNotFound
+		return nil, nil
 	}
 	return &unspent, nil
 }
@@ -250,10 +250,15 @@ func (r UnspentRepositoryImpl) addUnspents(unspents []domain.Unspent) error {
 	return nil
 }
 
-func (r UnspentRepositoryImpl) getAllUnspents(spent bool) []domain.Unspent {
+func (r UnspentRepositoryImpl) getAllUnspents(includeSpent bool) []domain.Unspent {
 	unspents := make([]domain.Unspent, 0)
 	for _, u := range r.db.unspentStore.unspents {
-		if u.IsSpent() == spent {
+		if includeSpent {
+			unspents = append(unspents, u)
+			continue
+		}
+
+		if !u.IsSpent() {
 			unspents = append(unspents, u)
 		}
 	}
