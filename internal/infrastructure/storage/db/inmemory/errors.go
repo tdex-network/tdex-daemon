@@ -7,7 +7,7 @@ var (
 	// ErrMarketNotExist is thrown when a market is not found
 	ErrMarketNotExist = errors.New("market does not exists")
 	// ErrMarketNotFound is thrown when there is no market associated to a given quote asset
-	ErrMarketNotFound = errors.New("no market found")
+	ErrMarketNotFound = errors.New("market not found")
 	// ErrMarketInvalidRequest ...
 	ErrMarketInvalidRequest = errors.New("requested market is null")
 )

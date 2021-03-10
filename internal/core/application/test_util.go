@@ -67,7 +67,7 @@ func newMockServices(
 	// create a market repo
 	marketRepo := inmemory.NewMarketRepositoryImpl(dbManager)
 	if !marketRepositoryIsEmpty {
-		err := fillMarketRepo(ctx, &marketRepo, initPluggableMarket)
+		err := fillMarketRepo(ctx, marketRepo, initPluggableMarket)
 		if err != nil {
 			panic(err)
 		}
@@ -267,12 +267,18 @@ func getExplorer() (explorer.Service, error) {
 
 func fillMarketRepo(
 	ctx context.Context,
-	marketRepo *domain.MarketRepository,
+	marketRepo domain.MarketRepository,
 	initPluggableMarket bool,
 ) error {
-	// TODO: create and open market
 	// opened market
-	if err := (*marketRepo).UpdateMarket(
+	if _, err := marketRepo.GetOrCreateMarket(
+		ctx,
+		&domain.Market{AccountIndex: domain.MarketAccountStart, Fee: 25},
+	); err != nil {
+		return err
+	}
+
+	if err := marketRepo.UpdateMarket(
 		ctx,
 		domain.MarketAccountStart,
 		func(market *domain.Market) (*domain.Market, error) {
@@ -317,7 +323,14 @@ func fillMarketRepo(
 	}
 
 	// closed market (and also not funded)
-	if err := (*marketRepo).UpdateMarket(
+	if _, err := marketRepo.GetOrCreateMarket(
+		ctx,
+		&domain.Market{AccountIndex: domain.MarketAccountStart + 1, Fee: 25},
+	); err != nil {
+		return err
+	}
+
+	if err := marketRepo.UpdateMarket(
 		ctx,
 		domain.MarketAccountStart+1,
 		func(m *domain.Market) (*domain.Market, error) {
