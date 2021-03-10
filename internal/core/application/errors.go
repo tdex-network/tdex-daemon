@@ -9,4 +9,6 @@ var (
 	)
 	// ErrUnknownStrategy ...
 	ErrUnknownStrategy = errors.New("strategy not supported")
+	// ErrMarketNotExist ...
+	ErrMarketNotExist = errors.New("market does not exists")
 )

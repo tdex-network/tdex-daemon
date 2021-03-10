@@ -391,9 +391,10 @@ func (b *blockchainListener) checkMarketAccountFundings(ctx context.Context, acc
 			}
 			log.Warnf("%s asset is missing for market %d", asset, accountIndex)
 		case 2:
+			baseAsset := config.GetString(config.BaseAssetKey)
 			var asset string
 			for k := range unspentsAssetType {
-				if k != config.GetString(config.BaseAssetKey) {
+				if k != baseAsset {
 					asset = k
 				}
 			}
@@ -414,7 +415,7 @@ func (b *blockchainListener) checkMarketAccountFundings(ctx context.Context, acc
 				ctx,
 				accountIndex,
 				func(m *domain.Market) (*domain.Market, error) {
-					if err := m.FundMarket(outpoints); err != nil {
+					if err := m.FundMarket(outpoints, baseAsset); err != nil {
 						return nil, err
 					}
 

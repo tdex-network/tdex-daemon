@@ -129,16 +129,16 @@ func (t *tradeService) GetMarketPrice(
 ) (*PriceWithFee, error) {
 	// check the asset strings
 	if err := validateAssetString(market.BaseAsset); err != nil {
-		return nil, domain.ErrInvalidBaseAsset
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
 	if err := validateAssetString(market.QuoteAsset); err != nil {
-		return nil, domain.ErrInvalidQuoteAsset
+		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	// Checks if base asset is correct
 	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	if err := validateAssetString(asset); err != nil {
@@ -157,7 +157,7 @@ func (t *tradeService) GetMarketPrice(
 		return nil, err
 	}
 	if mktAccountIndex < 0 {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	if !mkt.IsTradable() {
@@ -204,12 +204,12 @@ func (t *tradeService) TradePropose(
 	// check the asset strings
 	_err := validateAssetString(market.BaseAsset)
 	if _err != nil {
-		return nil, nil, 0, domain.ErrInvalidBaseAsset
+		return nil, nil, 0, domain.ErrMarketInvalidBaseAsset
 	}
 
 	_err = validateAssetString(market.QuoteAsset)
 	if _err != nil {
-		return nil, nil, 0, domain.ErrInvalidQuoteAsset
+		return nil, nil, 0, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	mkt, marketAccountIndex, _err := t.marketRepository.GetMarketByAsset(
@@ -221,7 +221,7 @@ func (t *tradeService) TradePropose(
 		return
 	}
 	if marketAccountIndex < 0 {
-		return nil, nil, 0, domain.ErrMarketNotExist
+		return nil, nil, 0, ErrMarketNotExist
 	}
 
 	// get all unspents for market account (both as []domain.Unspents and as
@@ -1069,12 +1069,12 @@ func (t *tradeService) GetMarketBalance(
 	// check the asset strings
 	err := validateAssetString(market.BaseAsset)
 	if err != nil {
-		return nil, domain.ErrInvalidBaseAsset
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
 	err = validateAssetString(market.QuoteAsset)
 	if err != nil {
-		return nil, domain.ErrInvalidQuoteAsset
+		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	m, accountIndex, err := t.marketRepository.GetMarketByAsset(
@@ -1085,7 +1085,7 @@ func (t *tradeService) GetMarketBalance(
 		return nil, err
 	}
 	if accountIndex < 0 {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	marketAddresses, _, err := t.vaultRepository.

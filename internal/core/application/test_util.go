@@ -276,18 +276,20 @@ func fillMarketRepo(
 		ctx,
 		domain.MarketAccountStart,
 		func(market *domain.Market) (*domain.Market, error) {
-			if err := market.FundMarket([]domain.OutpointWithAsset{
-				{
-					Asset: marketUnspents[0].AssetHash,
-					Txid:  marketUnspents[0].TxID,
-					Vout:  int(marketUnspents[0].VOut),
+			if err := market.FundMarket(
+				[]domain.OutpointWithAsset{
+					{
+						Asset: marketUnspents[0].AssetHash,
+						Txid:  marketUnspents[0].TxID,
+						Vout:  int(marketUnspents[0].VOut),
+					},
+					{
+						Asset: marketUnspents[1].AssetHash,
+						Txid:  marketUnspents[1].TxID,
+						Vout:  int(marketUnspents[1].VOut),
+					},
 				},
-				{
-					Asset: marketUnspents[1].AssetHash,
-					Txid:  marketUnspents[1].TxID,
-					Vout:  int(marketUnspents[1].VOut),
-				},
-			},
+				marketUnspents[0].AssetHash,
 			); err != nil {
 				return nil, err
 			}

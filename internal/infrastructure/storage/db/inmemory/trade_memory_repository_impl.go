@@ -166,7 +166,7 @@ func (r TradeRepositoryImpl) getAllTrades() ([]*domain.Trade, error) {
 func (r TradeRepositoryImpl) getAllTradesByMarket(marketQuoteAsset string) ([]*domain.Trade, error) {
 	tradeIDs, ok := r.db.tradeStore.tradesByMarket[marketQuoteAsset]
 	if !ok {
-		return nil, ErrMarketsNotFound
+		return nil, nil
 	}
 
 	tradeList := tradesFromIDs(r.db.tradeStore.trades, tradeIDs)

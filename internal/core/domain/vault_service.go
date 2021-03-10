@@ -3,7 +3,6 @@ package domain
 import (
 	"bytes"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -335,7 +334,7 @@ func (v *Vault) allDerivedExternalAddressesForAccount(accountIndex int) (
 
 func validateAccountIndex(accIndex int) error {
 	if accIndex < 0 {
-		return errors.New("account index must be a positive integer number")
+		return ErrInvalidAccount
 	}
 
 	return nil

@@ -5,8 +5,8 @@ import "errors"
 var (
 	// ErrMarketNotExist is thrown when a market is not found
 	ErrMarketNotExist = errors.New("market does not exists")
-	// ErrMarketsNotFound is thrown when there is no market associated to a given quote asset
-	ErrMarketsNotFound = errors.New("no markets found for the given address")
+	// ErrMarketNotFound is thrown when there is no market associated to a given quote asset
+	ErrMarketNotFound = errors.New("no market found")
 	// ErrTradesNotFound is thrown when there is no trades associated to a given trade or swap ID
 	ErrTradesNotFound = errors.New("no trades found for the given tradeID/SwapID")
 	// ErrAlreadyLocked is thrown when trying to lock an already locked wallet
@@ -23,4 +23,6 @@ var (
 	ErrMustBeUnlocked = errors.New("wallet must be unlocked to perform this operation")
 	// ErrAccountNotExist is thrown when account is not found
 	ErrAccountNotExist = errors.New("account does not exist")
+	// ErrMarketInvalidRequest ...
+	ErrMarketInvalidRequest = errors.New("requested market is null")
 )
