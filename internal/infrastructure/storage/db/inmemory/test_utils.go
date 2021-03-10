@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"context"
 	"math/rand"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 )
+
+var ctx context.Context = context.Background()
 
 func newMockDb() *DbManager {
 	config.Set(config.TradeExpiryTimeKey, 2)
