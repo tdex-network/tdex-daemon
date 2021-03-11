@@ -6,6 +6,7 @@ Original Copyright 2017 Olaoluwa Osuntokun. All Rights Reserved. See LICENSE-MAC
 */
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -18,7 +19,7 @@ var (
 	testID                      = []byte("dummyId")
 	testLocation                = "lnd"
 	testVersion                 = macaroon.LatestVersion
-	expectedTimeCaveatSubstring = "time-before " + string(time.Now().Year())
+	expectedTimeCaveatSubstring = fmt.Sprintf("time-before %d", time.Now().Year())
 )
 
 func createDummyMacaroon(t *testing.T) *macaroon.Macaroon {
@@ -70,9 +71,11 @@ func TestTimeoutConstraint(t *testing.T) {
 	}
 
 	// Finally, check that the created caveat has an
-	// acceptable value
-	if strings.HasPrefix(string(testMacaroon.Caveats()[0].Id),
-		expectedTimeCaveatSubstring) {
+	// acceptable value.
+	if !strings.HasPrefix(
+		string(testMacaroon.Caveats()[0].Id),
+		expectedTimeCaveatSubstring,
+	) {
 		t.Fatalf("Added caveat '%s' does not meet the expectations!",
 			testMacaroon.Caveats()[0].Id)
 	}
