@@ -9,6 +9,8 @@ import (
 )
 
 func TestFundMarket(t *testing.T) {
+	t.Parallel()
+
 	market := newTestMarket()
 	baseAsset := "0000000000000000000000000000000000000000000000000000000000000000"
 	quoteAsset := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -33,6 +35,8 @@ func TestFundMarket(t *testing.T) {
 }
 
 func TestFailingFundMarket(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		market        *domain.Market
@@ -100,6 +104,8 @@ func TestFailingFundMarket(t *testing.T) {
 }
 
 func TestMakeTradable(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarketFunded()
 
 	err := m.MakeTradable()
@@ -108,6 +114,8 @@ func TestMakeTradable(t *testing.T) {
 }
 
 func TestFailingMakeTradable(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		market        *domain.Market
@@ -134,6 +142,8 @@ func TestFailingMakeTradable(t *testing.T) {
 }
 
 func TestMakeNotTradable(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarketTradable()
 
 	err := m.MakeNotTradable()
@@ -142,6 +152,8 @@ func TestMakeNotTradable(t *testing.T) {
 }
 
 func TestFailingMakeNotTradable(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarket()
 
 	err := m.MakeNotTradable()
@@ -149,6 +161,8 @@ func TestFailingMakeNotTradable(t *testing.T) {
 }
 
 func TestMakeStrategyPluggable(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarketFunded()
 
 	err := m.MakeStrategyPluggable()
@@ -158,6 +172,8 @@ func TestMakeStrategyPluggable(t *testing.T) {
 }
 
 func TestFailingMakeStrategyPluggable(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarketTradable()
 
 	err := m.MakeStrategyPluggable()
@@ -165,6 +181,8 @@ func TestFailingMakeStrategyPluggable(t *testing.T) {
 }
 
 func TestMakeStrategyBalanced(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarketFundedWithPluggableStrategy()
 
 	err := m.MakeStrategyBalanced()
@@ -173,6 +191,8 @@ func TestMakeStrategyBalanced(t *testing.T) {
 }
 
 func TestFailingMakeStrategyBalanced(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarketTradable()
 
 	err := m.MakeStrategyBalanced()
@@ -180,6 +200,8 @@ func TestFailingMakeStrategyBalanced(t *testing.T) {
 }
 
 func TestChangeFee(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarketFunded()
 	newFee := int64(50)
 
@@ -189,6 +211,8 @@ func TestChangeFee(t *testing.T) {
 }
 
 func TestFailingChangeFee(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		market        *domain.Market
@@ -230,6 +254,8 @@ func TestFailingChangeFee(t *testing.T) {
 }
 
 func TestChangeMarketPrices(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		market     *domain.Market
@@ -265,6 +291,8 @@ func TestChangeMarketPrices(t *testing.T) {
 }
 
 func TestFailingChangeBasePrice(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarket()
 
 	err := m.ChangeBasePrice(decimal.NewFromFloat(0.0002))
@@ -272,6 +300,8 @@ func TestFailingChangeBasePrice(t *testing.T) {
 }
 
 func TestFailingChangeQuotePrice(t *testing.T) {
+	t.Parallel()
+
 	m := newTestMarket()
 
 	err := m.ChangeQuotePrice(decimal.NewFromFloat(50000))

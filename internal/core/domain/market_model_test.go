@@ -8,6 +8,8 @@ import (
 )
 
 func TestNewMarket(t *testing.T) {
+	t.Parallel()
+
 	accountIndex := 0
 	fee := int64(25)
 
@@ -20,6 +22,8 @@ func TestNewMarket(t *testing.T) {
 }
 
 func TestFailingNewMarket(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		accountIndex  int

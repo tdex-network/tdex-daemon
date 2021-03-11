@@ -8,6 +8,8 @@ import (
 )
 
 func TestSpendUnspent(t *testing.T) {
+	t.Parallel()
+
 	u := Unspent{}
 	require.False(t, u.IsSpent())
 
@@ -16,6 +18,8 @@ func TestSpendUnspent(t *testing.T) {
 }
 
 func TestConfirmUnspent(t *testing.T) {
+	t.Parallel()
+
 	u := Unspent{}
 	require.False(t, u.IsConfirmed())
 
@@ -24,6 +28,8 @@ func TestConfirmUnspent(t *testing.T) {
 }
 
 func TestLockUnlockUnspent(t *testing.T) {
+	t.Parallel()
+
 	u := Unspent{}
 	require.False(t, u.IsLocked())
 
@@ -37,6 +43,8 @@ func TestLockUnlockUnspent(t *testing.T) {
 }
 
 func TestFailingLockUnspent(t *testing.T) {
+	t.Parallel()
+
 	u := Unspent{}
 	require.False(t, u.IsLocked())
 
