@@ -1,16 +1,17 @@
-package domain
+package domain_test
 
 import (
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
 func TestSpendUnspent(t *testing.T) {
 	t.Parallel()
 
-	u := Unspent{}
+	u := domain.Unspent{}
 	require.False(t, u.IsSpent())
 
 	u.Spend()
@@ -20,7 +21,7 @@ func TestSpendUnspent(t *testing.T) {
 func TestConfirmUnspent(t *testing.T) {
 	t.Parallel()
 
-	u := Unspent{}
+	u := domain.Unspent{}
 	require.False(t, u.IsConfirmed())
 
 	u.Confirm()
@@ -30,7 +31,7 @@ func TestConfirmUnspent(t *testing.T) {
 func TestLockUnlockUnspent(t *testing.T) {
 	t.Parallel()
 
-	u := Unspent{}
+	u := domain.Unspent{}
 	require.False(t, u.IsLocked())
 
 	tradeID := uuid.New()
@@ -45,7 +46,7 @@ func TestLockUnlockUnspent(t *testing.T) {
 func TestFailingLockUnspent(t *testing.T) {
 	t.Parallel()
 
-	u := Unspent{}
+	u := domain.Unspent{}
 	require.False(t, u.IsLocked())
 
 	tradeID := uuid.New()
@@ -58,5 +59,5 @@ func TestFailingLockUnspent(t *testing.T) {
 
 	otherTradeID := uuid.New()
 	err = u.Lock(&otherTradeID)
-	require.EqualError(t, err, ErrUnspentAlreadyLocked.Error())
+	require.EqualError(t, err, domain.ErrUnspentAlreadyLocked.Error())
 }

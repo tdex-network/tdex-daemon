@@ -59,7 +59,7 @@ func TestMarketRepositoryImplementations(t *testing.T) {
 				testOpenCloseMarket(t, repo)
 			})
 
-			// TODO: uncomment the following test demonstrate that in case of error,
+			// TODO: uncomment - the following test demonstrate that in case of error,
 			// any change to the db is rolled back. Currently, the transactional
 			// component is not properly implemented for inmemory DbManager and the
 			// test below would fail for te inmemory implementation.
@@ -72,51 +72,10 @@ func TestMarketRepositoryImplementations(t *testing.T) {
 	}
 }
 
-func createMarketRepositories(t *testing.T) ([]marketRepository, func()) {
-	datadir := "marketdb"
-	err := os.Mkdir(datadir, os.ModePerm)
-	require.NoError(t, err)
-
-	inmemoryDBManager := inmemory.NewDbManager()
-	badgerDBManager, err := dbbadger.NewDbManager(datadir, nil)
-	require.NoError(t, err)
-
-	return []marketRepository{
-			{
-				Name:       "badger",
-				DBManager:  badgerDBManager,
-				Repository: newBadgerMarketRepository(badgerDBManager),
-			},
-			{
-				Name:       "inmemory",
-				DBManager:  inmemoryDBManager,
-				Repository: newInMemoryMarketRepository(inmemoryDBManager),
-			},
-		}, func() {
-			os.RemoveAll(datadir)
-		}
-}
-
-func newBadgerMarketRepository(dbmanager *dbbadger.DbManager) domain.MarketRepository {
-	return dbbadger.NewMarketRepositoryImpl(dbmanager)
-}
-
-func newInMemoryMarketRepository(dbmanager *inmemory.DbManager) domain.MarketRepository {
-	return inmemory.NewMarketRepositoryImpl(dbmanager)
-}
-
 func testGetOrCreateMarket(t *testing.T, repo marketRepository) {
 	// to create a market is mandatory to specify the AccountIndex and Fee
 	accountIndex := domain.MarketAccountStart
 	fee := int64(25)
-	checkResponseType := func(rr interface{}) {
-		if _, ok := rr.(*domain.Market); !ok {
-			switch tt := rr.(type) {
-			default:
-				t.Fatalf("expected response of type *domain.Market, got %v", tt)
-			}
-		}
-	}
 
 	iNewMarket, err := repo.write(
 		func(ctx context.Context) (interface{}, error) {
@@ -128,9 +87,9 @@ func testGetOrCreateMarket(t *testing.T, repo marketRepository) {
 	)
 	require.NoError(t, err)
 
-	checkResponseType(iNewMarket)
-	newMarket := iNewMarket.(*domain.Market)
-
+	newMarket, ok := iNewMarket.(*domain.Market)
+	require.True(t, ok)
+	require.NotNil(t, newMarket)
 	require.Equal(t, accountIndex, newMarket.AccountIndex)
 	require.Equal(t, fee, newMarket.Fee)
 
@@ -145,8 +104,9 @@ func testGetOrCreateMarket(t *testing.T, repo marketRepository) {
 	)
 	require.NoError(t, err)
 
-	checkResponseType(iNewMarket)
-	existingMarket := iExistingMarket.(*domain.Market)
+	existingMarket, ok := iExistingMarket.(*domain.Market)
+	require.True(t, ok)
+	require.NotNil(t, existingMarket)
 	require.Exactly(t, newMarket, existingMarket)
 }
 
@@ -389,6 +349,39 @@ func testWriteRollback(t *testing.T, repo marketRepository) {
 	})
 	require.NoError(t, err)
 	require.Nil(t, market)
+}
+
+func createMarketRepositories(t *testing.T) ([]marketRepository, func()) {
+	datadir := "marketdb"
+	err := os.Mkdir(datadir, os.ModePerm)
+	require.NoError(t, err)
+
+	inmemoryDBManager := inmemory.NewDbManager()
+	badgerDBManager, err := dbbadger.NewDbManager(datadir, nil)
+	require.NoError(t, err)
+
+	return []marketRepository{
+			{
+				Name:       "badger",
+				DBManager:  badgerDBManager,
+				Repository: newBadgerMarketRepository(badgerDBManager),
+			},
+			{
+				Name:       "inmemory",
+				DBManager:  inmemoryDBManager,
+				Repository: newInMemoryMarketRepository(inmemoryDBManager),
+			},
+		}, func() {
+			os.RemoveAll(datadir)
+		}
+}
+
+func newBadgerMarketRepository(dbmanager *dbbadger.DbManager) domain.MarketRepository {
+	return dbbadger.NewMarketRepositoryImpl(dbmanager)
+}
+
+func newInMemoryMarketRepository(dbmanager *inmemory.DbManager) domain.MarketRepository {
+	return inmemory.NewMarketRepositoryImpl(dbmanager)
 }
 
 type marketRepository struct {

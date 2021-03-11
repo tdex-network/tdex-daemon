@@ -15,7 +15,7 @@ type marketRepositoryImpl struct {
 	db *DbManager
 }
 
-//NewMarketRepositoryImpl initialize a badger implementation of the domain.MarketRepository
+// NewMarketRepositoryImpl initialize a badger implementation of the domain.MarketRepository
 func NewMarketRepositoryImpl(db *DbManager) domain.MarketRepository {
 	return marketRepositoryImpl{
 		db: db,
@@ -177,7 +177,6 @@ func (m marketRepositoryImpl) CloseMarket(
 }
 
 func (m marketRepositoryImpl) UpdatePrices(ctx context.Context, accountIndex int, prices domain.Prices) error {
-	//Now we update the price store as well only if market insertion went ok
 	err := m.updatePriceByAccountIndex(ctx, accountIndex, prices)
 	if err != nil {
 		return err
@@ -236,7 +235,7 @@ func (m marketRepositoryImpl) insertMarket(
 		}
 	}
 
-	//Now we update the price store as well only if market insertion went ok
+	// Now we update the price store as well only if market insertion went ok
 	err = m.updatePriceByAccountIndex(ctx, accountIndex, domain.Prices{})
 	if err != nil {
 		return err
@@ -271,7 +270,7 @@ func (m marketRepositoryImpl) getMarket(
 		return nil, err
 	}
 	market.Price = *price
-	//Restore strategy
+	// Restore strategy
 	restoreStrategy(&market)
 
 	return &market, nil

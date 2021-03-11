@@ -87,39 +87,6 @@ func TestUnspentRepositoryImplementations(t *testing.T) {
 	}
 }
 
-func createUnspentRepositories(t *testing.T) ([]unspentRepository, func()) {
-	datadir := "unspentdb"
-	err := os.Mkdir(datadir, os.ModePerm)
-	require.NoError(t, err)
-
-	inmemoryDBManager := inmemory.NewDbManager()
-	badgerDBManager, err := dbbadger.NewDbManager(datadir, nil)
-	require.NoError(t, err)
-
-	return []unspentRepository{
-			{
-				Name:       "badger",
-				DBManager:  badgerDBManager,
-				Repository: newBadgerUnspentRepository(badgerDBManager),
-			},
-			{
-				Name:       "inmemory",
-				DBManager:  inmemoryDBManager,
-				Repository: newInMemoryUnspentRepository(inmemoryDBManager),
-			},
-		}, func() {
-			os.RemoveAll(datadir)
-		}
-}
-
-func newBadgerUnspentRepository(dbmanager *dbbadger.DbManager) domain.UnspentRepository {
-	return dbbadger.NewUnspentRepositoryImpl(dbmanager)
-}
-
-func newInMemoryUnspentRepository(dbmanager *inmemory.DbManager) domain.UnspentRepository {
-	return inmemory.NewUnspentRepositoryImpl(dbmanager)
-}
-
 func testAddUnspents(t *testing.T, repo unspentRepository) {
 	mockedData := mockUnspentTestData(opts{numOfUnspents: 1, numOfSpents: 1})
 	mockedUnspents := mockedData.unspents
@@ -423,6 +390,39 @@ func testLockUnlockUnspents(t *testing.T, repo unspentRepository) {
 			}
 		}
 	}
+}
+
+func createUnspentRepositories(t *testing.T) ([]unspentRepository, func()) {
+	datadir := "unspentdb"
+	err := os.Mkdir(datadir, os.ModePerm)
+	require.NoError(t, err)
+
+	inmemoryDBManager := inmemory.NewDbManager()
+	badgerDBManager, err := dbbadger.NewDbManager(datadir, nil)
+	require.NoError(t, err)
+
+	return []unspentRepository{
+			{
+				Name:       "badger",
+				DBManager:  badgerDBManager,
+				Repository: newBadgerUnspentRepository(badgerDBManager),
+			},
+			{
+				Name:       "inmemory",
+				DBManager:  inmemoryDBManager,
+				Repository: newInMemoryUnspentRepository(inmemoryDBManager),
+			},
+		}, func() {
+			os.RemoveAll(datadir)
+		}
+}
+
+func newBadgerUnspentRepository(dbmanager *dbbadger.DbManager) domain.UnspentRepository {
+	return dbbadger.NewUnspentRepositoryImpl(dbmanager)
+}
+
+func newInMemoryUnspentRepository(dbmanager *inmemory.DbManager) domain.UnspentRepository {
+	return inmemory.NewUnspentRepositoryImpl(dbmanager)
 }
 
 type unspentRepository struct {
