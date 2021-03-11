@@ -15,18 +15,12 @@ type Market struct {
 	QuoteAsset   string
 	// Each Market has a different fee expressed in basis point of each swap
 	Fee int64
-	// The asset hash should be used to take a cut
-	FeeAsset string
 	// if curretly open for trades
 	Tradable bool
 	// Market Making strategy
 	Strategy mm.MakingStrategy
-	// how much 1 base asset is valued in quote asset.
-	// It's a map  timestamp -> price, so it's easier to do historical price change.
-	BasePrice PriceByTime
-	// how much 1 quote asset is valued in base asset
-	// It's a map  timestamp -> price, so it's easier to do historical price change.
-	QuotePrice PriceByTime
+	//Pluggable Price of the asset pair.
+	Price Prices
 }
 
 // OutpointWithAsset contains the transaction outpoint (tx hash and vout) along with the asset hash
@@ -36,13 +30,15 @@ type OutpointWithAsset struct {
 	Vout  int
 }
 
-//Price ...
-type Price decimal.Decimal
+//Prices ...
+type Prices struct {
+	// how much 1 base asset is valued in quote asset.
+	BasePrice decimal.Decimal
+	// how much 1 quote asset is valued in base asset
+	QuotePrice decimal.Decimal
+}
 
-//PriceByTime ...
-type PriceByTime map[uint64]Price
-
-//Market strategy type
+//StrategyType is the Market making strategy type
 type StrategyType int32
 
 //NewMarket returns an empty market with a reference to an account index
@@ -55,19 +51,15 @@ func NewMarket(positiveAccountIndex int) (*Market, error) {
 	// Here we convert the float to integer indicating basis point to take from each swap
 	defaultFeeInDecimals := config.GetFloat(config.DefaultFeeKey)
 	defaultFeeInBasisPoint := int64(defaultFeeInDecimals * 100)
-	// Default asset fee is the base asset
-	defaultFeeAsset := config.GetString(config.BaseAssetKey)
 
 	return &Market{
 		AccountIndex: positiveAccountIndex,
 		BaseAsset:    "",
 		QuoteAsset:   "",
 
-		BasePrice:  map[uint64]Price{},
-		QuotePrice: map[uint64]Price{},
+		Price: Prices{},
 
-		Fee:      defaultFeeInBasisPoint,
-		FeeAsset: defaultFeeAsset,
+		Fee: defaultFeeInBasisPoint,
 
 		Tradable: false,
 

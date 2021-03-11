@@ -3,6 +3,9 @@ package domain
 import (
 	"time"
 
+	"github.com/shopspring/decimal"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
+
 	"github.com/tdex-network/tdex-daemon/config"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
@@ -11,7 +14,12 @@ import (
 )
 
 // Propose returns a new trade proposal for the given trader and market
-func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, traderPubkey []byte) (bool, error) {
+func (t *Trade) Propose(
+	swapRequest *pb.SwapRequest,
+	marketQuoteAsset string,
+	marketFeeBasisPoint int64,
+	traderPubkey []byte,
+) (bool, error) {
 	if !t.IsEmpty() {
 		return false, ErrMustBeEmpty
 	}
@@ -20,8 +28,8 @@ func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 	t.MarketQuoteAsset = marketQuoteAsset
 	t.SwapRequest.ID = swapRequest.GetId()
 	t.Timestamp.Request = uint64(time.Now().Unix())
-	t.Timestamp.Expiry = t.Timestamp.Request + uint64(config.GetInt(config.
-		TradeExpiryTimeKey))
+	t.Timestamp.Expiry = t.Timestamp.Request +
+		uint64(config.GetInt(config.TradeExpiryTimeKey))
 	t.PsetBase64 = swapRequest.GetTransaction()
 
 	msg, err := pkgswap.ParseSwapRequest(swapRequest)
@@ -35,8 +43,12 @@ func (t *Trade) Propose(swapRequest *pb.SwapRequest, marketQuoteAsset string, tr
 		return false, nil
 	}
 
+	price := calculateMarketPrices(swapRequest, marketQuoteAsset)
+
 	t.Status = ProposalStatus
 	t.SwapRequest.Message = msg
+	t.MarketPrice = price
+	t.MarketFee = marketFeeBasisPoint
 	return true, nil
 }
 
@@ -72,6 +84,12 @@ func (t *Trade) Accept(
 	t.SwapAccept.Message = swapAcceptMsg
 	t.Timestamp.Accept = uint64(time.Now().Unix())
 	t.PsetBase64 = psetBase64
+	txID, err := transactionutil.GetTxIdFromPset(psetBase64)
+	if err != nil {
+		return false, nil
+	}
+	t.TxID = txID
+
 	return true, nil
 }
 
@@ -85,7 +103,11 @@ type CompleteResult struct {
 // Complete sets the status of the trade to Complete by adding the txID
 // of the tx in the blockchain. The trade must be in Accepted or
 // FailedToComplete status for being completed, otherwise an error is thrown
-func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error) {
+func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
+	if t.IsCompleted() {
+		return &CompleteResult{OK: true, TxHex: t.TxHex, TxID: t.TxID}, nil
+	}
+
 	if !t.IsAccepted() {
 		return nil, ErrMustBeAccepted
 	}
@@ -133,12 +155,16 @@ func (t *Trade) Complete(psetBase64 string, txID string) (*CompleteResult, error
 		return &CompleteResult{OK: false}, nil
 	}
 
-	t.Status = CompletedStatus
 	t.SwapComplete.ID = swapCompleteID
 	t.SwapComplete.Message = swapCompleteMsg
 	t.PsetBase64 = psetBase64
-	t.TxID = txID
+	t.TxHex = txHex
 	return &CompleteResult{OK: true, TxHex: txHex, TxID: txHash}, nil
+}
+
+func (t *Trade) Settle(settlementTime uint64) error {
+	t.Status = CompletedStatus
+	return t.AddBlocktime(settlementTime)
 }
 
 // Fail sets the status of the trade to the provided status and creates the
@@ -267,4 +293,34 @@ func (t *Trade) SwapCompleteTime() uint64 {
 // SwapExpiryTime returns the timestamp of when the current trade will expire
 func (t *Trade) SwapExpiryTime() uint64 {
 	return t.Timestamp.Expiry
+}
+
+// calculate the price from the amounts. Prices are calculated by comparing
+// the market's quote asset and those of the swap request:
+//   - assetP / assetR is either quote or base price depending on whether the
+//		 assetP matches the market's quote asset or not.
+//   - assetR / assetP follows as above accordingly.
+func calculateMarketPrices(
+	swapRequest *pb.SwapRequest,
+	marketQuoteAsset string,
+) (price Prices) {
+	pricePR := decimal.NewFromInt(int64(swapRequest.GetAmountP())).Div(
+		decimal.NewFromInt(int64(swapRequest.GetAmountR())),
+	).Truncate(8)
+	priceRP := decimal.NewFromInt(int64(swapRequest.GetAmountR())).Div(
+		decimal.NewFromInt(int64(swapRequest.GetAmountP())),
+	).Truncate(8)
+
+	if swapRequest.GetAssetP() == marketQuoteAsset {
+		price = Prices{
+			BasePrice:  priceRP,
+			QuotePrice: pricePR,
+		}
+	} else {
+		price = Prices{
+			BasePrice:  pricePR,
+			QuotePrice: priceRP,
+		}
+	}
+	return
 }

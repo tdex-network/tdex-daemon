@@ -2,7 +2,8 @@ package application
 
 import (
 	"context"
-	"fmt"
+	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -12,281 +13,436 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
+const readOnlyTx = true
+
+//BlockchainListener defines the needed method sto start and stop a blockchain listener
 type BlockchainListener interface {
-	ObserveBlockchain()
-	UpdateUnspentsForAddress(
-		ctx context.Context,
-		unspents []domain.Unspent,
-		address string,
-	) error
+	StartObservation()
+	StopObservation()
+
+	StartObserveAddress(accountIndex int, addr string, blindKey []byte)
+	StopObserveAddress(addr string)
+
+	StartObserveTx(txid string)
+	StopObserveTx(txid string)
 }
 
 type blockchainListener struct {
-	unspentRepository domain.UnspentRepository
-	marketRepository  domain.MarketRepository
-	vaultRepository   domain.VaultRepository
-	crawlerSvc        crawler.Service
-	explorerSvc       explorer.Service
-	dbManager         ports.DbManager
+	unspentRepository  domain.UnspentRepository
+	marketRepository   domain.MarketRepository
+	vaultRepository    domain.VaultRepository
+	tradeRepository    domain.TradeRepository
+	crawlerSvc         crawler.Service
+	explorerSvc        explorer.Service
+	dbManager          ports.DbManager
+	started            bool
+	pendingObservables []crawler.Observable
+	// Loggers
+	feeDepositLogged    bool
+	feeBalanceLowLogged bool
+
+	mutex *sync.RWMutex
 }
 
+// NewBlockchainListener returns a BlockchainListener with all the needed services
 func NewBlockchainListener(
 	unspentRepository domain.UnspentRepository,
 	marketRepository domain.MarketRepository,
 	vaultRepository domain.VaultRepository,
+	tradeRepository domain.TradeRepository,
 	crawlerSvc crawler.Service,
 	explorerSvc explorer.Service,
 	dbManager ports.DbManager,
 ) BlockchainListener {
+	return newBlockchainListener(
+		unspentRepository,
+		marketRepository,
+		vaultRepository,
+		tradeRepository,
+		crawlerSvc,
+		explorerSvc,
+		dbManager,
+	)
+}
+
+func newBlockchainListener(
+	unspentRepository domain.UnspentRepository,
+	marketRepository domain.MarketRepository,
+	vaultRepository domain.VaultRepository,
+	tradeRepository domain.TradeRepository,
+	crawlerSvc crawler.Service,
+	explorerSvc explorer.Service,
+	dbManager ports.DbManager,
+) *blockchainListener {
 	return &blockchainListener{
-		unspentRepository: unspentRepository,
-		marketRepository:  marketRepository,
-		vaultRepository:   vaultRepository,
-		crawlerSvc:        crawlerSvc,
-		explorerSvc:       explorerSvc,
-		dbManager:         dbManager,
+		unspentRepository:  unspentRepository,
+		marketRepository:   marketRepository,
+		vaultRepository:    vaultRepository,
+		tradeRepository:    tradeRepository,
+		crawlerSvc:         crawlerSvc,
+		explorerSvc:        explorerSvc,
+		dbManager:          dbManager,
+		mutex:              &sync.RWMutex{},
+		pendingObservables: make([]crawler.Observable, 0),
 	}
 }
 
-func (b *blockchainListener) ObserveBlockchain() {
-	go b.crawlerSvc.Start()
-	go b.handleBlockChainEvents()
+func (b *blockchainListener) StartObservation() {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if !b.started {
+		log.Debug("start crawler")
+		go b.crawlerSvc.Start()
+		log.Debug("start listening on event channel")
+		go b.listenToEventChannel()
+		go b.startPendingObservables()
+		b.started = true
+	}
 }
 
-func (b *blockchainListener) handleBlockChainEvents() {
+func (b *blockchainListener) StopObservation() {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
 
-events:
-	for event := range b.crawlerSvc.GetEventChannel() {
-		tx := b.startTx()
-		ctx := context.WithValue(context.Background(), "tx", tx)
-		switch event.Type() {
-		case crawler.FeeAccountDeposit:
-			e := event.(crawler.AddressEvent)
-			unspents := make([]domain.Unspent, 0)
-			if len(e.Utxos) > 0 {
+	if b.started {
+		log.Debug("stop crawler")
+		b.crawlerSvc.Stop()
+		b.started = false
+	}
+}
 
-			utxoLoop:
-				for _, utxo := range e.Utxos {
-					isTrxConfirmed, err := b.explorerSvc.IsTransactionConfirmed(
-						utxo.Hash(),
-					)
-					if err != nil {
-						tx.Discard()
-						log.Warn(err)
-						continue utxoLoop
-					}
+func (b *blockchainListener) StartObserveAddress(
+	accountIndex int,
+	addr string,
+	blindKey []byte,
+) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
 
-					u := domain.Unspent{
-						TxID:            utxo.Hash(),
-						VOut:            utxo.Index(),
-						Value:           utxo.Value(),
-						AssetHash:       utxo.Asset(),
-						ValueCommitment: utxo.ValueCommitment(),
-						AssetCommitment: utxo.AssetCommitment(),
-						ScriptPubKey:    utxo.Script(),
-						Nonce:           utxo.Nonce(),
-						RangeProof:      utxo.RangeProof(),
-						SurjectionProof: utxo.SurjectionProof(),
-						Address:         e.Address,
-						Spent:           false,
-						Locked:          false,
-						LockedBy:        nil,
-						Confirmed:       isTrxConfirmed,
-					}
-					unspents = append(unspents, u)
+	observable := &crawler.AddressObservable{
+		AccountIndex: accountIndex,
+		Address:      addr,
+		BlindingKey:  blindKey,
+	}
+
+	if !b.started {
+		b.pendingObservables = append(b.pendingObservables, observable)
+		return
+	}
+	b.crawlerSvc.AddObservable(observable)
+}
+
+func (b *blockchainListener) StartObserveTx(txid string) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	observable := &crawler.TransactionObservable{TxID: txid}
+
+	if !b.started {
+		b.pendingObservables = append(b.pendingObservables, observable)
+		return
+	}
+	b.crawlerSvc.AddObservable(observable)
+}
+
+func (b *blockchainListener) StopObserveAddress(addr string) {
+	b.crawlerSvc.RemoveObservable(&crawler.AddressObservable{
+		Address: addr,
+	})
+}
+
+func (b *blockchainListener) StopObserveTx(txid string) {
+	b.crawlerSvc.RemoveObservable(&crawler.TransactionObservable{TxID: txid})
+}
+
+func (b *blockchainListener) listenToEventChannel() {
+	for {
+		select {
+		case event := <-b.crawlerSvc.GetEventChannel():
+			switch event.Type() {
+			default:
+				// unnoticeable sleep to prevent high cpu usage
+				// https://github.com/golang/go/issues/27707#issuecomment-698487427
+				time.Sleep(time.Microsecond)
+			case crawler.CloseSignal:
+				log.Debug("CloseEvent detected")
+				log.Debug("stop listening on event channel")
+				return
+			case crawler.FeeAccountDeposit:
+				ctx, err := b.handleUnspents(event)
+				if err != nil {
+					break
 				}
-				err := b.UpdateUnspentsForAddress(
+				if _, err := b.dbManager.RunTransaction(
 					ctx,
-					unspents,
-					e.Address,
-				)
-				if err != nil {
-					tx.Discard()
-					log.Warn(err)
-					continue events
+					readOnlyTx,
+					func(ctx context.Context) (interface{}, error) {
+						return nil, b.checkFeeAccountBalance(ctx)
+					},
+				); err != nil {
+					log.Warnf(
+						"trying to check balance for fee account: %s\n",
+						err.Error(),
+					)
+					break
 				}
 
-				markets, err := b.marketRepository.GetTradableMarkets(
+			case crawler.MarketAccountDeposit:
+				ctx, err := b.handleUnspents(event)
+				if err != nil {
+					break
+				}
+				e := event.(crawler.AddressEvent)
+				if _, err := b.dbManager.RunTransaction(
 					ctx,
-				)
-				if err != nil {
-					tx.Discard()
-					log.Warn(err)
-					continue events
-				}
-
-				addresses, _, err := b.vaultRepository.
-					GetAllDerivedAddressesAndBlindingKeysForAccount(
-						ctx,
-						domain.FeeAccount,
+					!readOnlyTx,
+					func(ctx context.Context) (interface{}, error) {
+						return nil, b.checkMarketAccountFundings(ctx, e.AccountIndex)
+					},
+				); err != nil {
+					log.Warnf(
+						"trying to check fundings for market account %d: %s\n",
+						e.AccountIndex,
+						err.Error(),
 					)
-				if err != nil {
-					tx.Discard()
-					log.Warn(err)
-					continue events
+					break
 				}
-
-				var feeAccountBalance uint64
-				for _, a := range addresses {
-					b, err := b.unspentRepository.GetBalance(
-						ctx,
-						a,
-						config.GetString(config.BaseAssetKey),
+			case crawler.TransactionConfirmed:
+				e := event.(crawler.TransactionEvent)
+				ctx := context.Background()
+				if _, err := b.dbManager.RunTransaction(
+					ctx,
+					!readOnlyTx,
+					func(ctx context.Context) (interface{}, error) {
+						return nil, b.updateTrade(ctx, e)
+					},
+				); err != nil {
+					log.Warnf(
+						"trying to update trade completion status %s\n",
+						err.Error(),
 					)
-					if err != nil {
-						tx.Discard()
-						log.Warn(err)
-						continue events
-					}
-
-					feeAccountBalance += b
+					break
 				}
-
-				if feeAccountBalance < uint64(
-					config.GetInt(config.FeeAccountBalanceThresholdKey),
-				) {
-					log.Debug("fee account balance too low - Trades and" +
-						" deposits will be disabled")
-					for _, m := range markets {
-						err := b.marketRepository.CloseMarket(
-							ctx,
-							m.QuoteAsset,
-						)
-						if err != nil {
-							tx.Discard()
-							log.Warn(err)
-							continue events
-						}
-					}
-					continue events
-				}
-
-				for _, m := range markets {
-					err := b.marketRepository.OpenMarket(
-						ctx,
-						m.QuoteAsset,
-					)
-					if err != nil {
-						tx.Discard()
-						log.Warn(err)
-						continue events
-					}
-					log.Debug(fmt.Sprintf(
-						"market %v, opened",
-						m.AccountIndex,
-					))
-				}
+				// stop watching for a tx after it's confirmed
+				b.StopObserveTx(e.TxID)
 			}
-
-		case crawler.MarketAccountDeposit:
-			e := event.(crawler.AddressEvent)
-			unspents := make([]domain.Unspent, 0)
-			if len(e.Utxos) > 0 {
-			utxoLoop1:
-				for _, utxo := range e.Utxos {
-					isTrxConfirmed, err := b.explorerSvc.IsTransactionConfirmed(
-						utxo.Hash(),
-					)
-					if err != nil {
-						tx.Discard()
-						log.Warn(err)
-						continue utxoLoop1
-					}
-					u := domain.Unspent{
-						TxID:            utxo.Hash(),
-						VOut:            utxo.Index(),
-						Value:           utxo.Value(),
-						AssetHash:       utxo.Asset(),
-						ValueCommitment: utxo.ValueCommitment(),
-						AssetCommitment: utxo.AssetCommitment(),
-						ScriptPubKey:    utxo.Script(),
-						Nonce:           utxo.Nonce(),
-						RangeProof:      utxo.RangeProof(),
-						SurjectionProof: utxo.SurjectionProof(),
-						Address:         e.Address,
-						Spent:           false,
-						Locked:          false,
-						LockedBy:        nil,
-						Confirmed:       isTrxConfirmed,
-					}
-					unspents = append(unspents, u)
-				}
-				err := b.UpdateUnspentsForAddress(
-					ctx,
-					unspents,
-					e.Address,
-				)
-				if err != nil {
-					tx.Discard()
-					log.Warn(err)
-					continue events
-				}
-
-				fundingTxs := make([]domain.OutpointWithAsset, 0)
-				for _, u := range e.Utxos {
-					tx := domain.OutpointWithAsset{
-						Asset: u.Asset(),
-						Txid:  u.Hash(),
-						Vout:  int(u.Index()),
-					}
-					fundingTxs = append(fundingTxs, tx)
-				}
-
-				m, err := b.marketRepository.GetOrCreateMarket(
-					ctx,
-					e.AccountIndex,
-				)
-				if err != nil {
-					tx.Discard()
-					log.Error(err)
-					continue events
-				}
-
-				if err := b.marketRepository.UpdateMarket(
-					ctx,
-					m.AccountIndex,
-					func(m *domain.Market) (*domain.Market, error) {
-
-						if m.IsFunded() {
-							return m, nil
-						}
-
-						if err := m.FundMarket(fundingTxs); err != nil {
-							tx.Discard()
-							return nil, err
-						}
-						log.Info(
-							"deposit: funding market with quote asset ",
-							m.QuoteAsset,
-						)
-
-						return m, nil
-					}); err != nil {
-					tx.Discard()
-					log.Warn(err)
-					continue events
-				}
-
-			}
-
-		case crawler.TransactionConfirmed:
-			//TODO
 		}
-		b.commitTx(tx)
 	}
 }
 
-func (b *blockchainListener) UpdateUnspentsForAddress(
+func (b *blockchainListener) startPendingObservables() {
+	if len(b.pendingObservables) <= 0 {
+		return
+	}
+
+	for _, observable := range b.pendingObservables {
+		b.crawlerSvc.AddObservable(observable)
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	b.pendingObservables = nil
+}
+
+func (b *blockchainListener) updateTrade(
 	ctx context.Context,
-	unspents []domain.Unspent,
-	address string,
+	event crawler.TransactionEvent,
 ) error {
-	err := b.unspentRepository.AddUnspents(ctx, unspents)
+	trade, err := b.tradeRepository.GetTradeByTxID(ctx, event.TxID)
 	if err != nil {
 		return err
 	}
 
-	unsp, err := b.unspentRepository.GetUnspentsForAddresses(
+	if trade.Status.Code == domain.CompletedStatus.Code {
+		return nil
+	}
+
+	err = b.tradeRepository.UpdateTrade(
+		ctx,
+		&trade.ID,
+		func(t *domain.Trade) (*domain.Trade, error) {
+			if err := t.Settle(uint64(event.BlockTime)); err != nil {
+				return nil, err
+			}
+
+			return t, nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("trade %s completed", trade.ID)
+
+	return nil
+}
+
+func (b *blockchainListener) handleUnspents(
+	event crawler.Event,
+) (context.Context, error) {
+	e := event.(crawler.AddressEvent)
+	unspents := unspentsFromEvent(e)
+	ctx := context.Background()
+
+	if _, err := b.dbManager.RunUnspentsTransaction(
+		ctx,
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			return nil, b.updateUnspentsForAddress(ctx, unspents, e.Address)
+		},
+	); err != nil {
+		log.Warnf("trying to update unspents for address %s: %s\n", e.Address, err.Error())
+		return nil, err
+	}
+	return ctx, nil
+}
+
+func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context) error {
+	addresses, _, err := b.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return err
+	}
+
+	feeAccountBalance, err := b.unspentRepository.GetBalance(
+		ctx,
+		addresses,
+		config.GetString(config.BaseAssetKey),
+	)
+	if err != nil {
+		return err
+	}
+
+	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
+		if !b.getSafeFeeBalanceLowLogged() {
+			log.Warn(
+				"fee account balance for account index too low. Trades for markets won't be " +
+					"served properly. Fund the fee account as soon as possible",
+			)
+			b.updateSafeFeeBalanceLowLogged(true)
+		}
+		b.updateSafeFeeDepositLogged(false)
+	} else {
+		if !b.getSafeFeeDepositLogged() {
+			log.Info("fee account funded. Trades can be served")
+			b.updateSafeFeeDepositLogged(true)
+		}
+		b.updateSafeFeeBalanceLowLogged(true)
+	}
+	return nil
+}
+
+func (b *blockchainListener) updateSafeFeeBalanceLowLogged(logged bool) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	b.feeBalanceLowLogged = logged
+}
+
+func (b *blockchainListener) updateSafeFeeDepositLogged(logged bool) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	b.feeDepositLogged = logged
+}
+
+func (b *blockchainListener) getSafeFeeBalanceLowLogged() bool {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.feeBalanceLowLogged
+}
+
+func (b *blockchainListener) getSafeFeeDepositLogged() bool {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.feeDepositLogged
+}
+
+func (b *blockchainListener) checkMarketAccountFundings(ctx context.Context, accountIndex int) error {
+	market, err := b.marketRepository.GetMarketByAccount(ctx, accountIndex)
+	if err != nil {
+		return err
+	}
+
+	// if market is not found it means it's never been opened, therefore
+	// let's notify whether the market can be safely opened, base or quote
+	// asset are missing, or if the market account owns too many assets.
+	if market == nil || !market.IsFunded() {
+		addresses, _, err := b.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, accountIndex)
+		if err != nil {
+			return err
+		}
+		unspents, err := b.unspentRepository.GetUnspentsForAddresses(ctx, addresses)
+		if err != nil {
+			return err
+		}
+		unspentsAssetType := map[string]bool{}
+		for _, u := range unspents {
+			unspentsAssetType[u.AssetHash] = true
+		}
+
+		switch len(unspentsAssetType) {
+		case 0:
+			log.Warnf("no funds detected for market %d", accountIndex)
+		case 1:
+			asset := "base"
+			for k := range unspentsAssetType {
+				if k == config.GetString(config.BaseAssetKey) {
+					asset = "quote"
+				}
+			}
+			log.Warnf("%s asset is missing for market %d", asset, accountIndex)
+		case 2:
+			var asset string
+			for k := range unspentsAssetType {
+				if k != config.GetString(config.BaseAssetKey) {
+					asset = k
+				}
+			}
+			log.Infof("funding market with quote asset %s", asset)
+
+			// Prepare unspents to become outpoint for the market to run validations
+			outpoints := make([]domain.OutpointWithAsset, 0, len(unspents))
+			for _, u := range unspents {
+				outpoints = append(outpoints, domain.OutpointWithAsset{
+					Txid:  u.TxID,
+					Vout:  int(u.VOut),
+					Asset: u.AssetHash,
+				})
+			}
+
+			// Update the market trying to funding attaching the newly found quote asset.
+			if err := b.marketRepository.UpdateMarket(
+				ctx,
+				accountIndex,
+				func(m *domain.Market) (*domain.Market, error) {
+					if err := m.FundMarket(outpoints); err != nil {
+						return nil, err
+					}
+
+					return m, nil
+				},
+			); err != nil {
+				log.Warn(err)
+			}
+
+		default:
+			log.Warnf(
+				"market with account %d funded with more than 2 different assets."+
+					"It will be impossible to determine the correct quote asset "+
+					"and market won't be opened. Funds must be moved away from "+
+					"this account so that it owns only unspents of 2 type of assets",
+				accountIndex,
+			)
+		}
+	}
+	return nil
+}
+
+func (b *blockchainListener) updateUnspentsForAddress(
+	ctx context.Context,
+	unspents []domain.Unspent,
+	address string,
+) error {
+	existingUnspents, err := b.unspentRepository.GetAllUnspentsForAddresses(
 		ctx,
 		[]string{address},
 	)
@@ -294,39 +450,74 @@ func (b *blockchainListener) UpdateUnspentsForAddress(
 		return err
 	}
 
-	for _, oldUnspent := range unsp {
-		exist := false
-		for _, newUnspent := range unspents {
-			if newUnspent.IsKeyEqual(oldUnspent.Key()) {
-				exist = true
-			}
+	// check for unspents to add to the storage
+	unspentsToAdd := make([]domain.Unspent, 0)
+	for _, u := range unspents {
+		if index := findUnspent(existingUnspents, u); index < 0 {
+			unspentsToAdd = append(unspentsToAdd, u)
 		}
-		if !exist {
-			oldUnspent.Spend()
-			err := b.unspentRepository.UpdateUnspent(
-				ctx,
-				oldUnspent.Key(),
-				func(unspent *domain.Unspent) (*domain.Unspent, error) {
-					unspent.Spend()
-					return unspent, nil
-				},
-			)
-			if err != nil {
-				return err
+	}
+
+	//update spent
+	unspentsToMarkAsSpent := make([]domain.UnspentKey, 0)
+	unspentsToMarkAsConfirmed := make([]domain.UnspentKey, 0)
+	for _, existingUnspent := range existingUnspents {
+		if index := findUnspent(unspents, existingUnspent); index < 0 {
+			unspentsToMarkAsSpent = append(unspentsToMarkAsSpent, existingUnspent.Key())
+		} else {
+			if existingUnspent.IsConfirmed() != unspents[index].IsConfirmed() {
+				unspentsToMarkAsConfirmed = append(unspentsToMarkAsConfirmed, existingUnspent.Key())
 			}
 		}
 	}
 
+	if len(unspentsToAdd) > 0 {
+		if err := b.unspentRepository.AddUnspents(ctx, unspentsToAdd); err != nil {
+			return err
+		}
+	}
+	if len(unspentsToMarkAsSpent) > 0 {
+		if err := b.unspentRepository.SpendUnspents(ctx, unspentsToMarkAsSpent); err != nil {
+			return err
+		}
+	}
+	if len(unspentsToMarkAsConfirmed) > 0 {
+		if err := b.unspentRepository.ConfirmUnspents(ctx, unspentsToMarkAsConfirmed); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func (b *blockchainListener) startTx() ports.Transaction {
-	return b.dbManager.NewTransaction()
+func unspentsFromEvent(event crawler.AddressEvent) []domain.Unspent {
+	unspents := make([]domain.Unspent, 0, len(event.Utxos))
+	for _, utxo := range event.Utxos {
+		u := domain.Unspent{
+			TxID:            utxo.Hash(),
+			VOut:            utxo.Index(),
+			Value:           utxo.Value(),
+			AssetHash:       utxo.Asset(),
+			ValueCommitment: utxo.ValueCommitment(),
+			AssetCommitment: utxo.AssetCommitment(),
+			ValueBlinder:    utxo.ValueBlinder(),
+			AssetBlinder:    utxo.AssetBlinder(),
+			ScriptPubKey:    utxo.Script(),
+			Nonce:           utxo.Nonce(),
+			RangeProof:      utxo.RangeProof(),
+			SurjectionProof: utxo.SurjectionProof(),
+			Confirmed:       utxo.IsConfirmed(),
+			Address:         event.Address,
+		}
+		unspents = append(unspents, u)
+	}
+	return unspents
 }
 
-func (b *blockchainListener) commitTx(tx ports.Transaction) {
-	err := tx.Commit()
-	if err != nil {
-		log.Error(err)
+func findUnspent(list []domain.Unspent, unspent domain.Unspent) int {
+	for i, u := range list {
+		if u.IsKeyEqual(unspent.Key()) {
+			return i
+		}
 	}
+	return -1
 }

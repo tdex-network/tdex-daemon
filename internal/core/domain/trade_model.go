@@ -62,11 +62,13 @@ type Status struct {
 type Trade struct {
 	ID               uuid.UUID
 	MarketQuoteAsset string
+	MarketPrice      Prices
+	MarketFee        int64
 	TraderPubkey     []byte
 	Status           Status
 	PsetBase64       string
 	TxID             string
-	Price            float32
+	TxHex            string
 	Timestamp        Timestamp
 	SwapRequest      Swap
 	SwapAccept       Swap

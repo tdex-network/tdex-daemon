@@ -16,4 +16,9 @@ type TradeRepository interface {
 		tradeID *uuid.UUID,
 		updateFn func(t *Trade) (*Trade, error),
 	) error
+	GetCompletedTradesByMarket(
+		ctx context.Context,
+		marketQuoteAsset string,
+	) ([]*Trade, error)
+	GetTradeByTxID(ctx context.Context, txID string) (*Trade, error)
 }

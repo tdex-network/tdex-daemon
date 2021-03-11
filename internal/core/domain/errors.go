@@ -3,6 +3,10 @@ package domain
 import "errors"
 
 var (
+	// ErrInvalidBaseAsset is thrown when non valid base asset is given
+	ErrInvalidBaseAsset = errors.New("invalid base asset")
+	// ErrInvalidQuoteAsset is thrown when non valid quote asset is given
+	ErrInvalidQuoteAsset = errors.New("invalid quote asset")
 	// ErrMustBeLocked is thrown when trying to change the passphrase with an unlocked wallet
 	ErrMustBeLocked = errors.New("wallet must be locked to perform this operation")
 	// ErrMustBeUnlocked is thrown when trying to make an operation that requires the wallet to be unlocked
@@ -23,6 +27,10 @@ var (
 	ErrPriceExists = errors.New("price has been inserted already")
 	//ErrNotPriced is thrown when the price is still 0 (ie. not initialized)
 	ErrNotPriced = errors.New("price must be inserted")
+	//ErrInvalidBasePrice is thrown when the amount for Base price is an invalid satoshis value.
+	ErrInvalidBasePrice = errors.New("the amount for base price is invalid")
+	//ErrInvalidQuotePrice is thrown when the amount for Quote price is an invalid satoshis value.
+	ErrInvalidQuotePrice = errors.New("the amount for base price is invalid")
 	// ErrMustBeEmpty ...
 	ErrMustBeEmpty = errors.New(
 		"trade must be empty for parsing a proposal",

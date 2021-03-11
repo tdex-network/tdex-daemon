@@ -79,7 +79,7 @@ func TestUpdateTrade(t *testing.T) {
 		ctx,
 		&tradeID,
 		func(t *domain.Trade) (*domain.Trade, error) {
-			t.Price = 100
+			t.MarketFee = 100
 			return t, nil
 		},
 	)
@@ -92,5 +92,17 @@ func TestUpdateTrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, float32(100), trade.Price)
+	assert.Equal(t, int64(100), trade.MarketFee)
+}
+
+func TestGetTradeByTxID(t *testing.T) {
+	before()
+	defer after()
+
+	trade, err := tradeRepository.GetTradeByTxID(ctx, "111")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotNil(t, trade)
 }

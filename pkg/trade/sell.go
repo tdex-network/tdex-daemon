@@ -18,6 +18,7 @@ func (t *Trade) Sell(opts BuyOrSellOpts) ([]byte, error) {
 		opts.Market,
 		tradetype.Sell,
 		opts.Amount,
+		opts.Asset,
 		opts.Address,
 		opts.BlindingKey,
 	)
@@ -38,6 +39,7 @@ func (t *Trade) SellAndComplete(opts BuyOrSellAndCompleteOpts) (string, error) {
 		opts.Market,
 		tradetype.Sell,
 		opts.Amount,
+		opts.Asset,
 		w.Address(),
 		opts.BlindingKey,
 	)

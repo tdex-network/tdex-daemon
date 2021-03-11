@@ -17,7 +17,6 @@ func UnaryInterceptor(
 		middleware.ChainUnaryServer(
 			unaryAuthHandler(config.RPCServerPermissions(), macaroonService),
 			unaryLogger,
-			unaryTransactionHandler(dbManager),
 		),
 	)
 }
@@ -31,7 +30,6 @@ func StreamInterceptor(
 		middleware.ChainStreamServer(
 			streamAuthHandler(config.RPCServerPermissions(), macaroonService),
 			streamLogger,
-			streamTransactionHandler(dbManager),
 		),
 	)
 }

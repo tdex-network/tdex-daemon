@@ -1,6 +1,7 @@
 package trade
 
 import (
+	"encoding/hex"
 	"errors"
 
 	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
@@ -24,6 +25,7 @@ type PreviewOpts struct {
 	Market    trademarket.Market
 	TradeType int
 	Amount    uint64
+	Asset     string
 }
 
 func (o PreviewOpts) validate() error {
@@ -35,6 +37,9 @@ func (o PreviewOpts) validate() error {
 	}
 	if o.Amount <= 0 {
 		return ErrInvalidAmount
+	}
+	if buf, err := hex.DecodeString(o.Asset); err != nil || len(buf) != 32 {
+		return ErrInvalidAsset
 	}
 	return nil
 }
@@ -59,25 +64,34 @@ func (t *Trade) Preview(opts PreviewOpts) (*PreviewResult, error) {
 		Market:    opts.Market,
 		TradeType: tradeType,
 		Amount:    opts.Amount,
+		Asset:     opts.Asset,
 	})
 	if err != nil {
 		return nil, err
 	}
 	preview := reply.GetPrices()[0]
 
+	assetToSend := preview.GetAsset()
+	amountToSend := preview.GetAmount()
+	assetToReceive := opts.Asset
+	amountToReceive := opts.Amount
+
 	if tradeType.IsBuy() {
-		return &PreviewResult{
-			AssetToSend:     opts.Market.QuoteAsset,
-			AmountToSend:    preview.GetAmount(),
-			AssetToReceive:  opts.Market.BaseAsset,
-			AmountToReceive: opts.Amount,
-		}, nil
+		if opts.Asset == opts.Market.QuoteAsset {
+			assetToSend, assetToReceive = assetToReceive, assetToSend
+			amountToSend, amountToReceive = amountToReceive, amountToSend
+		}
+	} else {
+		if opts.Asset == opts.Market.BaseAsset {
+			assetToSend, assetToReceive = assetToReceive, assetToSend
+			amountToSend, amountToReceive = amountToReceive, amountToSend
+		}
 	}
 
 	return &PreviewResult{
-		AssetToSend:     opts.Market.BaseAsset,
-		AmountToSend:    opts.Amount,
-		AssetToReceive:  opts.Market.QuoteAsset,
-		AmountToReceive: preview.GetAmount(),
+		AssetToSend:     assetToSend,
+		AmountToSend:    amountToSend,
+		AssetToReceive:  assetToReceive,
+		AmountToReceive: amountToReceive,
 	}, nil
 }

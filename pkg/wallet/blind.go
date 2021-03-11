@@ -8,10 +8,20 @@ import (
 	"github.com/vulpemventures/go-elements/pset"
 )
 
+const (
+	// MaxBlindingAttempts is the max number of times the blinding of a pset
+	// can be repeated in case it fails to generate valid proofs.
+	MaxBlindingAttempts = 8
+	// DefaultBlindingAttempts is the default number of times the blinding of a
+	// pset is retried if it fails to generate valid proofs.
+	DefaultBlindingAttempts = 4
+)
+
 // BlindTransactionOpts is the struct given to BlindTransaction method
 type BlindTransactionOpts struct {
 	PsetBase64         string
 	OutputBlindingKeys [][]byte
+	Attempts           int
 }
 
 func (o BlindTransactionOpts) validate() error {
@@ -31,7 +41,18 @@ func (o BlindTransactionOpts) validate() error {
 	if len(o.OutputBlindingKeys) != len(ptx.Outputs) {
 		return ErrInvalidOutputBlindingKeysLen
 	}
+
+	if o.Attempts < 0 || o.Attempts > MaxBlindingAttempts {
+		return ErrInvalidAttempts
+	}
 	return nil
+}
+
+func (o BlindTransactionOpts) maxAttempts() int {
+	if o.Attempts == 0 {
+		return DefaultBlindingAttempts
+	}
+	return o.Attempts
 }
 
 // BlindTransaction blinds the outputs of the provided partial transaction
@@ -47,7 +68,6 @@ func (w *Wallet) BlindTransaction(opts BlindTransactionOpts) (string, error) {
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
 	inputBlindingKeys := make([][]byte, 0, len(ptx.Inputs))
-
 	for _, in := range ptx.Inputs {
 		blindingPrvkey, _, _ := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
 			Script: in.WitnessUtxo.Script,
@@ -55,21 +75,15 @@ func (w *Wallet) BlindTransaction(opts BlindTransactionOpts) (string, error) {
 		inputBlindingKeys = append(inputBlindingKeys, blindingPrvkey.Serialize())
 	}
 
-	blinder, err := pset.NewBlinder(
+	if err := w.blindTransaction(
 		ptx,
 		inputBlindingKeys,
 		opts.OutputBlindingKeys,
-		nil,
-		nil,
-	)
-	if err != nil {
+		opts.maxAttempts(),
+	); err != nil {
 		return "", err
 	}
 
-	err = blinder.Blind()
-	if err != nil {
-		return "", err
-	}
 	return ptx.ToBase64()
 }
 
@@ -78,6 +92,7 @@ type BlindSwapTransactionOpts struct {
 	PsetBase64         string
 	InputBlindingKeys  map[string][]byte
 	OutputBlindingKeys map[string][]byte
+	Attempts           int
 }
 
 func (o BlindSwapTransactionOpts) validate() error {
@@ -106,7 +121,18 @@ func (o BlindSwapTransactionOpts) validate() error {
 		}
 	}
 
+	if o.Attempts < 0 || o.Attempts > MaxBlindingAttempts {
+		return ErrInvalidAttempts
+	}
+
 	return nil
+}
+
+func (o BlindSwapTransactionOpts) maxAttempts() int {
+	if o.Attempts == 0 {
+		return DefaultBlindingAttempts
+	}
+	return o.Attempts
 }
 
 // BlindSwapTransaction blinds the outputs of a swap transaction. Since this
@@ -136,24 +162,51 @@ func (w *Wallet) BlindSwapTransaction(opts BlindSwapTransactionOpts) (string, er
 	outputBlindingKeys := make([][]byte, 0, len(ptx.Outputs))
 	for _, out := range ptx.UnsignedTx.Outputs {
 		script := hex.EncodeToString(out.Script)
-		_, blindPubkey := btcec.PrivKeyFromBytes(btcec.S256(), opts.OutputBlindingKeys[script])
-		outputBlindingKeys = append(outputBlindingKeys, blindPubkey.SerializeCompressed())
+		_, pubkey := btcec.PrivKeyFromBytes(btcec.S256(), opts.OutputBlindingKeys[script])
+		outputBlindingKeys = append(outputBlindingKeys, pubkey.SerializeCompressed())
 	}
 
-	blinder, err := pset.NewBlinder(
+	if err := w.blindTransaction(
 		ptx,
 		inputBlindingKeys,
 		outputBlindingKeys,
+		opts.maxAttempts(),
+	); err != nil {
+		return "", err
+	}
+
+	return ptx.ToBase64()
+}
+
+func (w *Wallet) blindTransaction(
+	ptx *pset.Pset,
+	inBlindingKeys, outBlindingKeys [][]byte,
+	maxAttempts int,
+) error {
+	blinder, err := pset.NewBlinder(
+		ptx,
+		inBlindingKeys,
+		outBlindingKeys,
 		nil,
 		nil,
 	)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	err = blinder.Blind()
-	if err != nil {
-		return "", err
+	retryCount := 0
+	for {
+		if retryCount >= maxAttempts {
+			return ErrReachedMaxBlindingAttempts
+		}
+
+		if err := blinder.Blind(); err != nil {
+			if err == pset.ErrGenerateSurjectionProof {
+				retryCount++
+				continue
+			}
+			return err
+		}
+		return nil
 	}
-	return ptx.ToBase64()
 }

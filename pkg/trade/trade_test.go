@@ -4,19 +4,33 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
 )
 
+var explorerSvc explorer.Service
+
+func initExplorer() error {
+	var err error
+	explorerSvc, err = esplora.NewService("http://localhost:3001")
+	return err
+}
+
 func TestNewTrade(t *testing.T) {
+	if err := initExplorer(); err != nil {
+		t.Fatal(err)
+	}
+
 	client, err := tradeclient.NewTradeClient("localhost", 9000)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tt, err := NewTrade(NewTradeOpts{
-		Chain:       "regtest",
-		ExplorerURL: "http://localhost:3001",
-		Client:      client,
+		Chain:           "regtest",
+		ExplorerService: explorerSvc,
+		Client:          client,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -36,41 +50,33 @@ func TestFailingNewTrade(t *testing.T) {
 	}{
 		{
 			opts: NewTradeOpts{
-				Chain:       "",
-				ExplorerURL: "http://localhost:3001",
-				Client:      client,
+				Chain:           "",
+				ExplorerService: explorerSvc,
+				Client:          client,
 			},
 			err: ErrInvalidChain,
 		},
 		{
 			opts: NewTradeOpts{
-				Chain:       "bitcoin",
-				ExplorerURL: "http://localhost:3001",
-				Client:      client,
+				Chain:           "bitcoin",
+				ExplorerService: explorerSvc,
+				Client:          client,
 			},
 			err: ErrInvalidChain,
 		},
 		{
 			opts: NewTradeOpts{
-				Chain:       "regtest",
-				ExplorerURL: "",
-				Client:      client,
+				Chain:           "regtest",
+				ExplorerService: nil,
+				Client:          client,
 			},
-			err: ErrInvalidExplorerURL,
+			err: ErrNullExplorer,
 		},
 		{
 			opts: NewTradeOpts{
-				Chain:       "regtest",
-				ExplorerURL: "localhost:3001",
-				Client:      client,
-			},
-			err: ErrInvalidExplorerURL,
-		},
-		{
-			opts: NewTradeOpts{
-				Chain:       "regtest",
-				ExplorerURL: "http://localhost:3001",
-				Client:      nil,
+				Chain:           "regtest",
+				ExplorerService: explorerSvc,
+				Client:          nil,
 			},
 			err: ErrNullClient,
 		},
@@ -94,9 +100,9 @@ func newTestTrade() (t *Trade, err error) {
 	}
 
 	t, err = NewTrade(NewTradeOpts{
-		Chain:       "regtest",
-		ExplorerURL: "http://localhost:3001",
-		Client:      client,
+		Chain:           "regtest",
+		ExplorerService: explorerSvc,
+		Client:          client,
 	})
 	return
 }

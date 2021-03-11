@@ -1,72 +1,54 @@
 package application
 
 import (
-	"context"
-	"os"
 	"testing"
 	"time"
 
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/network"
 )
 
-var ctx = context.Background()
-
-func newTestWallet(w *mockedWallet) (*walletService, func()) {
-	dbManager, err := dbbadger.NewDbManager("testdb")
-	if err != nil {
-		panic(err)
-	}
-	vaultRepo := inmemory.NewVaultRepositoryImpl()
-	if w != nil {
-		vaultRepo = newMockedVaultRepositoryImpl(*w)
-	}
-
-	explorerSvc := explorer.NewService(config.GetString(config.ExplorerEndpointKey))
-	return newWalletService(
-			vaultRepo,
-			dbbadger.NewUnspentRepositoryImpl(dbManager),
-			crawler.NewService(explorerSvc, []crawler.Observable{}, func(err error) {}),
-			explorerSvc,
-		), func() {
-			recover()
-			dbManager.Store.Close()
-			os.RemoveAll("testdb")
-		}
-}
+const restoreWallet = true
 
 func TestNewWalletService(t *testing.T) {
-	ws, close := newTestWallet(nil)
-	defer close()
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	ws, _, close := newTestWallet(nil)
+	t.Cleanup(close)
+
 	assert.Equal(t, false, ws.walletInitialized)
 	assert.Equal(t, false, ws.walletIsSyncing)
 }
 
 func TestGenSeed(t *testing.T) {
-	walletSvc, close := newTestWallet(nil)
-	defer close()
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	walletSvc, ctx, close := newTestWallet(nil)
+	t.Cleanup(close)
 
 	seed, err := walletSvc.GenSeed(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	assert.Equal(t, 24, len(seed))
 }
 
 func TestInitWalletWrongSeed(t *testing.T) {
-	walletSvc, close := newTestWallet(nil)
-	defer close()
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	walletSvc, ctx, close := newTestWallet(nil)
+	t.Cleanup(close)
 
 	wrongSeed := []string{"test"}
-	err := walletSvc.InitWallet(ctx, wrongSeed, "pass")
+	err := walletSvc.InitWallet(ctx, wrongSeed, "pass", !restoreWallet)
 	assert.Error(t, err)
 }
 
@@ -75,8 +57,9 @@ func TestInitEmptyWallet(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	walletSvc, close := newTestWallet(emptyWallet)
-	defer close()
+	walletSvc, ctx, close := newTestWallet(emptyWallet)
+	t.Cleanup(close)
+
 	// If the vault repository is not empty when the wallet service is
 	// instantiated, this behaves like it  it was shut down and restarted again.
 	// Therefore, the service restores its previous state and "marks" the wallet
@@ -93,10 +76,10 @@ func TestInitEmptyWallet(t *testing.T) {
 	})
 	firstWalletAccountAddr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 		DerivationPath: "1'/0/0",
-		Network:        config.GetNetwork(),
+		Network:        &network.Regtest,
 	})
 
-	err := walletSvc.InitWallet(ctx, emptyWallet.mnemonic, emptyWallet.password)
+	err := walletSvc.InitWallet(ctx, emptyWallet.mnemonic, emptyWallet.password, !restoreWallet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,26 +100,26 @@ func TestInitUsedWallet(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	walletSvc, close := newTestWallet(usedWallet)
-	defer close()
+	walletSvc, ctx, close := newTestWallet(usedWallet)
 	walletSvc.walletInitialized = false
+	t.Cleanup(close)
 
 	w, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: usedWallet.mnemonic,
 	})
 	mockedLastDerivedAddr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 		DerivationPath: "1'/0/15",
-		Network:        config.GetNetwork(),
+		Network:        &network.Regtest,
 	})
 	if _, err := walletSvc.explorerService.Faucet(mockedLastDerivedAddr); err != nil {
 		t.Fatal(err)
 	}
 	firstWalletAccountAddr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 		DerivationPath: "1'/0/16",
-		Network:        config.GetNetwork(),
+		Network:        &network.Regtest,
 	})
 
-	err := walletSvc.InitWallet(ctx, usedWallet.mnemonic, usedWallet.password)
+	err := walletSvc.InitWallet(ctx, usedWallet.mnemonic, usedWallet.password, restoreWallet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,8 +138,8 @@ func TestWalletUnlock(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	walletSvc, close := newTestWallet(dryLockedWallet)
-	defer close()
+	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
+	t.Cleanup(close)
 
 	address, blindingKey, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	assert.Equal(t, domain.ErrMustBeUnlocked, err)
@@ -180,8 +163,8 @@ func TestWalletChangePass(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	walletSvc, close := newTestWallet(dryLockedWallet)
-	defer close()
+	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
+	t.Cleanup(close)
 
 	err := walletSvc.ChangePassword(ctx, "wrongPass", "newPass")
 	assert.Equal(t, domain.ErrInvalidPassphrase, err)
@@ -193,9 +176,9 @@ func TestWalletChangePass(t *testing.T) {
 	assert.Equal(t, wallet.ErrInvalidPassphrase, err)
 }
 
-func TestWalletBalance(t *testing.T) {
-	walletSvc, close := newTestWallet(dryWallet)
-	defer close()
+func TestGenerateAddressAndWalletBalance(t *testing.T) {
+	walletSvc, ctx, close := newTestWallet(dryWallet)
+	t.Cleanup(close)
 
 	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
@@ -217,6 +200,78 @@ func TestWalletBalance(t *testing.T) {
 	assert.Equal(
 		t,
 		true,
-		int(balance[config.GetString(config.BaseAssetKey)].ConfirmedBalance) >= 100000000,
+		int(balance[network.Regtest.AssetID].ConfirmedBalance) >= 100000000,
 	)
+}
+
+func TestSendToMany(t *testing.T) {
+	reqs := []SendToManyRequest{
+		{
+			Outputs: []TxOut{
+				{
+					Asset:   network.Regtest.AssetID,
+					Value:   1000000,
+					Address: "el1qqf7z4k7tmarjcymzqtpy00chfl0qn0rx9f42ldw34l2teckh9csqumsc6s2k8nzpn8v5xyzd6pwxez0nlvt36338yzjrxptnk",
+				},
+			},
+			MillisatPerByte: 100,
+			Push:            false,
+		},
+		{
+			Outputs: []TxOut{
+				{
+					Asset:   network.Regtest.AssetID,
+					Value:   1000000,
+					Address: "CTEkZW2f7iixzWLkkoFeh85twpK7XYetyFmPqpQjCGdcEYUV1ZjyxqP6zc3qpBKEbdg6tjweJTC5yWrh",
+				},
+			},
+			MillisatPerByte: 100,
+			Push:            false,
+		},
+		{
+			Outputs: []TxOut{
+				{
+					Asset:   network.Regtest.AssetID,
+					Value:   1000000,
+					Address: "AzpnKwnveEJtDJNQVaTjcPNAJYDwWSYRMYaN2Y8crVFRBSZ4H2xM98WXy6seCR3mqCQFTRnJkfChFJpM",
+				},
+			},
+			MillisatPerByte: 100,
+			Push:            false,
+		},
+	}
+
+	walletSvc, ctx, close := newTestWallet(tradeWallet)
+	t.Cleanup(close)
+
+	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	walletSvc.vaultRepository.UpdateVault(
+		ctx,
+		nil,
+		"",
+		func(v *domain.Vault) (*domain.Vault, error) {
+			v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
+			return v, nil
+		},
+	)
+	walletSvc.unspentRepository.AddUnspents(ctx, feeUnspents)
+
+	_, err = walletSvc.explorerService.Faucet(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(5 * time.Second)
+
+	for _, req := range reqs {
+		rawTx, err := walletSvc.SendToMany(ctx, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, true, len(rawTx) > 0)
+	}
 }

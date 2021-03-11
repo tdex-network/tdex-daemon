@@ -2,27 +2,21 @@ package application
 
 import (
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	"os"
-	"testing"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 )
 
 func TestUpdateUnspentsForAddress(t *testing.T) {
-	dbManager, err := dbbadger.NewDbManager("testdb")
-	if err != nil {
-		panic(err)
-	}
-	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
-	tx := dbManager.Store.Badger().NewTransaction(true)
-	ctx = context.WithValue(
-		context.Background(),
-		"tx",
-		tx,
-	)
-	l := NewBlockchainListener(
+	dbManager := newTestDb()
+	unspentRepository := inmemory.NewUnspentRepositoryImpl(dbManager)
+	ctx := context.Background()
+
+	l := newBlockchainListener(
 		unspentRepository,
+		nil,
 		nil,
 		nil,
 		nil,
@@ -56,7 +50,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		},
 	}
 
-	err = l.UpdateUnspentsForAddress(
+	err := l.updateUnspentsForAddress(
 		ctx,
 		unspents,
 		"a",
@@ -65,7 +59,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unsp, err := unspentRepository.GetUnspentsForAddresses(
+	unsp, err := unspentRepository.GetAllUnspentsForAddresses(
 		ctx,
 		[]string{"a"},
 	)
@@ -102,7 +96,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		},
 	}
 
-	err = l.UpdateUnspentsForAddress(
+	err = l.updateUnspentsForAddress(
 		ctx,
 		unspents,
 		"a",
@@ -111,7 +105,7 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unsp, err = unspentRepository.GetUnspentsForAddresses(
+	unsp, err = unspentRepository.GetAllUnspentsForAddresses(
 		ctx,
 		[]string{"a"},
 	)
@@ -129,15 +123,4 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, count)
-
-	err = tx.Commit()
-	if err != nil {
-		t.Fatal(err)
-	}
-	dbManager.Store.Close()
-
-	err = os.RemoveAll("testdb")
-	if err != nil {
-		panic(err)
-	}
 }

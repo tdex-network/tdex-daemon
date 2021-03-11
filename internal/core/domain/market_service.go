@@ -2,8 +2,7 @@ package domain
 
 import (
 	"errors"
-	"sort"
-	"time"
+	"fmt"
 
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -53,41 +52,48 @@ func (m *Market) IsFunded() bool {
 	return m.BaseAsset != "" && m.QuoteAsset != ""
 }
 
-// FundMarket adds funding details given an array of outpoints and recognize quote asset
+// FundMarket adds the assets of market from the given array of outpoints.
+// Since the list of outpoints can contain an infinite number of utxos with
+// different  assets, they're fistly indexed by their asset, then the market's
+// base asset is updated if found in the list, otherwise only the very first
+// asset type is used as the market's quote asset, discarding the others that
+// should be manually transferred to some other address because they won't be
+// used by the daemon.
 func (m *Market) FundMarket(fundingTxs []OutpointWithAsset) error {
 	if m.IsFunded() {
 		return nil
 	}
 
-	var baseAssetHash = config.GetString(config.BaseAssetKey)
-	var otherAssetHash string
-
-	var baseAssetTxs []OutpointWithAsset
-	var otherAssetTxs []OutpointWithAsset
-
+	baseAssetHash := config.GetString(config.BaseAssetKey)
 	assetCount := make(map[string]int)
 	for _, o := range fundingTxs {
 		assetCount[o.Asset]++
-		if o.Asset == baseAssetHash {
-			baseAssetTxs = append(baseAssetTxs, o)
-		} else {
-			// Potentially here could be different assets mixed
-			// We chek if unique quote asset later after the loop
-			otherAssetTxs = append(otherAssetTxs, o)
-			otherAssetHash = o.Asset
-		}
 	}
 
 	if _, ok := assetCount[baseAssetHash]; !ok {
 		return errors.New("base asset is missing")
 	}
-
-	if keysNumber := len(assetCount); keysNumber != 2 {
-		return errors.New("must be deposited 2 unique assets")
+	if len(assetCount) < 2 {
+		return errors.New("quote asset is missing")
 	}
 
-	m.BaseAsset = baseAssetHash
-	m.QuoteAsset = otherAssetHash
+	if len(assetCount) > 2 {
+		return fmt.Errorf(
+			"outpoints must be at most of 2 different type of assets, but %d were "+
+				"found and it's not possible to determine what's the correct asset "+
+				"pair of the market! It's mandatory to move funds from market's "+
+				"addresses so that they own only utxos of 2 different asset types "+
+				"(base asset included).", len(assetCount),
+		)
+	}
+
+	for asset := range assetCount {
+		if asset == baseAssetHash {
+			m.BaseAsset = baseAssetHash
+		} else {
+			m.QuoteAsset = asset
+		}
+	}
 
 	return nil
 }
@@ -111,42 +117,18 @@ func (m *Market) ChangeFee(fee int64) error {
 	return nil
 }
 
-// ChangeFeeAsset ...
-func (m *Market) ChangeFeeAsset(asset string) error {
-	// In case of empty asset hash, no updates happens and therefore it exit without error
-	if asset == "" {
-		return nil
-	}
-
-	if !m.IsFunded() {
-		return ErrNotFunded
-	}
-
-	if m.IsTradable() {
-		return ErrMarketMustBeClose
-	}
-
-	if asset != m.BaseAsset && asset != m.QuoteAsset {
-		return errors.New("the given asset must be either the base or quote" +
-			" asset in the pair")
-	}
-
-	m.FeeAsset = asset
-	return nil
-}
-
 // BaseAssetPrice returns the latest price for the base asset
 func (m *Market) BaseAssetPrice() decimal.Decimal {
-	_, price := getLatestPrice(m.BasePrice)
+	basePrice, _ := getLatestPrice(m.Price)
 
-	return decimal.Decimal(price)
+	return decimal.Decimal(basePrice)
 }
 
 // QuoteAssetPrice returns the latest price for the quote asset
 func (m *Market) QuoteAssetPrice() decimal.Decimal {
-	_, price := getLatestPrice(m.QuotePrice)
+	_, quotePrice := getLatestPrice(m.Price)
 
-	return decimal.Decimal(price)
+	return decimal.Decimal(quotePrice)
 }
 
 // ChangeBasePrice ...
@@ -157,12 +139,7 @@ func (m *Market) ChangeBasePrice(price decimal.Decimal) error {
 
 	// TODO add logic to be sure that the price do not change to much from the latest one
 
-	timestamp := uint64(time.Now().Unix())
-	if _, ok := m.BasePrice[timestamp]; ok {
-		return ErrPriceExists
-	}
-
-	m.BasePrice[timestamp] = Price(price)
+	m.Price.BasePrice = price
 	return nil
 }
 
@@ -174,40 +151,30 @@ func (m *Market) ChangeQuotePrice(price decimal.Decimal) error {
 
 	//TODO check if the previous price is changing too much as security measure
 
-	timestamp := uint64(time.Now().Unix())
-	if _, ok := m.QuotePrice[timestamp]; ok {
-		return ErrPriceExists
-	}
-
-	m.QuotePrice[timestamp] = Price(price)
+	m.Price.QuotePrice = price
 	return nil
 }
 
 // IsZero ...
-func (pt PriceByTime) IsZero() bool {
-	return len(pt) == 0
+func (p Prices) IsZero() bool {
+	return p == Prices{}
 }
 
-// IsZero ...
-func (p Price) IsZero() bool {
-	return decimal.Decimal(p).Equal(decimal.NewFromInt(0))
+// AreZero ...
+func (p Prices) AreZero() bool {
+	if p.IsZero() {
+		return true
+	}
+
+	return decimal.Decimal(p.BasePrice).Equal(decimal.NewFromInt(0)) && decimal.Decimal(p.QuotePrice).Equal(decimal.NewFromInt(0))
 }
 
-func getLatestPrice(keyValue PriceByTime) (uint64, Price) {
-	if keyValue.IsZero() {
-		return uint64(0), Price(decimal.NewFromInt(0))
+func getLatestPrice(pt Prices) (decimal.Decimal, decimal.Decimal) {
+	if pt.IsZero() || pt.AreZero() {
+		return decimal.NewFromInt(0), decimal.NewFromInt(0)
 	}
 
-	keys := make([]uint64, 0, len(keyValue))
-	for k := range keyValue {
-		keys = append(keys, k)
-	}
-
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-
-	latestKey := keys[len(keys)-1]
-	latestValue := keyValue[latestKey]
-	return latestKey, latestValue
+	return pt.BasePrice, pt.QuotePrice
 }
 
 // IsStrategyPluggable returns true if the the startegy isn't automated.
@@ -217,7 +184,7 @@ func (m *Market) IsStrategyPluggable() bool {
 
 // IsStrategyPluggableInitialized returns true if the prices have been set.
 func (m *Market) IsStrategyPluggableInitialized() bool {
-	return !m.BasePrice.IsZero() && !m.QuotePrice.IsZero()
+	return !m.Price.AreZero()
 }
 
 // MakeStrategyPluggable makes the current market using a given price
@@ -229,6 +196,8 @@ func (m *Market) MakeStrategyPluggable() error {
 	}
 
 	m.Strategy = mm.MakingStrategy{}
+	m.ChangeBasePrice(decimal.NewFromInt(0))
+	m.ChangeQuotePrice(decimal.NewFromInt(0))
 
 	return nil
 }
