@@ -171,8 +171,6 @@ func (o *operatorService) DepositMarket(
 	//Derive an address for that specific market
 	if err := o.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			for i := 0; i < numOfAddresses; i++ {
 				addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(
@@ -210,8 +208,6 @@ func (o *operatorService) DepositFeeAccount(
 	list := make([]AddressAndBlindingKey, 0, numOfAddresses)
 	if err := o.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			for i := 0; i < numOfAddresses; i++ {
 				addr, _, blindKey, err := v.DeriveNextExternalAddressForAccount(
@@ -705,8 +701,6 @@ func (o *operatorService) WithdrawMarketFunds(
 	addressesToObserve := make([]AddressAndBlindingKey, 0)
 	err = o.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err := v.GetMnemonicSafe()
 			if err != nil {

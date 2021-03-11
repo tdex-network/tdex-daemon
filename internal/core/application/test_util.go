@@ -128,7 +128,7 @@ func newMockServices(
 	)
 
 	if !vaultRepositoryIsEmpty {
-		if err := vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
+		if err := vaultRepo.UpdateVault(ctx, func(v *domain.Vault) (*domain.Vault, error) {
 			_, _, _, err := v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
@@ -506,6 +506,7 @@ func newMockedVaultRepositoryImpl(w mockedWallet) domain.VaultRepository {
 			PassphraseHash:         btcutil.Hash160([]byte(w.password)),
 			Accounts:               map[int]*domain.Account{},
 			AccountAndKeyByAddress: map[string]domain.AccountAndKey{},
+			Network:                &network.Regtest,
 		},
 		lock: sync.Mutex{},
 	}
@@ -520,14 +521,17 @@ func (r *mockedVaultRepository) GetAllDerivedExternalAddressesForAccount(
 	return r.vault.AllDerivedExternalAddressesForAccount(accountIndex)
 }
 
-func (r *mockedVaultRepository) GetOrCreateVault(ctx context.Context, mnemonic []string, passphrase string) (*domain.Vault, error) {
+func (r *mockedVaultRepository) GetOrCreateVault(
+	ctx context.Context,
+	mnemonic []string,
+	passphrase string,
+	net *network.Network,
+) (*domain.Vault, error) {
 	return r.vault, nil
 }
 
 func (r *mockedVaultRepository) UpdateVault(
 	ctx context.Context,
-	mnemonic []string,
-	passphrase string,
 	updateFn func(v *domain.Vault) (*domain.Vault, error),
 ) error {
 	r.lock.Lock()

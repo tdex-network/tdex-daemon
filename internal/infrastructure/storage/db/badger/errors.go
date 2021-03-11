@@ -8,3 +8,8 @@ var (
 	// ErrMarketNotFound ...
 	ErrMarketNotFound = errors.New("market not found")
 )
+
+var (
+	// ErrVaultNotFound ...
+	ErrVaultNotFound = errors.New("vault not found")
+)

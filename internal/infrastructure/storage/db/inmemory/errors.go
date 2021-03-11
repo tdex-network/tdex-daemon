@@ -30,3 +30,8 @@ var (
 	// ErrAccountNotExist is thrown when account is not found
 	ErrAccountNotExist = errors.New("account does not exist")
 )
+
+var (
+	// ErrVaultNotFound ...
+	ErrVaultNotFound = errors.New("vault not found")
+)

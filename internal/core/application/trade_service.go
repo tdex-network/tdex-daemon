@@ -266,8 +266,6 @@ func (t *tradeService) TradePropose(
 	// derive output and change address for market, and change address for fee account
 	if err := t.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err = v.GetMnemonicSafe()
 			if err != nil {

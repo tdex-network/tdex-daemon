@@ -42,17 +42,25 @@ var (
 	ErrUnspentAlreadyLocked = errors.New("cannot lock an already locked unspent")
 )
 
+// Vault errors
 var (
-	// ErrMustBeLocked is thrown when trying to change the passphrase with an unlocked wallet
-	ErrMustBeLocked = errors.New("wallet must be locked to perform this operation")
-	// ErrMustBeUnlocked is thrown when trying to make an operation that requires the wallet to be unlocked
-	ErrMustBeUnlocked = errors.New("wallet must be unlocked to perform this operation")
-	// ErrInvalidPassphrase ...
-	ErrInvalidPassphrase = errors.New("passphrase is not valid")
+	// ErrVaultMustBeLocked is thrown when trying to change the passphrase with an unlocked wallet
+	ErrVaultMustBeLocked = errors.New("wallet must be locked to perform this operation")
+	// ErrVaultMustBeUnlocked is thrown when trying to make an operation that requires the wallet to be unlocked
+	ErrVaultMustBeUnlocked = errors.New("wallet must be unlocked to perform this operation")
+	// ErrVaultInvalidPassphrase ...
+	ErrVaultInvalidPassphrase = errors.New("passphrase is not valid")
 	// ErrVaultAlreadyInitialized ...
 	ErrVaultAlreadyInitialized = errors.New("vault is already initialized")
-	// ErrNullMnemonicOrPassphrase ...
-	ErrNullMnemonicOrPassphrase = errors.New("mnemonic and/or passphrase must not be null")
+	// ErrVaultNullMnemonicOrPassphrase ...
+	ErrVaultNullMnemonicOrPassphrase = errors.New("mnemonic and/or passphrase must not be null")
+	// ErrVaultNullNetwork ...
+	ErrVaultNullNetwork = errors.New("network must not be null")
+	// ErrVaultAccountNotFound ...
+	ErrVaultAccountNotFound = errors.New("account not found")
+)
+
+var (
 	// ErrMustBeEmpty ...
 	ErrMustBeEmpty = errors.New(
 		"trade must be empty for parsing a proposal",

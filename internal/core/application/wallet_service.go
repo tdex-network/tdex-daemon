@@ -98,7 +98,7 @@ func newWalletService(
 	// therefore we let the crawler to start watch all derived addresses and mark
 	// the wallet as initialized
 	if vault, err := w.vaultRepository.GetOrCreateVault(
-		context.Background(), nil, "",
+		context.Background(), nil, "", nil,
 	); err == nil {
 		addresses := vault.AllDerivedAddressesInfo()
 		// the addresses' observation is required to be blocking here because the
@@ -140,20 +140,17 @@ func (w *walletService) InitWallet(
 		)
 	}
 
-	// lock vault no regardless an error occurs or not
-	var vault *domain.Vault
-	defer func() {
-		if vault != nil {
-			vault.Lock()
-		}
-	}()
 	w.walletIsSyncing = true
 	walletAddresses := make([]domain.AddressInfo, 0)
 
-	err := w.vaultRepository.UpdateVault(
+	vault, err := w.vaultRepository.GetOrCreateVault(ctx, mnemonic, passphrase, config.GetNetwork())
+	if err != nil {
+		return err
+	}
+	defer vault.Lock()
+
+	if err := w.vaultRepository.UpdateVault(
 		ctx,
-		mnemonic,
-		passphrase,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			vault = v
 
@@ -191,12 +188,16 @@ func (w *walletService) InitWallet(
 			w.walletInitialized = true
 			return v, nil
 		},
-	)
+	); err != nil {
+		log.Debug("ended syncing wallet with error")
+		w.walletIsSyncing = false
+		return err
+	}
 
 	go w.startObservingAddresses(walletAddresses)
 	w.walletIsSyncing = false
 	log.Debug("ended syncing wallet")
-	return err
+	return nil
 }
 
 func (w *walletService) UnlockWallet(
@@ -212,8 +213,6 @@ func (w *walletService) UnlockWallet(
 
 	if err := w.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			if err := v.Unlock(passphrase); err != nil {
 				return nil, err
@@ -242,8 +241,6 @@ func (w *walletService) ChangePassword(
 
 	return w.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			err := v.ChangePassphrase(currentPassphrase, newPassphrase)
 			if err != nil {
@@ -266,8 +263,6 @@ func (w *walletService) GenerateAddressAndBlindingKey(
 
 	err = w.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			adr, _, bk, err1 := v.DeriveNextExternalAddressForAccount(
 				domain.WalletAccount,
@@ -363,8 +358,6 @@ func (w *walletService) SendToMany(
 
 	err = w.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err := v.GetMnemonicSafe()
 			if err != nil {
