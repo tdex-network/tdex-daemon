@@ -16,6 +16,9 @@ import (
 )
 
 func TestHavePermissionMacaroon(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 
 	adminMacPath := filepath.Join(
 		config.GetString(config.DataDirPathKey),
@@ -67,6 +70,9 @@ func TestHavePermissionMacaroon(t *testing.T) {
 }
 
 func TestNoPermissionMacaroon(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 
 	priceMacPath := filepath.Join(
 		config.GetString(config.DataDirPathKey),
@@ -104,6 +110,9 @@ func TestNoPermissionMacaroon(t *testing.T) {
 }
 
 func TestPublicNonOperatorPath(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 
 	conn, err := grpc.Dial(
 		fmt.Sprintf("%s:%d", "localhost", 9000),
