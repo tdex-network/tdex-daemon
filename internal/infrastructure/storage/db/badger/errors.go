@@ -13,3 +13,8 @@ var (
 	// ErrVaultNotFound ...
 	ErrVaultNotFound = errors.New("vault not found")
 )
+
+var (
+	// ErrTradeNotFound ...
+	ErrTradeNotFound = errors.New("trade not found")
+)

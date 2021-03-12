@@ -248,7 +248,7 @@ func (b *blockchainListener) updateTrade(
 	ctx context.Context,
 	event crawler.TransactionEvent,
 ) error {
-	trade, err := b.tradeRepository.GetTradeByTxID(ctx, event.TxID)
+	trade, err := b.tradeRepository.GetTradeWithTxID(ctx, event.TxID)
 	if err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func (b *blockchainListener) updateTrade(
 		ctx,
 		&trade.ID,
 		func(t *domain.Trade) (*domain.Trade, error) {
-			if err := t.Settle(uint64(event.BlockTime)); err != nil {
+			if _, err := t.Settle(uint64(event.BlockTime)); err != nil {
 				return nil, err
 			}
 

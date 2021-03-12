@@ -266,7 +266,7 @@ func insertTrades(db *DbManager) error {
 var (
 	hexCharset  = "0123456789abcdef"
 	addrCharset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
-	seededRand  = rand.New(rand.NewSource(time.Now().UnixNano()))
+	seededRand  = rand.New(rand.NewSource(time.Now().Unix()))
 )
 
 func randUnspents() []domain.Unspent {

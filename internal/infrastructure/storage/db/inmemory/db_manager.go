@@ -19,7 +19,6 @@ type marketInmemoryStore struct {
 type tradeInmemoryStore struct {
 	trades               map[uuid.UUID]domain.Trade
 	tradesBySwapAcceptID map[string]uuid.UUID
-	tradesByTrader       map[string][]uuid.UUID
 	tradesByMarket       map[string][]uuid.UUID
 	locker               *sync.Mutex
 }
@@ -68,7 +67,6 @@ func NewDbManager() *DbManager {
 		tradeStore: &tradeInmemoryStore{
 			trades:               map[uuid.UUID]domain.Trade{},
 			tradesBySwapAcceptID: map[string]uuid.UUID{},
-			tradesByTrader:       map[string][]uuid.UUID{},
 			tradesByMarket:       map[string][]uuid.UUID{},
 			locker:               &sync.Mutex{},
 		},

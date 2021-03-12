@@ -17,7 +17,6 @@ import (
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/pset"
 )
@@ -35,13 +34,13 @@ type TradeService interface {
 		ctx context.Context,
 		market Market,
 		tradeType int,
-		swapRequest *pb.SwapRequest,
-	) (*pb.SwapAccept, *pb.SwapFail, uint64, error)
+		swapRequest domain.SwapRequest,
+	) (domain.SwapAccept, domain.SwapFail, uint64, error)
 	TradeComplete(
 		ctx context.Context,
-		swapComplete *pb.SwapComplete,
-		swapFail *pb.SwapFail,
-	) (string, *pb.SwapFail, error)
+		swapComplete domain.SwapComplete,
+		swapFail domain.SwapFail,
+	) (string, domain.SwapFail, error)
 	GetMarketBalance(
 		ctx context.Context,
 		market Market,
@@ -194,10 +193,10 @@ func (t *tradeService) TradePropose(
 	ctx context.Context,
 	market Market,
 	tradeType int,
-	swapRequest *pb.SwapRequest,
+	swapRequest domain.SwapRequest,
 ) (
-	swapAccept *pb.SwapAccept,
-	swapFail *pb.SwapFail,
+	swapAccept domain.SwapAccept,
+	swapFail domain.SwapFail,
 	swapExpiryTime uint64,
 	err error,
 ) {
@@ -324,7 +323,12 @@ func (t *tradeService) TradePropose(
 		ctx,
 		nil,
 		func(trade *domain.Trade) (*domain.Trade, error) {
-			ok, err := trade.Propose(swapRequest, market.QuoteAsset, mkt.Fee, nil)
+			ok, err := trade.Propose(
+				swapRequest,
+				market.QuoteAsset, mkt.Fee,
+				uint64(config.GetInt(config.TradeExpiryTimeKey)),
+				nil,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -336,8 +340,7 @@ func (t *tradeService) TradePropose(
 			if !isValidTradePrice(swapRequest, tradeType, mkt, marketUnspents) {
 				trade.Fail(
 					swapRequest.GetId(),
-					domain.ProposalRejectedStatus,
-					pkgswap.ErrCodeInvalidSwapRequest,
+					int(pkgswap.ErrCodeInvalidSwapRequest),
 					"bad pricing",
 				)
 				swapFail = trade.SwapFailMessage()
@@ -375,7 +378,7 @@ func (t *tradeService) TradePropose(
 				return trade, nil
 			}
 			swapAccept = trade.SwapAcceptMessage()
-			swapExpiryTime = trade.SwapExpiryTime()
+			swapExpiryTime = trade.ExpiryTime
 
 			// Last thing to do is to lock the unspents. In case something goes wrong
 			// here, an error is returned and the accepted trade is discarded.
@@ -404,9 +407,9 @@ func (t *tradeService) TradePropose(
 // TradeComplete is the domain controller for the TradeComplete RPC
 func (t *tradeService) TradeComplete(
 	ctx context.Context,
-	swapComplete *pb.SwapComplete,
-	swapFail *pb.SwapFail,
-) (string, *pb.SwapFail, error) {
+	swapComplete domain.SwapComplete,
+	swapFail domain.SwapFail,
+) (string, domain.SwapFail, error) {
 	if swapFail != nil {
 		swapFailMsg, err := t.tradeFail(ctx, swapFail)
 		return "", swapFailMsg, err
@@ -415,8 +418,11 @@ func (t *tradeService) TradeComplete(
 	return t.tradeComplete(ctx, swapComplete)
 }
 
-func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapComplete) (txID string, swapFail *pb.SwapFail, err error) {
-	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
+func (t *tradeService) tradeComplete(
+	ctx context.Context,
+	swapComplete domain.SwapComplete,
+) (txID string, swapFail domain.SwapFail, err error) {
+	trade, err := t.tradeRepository.GetTradeWithSwapAcceptID(ctx, swapComplete.GetAcceptId())
 	if err != nil {
 		return "", nil, err
 	}
@@ -452,9 +458,12 @@ func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapC
 	return
 }
 
-func (t *tradeService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*pb.SwapFail, error) {
+func (t *tradeService) tradeFail(
+	ctx context.Context,
+	swapFail domain.SwapFail,
+) (domain.SwapFail, error) {
 	swapID := swapFail.GetMessageId()
-	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapID)
+	trade, err := t.tradeRepository.GetTradeWithSwapAcceptID(ctx, swapID)
 	if err != nil {
 		return nil, err
 	}
@@ -466,8 +475,7 @@ func (t *tradeService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*p
 		func(trade *domain.Trade) (*domain.Trade, error) {
 			trade.Fail(
 				swapID,
-				domain.FailedToCompleteStatus,
-				pkgswap.ErrCodeFailedToComplete,
+				int(pkgswap.ErrCodeFailedToComplete),
 				"set failed by counter-party",
 			)
 			return trade, nil
@@ -542,7 +550,7 @@ func (t *tradeService) startObservingAddressesAndTx(addressesToObserve []domain.
 
 type acceptSwapOpts struct {
 	mnemonic                   []string
-	swapRequest                *pb.SwapRequest
+	swapRequest                domain.SwapRequest
 	marketUnspents             []explorer.Utxo
 	feeUnspents                []explorer.Utxo
 	marketBlindingKeysByScript map[string][]byte
@@ -995,16 +1003,16 @@ func priceFromBalances(
 // against those of the swap, but rather they are used to create a range in
 // which the swap amounts must be included to be considered valid.
 func isValidTradePrice(
-	swapRequest *pb.SwapRequest,
+	swapRequest domain.SwapRequest,
 	tradeType int,
 	market *domain.Market,
 	unspents []domain.Unspent,
 ) bool {
 	// TODO: parallelize the 2 ways of calculating and valifdating the preview
 	// amount to speed up the process.
-	amount := swapRequest.AmountR
+	amount := swapRequest.GetAmountR()
 	if tradeType == TradeSell {
-		amount = swapRequest.AmountP
+		amount = swapRequest.GetAmountP()
 	}
 
 	_, previewAmount, _ := getPriceAndPreviewForMarket(
@@ -1019,9 +1027,9 @@ func isValidTradePrice(
 		return true
 	}
 
-	amount = swapRequest.AmountP
+	amount = swapRequest.GetAmountP()
 	if tradeType == TradeSell {
-		amount = swapRequest.AmountR
+		amount = swapRequest.GetAmountR()
 	}
 
 	_, previewAmount, _ = getPriceAndPreviewForMarket(
@@ -1036,7 +1044,7 @@ func isValidTradePrice(
 }
 
 func isPriceInRange(
-	swapRequest *pb.SwapRequest,
+	swapRequest domain.SwapRequest,
 	tradeType int,
 	previewAmount uint64,
 	isPreviewForQuoteAsset bool,

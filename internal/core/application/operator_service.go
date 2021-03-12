@@ -598,7 +598,7 @@ func (o *operatorService) GetCollectedMarketFee(
 		return nil, ErrMarketNotExist
 	}
 
-	trades, err := o.tradeRepository.GetCompletedTradesByMarket(
+	trades, err := o.tradeRepository.GetCompletedTradesForMarket(
 		ctx,
 		market.QuoteAsset,
 	)
@@ -884,10 +884,10 @@ func tradesToSwapInfo(
 			AmountR:          requestMsg.GetAmountR(),
 			AssetR:           requestMsg.GetAssetR(),
 			MarketFee:        fee,
-			RequestTimeUnix:  trade.SwapRequestTime(),
-			AcceptTimeUnix:   trade.SwapAcceptTime(),
-			CompleteTimeUnix: trade.SwapCompleteTime(),
-			ExpiryTimeUnix:   trade.SwapExpiryTime(),
+			RequestTimeUnix:  trade.SwapRequest.Timestamp,
+			AcceptTimeUnix:   trade.SwapAccept.Timestamp,
+			CompleteTimeUnix: trade.SwapComplete.Timestamp,
+			ExpiryTimeUnix:   trade.ExpiryTime,
 		}
 
 		swapInfos = append(swapInfos, newSwapInfo)

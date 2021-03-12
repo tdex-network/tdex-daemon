@@ -252,7 +252,7 @@ func (t traderHandler) tradePropose(
 		stream.Context(),
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			swapAccept, swapFail, swapExpiryTime, err := t.traderSvc.TradePropose(
+			accept, fail, swapExpiryTime, err := t.traderSvc.TradePropose(
 				ctx,
 				market,
 				int(tradeType),
@@ -260,6 +260,27 @@ func (t traderHandler) tradePropose(
 			)
 			if err != nil {
 				return nil, err
+			}
+
+			var swapAccept *pbswap.SwapAccept
+			var swapFail *pbswap.SwapFail
+
+			if accept != nil {
+				swapAccept = &pbswap.SwapAccept{
+					Id:                accept.GetId(),
+					RequestId:         accept.GetRequestId(),
+					Transaction:       accept.GetTransaction(),
+					InputBlindingKey:  accept.GetInputBlindingKey(),
+					OutputBlindingKey: accept.GetOutputBlindingKey(),
+				}
+			}
+			if fail != nil {
+				swapFail = &pbswap.SwapFail{
+					Id:             fail.GetId(),
+					MessageId:      fail.GetMessageId(),
+					FailureCode:    fail.GetFailureCode(),
+					FailureMessage: fail.GetFailureMessage(),
+				}
 			}
 
 			return &pb.TradeProposeReply{
@@ -288,13 +309,23 @@ func (t traderHandler) tradeComplete(
 		stream.Context(),
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			txID, swapFail, err := t.traderSvc.TradeComplete(
+			txID, fail, err := t.traderSvc.TradeComplete(
 				ctx,
 				req.GetSwapComplete(),
 				req.GetSwapFail(),
 			)
 			if err != nil {
 				return nil, err
+			}
+
+			var swapFail *pbswap.SwapFail
+			if fail != nil {
+				swapFail = &pbswap.SwapFail{
+					Id:             fail.GetId(),
+					MessageId:      fail.GetMessageId(),
+					FailureCode:    fail.GetFailureCode(),
+					FailureMessage: fail.GetFailureMessage(),
+				}
 			}
 
 			return &pb.TradeCompleteReply{

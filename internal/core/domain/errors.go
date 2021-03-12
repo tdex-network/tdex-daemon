@@ -42,6 +42,11 @@ var (
 	ErrUnspentAlreadyLocked = errors.New("cannot lock an already locked unspent")
 )
 
+var (
+	// ErrInvalidAccount ...
+	ErrInvalidAccount = errors.New("account index must be a positive integer number")
+)
+
 // Vault errors
 var (
 	// ErrVaultMustBeLocked is thrown when trying to change the passphrase with an unlocked wallet
@@ -61,26 +66,26 @@ var (
 )
 
 var (
-	// ErrMustBeEmpty ...
-	ErrMustBeEmpty = errors.New(
+	// ErrTradeMustBeEmpty ...
+	ErrTradeMustBeEmpty = errors.New(
 		"trade must be empty for parsing a proposal",
 	)
-	// ErrMustBeProposal ...
-	ErrMustBeProposal = errors.New(
+	// ErrTradeMustBeProposal ...
+	ErrTradeMustBeProposal = errors.New(
 		"trade must be in proposal state for being accepted",
 	)
-	// ErrMustBeAccepted ...
-	ErrMustBeAccepted = errors.New(
+	// ErrTradeMustBeAccepted ...
+	ErrTradeMustBeAccepted = errors.New(
 		"trade must be in accepted state for being completed",
 	)
-	// ErrMustBeCompleted ...
-	ErrMustBeCompleted = errors.New(
+	// ErrTradeMustBeCompleted ...
+	ErrTradeMustBeCompleted = errors.New(
 		"trade must be in completed state to add txid",
 	)
-	// ErrExpirationDateNotReached ...
-	ErrExpirationDateNotReached = errors.New(
+	// ErrTradeExpirationDateNotReached ...
+	ErrTradeExpirationDateNotReached = errors.New(
 		"trade did not reached expiration date yet and cannot be set expired",
 	)
-	// ErrInvalidAccount ...
-	ErrInvalidAccount = errors.New("account index must be a positive integer number")
+	// ErrTradeExpired ...
+	ErrTradeExpired = errors.New("trade has expired")
 )
