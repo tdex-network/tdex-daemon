@@ -3,6 +3,9 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
+	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/transaction"
 	"strings"
 	"time"
 
@@ -64,6 +67,15 @@ type OperatorService interface {
 		int64,
 		error,
 	)
+	ClaimMarketDeposit(
+		ctx context.Context,
+		market Market,
+		outpoints []TxOutpoint,
+	) error
+	ClaimFeeDeposit(
+		ctx context.Context,
+		outpoints []TxOutpoint,
+	) error
 	ListMarket(
 		ctx context.Context,
 	) ([]MarketInfo, error)
@@ -812,6 +824,146 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 		return -1, err
 	}
 	return int64(baseAssetAmount), nil
+}
+
+func (o *operatorService) ClaimMarketDeposit(
+	ctx context.Context,
+	market Market,
+	outpoints []TxOutpoint,
+) error {
+	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
+		return domain.ErrInvalidBaseAsset
+	}
+
+	_, accountIndex, err := o.marketRepository.GetMarketByAsset(
+		ctx,
+		market.QuoteAsset,
+	)
+	if err != nil {
+		return err
+	}
+
+	addresses, bkPairs, err := o.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(
+			ctx,
+			accountIndex,
+		)
+
+	return o.claimDeposit(
+		ctx,
+		addresses,
+		bkPairs,
+		outpoints,
+	)
+}
+
+func (o *operatorService) ClaimFeeDeposit(
+	ctx context.Context,
+	outpoints []TxOutpoint,
+) error {
+	addresses, bkPairs, err := o.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return err
+	}
+
+	return o.claimDeposit(
+		ctx,
+		addresses,
+		bkPairs,
+		outpoints,
+	)
+}
+
+func (o *operatorService) claimDeposit(
+	ctx context.Context,
+	addresses []string,
+	bkPairs [][]byte,
+	outpoints []TxOutpoint,
+) error {
+	scriptBlindingKeyPairs := make(map[string]struct {
+		address     string
+		blindingKey [][]byte
+	})
+
+	for _, v := range addresses {
+		script, err := address.ToOutputScript(v)
+		if err != nil {
+			return err
+		}
+		scriptBlindingKeyPairs[hex.EncodeToString(script)] = struct {
+			address     string
+			blindingKey [][]byte
+		}{address: v, blindingKey: bkPairs}
+	}
+
+	unspents := make([]domain.Unspent, 0)
+	for _, v := range outpoints {
+		confirmed, err := o.explorerSvc.IsTransactionConfirmed(v.Hash)
+		if err != nil {
+			return err
+		}
+		if !confirmed {
+			return ErrTxNotConfirmed
+		}
+
+		txHex, err := o.explorerSvc.GetTransactionHex(v.Hash)
+		if err != nil {
+			return err
+		}
+		tx, err := transaction.NewTxFromHex(txHex)
+		if err != nil {
+			return err
+		}
+
+		if len(tx.Outputs) <= v.Index {
+			return fmt.Errorf(
+				"tx: %v, doesnt have outpoint at index: %v",
+				v.Hash,
+				v.Index,
+			)
+		}
+		script := hex.EncodeToString(tx.Outputs[v.Index].Script)
+
+		if val, ok := scriptBlindingKeyPairs[script]; ok {
+			utxo, err := o.explorerSvc.GetUnspents(
+				val.address,
+				val.blindingKey,
+			)
+			if err != nil {
+				return err
+			}
+
+			for _, v := range utxo {
+				u := domain.Unspent{
+					TxID:            v.Hash(),
+					VOut:            v.Index(),
+					Value:           v.Value(),
+					AssetHash:       v.Asset(),
+					ValueCommitment: v.ValueCommitment(),
+					AssetCommitment: v.AssetCommitment(),
+					ValueBlinder:    v.ValueBlinder(),
+					AssetBlinder:    v.AssetBlinder(),
+					ScriptPubKey:    v.Script(),
+					Nonce:           v.Nonce(),
+					RangeProof:      v.RangeProof(),
+					SurjectionProof: v.SurjectionProof(),
+					Confirmed:       v.IsConfirmed(),
+					Address:         val.address,
+				}
+				unspents = append(unspents, u)
+			}
+
+		} else {
+			return fmt.Errorf(
+				"outpoint: %v at index: %v not owned by market",
+				v.Hash,
+				v.Index,
+			)
+		}
+	}
+
+	return o.unspentRepository.AddUnspents(ctx, unspents)
 }
 
 func (o *operatorService) getAllUnspentsForAccount(
