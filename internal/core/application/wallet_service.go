@@ -7,13 +7,13 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -64,6 +64,8 @@ type walletService struct {
 	blockchainListener BlockchainListener
 	walletInitialized  bool
 	walletIsSyncing    bool
+	withElements       bool
+	network            *network.Network
 }
 
 func NewWalletService(
@@ -71,12 +73,16 @@ func NewWalletService(
 	unspentRepository domain.UnspentRepository,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
+	withElements bool,
+	net *network.Network,
 ) WalletService {
 	return newWalletService(
 		vaultRepository,
 		unspentRepository,
 		explorerService,
 		blockchainListener,
+		withElements,
+		net,
 	)
 }
 
@@ -85,12 +91,16 @@ func newWalletService(
 	unspentRepository domain.UnspentRepository,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
+	withElements bool,
+	net *network.Network,
 ) *walletService {
 	w := &walletService{
 		vaultRepository:    vaultRepository,
 		unspentRepository:  unspentRepository,
 		explorerService:    explorerService,
 		blockchainListener: blockchainListener,
+		withElements:       withElements,
+		network:            net,
 	}
 	// to understand if the service has an already initialized wallet we check
 	// if the inner vaultRepo is able to return a Vault without passing mnemonic
@@ -133,7 +143,7 @@ func (w *walletService) InitWallet(
 		return nil
 	}
 
-	if restore && config.IsSet(config.ElementsRPCEndpointKey) {
+	if restore && w.withElements {
 		return fmt.Errorf(
 			"Restoring a wallet through the Elements explorer is not availble at the " +
 				"moment. Please restart the daemon using the Esplora block explorer.",
@@ -143,7 +153,7 @@ func (w *walletService) InitWallet(
 	w.walletIsSyncing = true
 	walletAddresses := make([]domain.AddressInfo, 0)
 
-	vault, err := w.vaultRepository.GetOrCreateVault(ctx, mnemonic, passphrase, config.GetNetwork())
+	vault, err := w.vaultRepository.GetOrCreateVault(ctx, mnemonic, passphrase, w.network)
 	if err != nil {
 		return err
 	}
@@ -162,9 +172,9 @@ func (w *walletService) InitWallet(
 				return nil, err
 			}
 
-			feeLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.FeeAccount, w.explorerService, restore)
-			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService, restore)
-			marketsLastDerivedIndex := getLatestDerivationIndexForMarkets(ww, w.explorerService, restore)
+			feeLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.FeeAccount, w.explorerService, restore, w.network)
+			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService, restore, w.network)
+			marketsLastDerivedIndex := getLatestDerivationIndexForMarkets(ww, w.explorerService, restore, w.network)
 
 			feeAddresses, err := initVaultAccount(v, domain.FeeAccount, feeLastDerivedIndex)
 			if err != nil {
@@ -388,7 +398,7 @@ func (w *walletService) SendToMany(
 			if err != nil {
 				return nil, err
 			}
-			feeChangePathByAsset[config.GetNetwork().AssetID] = feeAccount.DerivationPathByScript[script]
+			feeChangePathByAsset[w.network.AssetID] = feeAccount.DerivationPathByScript[script]
 			addressToObserve = feeAddress
 			blindkeyToObserve = feeBlindkey
 
@@ -403,6 +413,7 @@ func (w *walletService) SendToMany(
 				inputPathsByScript:    walletAccount.DerivationPathByScript,
 				feeInputPathsByScript: feeAccount.DerivationPathByScript,
 				milliSatPerByte:       int(req.MillisatPerByte),
+				network:               w.network,
 			})
 			if err != nil {
 				return nil, err
@@ -583,6 +594,7 @@ type sendToManyOpts struct {
 	inputPathsByScript    map[string]string
 	feeInputPathsByScript map[string]string
 	milliSatPerByte       int
+	network               *network.Network
 }
 
 func sendToMany(opts sendToManyOpts) (string, string, error) {
@@ -604,6 +616,7 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	network := opts.network
 
 	// add inputs and outputs
 	updateResult, err := w.UpdateTx(wallet.UpdateTxOpts{
@@ -612,7 +625,7 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 		Outputs:            opts.outputs,
 		ChangePathsByAsset: opts.changePathsByAsset,
 		MilliSatsPerBytes:  milliSatPerByte,
-		Network:            config.GetNetwork(),
+		Network:            network,
 	})
 	if err != nil {
 		return "", "", err
@@ -623,8 +636,6 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 	for _, v := range updateResult.ChangeOutputsBlindingKeys {
 		outputsBlindingKeys = append(outputsBlindingKeys, v)
 	}
-
-	network := config.GetNetwork()
 
 	// add inputs for paying network fees
 	updateResult, err = w.UpdateTx(wallet.UpdateTxOpts{
@@ -709,6 +720,7 @@ func getLatestDerivationIndexForAccount(
 	accountIndex int,
 	explorerSvc explorer.Service,
 	restore bool,
+	net *network.Network,
 ) *accountLastDerivedIndex {
 	if !restore {
 		log.Debugf("skip restore - account %d empty", accountIndex)
@@ -723,7 +735,7 @@ func getLatestDerivationIndexForAccount(
 		for unfundedAddressesCounter < 20 {
 			ctAddress, script, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 				DerivationPath: fmt.Sprintf("%d'/%d/%d", accountIndex, chainIndex, i),
-				Network:        config.GetNetwork(),
+				Network:        net,
 			})
 			blindKey, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
 				Script: script,
@@ -761,6 +773,7 @@ func getLatestDerivationIndexForMarkets(
 	w *wallet.Wallet,
 	explorerSvc explorer.Service,
 	restore bool,
+	net *network.Network,
 ) []*accountLastDerivedIndex {
 	marketsLastIndex := make([]*accountLastDerivedIndex, 0)
 	i := 0
@@ -771,6 +784,7 @@ func getLatestDerivationIndexForMarkets(
 			marketIndex,
 			explorerSvc,
 			restore,
+			net,
 		)
 		if lastDerivedIndex == nil {
 			break

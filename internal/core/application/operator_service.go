@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -80,6 +80,9 @@ type operatorService struct {
 	unspentRepository  domain.UnspentRepository
 	explorerSvc        explorer.Service
 	blockchainListener BlockchainListener
+	marketBaseAsset    string
+	marketFee          int64
+	network            *network.Network
 }
 
 // NewOperatorService is a constructor function for OperatorService.
@@ -90,6 +93,9 @@ func NewOperatorService(
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
+	marketBaseAsset string,
+	marketFee int64,
+	net *network.Network,
 ) OperatorService {
 	return &operatorService{
 		marketRepository:   marketRepository,
@@ -98,6 +104,9 @@ func NewOperatorService(
 		unspentRepository:  unspentRepository,
 		explorerSvc:        explorerSvc,
 		blockchainListener: bcListener,
+		marketBaseAsset:    marketBaseAsset,
+		marketFee:          marketFee,
+		network:            net,
 	}
 }
 
@@ -121,7 +130,7 @@ func (o *operatorService) DepositMarket(
 		}
 
 		// Checks if base asset is valid
-		if baseAsset != config.GetString(config.BaseAssetKey) {
+		if baseAsset != o.marketBaseAsset {
 			return nil, domain.ErrMarketInvalidBaseAsset
 		}
 
@@ -148,7 +157,7 @@ func (o *operatorService) DepositMarket(
 		}
 
 		nextAccountIndex := latestAccountIndex + 1
-		fee := int64(config.GetFloat(config.DefaultFeeKey) * 100)
+		fee := o.marketFee
 		if _, err := o.marketRepository.GetOrCreateMarket(
 			ctx,
 			&domain.Market{AccountIndex: nextAccountIndex, Fee: fee},
@@ -157,7 +166,7 @@ func (o *operatorService) DepositMarket(
 		}
 
 		accountIndex = nextAccountIndex
-	} else if baseAsset != config.GetString(config.BaseAssetKey) {
+	} else if baseAsset != o.marketBaseAsset {
 		return nil, domain.ErrMarketInvalidBaseAsset
 	} else {
 		return nil, domain.ErrMarketInvalidQuoteAsset
@@ -250,7 +259,7 @@ func (o *operatorService) OpenMarket(
 		return domain.ErrMarketInvalidQuoteAsset
 	}
 
-	if baseAsset != config.GetString(config.BaseAssetKey) {
+	if baseAsset != o.marketBaseAsset {
 		return domain.ErrMarketInvalidBaseAsset
 	}
 
@@ -304,7 +313,7 @@ func (o *operatorService) CloseMarket(
 		return domain.ErrMarketInvalidQuoteAsset
 	}
 
-	if baseAsset != config.GetString(config.BaseAssetKey) {
+	if baseAsset != o.marketBaseAsset {
 		return domain.ErrMarketInvalidBaseAsset
 	}
 
@@ -337,7 +346,7 @@ func (o *operatorService) UpdateMarketFee(
 	}
 
 	// Checks if base asset is correct
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+	if req.BaseAsset != o.marketBaseAsset {
 		return nil, ErrMarketNotExist
 	}
 	//Checks if market exist
@@ -400,7 +409,7 @@ func (o *operatorService) UpdateMarketPrice(
 	}
 
 	// Checks if base asset is correct
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+	if req.BaseAsset != o.marketBaseAsset {
 		return domain.ErrMarketInvalidBaseAsset
 	}
 
@@ -457,7 +466,7 @@ func (o *operatorService) UpdateMarketStrategy(
 	}
 
 	// Checks if base asset is correct
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+	if req.BaseAsset != o.marketBaseAsset {
 		return ErrMarketNotExist
 	}
 	//Checks if market exist
@@ -535,7 +544,7 @@ func (o *operatorService) ListMarketExternalAddresses(
 		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+	if req.BaseAsset != o.marketBaseAsset {
 		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
@@ -644,7 +653,7 @@ func (o *operatorService) WithdrawMarketFunds(
 	[]byte,
 	error,
 ) {
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
+	if req.BaseAsset != o.marketBaseAsset {
 		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
@@ -741,7 +750,7 @@ func (o *operatorService) WithdrawMarketFunds(
 			if err != nil {
 				return nil, err
 			}
-			feeChangePathByAsset[config.GetNetwork().AssetID] =
+			feeChangePathByAsset[o.network.AssetID] =
 				feeAccount.DerivationPathByScript[script]
 
 			addressesToObserve = append(
@@ -763,6 +772,7 @@ func (o *operatorService) WithdrawMarketFunds(
 				inputPathsByScript:    marketAccount.DerivationPathByScript,
 				feeInputPathsByScript: feeAccount.DerivationPathByScript,
 				milliSatPerByte:       int(req.MillisatPerByte),
+				network:               o.network,
 			})
 			if err != nil {
 				return nil, err
@@ -801,7 +811,7 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 	baseAssetAmount, err := o.unspentRepository.GetBalance(
 		ctx,
 		addresses,
-		config.GetString(config.BaseAssetKey),
+		o.marketBaseAsset,
 	)
 	if err != nil {
 		return -1, err

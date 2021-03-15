@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/tdex-network/tdex-daemon/config"
-
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -25,10 +23,10 @@ type unspentRepositoryImpl struct {
 	unspentTtl time.Duration
 }
 
-func NewUnspentRepositoryImpl(db *DbManager) domain.UnspentRepository {
+func NewUnspentRepositoryImpl(db *DbManager, unspentTTL time.Duration) domain.UnspentRepository {
 	return unspentRepositoryImpl{
 		db:         db,
-		unspentTtl: time.Duration(config.GetInt(config.TradeExpiryTimeKey)),
+		unspentTtl: unspentTTL,
 	}
 }
 

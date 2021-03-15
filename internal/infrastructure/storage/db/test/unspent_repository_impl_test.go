@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/google/uuid"
@@ -418,7 +419,8 @@ func createUnspentRepositories(t *testing.T) ([]unspentRepository, func()) {
 }
 
 func newBadgerUnspentRepository(dbmanager *dbbadger.DbManager) domain.UnspentRepository {
-	return dbbadger.NewUnspentRepositoryImpl(dbmanager)
+	expiryTime := 2 * time.Minute
+	return dbbadger.NewUnspentRepositoryImpl(dbmanager, expiryTime)
 }
 
 func newInMemoryUnspentRepository(dbmanager *inmemory.DbManager) domain.UnspentRepository {

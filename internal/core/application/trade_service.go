@@ -8,7 +8,6 @@ import (
 
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -18,6 +17,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 )
 
@@ -54,6 +54,10 @@ type tradeService struct {
 	unspentRepository  domain.UnspentRepository
 	explorerSvc        explorer.Service
 	blockchainListener BlockchainListener
+	marketBaseAsset    string
+	expiryDuration     uint64
+	priceSlippage      decimal.Decimal
+	network            *network.Network
 }
 
 func NewTradeService(
@@ -63,6 +67,10 @@ func NewTradeService(
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
+	marketBaseAsset string,
+	expiryDuration time.Duration,
+	priceSlippage decimal.Decimal,
+	net *network.Network,
 ) TradeService {
 	return newTradeService(
 		marketRepository,
@@ -71,6 +79,10 @@ func NewTradeService(
 		unspentRepository,
 		explorerSvc,
 		bcListener,
+		marketBaseAsset,
+		uint64(expiryDuration),
+		priceSlippage,
+		net,
 	)
 }
 
@@ -81,6 +93,10 @@ func newTradeService(
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
+	marketBaseAsset string,
+	expiryDuration uint64,
+	priceSlippage decimal.Decimal,
+	net *network.Network,
 ) *tradeService {
 	return &tradeService{
 		marketRepository:   marketRepository,
@@ -89,6 +105,10 @@ func newTradeService(
 		unspentRepository:  unspentRepository,
 		explorerSvc:        explorerSvc,
 		blockchainListener: bcListener,
+		marketBaseAsset:    marketBaseAsset,
+		expiryDuration:     expiryDuration,
+		priceSlippage:      priceSlippage,
+		network:            net,
 	}
 }
 
@@ -136,7 +156,7 @@ func (t *tradeService) GetMarketPrice(
 	}
 
 	// Checks if base asset is correct
-	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
+	if market.BaseAsset != t.marketBaseAsset {
 		return nil, ErrMarketNotExist
 	}
 
@@ -326,7 +346,7 @@ func (t *tradeService) TradePropose(
 			ok, err := trade.Propose(
 				swapRequest,
 				market.QuoteAsset, mkt.Fee,
-				uint64(config.GetInt(config.TradeExpiryTimeKey)),
+				t.expiryDuration,
 				nil,
 			)
 			if err != nil {
@@ -337,7 +357,7 @@ func (t *tradeService) TradePropose(
 				return trade, nil
 			}
 
-			if !isValidTradePrice(swapRequest, tradeType, mkt, marketUnspents) {
+			if !isValidTradePrice(swapRequest, tradeType, mkt, marketUnspents, t.priceSlippage) {
 				trade.Fail(
 					swapRequest.GetId(),
 					int(pkgswap.ErrCodeInvalidSwapRequest),
@@ -360,6 +380,7 @@ func (t *tradeService) TradePropose(
 				outputDerivationPath:       outputDerivationPath,
 				changeDerivationPath:       changeDerivationPath,
 				feeChangeDerivationPath:    feeChangeDerivationPath,
+				network:                    t.network,
 			})
 			if err != nil {
 				return nil, err
@@ -561,6 +582,7 @@ type acceptSwapOpts struct {
 	outputDerivationPath       string
 	changeDerivationPath       string
 	feeChangeDerivationPath    string
+	network                    *network.Network
 }
 
 type acceptSwapResult struct {
@@ -577,7 +599,7 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 	if err != nil {
 		return
 	}
-	network := config.GetNetwork()
+	network := opts.network
 	// fill swap request transaction with daemon's inputs and outputs
 	psetBase64, selectedUnspentsForSwap, err := w.UpdateSwapTx(wallet.UpdateSwapTxOpts{
 		PsetBase64:           opts.swapRequest.GetTransaction(),
@@ -1007,6 +1029,7 @@ func isValidTradePrice(
 	tradeType int,
 	market *domain.Market,
 	unspents []domain.Unspent,
+	slippage decimal.Decimal,
 ) bool {
 	// TODO: parallelize the 2 ways of calculating and valifdating the preview
 	// amount to speed up the process.
@@ -1023,7 +1046,7 @@ func isValidTradePrice(
 		market.BaseAsset,
 	)
 
-	if isPriceInRange(swapRequest, tradeType, previewAmount, true) {
+	if isPriceInRange(swapRequest, tradeType, previewAmount, true, slippage) {
 		return true
 	}
 
@@ -1040,7 +1063,7 @@ func isValidTradePrice(
 		market.QuoteAsset,
 	)
 
-	return isPriceInRange(swapRequest, tradeType, previewAmount, false)
+	return isPriceInRange(swapRequest, tradeType, previewAmount, false, slippage)
 }
 
 func isPriceInRange(
@@ -1048,6 +1071,7 @@ func isPriceInRange(
 	tradeType int,
 	previewAmount uint64,
 	isPreviewForQuoteAsset bool,
+	slippage decimal.Decimal,
 ) bool {
 	amountToCheck := decimal.NewFromInt(int64(swapRequest.GetAmountP()))
 	if tradeType == TradeSell {
@@ -1060,7 +1084,6 @@ func isPriceInRange(
 		}
 	}
 
-	slippage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey) / 100)
 	expectedAmount := decimal.NewFromInt(int64(previewAmount))
 	lowerBound := expectedAmount.Mul(decimal.NewFromInt(1).Sub(slippage))
 	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))

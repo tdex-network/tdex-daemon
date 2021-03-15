@@ -29,6 +29,15 @@ import (
 //RegtestExplorerAPI ...
 const RegtestExplorerAPI = "http://127.0.0.1:3001"
 
+var (
+	regtest        = &network.Regtest
+	mktBaseAsset   = regtest.AssetID
+	mktFee         = int64(25)
+	expiryDuration = uint64(120 * time.Second)
+	slippage       = decimal.NewFromFloat(0.05)
+	feeThreshold   = uint64(5000)
+)
+
 type mockedWallet struct {
 	mnemonic          []string
 	encryptedMnemonic string
@@ -118,6 +127,8 @@ func newMockServices(
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
+		mktBaseAsset,
+		feeThreshold,
 	)
 
 	walletSvc := newWalletService(
@@ -125,6 +136,8 @@ func newMockServices(
 		unspentRepo,
 		explorerSvc,
 		blockchainListener,
+		false,
+		regtest,
 	)
 
 	if !vaultRepositoryIsEmpty {
@@ -156,6 +169,10 @@ func newMockServices(
 		unspentRepo,
 		explorerSvc,
 		blockchainListener,
+		mktBaseAsset,
+		expiryDuration,
+		slippage,
+		regtest,
 	)
 
 	operatorSvc := NewOperatorService(
@@ -165,6 +182,9 @@ func newMockServices(
 		unspentRepo,
 		explorerSvc,
 		blockchainListener,
+		mktBaseAsset,
+		mktFee,
+		regtest,
 	)
 
 	close := func() {
@@ -236,6 +256,8 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
+		mktBaseAsset,
+		feeThreshold,
 	)
 
 	walletSvc := newWalletService(
@@ -243,6 +265,8 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		unspentRepo,
 		explorerSvc,
 		blockchainListener,
+		false,
+		regtest,
 	)
 
 	ctx := context.Background()
