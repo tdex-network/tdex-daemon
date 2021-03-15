@@ -15,7 +15,7 @@ type mockSwapParser struct {
 	mustFail bool
 }
 
-func newMockedSwapParser(mustFail bool) domain.ISwapParser {
+func newMockedSwapParser(mustFail bool) domain.SwapParser {
 	return mockSwapParser{mustFail}
 }
 
@@ -80,7 +80,7 @@ func (m mockSwapParser) DeserializeFail(_ []byte) (domain.SwapFail, error) {
  */
 type mockPsetManager struct{}
 
-func newMockedPsetManager() domain.IPsetManager {
+func newMockedPsetManager() domain.PsetParser {
 	return mockPsetManager{}
 }
 

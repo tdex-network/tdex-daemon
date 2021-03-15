@@ -27,7 +27,7 @@ func (t *Trade) Propose(
 	t.PsetBase64 = swapRequest.GetTransaction()
 	t.Status = ProposalStatus
 
-	msg, err := SwapParser.SerializeRequest(swapRequest)
+	msg, err := SwapParserManager.SerializeRequest(swapRequest)
 	if err != nil {
 		t.Fail(
 			swapRequest.GetId(),
@@ -68,7 +68,7 @@ func (t *Trade) Accept(
 		return false, ErrTradeMustBeProposal
 	}
 
-	swapAcceptID, swapAcceptMsg, err := SwapParser.SerializeAccept(AcceptArgs{
+	swapAcceptID, swapAcceptMsg, err := SwapParserManager.SerializeAccept(AcceptArgs{
 		RequestMessage:     t.SwapRequest.Message,
 		Transaction:        psetBase64,
 		InputBlindingKeys:  inputBlindingKeys,
@@ -88,7 +88,7 @@ func (t *Trade) Accept(
 	t.SwapAccept.Message = swapAcceptMsg
 	t.SwapAccept.Timestamp = uint64(time.Now().Unix())
 	t.PsetBase64 = psetBase64
-	txID, _ := PsetManager.GetTxID(psetBase64)
+	txID, _ := PsetParserManager.GetTxID(psetBase64)
 	t.TxID = txID
 
 	return true, nil
@@ -120,7 +120,7 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 		return nil, ErrTradeMustBeAccepted
 	}
 
-	swapCompleteID, swapCompleteMsg, err := SwapParser.SerializeComplete(
+	swapCompleteID, swapCompleteMsg, err := SwapParserManager.SerializeComplete(
 		t.SwapRequestMessage(),
 		t.SwapAcceptMessage(),
 		psetBase64,
@@ -134,7 +134,7 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 		return &CompleteResult{OK: false}, nil
 	}
 
-	txHex, txHash, _ := PsetManager.GetTxHex(psetBase64)
+	txHex, txHash, _ := PsetParserManager.GetTxHex(psetBase64)
 	t.SwapComplete.ID = swapCompleteID
 	t.SwapComplete.Message = swapCompleteMsg
 	t.Status = CompletedStatus
@@ -168,7 +168,7 @@ func (t *Trade) Fail(swapID string, errCode int, errMsg string) {
 		return
 	}
 
-	swapFailID, swapFailMsg := SwapParser.SerializeFail(swapID, errCode, errMsg)
+	swapFailID, swapFailMsg := SwapParserManager.SerializeFail(swapID, errCode, errMsg)
 	t.SwapFail.ID = swapFailID
 	t.SwapFail.Message = swapFailMsg
 	t.Status.Failed = true
@@ -224,7 +224,7 @@ func (t *Trade) SwapRequestMessage() SwapRequest {
 	if t.IsEmpty() {
 		return nil
 	}
-	s, _ := SwapParser.DeserializeRequest(t.SwapRequest.Message)
+	s, _ := SwapParserManager.DeserializeRequest(t.SwapRequest.Message)
 	return s
 }
 
@@ -234,7 +234,7 @@ func (t *Trade) SwapAcceptMessage() SwapAccept {
 		return nil
 	}
 
-	s, _ := SwapParser.DeserializeAccept(t.SwapAccept.Message)
+	s, _ := SwapParserManager.DeserializeAccept(t.SwapAccept.Message)
 	return s
 }
 
@@ -244,7 +244,7 @@ func (t *Trade) SwapCompleteMessage() SwapComplete {
 		return nil
 	}
 
-	s, _ := SwapParser.DeserializeComplete(t.SwapComplete.Message)
+	s, _ := SwapParserManager.DeserializeComplete(t.SwapComplete.Message)
 	return s
 }
 
@@ -254,7 +254,7 @@ func (t *Trade) SwapFailMessage() SwapFail {
 		return nil
 	}
 
-	s, _ := SwapParser.DeserializeFail(t.SwapFail.Message)
+	s, _ := SwapParserManager.DeserializeFail(t.SwapFail.Message)
 	return s
 }
 

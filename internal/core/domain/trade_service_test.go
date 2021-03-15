@@ -14,7 +14,7 @@ import (
 )
 
 func TestTradePropose(t *testing.T) {
-	domain.SwapParser = newMockedSwapParser(false)
+	domain.SwapParserManager = newMockedSwapParser(false)
 
 	swapRequest := newMockedSwapRequest()
 	marketAsset := swapRequest.GetAssetR()
@@ -75,7 +75,7 @@ func TestFailingTradePropose(t *testing.T) {
 
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeEmpty()
-		domain.SwapParser = newMockedSwapParser(true)
+		domain.SwapParserManager = newMockedSwapParser(true)
 
 		ok, err := trade.Propose(swapRequest, marketAsset, marketFee, expiryDuration, traderPubkey)
 		require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestFailingTradePropose(t *testing.T) {
 }
 
 func TestTradeAccept(t *testing.T) {
-	domain.SwapParser = newMockedSwapParser(false)
+	domain.SwapParserManager = newMockedSwapParser(false)
 
 	tx := randomBase64(100)
 	inBlindKeys := map[string][]byte{
@@ -145,7 +145,7 @@ func TestFailingTradeAccept(t *testing.T) {
 
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeProposal()
-		domain.SwapParser = newMockedSwapParser(true)
+		domain.SwapParserManager = newMockedSwapParser(true)
 
 		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys)
 		require.NoError(t, err)
@@ -159,7 +159,7 @@ func TestFailingTradeAccept(t *testing.T) {
 		trade.ExpiryTime = uint64(time.Now().AddDate(0, 0, -1).Unix())
 		require.True(t, trade.IsExpired())
 
-		domain.SwapParser = newMockedSwapParser(true)
+		domain.SwapParserManager = newMockedSwapParser(true)
 
 		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys)
 		require.EqualError(t, err, domain.ErrTradeExpired.Error())
@@ -169,7 +169,7 @@ func TestFailingTradeAccept(t *testing.T) {
 
 	t.Run("failing_because_invalid_status", func(t *testing.T) {
 		trade := newTradeEmpty()
-		domain.SwapParser = newMockedSwapParser(false)
+		domain.SwapParserManager = newMockedSwapParser(false)
 
 		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys)
 		require.EqualError(t, err, domain.ErrTradeMustBeProposal.Error())
@@ -179,8 +179,8 @@ func TestFailingTradeAccept(t *testing.T) {
 }
 
 func TestTradeComplete(t *testing.T) {
-	domain.SwapParser = newMockedSwapParser(false)
-	domain.PsetManager = newMockedPsetManager()
+	domain.SwapParserManager = newMockedSwapParser(false)
+	domain.PsetParserManager = newMockedPsetManager()
 
 	tx := randomBase64(100)
 	tests := []struct {
@@ -221,7 +221,7 @@ func TestFailingTradeComplete(t *testing.T) {
 
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeAccepted()
-		domain.SwapParser = newMockedSwapParser(true)
+		domain.SwapParserManager = newMockedSwapParser(true)
 
 		res, err := trade.Complete(tx)
 		require.NoError(t, err)
@@ -237,7 +237,7 @@ func TestFailingTradeComplete(t *testing.T) {
 		trade.ExpiryTime = uint64(time.Now().AddDate(0, 0, -1).Unix())
 		require.True(t, trade.IsExpired())
 
-		domain.SwapParser = newMockedSwapParser(true)
+		domain.SwapParserManager = newMockedSwapParser(true)
 
 		res, err := trade.Complete(tx)
 		require.EqualError(t, err, domain.ErrTradeExpired.Error())
@@ -247,7 +247,7 @@ func TestFailingTradeComplete(t *testing.T) {
 	})
 
 	t.Run("failing_because_invalid_status", func(t *testing.T) {
-		domain.SwapParser = newMockedSwapParser(false)
+		domain.SwapParserManager = newMockedSwapParser(false)
 
 		tests := []struct {
 			name  string

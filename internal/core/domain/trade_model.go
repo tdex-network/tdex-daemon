@@ -75,13 +75,13 @@ func (s *SwapError) Error() string {
 	return s.Err.Error()
 }
 
-// ISwapParser defines the required methods to override the default swap
+// SwapParser defines the required methods to override the default swap
 // message parser, which is grpc-proto.
-type ISwapParser interface {
+type SwapParser interface {
 	SerializeRequest(r SwapRequest) ([]byte, *SwapError)
 	SerializeAccept(args AcceptArgs) (string, []byte, *SwapError)
 	SerializeComplete(r SwapRequest, a SwapAccept, tx string) (string, []byte, *SwapError)
-	SerializeFail(id string, status int, msg string) (string, []byte)
+	SerializeFail(id string, code int, msg string) (string, []byte)
 
 	DeserializeRequest(msg []byte) (SwapRequest, error)
 	DeserializeAccept(msg []byte) (SwapAccept, error)
@@ -207,10 +207,10 @@ func (p swapParser) DeserializeFail(msg []byte) (SwapFail, error) {
 	return s, nil
 }
 
-// IPsetManager defines the required methods to override the extraction of the
+// PsetParser defines the required methods to override the extraction of the
 // txid and of the final transaction in hex format from the PSET one.
 // The default one comes from go-elements.
-type IPsetManager interface {
+type PsetParser interface {
 	GetTxID(psetBase64 string) (string, error)
 	GetTxHex(psetBase64 string) (string, string, error)
 }
@@ -228,15 +228,15 @@ func (m psetManager) GetTxHex(psetBase64 string) (string, string, error) {
 }
 
 var (
-	// SwapParser ...
-	SwapParser ISwapParser
-	// PsetManager ...
-	PsetManager IPsetManager
+	// SwapParserManager ...
+	SwapParserManager SwapParser
+	// PsetParserManager ...
+	PsetParserManager PsetParser
 )
 
 func init() {
-	SwapParser = swapParser{}
-	PsetManager = psetManager{}
+	SwapParserManager = swapParser{}
+	PsetParserManager = psetManager{}
 }
 
 // SwapRequest is the abstracted representation of a SwapRequest message.
