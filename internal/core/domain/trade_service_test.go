@@ -415,7 +415,7 @@ func newTradeCompleted() *domain.Trade {
 func newTradeSettled() *domain.Trade {
 	trade := newTradeCompleted()
 	trade.ExpiryTime = 0
-	trade.SettleTime = uint64(time.Now().Unix())
+	trade.SettlementTime = uint64(time.Now().Unix())
 	trade.Status = domain.SettledStatus
 	return trade
 }

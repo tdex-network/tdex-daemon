@@ -144,9 +144,9 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 }
 
 // Settle brings the trade from the Completed to the Settled status, unsets the
-// expiration time and adds the timestamp of the settlement (it could be
+// expiration time and adds the timestamp of the settlement (it must be
 // a blocktime possibly) .
-func (t *Trade) Settle(settleTime uint64) (bool, error) {
+func (t *Trade) Settle(settlementTime uint64) (bool, error) {
 	if t.Status.Code == Settled {
 		return true, nil
 	}
@@ -163,7 +163,7 @@ func (t *Trade) Settle(settleTime uint64) (bool, error) {
 	}
 
 	t.ExpiryTime = 0
-	t.SettleTime = settleTime
+	t.SettlementTime = settlementTime
 	t.Status = SettledStatus
 	return true, nil
 }

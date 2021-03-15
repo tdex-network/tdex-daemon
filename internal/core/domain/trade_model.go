@@ -305,7 +305,7 @@ type Trade struct {
 	TxID             string
 	TxHex            string
 	ExpiryTime       uint64
-	SettleTime       uint64
+	SettlementTime   uint64
 	SwapRequest      Swap
 	SwapAccept       Swap
 	SwapComplete     Swap
