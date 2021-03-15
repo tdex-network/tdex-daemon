@@ -346,7 +346,6 @@ func (t *tradeService) TradePropose(
 			ok, err := trade.Propose(
 				swapRequest,
 				market.QuoteAsset, mkt.Fee,
-				t.expiryDuration,
 				nil,
 			)
 			if err != nil {
@@ -390,6 +389,7 @@ func (t *tradeService) TradePropose(
 				acceptSwapResult.psetBase64,
 				acceptSwapResult.inputBlindingKeys,
 				acceptSwapResult.outputBlindingKeys,
+				t.expiryDuration,
 			)
 			if err != nil {
 				return nil, err

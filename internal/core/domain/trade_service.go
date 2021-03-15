@@ -12,7 +12,6 @@ func (t *Trade) Propose(
 	swapRequest SwapRequest,
 	marketQuoteAsset string,
 	marketFeeBasisPoint int64,
-	expiryDuration uint64,
 	traderPubkey []byte,
 ) (bool, error) {
 	if t.Status.Code >= Proposal {
@@ -39,7 +38,6 @@ func (t *Trade) Propose(
 
 	price := calculateMarketPrices(swapRequest, marketQuoteAsset)
 
-	t.ExpiryTime = now + expiryDuration
 	t.SwapRequest.Message = msg
 	t.MarketPrice = price
 	t.MarketFee = marketFeeBasisPoint
@@ -47,21 +45,16 @@ func (t *Trade) Propose(
 }
 
 // Accept brings a trade from the Proposal to the Accepted status by validating
-// the provided arguemtn against the the SwapRequest message.
+// the provided arguemtn against the the SwapRequest message and sets its
+// expiration time.
 func (t *Trade) Accept(
 	psetBase64 string,
 	inputBlindingKeys,
 	outputBlindingKeys map[string][]byte,
+	expiryDuration uint64,
 ) (bool, error) {
 	if t.Status.Code >= Accepted {
 		return true, nil
-	}
-
-	if t.IsExpired() {
-		if !t.Status.Failed {
-			t.Status.Failed = true
-		}
-		return false, ErrTradeExpired
 	}
 
 	if t.Status != ProposalStatus {
@@ -83,10 +76,12 @@ func (t *Trade) Accept(
 		return false, nil
 	}
 
+	now := uint64(time.Now().Unix())
+	t.ExpiryTime = now + expiryDuration
 	t.Status = AcceptedStatus
 	t.SwapAccept.ID = swapAcceptID
 	t.SwapAccept.Message = swapAcceptMsg
-	t.SwapAccept.Timestamp = uint64(time.Now().Unix())
+	t.SwapAccept.Timestamp = now
 	t.PsetBase64 = psetBase64
 	txID, _ := PsetParserManager.GetTxID(psetBase64)
 	t.TxID = txID
@@ -103,10 +98,16 @@ type CompleteResult struct {
 
 // Complete brings a trade from the Accepted to the Completed status by
 // checiking that the given PSET completes the one of the SwapAccept message
-// and by finalizing it and extracting the raw tx in hex format.
+// and by finalizing it and extracting the raw tx in hex format. Complete must
+// be called before the trade expires, otherwise it won't be possible to
+// actually complete an accepted trade.
 func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 	if t.Status.Code >= Completed {
 		return &CompleteResult{OK: true, TxHex: t.TxHex, TxID: t.TxID}, nil
+	}
+
+	if !t.IsAccepted() {
+		return nil, ErrTradeMustBeAccepted
 	}
 
 	if t.IsExpired() {
@@ -114,10 +115,6 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 			t.Status.Failed = true
 		}
 		return nil, ErrTradeExpired
-	}
-
-	if !t.IsAccepted() {
-		return nil, ErrTradeMustBeAccepted
 	}
 
 	swapCompleteID, swapCompleteMsg, err := SwapParserManager.SerializeComplete(
@@ -144,8 +141,8 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 }
 
 // Settle brings the trade from the Completed to the Settled status, unsets the
-// expiration time and adds the timestamp of the settlement (it must be
-// a blocktime possibly) .
+// expiration time and adds the timestamp of the settlement (it must be a
+// blocktime).
 func (t *Trade) Settle(settlementTime uint64) (bool, error) {
 	if t.Status.Code == Settled {
 		return true, nil

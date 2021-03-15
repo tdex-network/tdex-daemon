@@ -19,7 +19,6 @@ func TestTradePropose(t *testing.T) {
 	swapRequest := newMockedSwapRequest()
 	marketAsset := swapRequest.GetAssetR()
 	marketFee := int64(25)
-	expiryDuration := uint64(600)
 	traderPubkey := []byte{}
 
 	tests := []struct {
@@ -54,7 +53,7 @@ func TestTradePropose(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ok, err := tt.trade.Propose(swapRequest, marketAsset, marketFee, expiryDuration, traderPubkey)
+			ok, err := tt.trade.Propose(swapRequest, marketAsset, marketFee, traderPubkey)
 			require.NoError(t, err)
 			require.True(t, ok)
 
@@ -70,14 +69,13 @@ func TestFailingTradePropose(t *testing.T) {
 	swapRequest := newMockedSwapRequest()
 	marketAsset := swapRequest.GetAssetR()
 	marketFee := int64(25)
-	expiryDuration := uint64(600)
 	traderPubkey := []byte{}
 
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeEmpty()
 		domain.SwapParserManager = newMockedSwapParser(true)
 
-		ok, err := trade.Propose(swapRequest, marketAsset, marketFee, expiryDuration, traderPubkey)
+		ok, err := trade.Propose(swapRequest, marketAsset, marketFee, traderPubkey)
 		require.NoError(t, err)
 		require.False(t, ok)
 		require.True(t, trade.IsProposal())
@@ -96,6 +94,7 @@ func TestTradeAccept(t *testing.T) {
 		randomHex(20): randomBytes(32),
 		randomHex(20): randomBytes(32),
 	}
+	expiryDuration := uint64(600)
 
 	tests := []struct {
 		name  string
@@ -125,7 +124,7 @@ func TestTradeAccept(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ok, err := tt.trade.Accept(tx, inBlindKeys, outBlindKeys)
+			ok, err := tt.trade.Accept(tx, inBlindKeys, outBlindKeys, expiryDuration)
 			require.NoError(t, err)
 			require.True(t, ok)
 			require.GreaterOrEqual(t, tt.trade.Status.Code, domain.Accepted)
@@ -142,36 +141,24 @@ func TestFailingTradeAccept(t *testing.T) {
 		randomHex(20): randomBytes(32),
 		randomHex(20): randomBytes(32),
 	}
+	expiryDuration := uint64(600)
 
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeProposal()
 		domain.SwapParserManager = newMockedSwapParser(true)
 
-		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys)
+		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys, expiryDuration)
 		require.NoError(t, err)
 		require.False(t, ok)
 		require.False(t, trade.IsAccepted())
 		require.True(t, trade.IsRejected())
 	})
 
-	t.Run("failing_because_expired", func(t *testing.T) {
-		trade := newTradeProposal()
-		trade.ExpiryTime = uint64(time.Now().AddDate(0, 0, -1).Unix())
-		require.True(t, trade.IsExpired())
-
-		domain.SwapParserManager = newMockedSwapParser(true)
-
-		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys)
-		require.EqualError(t, err, domain.ErrTradeExpired.Error())
-		require.False(t, ok)
-		require.False(t, trade.IsAccepted())
-	})
-
 	t.Run("failing_because_invalid_status", func(t *testing.T) {
 		trade := newTradeEmpty()
 		domain.SwapParserManager = newMockedSwapParser(false)
 
-		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys)
+		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys, expiryDuration)
 		require.EqualError(t, err, domain.ErrTradeMustBeProposal.Error())
 		require.False(t, ok)
 		require.False(t, trade.IsAccepted())
@@ -368,7 +355,6 @@ func newTradeProposal() *domain.Trade {
 			Message:   randomBytes(100),
 			Timestamp: uint64(now.Unix()),
 		},
-		ExpiryTime: uint64(now.Add(5 * time.Minute).Unix()),
 	}
 }
 
@@ -382,6 +368,7 @@ func newTradeAccepted() *domain.Trade {
 		Message:   randomBytes(100),
 		Timestamp: uint64(time.Now().Unix()),
 	}
+	trade.ExpiryTime = uint64(time.Now().Add(5 * time.Minute).Unix())
 	trade.TxID = randomHex(32)
 	return trade
 }

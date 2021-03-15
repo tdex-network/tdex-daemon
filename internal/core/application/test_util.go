@@ -388,7 +388,7 @@ func fillTradeRepo(
 	}
 
 	return tradeRepo.UpdateTrade(ctx, nil, func(trade *domain.Trade) (*domain.Trade, error) {
-		if _, err := trade.Propose(swapRequest, quoteAsset, 25, 120, nil); err != nil {
+		if _, err := trade.Propose(swapRequest, quoteAsset, 25, nil); err != nil {
 			return nil, err
 		}
 		return trade, nil
