@@ -37,11 +37,13 @@ var (
 	ErrMarketInvalidQuoteAsset = errors.New("invalid quote asset")
 )
 
+// Unspent errors
 var (
 	// ErrUnspentAlreadyLocked ...
 	ErrUnspentAlreadyLocked = errors.New("cannot lock an already locked unspent")
 )
 
+// Account errors
 var (
 	// ErrInvalidAccount ...
 	ErrInvalidAccount = errors.New("account index must be a positive integer number")
@@ -65,6 +67,7 @@ var (
 	ErrVaultAccountNotFound = errors.New("account not found")
 )
 
+// Trade errors
 var (
 	// ErrTradeMustBeEmpty ...
 	ErrTradeMustBeEmpty = errors.New(
