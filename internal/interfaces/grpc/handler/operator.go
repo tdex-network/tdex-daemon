@@ -512,10 +512,6 @@ func (o operatorHandler) claimMarketDeposit(
 	ctx context.Context,
 	req *pb.ClaimMarketDepositRequest,
 ) (*pb.ClaimMarketDepositReply, error) {
-	if err := validateMarket(req.GetMarket()); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
 	outputs := make([]application.TxOutpoint, 0, len(req.GetOutpoints()))
 	for _, v := range req.GetOutpoints() {
 		outputs = append(outputs, application.TxOutpoint{
@@ -526,7 +522,7 @@ func (o operatorHandler) claimMarketDeposit(
 
 	res, err := o.dbManager.RunTransaction(
 		ctx,
-		readOnlyTx,
+		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
 			err := o.operatorSvc.ClaimMarketDeposit(
 				ctx,
@@ -564,7 +560,7 @@ func (o operatorHandler) claimFeeDeposit(
 
 	res, err := o.dbManager.RunTransaction(
 		ctx,
-		readOnlyTx,
+		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
 			err := o.operatorSvc.ClaimFeeDeposit(
 				ctx,

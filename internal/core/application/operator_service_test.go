@@ -634,3 +634,42 @@ func TestFailingUpdateMarketStratergy(t *testing.T) {
 		assert.Equal(t, tt.expectedError, err)
 	}
 }
+
+func TestExistingMarketReq(t *testing.T) {
+	type args struct {
+		market Market
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "existing market reg",
+			args: args{
+				market: Market{
+					BaseAsset:  "",
+					QuoteAsset: "",
+				},
+			},
+			want: false,
+		},
+		{
+			name: "update market reg",
+			args: args{
+				market: Market{
+					BaseAsset:  "dummy",
+					QuoteAsset: "dummy",
+				},
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := existingMarketReq(tt.args.market); got != tt.want {
+				t.Errorf("newMarketReq() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
