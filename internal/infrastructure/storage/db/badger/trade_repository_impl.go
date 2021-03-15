@@ -39,7 +39,7 @@ func (t tradeRepositoryImpl) GetAllTrades(
 	return t.getAllTrades(ctx), nil
 }
 
-func (t tradeRepositoryImpl) GetAllTradesForMarket(
+func (t tradeRepositoryImpl) GetAllTradesByMarket(
 	ctx context.Context,
 	marketQuoteAsset string,
 ) ([]*domain.Trade, error) {
@@ -47,7 +47,7 @@ func (t tradeRepositoryImpl) GetAllTradesForMarket(
 	return t.findTrades(ctx, query)
 }
 
-func (t tradeRepositoryImpl) GetCompletedTradesForMarket(
+func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
 	ctx context.Context,
 	marketQuoteAsset string,
 ) ([]*domain.Trade, error) {
@@ -58,7 +58,7 @@ func (t tradeRepositoryImpl) GetCompletedTradesForMarket(
 	return t.findTrades(ctx, query)
 }
 
-func (t tradeRepositoryImpl) GetTradeWithSwapAcceptID(
+func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
 	ctx context.Context,
 	swapAcceptID string,
 ) (*domain.Trade, error) {
@@ -76,7 +76,7 @@ func (t tradeRepositoryImpl) GetTradeWithSwapAcceptID(
 	return trades[0], nil
 }
 
-func (t tradeRepositoryImpl) GetTradeWithTxID(
+func (t tradeRepositoryImpl) GetTradeByTxID(
 	ctx context.Context,
 	txID string,
 ) (*domain.Trade, error) {

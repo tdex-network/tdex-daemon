@@ -22,7 +22,7 @@ func TestIsZero(t *testing.T) {
 
 func TestLockUnlock(t *testing.T) {
 	v := newTestVaultLocked()
-	domain.Encrypter = mockedCryptoHandler{
+	domain.EncrypterManager = mockedCryptoHandler{
 		encrypt: func(_, _ string) (string, error) {
 			return v.EncryptedMnemonic, nil
 		},
@@ -32,7 +32,7 @@ func TestLockUnlock(t *testing.T) {
 				"because trade steak clock grace video jacket equal", nil
 		},
 	}
-	domain.MnemonicStore = newSimpleMnemonicStore(nil)
+	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
 	require.True(t, v.IsLocked())
 
@@ -57,12 +57,12 @@ func TestFailingUnlock(t *testing.T) {
 	v := newTestVaultLocked()
 
 	expectedErr := errors.New("something went wrong")
-	domain.Encrypter = mockedCryptoHandler{
+	domain.EncrypterManager = mockedCryptoHandler{
 		decrypt: func(_, _ string) (string, error) {
 			return "", expectedErr
 		},
 	}
-	domain.MnemonicStore = newSimpleMnemonicStore(nil)
+	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
 	require.True(t, v.IsLocked())
 	err := v.Unlock("")
@@ -72,7 +72,7 @@ func TestFailingUnlock(t *testing.T) {
 
 func TestChangePasshprase(t *testing.T) {
 	v := newTestVaultLocked()
-	domain.Encrypter = mockedCryptoHandler{
+	domain.EncrypterManager = mockedCryptoHandler{
 		encrypt: func(_, _ string) (string, error) {
 			return v.EncryptedMnemonic, nil
 		},
@@ -82,7 +82,7 @@ func TestChangePasshprase(t *testing.T) {
 				"because trade steak clock grace video jacket equal", nil
 		},
 	}
-	domain.MnemonicStore = newSimpleMnemonicStore(nil)
+	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
 	passphrase := "pass"
 	newPassphrase := "newpass"
@@ -100,12 +100,12 @@ func TestFailingChangePassphrase(t *testing.T) {
 
 	t.Run("failing_decrypt", func(t *testing.T) {
 		v := newTestVaultLocked()
-		domain.Encrypter = mockedCryptoHandler{
+		domain.EncrypterManager = mockedCryptoHandler{
 			decrypt: func(_, _ string) (string, error) {
 				return "", expectedErr
 			},
 		}
-		domain.MnemonicStore = newSimpleMnemonicStore(nil)
+		domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
 		err := v.ChangePassphrase(passphrase, newPassphrase)
 		require.EqualError(t, err, expectedErr.Error())
@@ -113,7 +113,7 @@ func TestFailingChangePassphrase(t *testing.T) {
 
 	t.Run("failing_encrypt", func(t *testing.T) {
 		v := newTestVaultLocked()
-		domain.Encrypter = mockedCryptoHandler{
+		domain.EncrypterManager = mockedCryptoHandler{
 			encrypt: func(_, _ string) (string, error) {
 				return "", expectedErr
 			},
@@ -131,7 +131,7 @@ func TestFailingChangePassphrase(t *testing.T) {
 
 func TestAccountByIndex(t *testing.T) {
 	v := newTestVaultLocked()
-	domain.MnemonicStore = newSimpleMnemonicStore(nil)
+	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 	accountIndex := 0
 
 	v.InitAccount(accountIndex)
@@ -143,7 +143,7 @@ func TestAccountByIndex(t *testing.T) {
 
 func TestFailingAccountByIndex(t *testing.T) {
 	v := newTestVaultLocked()
-	domain.MnemonicStore = newSimpleMnemonicStore(nil)
+	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 	accountIndex := 1
 
 	account, err := v.AccountByIndex(accountIndex)
@@ -153,7 +153,7 @@ func TestFailingAccountByIndex(t *testing.T) {
 
 func TestDeriveAddresses(t *testing.T) {
 	v := newTestVaultLocked()
-	domain.MnemonicStore = newSimpleMnemonicStore([]string{
+	domain.MnemonicStoreManager = newSimpleMnemonicStore([]string{
 		"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
 		"lunar", "account", "silver", "admit", "cheap", "fringe", "disorder", "trade",
 		"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
@@ -189,7 +189,7 @@ func TestFailingDeriveAddresses(t *testing.T) {
 
 	t.Run("failing_derive_external_address", func(t *testing.T) {
 		v := newTestVaultLocked()
-		domain.MnemonicStore = newSimpleMnemonicStore(nil)
+		domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
 		_, _, _, err := v.DeriveNextExternalAddressForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultMustBeUnlocked.Error())
@@ -197,7 +197,7 @@ func TestFailingDeriveAddresses(t *testing.T) {
 
 	t.Run("failing_derive_internal_address", func(t *testing.T) {
 		v := newTestVaultLocked()
-		domain.MnemonicStore = newSimpleMnemonicStore(nil)
+		domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
 		_, _, _, err := v.DeriveNextInternalAddressForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultMustBeUnlocked.Error())
@@ -206,7 +206,7 @@ func TestFailingDeriveAddresses(t *testing.T) {
 
 func TestAccountByAddress(t *testing.T) {
 	v := newTestVaultLocked()
-	domain.MnemonicStore = newSimpleMnemonicStore([]string{
+	domain.MnemonicStoreManager = newSimpleMnemonicStore([]string{
 		"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
 		"lunar", "account", "silver", "admit", "cheap", "fringe", "disorder", "trade",
 		"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
@@ -244,7 +244,7 @@ func TestFailingAccountByAddress(t *testing.T) {
 
 func TestAllDerivedAddressesAndBlindingKeysForAccount(t *testing.T) {
 	v := newTestVaultLocked()
-	domain.MnemonicStore = newSimpleMnemonicStore([]string{
+	domain.MnemonicStoreManager = newSimpleMnemonicStore([]string{
 		"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
 		"lunar", "account", "silver", "admit", "cheap", "fringe", "disorder", "trade",
 		"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
@@ -267,7 +267,7 @@ func TestFailingAllDerivedAddressesAndBlindingKeysForAccount(t *testing.T) {
 
 	t.Run("failing_because_locked", func(t *testing.T) {
 		v := newTestVaultLocked()
-		domain.MnemonicStore = newSimpleMnemonicStore(nil)
+		domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
 		addreses, blindkeys, err := v.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultMustBeUnlocked.Error())
@@ -277,7 +277,7 @@ func TestFailingAllDerivedAddressesAndBlindingKeysForAccount(t *testing.T) {
 
 	t.Run("failing_because_account_not_found", func(t *testing.T) {
 		v := newTestVaultLocked()
-		domain.MnemonicStore = newSimpleMnemonicStore([]string{
+		domain.MnemonicStoreManager = newSimpleMnemonicStore([]string{
 			"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
 			"lunar", "account", "silver", "admit", "cheap", "fringe", "disorder", "trade",
 			"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
@@ -292,7 +292,7 @@ func TestFailingAllDerivedAddressesAndBlindingKeysForAccount(t *testing.T) {
 
 func TestAllDerivedExternalAddressesForAccount(t *testing.T) {
 	v := newTestVaultLocked()
-	domain.MnemonicStore = newSimpleMnemonicStore([]string{
+	domain.MnemonicStoreManager = newSimpleMnemonicStore([]string{
 		"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
 		"lunar", "account", "silver", "admit", "cheap", "fringe", "disorder", "trade",
 		"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
@@ -315,7 +315,7 @@ func TestFailingAllDerivedExternalAddressesForAccount(t *testing.T) {
 
 	t.Run("failing_because_locked", func(t *testing.T) {
 		v := newTestVaultLocked()
-		domain.MnemonicStore = newSimpleMnemonicStore(nil)
+		domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
 		addresses, err := v.AllDerivedExternalAddressesForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultMustBeUnlocked.Error())
@@ -324,7 +324,7 @@ func TestFailingAllDerivedExternalAddressesForAccount(t *testing.T) {
 
 	t.Run("failing_because_account_not_found", func(t *testing.T) {
 		v := newTestVaultLocked()
-		domain.MnemonicStore = newSimpleMnemonicStore([]string{
+		domain.MnemonicStoreManager = newSimpleMnemonicStore([]string{
 			"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
 			"lunar", "account", "silver", "admit", "cheap", "fringe", "disorder", "trade",
 			"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
@@ -355,7 +355,7 @@ type simpleMnemonicStore struct {
 	lock     *sync.RWMutex
 }
 
-func newSimpleMnemonicStore(m []string) domain.IMnemonicStore {
+func newSimpleMnemonicStore(m []string) domain.MnemonicStore {
 	return &simpleMnemonicStore{
 		mnemonic: m,
 		lock:     &sync.RWMutex{},

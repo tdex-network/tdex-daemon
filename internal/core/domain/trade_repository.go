@@ -16,16 +16,16 @@ type TradeRepository interface {
 	GetAllTrades(ctx context.Context) ([]*Trade, error)
 	// GetAllTradesByMarket returns all the trades filtered by a market
 	// identified by its quote asset.
-	GetAllTradesForMarket(ctx context.Context, marketQuoteAsset string) ([]*Trade, error)
-	// GetCompletedTradesForMarket returns all the Completed or Settled trades
+	GetAllTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*Trade, error)
+	// GetCompletedTradesByMarket returns all the Completed or Settled trades
 	// for the provided market identified by its quote asset.
-	GetCompletedTradesForMarket(ctx context.Context, marketQuoteAsset string) ([]*Trade, error)
-	// GetTradeWithSwapAcceptID returns the trade that contains the SwapAccept
+	GetCompletedTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*Trade, error)
+	// GetTradeBySwapAcceptID returns the trade that contains the SwapAccept
 	// message matching the given id.
-	GetTradeWithSwapAcceptID(ctx context.Context, swapAcceptID string) (*Trade, error)
-	// GetTradeWithTxID returns the trade which transaction matches the given
+	GetTradeBySwapAcceptID(ctx context.Context, swapAcceptID string) (*Trade, error)
+	// GetTradeByTxID returns the trade which transaction matches the given
 	// transaction id.
-	GetTradeWithTxID(ctx context.Context, txID string) (*Trade, error)
+	GetTradeByTxID(ctx context.Context, txID string) (*Trade, error)
 	// UpdateTrade allowa to commit multiple changes to the same trade in a
 	// transactional way.
 	UpdateTrade(

@@ -598,7 +598,7 @@ func (o *operatorService) GetCollectedMarketFee(
 		return nil, ErrMarketNotExist
 	}
 
-	trades, err := o.tradeRepository.GetCompletedTradesForMarket(
+	trades, err := o.tradeRepository.GetCompletedTradesByMarket(
 		ctx,
 		market.QuoteAsset,
 	)

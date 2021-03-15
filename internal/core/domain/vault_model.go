@@ -38,12 +38,12 @@ type AddressInfo struct {
 	DerivationPath string
 }
 
-// IMnemonicStore defines the required methods to override the default
+// MnemonicStore defines the required methods to override the default
 // storage of the plaintext mnemonic once Unlocking a Vault.
 // At the moment this is achieved by storing the mnemonic in the in-memory
 // pkg/config store. Soon this will be changed since this package shouldn't
 // depend on config.
-type IMnemonicStore interface {
+type MnemonicStore interface {
 	Set(mnemonic string)
 	Unset()
 	IsSet() bool
@@ -70,9 +70,9 @@ func (c configStore) Get() []string {
 	return config.GetMnemonic()
 }
 
-// IEncrypter defines the required methods to override the default encryption
+// Encrypter defines the required methods to override the default encryption
 // performed through pkg/wallet package.
-type IEncrypter interface {
+type Encrypter interface {
 	Encrypt(mnemonic, passphrase string) (string, error)
 	Decrypt(encryptedMnemonic, passphrase string) (string, error)
 }
@@ -96,13 +96,13 @@ func (w walletEncrypter) Decrypt(encryptedMnemonic, passphrase string) (string, 
 // MnemonicStore can be set externally by the user of the domain, assigning it
 // to an instance of a IMnemonicStore implementation
 var (
-	MnemonicStore IMnemonicStore
-	Encrypter     IEncrypter
+	MnemonicStoreManager MnemonicStore
+	EncrypterManager     Encrypter
 )
 
 func init() {
-	Encrypter = walletEncrypter{}
-	MnemonicStore = configStore{}
+	EncrypterManager = walletEncrypter{}
+	MnemonicStoreManager = configStore{}
 }
 
 // NewVault encrypts the provided mnemonic with the passhrase and returns a new
@@ -124,12 +124,12 @@ func NewVault(mnemonic []string, passphrase string, net *network.Network) (*Vaul
 	}
 
 	strMnemonic := strings.Join(mnemonic, " ")
-	encryptedMnemonic, err := Encrypter.Encrypt(strMnemonic, passphrase)
+	encryptedMnemonic, err := EncrypterManager.Encrypt(strMnemonic, passphrase)
 	if err != nil {
 		return nil, err
 	}
 
-	MnemonicStore.Set(strMnemonic)
+	MnemonicStoreManager.Set(strMnemonic)
 	return &Vault{
 		EncryptedMnemonic:      encryptedMnemonic,
 		PassphraseHash:         btcutil.Hash160([]byte(passphrase)),

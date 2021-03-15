@@ -36,17 +36,17 @@ func TestTradeRepositoryImplementations(t *testing.T) {
 
 			t.Run("testGetAllTradesForMarket", func(t *testing.T) {
 				t.Parallel()
-				testGetAllTradesForMarket(t, repo)
+				testGetAllTradesByMarket(t, repo)
 			})
 
 			t.Run("testGetCompletedTradesForMarket", func(t *testing.T) {
 				t.Parallel()
-				testGetCompletedTradesForMarket(t, repo)
+				testGetCompletedTradesByMarket(t, repo)
 			})
 
 			t.Run("testGetTradeWithSwapAcceptID", func(t *testing.T) {
 				t.Parallel()
-				testGetTradeWithSwapAcceptID(t, repo)
+				testGetTradeBySwapAcceptID(t, repo)
 			})
 
 			// TODO: uncomment - the following test demonstrate that in case of error,
@@ -86,7 +86,7 @@ func testGetAllTrades(t *testing.T, repo tradeRepository) {
 	require.GreaterOrEqual(t, len(trades), 1)
 }
 
-func testGetAllTradesForMarket(t *testing.T, repo tradeRepository) {
+func testGetAllTradesByMarket(t *testing.T, repo tradeRepository) {
 	marketAsset := randomString(32)
 	var tradeID uuid.UUID
 
@@ -96,7 +96,7 @@ func testGetAllTradesForMarket(t *testing.T, repo tradeRepository) {
 			return nil, err
 		}
 		tradeID = trade.ID
-		return repo.Repository.GetAllTradesForMarket(ctx, marketAsset)
+		return repo.Repository.GetAllTradesByMarket(ctx, marketAsset)
 	})
 	require.NoError(t, err)
 	trades, ok := iTrades.([]*domain.Trade)
@@ -114,7 +114,7 @@ func testGetAllTradesForMarket(t *testing.T, repo tradeRepository) {
 		); err != nil {
 			return nil, err
 		}
-		return repo.Repository.GetAllTradesForMarket(ctx, marketAsset)
+		return repo.Repository.GetAllTradesByMarket(ctx, marketAsset)
 	})
 	require.NoError(t, err)
 	trades, ok = iTrades.([]*domain.Trade)
@@ -122,7 +122,7 @@ func testGetAllTradesForMarket(t *testing.T, repo tradeRepository) {
 	require.GreaterOrEqual(t, len(trades), 1)
 }
 
-func testGetCompletedTradesForMarket(t *testing.T, repo tradeRepository) {
+func testGetCompletedTradesByMarket(t *testing.T, repo tradeRepository) {
 	marketAsset := randomString(32)
 	var tradeID uuid.UUID
 
@@ -142,7 +142,7 @@ func testGetCompletedTradesForMarket(t *testing.T, repo tradeRepository) {
 			return nil, err
 		}
 		tradeID = trade.ID
-		return repo.Repository.GetCompletedTradesForMarket(ctx, marketAsset)
+		return repo.Repository.GetCompletedTradesByMarket(ctx, marketAsset)
 	})
 	require.NoError(t, err)
 	trades, ok := iTrades.([]*domain.Trade)
@@ -160,7 +160,7 @@ func testGetCompletedTradesForMarket(t *testing.T, repo tradeRepository) {
 		); err != nil {
 			return nil, err
 		}
-		return repo.Repository.GetCompletedTradesForMarket(ctx, marketAsset)
+		return repo.Repository.GetCompletedTradesByMarket(ctx, marketAsset)
 	})
 	require.NoError(t, err)
 	trades, ok = iTrades.([]*domain.Trade)
@@ -183,7 +183,7 @@ func testGetCompletedTradesForMarket(t *testing.T, repo tradeRepository) {
 		); err != nil {
 			return nil, err
 		}
-		return repo.Repository.GetCompletedTradesForMarket(ctx, marketAsset)
+		return repo.Repository.GetCompletedTradesByMarket(ctx, marketAsset)
 	})
 	require.NoError(t, err)
 	trades, ok = iTrades.([]*domain.Trade)
@@ -191,20 +191,20 @@ func testGetCompletedTradesForMarket(t *testing.T, repo tradeRepository) {
 	require.GreaterOrEqual(t, len(trades), 2)
 }
 
-func testGetTradeWithSwapAcceptID(t *testing.T, repo tradeRepository) {
+func testGetTradeBySwapAcceptID(t *testing.T, repo tradeRepository) {
 	swapAcceptID := uuid.New().String()
 
 	iTrades, err := repo.write(func(ctx context.Context) (interface{}, error) {
 		if _, err := repo.Repository.GetOrCreateTrade(ctx, nil); err != nil {
 			return nil, err
 		}
-		return repo.Repository.GetTradeWithSwapAcceptID(ctx, swapAcceptID)
+		return repo.Repository.GetTradeBySwapAcceptID(ctx, swapAcceptID)
 	})
 	require.NoError(t, err)
 	require.Nil(t, iTrades)
 }
 
-func testGetTradeWithTxID(t *testing.T, repo tradeRepository) {
+func testGetTradeByTxID(t *testing.T, repo tradeRepository) {
 	txId := randomString(32)
 	var tradeId uuid.UUID
 
@@ -214,7 +214,7 @@ func testGetTradeWithTxID(t *testing.T, repo tradeRepository) {
 			return nil, err
 		}
 		tradeId = trade.ID
-		return repo.Repository.GetTradeWithTxID(ctx, txId)
+		return repo.Repository.GetTradeByTxID(ctx, txId)
 	})
 	require.NoError(t, err)
 	trades, ok := iTrades.([]*domain.Trade)
@@ -232,7 +232,7 @@ func testGetTradeWithTxID(t *testing.T, repo tradeRepository) {
 		); err != nil {
 			return nil, err
 		}
-		return repo.Repository.GetTradeWithTxID(ctx, txId)
+		return repo.Repository.GetTradeByTxID(ctx, txId)
 	})
 	require.NoError(t, err)
 	trades, ok = iTrades.([]*domain.Trade)

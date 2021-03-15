@@ -31,9 +31,9 @@ func TestVaultRepositoryImplementations(t *testing.T) {
 	repositories, cancel := createVaultRepositories(t)
 	t.Cleanup(cancel)
 
-	domain.MnemonicStore = newSimpleMnemonicStore(nil)
+	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 	mockedEncrypter := newMockedEncrypter(mnemonic, encryptedMnemonic)
-	domain.Encrypter = mockedEncrypter
+	domain.EncrypterManager = mockedEncrypter
 
 	for i := range repositories {
 		repo := repositories[i]
@@ -180,7 +180,7 @@ type simpleMnemonicStore struct {
 	lock     *sync.RWMutex
 }
 
-func newSimpleMnemonicStore(m []string) domain.IMnemonicStore {
+func newSimpleMnemonicStore(m []string) domain.MnemonicStore {
 	return &simpleMnemonicStore{
 		mnemonic: m,
 		lock:     &sync.RWMutex{},
@@ -220,7 +220,7 @@ type mockEncrypter struct {
 	encryptedMnemonic string
 }
 
-func newMockedEncrypter(mnemonic []string, encryptedMnemonic string) domain.IEncrypter {
+func newMockedEncrypter(mnemonic []string, encryptedMnemonic string) domain.Encrypter {
 	return mockEncrypter{mnemonic, encryptedMnemonic}
 }
 

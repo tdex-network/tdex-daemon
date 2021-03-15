@@ -33,18 +33,18 @@ func (r tradeRepositoryImpl) GetAllTrades(_ context.Context) ([]*domain.Trade, e
 	return r.getAllTrades()
 }
 
-func (r tradeRepositoryImpl) GetAllTradesForMarket(_ context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) GetAllTradesByMarket(_ context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
 	r.db.tradeStore.locker.Lock()
 	defer r.db.tradeStore.locker.Unlock()
 
-	return r.getAllTradesForMarket(marketQuoteAsset)
+	return r.getAllTradesByMarket(marketQuoteAsset)
 }
 
-func (r tradeRepositoryImpl) GetCompletedTradesForMarket(ctx context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) GetCompletedTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
 	r.db.tradeStore.locker.Lock()
 	defer r.db.tradeStore.locker.Unlock()
 
-	tradesByMarkets, err := r.getAllTradesForMarket(marketQuoteAsset)
+	tradesByMarkets, err := r.getAllTradesByMarket(marketQuoteAsset)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (r tradeRepositoryImpl) GetCompletedTradesForMarket(ctx context.Context, ma
 	return completedTrades, nil
 }
 
-func (r tradeRepositoryImpl) GetTradeWithTxID(
+func (r tradeRepositoryImpl) GetTradeByTxID(
 	ctx context.Context,
 	txID string,
 ) (*domain.Trade, error) {
@@ -79,11 +79,11 @@ func (r tradeRepositoryImpl) GetTradeWithTxID(
 	return nil, nil
 }
 
-func (r tradeRepositoryImpl) GetTradeWithSwapAcceptID(_ context.Context, swapAcceptID string) (*domain.Trade, error) {
+func (r tradeRepositoryImpl) GetTradeBySwapAcceptID(_ context.Context, swapAcceptID string) (*domain.Trade, error) {
 	r.db.tradeStore.locker.Lock()
 	defer r.db.tradeStore.locker.Unlock()
 
-	return r.getTradeWithSwapAcceptID(swapAcceptID)
+	return r.getTradeBySwapAcceptID(swapAcceptID)
 }
 
 func (r tradeRepositoryImpl) UpdateTrade(
@@ -110,7 +110,7 @@ func (r tradeRepositoryImpl) UpdateTrade(
 		}
 	}
 
-	r.addTradeWithMarket(updatedTrade.MarketQuoteAsset, currentTrade.ID)
+	r.addTradeByMarket(updatedTrade.MarketQuoteAsset, currentTrade.ID)
 
 	r.db.tradeStore.trades[updatedTrade.ID] = *updatedTrade
 
@@ -144,7 +144,7 @@ func (r tradeRepositoryImpl) getAllTrades() ([]*domain.Trade, error) {
 	return allTrades, nil
 }
 
-func (r tradeRepositoryImpl) getAllTradesForMarket(marketQuoteAsset string) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) getAllTradesByMarket(marketQuoteAsset string) ([]*domain.Trade, error) {
 	tradeIDs, ok := r.db.tradeStore.tradesByMarket[marketQuoteAsset]
 	if !ok {
 		return nil, nil
@@ -154,7 +154,7 @@ func (r tradeRepositoryImpl) getAllTradesForMarket(marketQuoteAsset string) ([]*
 	return tradeList, nil
 }
 
-func (r tradeRepositoryImpl) getTradeWithSwapAcceptID(swapAcceptID string) (*domain.Trade, error) {
+func (r tradeRepositoryImpl) getTradeBySwapAcceptID(swapAcceptID string) (*domain.Trade, error) {
 	tradeID, ok := r.db.tradeStore.tradesBySwapAcceptID[swapAcceptID]
 	if !ok {
 		return nil, nil
@@ -163,7 +163,7 @@ func (r tradeRepositoryImpl) getTradeWithSwapAcceptID(swapAcceptID string) (*dom
 	return &trade, nil
 }
 
-func (r tradeRepositoryImpl) addTradeWithMarket(key string, val uuid.UUID) {
+func (r tradeRepositoryImpl) addTradeByMarket(key string, val uuid.UUID) {
 	trades, ok := r.db.tradeStore.tradesByMarket[key]
 	if !ok {
 		r.db.tradeStore.tradesByMarket[key] = []uuid.UUID{val}

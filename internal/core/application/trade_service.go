@@ -422,7 +422,7 @@ func (t *tradeService) tradeComplete(
 	ctx context.Context,
 	swapComplete domain.SwapComplete,
 ) (txID string, swapFail domain.SwapFail, err error) {
-	trade, err := t.tradeRepository.GetTradeWithSwapAcceptID(ctx, swapComplete.GetAcceptId())
+	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
 	if err != nil {
 		return "", nil, err
 	}
@@ -463,7 +463,7 @@ func (t *tradeService) tradeFail(
 	swapFail domain.SwapFail,
 ) (domain.SwapFail, error) {
 	swapID := swapFail.GetMessageId()
-	trade, err := t.tradeRepository.GetTradeWithSwapAcceptID(ctx, swapID)
+	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapID)
 	if err != nil {
 		return nil, err
 	}

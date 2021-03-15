@@ -26,7 +26,7 @@ func (v *Vault) IsInitialized() bool {
 
 // IsLocked returns whether the Vault is initialized and locked
 func (v *Vault) IsLocked() bool {
-	return !v.IsInitialized() || !MnemonicStore.IsSet()
+	return !v.IsInitialized() || !MnemonicStoreManager.IsSet()
 }
 
 // GetMnemonicSafe is getter for Vault's mnemonic in plain text
@@ -35,7 +35,7 @@ func (v *Vault) GetMnemonicSafe() ([]string, error) {
 		return nil, ErrVaultMustBeUnlocked
 	}
 
-	return MnemonicStore.Get(), nil
+	return MnemonicStoreManager.Get(), nil
 }
 
 // Lock locks the Vault by wiping its mnemonic field
@@ -44,7 +44,7 @@ func (v *Vault) Lock() {
 		return
 	}
 	// flush mnemonic in plain text
-	MnemonicStore.Unset()
+	MnemonicStoreManager.Unset()
 }
 
 // Unlock attempts to decrypt the mnemonic with the provided passphrase
@@ -53,12 +53,12 @@ func (v *Vault) Unlock(passphrase string) error {
 		return nil
 	}
 
-	mnemonic, err := Encrypter.Decrypt(v.EncryptedMnemonic, passphrase)
+	mnemonic, err := EncrypterManager.Decrypt(v.EncryptedMnemonic, passphrase)
 	if err != nil {
 		return err
 	}
 
-	MnemonicStore.Set(mnemonic)
+	MnemonicStoreManager.Set(mnemonic)
 	return nil
 }
 
@@ -71,12 +71,12 @@ func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error 
 		return ErrVaultInvalidPassphrase
 	}
 
-	mnemonic, err := Encrypter.Decrypt(v.EncryptedMnemonic, currentPassphrase)
+	mnemonic, err := EncrypterManager.Decrypt(v.EncryptedMnemonic, currentPassphrase)
 	if err != nil {
 		return err
 	}
 
-	encryptedMnemonic, err := Encrypter.Encrypt(mnemonic, newPassphrase)
+	encryptedMnemonic, err := EncrypterManager.Encrypt(mnemonic, newPassphrase)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (v *Vault) isPassphraseSet() bool {
 
 func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (string, string, []byte, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: MnemonicStore.Get(),
+		SigningMnemonic: MnemonicStoreManager.Get(),
 	})
 	if err != nil {
 		return "", "", nil, err
@@ -257,7 +257,7 @@ func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 	}
 
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: MnemonicStore.Get(),
+		SigningMnemonic: MnemonicStoreManager.Get(),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -306,7 +306,7 @@ func (v *Vault) allDerivedExternalAddressesForAccount(accountIndex int) (
 	}
 
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: MnemonicStore.Get(),
+		SigningMnemonic: MnemonicStoreManager.Get(),
 	})
 	if err != nil {
 		return nil, err
