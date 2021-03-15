@@ -313,18 +313,6 @@ func TestTradeSettle(t *testing.T) {
 func TestFailingTradeSettle(t *testing.T) {
 	now := uint64(time.Now().Unix())
 
-	t.Run("failing_because_expired", func(t *testing.T) {
-		trade := newTradeCompleted()
-		trade.ExpiryTime = uint64(time.Now().AddDate(0, 0, -1).Unix())
-		require.True(t, trade.IsExpired())
-
-		ok, err := trade.Settle(now)
-		require.EqualError(t, err, domain.ErrTradeExpired.Error())
-		require.False(t, ok)
-		require.False(t, trade.IsSettled())
-		require.True(t, trade.IsRejected())
-	})
-
 	t.Run("failing_because_invalid_status", func(t *testing.T) {
 		tests := []struct {
 			name  string
