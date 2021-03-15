@@ -80,7 +80,7 @@ func (s *SwapError) Error() string {
 type SwapParser interface {
 	SerializeRequest(r SwapRequest) ([]byte, *SwapError)
 	SerializeAccept(args AcceptArgs) (string, []byte, *SwapError)
-	SerializeComplete(r SwapRequest, a SwapAccept, tx string) (string, []byte, *SwapError)
+	SerializeComplete(reqMsg, accMsg []byte, tx string) (string, []byte, *SwapError)
 	SerializeFail(id string, code int, msg string) (string, []byte)
 
 	DeserializeRequest(msg []byte) (SwapRequest, error)
@@ -122,35 +122,24 @@ func (p swapParser) SerializeAccept(args AcceptArgs) (string, []byte, *SwapError
 	return id, msg, nil
 }
 
-func (p swapParser) SerializeComplete(r SwapRequest, a SwapAccept, tx string) (string, []byte, *SwapError) {
-	swapRequest := &pbswap.SwapRequest{
-		Id:                r.GetId(),
-		AssetP:            r.GetAssetP(),
-		AmountP:           r.GetAmountP(),
-		AssetR:            r.GetAssetR(),
-		AmountR:           r.GetAmountR(),
-		Transaction:       r.GetTransaction(),
-		InputBlindingKey:  r.GetInputBlindingKey(),
-		OutputBlindingKey: r.GetOutputBlindingKey(),
-	}
+func (p swapParser) SerializeComplete(reqMsg, accMsg []byte, tx string) (string, []byte, *SwapError) {
+	swapRequest := &pbswap.SwapRequest{}
+	proto.Unmarshal(reqMsg, swapRequest)
+
+	swapAccept := &pbswap.SwapAccept{}
+	proto.Unmarshal(accMsg, swapAccept)
+
 	if err := pkgswap.ValidateCompletePset(pkgswap.ValidateCompletePsetOpts{
 		PsetBase64:         tx,
-		InputBlindingKeys:  a.GetInputBlindingKey(),
-		OutputBlindingKeys: a.GetOutputBlindingKey(),
+		InputBlindingKeys:  swapAccept.GetInputBlindingKey(),
+		OutputBlindingKeys: swapAccept.GetOutputBlindingKey(),
 		SwapRequest:        swapRequest,
 	}); err != nil {
 		return "", nil, &SwapError{err, int(pkgswap.ErrCodeFailedToComplete)}
 	}
 
-	swapAcceptMsg, _ := proto.Marshal(&pbswap.SwapAccept{
-		Id:                a.GetId(),
-		RequestId:         a.GetRequestId(),
-		Transaction:       a.GetTransaction(),
-		InputBlindingKey:  a.GetInputBlindingKey(),
-		OutputBlindingKey: a.GetOutputBlindingKey(),
-	})
 	id, msg, err := pkgswap.Complete(pkgswap.CompleteOpts{
-		Message:    swapAcceptMsg,
+		Message:    accMsg,
 		PsetBase64: tx,
 	})
 	if err != nil {
@@ -212,7 +201,7 @@ func (p swapParser) DeserializeFail(msg []byte) (SwapFail, error) {
 // The default one comes from go-elements.
 type PsetParser interface {
 	GetTxID(psetBase64 string) (string, error)
-	GetTxHex(psetBase64 string) (string, string, error)
+	GetTxHex(psetBase64 string) (string, error)
 }
 
 type psetManager struct{}
@@ -221,10 +210,14 @@ func (m psetManager) GetTxID(psetBase64 string) (string, error) {
 	return transactionutil.GetTxIdFromPset(psetBase64)
 }
 
-func (m psetManager) GetTxHex(psetBase64 string) (string, string, error) {
-	return wallet.FinalizeAndExtractTransaction(
+func (m psetManager) GetTxHex(psetBase64 string) (string, error) {
+	txHex, _, err := wallet.FinalizeAndExtractTransaction(
 		wallet.FinalizeAndExtractTransactionOpts{PsetBase64: psetBase64},
 	)
+	if err != nil {
+		return "", err
+	}
+	return txHex, nil
 }
 
 var (

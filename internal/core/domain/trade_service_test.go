@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"testing"
 	"time"
 
@@ -13,13 +14,19 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
-func TestTradePropose(t *testing.T) {
-	domain.SwapParserManager = newMockedSwapParser(false)
+var mockedErr = &domain.SwapError{
+	Err:  errors.New("something went wrong"),
+	Code: 10,
+}
 
+func TestTradePropose(t *testing.T) {
 	swapRequest := newMockedSwapRequest()
 	marketAsset := swapRequest.GetAssetR()
 	marketFee := int64(25)
 	traderPubkey := []byte{}
+	mockedSwapParser := mockSwapParser{}
+	mockedSwapParser.On("SerializeRequest", swapRequest).Return(randomBytes(100), nil)
+	domain.SwapParserManager = mockedSwapParser
 
 	tests := []struct {
 		name  string
@@ -70,10 +77,18 @@ func TestFailingTradePropose(t *testing.T) {
 	marketAsset := swapRequest.GetAssetR()
 	marketFee := int64(25)
 	traderPubkey := []byte{}
+	mockedSwapParser := mockSwapParser{}
+	mockedSwapParser.On("SerializeRequest", swapRequest).Return(nil, mockedErr)
+	mockedSwapParser.On(
+		"SerializeFail",
+		swapRequest.GetId(),
+		mockedErr.Code,
+		mockedErr.Err.Error(),
+	).Return(randomID(), randomBytes(100))
+	domain.SwapParserManager = mockedSwapParser
 
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeEmpty()
-		domain.SwapParserManager = newMockedSwapParser(true)
 
 		ok, err := trade.Propose(swapRequest, marketAsset, marketFee, traderPubkey)
 		require.NoError(t, err)
@@ -84,8 +99,6 @@ func TestFailingTradePropose(t *testing.T) {
 }
 
 func TestTradeAccept(t *testing.T) {
-	domain.SwapParserManager = newMockedSwapParser(false)
-
 	tx := randomBase64(100)
 	inBlindKeys := map[string][]byte{
 		randomHex(20): randomBytes(32),
@@ -121,9 +134,16 @@ func TestTradeAccept(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser.On("SerializeAccept", domain.AcceptArgs{
+			RequestMessage:     tt.trade.SwapRequest.Message,
+			Transaction:        tx,
+			InputBlindingKeys:  inBlindKeys,
+			OutputBlindingKeys: outBlindKeys,
+		}).Return(randomID(), randomBytes(100), nil)
+		domain.SwapParserManager = mockedSwapParser
 
+		t.Run(tt.name, func(t *testing.T) {
 			ok, err := tt.trade.Accept(tx, inBlindKeys, outBlindKeys, expiryDuration)
 			require.NoError(t, err)
 			require.True(t, ok)
@@ -145,7 +165,20 @@ func TestFailingTradeAccept(t *testing.T) {
 
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeProposal()
-		domain.SwapParserManager = newMockedSwapParser(true)
+		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser.On("SerializeAccept", domain.AcceptArgs{
+			RequestMessage:     trade.SwapRequest.Message,
+			Transaction:        tx,
+			InputBlindingKeys:  inBlindKeys,
+			OutputBlindingKeys: outBlindKeys,
+		}).Return(nil, nil, mockedErr)
+		mockedSwapParser.On(
+			"SerializeFail",
+			trade.SwapRequest.ID,
+			mockedErr.Code,
+			mockedErr.Err.Error(),
+		).Return(randomID(), randomBytes(100))
+		domain.SwapParserManager = mockedSwapParser
 
 		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys, expiryDuration)
 		require.NoError(t, err)
@@ -156,7 +189,6 @@ func TestFailingTradeAccept(t *testing.T) {
 
 	t.Run("failing_because_invalid_status", func(t *testing.T) {
 		trade := newTradeEmpty()
-		domain.SwapParserManager = newMockedSwapParser(false)
 
 		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys, expiryDuration)
 		require.EqualError(t, err, domain.ErrTradeMustBeProposal.Error())
@@ -166,9 +198,6 @@ func TestFailingTradeAccept(t *testing.T) {
 }
 
 func TestTradeComplete(t *testing.T) {
-	domain.SwapParserManager = newMockedSwapParser(false)
-	domain.PsetParserManager = newMockedPsetManager()
-
 	tx := randomBase64(100)
 	tests := []struct {
 		name  string
@@ -191,9 +220,21 @@ func TestTradeComplete(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser.On(
+			"SerializeComplete",
+			tt.trade.SwapRequest.Message,
+			tt.trade.SwapAccept.Message,
+			tx,
+		).Return(randomID(), randomBytes(100), nil)
+		domain.SwapParserManager = mockedSwapParser
 
+		mockedPsetParser := mockPsetParser{}
+		mockedPsetParser.On("GetTxID", tx).Return(randomHex(32), nil)
+		mockedPsetParser.On("GetTxHex", tx).Return(randomHex(32), nil)
+		domain.PsetParserManager = mockedPsetParser
+
+		t.Run(tt.name, func(t *testing.T) {
 			res, err := tt.trade.Complete(tx)
 			require.NoError(t, err)
 			require.NotNil(t, res)
@@ -208,7 +249,20 @@ func TestFailingTradeComplete(t *testing.T) {
 
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeAccepted()
-		domain.SwapParserManager = newMockedSwapParser(true)
+		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser.On(
+			"SerializeComplete",
+			trade.SwapRequest.Message,
+			trade.SwapAccept.Message,
+			tx,
+		).Return(nil, nil, mockedErr)
+		mockedSwapParser.On(
+			"SerializeFail",
+			trade.SwapAccept.ID,
+			mockedErr.Code,
+			mockedErr.Err.Error(),
+		).Return(randomID(), randomBytes(100))
+		domain.SwapParserManager = mockedSwapParser
 
 		res, err := trade.Complete(tx)
 		require.NoError(t, err)
@@ -224,8 +278,6 @@ func TestFailingTradeComplete(t *testing.T) {
 		trade.ExpiryTime = uint64(time.Now().AddDate(0, 0, -1).Unix())
 		require.True(t, trade.IsExpired())
 
-		domain.SwapParserManager = newMockedSwapParser(true)
-
 		res, err := trade.Complete(tx)
 		require.EqualError(t, err, domain.ErrTradeExpired.Error())
 		require.Nil(t, res)
@@ -234,8 +286,6 @@ func TestFailingTradeComplete(t *testing.T) {
 	})
 
 	t.Run("failing_because_invalid_status", func(t *testing.T) {
-		domain.SwapParserManager = newMockedSwapParser(false)
-
 		tests := []struct {
 			name  string
 			trade *domain.Trade
@@ -407,4 +457,8 @@ func randomBytes(len int) []byte {
 	b := make([]byte, len)
 	rand.Read(b)
 	return b
+}
+
+func randomID() string {
+	return uuid.New().String()
 }

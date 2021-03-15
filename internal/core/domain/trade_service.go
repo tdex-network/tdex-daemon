@@ -118,8 +118,8 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 	}
 
 	swapCompleteID, swapCompleteMsg, err := SwapParserManager.SerializeComplete(
-		t.SwapRequestMessage(),
-		t.SwapAcceptMessage(),
+		t.SwapRequest.Message,
+		t.SwapAccept.Message,
 		psetBase64,
 	)
 	if err != nil {
@@ -131,13 +131,13 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 		return &CompleteResult{OK: false}, nil
 	}
 
-	txHex, txHash, _ := PsetParserManager.GetTxHex(psetBase64)
+	txHex, _ := PsetParserManager.GetTxHex(psetBase64)
 	t.SwapComplete.ID = swapCompleteID
 	t.SwapComplete.Message = swapCompleteMsg
 	t.Status = CompletedStatus
 	t.PsetBase64 = psetBase64
 	t.TxHex = txHex
-	return &CompleteResult{OK: true, TxHex: txHex, TxID: txHash}, nil
+	return &CompleteResult{OK: true, TxHex: txHex, TxID: t.TxID}, nil
 }
 
 // Settle brings the trade from the Completed to the Settled status, unsets the

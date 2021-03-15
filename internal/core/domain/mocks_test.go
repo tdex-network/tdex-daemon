@@ -1,9 +1,8 @@
 package domain_test
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/vulpemventures/go-elements/network"
 )
@@ -12,85 +11,227 @@ import (
  * SwapParser
  */
 type mockSwapParser struct {
-	mustFail bool
+	mock.Mock
 }
 
-func newMockedSwapParser(mustFail bool) domain.SwapParser {
-	return mockSwapParser{mustFail}
-}
+func (m mockSwapParser) SerializeRequest(req domain.SwapRequest) ([]byte, *domain.SwapError) {
+	args := m.Called(req)
 
-func (m mockSwapParser) SerializeRequest(_ domain.SwapRequest) ([]byte, *domain.SwapError) {
-	if m.mustFail {
-		return nil, &domain.SwapError{errors.New("something went wrong"), 10}
+	var res []byte
+	if a := args.Get(0); a != nil {
+		res = a.([]byte)
 	}
 
-	return make([]byte, 20), nil
+	var err *domain.SwapError
+	if a := args.Get(1); a != nil {
+		err = a.(*domain.SwapError)
+	}
+	return res, err
 }
 
-func (m mockSwapParser) SerializeAccept(_ domain.AcceptArgs) (string, []byte, *domain.SwapError) {
-	if m.mustFail {
-		return "", nil, &domain.SwapError{errors.New("something went wrong"), 10}
+func (m mockSwapParser) SerializeAccept(acc domain.AcceptArgs) (string, []byte, *domain.SwapError) {
+	args := m.Called(acc)
+
+	var sres string
+	if a := args.Get(0); a != nil {
+		sres = a.(string)
 	}
 
-	return uuid.New().String(), make([]byte, 20), nil
-}
-
-func (m mockSwapParser) SerializeComplete(_ domain.SwapRequest, _ domain.SwapAccept, _ string) (string, []byte, *domain.SwapError) {
-	if m.mustFail {
-		return "", nil, &domain.SwapError{errors.New("something went wrong"), 10}
+	var bres []byte
+	if a := args.Get(1); a != nil {
+		bres = a.([]byte)
 	}
 
-	return uuid.New().String(), make([]byte, 20), nil
-}
-
-func (m mockSwapParser) SerializeFail(_ string, _ int, _ string) (string, []byte) {
-	return uuid.New().String(), make([]byte, 20)
-}
-
-func (m mockSwapParser) DeserializeRequest(_ []byte) (domain.SwapRequest, error) {
-	if m.mustFail {
-		return nil, errors.New("something went wrong")
+	var err *domain.SwapError
+	if args.Get(2) != nil {
+		err = args.Get(2).(*domain.SwapError)
 	}
 
-	return newMockedSwapRequest(), nil
+	return sres, bres, err
 }
 
-func (m mockSwapParser) DeserializeAccept(_ []byte) (domain.SwapAccept, error) {
-	if m.mustFail {
-		return nil, errors.New("something went wrong")
+func (m mockSwapParser) SerializeComplete(reqMsg, accMsg []byte, tx string) (string, []byte, *domain.SwapError) {
+	args := m.Called(reqMsg, accMsg, tx)
+
+	var sres string
+	if a := args.Get(0); a != nil {
+		sres = a.(string)
 	}
 
-	return newMockedSwapAccept(), nil
-}
-
-func (m mockSwapParser) DeserializeComplete(_ []byte) (domain.SwapComplete, error) {
-	if m.mustFail {
-		return nil, errors.New("something went wrong")
+	var bres []byte
+	if a := args.Get(1); a != nil {
+		bres = a.([]byte)
 	}
 
-	return newMockedSwapComplete(), nil
+	var err *domain.SwapError
+	if args.Get(2) != nil {
+		err = args.Get(2).(*domain.SwapError)
+	}
+
+	return sres, bres, err
 }
 
-func (m mockSwapParser) DeserializeFail(_ []byte) (domain.SwapFail, error) {
-	return nil, nil
+func (m mockSwapParser) SerializeFail(id string, errCode int, errMsg string) (string, []byte) {
+	args := m.Called(id, errCode, errMsg)
+
+	var sres string
+	if a := args.Get(0); a != nil {
+		sres = a.(string)
+	}
+
+	var bres []byte
+	if a := args.Get(1); a != nil {
+		bres = a.([]byte)
+	}
+
+	return sres, bres
+}
+
+func (m mockSwapParser) DeserializeRequest(msg []byte) (domain.SwapRequest, error) {
+	args := m.Called(msg)
+	var res domain.SwapRequest
+	if a := args.Get(0); a != nil {
+		res = a.(domain.SwapRequest)
+	}
+
+	return res, args.Error(1)
+}
+
+func (m mockSwapParser) DeserializeAccept(msg []byte) (domain.SwapAccept, error) {
+	args := m.Called(msg)
+	var res domain.SwapAccept
+	if a := args.Get(0); a != nil {
+		res = a.(domain.SwapAccept)
+	}
+	return res, args.Error(1)
+}
+
+func (m mockSwapParser) DeserializeComplete(msg []byte) (domain.SwapComplete, error) {
+	args := m.Called(msg)
+	var res domain.SwapComplete
+	if a := args.Get(0); a != nil {
+		res = a.(domain.SwapComplete)
+	}
+	return res, args.Error(1)
+}
+
+func (m mockSwapParser) DeserializeFail(msg []byte) (domain.SwapFail, error) {
+	args := m.Called(msg)
+	var res domain.SwapFail
+	if a := args.Get(0); a != nil {
+		res = a.(domain.SwapFail)
+	}
+	return res, args.Error(1)
 }
 
 /*
- * PsetManager
+ * PsetParser
  */
-type mockPsetManager struct{}
-
-func newMockedPsetManager() domain.PsetParser {
-	return mockPsetManager{}
+type mockPsetParser struct {
+	mock.Mock
 }
 
-func (m mockPsetManager) GetTxID(_ string) (string, error) {
-	return randomHex(32), nil
+func (m mockPsetParser) GetTxID(psetBase64 string) (string, error) {
+	args := m.Called(psetBase64)
+	var res string
+	if a := args.Get(0); a != nil {
+		res = a.(string)
+	}
+	return res, args.Error(1)
 }
 
-func (m mockPsetManager) GetTxHex(_ string) (string, string, error) {
-	return randomHex(100), randomHex(32), nil
+func (m mockPsetParser) GetTxHex(psetBase64 string) (string, error) {
+	args := m.Called(psetBase64)
+	var res string
+	if a := args.Get(0); a != nil {
+		res = a.(string)
+	}
+	return res, args.Error(1)
 }
+
+// /*
+//  * SwapParser
+//  */
+// type mockSwapParser struct {
+// 	mustFail bool
+// }
+
+// func newMockedSwapParser(mustFail bool) domain.SwapParser {
+// 	return mockSwapParser{mustFail}
+// }
+
+// func (m mockSwapParser) SerializeRequest(_ domain.SwapRequest) ([]byte, *domain.SwapError) {
+// 	if m.mustFail {
+// 		return nil, &domain.SwapError{errors.New("something went wrong"), 10}
+// 	}
+
+// 	return make([]byte, 20), nil
+// }
+
+// func (m mockSwapParser) SerializeAccept(_ domain.AcceptArgs) (string, []byte, *domain.SwapError) {
+// 	if m.mustFail {
+// 		return "", nil, &domain.SwapError{errors.New("something went wrong"), 10}
+// 	}
+
+// 	return uuid.New().String(), make([]byte, 20), nil
+// }
+
+// func (m mockSwapParser) SerializeComplete(_ domain.SwapRequest, _ domain.SwapAccept, _ string) (string, []byte, *domain.SwapError) {
+// 	if m.mustFail {
+// 		return "", nil, &domain.SwapError{errors.New("something went wrong"), 10}
+// 	}
+
+// 	return uuid.New().String(), make([]byte, 20), nil
+// }
+
+// func (m mockSwapParser) SerializeFail(_ string, _ int, _ string) (string, []byte) {
+// 	return uuid.New().String(), make([]byte, 20)
+// }
+
+// func (m mockSwapParser) DeserializeRequest(_ []byte) (domain.SwapRequest, error) {
+// 	if m.mustFail {
+// 		return nil, errors.New("something went wrong")
+// 	}
+
+// 	return newMockedSwapRequest(), nil
+// }
+
+// func (m mockSwapParser) DeserializeAccept(_ []byte) (domain.SwapAccept, error) {
+// 	if m.mustFail {
+// 		return nil, errors.New("something went wrong")
+// 	}
+
+// 	return newMockedSwapAccept(), nil
+// }
+
+// func (m mockSwapParser) DeserializeComplete(_ []byte) (domain.SwapComplete, error) {
+// 	if m.mustFail {
+// 		return nil, errors.New("something went wrong")
+// 	}
+
+// 	return newMockedSwapComplete(), nil
+// }
+
+// func (m mockSwapParser) DeserializeFail(_ []byte) (domain.SwapFail, error) {
+// 	return nil, nil
+// }
+
+// /*
+//  * PsetManager
+//  */
+// type mockPsetManager struct{}
+
+// func newMockedPsetManager() domain.PsetParser {
+// 	return mockPsetManager{}
+// }
+
+// func (m mockPsetManager) GetTxID(_ string) (string, error) {
+// 	return randomHex(32), nil
+// }
+
+// func (m mockPsetManager) GetTxHex(_ string) (string, string, error) {
+// 	return randomHex(100), randomHex(32), nil
+// }
 
 /*
  * SwapRequest
