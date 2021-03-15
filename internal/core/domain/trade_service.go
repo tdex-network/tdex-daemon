@@ -151,13 +151,6 @@ func (t *Trade) Settle(settlementTime uint64) (bool, error) {
 		return true, nil
 	}
 
-	if t.IsExpired() {
-		if !t.Status.Failed {
-			t.Status.Failed = true
-		}
-		return false, ErrTradeExpired
-	}
-
 	if !t.IsCompleted() && !t.Status.Failed {
 		return false, ErrTradeMustBeCompleted
 	}
