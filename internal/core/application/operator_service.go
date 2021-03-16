@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -93,6 +93,9 @@ type operatorService struct {
 	unspentRepository  domain.UnspentRepository
 	explorerSvc        explorer.Service
 	blockchainListener BlockchainListener
+	marketBaseAsset    string
+	marketFee          int64
+	network            *network.Network
 }
 
 // NewOperatorService is a constructor function for OperatorService.
@@ -103,6 +106,9 @@ func NewOperatorService(
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
+	marketBaseAsset string,
+	marketFee int64,
+	net *network.Network,
 ) OperatorService {
 	return &operatorService{
 		marketRepository:   marketRepository,
@@ -111,6 +117,9 @@ func NewOperatorService(
 		unspentRepository:  unspentRepository,
 		explorerSvc:        explorerSvc,
 		blockchainListener: bcListener,
+		marketBaseAsset:    marketBaseAsset,
+		marketFee:          marketFee,
+		network:            net,
 	}
 }
 
@@ -126,16 +135,16 @@ func (o *operatorService) DepositMarket(
 	if len(baseAsset) > 0 && len(quoteAsset) > 0 {
 		// check the asset strings
 		if err := validateAssetString(baseAsset); err != nil {
-			return nil, domain.ErrInvalidBaseAsset
+			return nil, domain.ErrMarketInvalidBaseAsset
 		}
 
 		if err := validateAssetString(quoteAsset); err != nil {
-			return nil, domain.ErrInvalidQuoteAsset
+			return nil, domain.ErrMarketInvalidQuoteAsset
 		}
 
 		// Checks if base asset is valid
-		if baseAsset != config.GetString(config.BaseAssetKey) {
-			return nil, domain.ErrInvalidBaseAsset
+		if baseAsset != o.marketBaseAsset {
+			return nil, domain.ErrMarketInvalidBaseAsset
 		}
 
 		//Checks if quote asset exists
@@ -147,7 +156,7 @@ func (o *operatorService) DepositMarket(
 			return nil, err
 		}
 		if accountOfExistentMarket == -1 {
-			return nil, domain.ErrMarketNotExist
+			return nil, ErrMarketNotExist
 		}
 
 		accountIndex = accountOfExistentMarket
@@ -161,15 +170,19 @@ func (o *operatorService) DepositMarket(
 		}
 
 		nextAccountIndex := latestAccountIndex + 1
-		if _, err := o.marketRepository.GetOrCreateMarket(ctx, nextAccountIndex); err != nil {
+		fee := o.marketFee
+		if _, err := o.marketRepository.GetOrCreateMarket(
+			ctx,
+			&domain.Market{AccountIndex: nextAccountIndex, Fee: fee},
+		); err != nil {
 			return nil, err
 		}
 
 		accountIndex = nextAccountIndex
-	} else if baseAsset != config.GetString(config.BaseAssetKey) {
-		return nil, domain.ErrInvalidBaseAsset
+	} else if baseAsset != o.marketBaseAsset {
+		return nil, domain.ErrMarketInvalidBaseAsset
 	} else {
-		return nil, domain.ErrInvalidQuoteAsset
+		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 	if numOfAddresses == 0 {
 		numOfAddresses = 1
@@ -180,8 +193,6 @@ func (o *operatorService) DepositMarket(
 	//Derive an address for that specific market
 	if err := o.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			for i := 0; i < numOfAddresses; i++ {
 				addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(
@@ -219,8 +230,6 @@ func (o *operatorService) DepositFeeAccount(
 	list := make([]AddressAndBlindingKey, 0, numOfAddresses)
 	if err := o.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			for i := 0; i < numOfAddresses; i++ {
 				addr, _, blindKey, err := v.DeriveNextExternalAddressForAccount(
@@ -255,16 +264,16 @@ func (o *operatorService) OpenMarket(
 	// check the asset strings
 	err := validateAssetString(baseAsset)
 	if err != nil {
-		return domain.ErrInvalidBaseAsset
+		return domain.ErrMarketInvalidBaseAsset
 	}
 
 	err = validateAssetString(quoteAsset)
 	if err != nil {
-		return domain.ErrInvalidQuoteAsset
+		return domain.ErrMarketInvalidQuoteAsset
 	}
 
-	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return domain.ErrInvalidBaseAsset
+	if baseAsset != o.marketBaseAsset {
+		return domain.ErrMarketInvalidBaseAsset
 	}
 
 	// check if the crawler is observing at least one addresse
@@ -290,7 +299,7 @@ func (o *operatorService) OpenMarket(
 	}
 
 	if market == nil {
-		return domain.ErrMarketNotExist
+		return ErrMarketNotExist
 	}
 
 	// open the market
@@ -309,16 +318,16 @@ func (o *operatorService) CloseMarket(
 	// check the asset strings
 	err := validateAssetString(baseAsset)
 	if err != nil {
-		return domain.ErrInvalidBaseAsset
+		return domain.ErrMarketInvalidBaseAsset
 	}
 
 	err = validateAssetString(quoteAsset)
 	if err != nil {
-		return domain.ErrInvalidQuoteAsset
+		return domain.ErrMarketInvalidQuoteAsset
 	}
 
-	if baseAsset != config.GetString(config.BaseAssetKey) {
-		return domain.ErrInvalidBaseAsset
+	if baseAsset != o.marketBaseAsset {
+		return domain.ErrMarketInvalidBaseAsset
 	}
 
 	err = o.marketRepository.CloseMarket(
@@ -341,19 +350,17 @@ func (o *operatorService) UpdateMarketFee(
 	req MarketWithFee,
 ) (*MarketWithFee, error) {
 	// check the asset strings
-	err := validateAssetString(req.BaseAsset)
-	if err != nil {
-		return nil, domain.ErrInvalidBaseAsset
+	if err := validateAssetString(req.BaseAsset); err != nil {
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
-	err = validateAssetString(req.QuoteAsset)
-	if err != nil {
-		return nil, domain.ErrInvalidQuoteAsset
+	if err := validateAssetString(req.QuoteAsset); err != nil {
+		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	// Checks if base asset is correct
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return nil, domain.ErrMarketNotExist
+	if req.BaseAsset != o.marketBaseAsset {
+		return nil, ErrMarketNotExist
 	}
 	//Checks if market exist
 	_, accountIndex, err := o.marketRepository.GetMarketByAsset(
@@ -364,11 +371,11 @@ func (o *operatorService) UpdateMarketFee(
 		return nil, err
 	}
 	if accountIndex < 0 {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	//Updates the fee and the fee asset
-	err = o.marketRepository.UpdateMarket(
+	if err := o.marketRepository.UpdateMarket(
 		ctx,
 		accountIndex,
 		func(m *domain.Market) (*domain.Market, error) {
@@ -377,15 +384,14 @@ func (o *operatorService) UpdateMarketFee(
 			}
 			return m, nil
 		},
-	)
-	if err != nil {
+	); err != nil {
 		return nil, err
 	}
 
 	// Ignore errors. If we reached this point it must exists.
 	mkt, _ := o.marketRepository.GetOrCreateMarket(
 		ctx,
-		accountIndex,
+		&domain.Market{AccountIndex: accountIndex},
 	)
 
 	return &MarketWithFee{
@@ -407,29 +413,29 @@ func (o *operatorService) UpdateMarketPrice(
 	// check the asset strings
 	err := validateAssetString(req.BaseAsset)
 	if err != nil {
-		return domain.ErrInvalidBaseAsset
+		return domain.ErrMarketInvalidBaseAsset
 	}
 
 	err = validateAssetString(req.QuoteAsset)
 	if err != nil {
-		return domain.ErrInvalidQuoteAsset
+		return domain.ErrMarketInvalidQuoteAsset
 	}
 
 	// Checks if base asset is correct
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return domain.ErrInvalidBaseAsset
+	if req.BaseAsset != o.marketBaseAsset {
+		return domain.ErrMarketInvalidBaseAsset
 	}
 
 	// validate the new prices amount
 	err = validateAmount(req.Price.BasePrice)
 	if err != nil {
-		return domain.ErrInvalidBasePrice
+		return domain.ErrMarketInvalidBasePrice
 	}
 
 	// validate the new prices amount
 	err = validateAmount(req.Price.QuotePrice)
 	if err != nil {
-		return domain.ErrInvalidQuotePrice
+		return domain.ErrMarketInvalidQuotePrice
 	}
 
 	//Checks if market exist
@@ -441,7 +447,7 @@ func (o *operatorService) UpdateMarketPrice(
 		return err
 	}
 	if accountIndex < 0 {
-		return domain.ErrMarketNotExist
+		return ErrMarketNotExist
 	}
 
 	//Updates the base price and the quote price
@@ -464,17 +470,17 @@ func (o *operatorService) UpdateMarketStrategy(
 	// check the asset strings
 	err := validateAssetString(req.Market.BaseAsset)
 	if err != nil {
-		return domain.ErrInvalidBaseAsset
+		return domain.ErrMarketInvalidBaseAsset
 	}
 
 	err = validateAssetString(req.Market.QuoteAsset)
 	if err != nil {
-		return domain.ErrInvalidQuoteAsset
+		return domain.ErrMarketInvalidQuoteAsset
 	}
 
 	// Checks if base asset is correct
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return domain.ErrMarketNotExist
+	if req.BaseAsset != o.marketBaseAsset {
+		return ErrMarketNotExist
 	}
 	//Checks if market exist
 	_, accountIndex, err := o.marketRepository.GetMarketByAsset(
@@ -486,7 +492,7 @@ func (o *operatorService) UpdateMarketStrategy(
 	}
 
 	if accountIndex < 0 {
-		return domain.ErrMarketNotExist
+		return ErrMarketNotExist
 	}
 
 	//For now we support only BALANCED or PLUGGABLE (ie. price feed)
@@ -543,16 +549,16 @@ func (o *operatorService) ListMarketExternalAddresses(
 	// check the asset strings
 	err := validateAssetString(req.BaseAsset)
 	if err != nil {
-		return nil, domain.ErrInvalidBaseAsset
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
 	err = validateAssetString(req.QuoteAsset)
 	if err != nil {
-		return nil, domain.ErrInvalidQuoteAsset
+		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return nil, domain.ErrInvalidBaseAsset
+	if req.BaseAsset != o.marketBaseAsset {
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
 	market, _, err := o.marketRepository.GetMarketByAsset(ctx, req.QuoteAsset)
@@ -561,7 +567,7 @@ func (o *operatorService) ListMarketExternalAddresses(
 	}
 
 	if market == nil {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	return o.vaultRepository.GetAllDerivedExternalAddressesForAccount(
@@ -611,7 +617,7 @@ func (o *operatorService) GetCollectedMarketFee(
 	}
 
 	if m == nil {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	trades, err := o.tradeRepository.GetCompletedTradesByMarket(
@@ -660,8 +666,8 @@ func (o *operatorService) WithdrawMarketFunds(
 	[]byte,
 	error,
 ) {
-	if req.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return nil, domain.ErrInvalidBaseAsset
+	if req.BaseAsset != o.marketBaseAsset {
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
 	var rawTx []byte
@@ -675,7 +681,7 @@ func (o *operatorService) WithdrawMarketFunds(
 	}
 
 	if accountIndex == -1 {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	outs := make([]TxOut, 0)
@@ -717,8 +723,6 @@ func (o *operatorService) WithdrawMarketFunds(
 	addressesToObserve := make([]AddressAndBlindingKey, 0)
 	err = o.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err := v.GetMnemonicSafe()
 			if err != nil {
@@ -759,7 +763,7 @@ func (o *operatorService) WithdrawMarketFunds(
 			if err != nil {
 				return nil, err
 			}
-			feeChangePathByAsset[config.GetNetwork().AssetID] =
+			feeChangePathByAsset[o.network.AssetID] =
 				feeAccount.DerivationPathByScript[script]
 
 			addressesToObserve = append(
@@ -781,6 +785,7 @@ func (o *operatorService) WithdrawMarketFunds(
 				inputPathsByScript:    marketAccount.DerivationPathByScript,
 				feeInputPathsByScript: feeAccount.DerivationPathByScript,
 				milliSatPerByte:       int(req.MillisatPerByte),
+				network:               o.network,
 			})
 			if err != nil {
 				return nil, err
@@ -819,7 +824,7 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 	baseAssetAmount, err := o.unspentRepository.GetBalance(
 		ctx,
 		addresses,
-		config.GetString(config.BaseAssetKey),
+		o.marketBaseAsset,
 	)
 	if err != nil {
 		return -1, err
@@ -1172,7 +1177,7 @@ func (o *operatorService) getMarketsForTrades(
 			return nil, err
 		}
 		if accountIndex < 0 {
-			return nil, domain.ErrMarketNotExist
+			return nil, ErrMarketNotExist
 		}
 		if _, ok := markets[trade.MarketQuoteAsset]; !ok {
 			markets[trade.MarketQuoteAsset] = market
@@ -1200,10 +1205,10 @@ func tradesToSwapInfo(
 			AmountR:          requestMsg.GetAmountR(),
 			AssetR:           requestMsg.GetAssetR(),
 			MarketFee:        fee,
-			RequestTimeUnix:  trade.SwapRequestTime(),
-			AcceptTimeUnix:   trade.SwapAcceptTime(),
-			CompleteTimeUnix: trade.SwapCompleteTime(),
-			ExpiryTimeUnix:   trade.SwapExpiryTime(),
+			RequestTimeUnix:  trade.SwapRequest.Timestamp,
+			AcceptTimeUnix:   trade.SwapAccept.Timestamp,
+			CompleteTimeUnix: trade.SwapComplete.Timestamp,
+			ExpiryTimeUnix:   trade.ExpiryTime,
 		}
 
 		swapInfos = append(swapInfos, newSwapInfo)

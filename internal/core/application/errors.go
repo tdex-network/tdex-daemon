@@ -11,4 +11,6 @@ var (
 	ErrUnknownStrategy = errors.New("strategy not supported")
 	// ErrTxNotConfirmed ...
 	ErrTxNotConfirmed = errors.New("transaction not confirmed")
+	// ErrMarketNotExist ...
+	ErrMarketNotExist = errors.New("market does not exists")
 )

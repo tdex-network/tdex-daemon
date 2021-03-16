@@ -77,6 +77,12 @@ type BalanceWithFee struct {
 	Fee
 }
 
+type BalanceInfo struct {
+	TotalBalance       uint64
+	ConfirmedBalance   uint64
+	UnconfirmedBalance uint64
+}
+
 type WithdrawMarketReq struct {
 	Market
 	BalanceToWithdraw Balance

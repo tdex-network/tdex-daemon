@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/tdex-network/tdex-daemon/config"
-
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -25,10 +23,10 @@ type unspentRepositoryImpl struct {
 	unspentTtl time.Duration
 }
 
-func NewUnspentRepositoryImpl(db *DbManager) domain.UnspentRepository {
+func NewUnspentRepositoryImpl(db *DbManager, unspentTTL time.Duration) domain.UnspentRepository {
 	return unspentRepositoryImpl{
 		db:         db,
-		unspentTtl: time.Duration(config.GetInt(config.TradeExpiryTimeKey)),
+		unspentTtl: unspentTTL,
 	}
 }
 
@@ -43,15 +41,6 @@ func (u unspentRepositoryImpl) GetAllUnspents(
 	ctx context.Context,
 ) []domain.Unspent {
 	return u.getAllUnspents(ctx)
-}
-
-func (u unspentRepositoryImpl) GetBalance(
-	ctx context.Context,
-	addresses []string,
-	assetHash string,
-) (uint64, error) {
-	unlockedOnly := false
-	return u.getBalance(ctx, addresses, assetHash, unlockedOnly)
 }
 
 func (u unspentRepositoryImpl) GetAvailableUnspents(
@@ -132,6 +121,22 @@ func (u unspentRepositoryImpl) GetAvailableUnspentsForAddresses(
 	return unspents, nil
 }
 
+func (u unspentRepositoryImpl) GetUnspentWithKey(
+	ctx context.Context,
+	unspentKey domain.UnspentKey,
+) (*domain.Unspent, error) {
+	return u.getUnspent(ctx, unspentKey)
+}
+
+func (u unspentRepositoryImpl) GetBalance(
+	ctx context.Context,
+	addresses []string,
+	assetHash string,
+) (uint64, error) {
+	unlockedOnly := false
+	return u.getBalance(ctx, addresses, assetHash, unlockedOnly)
+}
+
 func (u unspentRepositoryImpl) GetUnlockedBalance(
 	ctx context.Context,
 	addresses []string,
@@ -167,13 +172,6 @@ func (u unspentRepositoryImpl) UnlockUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey) error {
 	return u.unlockUnspents(ctx, unspentKeys)
-}
-
-func (u unspentRepositoryImpl) GetUnspentForKey(
-	ctx context.Context,
-	unspentKey domain.UnspentKey,
-) (*domain.Unspent, error) {
-	return u.getUnspent(ctx, unspentKey)
 }
 
 func (u unspentRepositoryImpl) addUnspents(
@@ -284,7 +282,7 @@ func (u unspentRepositoryImpl) spendUnspent(
 	}
 
 	unspent.Spend()
-	unspent.UnLock() // prevent conflict, locks not stored under unspent prefix
+	unspent.Unlock() // prevent conflict, locks not stored under unspent prefix
 
 	return u.updateUnspent(ctx, key, *unspent)
 }
@@ -315,7 +313,7 @@ func (u unspentRepositoryImpl) confirmUnspent(
 	}
 
 	unspent.Confirm()
-	unspent.UnLock() // prevent conflict, locks not stored under unspent prefix
+	unspent.Unlock() // prevent conflict, locks not stored under unspent prefix
 
 	return u.updateUnspent(ctx, key, *unspent)
 }
