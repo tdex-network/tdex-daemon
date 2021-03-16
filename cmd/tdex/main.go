@@ -19,6 +19,9 @@ import (
 )
 
 var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 	// maxMsgRecvSize is the largest message our client will receive. We
 	// set this to 200MiB atm.
 	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 200)
@@ -30,7 +33,7 @@ var (
 func main() {
 	app := cli.NewApp()
 
-	app.Version = "0.0.1" //TODO use goreleaser for setting version
+	app.Version = formatVersion()
 	app.Name = "tdex operator CLI"
 	app.Usage = "Command line interface for tdexd daemon operators"
 	app.Commands = append(
@@ -110,6 +113,13 @@ func merge(maps ...map[string]string) map[string]string {
 		}
 	}
 	return merge
+}
+
+func formatVersion() string {
+	return fmt.Sprintf(
+		"\nVersion: %s\nCommit: %s\nDate: %s",
+		version, commit, date,
+	)
 }
 
 /*
