@@ -877,7 +877,17 @@ func (o *operatorService) ClaimMarketDeposit(
 		if err != nil {
 			return err
 		}
-		addressesBlindingKeys := vault.AddressesBlindingKeysGroupByAccount()
+
+		markets, err := o.marketRepository.GetNonTradableMarkets(ctx)
+		if err != nil {
+			return err
+		}
+		accountIds := make([]int, 0)
+		for _, v := range markets {
+			accountIds = append(accountIds, v.AccountIndex)
+		}
+
+		addressesBlindingKeys := vault.AddressesBlindingKeysGroupByAccount(accountIds)
 		for k, v := range addressesBlindingKeys {
 			addressesPerAccount[k] = v.Addresses
 			bkPairs = v.BlindingKeys
