@@ -836,49 +836,43 @@ var (
 
 func (o *operatorService) ClaimMarketDeposit(
 	ctx context.Context,
-	market Market,
+	marketReq Market,
 	outpoints []TxOutpoint,
 ) error {
 	addressesPerAccount := make(map[int][]string)
 	bkPairs := make([][]byte, 0)
-	var accountIndex int
-	var err error
 
-	existingMarketReq := existingMarketReq(market)
-	if existingMarketReq {
-		if err := validateAssetString(market.BaseAsset); err != nil {
-			return domain.ErrInvalidBaseAsset
-		}
+	err := validateAssetString(marketReq.BaseAsset)
+	if err != nil {
+		return domain.ErrInvalidBaseAsset
+	}
 
-		if err := validateAssetString(market.QuoteAsset); err != nil {
-			return domain.ErrInvalidQuoteAsset
-		}
+	err = validateAssetString(marketReq.QuoteAsset)
+	if err != nil {
+		return domain.ErrInvalidQuoteAsset
+	}
 
-		if market.BaseAsset != config.GetString(config.BaseAssetKey) {
-			return domain.ErrInvalidBaseAsset
-		}
+	if marketReq.BaseAsset != config.GetString(config.BaseAssetKey) {
+		return domain.ErrInvalidBaseAsset
+	}
 
-		_, accountIndex, err = o.marketRepository.GetMarketByAsset(
-			ctx,
-			market.QuoteAsset,
-		)
+	market, accountIndex, err := o.marketRepository.GetMarketByAsset(ctx,
+		marketReq.QuoteAsset)
+	if err != nil {
+		return err
+	}
+
+	if market != nil {
+		addresses, bk, err := o.vaultRepository.
+			GetAllDerivedAddressesAndBlindingKeysForAccount(
+				ctx,
+				accountIndex,
+			)
 		if err != nil {
 			return err
 		}
-		if accountIndex != -1 {
-			addresses, bk, err := o.vaultRepository.
-				GetAllDerivedAddressesAndBlindingKeysForAccount(
-					ctx,
-					accountIndex,
-				)
-			if err != nil {
-				return err
-			}
-			addressesPerAccount[accountIndex] = addresses
-			bkPairs = bk
-		} else {
-			return domain.ErrMarketNotExist
-		}
+		addressesPerAccount[accountIndex] = addresses
+		bkPairs = bk
 	} else {
 		vault, err := o.vaultRepository.GetOrCreateVault(
 			ctx,
@@ -912,10 +906,6 @@ func (o *operatorService) ClaimMarketDeposit(
 		outpoints,
 		marketDeposit,
 	)
-}
-
-func existingMarketReq(market Market) bool {
-	return market.BaseAsset != "" && market.QuoteAsset != ""
 }
 
 func (o *operatorService) ClaimFeeDeposit(
