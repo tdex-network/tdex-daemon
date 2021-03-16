@@ -3,16 +3,15 @@ package domain
 import (
 	"bytes"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 // IsZero returns whether the Vault is initialized without holding any data
@@ -20,64 +19,64 @@ func (v *Vault) IsZero() bool {
 	return reflect.DeepEqual(*v, Vault{})
 }
 
+// IsInitialized returnes whether the Vault has been inizitialized
+func (v *Vault) IsInitialized() bool {
+	return len(v.EncryptedMnemonic) > 0
+}
+
+// IsLocked returns whether the Vault is initialized and locked
+func (v *Vault) IsLocked() bool {
+	return !v.IsInitialized() || !MnemonicStoreManager.IsSet()
+}
+
 // GetMnemonicSafe is getter for Vault's mnemonic in plain text
 func (v *Vault) GetMnemonicSafe() ([]string, error) {
-	if v.isLocked() {
-		return nil, ErrMustBeUnlocked
+	if v.IsLocked() {
+		return nil, ErrVaultMustBeUnlocked
 	}
 
-	return config.GetMnemonic(), nil
+	return MnemonicStoreManager.Get(), nil
 }
 
 // Lock locks the Vault by wiping its mnemonic field
-func (v *Vault) Lock() error {
-	if v.isLocked() {
-		return nil
+func (v *Vault) Lock() {
+	if v.IsLocked() {
+		return
 	}
 	// flush mnemonic in plain text
-	config.Set(config.MnemonicKey, "")
-	return nil
+	MnemonicStoreManager.Unset()
 }
 
 // Unlock attempts to decrypt the mnemonic with the provided passphrase
 func (v *Vault) Unlock(passphrase string) error {
-	if !v.isLocked() {
+	if !v.IsLocked() {
 		return nil
 	}
 
-	mnemonic, err := wallet.Decrypt(wallet.DecryptOpts{
-		CypherText: v.EncryptedMnemonic,
-		Passphrase: passphrase,
-	})
+	mnemonic, err := EncrypterManager.Decrypt(v.EncryptedMnemonic, passphrase)
 	if err != nil {
 		return err
 	}
 
-	config.Set(config.MnemonicKey, mnemonic)
+	MnemonicStoreManager.Set(mnemonic)
 	return nil
 }
 
 // ChangePassphrase attempts to unlock the
 func (v *Vault) ChangePassphrase(currentPassphrase, newPassphrase string) error {
-	if !v.isLocked() {
-		return ErrMustBeLocked
+	if !v.IsLocked() {
+		return ErrVaultMustBeLocked
 	}
 	if !v.isValidPassphrase(currentPassphrase) {
-		return ErrInvalidPassphrase
+		return ErrVaultInvalidPassphrase
 	}
 
-	mnemonic, err := wallet.Decrypt(wallet.DecryptOpts{
-		CypherText: v.EncryptedMnemonic,
-		Passphrase: currentPassphrase,
-	})
+	mnemonic, err := EncrypterManager.Decrypt(v.EncryptedMnemonic, currentPassphrase)
 	if err != nil {
 		return err
 	}
 
-	encryptedMnemonic, err := wallet.Encrypt(wallet.EncryptOpts{
-		PlainText:  mnemonic,
-		Passphrase: newPassphrase,
-	})
+	encryptedMnemonic, err := EncrypterManager.Encrypt(mnemonic, newPassphrase)
 	if err != nil {
 		return err
 	}
@@ -95,30 +94,11 @@ func (v *Vault) InitAccount(accountIndex int) {
 	}
 }
 
-// DeriveNextExternalAddressForAccount returns the next unused address, the corresponding output script, the blinding key.
-func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (address string, script string, blindingPrivateKey []byte, err error) {
-	if v.isLocked() {
-		return "", "", nil, ErrMustBeUnlocked
-	}
-
-	return v.deriveNextAddressForAccount(accountIndex, ExternalChain)
-}
-
-// DeriveNextInternalAddressForAccount returns the next unused change address for the
-// provided account and the corresponding output script
-func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (address string, script string, blindingPrivateKey []byte, err error) {
-	if v.isLocked() {
-		return "", "", nil, ErrMustBeUnlocked
-	}
-
-	return v.deriveNextAddressForAccount(accountIndex, InternalChain)
-}
-
 // AccountByIndex returns the account with the given index
 func (v *Vault) AccountByIndex(accountIndex int) (*Account, error) {
 	account, ok := v.Accounts[accountIndex]
 	if !ok {
-		return nil, fmt.Errorf("account not found with index %d", accountIndex)
+		return nil, ErrVaultAccountNotFound
 	}
 	return account, nil
 }
@@ -127,13 +107,32 @@ func (v *Vault) AccountByIndex(accountIndex int) (*Account, error) {
 func (v *Vault) AccountByAddress(addr string) (*Account, int, error) {
 	info, ok := v.AccountAndKeyByAddress[addr]
 	if !ok {
-		return nil, -1, fmt.Errorf("account not found for address '%s", addr)
+		return nil, -1, ErrVaultAccountNotFound
 	}
 	account, err := v.AccountByIndex(info.AccountIndex)
 	if err != nil {
 		return nil, -1, err
 	}
 	return account, info.AccountIndex, nil
+}
+
+// DeriveNextExternalAddressForAccount returns the next unused address, the corresponding output script, the blinding key.
+func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (address string, script string, blindingPrivateKey []byte, err error) {
+	if v.IsLocked() {
+		return "", "", nil, ErrVaultMustBeUnlocked
+	}
+
+	return v.deriveNextAddressForAccount(accountIndex, ExternalChain)
+}
+
+// DeriveNextInternalAddressForAccount returns the next unused change address for the
+// provided account and the corresponding output script
+func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (address string, script string, blindingPrivateKey []byte, err error) {
+	if v.IsLocked() {
+		return "", "", nil, ErrVaultMustBeUnlocked
+	}
+
+	return v.deriveNextAddressForAccount(accountIndex, InternalChain)
 }
 
 // AllDerivedAddressesInfo returns the info of all the external and internal
@@ -149,8 +148,8 @@ func (v *Vault) AllDerivedAddressesInfo() []AddressInfo {
 // internal addresses derived for the provided account along with the
 // respective private blinding keys
 func (v *Vault) AllDerivedAddressesAndBlindingKeysForAccount(accountIndex int) ([]string, [][]byte, error) {
-	if v.isLocked() {
-		return nil, nil, ErrMustBeUnlocked
+	if v.IsLocked() {
+		return nil, nil, ErrVaultMustBeUnlocked
 	}
 
 	return v.allDerivedAddressesAndBlindingKeysForAccount(accountIndex)
@@ -162,23 +161,11 @@ func (v *Vault) AllDerivedExternalAddressesForAccount(accountIndex int) (
 	[]string,
 	error,
 ) {
-	if v.isLocked() {
-		return nil, ErrMustBeUnlocked
+	if v.IsLocked() {
+		return nil, ErrVaultMustBeUnlocked
 	}
 
 	return v.allDerivedExternalAddressesForAccount(accountIndex)
-}
-
-// isInitialized returnes whether the Vault has been inizitialized by checking
-// if the mnemonic has been encrypted, its plain text version has been wiped
-// and a passphrase (hash) has been set
-func (v *Vault) isInitialized() bool {
-	return len(v.EncryptedMnemonic) > 0
-}
-
-// isLocked returns whether the Vault is initialized and locked
-func (v *Vault) isLocked() bool {
-	return !v.isInitialized() || len(config.GetMnemonic()) == 0
 }
 
 func (v *Vault) isValidPassphrase(passphrase string) bool {
@@ -191,7 +178,7 @@ func (v *Vault) isPassphraseSet() bool {
 
 func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (string, string, []byte, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: config.GetMnemonic(),
+		SigningMnemonic: MnemonicStoreManager.Get(),
 	})
 	if err != nil {
 		return "", "", nil, err
@@ -216,7 +203,7 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 	)
 	addr, script, err := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 		DerivationPath: derivationPath,
-		Network:        config.GetNetwork(),
+		Network:        v.Network,
 	})
 	if err != nil {
 		return "", "", nil, err
@@ -270,15 +257,17 @@ func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 	}
 
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: config.GetMnemonic(),
+		SigningMnemonic: MnemonicStoreManager.Get(),
 	})
 	if err != nil {
 		return nil, nil, err
 	}
+	net := v.Network
 
 	addresses := make([]string, 0, account.LastExternalIndex+account.LastInternalIndex)
 	externalAddresses := deriveAddressesInRange(
 		w,
+		net,
 		accountIndex,
 		ExternalChain,
 		0,
@@ -286,6 +275,7 @@ func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 	)
 	internalAddresses := deriveAddressesInRange(
 		w,
+		net,
 		accountIndex,
 		InternalChain,
 		0,
@@ -316,7 +306,7 @@ func (v *Vault) allDerivedExternalAddressesForAccount(accountIndex int) (
 	}
 
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: config.GetMnemonic(),
+		SigningMnemonic: MnemonicStoreManager.Get(),
 	})
 	if err != nil {
 		return nil, err
@@ -324,6 +314,7 @@ func (v *Vault) allDerivedExternalAddressesForAccount(accountIndex int) (
 
 	externalAddresses := deriveAddressesInRange(
 		w,
+		v.Network,
 		accountIndex,
 		ExternalChain,
 		0,
@@ -335,7 +326,7 @@ func (v *Vault) allDerivedExternalAddressesForAccount(accountIndex int) (
 
 func validateAccountIndex(accIndex int) error {
 	if accIndex < 0 {
-		return errors.New("account index must be a positive integer number")
+		return ErrInvalidAccount
 	}
 
 	return nil
@@ -372,6 +363,7 @@ func (a *Account) addDerivationPath(outputScript, derivationPath string) {
 
 func deriveAddressesInRange(
 	w *wallet.Wallet,
+	net *network.Network,
 	accountIndex,
 	chainIndex,
 	firstAddressIndex,
@@ -382,7 +374,7 @@ func deriveAddressesInRange(
 		derivationPath := fmt.Sprintf("%d'/%d/%d", accountIndex, chainIndex, i)
 		addr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 			DerivationPath: derivationPath,
-			Network:        config.GetNetwork(),
+			Network:        net,
 		})
 		addresses = append(addresses, addr)
 	}

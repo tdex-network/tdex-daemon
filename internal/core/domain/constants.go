@@ -17,3 +17,11 @@ const (
 	StrategyTypeBalanced   StrategyType = 1
 	StrategyTypeUnbalanced StrategyType = 2
 )
+
+const (
+	Empty = iota
+	Proposal
+	Accepted
+	Completed
+	Settled
+)

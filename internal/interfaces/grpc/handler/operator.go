@@ -637,7 +637,7 @@ func validateMarket(market *pbtypes.Market) error {
 	}
 
 	if market.GetBaseAsset() != config.GetString(config.BaseAssetKey) {
-		return domain.ErrInvalidBaseAsset
+		return domain.ErrMarketInvalidBaseAsset
 	}
 	return nil
 }

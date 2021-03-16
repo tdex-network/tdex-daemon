@@ -15,11 +15,18 @@ type marketRepositoryImpl struct {
 	db *DbManager
 }
 
-//NewMarketRepositoryImpl initialize a badger implementation of the domain.MarketRepository
+// NewMarketRepositoryImpl initialize a badger implementation of the domain.MarketRepository
 func NewMarketRepositoryImpl(db *DbManager) domain.MarketRepository {
 	return marketRepositoryImpl{
 		db: db,
 	}
+}
+
+func (m marketRepositoryImpl) GetOrCreateMarket(
+	ctx context.Context,
+	market *domain.Market,
+) (*domain.Market, error) {
+	return m.getOrCreateMarket(ctx, market)
 }
 
 func (m marketRepositoryImpl) GetMarketByAccount(
@@ -69,13 +76,6 @@ func (m marketRepositoryImpl) GetLatestMarket(
 	return
 }
 
-func (m marketRepositoryImpl) GetOrCreateMarket(
-	ctx context.Context,
-	accountIndex int,
-) (*domain.Market, error) {
-	return m.getOrCreateMarket(ctx, accountIndex)
-}
-
 func (m marketRepositoryImpl) GetTradableMarkets(
 	ctx context.Context,
 ) ([]domain.Market, error) {
@@ -100,9 +100,12 @@ func (m marketRepositoryImpl) UpdateMarket(
 	accountIndex int,
 	updateFn func(m *domain.Market) (*domain.Market, error),
 ) error {
-	currentMarket, err := m.getOrCreateMarket(ctx, accountIndex)
+	currentMarket, err := m.getMarket(ctx, accountIndex)
 	if err != nil {
 		return err
+	}
+	if currentMarket == nil {
+		return ErrMarketNotFound
 	}
 
 	updatedMarket, err := updateFn(currentMarket)
@@ -174,7 +177,6 @@ func (m marketRepositoryImpl) CloseMarket(
 }
 
 func (m marketRepositoryImpl) UpdatePrices(ctx context.Context, accountIndex int, prices domain.Prices) error {
-	//Now we update the price store as well only if market insertion went ok
 	err := m.updatePriceByAccountIndex(ctx, accountIndex, prices)
 	if err != nil {
 		return err
@@ -185,40 +187,47 @@ func (m marketRepositoryImpl) UpdatePrices(ctx context.Context, accountIndex int
 
 func (m marketRepositoryImpl) getOrCreateMarket(
 	ctx context.Context,
-	accountIndex int,
+	market *domain.Market,
 ) (*domain.Market, error) {
-	market, err := m.getMarket(ctx, accountIndex)
+	if market == nil {
+		return nil, ErrMarketInvalidRequest
+	}
+
+	mkt, err := m.getMarket(ctx, market.AccountIndex)
 	if err != nil {
 		return nil, err
 	}
 
-	if market == nil {
-		market, err = domain.NewMarket(accountIndex)
+	if mkt == nil {
+		accountIndex := market.AccountIndex
+		fee := market.Fee
+
+		mkt, err = domain.NewMarket(accountIndex, fee)
 		if err != nil {
 			return nil, err
 		}
 
-		err = m.insertMarket(ctx, accountIndex, *market)
+		err = m.insertMarket(ctx, accountIndex, mkt)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return market, nil
+	return mkt, nil
 }
 
 func (m marketRepositoryImpl) insertMarket(
 	ctx context.Context,
 	accountIndex int,
-	market domain.Market,
+	market *domain.Market,
 ) error {
 	var err error
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = m.db.Store.TxInsert(tx, accountIndex, &market)
+		err = m.db.Store.TxInsert(tx, accountIndex, market)
 	} else {
-		err = m.db.Store.Insert(accountIndex, &market)
+		err = m.db.Store.Insert(accountIndex, market)
 	}
 	if err != nil {
 		if err != badgerhold.ErrKeyExists {
@@ -226,7 +235,7 @@ func (m marketRepositoryImpl) insertMarket(
 		}
 	}
 
-	//Now we update the price store as well only if market insertion went ok
+	// Now we update the price store as well only if market insertion went ok
 	err = m.updatePriceByAccountIndex(ctx, accountIndex, domain.Prices{})
 	if err != nil {
 		return err
@@ -261,7 +270,7 @@ func (m marketRepositoryImpl) getMarket(
 		return nil, err
 	}
 	market.Price = *price
-	//Restore strategy
+	// Restore strategy
 	restoreStrategy(&market)
 
 	return &market, nil
@@ -287,7 +296,7 @@ func (m marketRepositoryImpl) updateMarket(
 	}
 
 	if err != nil {
-		return fmt.Errorf("trying to update market with account index %v %w", accountIndex, err)
+		return fmt.Errorf("trying to update market with account %v: %w", accountIndex, err)
 	}
 
 	return nil
@@ -333,14 +342,13 @@ func (m marketRepositoryImpl) getPriceByAccountIndex(ctx context.Context, accoun
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("trying to get price with account index %v %w", accountIndex, err)
+		return nil, fmt.Errorf("trying to get price for market with account %v: %w", accountIndex, err)
 	}
 
 	return prices, nil
 }
 
 func (m marketRepositoryImpl) updatePriceByAccountIndex(ctx context.Context, accountIndex int, prices domain.Prices) (err error) {
-
 	if ctx.Value("ptx") != nil {
 		tx := ctx.Value("ptx").(*badger.Txn)
 		err = m.db.Store.TxUpsert(
@@ -356,7 +364,7 @@ func (m marketRepositoryImpl) updatePriceByAccountIndex(ctx context.Context, acc
 	}
 
 	if err != nil {
-		return fmt.Errorf("trying to updating price with account index %v %w", accountIndex, err)
+		return fmt.Errorf("trying to update price for maket with account %v: %w", accountIndex, err)
 	}
 
 	return nil

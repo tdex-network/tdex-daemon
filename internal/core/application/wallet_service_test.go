@@ -142,7 +142,7 @@ func TestWalletUnlock(t *testing.T) {
 	t.Cleanup(close)
 
 	address, blindingKey, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
-	assert.Equal(t, domain.ErrMustBeUnlocked, err)
+	assert.Equal(t, domain.ErrVaultMustBeUnlocked, err)
 
 	err = walletSvc.UnlockWallet(ctx, dryLockedWallet.password)
 	if err != nil {
@@ -167,7 +167,7 @@ func TestWalletChangePass(t *testing.T) {
 	t.Cleanup(close)
 
 	err := walletSvc.ChangePassword(ctx, "wrongPass", "newPass")
-	assert.Equal(t, domain.ErrInvalidPassphrase, err)
+	assert.Equal(t, domain.ErrVaultInvalidPassphrase, err)
 
 	err = walletSvc.ChangePassword(ctx, dryLockedWallet.password, "newPass")
 	assert.NoError(t, err)
@@ -251,8 +251,6 @@ func TestSendToMany(t *testing.T) {
 
 	walletSvc.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
 			return v, nil

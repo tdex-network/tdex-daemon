@@ -2,9 +2,6 @@ package dbbadger
 
 import (
 	"context"
-	"errors"
-
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
@@ -50,6 +47,17 @@ func (t tradeRepositoryImpl) GetAllTradesByMarket(
 	return t.findTrades(ctx, query)
 }
 
+func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
+	ctx context.Context,
+	marketQuoteAsset string,
+) ([]*domain.Trade, error) {
+	query := badgerhold.
+		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
+		And("Status.Code").Ge(domain.Completed).
+		And("Status.Failed").Eq(false)
+	return t.findTrades(ctx, query)
+}
+
 func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
 	ctx context.Context,
 	swapAcceptID string,
@@ -62,7 +70,7 @@ func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
 	}
 
 	if len(trades) <= 0 {
-		return nil, errors.New("trade not found")
+		return nil, nil
 	}
 
 	return trades[0], nil
@@ -80,7 +88,7 @@ func (t tradeRepositoryImpl) GetTradeByTxID(
 	}
 
 	if len(trades) <= 0 {
-		return nil, errors.New("trade not found")
+		return nil, ErrTradeNotFound
 	}
 
 	return trades[0], nil
@@ -91,7 +99,7 @@ func (t tradeRepositoryImpl) UpdateTrade(
 	ID *uuid.UUID,
 	updateFn func(t *domain.Trade) (*domain.Trade, error),
 ) error {
-	currentTrade, err := t.getOrCreateTrade(ctx, ID)
+	currentTrade, err := t.getTrade(ctx, *ID)
 	if err != nil {
 		return err
 	}
@@ -102,16 +110,6 @@ func (t tradeRepositoryImpl) UpdateTrade(
 	}
 
 	return t.updateTrade(ctx, updatedTrade.ID, *updatedTrade)
-}
-
-func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
-	ctx context.Context,
-	marketQuoteAsset string,
-) ([]*domain.Trade, error) {
-	query := badgerhold.
-		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
-		And("Status.Code").Eq(pb.SwapStatus_COMPLETE)
-	return t.findTrades(ctx, query)
 }
 
 func (t tradeRepositoryImpl) getOrCreateTrade(
@@ -164,6 +162,9 @@ func (t tradeRepositoryImpl) getTrade(
 		err = t.db.Store.Get(ID, &trade)
 	}
 	if err != nil {
+		if err == badgerhold.ErrNotFound {
+			return nil, ErrTradeNotFound
+		}
 		return nil, err
 	}
 

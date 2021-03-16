@@ -6,7 +6,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
@@ -40,6 +39,8 @@ type blockchainListener struct {
 	// Loggers
 	feeDepositLogged    bool
 	feeBalanceLowLogged bool
+	marketBaseAsset     string
+	feeBalanceThreshold uint64
 
 	mutex *sync.RWMutex
 }
@@ -53,6 +54,8 @@ func NewBlockchainListener(
 	crawlerSvc crawler.Service,
 	explorerSvc explorer.Service,
 	dbManager ports.DbManager,
+	marketBaseAsset string,
+	feeBalanceThreshold uint64,
 ) BlockchainListener {
 	return newBlockchainListener(
 		unspentRepository,
@@ -62,6 +65,8 @@ func NewBlockchainListener(
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
+		marketBaseAsset,
+		feeBalanceThreshold,
 	)
 }
 
@@ -73,17 +78,21 @@ func newBlockchainListener(
 	crawlerSvc crawler.Service,
 	explorerSvc explorer.Service,
 	dbManager ports.DbManager,
+	marketBaseAsset string,
+	feeBalanceThreshold uint64,
 ) *blockchainListener {
 	return &blockchainListener{
-		unspentRepository:  unspentRepository,
-		marketRepository:   marketRepository,
-		vaultRepository:    vaultRepository,
-		tradeRepository:    tradeRepository,
-		crawlerSvc:         crawlerSvc,
-		explorerSvc:        explorerSvc,
-		dbManager:          dbManager,
-		mutex:              &sync.RWMutex{},
-		pendingObservables: make([]crawler.Observable, 0),
+		unspentRepository:   unspentRepository,
+		marketRepository:    marketRepository,
+		vaultRepository:     vaultRepository,
+		tradeRepository:     tradeRepository,
+		crawlerSvc:          crawlerSvc,
+		explorerSvc:         explorerSvc,
+		dbManager:           dbManager,
+		mutex:               &sync.RWMutex{},
+		pendingObservables:  make([]crawler.Observable, 0),
+		marketBaseAsset:     marketBaseAsset,
+		feeBalanceThreshold: feeBalanceThreshold,
 	}
 }
 
@@ -261,7 +270,7 @@ func (b *blockchainListener) updateTrade(
 		ctx,
 		&trade.ID,
 		func(t *domain.Trade) (*domain.Trade, error) {
-			if err := t.Settle(uint64(event.BlockTime)); err != nil {
+			if _, err := t.Settle(uint64(event.BlockTime)); err != nil {
 				return nil, err
 			}
 
@@ -307,13 +316,13 @@ func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context) error {
 	feeAccountBalance, err := b.unspentRepository.GetBalance(
 		ctx,
 		addresses,
-		config.GetString(config.BaseAssetKey),
+		b.marketBaseAsset,
 	)
 	if err != nil {
 		return err
 	}
 
-	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
+	if feeAccountBalance < b.feeBalanceThreshold {
 		if !b.getSafeFeeBalanceLowLogged() {
 			log.Warn(
 				"fee account balance for account index too low. Trades for markets won't be " +
@@ -385,15 +394,16 @@ func (b *blockchainListener) checkMarketAccountFundings(ctx context.Context, acc
 		case 1:
 			asset := "base"
 			for k := range unspentsAssetType {
-				if k == config.GetString(config.BaseAssetKey) {
+				if k == b.marketBaseAsset {
 					asset = "quote"
 				}
 			}
 			log.Warnf("%s asset is missing for market %d", asset, accountIndex)
 		case 2:
+			baseAsset := b.marketBaseAsset
 			var asset string
 			for k := range unspentsAssetType {
-				if k != config.GetString(config.BaseAssetKey) {
+				if k != baseAsset {
 					asset = k
 				}
 			}
@@ -414,7 +424,7 @@ func (b *blockchainListener) checkMarketAccountFundings(ctx context.Context, acc
 				ctx,
 				accountIndex,
 				func(m *domain.Market) (*domain.Market, error) {
-					if err := m.FundMarket(outpoints); err != nil {
+					if err := m.FundMarket(outpoints, baseAsset); err != nil {
 						return nil, err
 					}
 
