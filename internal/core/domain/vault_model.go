@@ -135,6 +135,7 @@ func NewVault(mnemonic []string, passphrase string, net *network.Network) (*Vaul
 		PassphraseHash:         btcutil.Hash160([]byte(passphrase)),
 		Accounts:               map[int]*Account{},
 		AccountAndKeyByAddress: map[string]AccountAndKey{},
+		Network:                net,
 	}, nil
 }
 

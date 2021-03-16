@@ -185,6 +185,7 @@ func newMockServices(
 		mktBaseAsset,
 		mktFee,
 		regtest,
+		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
 	)
 
 	close := func() {

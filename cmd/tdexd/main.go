@@ -126,6 +126,7 @@ func main() {
 		marketsBaseAsset,
 		marketsFee,
 		network,
+		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
 	)
 
 	// Ports

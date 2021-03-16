@@ -87,15 +87,16 @@ type OperatorService interface {
 }
 
 type operatorService struct {
-	marketRepository   domain.MarketRepository
-	vaultRepository    domain.VaultRepository
-	tradeRepository    domain.TradeRepository
-	unspentRepository  domain.UnspentRepository
-	explorerSvc        explorer.Service
-	blockchainListener BlockchainListener
-	marketBaseAsset    string
-	marketFee          int64
-	network            *network.Network
+	marketRepository           domain.MarketRepository
+	vaultRepository            domain.VaultRepository
+	tradeRepository            domain.TradeRepository
+	unspentRepository          domain.UnspentRepository
+	explorerSvc                explorer.Service
+	blockchainListener         BlockchainListener
+	marketBaseAsset            string
+	marketFee                  int64
+	network                    *network.Network
+	feeAccountBalanceThreshold uint64
 }
 
 // NewOperatorService is a constructor function for OperatorService.
@@ -109,17 +110,19 @@ func NewOperatorService(
 	marketBaseAsset string,
 	marketFee int64,
 	net *network.Network,
+	feeAccountBalanceThreshold uint64,
 ) OperatorService {
 	return &operatorService{
-		marketRepository:   marketRepository,
-		vaultRepository:    vaultRepository,
-		tradeRepository:    tradeRepository,
-		unspentRepository:  unspentRepository,
-		explorerSvc:        explorerSvc,
-		blockchainListener: bcListener,
-		marketBaseAsset:    marketBaseAsset,
-		marketFee:          marketFee,
-		network:            net,
+		marketRepository:           marketRepository,
+		vaultRepository:            vaultRepository,
+		tradeRepository:            tradeRepository,
+		unspentRepository:          unspentRepository,
+		explorerSvc:                explorerSvc,
+		blockchainListener:         bcListener,
+		marketBaseAsset:            marketBaseAsset,
+		marketFee:                  marketFee,
+		network:                    net,
+		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
 	}
 }
 
@@ -848,7 +851,7 @@ func (o *operatorService) ClaimMarketDeposit(
 	addressesPerAccount := make(map[int][]string)
 	bkPairs := make([][]byte, 0)
 
-	err := validateMarketRequest(marketReq)
+	err := o.validateMarketRequest(marketReq)
 	if err != nil {
 		return err
 	}
@@ -878,6 +881,7 @@ func (o *operatorService) ClaimMarketDeposit(
 			ctx,
 			nil,
 			"",
+			o.network,
 		)
 		if err != nil {
 			return err
@@ -909,19 +913,18 @@ func (o *operatorService) ClaimMarketDeposit(
 	)
 }
 
-func validateMarketRequest(marketReq Market) error {
-	err := validateAssetString(marketReq.BaseAsset)
-	if err != nil {
-		return domain.ErrInvalidBaseAsset
+func (o *operatorService) validateMarketRequest(marketReq Market) error {
+	if err := validateAssetString(marketReq.BaseAsset); err != nil {
+		return domain.ErrMarketInvalidBaseAsset
 	}
 
-	err = validateAssetString(marketReq.QuoteAsset)
-	if err != nil {
-		return domain.ErrInvalidQuoteAsset
+	if err := validateAssetString(marketReq.QuoteAsset); err != nil {
+		return domain.ErrMarketInvalidQuoteAsset
 	}
 
-	if marketReq.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return domain.ErrInvalidBaseAsset
+	// Checks if base asset is valid
+	if marketReq.BaseAsset != o.marketBaseAsset {
+		return domain.ErrMarketInvalidBaseAsset
 	}
 
 	return nil
@@ -1093,7 +1096,7 @@ func (o *operatorService) fundMarket(
 		ctx,
 		accountIndex,
 		func(m *domain.Market) (*domain.Market, error) {
-			if err := m.FundMarket(outpoints); err != nil {
+			if err := m.FundMarket(outpoints, o.marketBaseAsset); err != nil {
 				return nil, err
 			}
 
@@ -1112,13 +1115,13 @@ func (o *operatorService) checkFeeAccountBalance(ctx context.Context) error {
 	feeAccountBalance, err := o.unspentRepository.GetBalance(
 		ctx,
 		addresses,
-		config.GetString(config.BaseAssetKey),
+		o.marketBaseAsset,
 	)
 	if err != nil {
 		return err
 	}
 
-	if feeAccountBalance < uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)) {
+	if feeAccountBalance < o.feeAccountBalanceThreshold {
 		log.Warn(
 			"fee account balance for account index too low. Trades for markets won't be " +
 				"served properly. Fund the fee account as soon as possible",
