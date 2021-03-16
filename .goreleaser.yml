@@ -26,7 +26,7 @@ builds:
   - id: "tdex"
     main: ./cmd/tdex
     ldflags:
-      - -X 'github.com/TDex-network/tdex-daemon/cmd/tdex.version={{.Version}}' -X 'github.com/TDex-network/tdex-daemon/cmd/tdex.commit={{.Commit}}' -X 'github.com/TDex-network/tdex-daemon/cmd/tdex.date={{.Date}}'
+      - -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
     env:
       - CGO_ENABLED=0
     goos:
