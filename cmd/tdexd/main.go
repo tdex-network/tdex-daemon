@@ -59,7 +59,7 @@ func main() {
 		log.WithError(err).Panic("error while opening db")
 	}
 
-	marketsFee := int64(config.GetInt(config.DefaultFeeKey))
+	marketsFee := int64(config.GetFloat(config.DefaultFeeKey) * 100)
 	marketsBaseAsset := config.GetString(config.BaseAssetKey)
 	tradesExpiryDuration := config.GetDuration(config.TradeExpiryTimeKey)
 	withElementsSvc := config.IsSet(config.ElementsRPCEndpointKey)
