@@ -834,6 +834,7 @@ var (
 	feeDeposit    depositType = "FeeDeposit"
 )
 
+// ClaimMarketDeposit method add unspents to the market
 func (o *operatorService) ClaimMarketDeposit(
 	ctx context.Context,
 	marketReq Market,
@@ -842,6 +843,58 @@ func (o *operatorService) ClaimMarketDeposit(
 	addressesPerAccount := make(map[int][]string)
 	bkPairs := make([][]byte, 0)
 
+	err := validateMarketRequest(marketReq)
+	if err != nil {
+		return err
+	}
+
+	market, accountIndex, err := o.marketRepository.GetMarketByAsset(ctx,
+		marketReq.QuoteAsset)
+	if err != nil {
+		return err
+	}
+
+	// if market exist fetch addresses and blinding keys based on accountIndex
+	if market != nil {
+		addresses, bk, err := o.vaultRepository.
+			GetAllDerivedAddressesAndBlindingKeysForAccount(
+				ctx,
+				accountIndex,
+			)
+		if err != nil {
+			return err
+		}
+		addressesPerAccount[accountIndex] = addresses
+		bkPairs = bk
+	} else {
+		// if market doesnt exist fetch addresses and blinding keys of
+		// all accounts
+		vault, err := o.vaultRepository.GetOrCreateVault(
+			ctx,
+			nil,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		addressesBlindingKeys := vault.AddressesBlindingKeysGroupByAccount()
+		for k, v := range addressesBlindingKeys {
+			addressesPerAccount[k] = v.Addresses
+			bkPairs = v.BlindingKeys
+
+		}
+	}
+
+	return o.claimDeposit(
+		ctx,
+		addressesPerAccount,
+		bkPairs,
+		outpoints,
+		marketDeposit,
+	)
+}
+
+func validateMarketRequest(marketReq Market) error {
 	err := validateAssetString(marketReq.BaseAsset)
 	if err != nil {
 		return domain.ErrInvalidBaseAsset
@@ -856,58 +909,10 @@ func (o *operatorService) ClaimMarketDeposit(
 		return domain.ErrInvalidBaseAsset
 	}
 
-	market, accountIndex, err := o.marketRepository.GetMarketByAsset(ctx,
-		marketReq.QuoteAsset)
-	if err != nil {
-		return err
-	}
-
-	if market != nil {
-		addresses, bk, err := o.vaultRepository.
-			GetAllDerivedAddressesAndBlindingKeysForAccount(
-				ctx,
-				accountIndex,
-			)
-		if err != nil {
-			return err
-		}
-		addressesPerAccount[accountIndex] = addresses
-		bkPairs = bk
-	} else {
-		vault, err := o.vaultRepository.GetOrCreateVault(
-			ctx,
-			nil,
-			"",
-		)
-		if err != nil {
-			return err
-		}
-		allDerivedAddressInfo := vault.AllDerivedAddressesInfo()
-		previousAccountIndex := allDerivedAddressInfo[0].AccountIndex
-		addresses := make([]string, 0, len(allDerivedAddressInfo))
-		for _, v := range allDerivedAddressInfo {
-			if v.AccountIndex != previousAccountIndex {
-				addressesPerAccount[previousAccountIndex] = addresses
-				previousAccountIndex = v.AccountIndex
-				addresses = make([]string, 0, len(allDerivedAddressInfo))
-			}
-			addresses = append(addresses, v.Address)
-			bkPairs = append(bkPairs, v.BlindingKey)
-		}
-		if len(addresses) > 0 {
-			addressesPerAccount[previousAccountIndex] = addresses
-		}
-	}
-
-	return o.claimDeposit(
-		ctx,
-		addressesPerAccount,
-		bkPairs,
-		outpoints,
-		marketDeposit,
-	)
+	return nil
 }
 
+// ClaimFeeDeposit adds unspents to the Fee Account
 func (o *operatorService) ClaimFeeDeposit(
 	ctx context.Context,
 	outpoints []TxOutpoint,
@@ -931,6 +936,8 @@ func (o *operatorService) ClaimFeeDeposit(
 	)
 }
 
+// claimDeposit loops through outpoints and tries to find out to which account
+//unspents belongs to, if depositType=="MarketDeposit" it will FundMarket
 func (o *operatorService) claimDeposit(
 	ctx context.Context,
 	addressesPerAccount map[int][]string,
@@ -988,7 +995,11 @@ func (o *operatorService) claimDeposit(
 		}
 		script := hex.EncodeToString(tx.Outputs[v.Index].Script)
 
+		//here we match outpoint script with relevant address and
+		//blinding key, stored in a daemon,
+		//so we can unblind unspents and eventually store them
 		if val, ok := scriptBlindingKeyPairs[script]; ok {
+			//in case of marketDeposit we need to update base and quote assets
 			accountIndex = val.accountIndex
 			utxo, err := o.explorerSvc.GetUnspents(
 				val.address,
@@ -1025,23 +1036,23 @@ func (o *operatorService) claimDeposit(
 				v.Index,
 			)
 		}
+	}
 
-		if err := o.unspentRepository.AddUnspents(ctx, unspents); err != nil {
+	if err := o.unspentRepository.AddUnspents(ctx, unspents); err != nil {
+		return err
+	}
+
+	if depositType == marketDeposit {
+		if err := o.fundMarket(
+			ctx,
+			accountIndex,
+			unspents,
+		); err != nil {
 			return err
 		}
-
-		if depositType == marketDeposit {
-			if err := o.fundMarket(
-				ctx,
-				accountIndex,
-				unspents,
-			); err != nil {
-				return err
-			}
-		} else {
-			if err := o.checkFeeAccountBalance(ctx); err != nil {
-				return err
-			}
+	} else {
+		if err := o.checkFeeAccountBalance(ctx); err != nil {
+			return err
 		}
 	}
 
