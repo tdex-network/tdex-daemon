@@ -65,6 +65,22 @@ func (r MarketRepositoryImpl) GetTradableMarkets(_ context.Context) (tradableMar
 	return tradableMarkets, nil
 }
 
+//GetNonTradableMarkets returns all the markets not  available for trading
+func (r MarketRepositoryImpl) GetNonFundedMarkets(
+	_ context.Context,
+) (tradableMarkets []domain.Market, err error) {
+	r.db.marketStore.locker.Lock()
+	defer r.db.marketStore.locker.Unlock()
+
+	for _, mkt := range r.db.marketStore.markets {
+		if !mkt.IsFunded() {
+			tradableMarkets = append(tradableMarkets, mkt)
+		}
+	}
+
+	return tradableMarkets, nil
+}
+
 // GetAllMarkets returns all the markets either tradable or not.
 func (r MarketRepositoryImpl) GetAllMarkets(_ context.Context) ([]domain.Market, error) {
 	r.db.marketStore.locker.Lock()

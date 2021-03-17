@@ -108,3 +108,8 @@ type FeeInfo struct {
 	Amount      uint64
 	MarketPrice decimal.Decimal
 }
+
+type TxOutpoint struct {
+	Hash  string
+	Index int
+}

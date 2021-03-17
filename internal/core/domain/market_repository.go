@@ -14,6 +14,10 @@ type MarketRepository interface {
 	GetLatestMarket(ctx context.Context) (market *Market, accountIndex int, err error)
 	// Retrieves all the markets that are open for trading
 	GetTradableMarkets(ctx context.Context) ([]Market, error)
+
+	// Retrieves all the markets that are not open for trading
+	GetNonFundedMarkets(ctx context.Context) ([]Market, error)
+
 	// Retrieves all the markets
 	GetAllMarkets(ctx context.Context) ([]Market, error)
 	// Updates the state of a market. In order to be flexible for many use case and to manage

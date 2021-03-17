@@ -3,6 +3,10 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
+	log "github.com/sirupsen/logrus"
+	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/transaction"
 	"strings"
 	"time"
 
@@ -64,6 +68,15 @@ type OperatorService interface {
 		int64,
 		error,
 	)
+	ClaimMarketDeposit(
+		ctx context.Context,
+		market Market,
+		outpoints []TxOutpoint,
+	) error
+	ClaimFeeDeposit(
+		ctx context.Context,
+		outpoints []TxOutpoint,
+	) error
 	ListMarket(
 		ctx context.Context,
 	) ([]MarketInfo, error)
@@ -74,15 +87,16 @@ type OperatorService interface {
 }
 
 type operatorService struct {
-	marketRepository   domain.MarketRepository
-	vaultRepository    domain.VaultRepository
-	tradeRepository    domain.TradeRepository
-	unspentRepository  domain.UnspentRepository
-	explorerSvc        explorer.Service
-	blockchainListener BlockchainListener
-	marketBaseAsset    string
-	marketFee          int64
-	network            *network.Network
+	marketRepository           domain.MarketRepository
+	vaultRepository            domain.VaultRepository
+	tradeRepository            domain.TradeRepository
+	unspentRepository          domain.UnspentRepository
+	explorerSvc                explorer.Service
+	blockchainListener         BlockchainListener
+	marketBaseAsset            string
+	marketFee                  int64
+	network                    *network.Network
+	feeAccountBalanceThreshold uint64
 }
 
 // NewOperatorService is a constructor function for OperatorService.
@@ -96,17 +110,19 @@ func NewOperatorService(
 	marketBaseAsset string,
 	marketFee int64,
 	net *network.Network,
+	feeAccountBalanceThreshold uint64,
 ) OperatorService {
 	return &operatorService{
-		marketRepository:   marketRepository,
-		vaultRepository:    vaultRepository,
-		tradeRepository:    tradeRepository,
-		unspentRepository:  unspentRepository,
-		explorerSvc:        explorerSvc,
-		blockchainListener: bcListener,
-		marketBaseAsset:    marketBaseAsset,
-		marketFee:          marketFee,
-		network:            net,
+		marketRepository:           marketRepository,
+		vaultRepository:            vaultRepository,
+		tradeRepository:            tradeRepository,
+		unspentRepository:          unspentRepository,
+		explorerSvc:                explorerSvc,
+		blockchainListener:         bcListener,
+		marketBaseAsset:            marketBaseAsset,
+		marketFee:                  marketFee,
+		network:                    net,
+		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
 	}
 }
 
@@ -817,6 +833,304 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 		return -1, err
 	}
 	return int64(baseAssetAmount), nil
+}
+
+type depositType string
+
+var (
+	marketDeposit depositType = "MarketDeposit"
+	feeDeposit    depositType = "FeeDeposit"
+)
+
+// ClaimMarketDeposit method add unspents to the market
+func (o *operatorService) ClaimMarketDeposit(
+	ctx context.Context,
+	marketReq Market,
+	outpoints []TxOutpoint,
+) error {
+	addressesPerAccount := make(map[int][]string)
+	bkPairs := make([][]byte, 0)
+
+	err := o.validateMarketRequest(marketReq)
+	if err != nil {
+		return err
+	}
+
+	market, accountIndex, err := o.marketRepository.GetMarketByAsset(ctx,
+		marketReq.QuoteAsset)
+	if err != nil {
+		return err
+	}
+
+	// if market exist fetch addresses and blinding keys based on accountIndex
+	if market != nil {
+		addresses, bk, err := o.vaultRepository.
+			GetAllDerivedAddressesAndBlindingKeysForAccount(
+				ctx,
+				accountIndex,
+			)
+		if err != nil {
+			return err
+		}
+		addressesPerAccount[accountIndex] = addresses
+		bkPairs = bk
+	} else {
+		// if market doesnt exist fetch addresses and blinding keys of
+		// all accounts
+		vault, err := o.vaultRepository.GetOrCreateVault(
+			ctx,
+			nil,
+			"",
+			o.network,
+		)
+		if err != nil {
+			return err
+		}
+
+		markets, err := o.marketRepository.GetNonFundedMarkets(ctx)
+		if err != nil {
+			return err
+		}
+		accountIndexes := make([]int, 0)
+		for _, v := range markets {
+			accountIndexes = append(accountIndexes, v.AccountIndex)
+		}
+
+		addressesBlindingKeys := vault.AddressesBlindingKeysGroupByAccount(accountIndexes)
+		for k, v := range addressesBlindingKeys {
+			addressesPerAccount[k] = v.Addresses
+			bkPairs = v.BlindingKeys
+
+		}
+	}
+
+	return o.claimDeposit(
+		ctx,
+		addressesPerAccount,
+		bkPairs,
+		outpoints,
+		marketDeposit,
+	)
+}
+
+func (o *operatorService) validateMarketRequest(marketReq Market) error {
+	if err := validateAssetString(marketReq.BaseAsset); err != nil {
+		return domain.ErrMarketInvalidBaseAsset
+	}
+
+	if err := validateAssetString(marketReq.QuoteAsset); err != nil {
+		return domain.ErrMarketInvalidQuoteAsset
+	}
+
+	// Checks if base asset is valid
+	if marketReq.BaseAsset != o.marketBaseAsset {
+		return domain.ErrMarketInvalidBaseAsset
+	}
+
+	return nil
+}
+
+// ClaimFeeDeposit adds unspents to the Fee Account
+func (o *operatorService) ClaimFeeDeposit(
+	ctx context.Context,
+	outpoints []TxOutpoint,
+) error {
+	addressesPerAccount := make(map[int][]string)
+
+	addresses, bkPairs, err := o.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return err
+	}
+
+	addressesPerAccount[domain.FeeAccount] = addresses
+
+	return o.claimDeposit(
+		ctx,
+		addressesPerAccount,
+		bkPairs,
+		outpoints,
+		feeDeposit,
+	)
+}
+
+// claimDeposit loops through outpoints and tries to find out to which account
+//unspents belongs to, if depositType=="MarketDeposit" it will FundMarket
+func (o *operatorService) claimDeposit(
+	ctx context.Context,
+	addressesPerAccount map[int][]string,
+	bkPairs [][]byte,
+	outpoints []TxOutpoint,
+	depositType depositType,
+) error {
+	accountIndex := 0
+
+	scriptBlindingKeyPairs := make(map[string]struct {
+		accountIndex int
+		address      string
+		blindingKey  [][]byte
+	})
+
+	for accountIndex, addresses := range addressesPerAccount {
+		for _, addr := range addresses {
+			script, err := address.ToOutputScript(addr)
+			if err != nil {
+				return err
+			}
+			scriptBlindingKeyPairs[hex.EncodeToString(script)] = struct {
+				accountIndex int
+				address      string
+				blindingKey  [][]byte
+			}{accountIndex: accountIndex, address: addr, blindingKey: bkPairs}
+		}
+	}
+
+	unspents := make([]domain.Unspent, 0)
+	for _, v := range outpoints {
+		confirmed, err := o.explorerSvc.IsTransactionConfirmed(v.Hash)
+		if err != nil {
+			return err
+		}
+		if !confirmed {
+			return ErrTxNotConfirmed
+		}
+
+		txHex, err := o.explorerSvc.GetTransactionHex(v.Hash)
+		if err != nil {
+			return err
+		}
+		tx, err := transaction.NewTxFromHex(txHex)
+		if err != nil {
+			return err
+		}
+
+		if len(tx.Outputs) <= v.Index {
+			return fmt.Errorf(
+				"tx: %v, doesnt have outpoint at index: %v",
+				v.Hash,
+				v.Index,
+			)
+		}
+		script := hex.EncodeToString(tx.Outputs[v.Index].Script)
+
+		//here we match outpoint script with relevant address and
+		//blinding key, stored in a daemon,
+		//so we can unblind unspents and eventually store them
+		if val, ok := scriptBlindingKeyPairs[script]; ok {
+			//in case of marketDeposit we need to update base and quote assets
+			accountIndex = val.accountIndex
+			utxo, err := o.explorerSvc.GetUnspents(
+				val.address,
+				val.blindingKey,
+			)
+			if err != nil {
+				return err
+			}
+
+			for _, v := range utxo {
+				u := domain.Unspent{
+					TxID:            v.Hash(),
+					VOut:            v.Index(),
+					Value:           v.Value(),
+					AssetHash:       v.Asset(),
+					ValueCommitment: v.ValueCommitment(),
+					AssetCommitment: v.AssetCommitment(),
+					ValueBlinder:    v.ValueBlinder(),
+					AssetBlinder:    v.AssetBlinder(),
+					ScriptPubKey:    v.Script(),
+					Nonce:           v.Nonce(),
+					RangeProof:      v.RangeProof(),
+					SurjectionProof: v.SurjectionProof(),
+					Confirmed:       v.IsConfirmed(),
+					Address:         val.address,
+				}
+				unspents = append(unspents, u)
+			}
+
+		} else {
+			return fmt.Errorf(
+				"outpoint: %v at index: %v not owned by market",
+				v.Hash,
+				v.Index,
+			)
+		}
+	}
+
+	if err := o.unspentRepository.AddUnspents(ctx, unspents); err != nil {
+		return err
+	}
+
+	if depositType == marketDeposit {
+		if err := o.fundMarket(
+			ctx,
+			accountIndex,
+			unspents,
+		); err != nil {
+			return err
+		}
+	} else {
+		if err := o.checkFeeAccountBalance(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (o *operatorService) fundMarket(
+	ctx context.Context,
+	accountIndex int,
+	unspents []domain.Unspent,
+) error {
+	outpoints := make([]domain.OutpointWithAsset, 0, len(unspents))
+	for _, u := range unspents {
+		outpoints = append(outpoints, domain.OutpointWithAsset{
+			Txid:  u.TxID,
+			Vout:  int(u.VOut),
+			Asset: u.AssetHash,
+		})
+	}
+
+	// Update the market trying to funding attaching the newly found quote asset.
+	return o.marketRepository.UpdateMarket(
+		ctx,
+		accountIndex,
+		func(m *domain.Market) (*domain.Market, error) {
+			if err := m.FundMarket(outpoints, o.marketBaseAsset); err != nil {
+				return nil, err
+			}
+
+			return m, nil
+		},
+	)
+}
+
+func (o *operatorService) checkFeeAccountBalance(ctx context.Context) error {
+	addresses, _, err := o.vaultRepository.
+		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return err
+	}
+
+	feeAccountBalance, err := o.unspentRepository.GetBalance(
+		ctx,
+		addresses,
+		o.marketBaseAsset,
+	)
+	if err != nil {
+		return err
+	}
+
+	if feeAccountBalance < o.feeAccountBalanceThreshold {
+		log.Warn(
+			"fee account balance for account index too low. Trades for markets won't be " +
+				"served properly. Fund the fee account as soon as possible",
+		)
+	} else {
+		log.Info("fee account funded. Trades can be served")
+	}
+
+	return nil
 }
 
 func (o *operatorService) getAllUnspentsForAccount(

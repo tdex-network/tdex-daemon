@@ -144,6 +144,56 @@ func (v *Vault) AllDerivedAddressesInfo() []AddressInfo {
 	return v.allDerivedAddressesInfo()
 }
 
+type AddressesBlindingKeys struct {
+	Addresses    []string
+	BlindingKeys [][]byte
+}
+
+// AddressesBlindingKeysGroupByAccount returns all address, blinding key pairs
+//grouped by account
+func (v *Vault) AddressesBlindingKeysGroupByAccount(
+	accountIndexes []int,
+) map[int]AddressesBlindingKeys {
+	result := make(map[int]AddressesBlindingKeys)
+	allDerivedAddressInfo := v.AllDerivedAddressesInfo()
+	if len(accountIndexes) > 0 {
+		tmp := make([]AddressInfo, 0, len(accountIndexes))
+		for _, v := range allDerivedAddressInfo {
+			for _, a := range accountIndexes {
+				if v.AccountIndex == a {
+					tmp = append(tmp, v)
+				}
+			}
+		}
+		allDerivedAddressInfo = tmp
+	}
+
+	previousAccountIndex := allDerivedAddressInfo[0].AccountIndex
+	addresses := make([]string, 0)
+	blindingKeys := make([][]byte, 0)
+	for _, val := range allDerivedAddressInfo {
+		if val.AccountIndex != previousAccountIndex {
+			result[previousAccountIndex] = AddressesBlindingKeys{
+				Addresses:    addresses,
+				BlindingKeys: blindingKeys,
+			}
+			previousAccountIndex = val.AccountIndex
+			addresses = make([]string, 0)
+			blindingKeys = make([][]byte, 0)
+		}
+		addresses = append(addresses, val.Address)
+		blindingKeys = append(blindingKeys, val.BlindingKey)
+	}
+	if len(addresses) > 0 {
+		result[previousAccountIndex] = AddressesBlindingKeys{
+			Addresses:    addresses,
+			BlindingKeys: blindingKeys,
+		}
+	}
+
+	return result
+}
+
 // AllDerivedAddressesAndBlindingKeysForAccount returns all the external and
 // internal addresses derived for the provided account along with the
 // respective private blinding keys
