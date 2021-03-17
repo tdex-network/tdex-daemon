@@ -178,45 +178,6 @@ func (b *blockchainListener) listenToEventChannel() {
 				log.Debug("CloseEvent detected")
 				log.Debug("stop listening on event channel")
 				return
-			case crawler.FeeAccountDeposit:
-				ctx, err := b.handleUnspents(event)
-				if err != nil {
-					break
-				}
-				if _, err := b.dbManager.RunTransaction(
-					ctx,
-					readOnlyTx,
-					func(ctx context.Context) (interface{}, error) {
-						return nil, b.checkFeeAccountBalance(ctx)
-					},
-				); err != nil {
-					log.Warnf(
-						"trying to check balance for fee account: %s\n",
-						err.Error(),
-					)
-					break
-				}
-
-			case crawler.MarketAccountDeposit:
-				ctx, err := b.handleUnspents(event)
-				if err != nil {
-					break
-				}
-				e := event.(crawler.AddressEvent)
-				if _, err := b.dbManager.RunTransaction(
-					ctx,
-					!readOnlyTx,
-					func(ctx context.Context) (interface{}, error) {
-						return nil, b.checkMarketAccountFundings(ctx, e.AccountIndex)
-					},
-				); err != nil {
-					log.Warnf(
-						"trying to check fundings for market account %d: %s\n",
-						e.AccountIndex,
-						err.Error(),
-					)
-					break
-				}
 			case crawler.TransactionConfirmed:
 				e := event.(crawler.TransactionEvent)
 				ctx := context.Background()
