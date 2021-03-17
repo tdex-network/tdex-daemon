@@ -8,7 +8,6 @@ import (
 
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -17,8 +16,8 @@ import (
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 )
 
@@ -35,13 +34,13 @@ type TradeService interface {
 		ctx context.Context,
 		market Market,
 		tradeType int,
-		swapRequest *pb.SwapRequest,
-	) (*pb.SwapAccept, *pb.SwapFail, uint64, error)
+		swapRequest domain.SwapRequest,
+	) (domain.SwapAccept, domain.SwapFail, uint64, error)
 	TradeComplete(
 		ctx context.Context,
-		swapComplete *pb.SwapComplete,
-		swapFail *pb.SwapFail,
-	) (string, *pb.SwapFail, error)
+		swapComplete domain.SwapComplete,
+		swapFail domain.SwapFail,
+	) (string, domain.SwapFail, error)
 	GetMarketBalance(
 		ctx context.Context,
 		market Market,
@@ -55,6 +54,10 @@ type tradeService struct {
 	unspentRepository  domain.UnspentRepository
 	explorerSvc        explorer.Service
 	blockchainListener BlockchainListener
+	marketBaseAsset    string
+	expiryDuration     uint64
+	priceSlippage      decimal.Decimal
+	network            *network.Network
 }
 
 func NewTradeService(
@@ -64,6 +67,10 @@ func NewTradeService(
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
+	marketBaseAsset string,
+	expiryDuration time.Duration,
+	priceSlippage decimal.Decimal,
+	net *network.Network,
 ) TradeService {
 	return newTradeService(
 		marketRepository,
@@ -72,6 +79,10 @@ func NewTradeService(
 		unspentRepository,
 		explorerSvc,
 		bcListener,
+		marketBaseAsset,
+		uint64(expiryDuration),
+		priceSlippage,
+		net,
 	)
 }
 
@@ -82,6 +93,10 @@ func newTradeService(
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
+	marketBaseAsset string,
+	expiryDuration uint64,
+	priceSlippage decimal.Decimal,
+	net *network.Network,
 ) *tradeService {
 	return &tradeService{
 		marketRepository:   marketRepository,
@@ -90,6 +105,10 @@ func newTradeService(
 		unspentRepository:  unspentRepository,
 		explorerSvc:        explorerSvc,
 		blockchainListener: bcListener,
+		marketBaseAsset:    marketBaseAsset,
+		expiryDuration:     expiryDuration,
+		priceSlippage:      priceSlippage,
+		network:            net,
 	}
 }
 
@@ -129,16 +148,16 @@ func (t *tradeService) GetMarketPrice(
 ) (*PriceWithFee, error) {
 	// check the asset strings
 	if err := validateAssetString(market.BaseAsset); err != nil {
-		return nil, domain.ErrInvalidBaseAsset
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
 	if err := validateAssetString(market.QuoteAsset); err != nil {
-		return nil, domain.ErrInvalidQuoteAsset
+		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	// Checks if base asset is correct
-	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return nil, domain.ErrMarketNotExist
+	if market.BaseAsset != t.marketBaseAsset {
+		return nil, ErrMarketNotExist
 	}
 
 	if err := validateAssetString(asset); err != nil {
@@ -157,7 +176,7 @@ func (t *tradeService) GetMarketPrice(
 		return nil, err
 	}
 	if mktAccountIndex < 0 {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	if !mkt.IsTradable() {
@@ -194,22 +213,22 @@ func (t *tradeService) TradePropose(
 	ctx context.Context,
 	market Market,
 	tradeType int,
-	swapRequest *pb.SwapRequest,
+	swapRequest domain.SwapRequest,
 ) (
-	swapAccept *pb.SwapAccept,
-	swapFail *pb.SwapFail,
+	swapAccept domain.SwapAccept,
+	swapFail domain.SwapFail,
 	swapExpiryTime uint64,
 	err error,
 ) {
 	// check the asset strings
 	_err := validateAssetString(market.BaseAsset)
 	if _err != nil {
-		return nil, nil, 0, domain.ErrInvalidBaseAsset
+		return nil, nil, 0, domain.ErrMarketInvalidBaseAsset
 	}
 
 	_err = validateAssetString(market.QuoteAsset)
 	if _err != nil {
-		return nil, nil, 0, domain.ErrInvalidQuoteAsset
+		return nil, nil, 0, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	mkt, marketAccountIndex, _err := t.marketRepository.GetMarketByAsset(
@@ -221,7 +240,7 @@ func (t *tradeService) TradePropose(
 		return
 	}
 	if marketAccountIndex < 0 {
-		return nil, nil, 0, domain.ErrMarketNotExist
+		return nil, nil, 0, ErrMarketNotExist
 	}
 
 	// get all unspents for market account (both as []domain.Unspents and as
@@ -266,8 +285,6 @@ func (t *tradeService) TradePropose(
 	// derive output and change address for market, and change address for fee account
 	if err := t.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err = v.GetMnemonicSafe()
 			if err != nil {
@@ -326,7 +343,11 @@ func (t *tradeService) TradePropose(
 		ctx,
 		nil,
 		func(trade *domain.Trade) (*domain.Trade, error) {
-			ok, err := trade.Propose(swapRequest, market.QuoteAsset, mkt.Fee, nil)
+			ok, err := trade.Propose(
+				swapRequest,
+				market.QuoteAsset, mkt.Fee,
+				nil,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -335,11 +356,10 @@ func (t *tradeService) TradePropose(
 				return trade, nil
 			}
 
-			if !isValidTradePrice(swapRequest, tradeType, mkt, marketUnspents) {
+			if !isValidTradePrice(swapRequest, tradeType, mkt, marketUnspents, t.priceSlippage) {
 				trade.Fail(
 					swapRequest.GetId(),
-					domain.ProposalRejectedStatus,
-					pkgswap.ErrCodeInvalidSwapRequest,
+					int(pkgswap.ErrCodeInvalidSwapRequest),
 					"bad pricing",
 				)
 				swapFail = trade.SwapFailMessage()
@@ -359,6 +379,7 @@ func (t *tradeService) TradePropose(
 				outputDerivationPath:       outputDerivationPath,
 				changeDerivationPath:       changeDerivationPath,
 				feeChangeDerivationPath:    feeChangeDerivationPath,
+				network:                    t.network,
 			})
 			if err != nil {
 				return nil, err
@@ -368,6 +389,7 @@ func (t *tradeService) TradePropose(
 				acceptSwapResult.psetBase64,
 				acceptSwapResult.inputBlindingKeys,
 				acceptSwapResult.outputBlindingKeys,
+				t.expiryDuration,
 			)
 			if err != nil {
 				return nil, err
@@ -377,7 +399,7 @@ func (t *tradeService) TradePropose(
 				return trade, nil
 			}
 			swapAccept = trade.SwapAcceptMessage()
-			swapExpiryTime = trade.SwapExpiryTime()
+			swapExpiryTime = trade.ExpiryTime
 
 			// Last thing to do is to lock the unspents. In case something goes wrong
 			// here, an error is returned and the accepted trade is discarded.
@@ -406,9 +428,9 @@ func (t *tradeService) TradePropose(
 // TradeComplete is the domain controller for the TradeComplete RPC
 func (t *tradeService) TradeComplete(
 	ctx context.Context,
-	swapComplete *pb.SwapComplete,
-	swapFail *pb.SwapFail,
-) (string, *pb.SwapFail, error) {
+	swapComplete domain.SwapComplete,
+	swapFail domain.SwapFail,
+) (string, domain.SwapFail, error) {
 	if swapFail != nil {
 		swapFailMsg, err := t.tradeFail(ctx, swapFail)
 		return "", swapFailMsg, err
@@ -417,44 +439,61 @@ func (t *tradeService) TradeComplete(
 	return t.tradeComplete(ctx, swapComplete)
 }
 
-func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapComplete) (txID string, swapFail *pb.SwapFail, err error) {
+func (t *tradeService) tradeComplete(
+	ctx context.Context,
+	swapComplete domain.SwapComplete,
+) (txID string, swapFail domain.SwapFail, err error) {
 	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
 	if err != nil {
-		return "", nil, err
+		return
 	}
 
-	tradeID := trade.ID
-	err = t.tradeRepository.UpdateTrade(
-		ctx,
-		&tradeID,
-		func(trade *domain.Trade) (*domain.Trade, error) {
-			psetBase64 := swapComplete.GetTransaction()
-			res, err := trade.Complete(psetBase64)
-			if err != nil {
-				return nil, err
-			}
-			if !res.OK {
-				swapFail = trade.SwapFailMessage()
-				return trade, nil
-			}
+	psetBase64 := swapComplete.GetTransaction()
 
-			log.Info("trade with id ", tradeID, " completed")
+	// here we manipulate the trade to reach the Complete status
+	res, err := trade.Complete(psetBase64)
+	if err != nil {
+		return
+	}
+	// for domain related errors, we check for swap failures that can happens
+	// for tradin related problems or transaction manomission
+	if !res.OK {
+		swapFail = trade.SwapFailMessage()
+		return
+	}
+	log.Info("trade with id ", trade.ID, " completed")
 
-			if _, err := t.explorerSvc.BroadcastTransaction(res.TxHex); err != nil {
-				return nil, err
-			}
+	// we are going to broadcast the transaction, this will actually tell if the
+	//transaction is a valid one to be included in blockcchain
+	if _, err = t.explorerSvc.BroadcastTransaction(res.TxHex); err != nil {
+		return
+	}
 
-			txID = res.TxID
+	txID = res.TxID
+	log.Info("trade with id ", trade.ID, " broadcasted: ", txID)
 
-			log.Info("trade with id ", tradeID, " broadcasted: ", txID)
+	// we make sure that any problem happening at this point
+	// is not influencing the trade therefore we run as goroutine
+	// this method will take care to retry to handle potential
+	// datastore conflicts (if any) at repository level
+	go func() {
+		err := t.tradeRepository.UpdateTrade(
+			ctx,
+			&trade.ID,
+			func(previousTrade *domain.Trade) (*domain.Trade, error) { return trade, nil },
+		)
+		if err != nil {
+			log.Error("unable to persist completed trade with id ", trade.ID, " : ", err.Error())
+		}
+	}()
 
-			return trade, nil
-		},
-	)
 	return
 }
 
-func (t *tradeService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*pb.SwapFail, error) {
+func (t *tradeService) tradeFail(
+	ctx context.Context,
+	swapFail domain.SwapFail,
+) (domain.SwapFail, error) {
 	swapID := swapFail.GetMessageId()
 	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapID)
 	if err != nil {
@@ -468,8 +507,7 @@ func (t *tradeService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*p
 		func(trade *domain.Trade) (*domain.Trade, error) {
 			trade.Fail(
 				swapID,
-				domain.FailedToCompleteStatus,
-				pkgswap.ErrCodeFailedToComplete,
+				int(pkgswap.ErrCodeFailedToComplete),
 				"set failed by counter-party",
 			)
 			return trade, nil
@@ -544,7 +582,7 @@ func (t *tradeService) startObservingAddressesAndTx(addressesToObserve []domain.
 
 type acceptSwapOpts struct {
 	mnemonic                   []string
-	swapRequest                *pb.SwapRequest
+	swapRequest                domain.SwapRequest
 	marketUnspents             []explorer.Utxo
 	feeUnspents                []explorer.Utxo
 	marketBlindingKeysByScript map[string][]byte
@@ -555,6 +593,7 @@ type acceptSwapOpts struct {
 	outputDerivationPath       string
 	changeDerivationPath       string
 	feeChangeDerivationPath    string
+	network                    *network.Network
 }
 
 type acceptSwapResult struct {
@@ -571,7 +610,7 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 	if err != nil {
 		return
 	}
-	network := config.GetNetwork()
+	network := opts.network
 	// fill swap request transaction with daemon's inputs and outputs
 	psetBase64, selectedUnspentsForSwap, err := w.UpdateSwapTx(wallet.UpdateSwapTxOpts{
 		PsetBase64:           opts.swapRequest.GetTransaction(),
@@ -997,16 +1036,17 @@ func priceFromBalances(
 // against those of the swap, but rather they are used to create a range in
 // which the swap amounts must be included to be considered valid.
 func isValidTradePrice(
-	swapRequest *pb.SwapRequest,
+	swapRequest domain.SwapRequest,
 	tradeType int,
 	market *domain.Market,
 	unspents []domain.Unspent,
+	slippage decimal.Decimal,
 ) bool {
 	// TODO: parallelize the 2 ways of calculating and valifdating the preview
 	// amount to speed up the process.
-	amount := swapRequest.AmountR
+	amount := swapRequest.GetAmountR()
 	if tradeType == TradeSell {
-		amount = swapRequest.AmountP
+		amount = swapRequest.GetAmountP()
 	}
 
 	_, previewAmount, _ := getPriceAndPreviewForMarket(
@@ -1017,13 +1057,13 @@ func isValidTradePrice(
 		market.BaseAsset,
 	)
 
-	if isPriceInRange(swapRequest, tradeType, previewAmount, true) {
+	if isPriceInRange(swapRequest, tradeType, previewAmount, true, slippage) {
 		return true
 	}
 
-	amount = swapRequest.AmountP
+	amount = swapRequest.GetAmountP()
 	if tradeType == TradeSell {
-		amount = swapRequest.AmountR
+		amount = swapRequest.GetAmountR()
 	}
 
 	_, previewAmount, _ = getPriceAndPreviewForMarket(
@@ -1034,14 +1074,15 @@ func isValidTradePrice(
 		market.QuoteAsset,
 	)
 
-	return isPriceInRange(swapRequest, tradeType, previewAmount, false)
+	return isPriceInRange(swapRequest, tradeType, previewAmount, false, slippage)
 }
 
 func isPriceInRange(
-	swapRequest *pb.SwapRequest,
+	swapRequest domain.SwapRequest,
 	tradeType int,
 	previewAmount uint64,
 	isPreviewForQuoteAsset bool,
+	slippage decimal.Decimal,
 ) bool {
 	amountToCheck := decimal.NewFromInt(int64(swapRequest.GetAmountP()))
 	if tradeType == TradeSell {
@@ -1054,7 +1095,6 @@ func isPriceInRange(
 		}
 	}
 
-	slippage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey) / 100)
 	expectedAmount := decimal.NewFromInt(int64(previewAmount))
 	lowerBound := expectedAmount.Mul(decimal.NewFromInt(1).Sub(slippage))
 	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
@@ -1069,12 +1109,12 @@ func (t *tradeService) GetMarketBalance(
 	// check the asset strings
 	err := validateAssetString(market.BaseAsset)
 	if err != nil {
-		return nil, domain.ErrInvalidBaseAsset
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
 	err = validateAssetString(market.QuoteAsset)
 	if err != nil {
-		return nil, domain.ErrInvalidQuoteAsset
+		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	m, accountIndex, err := t.marketRepository.GetMarketByAsset(
@@ -1085,7 +1125,7 @@ func (t *tradeService) GetMarketBalance(
 		return nil, err
 	}
 	if accountIndex < 0 {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	marketAddresses, _, err := t.vaultRepository.

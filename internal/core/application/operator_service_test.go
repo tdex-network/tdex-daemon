@@ -104,22 +104,22 @@ func TestFailingDepositMarket(t *testing.T) {
 		{
 			"",
 			market.QuoteAsset,
-			domain.ErrInvalidBaseAsset,
+			domain.ErrMarketInvalidBaseAsset,
 		},
 		{
 			"ldjbwjkbfjksdbjkvcsbdjkbcdsjkb",
 			market.QuoteAsset,
-			domain.ErrInvalidBaseAsset,
+			domain.ErrMarketInvalidBaseAsset,
 		},
 		{
 			market.BaseAsset,
 			"",
-			domain.ErrInvalidQuoteAsset,
+			domain.ErrMarketInvalidQuoteAsset,
 		},
 		{
 			market.BaseAsset,
 			"ldjbwjkbfjksdbjkvcsbdjkbcdsjkb",
-			domain.ErrInvalidQuoteAsset,
+			domain.ErrMarketInvalidQuoteAsset,
 		},
 	}
 
@@ -177,32 +177,32 @@ func TestFailingUpdateMarketPrice(t *testing.T) {
 		{
 			-1,
 			10000,
-			domain.ErrInvalidBasePrice,
+			domain.ErrMarketInvalidBasePrice,
 		},
 		{
 			0,
 			10000,
-			domain.ErrInvalidBasePrice,
+			domain.ErrMarketInvalidBasePrice,
 		},
 		{
 			2099999997690000 + 1,
 			10000,
-			domain.ErrInvalidBasePrice,
+			domain.ErrMarketInvalidBasePrice,
 		},
 		{
 			1,
 			-1,
-			domain.ErrInvalidQuotePrice,
+			domain.ErrMarketInvalidQuotePrice,
 		},
 		{
 			1,
 			0,
-			domain.ErrInvalidQuotePrice,
+			domain.ErrMarketInvalidQuotePrice,
 		},
 		{
 			1,
 			2099999997690000 + 1,
-			domain.ErrInvalidQuotePrice,
+			domain.ErrMarketInvalidQuotePrice,
 		},
 	}
 
@@ -291,7 +291,7 @@ func TestFailingWithdrawMarket(t *testing.T) {
 				Address:         "el1qq22f83p6asdy7jsp4tuke0d9emvxhcenqee5umsn88fsn8gggzlrx0md4hp38rnwcnu9lusmzhmktlt3h5q0gecfpfvx6uac2",
 				Push:            false,
 			},
-			expectedError: domain.ErrInvalidBaseAsset,
+			expectedError: domain.ErrMarketInvalidBaseAsset,
 		},
 		{
 			args: WithdrawMarketReq{
@@ -307,7 +307,7 @@ func TestFailingWithdrawMarket(t *testing.T) {
 				Address:         "el1qq22f83p6asdy7jsp4tuke0d9emvxhcenqee5umsn88fsn8gggzlrx0md4hp38rnwcnu9lusmzhmktlt3h5q0gecfpfvx6uac2",
 				Push:            false,
 			},
-			expectedError: domain.ErrMarketNotExist,
+			expectedError: ErrMarketNotExist,
 		},
 		{
 			args: WithdrawMarketReq{
@@ -323,7 +323,7 @@ func TestFailingWithdrawMarket(t *testing.T) {
 				Address:         "el1qq22f83p6asdy7jsp4tuke0d9emvxhcenqee5umsn88fsn8gggzlrx0md4hp38rnwcnu9lusmzhmktlt3h5q0gecfpfvx6uac2",
 				Push:            false,
 			},
-			expectedError: domain.ErrMarketNotExist,
+			expectedError: ErrMarketNotExist,
 		},
 	}
 
@@ -408,21 +408,21 @@ func TestFailingListMarketExternalAddresses(t *testing.T) {
 				"",
 				marketUnspents[1].AssetHash,
 			},
-			domain.ErrInvalidBaseAsset,
+			domain.ErrMarketInvalidBaseAsset,
 		},
 		{
 			Market{
 				marketUnspents[0].AssetHash,
 				"",
 			},
-			domain.ErrInvalidQuoteAsset,
+			domain.ErrMarketInvalidQuoteAsset,
 		},
 		{
 			Market{
 				marketUnspents[0].AssetHash,
 				marketUnspents[0].AssetHash,
 			},
-			domain.ErrMarketNotExist,
+			ErrMarketNotExist,
 		},
 	}
 
@@ -482,27 +482,27 @@ func TestFailingOpenMarket(t *testing.T) {
 		{
 			"",
 			market.QuoteAsset,
-			domain.ErrInvalidBaseAsset,
+			domain.ErrMarketInvalidBaseAsset,
 		},
 		{
 			"invalidasset",
 			market.QuoteAsset,
-			domain.ErrInvalidBaseAsset,
+			domain.ErrMarketInvalidBaseAsset,
 		},
 		{
 			market.BaseAsset,
 			"",
-			domain.ErrInvalidQuoteAsset,
+			domain.ErrMarketInvalidQuoteAsset,
 		},
 		{
 			market.BaseAsset,
 			"invalidasset",
-			domain.ErrInvalidQuoteAsset,
+			domain.ErrMarketInvalidQuoteAsset,
 		},
 		{
 			market.BaseAsset,
 			"0ddfa690c7b2ba3b8ecee8200da2420fc502f57f8312c83d466b6f8dced70441",
-			domain.ErrMarketNotExist,
+			ErrMarketNotExist,
 		},
 	}
 
@@ -532,7 +532,7 @@ func TestUpdateMarketStrategy(t *testing.T) {
 			Strategy: domain.StrategyTypePluggable,
 		},
 	)
-	assert.Equal(t, domain.ErrMarketMustBeClose, err)
+	assert.Equal(t, domain.ErrMarketMustBeClosed, err)
 
 	if err := operatorService.CloseMarket(
 		ctx,
@@ -586,31 +586,31 @@ func TestFailingUpdateMarketStratergy(t *testing.T) {
 			"",
 			market.QuoteAsset,
 			domain.StrategyTypePluggable,
-			domain.ErrInvalidBaseAsset,
+			domain.ErrMarketInvalidBaseAsset,
 		},
 		{
 			"invalidasset",
 			market.QuoteAsset,
 			domain.StrategyTypePluggable,
-			domain.ErrInvalidBaseAsset,
+			domain.ErrMarketInvalidBaseAsset,
 		},
 		{
 			market.QuoteAsset,
 			"",
 			domain.StrategyTypePluggable,
-			domain.ErrInvalidQuoteAsset,
+			domain.ErrMarketInvalidQuoteAsset,
 		},
 		{
 			market.QuoteAsset,
 			"invalidasset",
 			domain.StrategyTypePluggable,
-			domain.ErrInvalidQuoteAsset,
+			domain.ErrMarketInvalidQuoteAsset,
 		},
 		{
 			market.QuoteAsset,
 			"0ddfa690c7b2ba3b8ecee8200da2420fc502f57f8312c83d466b6f8dced8a441",
 			domain.StrategyTypePluggable,
-			domain.ErrMarketNotExist,
+			ErrMarketNotExist,
 		},
 		{
 			market.BaseAsset,

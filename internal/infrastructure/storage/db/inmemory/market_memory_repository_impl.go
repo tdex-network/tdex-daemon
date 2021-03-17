@@ -12,36 +12,22 @@ type MarketRepositoryImpl struct {
 	db DbManager
 }
 
-//NewMemoryMarketRepository returns a new empty MarketRepositoryImpl
+// NewMarketRepositoryImpl returns a new empty MarketRepositoryImpl
 func NewMarketRepositoryImpl(dbManager *DbManager) domain.MarketRepository {
 	return &MarketRepositoryImpl{
 		db: *dbManager,
 	}
 }
 
-func (r *MarketRepositoryImpl) UpdatePrices(_ context.Context, accountIndex int, prices domain.Prices) error {
+// GetOrCreateMarket gets a market with a given account index. If not found, a new entry is inserted
+func (r MarketRepositoryImpl) GetOrCreateMarket(_ context.Context, market *domain.Market) (*domain.Market, error) {
 	r.db.marketStore.locker.Lock()
 	defer r.db.marketStore.locker.Unlock()
 
-	market, err := r.getMarketByAccount(accountIndex)
-	if err != nil {
-		return err
-	}
-
-	err = market.ChangeBasePrice(prices.BasePrice)
-	if err != nil {
-		return err
-	}
-	err = market.ChangeQuotePrice(prices.QuotePrice)
-	if err != nil {
-		return err
-	}
-
-	r.db.marketStore.markets[accountIndex] = *market
-	return nil
+	return r.getOrCreateMarket(market)
 }
 
-//GetMarketByAccount return the market for the account index given as parameter
+// GetMarketByAccount return the market for the account index given as parameter
 func (r MarketRepositoryImpl) GetMarketByAccount(_ context.Context, accountIndex int) (*domain.Market, error) {
 	r.db.marketStore.locker.Lock()
 	defer r.db.marketStore.locker.Unlock()
@@ -49,15 +35,7 @@ func (r MarketRepositoryImpl) GetMarketByAccount(_ context.Context, accountIndex
 	return r.getMarketByAccount(accountIndex)
 }
 
-//GetOrCreateMarket gets a market with a given account index. If not found, a new entry is inserted
-func (r MarketRepositoryImpl) GetOrCreateMarket(_ context.Context, accountIndex int) (market *domain.Market, err error) {
-	r.db.marketStore.locker.Lock()
-	defer r.db.marketStore.locker.Unlock()
-
-	return r.getOrCreateMarket(accountIndex)
-}
-
-//GetMarketByAsset returns a funded market using the quote asset hash
+// GetMarketByAsset returns a funded market using the quote asset hash
 func (r MarketRepositoryImpl) GetMarketByAsset(_ context.Context, quoteAsset string) (market *domain.Market, accountIndex int, err error) {
 	r.db.marketStore.locker.Lock()
 	defer r.db.marketStore.locker.Unlock()
@@ -65,7 +43,7 @@ func (r MarketRepositoryImpl) GetMarketByAsset(_ context.Context, quoteAsset str
 	return r.getMarketByAsset(quoteAsset)
 }
 
-//GetLatestMarket returns the latest stored market (either funded or not)
+// GetLatestMarket returns the latest stored market (either funded or not)
 func (r MarketRepositoryImpl) GetLatestMarket(_ context.Context) (market *domain.Market, accountIndex int, err error) {
 	r.db.marketStore.locker.Lock()
 	defer r.db.marketStore.locker.Unlock()
@@ -73,13 +51,29 @@ func (r MarketRepositoryImpl) GetLatestMarket(_ context.Context) (market *domain
 	return r.getLatestMarket()
 }
 
-//GetTradableMarkets returns all the markets available for trading
+// GetTradableMarkets returns all the markets available for trading
 func (r MarketRepositoryImpl) GetTradableMarkets(_ context.Context) (tradableMarkets []domain.Market, err error) {
 	r.db.marketStore.locker.Lock()
 	defer r.db.marketStore.locker.Unlock()
 
 	for _, mkt := range r.db.marketStore.markets {
 		if mkt.IsTradable() {
+			tradableMarkets = append(tradableMarkets, mkt)
+		}
+	}
+
+	return tradableMarkets, nil
+}
+
+//GetNonTradableMarkets returns all the markets not  available for trading
+func (r MarketRepositoryImpl) GetNonFundedMarkets(
+	_ context.Context,
+) (tradableMarkets []domain.Market, err error) {
+	r.db.marketStore.locker.Lock()
+	defer r.db.marketStore.locker.Unlock()
+
+	for _, mkt := range r.db.marketStore.markets {
+		if !mkt.IsFunded() {
 			tradableMarkets = append(tradableMarkets, mkt)
 		}
 	}
@@ -101,7 +95,7 @@ func (r MarketRepositoryImpl) GetAllMarkets(_ context.Context) ([]domain.Market,
 	return markets, nil
 }
 
-//UpdateMarket updates data to a market identified by the account index passing an update function
+// UpdateMarket updates data to a market identified by the account index passing an update function
 func (r MarketRepositoryImpl) UpdateMarket(
 	_ context.Context,
 	accountIndex int,
@@ -110,9 +104,12 @@ func (r MarketRepositoryImpl) UpdateMarket(
 	r.db.marketStore.locker.Lock()
 	defer r.db.marketStore.locker.Unlock()
 
-	currentMarket, err := r.getOrCreateMarket(accountIndex)
+	currentMarket, err := r.getMarketByAccount(accountIndex)
 	if err != nil {
 		return err
+	}
+	if currentMarket == nil {
+		return ErrMarketNotFound
 	}
 
 	updatedMarket, err := updateFn(currentMarket)
@@ -178,37 +175,64 @@ func (r MarketRepositoryImpl) CloseMarket(_ context.Context, quoteAsset string) 
 	return nil
 }
 
-//GetMarketByAccount return the market for the account index given as parameter
+func (r *MarketRepositoryImpl) UpdatePrices(_ context.Context, accountIndex int, prices domain.Prices) error {
+	r.db.marketStore.locker.Lock()
+	defer r.db.marketStore.locker.Unlock()
+
+	market, err := r.getMarketByAccount(accountIndex)
+	if err != nil {
+		return err
+	}
+
+	err = market.ChangeBasePrice(prices.BasePrice)
+	if err != nil {
+		return err
+	}
+	err = market.ChangeQuotePrice(prices.QuotePrice)
+	if err != nil {
+		return err
+	}
+
+	r.db.marketStore.markets[accountIndex] = *market
+	return nil
+}
+
+func (r MarketRepositoryImpl) getOrCreateMarket(market *domain.Market) (*domain.Market, error) {
+	if market == nil {
+		return nil, ErrMarketInvalidRequest
+	}
+
+	// we can safely skip checking the error here because this functions never
+	// returns one actually. The err variable is only needed to be able to
+	// override mkt into the if statement.
+	mkt, err := r.getMarketByAccount(market.AccountIndex)
+	if mkt == nil {
+		mkt, err = domain.NewMarket(market.AccountIndex, market.Fee)
+		if err != nil {
+			return nil, err
+		}
+		r.db.marketStore.markets[market.AccountIndex] = *mkt
+	}
+	return mkt, nil
+}
+
 func (r MarketRepositoryImpl) getMarketByAccount(accountIndex int) (*domain.Market, error) {
 	market, ok := r.db.marketStore.markets[accountIndex]
 	if !ok {
-		return nil, ErrMarketNotExist
+		return nil, nil
 	}
 
 	return &market, nil
 }
 
-func (r MarketRepositoryImpl) getOrCreateMarket(accountIndex int) (*domain.Market, error) {
-	currentMarket, ok := r.db.marketStore.markets[accountIndex]
-	if !ok {
-		newMarket, err := domain.NewMarket(accountIndex)
-		if err != nil {
-			return nil, err
-		}
-		return newMarket, nil
-	}
-
-	return &currentMarket, nil
-}
-
 func (r MarketRepositoryImpl) getMarketByAsset(quoteAsset string) (*domain.Market, int, error) {
 	selectedAccountIndex, assetExist := r.db.marketStore.accountsByAsset[quoteAsset]
 	if !assetExist {
-		return nil, -1, ErrMarketNotExist
+		return nil, -1, nil
 	}
 	currentMarket, ok := r.db.marketStore.markets[selectedAccountIndex]
 	if !ok {
-		return nil, -1, ErrMarketNotExist
+		return nil, -1, nil
 	}
 	return &currentMarket, selectedAccountIndex, nil
 }

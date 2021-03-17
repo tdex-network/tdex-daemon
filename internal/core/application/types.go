@@ -77,6 +77,12 @@ type BalanceWithFee struct {
 	Fee
 }
 
+type BalanceInfo struct {
+	TotalBalance       uint64
+	ConfirmedBalance   uint64
+	UnconfirmedBalance uint64
+}
+
 type WithdrawMarketReq struct {
 	Market
 	BalanceToWithdraw Balance
@@ -101,4 +107,9 @@ type FeeInfo struct {
 	Asset       string
 	Amount      uint64
 	MarketPrice decimal.Decimal
+}
+
+type TxOutpoint struct {
+	Hash  string
+	Index int
 }

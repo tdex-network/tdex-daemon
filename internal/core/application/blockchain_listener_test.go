@@ -21,7 +21,10 @@ func TestUpdateUnspentsForAddress(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		dbManager)
+		dbManager,
+		mktBaseAsset,
+		feeThreshold,
+	)
 
 	unspents := []domain.Unspent{
 		{

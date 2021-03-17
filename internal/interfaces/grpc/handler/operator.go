@@ -111,6 +111,20 @@ func (o operatorHandler) BalanceFeeAccount(
 	return o.balanceFeeAccount(ctx, req)
 }
 
+func (o operatorHandler) ClaimMarketDeposit(
+	ctx context.Context,
+	req *pb.ClaimMarketDepositRequest,
+) (*pb.ClaimMarketDepositReply, error) {
+	return o.claimMarketDeposit(ctx, req)
+}
+
+func (o operatorHandler) ClaimFeeDeposit(
+	ctx context.Context,
+	req *pb.ClaimFeeDepositRequest,
+) (*pb.ClaimFeeDepositReply, error) {
+	return o.claimFeeDeposit(ctx, req)
+}
+
 func (o operatorHandler) ListDepositMarket(
 	ctx context.Context,
 	req *pb.ListDepositMarketRequest,
@@ -494,6 +508,78 @@ func (o operatorHandler) balanceFeeAccount(
 	return res.(*pb.BalanceFeeAccountReply), nil
 }
 
+func (o operatorHandler) claimMarketDeposit(
+	ctx context.Context,
+	req *pb.ClaimMarketDepositRequest,
+) (*pb.ClaimMarketDepositReply, error) {
+	outputs := make([]application.TxOutpoint, 0, len(req.GetOutpoints()))
+	for _, v := range req.GetOutpoints() {
+		outputs = append(outputs, application.TxOutpoint{
+			Hash:  v.Hash,
+			Index: int(v.Index),
+		})
+	}
+
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			err := o.operatorSvc.ClaimMarketDeposit(
+				ctx,
+				application.Market{
+					BaseAsset:  req.GetMarket().GetBaseAsset(),
+					QuoteAsset: req.GetMarket().GetQuoteAsset(),
+				},
+				outputs,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return &pb.ClaimMarketDepositReply{}, nil
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return res.(*pb.ClaimMarketDepositReply), nil
+}
+
+func (o operatorHandler) claimFeeDeposit(
+	ctx context.Context,
+	req *pb.ClaimFeeDepositRequest,
+) (*pb.ClaimFeeDepositReply, error) {
+	outputs := make([]application.TxOutpoint, 0, len(req.GetOutpoints()))
+	for _, v := range req.GetOutpoints() {
+		outputs = append(outputs, application.TxOutpoint{
+			Hash:  v.Hash,
+			Index: int(v.Index),
+		})
+	}
+
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			err := o.operatorSvc.ClaimFeeDeposit(
+				ctx,
+				outputs,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return &pb.ClaimFeeDepositReply{}, nil
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return res.(*pb.ClaimFeeDepositReply), nil
+}
+
 func (o operatorHandler) listDepositMarket(
 	ctx context.Context,
 	req *pb.ListDepositMarketRequest,
@@ -637,7 +723,7 @@ func validateMarket(market *pbtypes.Market) error {
 	}
 
 	if market.GetBaseAsset() != config.GetString(config.BaseAssetKey) {
-		return domain.ErrInvalidBaseAsset
+		return domain.ErrMarketInvalidBaseAsset
 	}
 	return nil
 }

@@ -6,7 +6,6 @@ require (
 	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
-	github.com/dgraph-io/badger v1.6.2
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/gogo/protobuf v1.2.1
 	github.com/google/uuid v1.1.2
@@ -20,7 +19,7 @@ require (
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.5.1
-	github.com/tdex-network/tdex-protobuf v0.0.0-20210303152020-690e6e604cae
+	github.com/tdex-network/tdex-protobuf v0.0.0-20210312170501-eac8b4a88d04
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect

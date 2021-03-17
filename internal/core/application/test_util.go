@@ -29,6 +29,15 @@ import (
 //RegtestExplorerAPI ...
 const RegtestExplorerAPI = "http://127.0.0.1:3001"
 
+var (
+	regtest        = &network.Regtest
+	mktBaseAsset   = regtest.AssetID
+	mktFee         = int64(25)
+	expiryDuration = uint64(120 * time.Second)
+	slippage       = decimal.NewFromFloat(0.05)
+	feeThreshold   = uint64(5000)
+)
+
 type mockedWallet struct {
 	mnemonic          []string
 	encryptedMnemonic string
@@ -67,7 +76,7 @@ func newMockServices(
 	// create a market repo
 	marketRepo := inmemory.NewMarketRepositoryImpl(dbManager)
 	if !marketRepositoryIsEmpty {
-		err := fillMarketRepo(ctx, &marketRepo, initPluggableMarket)
+		err := fillMarketRepo(ctx, marketRepo, initPluggableMarket)
 		if err != nil {
 			panic(err)
 		}
@@ -118,6 +127,8 @@ func newMockServices(
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
+		mktBaseAsset,
+		feeThreshold,
 	)
 
 	walletSvc := newWalletService(
@@ -125,10 +136,12 @@ func newMockServices(
 		unspentRepo,
 		explorerSvc,
 		blockchainListener,
+		false,
+		regtest,
 	)
 
 	if !vaultRepositoryIsEmpty {
-		if err := vaultRepo.UpdateVault(ctx, nil, "", func(v *domain.Vault) (*domain.Vault, error) {
+		if err := vaultRepo.UpdateVault(ctx, func(v *domain.Vault) (*domain.Vault, error) {
 			_, _, _, err := v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
@@ -156,6 +169,10 @@ func newMockServices(
 		unspentRepo,
 		explorerSvc,
 		blockchainListener,
+		mktBaseAsset,
+		expiryDuration,
+		slippage,
+		regtest,
 	)
 
 	operatorSvc := NewOperatorService(
@@ -165,6 +182,10 @@ func newMockServices(
 		unspentRepo,
 		explorerSvc,
 		blockchainListener,
+		mktBaseAsset,
+		mktFee,
+		regtest,
+		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
 	)
 
 	close := func() {
@@ -236,6 +257,8 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
+		mktBaseAsset,
+		feeThreshold,
 	)
 
 	walletSvc := newWalletService(
@@ -243,6 +266,8 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		unspentRepo,
 		explorerSvc,
 		blockchainListener,
+		false,
+		regtest,
 	)
 
 	ctx := context.Background()
@@ -267,27 +292,35 @@ func getExplorer() (explorer.Service, error) {
 
 func fillMarketRepo(
 	ctx context.Context,
-	marketRepo *domain.MarketRepository,
+	marketRepo domain.MarketRepository,
 	initPluggableMarket bool,
 ) error {
-	// TODO: create and open market
 	// opened market
-	if err := (*marketRepo).UpdateMarket(
+	if _, err := marketRepo.GetOrCreateMarket(
+		ctx,
+		&domain.Market{AccountIndex: domain.MarketAccountStart, Fee: 25},
+	); err != nil {
+		return err
+	}
+
+	if err := marketRepo.UpdateMarket(
 		ctx,
 		domain.MarketAccountStart,
 		func(market *domain.Market) (*domain.Market, error) {
-			if err := market.FundMarket([]domain.OutpointWithAsset{
-				{
-					Asset: marketUnspents[0].AssetHash,
-					Txid:  marketUnspents[0].TxID,
-					Vout:  int(marketUnspents[0].VOut),
+			if err := market.FundMarket(
+				[]domain.OutpointWithAsset{
+					{
+						Asset: marketUnspents[0].AssetHash,
+						Txid:  marketUnspents[0].TxID,
+						Vout:  int(marketUnspents[0].VOut),
+					},
+					{
+						Asset: marketUnspents[1].AssetHash,
+						Txid:  marketUnspents[1].TxID,
+						Vout:  int(marketUnspents[1].VOut),
+					},
 				},
-				{
-					Asset: marketUnspents[1].AssetHash,
-					Txid:  marketUnspents[1].TxID,
-					Vout:  int(marketUnspents[1].VOut),
-				},
-			},
+				marketUnspents[0].AssetHash,
 			); err != nil {
 				return nil, err
 			}
@@ -315,7 +348,14 @@ func fillMarketRepo(
 	}
 
 	// closed market (and also not funded)
-	if err := (*marketRepo).UpdateMarket(
+	if _, err := marketRepo.GetOrCreateMarket(
+		ctx,
+		&domain.Market{AccountIndex: domain.MarketAccountStart + 1, Fee: 25},
+	); err != nil {
+		return err
+	}
+
+	if err := marketRepo.UpdateMarket(
 		ctx,
 		domain.MarketAccountStart+1,
 		func(m *domain.Market) (*domain.Market, error) {
@@ -411,9 +451,9 @@ func newSwapRequest(
 
 func newSwapComplete(
 	w *trade.Wallet,
-	swapAccept *pb.SwapAccept,
-) (*pb.SwapComplete, error) {
-	swapAcceptMsg, _ := proto.Marshal(swapAccept)
+	swapAccept domain.SwapAccept,
+) (domain.SwapComplete, error) {
+	swapAcceptMsg, _ := proto.Marshal(swapAccept.(*pb.SwapAccept))
 	completedPsetBase64, err := w.Sign(swapAccept.GetTransaction())
 	if err != nil {
 		return nil, err
@@ -491,6 +531,7 @@ func newMockedVaultRepositoryImpl(w mockedWallet) domain.VaultRepository {
 			PassphraseHash:         btcutil.Hash160([]byte(w.password)),
 			Accounts:               map[int]*domain.Account{},
 			AccountAndKeyByAddress: map[string]domain.AccountAndKey{},
+			Network:                &network.Regtest,
 		},
 		lock: sync.Mutex{},
 	}
@@ -505,14 +546,17 @@ func (r *mockedVaultRepository) GetAllDerivedExternalAddressesForAccount(
 	return r.vault.AllDerivedExternalAddressesForAccount(accountIndex)
 }
 
-func (r *mockedVaultRepository) GetOrCreateVault(ctx context.Context, mnemonic []string, passphrase string) (*domain.Vault, error) {
+func (r *mockedVaultRepository) GetOrCreateVault(
+	ctx context.Context,
+	mnemonic []string,
+	passphrase string,
+	net *network.Network,
+) (*domain.Vault, error) {
 	return r.vault, nil
 }
 
 func (r *mockedVaultRepository) UpdateVault(
 	ctx context.Context,
-	mnemonic []string,
-	passphrase string,
 	updateFn func(v *domain.Vault) (*domain.Vault, error),
 ) error {
 	r.lock.Lock()

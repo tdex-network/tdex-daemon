@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/pkg/stats"
 
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
@@ -58,7 +59,15 @@ func main() {
 		log.WithError(err).Panic("error while opening db")
 	}
 
-	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
+	marketsFee := int64(config.GetFloat(config.DefaultFeeKey) * 100)
+	marketsBaseAsset := config.GetString(config.BaseAssetKey)
+	tradesExpiryDuration := config.GetDuration(config.TradeExpiryTimeKey)
+	withElementsSvc := config.IsSet(config.ElementsRPCEndpointKey)
+	pricesSlippagePercentage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
+	network := config.GetNetwork()
+	feeThreshold := uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
+
+	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager, tradesExpiryDuration)
 	vaultRepository := dbbadger.NewVaultRepositoryImpl(dbManager)
 	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
@@ -83,6 +92,8 @@ func main() {
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
+		marketsBaseAsset,
+		feeThreshold,
 	)
 
 	traderSvc := application.NewTradeService(
@@ -92,14 +103,19 @@ func main() {
 		unspentRepository,
 		explorerSvc,
 		blockchainListener,
+		marketsBaseAsset,
+		tradesExpiryDuration,
+		pricesSlippagePercentage,
+		network,
 	)
 	walletSvc := application.NewWalletService(
 		vaultRepository,
 		unspentRepository,
 		explorerSvc,
 		blockchainListener,
+		withElementsSvc,
+		network,
 	)
-
 	operatorSvc := application.NewOperatorService(
 		marketRepository,
 		vaultRepository,
@@ -107,6 +123,10 @@ func main() {
 		unspentRepository,
 		explorerSvc,
 		blockchainListener,
+		marketsBaseAsset,
+		marketsFee,
+		network,
+		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
 	)
 
 	// Ports
