@@ -152,14 +152,14 @@ type AddressesBlindingKeys struct {
 // AddressesBlindingKeysGroupByAccount returns all address, blinding key pairs
 //grouped by account
 func (v *Vault) AddressesBlindingKeysGroupByAccount(
-	accountIDs []int,
+	accountIndexes []int,
 ) map[int]AddressesBlindingKeys {
 	result := make(map[int]AddressesBlindingKeys)
 	allDerivedAddressInfo := v.AllDerivedAddressesInfo()
-	if len(accountIDs) > 0 {
-		tmp := make([]AddressInfo, 0, len(accountIDs))
+	if len(accountIndexes) > 0 {
+		tmp := make([]AddressInfo, 0, len(accountIndexes))
 		for _, v := range allDerivedAddressInfo {
-			for _, a := range accountIDs {
+			for _, a := range accountIndexes {
 				if v.AccountIndex == a {
 					tmp = append(tmp, v)
 				}

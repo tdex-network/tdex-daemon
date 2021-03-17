@@ -887,16 +887,16 @@ func (o *operatorService) ClaimMarketDeposit(
 			return err
 		}
 
-		markets, err := o.marketRepository.GetNonTradableMarkets(ctx)
+		markets, err := o.marketRepository.GetNonFundedMarkets(ctx)
 		if err != nil {
 			return err
 		}
-		accountIds := make([]int, 0)
+		accountIndexes := make([]int, 0)
 		for _, v := range markets {
-			accountIds = append(accountIds, v.AccountIndex)
+			accountIndexes = append(accountIndexes, v.AccountIndex)
 		}
 
-		addressesBlindingKeys := vault.AddressesBlindingKeysGroupByAccount(accountIds)
+		addressesBlindingKeys := vault.AddressesBlindingKeysGroupByAccount(accountIndexes)
 		for k, v := range addressesBlindingKeys {
 			addressesPerAccount[k] = v.Addresses
 			bkPairs = v.BlindingKeys

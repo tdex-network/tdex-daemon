@@ -87,13 +87,15 @@ func (m marketRepositoryImpl) GetTradableMarkets(
 	return m.findMarkets(ctx, query)
 }
 
-func (m marketRepositoryImpl) GetNonTradableMarkets(
+func (m marketRepositoryImpl) GetNonFundedMarkets(
 	ctx context.Context,
 ) ([]domain.Market, error) {
 	query := badgerhold.Where("AccountIndex").
 		Ge(domain.MarketAccountStart).
-		And("Tradable").
-		Eq(false)
+		And("BaseAsset").
+		Eq("").
+		And("QuoteAsset").
+		Eq("")
 
 	return m.findMarkets(ctx, query)
 }

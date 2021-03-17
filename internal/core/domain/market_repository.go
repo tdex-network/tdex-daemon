@@ -16,7 +16,7 @@ type MarketRepository interface {
 	GetTradableMarkets(ctx context.Context) ([]Market, error)
 
 	// Retrieves all the markets that are not open for trading
-	GetNonTradableMarkets(ctx context.Context) ([]Market, error)
+	GetNonFundedMarkets(ctx context.Context) ([]Market, error)
 
 	// Retrieves all the markets
 	GetAllMarkets(ctx context.Context) ([]Market, error)
