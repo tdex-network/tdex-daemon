@@ -131,7 +131,7 @@ func newMockServices(
 		feeThreshold,
 	)
 
-	walletSvc := newWalletService(
+	walletSvc, err := newWalletService(
 		vaultRepo,
 		unspentRepo,
 		explorerSvc,
@@ -139,6 +139,9 @@ func newMockServices(
 		false,
 		regtest,
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	if !vaultRepositoryIsEmpty {
 		if err := vaultRepo.UpdateVault(ctx, func(v *domain.Vault) (*domain.Vault, error) {
@@ -261,7 +264,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		feeThreshold,
 	)
 
-	walletSvc := newWalletService(
+	walletSvc, _ := newWalletService(
 		vaultRepo,
 		unspentRepo,
 		explorerSvc,

@@ -108,14 +108,6 @@ func main() {
 		pricesSlippagePercentage,
 		network,
 	)
-	walletSvc := application.NewWalletService(
-		vaultRepository,
-		unspentRepository,
-		explorerSvc,
-		blockchainListener,
-		withElementsSvc,
-		network,
-	)
 	operatorSvc := application.NewOperatorService(
 		marketRepository,
 		vaultRepository,
@@ -128,6 +120,17 @@ func main() {
 		network,
 		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
 	)
+	walletSvc, err := application.NewWalletService(
+		vaultRepository,
+		unspentRepository,
+		explorerSvc,
+		blockchainListener,
+		withElementsSvc,
+		network,
+	)
+	if err != nil {
+		log.WithError(err).Panic("error while setting up wallet service")
+	}
 
 	// Ports
 	traderAddress := fmt.Sprintf(":%+v", config.GetInt(config.TraderListeningPortKey))

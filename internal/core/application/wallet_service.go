@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -75,7 +74,7 @@ func NewWalletService(
 	blockchainListener BlockchainListener,
 	withElements bool,
 	net *network.Network,
-) WalletService {
+) (WalletService, error) {
 	return newWalletService(
 		vaultRepository,
 		unspentRepository,
@@ -93,7 +92,7 @@ func newWalletService(
 	blockchainListener BlockchainListener,
 	withElements bool,
 	net *network.Network,
-) *walletService {
+) (*walletService, error) {
 	w := &walletService{
 		vaultRepository:    vaultRepository,
 		unspentRepository:  unspentRepository,
@@ -110,14 +109,17 @@ func newWalletService(
 	if vault, err := w.vaultRepository.GetOrCreateVault(
 		context.Background(), nil, "", nil,
 	); err == nil {
-		addresses := vault.AllDerivedAddressesInfo()
-		// the addresses' observation is required to be blocking here because the
-		// wallet can be considered initialized after the listener had started
-		// watching for all derived addresses.
-		w.startObservingAddresses(addresses)
+		info := vault.AllDerivedAddressesInfo()
+		if err := fetchUnspents(
+			w.explorerService,
+			w.unspentRepository,
+			info,
+		); err != nil {
+			return nil, err
+		}
 		w.walletInitialized = true
 	}
-	return w
+	return w, nil
 }
 
 func (w *walletService) GenSeed(ctx context.Context) ([]string, error) {
@@ -151,7 +153,7 @@ func (w *walletService) InitWallet(
 	}
 
 	w.walletIsSyncing = true
-	walletAddresses := make([]domain.AddressInfo, 0)
+	info := make(domain.AddressesInfo, 0)
 
 	vault, err := w.vaultRepository.GetOrCreateVault(ctx, mnemonic, passphrase, w.network)
 	if err != nil {
@@ -184,7 +186,7 @@ func (w *walletService) InitWallet(
 			if _, err := initVaultAccount(v, domain.WalletAccount, walletLastDerivedIndex); err != nil {
 				return nil, err
 			}
-			marketAddresses := make([]domain.AddressInfo, 0)
+			marketAddresses := make(domain.AddressesInfo, 0)
 			for i, m := range marketsLastDerivedIndex {
 				addresses, err := initVaultAccount(v, domain.MarketAccountStart+i, m)
 				if err != nil {
@@ -193,8 +195,8 @@ func (w *walletService) InitWallet(
 				marketAddresses = append(marketAddresses, addresses...)
 			}
 
-			walletAddresses = append(walletAddresses, feeAddresses...)
-			walletAddresses = append(walletAddresses, marketAddresses...)
+			info = append(info, feeAddresses...)
+			info = append(info, marketAddresses...)
 			w.walletInitialized = true
 			return v, nil
 		},
@@ -204,9 +206,22 @@ func (w *walletService) InitWallet(
 		return err
 	}
 
-	go w.startObservingAddresses(walletAddresses)
 	w.walletIsSyncing = false
 	log.Debug("ended syncing wallet")
+
+	go func() {
+		if err := fetchUnspents(
+			w.explorerService,
+			w.unspentRepository,
+			info,
+		); err != nil {
+			log.Warnf(
+				"unexpected error occured while restoring the utxo set. You must "+
+					"manually run ReloadUtxo RPC as soon as possible to restore the utxo "+
+					"set of the internal wallet. Error: %v", err,
+			)
+		}
+	}()
 	return nil
 }
 
@@ -361,8 +376,7 @@ func (w *walletService) SendToMany(
 	}
 
 	var rawTx []byte
-	var addressToObserve string
-	var blindkeyToObserve []byte
+	var selectedUnspentKeys []domain.UnspentKey
 
 	err = w.vaultRepository.UpdateVault(
 		ctx,
@@ -394,10 +408,8 @@ func (w *walletService) SendToMany(
 				return nil, err
 			}
 			feeChangePathByAsset[w.network.AssetID] = feeInfo.DerivationPath
-			addressToObserve = feeInfo.Address
-			blindkeyToObserve = feeInfo.BlindingKey
 
-			txHex, _, err := sendToMany(sendToManyOpts{
+			txHex, usedUnspentKeys, err := sendToMany(sendToManyOpts{
 				mnemonic:              mnemonic,
 				unspents:              walletUnspents,
 				feeUnspents:           feeUnspents,
@@ -414,17 +426,17 @@ func (w *walletService) SendToMany(
 				return nil, err
 			}
 
-			if req.Push {
-				if _, err := w.explorerService.BroadcastTransaction(txHex); err != nil {
-					return nil, err
-				}
+			txid, err := w.explorerService.BroadcastTransaction(txHex)
+			if err != nil {
+				return nil, err
 			}
-
+			log.Debugf("Wallet account tx broadcasted with id: %s", txid)
 			tx, err := hex.DecodeString(txHex)
 			if err != nil {
 				return nil, err
 			}
 			rawTx = tx
+			selectedUnspentKeys = usedUnspentKeys
 
 			return v, nil
 		},
@@ -433,14 +445,7 @@ func (w *walletService) SendToMany(
 		return nil, err
 	}
 
-	// of course, do not forget of starting watching new address of fee account
-	go w.startObservingAddresses([]domain.AddressInfo{
-		{
-			AccountIndex: int(domain.FeeAccount),
-			Address:      addressToObserve,
-			BlindingKey:  blindkeyToObserve,
-		},
-	})
+	go spendUnspents(w.unspentRepository, selectedUnspentKeys)
 
 	return rawTx, nil
 }
@@ -500,21 +505,6 @@ func (w *walletService) getUnspentsForAddress(addr string, blindingKeys [][]byte
 		return
 	}
 	chUnspents <- unspents
-}
-
-func (w *walletService) startObservingAddresses(addresses []domain.AddressInfo) {
-	if len(addresses) <= 0 {
-		return
-	}
-
-	for _, info := range addresses {
-		w.blockchainListener.StartObserveAddress(
-			info.AccountIndex,
-			info.Address,
-			info.BlindingKey,
-		)
-		time.Sleep(200 * time.Millisecond)
-	}
 }
 
 func parseRequestOutputs(reqOutputs []TxOut) (
@@ -592,12 +582,12 @@ type sendToManyOpts struct {
 	network               *network.Network
 }
 
-func sendToMany(opts sendToManyOpts) (string, string, error) {
+func sendToMany(opts sendToManyOpts) (string, []domain.UnspentKey, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: opts.mnemonic,
 	})
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 
 	// default to MinMilliSatPerByte if needed
@@ -609,7 +599,7 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 	// create the transaction
 	newPset, err := w.CreateTx()
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 	network := opts.network
 
@@ -623,7 +613,7 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 		Network:            network,
 	})
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 
 	// update the list of output blinding keys with those of the eventual changes
@@ -633,7 +623,7 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 	}
 
 	// add inputs for paying network fees
-	updateResult, err = w.UpdateTx(wallet.UpdateTxOpts{
+	feeUpdateResult, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64:         updateResult.PsetBase64,
 		Unspents:           opts.feeUnspents,
 		ChangePathsByAsset: opts.feeChangePathByAsset,
@@ -642,31 +632,31 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 		WantChangeForFees:  true,
 	})
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 
 	// again, add changes' blinding keys to the list of those of the outputs
-	for _, v := range updateResult.ChangeOutputsBlindingKeys {
+	for _, v := range feeUpdateResult.ChangeOutputsBlindingKeys {
 		outputsBlindingKeys = append(outputsBlindingKeys, v)
 	}
 
 	// blind the transaction
 	blindedPset, err := w.BlindTransaction(wallet.BlindTransactionOpts{
-		PsetBase64:         updateResult.PsetBase64,
+		PsetBase64:         feeUpdateResult.PsetBase64,
 		OutputBlindingKeys: outputsBlindingKeys,
 	})
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 
 	// add the explicit fee amount
 	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64: blindedPset,
-		Outputs:    transactionutil.NewFeeOutput(updateResult.FeeAmount, network),
+		Outputs:    transactionutil.NewFeeOutput(feeUpdateResult.FeeAmount, network),
 		Network:    network,
 	})
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 
 	// sign the inputs
@@ -676,15 +666,36 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 		DerivationPathMap: inputPathsByScript,
 	})
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 
 	// finalize, extract and return the transaction
-	return wallet.FinalizeAndExtractTransaction(
+	txHex, _, err := wallet.FinalizeAndExtractTransaction(
 		wallet.FinalizeAndExtractTransactionOpts{
 			PsetBase64: signedPset,
 		},
 	)
+	if err != nil {
+		return "", nil, err
+	}
+	keysLen := len(updateResult.SelectedUnspents) + len(feeUpdateResult.SelectedUnspents)
+	selectedUnspentKeys := make([]domain.UnspentKey, keysLen, keysLen)
+
+	for i, u := range updateResult.SelectedUnspents {
+		selectedUnspentKeys[i] = domain.UnspentKey{
+			TxID: u.Hash(),
+			VOut: u.Index(),
+		}
+	}
+	for i, u := range feeUpdateResult.SelectedUnspents {
+		i += len(updateResult.SelectedUnspents)
+		selectedUnspentKeys[i] = domain.UnspentKey{
+			TxID: u.Hash(),
+			VOut: u.Index(),
+		}
+	}
+
+	return txHex, selectedUnspentKeys, nil
 }
 
 func getDerivationPathsForUnspents(
@@ -794,13 +805,13 @@ func initVaultAccount(
 	v *domain.Vault,
 	accountIndex int,
 	lastDerivedIndex *accountLastDerivedIndex,
-) ([]domain.AddressInfo, error) {
+) (domain.AddressesInfo, error) {
 	if lastDerivedIndex == nil {
 		v.InitAccount(accountIndex)
 		return nil, nil
 	}
 
-	addresses := make([]domain.AddressInfo, 0, lastDerivedIndex.total())
+	addresses := make(domain.AddressesInfo, 0, lastDerivedIndex.total())
 	for i := 0; i <= lastDerivedIndex.external; i++ {
 		info, err := v.DeriveNextExternalAddressForAccount(accountIndex)
 		if err != nil {
@@ -844,4 +855,55 @@ func getBalancesByAsset(unspents []explorer.Utxo) map[string]BalanceInfo {
 		balances[unspent.Asset()] = balance
 	}
 	return balances
+}
+
+func fetchUnspents(
+	explorerSvc explorer.Service,
+	unspentRepo domain.UnspentRepository,
+	info domain.AddressesInfo,
+) error {
+	utxos, err := explorerSvc.GetUnspentsForAddresses(info.AddressesAndKeys())
+	if err != nil {
+		return err
+	}
+
+	unspentsLen := len(utxos)
+	unspents := make([]domain.Unspent, unspentsLen, unspentsLen)
+	accountAddressesByScript := groupAccountAddressesByScript(info)
+
+	for i, u := range utxos {
+		addr := accountAddressesByScript[hex.EncodeToString(u.Script())]
+		unspents[i] = domain.Unspent{
+			TxID:            u.Hash(),
+			VOut:            u.Index(),
+			Value:           u.Value(),
+			AssetHash:       u.Asset(),
+			ValueCommitment: u.ValueCommitment(),
+			AssetCommitment: u.AssetCommitment(),
+			ValueBlinder:    u.ValueBlinder(),
+			AssetBlinder:    u.AssetBlinder(),
+			ScriptPubKey:    u.Script(),
+			Nonce:           u.Nonce(),
+			RangeProof:      u.RangeProof(),
+			SurjectionProof: u.SurjectionProof(),
+			Confirmed:       u.IsConfirmed(),
+			Address:         addr,
+		}
+	}
+
+	return unspentRepo.AddUnspents(context.Background(), unspents)
+}
+
+func spendUnspents(
+	unspentRepo domain.UnspentRepository,
+	unspentKeys []domain.UnspentKey,
+) {
+	if err := unspentRepo.SpendUnspents(context.Background(), unspentKeys); err != nil {
+		log.Warnf(
+			"unexpected error occured while updating the utxo set trying to mark "+
+				"some unspents as spent. You must manually run ReloadUtxo RPC as soon "+
+				"as possible to restore the utxo set of the internal wallet. "+
+				"Error: %v", err,
+		)
+	}
 }
