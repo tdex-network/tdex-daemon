@@ -32,8 +32,19 @@ func (r VaultRepositoryImpl) GetOrCreateVault(
 	return r.getOrCreateVault(ctx, mnemonic, passphrase, net)
 }
 
-func (r VaultRepositoryImpl) GetAllDerivedExternalAddressesForAccount(ctx context.Context, accountIndex int) ([]string, error) {
-	return nil, nil
+func (r VaultRepositoryImpl) GetAllDerivedExternalAddressesInfoForAccount(
+	ctx context.Context,
+	accountIndex int,
+) (domain.AddressesInfo, error) {
+	r.db.vaultStore.locker.Lock()
+	defer r.db.vaultStore.locker.Unlock()
+
+	v := r.getVault(ctx)
+	if v == nil {
+		return nil, ErrVaultNotFound
+	}
+
+	return v.AllDerivedExternalAddressesInfoForAccount(accountIndex)
 }
 
 // UpdateVault updates data to the Vault passing an update function
@@ -67,22 +78,31 @@ func (r VaultRepositoryImpl) GetAccountByIndex(ctx context.Context,
 	return r.db.vaultStore.vault.AccountByIndex(accountIndex)
 }
 
-func (r VaultRepositoryImpl) GetAccountByAddress(ctx context.Context,
-	addr string) (*domain.Account, int, error) {
+func (r VaultRepositoryImpl) GetAccountByAddress(
+	ctx context.Context,
+	addr string,
+) (*domain.Account, int, error) {
 	r.db.vaultStore.locker.Lock()
 	defer r.db.vaultStore.locker.Unlock()
 
 	return r.db.vaultStore.vault.AccountByAddress(addr)
 }
 
-func (r VaultRepositoryImpl) GetAllDerivedAddressesAndBlindingKeysForAccount(ctx context.Context, accountIndex int) ([]string, [][]byte, error) {
+func (r VaultRepositoryImpl) GetAllDerivedAddressesInfoForAccount(
+	ctx context.Context,
+	accountIndex int,
+) (domain.AddressesInfo, error) {
 	r.db.vaultStore.locker.Lock()
 	defer r.db.vaultStore.locker.Unlock()
 
-	return r.db.vaultStore.vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
+	return r.db.vaultStore.vault.AllDerivedAddressesInfoForAccount(accountIndex)
 }
 
-func (r VaultRepositoryImpl) GetDerivationPathByScript(ctx context.Context, accountIndex int, scripts []string) (map[string]string, error) {
+func (r VaultRepositoryImpl) GetDerivationPathByScript(
+	ctx context.Context,
+	accountIndex int,
+	scripts []string,
+) (map[string]string, error) {
 	r.db.vaultStore.locker.Lock()
 	defer r.db.vaultStore.locker.Unlock()
 

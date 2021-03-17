@@ -38,8 +38,8 @@ type TradeService interface {
 	) (domain.SwapAccept, domain.SwapFail, uint64, error)
 	TradeComplete(
 		ctx context.Context,
-		swapComplete domain.SwapComplete,
-		swapFail domain.SwapFail,
+		swapComplete *domain.SwapComplete,
+		swapFail *domain.SwapFail,
 	) (string, domain.SwapFail, error)
 	GetMarketBalance(
 		ctx context.Context,
@@ -290,48 +290,27 @@ func (t *tradeService) TradePropose(
 			if err != nil {
 				return nil, err
 			}
-			outputAddress, outputScript, outputBlindKey, err :=
-				v.DeriveNextExternalAddressForAccount(marketAccountIndex)
+			info, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			changeAddress, changeScript, changeBlindKey, err :=
-				v.DeriveNextInternalAddressForAccount(marketAccountIndex)
+			changeInfo, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			feeChangeAddress, feeChangeScript, feeChangeBlindKey, err :=
-				v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			feeChangeInfo, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
-			marketAccount, _ := v.AccountByIndex(marketAccountIndex)
-			feeAccount, _ := v.AccountByIndex(domain.FeeAccount)
 
 			outputBlindingKeysByScript = map[string][]byte{
-				outputScript: outputBlindKey,
-				changeScript: changeBlindKey,
+				info.Script:       info.BlindingKey,
+				changeInfo.Script: changeInfo.BlindingKey,
 			}
-			addressesToObserve = []domain.AddressInfo{
-				{
-					AccountIndex: marketAccountIndex,
-					Address:      outputAddress,
-					BlindingKey:  outputBlindKey,
-				},
-				{
-					AccountIndex: marketAccountIndex,
-					Address:      changeAddress,
-					BlindingKey:  changeBlindKey,
-				},
-				{
-					AccountIndex: domain.FeeAccount,
-					Address:      feeChangeAddress,
-					BlindingKey:  feeChangeBlindKey,
-				},
-			}
-			outputDerivationPath, _ = marketAccount.DerivationPathByScript[outputScript]
-			changeDerivationPath, _ = marketAccount.DerivationPathByScript[changeScript]
-			feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript[feeChangeScript]
+
+			outputDerivationPath = info.DerivationPath
+			changeDerivationPath = changeInfo.DerivationPath
+			feeChangeDerivationPath = feeChangeInfo.DerivationPath
 
 			return v, nil
 		}); err != nil {
@@ -339,9 +318,14 @@ func (t *tradeService) TradePropose(
 	}
 
 	// parse swap proposal and possibly accept
+	trade, err := t.tradeRepository.GetOrCreateTrade(ctx, nil)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
 	if err := t.tradeRepository.UpdateTrade(
 		ctx,
-		nil,
+		&trade.ID,
 		func(trade *domain.Trade) (*domain.Trade, error) {
 			ok, err := trade.Propose(
 				swapRequest,
@@ -428,15 +412,15 @@ func (t *tradeService) TradePropose(
 // TradeComplete is the domain controller for the TradeComplete RPC
 func (t *tradeService) TradeComplete(
 	ctx context.Context,
-	swapComplete domain.SwapComplete,
-	swapFail domain.SwapFail,
+	swapComplete *domain.SwapComplete,
+	swapFail *domain.SwapFail,
 ) (string, domain.SwapFail, error) {
 	if swapFail != nil {
-		swapFailMsg, err := t.tradeFail(ctx, swapFail)
+		swapFailMsg, err := t.tradeFail(ctx, *swapFail)
 		return "", swapFailMsg, err
 	}
 
-	return t.tradeComplete(ctx, swapComplete)
+	return t.tradeComplete(ctx, *swapComplete)
 }
 
 func (t *tradeService) tradeComplete(
@@ -518,11 +502,11 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 	map[string]string,
 	error,
 ) {
-	derivedAddresses, blindingKeys, err := t.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, account)
+	info, err := t.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, account)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
+	derivedAddresses, blindingKeys := info.AddressesAndKeys()
 
 	unspents, err := t.unspentRepository.GetAvailableUnspentsForAddresses(
 		ctx,
@@ -1117,11 +1101,11 @@ func (t *tradeService) GetMarketBalance(
 		return nil, ErrMarketNotExist
 	}
 
-	marketAddresses, _, err := t.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, m.AccountIndex)
+	info, err := t.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, m.AccountIndex)
 	if err != nil {
 		return nil, err
 	}
+	marketAddresses := info.Addresses()
 
 	baseAssetBalance, err := t.unspentRepository.GetBalance(
 		ctx,

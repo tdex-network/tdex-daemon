@@ -274,16 +274,15 @@ func (w *walletService) GenerateAddressAndBlindingKey(
 	err = w.vaultRepository.UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
-			adr, _, bk, err1 := v.DeriveNextExternalAddressForAccount(
+			info, err := v.DeriveNextExternalAddressForAccount(
 				domain.WalletAccount,
 			)
-			if err1 != nil {
-				err = err1
-				return nil, err1
+			if err != nil {
+				return nil, err
 			}
 
-			address = adr
-			blindingKey = hex.EncodeToString(bk)
+			address = info.Address
+			blindingKey = hex.EncodeToString(info.BlindingKey)
 
 			return v, nil
 		},
@@ -302,13 +301,12 @@ func (w *walletService) GetWalletBalance(
 		return nil, ErrWalletNotInitialized
 	}
 
-	derivedAddresses, prvBlindingKeys, err := w.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.WalletAccount)
+	info, err := w.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, domain.WalletAccount)
 	if err != nil {
 		return nil, err
 	}
 
-	unspents, err := w.getUnspents(derivedAddresses, prvBlindingKeys)
+	unspents, err := w.getUnspents(info.AddressesAndKeys())
 	if err != nil {
 		return nil, err
 	}
@@ -385,22 +383,19 @@ func (w *walletService) SendToMany(
 			changePathsByAsset := map[string]string{}
 			feeChangePathByAsset := map[string]string{}
 			for _, asset := range getAssetsOfOutputs(outputs) {
-				_, script, _, err := v.DeriveNextInternalAddressForAccount(
-					domain.WalletAccount,
-				)
+				info, err := v.DeriveNextInternalAddressForAccount(domain.WalletAccount)
 				if err != nil {
 					return nil, err
 				}
-				derivationPath, _ := walletAccount.DerivationPathByScript[script]
-				changePathsByAsset[asset] = derivationPath
+				changePathsByAsset[asset] = info.DerivationPath
 			}
-			feeAddress, script, feeBlindkey, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			feeInfo, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
-			feeChangePathByAsset[w.network.AssetID] = feeAccount.DerivationPathByScript[script]
-			addressToObserve = feeAddress
-			blindkeyToObserve = feeBlindkey
+			feeChangePathByAsset[w.network.AssetID] = feeInfo.DerivationPath
+			addressToObserve = feeInfo.Address
+			blindkeyToObserve = feeInfo.BlindingKey
 
 			txHex, _, err := sendToMany(sendToManyOpts{
 				mnemonic:              mnemonic,
@@ -455,11 +450,11 @@ func (w *walletService) getAllUnspentsForAccount(
 	accountIndex int,
 	useExplorer bool,
 ) ([]explorer.Utxo, error) {
-	addresses, blindingKeys, err := w.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, accountIndex)
+	info, err := w.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, accountIndex)
 	if err != nil {
 		return nil, err
 	}
+	addresses, blindingKeys := info.AddressesAndKeys()
 
 	if useExplorer {
 		return w.explorerService.GetUnspentsForAddresses(addresses, blindingKeys)
@@ -807,26 +802,18 @@ func initVaultAccount(
 
 	addresses := make([]domain.AddressInfo, 0, lastDerivedIndex.total())
 	for i := 0; i <= lastDerivedIndex.external; i++ {
-		addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+		info, err := v.DeriveNextExternalAddressForAccount(accountIndex)
 		if err != nil {
 			return nil, err
 		}
-		addresses = append(addresses, domain.AddressInfo{
-			AccountIndex: accountIndex,
-			Address:      addr,
-			BlindingKey:  blindingKey,
-		})
+		addresses = append(addresses, *info)
 	}
 	for i := 0; i <= lastDerivedIndex.internal; i++ {
-		addr, _, blindingKey, err := v.DeriveNextInternalAddressForAccount(accountIndex)
+		info, err := v.DeriveNextInternalAddressForAccount(accountIndex)
 		if err != nil {
 			return nil, err
 		}
-		addresses = append(addresses, domain.AddressInfo{
-			AccountIndex: accountIndex,
-			Address:      addr,
-			BlindingKey:  blindingKey,
-		})
+		addresses = append(addresses, *info)
 	}
 	return addresses, nil
 }

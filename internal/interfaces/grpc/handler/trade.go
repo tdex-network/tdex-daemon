@@ -7,6 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
@@ -305,14 +306,26 @@ func (t traderHandler) tradeComplete(
 	req *pb.TradeCompleteRequest,
 	stream pb.Trade_TradeCompleteServer,
 ) error {
+	var swapCompletePtr *domain.SwapComplete
+	var swapComplete domain.SwapComplete
+	if s := req.SwapComplete; s != nil {
+		swapComplete = s
+		swapCompletePtr = &swapComplete
+	}
+	var swapFailPtr *domain.SwapFail
+	var swapFail domain.SwapFail
+	if s := req.SwapFail; s != nil {
+		swapFail = s
+		swapFailPtr = &swapFail
+	}
 	res, err := t.dbManager.RunTransaction(
 		stream.Context(),
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
 			txID, fail, err := t.traderSvc.TradeComplete(
 				ctx,
-				req.GetSwapComplete(),
-				req.GetSwapFail(),
+				swapCompletePtr,
+				swapFailPtr,
 			)
 			if err != nil {
 				return nil, err

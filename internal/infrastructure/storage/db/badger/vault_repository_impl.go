@@ -95,25 +95,10 @@ func (v vaultRepositoryImpl) GetAccountByAddress(
 	return account, accountIndex, nil
 }
 
-func (v vaultRepositoryImpl) GetAllDerivedAddressesAndBlindingKeysForAccount(
+func (v vaultRepositoryImpl) GetAllDerivedAddressesInfoForAccount(
 	ctx context.Context,
 	accountIndex int,
-) ([]string, [][]byte, error) {
-	vault, err := v.getVault(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	if vault == nil {
-		return nil, nil, ErrVaultNotFound
-	}
-
-	return vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
-}
-
-func (v vaultRepositoryImpl) GetAllDerivedExternalAddressesForAccount(
-	ctx context.Context,
-	accountIndex int,
-) ([]string, error) {
+) (domain.AddressesInfo, error) {
 	vault, err := v.getVault(ctx)
 	if err != nil {
 		return nil, err
@@ -122,7 +107,22 @@ func (v vaultRepositoryImpl) GetAllDerivedExternalAddressesForAccount(
 		return nil, ErrVaultNotFound
 	}
 
-	return vault.AllDerivedExternalAddressesForAccount(accountIndex)
+	return vault.AllDerivedAddressesInfoForAccount(accountIndex)
+}
+
+func (v vaultRepositoryImpl) GetAllDerivedExternalAddressesInfoForAccount(
+	ctx context.Context,
+	accountIndex int,
+) (domain.AddressesInfo, error) {
+	vault, err := v.getVault(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if vault == nil {
+		return nil, ErrVaultNotFound
+	}
+
+	return vault.AllDerivedExternalAddressesInfoForAccount(accountIndex)
 }
 
 func (v vaultRepositoryImpl) GetDerivationPathByScript(

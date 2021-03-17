@@ -36,6 +36,27 @@ type AddressInfo struct {
 	Address        string
 	BlindingKey    []byte
 	DerivationPath string
+	Script         string
+}
+
+type AddressesInfo []AddressInfo
+
+func (info AddressesInfo) Addresses() []string {
+	addresses := make([]string, len(info), len(info))
+	for i, in := range info {
+		addresses[i] = in.Address
+	}
+	return addresses
+}
+
+func (info AddressesInfo) AddressesAndKeys() ([]string, [][]byte) {
+	addresses := make([]string, len(info), len(info))
+	keys := make([][]byte, len(info), len(info))
+	for i, in := range info {
+		addresses[i] = in.Address
+		keys[i] = in.BlindingKey
+	}
+	return addresses, keys
 }
 
 // MnemonicStore defines the required methods to override the default
