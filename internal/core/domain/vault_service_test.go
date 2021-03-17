@@ -319,7 +319,7 @@ func TestAllDerivedExternalAddressesInfoForAccount(t *testing.T) {
 
 	allInfo, err := v.AllDerivedExternalAddressesInfoForAccount(accountIndex)
 	require.NoError(t, err)
-	require.Len(t, info, 1)
+	require.Len(t, allInfo, 1)
 	addresses := allInfo.Addresses()
 	require.Len(t, addresses, 1)
 	require.Equal(t, info.Address, addresses[0])
