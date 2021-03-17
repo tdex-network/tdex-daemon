@@ -142,15 +142,15 @@ func newMockServices(
 
 	if !vaultRepositoryIsEmpty {
 		if err := vaultRepo.UpdateVault(ctx, func(v *domain.Vault) (*domain.Vault, error) {
-			_, _, _, err := v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
+			_, err := v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
-			_, _, _, err = v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart)
+			_, err = v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart)
 			if err != nil {
 				return nil, err
 			}
-			_, _, _, err = v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart + 1)
+			_, err = v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart + 1)
 			if err != nil {
 				return nil, err
 			}
@@ -537,13 +537,13 @@ func newMockedVaultRepositoryImpl(w mockedWallet) domain.VaultRepository {
 	}
 }
 
-func (r *mockedVaultRepository) GetAllDerivedExternalAddressesForAccount(
+func (r *mockedVaultRepository) GetAllDerivedExternalAddressesInfoForAccount(
 	ctx context.Context,
 	accountIndex int,
-) ([]string, error) {
+) (domain.AddressesInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	return r.vault.AllDerivedExternalAddressesForAccount(accountIndex)
+	return r.vault.AllDerivedExternalAddressesInfoForAccount(accountIndex)
 }
 
 func (r *mockedVaultRepository) GetOrCreateVault(
@@ -577,13 +577,13 @@ func (r *mockedVaultRepository) GetAccountByAddress(ctx context.Context, addr st
 	return r.vault.AccountByAddress(addr)
 }
 
-func (r *mockedVaultRepository) GetAllDerivedAddressesAndBlindingKeysForAccount(
+func (r *mockedVaultRepository) GetAllDerivedAddressesInfoForAccount(
 	ctx context.Context,
 	accountIndex int,
-) ([]string, [][]byte, error) {
+) (domain.AddressesInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	return r.vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
+	return r.vault.AllDerivedAddressesInfoForAccount(accountIndex)
 }
 
 func (r *mockedVaultRepository) GetDerivationPathByScript(ctx context.Context, accountIndex int, scripts []string) (map[string]string, error) {

@@ -163,19 +163,25 @@ func TestDeriveAddresses(t *testing.T) {
 	expectedInternalAddresses := 3
 
 	for i := 0; i < expectedExternalAddresses; i++ {
-		addr, script, blindkey, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+		info, err := v.DeriveNextExternalAddressForAccount(accountIndex)
 		require.NoError(t, err)
-		require.NotEmpty(t, addr)
-		require.NotEmpty(t, script)
-		require.Len(t, blindkey, 32)
+		require.NotNil(t, info)
+		require.GreaterOrEqual(t, info.AccountIndex, 0)
+		require.NotEmpty(t, info.Address)
+		require.Len(t, info.BlindingKey, 32)
+		require.NotEmpty(t, info.DerivationPath)
+		require.NotEmpty(t, info.Script)
 	}
 
 	for i := 0; i < expectedInternalAddresses; i++ {
-		addr, script, blindkey, err := v.DeriveNextInternalAddressForAccount(accountIndex)
+		info, err := v.DeriveNextInternalAddressForAccount(accountIndex)
 		require.NoError(t, err)
-		require.NotEmpty(t, addr)
-		require.NotEmpty(t, script)
-		require.Len(t, blindkey, 32)
+		require.NotNil(t, info)
+		require.GreaterOrEqual(t, info.AccountIndex, 0)
+		require.NotEmpty(t, info.Address)
+		require.Len(t, info.BlindingKey, 32)
+		require.NotEmpty(t, info.DerivationPath)
+		require.NotEmpty(t, info.Script)
 	}
 
 	account, err := v.AccountByIndex(accountIndex)
@@ -191,16 +197,18 @@ func TestFailingDeriveAddresses(t *testing.T) {
 		v := newTestVaultLocked()
 		domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
-		_, _, _, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+		info, err := v.DeriveNextExternalAddressForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultMustBeUnlocked.Error())
+		require.Nil(t, info)
 	})
 
 	t.Run("failing_derive_internal_address", func(t *testing.T) {
 		v := newTestVaultLocked()
 		domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
-		_, _, _, err := v.DeriveNextInternalAddressForAccount(accountIndex)
+		info, err := v.DeriveNextInternalAddressForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultMustBeUnlocked.Error())
+		require.Nil(t, info)
 	})
 }
 
@@ -213,20 +221,20 @@ func TestAccountByAddress(t *testing.T) {
 	})
 	accountIndex := 4
 
-	externalAddr, _, _, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+	extInfo, err := v.DeriveNextExternalAddressForAccount(accountIndex)
 	require.NoError(t, err)
 
-	account, index, err := v.AccountByAddress(externalAddr)
+	account, index, err := v.AccountByAddress(extInfo.Address)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	require.Equal(t, accountIndex, index)
 
-	internalAddr, _, _, err := v.DeriveNextInternalAddressForAccount(accountIndex)
+	inInfo, err := v.DeriveNextInternalAddressForAccount(accountIndex)
 	require.NoError(t, err)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 
-	account, index, err = v.AccountByAddress(internalAddr)
+	account, index, err = v.AccountByAddress(inInfo.Address)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	require.Equal(t, accountIndex, index)
@@ -242,7 +250,7 @@ func TestFailingAccountByAddress(t *testing.T) {
 	require.Equal(t, -1, index)
 }
 
-func TestAllDerivedAddressesAndBlindingKeysForAccount(t *testing.T) {
+func TestAllDerivedAddressesInfoForAccount(t *testing.T) {
 	v := newTestVaultLocked()
 	domain.MnemonicStoreManager = newSimpleMnemonicStore([]string{
 		"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
@@ -251,28 +259,34 @@ func TestAllDerivedAddressesAndBlindingKeysForAccount(t *testing.T) {
 	})
 	accountIndex := 5
 
-	addr, _, blindkey, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+	extInfo, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+	require.NoError(t, err)
+	inInfo, err := v.DeriveNextInternalAddressForAccount(accountIndex)
 	require.NoError(t, err)
 
-	addreses, blindkeys, err := v.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
+	allInfo, err := v.AllDerivedAddressesInfoForAccount(accountIndex)
 	require.NoError(t, err)
-	require.Len(t, addreses, 1)
-	require.Len(t, blindkeys, 1)
-	require.Equal(t, addr, addreses[0])
-	require.Equal(t, blindkey, blindkeys[0])
+	require.Len(t, allInfo, 2)
+
+	addresses, blindkeys := allInfo.AddressesAndKeys()
+	require.Len(t, addresses, 2)
+	require.Len(t, blindkeys, 2)
+	require.Equal(t, extInfo.Address, addresses[0])
+	require.Equal(t, extInfo.BlindingKey, blindkeys[0])
+	require.Equal(t, inInfo.Address, addresses[1])
+	require.Equal(t, inInfo.BlindingKey, blindkeys[1])
 }
 
-func TestFailingAllDerivedAddressesAndBlindingKeysForAccount(t *testing.T) {
+func TestFailingAllDerivedAddressesInfoForAccount(t *testing.T) {
 	accountIndex := 6
 
 	t.Run("failing_because_locked", func(t *testing.T) {
 		v := newTestVaultLocked()
 		domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
-		addreses, blindkeys, err := v.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
+		info, err := v.AllDerivedAddressesInfoForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultMustBeUnlocked.Error())
-		require.Nil(t, addreses)
-		require.Nil(t, blindkeys)
+		require.Nil(t, info)
 	})
 
 	t.Run("failing_because_account_not_found", func(t *testing.T) {
@@ -283,14 +297,13 @@ func TestFailingAllDerivedAddressesAndBlindingKeysForAccount(t *testing.T) {
 			"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
 		})
 
-		addreses, blindkeys, err := v.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
+		info, err := v.AllDerivedAddressesInfoForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultAccountNotFound.Error())
-		require.Nil(t, addreses)
-		require.Nil(t, blindkeys)
+		require.Nil(t, info)
 	})
 }
 
-func TestAllDerivedExternalAddressesForAccount(t *testing.T) {
+func TestAllDerivedExternalAddressesInfoForAccount(t *testing.T) {
 	v := newTestVaultLocked()
 	domain.MnemonicStoreManager = newSimpleMnemonicStore([]string{
 		"leave", "dice", "fine", "decrease", "dune", "ribbon", "ocean", "earn",
@@ -299,27 +312,29 @@ func TestAllDerivedExternalAddressesForAccount(t *testing.T) {
 	})
 	accountIndex := 7
 
-	addr, _, _, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+	info, err := v.DeriveNextExternalAddressForAccount(accountIndex)
 	require.NoError(t, err)
-	_, _, _, err = v.DeriveNextInternalAddressForAccount(accountIndex)
+	_, err = v.DeriveNextInternalAddressForAccount(accountIndex)
 	require.NoError(t, err)
 
-	addresses, err := v.AllDerivedExternalAddressesForAccount(accountIndex)
+	allInfo, err := v.AllDerivedExternalAddressesInfoForAccount(accountIndex)
 	require.NoError(t, err)
+	require.Len(t, info, 1)
+	addresses := allInfo.Addresses()
 	require.Len(t, addresses, 1)
-	require.Equal(t, addr, addresses[0])
+	require.Equal(t, info.Address, addresses[0])
 }
 
-func TestFailingAllDerivedExternalAddressesForAccount(t *testing.T) {
+func TestFailingAllDerivedExternalAddressesInfoForAccount(t *testing.T) {
 	accountIndex := 8
 
 	t.Run("failing_because_locked", func(t *testing.T) {
 		v := newTestVaultLocked()
 		domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
-		addresses, err := v.AllDerivedExternalAddressesForAccount(accountIndex)
+		info, err := v.AllDerivedExternalAddressesInfoForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultMustBeUnlocked.Error())
-		require.Nil(t, addresses)
+		require.Nil(t, info)
 	})
 
 	t.Run("failing_because_account_not_found", func(t *testing.T) {
@@ -330,9 +345,9 @@ func TestFailingAllDerivedExternalAddressesForAccount(t *testing.T) {
 			"because", "trade", "steak", "clock", "grace", "video", "jacket", "equal",
 		})
 
-		addresses, err := v.AllDerivedExternalAddressesForAccount(accountIndex)
+		info, err := v.AllDerivedExternalAddressesInfoForAccount(accountIndex)
 		require.EqualError(t, err, domain.ErrVaultAccountNotFound.Error())
-		require.Nil(t, addresses)
+		require.Nil(t, info)
 	})
 }
 

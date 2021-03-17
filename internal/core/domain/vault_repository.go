@@ -23,13 +23,12 @@ type VaultRepository interface {
 	// GetAccountByAddress returns the account with the given index, if it
 	// exists.
 	GetAccountByAddress(ctx context.Context, addr string) (*Account, int, error)
-	// GetAllDerivedAddressesAndBlindingKeysForAccount returns the list of all
-	// external and internal (change) addresses derived for the provided account
-	// along with the respective private blinding keys.
-	GetAllDerivedAddressesAndBlindingKeysForAccount(
+	// GetAllDerivedAddressesInfoForAccount returns the list of info about all
+	// external and internal (change) addresses derived for the provided account.
+	GetAllDerivedAddressesInfoForAccount(
 		ctx context.Context,
 		accountIndex int,
-	) ([]string, [][]byte, error)
+	) (AddressesInfo, error)
 	// GetDerivationPathByScript returns the derivation paths for the given account
 	// index and the given list of scripts.
 	GetDerivationPathByScript(
@@ -37,12 +36,12 @@ type VaultRepository interface {
 		accountIndex int,
 		scripts []string,
 	) (map[string]string, error)
-	// GetAllDerivedExternalAddressesForAccount returns all receiving addresses
-	// derived for the provided account so far.
-	GetAllDerivedExternalAddressesForAccount(
+	// GetAllDerivedExternalAddressesInfoForAccount returns info about all receiving
+	// addresses derived for the provided account so far.
+	GetAllDerivedExternalAddressesInfoForAccount(
 		ctx context.Context,
 		accountIndex int,
-	) ([]string, error)
+	) (AddressesInfo, error)
 	// UpdateVault is the method allowing to make multiple changes to a vault in
 	// a transactional way.
 	UpdateVault(

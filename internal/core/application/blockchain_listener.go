@@ -307,15 +307,17 @@ func (b *blockchainListener) handleUnspents(
 }
 
 func (b *blockchainListener) checkFeeAccountBalance(ctx context.Context) error {
-	addresses, _, err := b.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.FeeAccount)
+	info, err := b.vaultRepository.GetAllDerivedAddressesInfoForAccount(
+		ctx,
+		domain.FeeAccount,
+	)
 	if err != nil {
 		return err
 	}
 
 	feeAccountBalance, err := b.unspentRepository.GetBalance(
 		ctx,
-		addresses,
+		info.Addresses(),
 		b.marketBaseAsset,
 	)
 	if err != nil {
@@ -375,11 +377,11 @@ func (b *blockchainListener) checkMarketAccountFundings(ctx context.Context, acc
 	// let's notify whether the market can be safely opened, base or quote
 	// asset are missing, or if the market account owns too many assets.
 	if market == nil || !market.IsFunded() {
-		addresses, _, err := b.vaultRepository.GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, accountIndex)
+		info, err := b.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, accountIndex)
 		if err != nil {
 			return err
 		}
-		unspents, err := b.unspentRepository.GetUnspentsForAddresses(ctx, addresses)
+		unspents, err := b.unspentRepository.GetUnspentsForAddresses(ctx, info.Addresses())
 		if err != nil {
 			return err
 		}
