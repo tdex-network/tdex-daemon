@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -218,8 +217,6 @@ func (o *operatorService) DepositMarket(
 		return nil, err
 	}
 
-	go o.observeAddressesForAccount(accountIndex, list)
-
 	return addresses, nil
 }
 
@@ -253,8 +250,6 @@ func (o *operatorService) DepositFeeAccount(
 		return nil, err
 	}
 
-	go o.observeAddressesForAccount(domain.FeeAccount, list)
-
 	return list, nil
 }
 
@@ -278,7 +273,7 @@ func (o *operatorService) OpenMarket(
 		return domain.ErrMarketInvalidBaseAsset
 	}
 
-	// check if the crawler is observing at least one addresses
+	// check if some addresses of the fee account have been derived already
 	if _, err := o.vaultRepository.GetAllDerivedExternalAddressesInfoForAccount(
 		ctx,
 		domain.FeeAccount,
@@ -667,15 +662,10 @@ func (o *operatorService) GetCollectedMarketFee(
 func (o *operatorService) WithdrawMarketFunds(
 	ctx context.Context,
 	req WithdrawMarketReq,
-) (
-	[]byte,
-	error,
-) {
+) ([]byte, error) {
 	if req.BaseAsset != o.marketBaseAsset {
 		return nil, domain.ErrMarketInvalidBaseAsset
 	}
-
-	var rawTx []byte
 
 	market, accountIndex, err := o.marketRepository.GetMarketByAsset(
 		ctx,
@@ -685,7 +675,7 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, err
 	}
 
-	if accountIndex == -1 {
+	if accountIndex < 0 {
 		return nil, ErrMarketNotExist
 	}
 
@@ -725,8 +715,10 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, ErrWalletNotFunded
 	}
 
-	addressesToObserve := make([]AddressAndBlindingKey, 0)
-	err = o.vaultRepository.UpdateVault(
+	var selectedUnspentKeys []domain.UnspentKey
+	var rawTx []byte
+
+	if err := o.vaultRepository.UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err := v.GetMnemonicSafe()
@@ -752,13 +744,6 @@ func (o *operatorService) WithdrawMarketFunds(
 
 				derivationPath := marketAccount.DerivationPathByScript[info.Script]
 				changePathsByAsset[asset] = derivationPath
-				addressesToObserve = append(
-					addressesToObserve,
-					AddressAndBlindingKey{
-						Address:     info.Address,
-						BlindingKey: hex.EncodeToString(info.BlindingKey),
-					},
-				)
 			}
 
 			feeInfo, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
@@ -768,15 +753,7 @@ func (o *operatorService) WithdrawMarketFunds(
 			feeChangePathByAsset[o.network.AssetID] =
 				feeAccount.DerivationPathByScript[feeInfo.Script]
 
-			addressesToObserve = append(
-				addressesToObserve,
-				AddressAndBlindingKey{
-					Address:     feeInfo.Address,
-					BlindingKey: hex.EncodeToString(feeInfo.BlindingKey),
-				},
-			)
-
-			txHex, _, err := sendToMany(sendToManyOpts{
+			txHex, usedUnspentKeys, err := sendToMany(sendToManyOpts{
 				mnemonic:              mnemonic,
 				unspents:              marketUnspents,
 				feeUnspents:           feeUnspents,
@@ -793,22 +770,20 @@ func (o *operatorService) WithdrawMarketFunds(
 				return nil, err
 			}
 
-			if req.Push {
-				if _, err := o.explorerSvc.BroadcastTransaction(txHex); err != nil {
-					return nil, err
-				}
+			if _, err := o.explorerSvc.BroadcastTransaction(txHex); err != nil {
+				return nil, err
 			}
 
+			selectedUnspentKeys = usedUnspentKeys
 			rawTx, _ = hex.DecodeString(txHex)
 
 			return v, nil
 		},
-	)
-	if err != nil {
+	); err != nil {
 		return nil, err
 	}
 
-	go o.observeAddressesForAccount(market.AccountIndex, addressesToObserve)
+	go spendUnspents(o.unspentRepository, selectedUnspentKeys)
 
 	return rawTx, nil
 }
@@ -889,8 +864,7 @@ func (o *operatorService) ClaimMarketDeposit(
 		}
 	}
 
-	_, err = o.claimDeposit(ctx, infoPerAccount, outpoints)
-	if err != nil {
+	if err := o.claimDeposit(ctx, infoPerAccount, outpoints); err != nil {
 		return err
 	}
 	return nil
@@ -912,7 +886,7 @@ func (o *operatorService) ClaimFeeDeposit(
 	infoPerAccount := make(map[int]domain.AddressesInfo)
 	infoPerAccount[domain.FeeAccount] = info
 
-	if _, err := o.claimDeposit(ctx, infoPerAccount, outpoints); err != nil {
+	if err := o.claimDeposit(ctx, infoPerAccount, outpoints); err != nil {
 		return err
 	}
 
@@ -938,28 +912,28 @@ func (o *operatorService) claimDeposit(
 	ctx context.Context,
 	infoPerAccount map[int]domain.AddressesInfo,
 	outpoints []TxOutpoint,
-) (domain.AddressesInfo, error) {
+) error {
 	// first thing, retrieve all scripts  of the outpoints.
 	outpointScripts := make([]string, len(outpoints), len(outpoints))
 	for i, v := range outpoints {
 		confirmed, err := o.explorerSvc.IsTransactionConfirmed(v.Hash)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if !confirmed {
-			return nil, ErrTxNotConfirmed
+			return ErrTxNotConfirmed
 		}
 
 		// TODO: Add a GetTransaction method to explorer interface to prevent
 		// direct usage of go-elements here.
 		txHex, err := o.explorerSvc.GetTransactionHex(v.Hash)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		tx, _ := transaction.NewTxFromHex(txHex)
 
 		if len(tx.Outputs) <= v.Index {
-			return nil, ErrInvalidOutpoint
+			return ErrInvalidOutpoint
 		}
 
 		outpointScripts[i] = hex.EncodeToString(tx.Outputs[v.Index].Script)
@@ -968,10 +942,7 @@ func (o *operatorService) claimDeposit(
 	// By lopping on the map of the account provided, we search for the one
 	// whose scripts own ALL the given outpoints.
 	for _, info := range infoPerAccount {
-		accountScripts := make(map[string]struct{})
-		for _, in := range info {
-			accountScripts[in.Script] = struct{}{}
-		}
+		accountScripts := groupAccountAddressesByScript(info)
 
 		count := 0
 		for _, s := range outpointScripts {
@@ -980,11 +951,24 @@ func (o *operatorService) claimDeposit(
 			}
 		}
 		if count == len(outpoints) {
-			return info, nil
+			go func() {
+				if err := fetchUnspents(
+					o.explorerSvc,
+					o.unspentRepository,
+					info,
+				); err != nil {
+					log.Warnf(
+						"unexpected error occured while adding unspents to the utxo set of "+
+							"account %d. You must manually run ReloadUtxo RPC as soon as possible "+
+							"to restore the utxo set of the internal wallet. Error: %v", err,
+					)
+				}
+			}()
+			return nil
 		}
 	}
 
-	return nil, errors.New("all provided outpoints must be relative to the same market")
+	return errors.New("all provided outpoints must be relative to the same market")
 }
 
 func (o *operatorService) fundMarket(
@@ -1066,14 +1050,6 @@ func (o *operatorService) getAllUnspentsForAccount(
 	return utxos, nil
 }
 
-func (o *operatorService) observeAddressesForAccount(accountIndex int, list []AddressAndBlindingKey) {
-	for _, l := range list {
-		blindkey, _ := hex.DecodeString(l.BlindingKey)
-		o.blockchainListener.StartObserveAddress(accountIndex, l.Address, blindkey)
-		time.Sleep(200 * time.Millisecond)
-	}
-}
-
 func (o *operatorService) getMarketsForTrades(
 	ctx context.Context,
 	trades []*domain.Trade,
@@ -1143,4 +1119,12 @@ func validateMarketRequest(marketReq Market, baseAsset string) error {
 	}
 
 	return nil
+}
+
+func groupAccountAddressesByScript(info domain.AddressesInfo) map[string]string {
+	group := make(map[string]string)
+	for _, in := range info {
+		group[in.Script] = in.Address
+	}
+	return group
 }
