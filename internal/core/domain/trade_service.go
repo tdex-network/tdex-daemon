@@ -83,8 +83,7 @@ func (t *Trade) Accept(
 	t.SwapAccept.Message = swapAcceptMsg
 	t.SwapAccept.Timestamp = now
 	t.PsetBase64 = psetBase64
-	txID, _ := PsetParserManager.GetTxID(psetBase64)
-	t.TxID = txID
+	t.TxID, _ = PsetParserManager.GetTxID(psetBase64)
 
 	return true, nil
 }

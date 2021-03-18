@@ -67,7 +67,7 @@ func main() {
 	network := config.GetNetwork()
 	feeThreshold := uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
 
-	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager, tradesExpiryDuration)
+	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	vaultRepository := dbbadger.NewVaultRepositoryImpl(dbManager)
 	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
