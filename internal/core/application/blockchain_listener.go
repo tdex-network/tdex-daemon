@@ -282,7 +282,7 @@ func (b *blockchainListener) confirmOrAddUnspents(
 		for i, u := range unspentsToAdd {
 			unspentKeys[i] = u.Key()
 		}
-		count, err := b.unspentRepository.ConfirmUnspents(ctx, unspentsToSpend)
+		count, err := b.unspentRepository.ConfirmUnspents(ctx, unspentKeys)
 		if err != nil {
 			return err
 		}
