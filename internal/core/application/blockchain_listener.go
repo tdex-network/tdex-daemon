@@ -291,6 +291,10 @@ func (b *blockchainListener) confirmOrAddUnspents(
 	}
 
 	go func() {
+		// these unspents must be inserted already confirmed.
+		for i := range unspentsToAdd {
+			unspentsToAdd[i].Confirmed = true
+		}
 		addUnspents(b.unspentRepository, unspentsToAdd)
 		spendUnspents(b.unspentRepository, unspentsToSpend)
 	}()
