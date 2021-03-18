@@ -16,10 +16,11 @@ require (
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	github.com/tdex-network/tdex-daemon/pkg/explorer v0.2.0
+	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210317222720-0adcc0c066a5
 	github.com/tdex-network/tdex-protobuf v0.0.0-20210312170501-eac8b4a88d04
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
+	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/vulpemventures/go-bip39 v1.0.2
 	github.com/vulpemventures/go-elements v0.1.1
@@ -27,7 +28,6 @@ require (
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/grpc v1.32.0
+	google.golang.org/grpc/examples v0.0.0-20210316215007-967933baf52a // indirect
 	google.golang.org/protobuf v1.25.0
 )
-
-replace github.com/tdex-network/tdex-daemon/pkg/explorer => ./pkg/explorer
