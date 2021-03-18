@@ -284,7 +284,7 @@ func (w walletHandler) sendToMany(
 			walletReq := application.SendToManyRequest{
 				Outputs:         outputs,
 				MillisatPerByte: msatPerByte,
-				Push:            req.GetPush(),
+				Push:            true,
 			}
 			rawTx, err := w.walletSvc.SendToMany(ctx, walletReq)
 			if err != nil {

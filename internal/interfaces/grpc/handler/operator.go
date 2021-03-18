@@ -463,7 +463,7 @@ func (o operatorHandler) withdrawMarket(
 		},
 		MillisatPerByte: req.GetMillisatPerByte(),
 		Address:         req.GetAddress(),
-		Push:            req.GetPush(),
+		Push:            true,
 	}
 
 	res, err := o.dbManager.RunTransaction(
