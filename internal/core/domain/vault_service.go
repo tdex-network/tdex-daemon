@@ -117,9 +117,9 @@ func (v *Vault) AccountByAddress(addr string) (*Account, int, error) {
 }
 
 // DeriveNextExternalAddressForAccount returns the next unused address, the corresponding output script, the blinding key.
-func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (address string, script string, blindingPrivateKey []byte, err error) {
+func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (*AddressInfo, error) {
 	if v.IsLocked() {
-		return "", "", nil, ErrVaultMustBeUnlocked
+		return nil, ErrVaultMustBeUnlocked
 	}
 
 	return v.deriveNextAddressForAccount(accountIndex, ExternalChain)
@@ -127,9 +127,9 @@ func (v *Vault) DeriveNextExternalAddressForAccount(accountIndex int) (address s
 
 // DeriveNextInternalAddressForAccount returns the next unused change address for the
 // provided account and the corresponding output script
-func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (address string, script string, blindingPrivateKey []byte, err error) {
+func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (*AddressInfo, error) {
 	if v.IsLocked() {
-		return "", "", nil, ErrVaultMustBeUnlocked
+		return nil, ErrVaultMustBeUnlocked
 	}
 
 	return v.deriveNextAddressForAccount(accountIndex, InternalChain)
@@ -140,82 +140,34 @@ func (v *Vault) DeriveNextInternalAddressForAccount(accountIndex int) (address s
 // be unlocked since it does not make use of the mnemonic in plain text.
 // The info returned for each address are the account index, the derivation
 // path, and the private blinding key.
-func (v *Vault) AllDerivedAddressesInfo() []AddressInfo {
+func (v *Vault) AllDerivedAddressesInfo() AddressesInfo {
 	return v.allDerivedAddressesInfo()
 }
 
-type AddressesBlindingKeys struct {
-	Addresses    []string
-	BlindingKeys [][]byte
-}
-
-// AddressesBlindingKeysGroupByAccount returns all address, blinding key pairs
-//grouped by account
-func (v *Vault) AddressesBlindingKeysGroupByAccount(
-	accountIndexes []int,
-) map[int]AddressesBlindingKeys {
-	result := make(map[int]AddressesBlindingKeys)
-	allDerivedAddressInfo := v.AllDerivedAddressesInfo()
-	if len(accountIndexes) > 0 {
-		tmp := make([]AddressInfo, 0, len(accountIndexes))
-		for _, v := range allDerivedAddressInfo {
-			for _, a := range accountIndexes {
-				if v.AccountIndex == a {
-					tmp = append(tmp, v)
-				}
-			}
-		}
-		allDerivedAddressInfo = tmp
-	}
-
-	previousAccountIndex := allDerivedAddressInfo[0].AccountIndex
-	addresses := make([]string, 0)
-	blindingKeys := make([][]byte, 0)
-	for _, val := range allDerivedAddressInfo {
-		if val.AccountIndex != previousAccountIndex {
-			result[previousAccountIndex] = AddressesBlindingKeys{
-				Addresses:    addresses,
-				BlindingKeys: blindingKeys,
-			}
-			previousAccountIndex = val.AccountIndex
-			addresses = make([]string, 0)
-			blindingKeys = make([][]byte, 0)
-		}
-		addresses = append(addresses, val.Address)
-		blindingKeys = append(blindingKeys, val.BlindingKey)
-	}
-	if len(addresses) > 0 {
-		result[previousAccountIndex] = AddressesBlindingKeys{
-			Addresses:    addresses,
-			BlindingKeys: blindingKeys,
-		}
-	}
-
-	return result
-}
-
-// AllDerivedAddressesAndBlindingKeysForAccount returns all the external and
-// internal addresses derived for the provided account along with the
-// respective private blinding keys
-func (v *Vault) AllDerivedAddressesAndBlindingKeysForAccount(accountIndex int) ([]string, [][]byte, error) {
-	if v.IsLocked() {
-		return nil, nil, ErrVaultMustBeUnlocked
-	}
-
-	return v.allDerivedAddressesAndBlindingKeysForAccount(accountIndex)
-}
-
-// AllDerivedExternalAddressesForAccount returns all the external
-// derived for the provided account
-func (v *Vault) AllDerivedExternalAddressesForAccount(accountIndex int) (
-	[]string,
-	error,
-) {
+// AllDerivedAddressesInfoForAccount returns info about all the external and
+// internal addresses derived for the provided account.
+func (v *Vault) AllDerivedAddressesInfoForAccount(
+	accountIndex int,
+) (AddressesInfo, error) {
 	if v.IsLocked() {
 		return nil, ErrVaultMustBeUnlocked
 	}
 
-	return v.allDerivedExternalAddressesForAccount(accountIndex)
+	includeInternal := true
+	return v.allDerivedAddressesInfoForAccount(accountIndex, includeInternal)
+}
+
+// AllDerivedExternalAddressesInfoForAccount returns info about all external
+// addresses derived for the provided account.
+func (v *Vault) AllDerivedExternalAddressesInfoForAccount(
+	accountIndex int,
+) (AddressesInfo, error) {
+	if v.IsLocked() {
+		return nil, ErrVaultMustBeUnlocked
+	}
+
+	includeInternal := true
+	return v.allDerivedAddressesInfoForAccount(accountIndex, !includeInternal)
 }
 
 func (v *Vault) isValidPassphrase(passphrase string) bool {
@@ -226,19 +178,19 @@ func (v *Vault) isPassphraseSet() bool {
 	return len(v.PassphraseHash) > 0
 }
 
-func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (string, string, []byte, error) {
+func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (*AddressInfo, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: MnemonicStoreManager.Get(),
 	})
 	if err != nil {
-		return "", "", nil, err
+		return nil, err
 	}
 
 	account, ok := v.Accounts[accountIndex]
 	if !ok {
 		account, err = NewAccount(accountIndex)
 		if err != nil {
-			return "", "", nil, err
+			return nil, err
 		}
 		v.Accounts[accountIndex] = account
 	}
@@ -256,7 +208,7 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 		Network:        v.Network,
 	})
 	if err != nil {
-		return "", "", nil, err
+		return nil, err
 	}
 
 	blindingKey, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
@@ -274,23 +226,33 @@ func (v *Vault) deriveNextAddressForAccount(accountIndex, chainIndex int) (strin
 		BlindingKey:  blindingKey.Serialize(),
 	}
 
-	return addr, hex.EncodeToString(script), blindingKey.Serialize(), err
+	return &AddressInfo{
+		AccountIndex:   accountIndex,
+		Address:        addr,
+		Script:         hex.EncodeToString(script),
+		BlindingKey:    blindingKey.Serialize(),
+		DerivationPath: derivationPath,
+	}, nil
 }
 
-func (v *Vault) allDerivedAddressesInfo() []AddressInfo {
-	list := make([]AddressInfo, 0, len(v.AccountAndKeyByAddress))
+func (v *Vault) allDerivedAddressesInfo() AddressesInfo {
+	listLen := len(v.AccountAndKeyByAddress)
+	list := make(AddressesInfo, listLen, listLen)
+	i := 0
 
 	for addr, info := range v.AccountAndKeyByAddress {
 		account, _ := v.AccountByIndex(info.AccountIndex)
 		script, _ := address.ToOutputScript(addr)
 		path, _ := account.DerivationPathByScript[hex.EncodeToString(script)]
 
-		list = append(list, AddressInfo{
+		list[i] = AddressInfo{
 			AccountIndex:   info.AccountIndex,
 			Address:        addr,
 			BlindingKey:    info.BlindingKey,
 			DerivationPath: path,
-		})
+			Script:         hex.EncodeToString(script),
+		}
+		i++
 	}
 
 	// sorting list by derivation path also groups addresses by accountIndex
@@ -300,22 +262,27 @@ func (v *Vault) allDerivedAddressesInfo() []AddressInfo {
 	return list
 }
 
-func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) ([]string, [][]byte, error) {
+func (v *Vault) allDerivedAddressesInfoForAccount(
+	accountIndex int,
+	includeInternal bool,
+) (AddressesInfo, error) {
 	account, err := v.AccountByIndex(accountIndex)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: MnemonicStoreManager.Get(),
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	net := v.Network
 
-	addresses := make([]string, 0, account.LastExternalIndex+account.LastInternalIndex)
-	externalAddresses := deriveAddressesInRange(
+	infoLen := account.LastExternalIndex + account.LastInternalIndex
+	info := make(AddressesInfo, 0, infoLen)
+
+	extAddressesInfo := deriveAddressesInRange(
 		w,
 		net,
 		accountIndex,
@@ -323,55 +290,21 @@ func (v *Vault) allDerivedAddressesAndBlindingKeysForAccount(accountIndex int) (
 		0,
 		account.LastExternalIndex-1,
 	)
-	internalAddresses := deriveAddressesInRange(
-		w,
-		net,
-		accountIndex,
-		InternalChain,
-		0,
-		account.LastInternalIndex-1,
-	)
-	addresses = append(addresses, externalAddresses...)
-	addresses = append(addresses, internalAddresses...)
+	info = append(info, extAddressesInfo...)
 
-	blindingKeys := make([][]byte, 0, len(addresses))
-	for _, addr := range addresses {
-		script, _ := address.ToOutputScript(addr)
-		key, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
-			Script: script,
-		})
-		blindingKeys = append(blindingKeys, key.Serialize())
+	if includeInternal {
+		inAddressesInfo := deriveAddressesInRange(
+			w,
+			net,
+			accountIndex,
+			InternalChain,
+			0,
+			account.LastInternalIndex-1,
+		)
+		info = append(info, inAddressesInfo...)
 	}
 
-	return addresses, blindingKeys, nil
-}
-
-func (v *Vault) allDerivedExternalAddressesForAccount(accountIndex int) (
-	[]string,
-	error,
-) {
-	account, err := v.AccountByIndex(accountIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: MnemonicStoreManager.Get(),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	externalAddresses := deriveAddressesInRange(
-		w,
-		v.Network,
-		accountIndex,
-		ExternalChain,
-		0,
-		account.LastExternalIndex-1,
-	)
-
-	return externalAddresses, nil
+	return info, nil
 }
 
 func validateAccountIndex(accIndex int) error {
@@ -418,15 +351,26 @@ func deriveAddressesInRange(
 	chainIndex,
 	firstAddressIndex,
 	lastAddressIndex int,
-) []string {
-	addresses := make([]string, 0)
+) AddressesInfo {
+	infoLen := lastAddressIndex - firstAddressIndex + 1
+	info := make(AddressesInfo, infoLen, infoLen)
+
 	for i := firstAddressIndex; i <= lastAddressIndex; i++ {
 		derivationPath := fmt.Sprintf("%d'/%d/%d", accountIndex, chainIndex, i)
-		addr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
+		addr, script, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 			DerivationPath: derivationPath,
 			Network:        net,
 		})
-		addresses = append(addresses, addr)
+		key, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
+			Script: script,
+		})
+		info[i] = AddressInfo{
+			AccountIndex:   accountIndex,
+			Address:        addr,
+			BlindingKey:    key.Serialize(),
+			DerivationPath: derivationPath,
+			Script:         hex.EncodeToString(script),
+		}
 	}
-	return addresses
+	return info
 }

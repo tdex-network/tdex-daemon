@@ -7,6 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
