@@ -9,8 +9,10 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/vulpemventures/go-elements/network"
 )
 
@@ -770,8 +772,10 @@ func (o *operatorService) WithdrawMarketFunds(
 				return nil, err
 			}
 
-			if _, err := o.explorerSvc.BroadcastTransaction(txHex); err != nil {
-				return nil, err
+			if req.Push {
+				if _, err := o.explorerSvc.BroadcastTransaction(txHex); err != nil {
+					return nil, err
+				}
 			}
 
 			selectedUnspentKeys = usedUnspentKeys
@@ -864,10 +868,7 @@ func (o *operatorService) ClaimMarketDeposit(
 		}
 	}
 
-	if err := o.claimDeposit(ctx, infoPerAccount, outpoints); err != nil {
-		return err
-	}
-	return nil
+	return o.claimDeposit(ctx, infoPerAccount, outpoints, marketDeposit)
 }
 
 // ClaimFeeDeposit adds unspents to the Fee Account
@@ -886,11 +887,7 @@ func (o *operatorService) ClaimFeeDeposit(
 	infoPerAccount := make(map[int]domain.AddressesInfo)
 	infoPerAccount[domain.FeeAccount] = info
 
-	if err := o.claimDeposit(ctx, infoPerAccount, outpoints); err != nil {
-		return err
-	}
-
-	return nil
+	return o.claimDeposit(ctx, infoPerAccount, outpoints, feeDeposit)
 }
 
 func (o *operatorService) getNonFundedMarkets(ctx context.Context) ([]domain.Market, error) {
@@ -912,9 +909,24 @@ func (o *operatorService) claimDeposit(
 	ctx context.Context,
 	infoPerAccount map[int]domain.AddressesInfo,
 	outpoints []TxOutpoint,
+	depositType int,
 ) error {
-	// first thing, retrieve all scripts  of the outpoints.
-	outpointScripts := make([]string, len(outpoints), len(outpoints))
+	// group all addresses info by script
+	infoByScript := make(map[string]domain.AddressInfo)
+	for _, info := range infoPerAccount {
+		for s, i := range groupAddressesInfoByScript(info) {
+			infoByScript[s] = i
+		}
+	}
+
+	// for each outpoint retrieve the raw tx and output. If the output script
+	// exists in infoByScript, increment the counter of the related account and
+	// unblind the raw confidential output.
+	// Since all outpoints MUST be funds of the same account, at the end of the
+	// loop there MUST be only one counter matching the length of the give
+	// outpoints.
+	counter := make(map[int]int)
+	unspents := make([]domain.Unspent, len(outpoints), len(outpoints))
 	for i, v := range outpoints {
 		confirmed, err := o.explorerSvc.IsTransactionConfirmed(v.Hash)
 		if err != nil {
@@ -936,43 +948,64 @@ func (o *operatorService) claimDeposit(
 			return ErrInvalidOutpoint
 		}
 
-		outpointScripts[i] = hex.EncodeToString(tx.Outputs[v.Index].Script)
-	}
+		txOut := tx.Outputs[v.Index]
+		script := hex.EncodeToString(txOut.Script)
+		if info, ok := infoByScript[script]; ok {
+			counter[info.AccountIndex]++
 
-	// By lopping on the map of the account provided, we search for the one
-	// whose scripts own ALL the given outpoints.
-	for _, info := range infoPerAccount {
-		accountScripts := groupAccountAddressesByScript(info)
+			unconfidential, ok := transactionutil.UnblindOutput(
+				txOut,
+				info.BlindingKey,
+			)
+			if !ok {
+				return errors.New("unable to unblind output")
+			}
 
-		count := 0
-		for _, s := range outpointScripts {
-			if _, ok := accountScripts[s]; ok {
-				count++
+			unspents[i] = domain.Unspent{
+				TxID:            tx.TxHash().String(),
+				VOut:            uint32(v.Index),
+				Value:           unconfidential.Value,
+				AssetHash:       unconfidential.AssetHash,
+				ValueCommitment: bufferutil.CommitmentFromBytes(txOut.Value),
+				AssetCommitment: bufferutil.CommitmentFromBytes(txOut.Value),
+				ValueBlinder:    unconfidential.ValueBlinder,
+				AssetBlinder:    unconfidential.AssetBlinder,
+				ScriptPubKey:    txOut.Script,
+				Nonce:           txOut.Nonce,
+				RangeProof:      txOut.RangeProof,
+				SurjectionProof: txOut.SurjectionProof,
+				Address:         info.Address,
+				Confirmed:       true,
 			}
 		}
+	}
+
+	for accountIndex, count := range counter {
 		if count == len(outpoints) {
-			go func() {
-				if err := fetchUnspents(
-					o.explorerSvc,
-					o.unspentRepository,
-					info,
-				); err != nil {
-					log.Warnf(
-						"unexpected error occured while adding unspents to the utxo set of "+
-							"account %d. You must manually run ReloadUtxo RPC as soon as possible "+
-							"to restore the utxo set of the internal wallet. Error: %v", err,
-					)
+			if depositType == marketDeposit {
+				if err := o.fundMarket(accountIndex, unspents); err != nil {
+					return err
 				}
-			}()
+				go addUnspents(o.unspentRepository, unspents)
+			} else {
+				go func() {
+					addUnspents(o.unspentRepository, unspents)
+					if err := o.checkAccountBalance(infoPerAccount[accountIndex]); err != nil {
+						log.Warn(err)
+						return
+					}
+					log.Info("fee account funded. Trades can be served")
+				}()
+			}
+
 			return nil
 		}
 	}
 
-	return errors.New("all provided outpoints must be relative to the same market")
+	return ErrInvalidOutpoints
 }
 
 func (o *operatorService) fundMarket(
-	ctx context.Context,
 	accountIndex int,
 	unspents []domain.Unspent,
 ) error {
@@ -987,7 +1020,7 @@ func (o *operatorService) fundMarket(
 
 	// Update the market trying to funding attaching the newly found quote asset.
 	return o.marketRepository.UpdateMarket(
-		ctx,
+		context.Background(),
 		accountIndex,
 		func(m *domain.Market) (*domain.Market, error) {
 			if err := m.FundMarket(outpoints, o.marketBaseAsset); err != nil {
@@ -999,15 +1032,10 @@ func (o *operatorService) fundMarket(
 	)
 }
 
-func (o *operatorService) checkFeeAccountBalance(ctx context.Context) error {
-	info, err := o.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, domain.FeeAccount)
-	if err != nil {
-		return err
-	}
-
+func (o *operatorService) checkAccountBalance(accountInfo domain.AddressesInfo) error {
 	feeAccountBalance, err := o.unspentRepository.GetBalance(
-		ctx,
-		info.Addresses(),
+		context.Background(),
+		accountInfo.Addresses(),
 		o.marketBaseAsset,
 	)
 	if err != nil {
@@ -1015,12 +1043,10 @@ func (o *operatorService) checkFeeAccountBalance(ctx context.Context) error {
 	}
 
 	if feeAccountBalance < o.feeAccountBalanceThreshold {
-		log.Warn(
-			"fee account balance for account index too low. Trades for markets won't be " +
-				"served properly. Fund the fee account as soon as possible",
+		return errors.New(
+			"fee account balance for account index too low. Trades for markets " +
+				"won't be served properly. Fund the fee account as soon as possible",
 		)
-	} else {
-		log.Info("fee account funded. Trades can be served")
 	}
 
 	return nil
@@ -1121,10 +1147,10 @@ func validateMarketRequest(marketReq Market, baseAsset string) error {
 	return nil
 }
 
-func groupAccountAddressesByScript(info domain.AddressesInfo) map[string]string {
-	group := make(map[string]string)
-	for _, in := range info {
-		group[in.Script] = in.Address
+func groupAddressesInfoByScript(info domain.AddressesInfo) map[string]domain.AddressInfo {
+	group := make(map[string]domain.AddressInfo)
+	for _, i := range info {
+		group[i.Script] = i
 	}
 	return group
 }
