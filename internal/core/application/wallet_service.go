@@ -372,7 +372,7 @@ func (w *walletService) SendToMany(
 	}
 
 	if len(feeUnspents) <= 0 {
-		return nil, ErrWalletNotFunded
+		return nil, ErrFeeAccountNotFunded
 	}
 
 	var rawTx []byte
@@ -426,15 +426,18 @@ func (w *walletService) SendToMany(
 				return nil, err
 			}
 
+			tx, _ := hex.DecodeString(txHex)
+			if !req.Push {
+				rawTx = tx
+				selectedUnspentKeys = usedUnspentKeys
+				return v, nil
+			}
+
 			txid, err := w.explorerService.BroadcastTransaction(txHex)
 			if err != nil {
 				return nil, err
 			}
 			log.Debugf("Wallet account tx broadcasted with id: %s", txid)
-			tx, err := hex.DecodeString(txHex)
-			if err != nil {
-				return nil, err
-			}
 			rawTx = tx
 			selectedUnspentKeys = usedUnspentKeys
 
@@ -869,10 +872,10 @@ func fetchUnspents(
 
 	unspentsLen := len(utxos)
 	unspents := make([]domain.Unspent, unspentsLen, unspentsLen)
-	accountAddressesByScript := groupAccountAddressesByScript(info)
+	infoByScript := groupAddressesInfoByScript(info)
 
 	for i, u := range utxos {
-		addr := accountAddressesByScript[hex.EncodeToString(u.Script())]
+		addr := infoByScript[hex.EncodeToString(u.Script())].Address
 		unspents[i] = domain.Unspent{
 			TxID:            u.Hash(),
 			VOut:            u.Index(),
@@ -894,11 +897,23 @@ func fetchUnspents(
 	return unspentRepo.AddUnspents(context.Background(), unspents)
 }
 
+func addUnspents(unspentRepo domain.UnspentRepository, unspents []domain.Unspent) {
+	if err := unspentRepo.AddUnspents(context.Background(), unspents); err != nil {
+		log.Warnf(
+			"unexpected error occured while adding unspents to the utxo set. "+
+				"You must manually run ReloadUtxo RPC as soon as possible to restore "+
+				"the utxo set of the internal wallet. Error: %v", err,
+		)
+	}
+	log.Debugf("added %d unspents", len(unspents))
+}
+
 func spendUnspents(
 	unspentRepo domain.UnspentRepository,
 	unspentKeys []domain.UnspentKey,
 ) {
-	if err := unspentRepo.SpendUnspents(context.Background(), unspentKeys); err != nil {
+	count, err := unspentRepo.SpendUnspents(context.Background(), unspentKeys)
+	if err != nil {
 		log.Warnf(
 			"unexpected error occured while updating the utxo set trying to mark "+
 				"some unspents as spent. You must manually run ReloadUtxo RPC as soon "+
@@ -906,4 +921,5 @@ func spendUnspents(
 				"Error: %v", err,
 		)
 	}
+	log.Debugf("spent %d unspents", count)
 }
