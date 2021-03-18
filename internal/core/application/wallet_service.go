@@ -447,21 +447,16 @@ func (w *walletService) SendToMany(
 		return nil, err
 	}
 
-	// req.Push is false only when testing. Interfaces always set it to true
-	// So let's rpevent race conditions when testing by skipping the invocation
-	// of the go routine
-	if req.Push {
-		go func() {
-			spendUnspents(w.unspentRepository, selectedUnspentKeys)
-			extractAndAddUnspentsFromTx(
-				w.unspentRepository,
-				w.vaultRepository,
-				w.network,
-				txHex,
-				domain.FeeAccount,
-			)
-		}()
-	}
+	go func() {
+		spendUnspents(w.unspentRepository, selectedUnspentKeys)
+		extractAndAddUnspentsFromTx(
+			w.unspentRepository,
+			w.vaultRepository,
+			w.network,
+			txHex,
+			domain.FeeAccount,
+		)
+	}()
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
