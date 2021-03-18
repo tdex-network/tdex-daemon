@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -182,60 +183,18 @@ func (b *blockchainListener) listenToEventChannel() {
 			case crawler.TransactionConfirmed:
 				e := event.(crawler.TransactionEvent)
 				ctx := context.Background()
-				var tradeTxHex string
 
-				if _, err := b.dbManager.RunTransaction(
-					ctx,
-					!readOnlyTx,
-					func(ctx context.Context) (interface{}, error) {
-						trade, err := b.tradeRepository.GetTradeByTxID(ctx, e.TxID)
-						if err != nil {
-							return nil, err
-						}
-
-						if err := b.tradeRepository.UpdateTrade(
-							ctx,
-							&trade.ID,
-							func(t *domain.Trade) (*domain.Trade, error) {
-								if _, err := t.Settle(uint64(e.BlockTime)); err != nil {
-									return nil, err
-								}
-
-								return t, nil
-							},
-						); err != nil {
-							return nil, err
-						}
-
-						tradeTxHex = trade.TxHex
-						log.Infof("trade with id %s settled", trade.ID)
-
-						return nil, nil
-					},
-				); err != nil {
-					log.Warnf("trying to settle trade  %v", err.Error())
+				trade, err := b.tradeRepository.GetTradeByTxID(ctx, e.TxID)
+				if err != nil {
+					log.Warnf("unable to find trade with id %s: %v", e.TxID, err)
 					break
 				}
-				if _, err := b.dbManager.RunUnspentsTransaction(
-					ctx,
-					!readOnlyTx,
-					func(ctx context.Context) (interface{}, error) {
-						tx, err := transaction.NewTxFromHex(tradeTxHex)
-						if err != nil {
-							return nil, err
-						}
-						keysLen := len(tx.Outputs)
-						unspentKeys := make([]domain.UnspentKey, keysLen, keysLen)
-						for i := 0; i < keysLen; i++ {
-							unspentKeys[i] = domain.UnspentKey{
-								TxID: e.TxID,
-								VOut: uint32(i),
-							}
-						}
 
-						return nil, b.unspentRepository.ConfirmUnspents(ctx, unspentKeys)
-					},
-				); err != nil {
+				if err := b.settleTrade(&trade.ID, e); err != nil {
+					log.Warnf("trying to settle trade with id %s: %v", trade.ID, err)
+					break
+				}
+				if err := b.confirmUnspents(trade.TxHex, trade.TxID); err != nil {
 					log.Warnf("trying to confirm unspents: %v", err)
 					break
 				}
@@ -257,4 +216,47 @@ func (b *blockchainListener) startPendingObservables() {
 	}
 
 	b.pendingObservables = nil
+}
+
+func (b *blockchainListener) settleTrade(tradeID *uuid.UUID, event crawler.TransactionEvent) error {
+	if err := b.tradeRepository.UpdateTrade(
+		context.Background(),
+		tradeID,
+		func(t *domain.Trade) (*domain.Trade, error) {
+			if _, err := t.Settle(uint64(event.BlockTime)); err != nil {
+				return nil, err
+			}
+
+			return t, nil
+		},
+	); err != nil {
+		return err
+	}
+
+	log.Infof("trade with id %s settled", tradeID)
+	return nil
+}
+
+func (b *blockchainListener) confirmUnspents(txHex string, txID string) error {
+	tx, err := transaction.NewTxFromHex(txHex)
+	if err != nil {
+		return err
+	}
+	keysLen := len(tx.Outputs)
+	unspentKeys := make([]domain.UnspentKey, keysLen, keysLen)
+	for i := 0; i < keysLen; i++ {
+		unspentKeys[i] = domain.UnspentKey{
+			TxID: txID,
+			VOut: uint32(i),
+		}
+	}
+
+	ctx := context.Background()
+	count, err := b.unspentRepository.ConfirmUnspents(ctx, unspentKeys)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("confirmed %d unspents", count)
+	return nil
 }
