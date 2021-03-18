@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/google/uuid"
@@ -271,7 +270,7 @@ func testSpendUnspents(t *testing.T, repo unspentRepository) {
 	}
 
 	iSpentUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.SpendUnspents(ctx, unspentKeys); err != nil {
+		if _, err := repo.Repository.SpendUnspents(ctx, unspentKeys); err != nil {
 			return nil, err
 		}
 
@@ -319,7 +318,7 @@ func testConfirmUnspents(t *testing.T, repo unspentRepository) {
 	}
 
 	iConfirmedUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.ConfirmUnspents(ctx, unspentKeys); err != nil {
+		if _, err := repo.Repository.ConfirmUnspents(ctx, unspentKeys); err != nil {
 			return nil, err
 		}
 
@@ -351,7 +350,7 @@ func testLockUnlockUnspents(t *testing.T, repo unspentRepository) {
 			return nil, err
 		}
 
-		if err := repo.Repository.LockUnspents(ctx, unspentKeys, mockedTradeID); err != nil {
+		if _, err := repo.Repository.LockUnspents(ctx, unspentKeys, mockedTradeID); err != nil {
 			return nil, err
 		}
 
@@ -372,7 +371,7 @@ func testLockUnlockUnspents(t *testing.T, repo unspentRepository) {
 	}
 
 	iUnlockedUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.UnlockUnspents(ctx, unspentKeys); err != nil {
+		if _, err := repo.Repository.UnlockUnspents(ctx, unspentKeys); err != nil {
 			return nil, err
 		}
 
@@ -419,8 +418,7 @@ func createUnspentRepositories(t *testing.T) ([]unspentRepository, func()) {
 }
 
 func newBadgerUnspentRepository(dbmanager *dbbadger.DbManager) domain.UnspentRepository {
-	expiryTime := 2 * time.Minute
-	return dbbadger.NewUnspentRepositoryImpl(dbmanager, expiryTime)
+	return dbbadger.NewUnspentRepositoryImpl(dbmanager)
 }
 
 func newInMemoryUnspentRepository(dbmanager *inmemory.DbManager) domain.UnspentRepository {
