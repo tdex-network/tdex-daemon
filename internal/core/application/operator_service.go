@@ -3,8 +3,7 @@ package application
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
-	"strings"
+	"errors"
 	"time"
 
 	log "github.com/sirupsen/logrus"
