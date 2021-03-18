@@ -318,41 +318,32 @@ func (t traderHandler) tradeComplete(
 		swapFail = s
 		swapFailPtr = &swapFail
 	}
-	res, err := t.dbManager.RunTransaction(
+	txID, fail, err := t.traderSvc.TradeComplete(
 		stream.Context(),
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			txID, fail, err := t.traderSvc.TradeComplete(
-				ctx,
-				swapCompletePtr,
-				swapFailPtr,
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			var swapFail *pbswap.SwapFail
-			if fail != nil {
-				swapFail = &pbswap.SwapFail{
-					Id:             fail.GetId(),
-					MessageId:      fail.GetMessageId(),
-					FailureCode:    fail.GetFailureCode(),
-					FailureMessage: fail.GetFailureMessage(),
-				}
-			}
-
-			return &pb.TradeCompleteReply{
-				Txid:     txID,
-				SwapFail: swapFail,
-			}, nil
-		},
+		swapCompletePtr,
+		swapFailPtr,
 	)
+
 	if err != nil {
-		log.Debug("trying to complete trade: ", err)
-		return status.Error(codes.Internal, ErrCannotServeRequest)
+		return status.Error(codes.Internal, err.Error())
 	}
 
-	if err := stream.Send(res.(*pb.TradeCompleteReply)); err != nil {
+	var swapFailStub *pbswap.SwapFail
+	if fail != nil {
+		swapFailStub = &pbswap.SwapFail{
+			Id:             fail.GetId(),
+			MessageId:      fail.GetMessageId(),
+			FailureCode:    fail.GetFailureCode(),
+			FailureMessage: fail.GetFailureMessage(),
+		}
+	}
+
+	res := &pb.TradeCompleteReply{
+		Txid:     txID,
+		SwapFail: swapFailStub,
+	}
+
+	if err = stream.Send(res); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 
