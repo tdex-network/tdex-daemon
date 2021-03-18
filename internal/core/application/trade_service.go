@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -19,9 +18,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/network"
-	"github.com/vulpemventures/go-elements/payment"
 	"github.com/vulpemventures/go-elements/pset"
-	"github.com/vulpemventures/go-elements/transaction"
 )
 
 type TradeService interface {
@@ -472,7 +469,9 @@ func (t *tradeService) tradeComplete(
 			trade.MarketQuoteAsset,
 		)
 
-		unspentsToAdd, unspentsToSpend, err := t.extractUnspentsFromTx(
+		unspentsToAdd, unspentsToSpend, err := extractUnspentsFromTx(
+			t.vaultRepository,
+			t.network,
 			res.TxHex,
 			accountIndex,
 		)
@@ -569,78 +568,6 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 	}
 
 	return unspents, utxos, blindingKeysByScript, derivationPaths, nil
-}
-
-func (t *tradeService) extractUnspentsFromTx(
-	txHex string,
-	mktAccountIndex int,
-) ([]domain.Unspent, []domain.UnspentKey, error) {
-	vault, err := t.vaultRepository.GetOrCreateVault(context.Background(), nil, "", nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	info, err := vault.AllDerivedAddressesInfoForAccount(mktAccountIndex)
-	if err != nil {
-		return nil, nil, err
-	}
-	infoByScript := groupAddressesInfoByScript(info)
-
-	info, _ = vault.AllDerivedAddressesInfoForAccount(domain.FeeAccount)
-	for script, in := range groupAddressesInfoByScript(info) {
-		infoByScript[script] = in
-	}
-
-	tx, err := transaction.NewTxFromHex(txHex)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	unspentsToAdd := make([]domain.Unspent, 0)
-	unspentsToSpend := make([]domain.UnspentKey, 0)
-
-	for _, in := range tx.Inputs {
-		// our unspents are native-segiwt only
-		if len(in.Witness) > 0 {
-			pubkey, _ := btcec.ParsePubKey(in.Witness[1], btcec.S256())
-			p := payment.FromPublicKey(pubkey, t.network, nil)
-
-			script := hex.EncodeToString(p.WitnessScript)
-			if _, ok := infoByScript[script]; ok {
-				unspentsToSpend = append(unspentsToSpend, domain.UnspentKey{
-					TxID: bufferutil.TxIDFromBytes(in.Hash),
-					VOut: in.Index,
-				})
-			}
-		}
-	}
-
-	for i, out := range tx.Outputs {
-		script := hex.EncodeToString(out.Script)
-		if info, ok := infoByScript[script]; ok {
-			unconfidential, ok := transactionutil.UnblindOutput(out, info.BlindingKey)
-			if !ok {
-				return nil, nil, errors.New("unable to unblind output")
-			}
-			unspentsToAdd = append(unspentsToAdd, domain.Unspent{
-				TxID:            tx.TxHash().String(),
-				VOut:            uint32(i),
-				Value:           unconfidential.Value,
-				AssetHash:       unconfidential.AssetHash,
-				ValueCommitment: bufferutil.CommitmentFromBytes(out.Value),
-				AssetCommitment: bufferutil.CommitmentFromBytes(out.Asset),
-				ValueBlinder:    unconfidential.ValueBlinder,
-				AssetBlinder:    unconfidential.AssetBlinder,
-				ScriptPubKey:    out.Script,
-				Nonce:           out.Nonce,
-				RangeProof:      out.RangeProof,
-				SurjectionProof: out.SurjectionProof,
-				Address:         info.Address,
-				Confirmed:       false,
-			})
-		}
-	}
-	return unspentsToAdd, unspentsToSpend, nil
 }
 
 func (t *tradeService) unlockUnspentsForTrade(trade *domain.Trade) {

@@ -3,8 +3,10 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
+	"github.com/btcsuite/btcd/btcec"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
@@ -13,6 +15,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/network"
+	"github.com/vulpemventures/go-elements/payment"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -375,10 +378,10 @@ func (w *walletService) SendToMany(
 		return nil, ErrFeeAccountNotFunded
 	}
 
-	var rawTx []byte
 	var selectedUnspentKeys []domain.UnspentKey
+	var txHex string
 
-	err = w.vaultRepository.UpdateVault(
+	if err := w.vaultRepository.UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err := v.GetMnemonicSafe()
@@ -409,7 +412,7 @@ func (w *walletService) SendToMany(
 			}
 			feeChangePathByAsset[w.network.AssetID] = feeInfo.DerivationPath
 
-			txHex, usedUnspentKeys, err := sendToMany(sendToManyOpts{
+			_txHex, usedUnspentKeys, err := sendToMany(sendToManyOpts{
 				mnemonic:              mnemonic,
 				unspents:              walletUnspents,
 				feeUnspents:           feeUnspents,
@@ -426,10 +429,9 @@ func (w *walletService) SendToMany(
 				return nil, err
 			}
 
-			tx, _ := hex.DecodeString(txHex)
+			txHex = _txHex
+			selectedUnspentKeys = usedUnspentKeys
 			if !req.Push {
-				rawTx = tx
-				selectedUnspentKeys = usedUnspentKeys
 				return v, nil
 			}
 
@@ -437,19 +439,24 @@ func (w *walletService) SendToMany(
 			if err != nil {
 				return nil, err
 			}
-			log.Debugf("Wallet account tx broadcasted with id: %s", txid)
-			rawTx = tx
-			selectedUnspentKeys = usedUnspentKeys
+			log.Debugf("wallet account tx broadcasted with id: %s", txid)
 
 			return v, nil
 		},
-	)
-	if err != nil {
+	); err != nil {
 		return nil, err
 	}
 
 	go spendUnspents(w.unspentRepository, selectedUnspentKeys)
+	go extractAndAddUnspentsFromTx(
+		w.unspentRepository,
+		w.vaultRepository,
+		w.network,
+		txHex,
+		domain.FeeAccount,
+	)
 
+	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
 }
 
@@ -922,4 +929,104 @@ func spendUnspents(
 		)
 	}
 	log.Debugf("spent %d unspents", count)
+}
+
+func extractUnspentsFromTx(
+	vaultRepo domain.VaultRepository,
+	network *network.Network,
+	txHex string,
+	accountIndex int,
+) ([]domain.Unspent, []domain.UnspentKey, error) {
+	vault, err := vaultRepo.GetOrCreateVault(context.Background(), nil, "", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	info, err := vault.AllDerivedAddressesInfoForAccount(accountIndex)
+	if err != nil {
+		return nil, nil, err
+	}
+	infoByScript := groupAddressesInfoByScript(info)
+
+	if accountIndex != domain.FeeAccount {
+		info, _ = vault.AllDerivedAddressesInfoForAccount(domain.FeeAccount)
+		for script, in := range groupAddressesInfoByScript(info) {
+			infoByScript[script] = in
+		}
+	}
+
+	tx, err := transaction.NewTxFromHex(txHex)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	unspentsToAdd := make([]domain.Unspent, 0)
+	unspentsToSpend := make([]domain.UnspentKey, 0)
+
+	for _, in := range tx.Inputs {
+		// our unspents are native-segiwt only
+		if len(in.Witness) > 0 {
+			pubkey, _ := btcec.ParsePubKey(in.Witness[1], btcec.S256())
+			p := payment.FromPublicKey(pubkey, network, nil)
+
+			script := hex.EncodeToString(p.WitnessScript)
+			if _, ok := infoByScript[script]; ok {
+				unspentsToSpend = append(unspentsToSpend, domain.UnspentKey{
+					TxID: bufferutil.TxIDFromBytes(in.Hash),
+					VOut: in.Index,
+				})
+			}
+		}
+	}
+
+	for i, out := range tx.Outputs {
+		script := hex.EncodeToString(out.Script)
+		if info, ok := infoByScript[script]; ok {
+			unconfidential, ok := transactionutil.UnblindOutput(out, info.BlindingKey)
+			if !ok {
+				return nil, nil, errors.New("unable to unblind output")
+			}
+			unspentsToAdd = append(unspentsToAdd, domain.Unspent{
+				TxID:            tx.TxHash().String(),
+				VOut:            uint32(i),
+				Value:           unconfidential.Value,
+				AssetHash:       unconfidential.AssetHash,
+				ValueCommitment: bufferutil.CommitmentFromBytes(out.Value),
+				AssetCommitment: bufferutil.CommitmentFromBytes(out.Asset),
+				ValueBlinder:    unconfidential.ValueBlinder,
+				AssetBlinder:    unconfidential.AssetBlinder,
+				ScriptPubKey:    out.Script,
+				Nonce:           out.Nonce,
+				RangeProof:      out.RangeProof,
+				SurjectionProof: out.SurjectionProof,
+				Address:         info.Address,
+				Confirmed:       false,
+			})
+		}
+	}
+	return unspentsToAdd, unspentsToSpend, nil
+}
+
+func extractAndAddUnspentsFromTx(
+	unspentRepo domain.UnspentRepository,
+	vaultRepo domain.VaultRepository,
+	net *network.Network,
+	txHex string,
+	accountIndex int,
+) {
+	unspentsToAdd, _, err := extractUnspentsFromTx(
+		vaultRepo,
+		net,
+		txHex,
+		accountIndex,
+	)
+	if err != nil {
+		log.Warnf(
+			"unable to extract unspents from wallet account tx. You must run "+
+				"ReloadUtxo as soon as possible to restore the utxo set of the "+
+				"wallet. Error: %v", err,
+		)
+		return
+	}
+	addUnspents(unspentRepo, unspentsToAdd)
 }

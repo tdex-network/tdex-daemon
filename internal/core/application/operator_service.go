@@ -718,7 +718,7 @@ func (o *operatorService) WithdrawMarketFunds(
 	}
 
 	var selectedUnspentKeys []domain.UnspentKey
-	var rawTx []byte
+	var txHex string
 
 	if err := o.vaultRepository.UpdateVault(
 		ctx,
@@ -755,7 +755,7 @@ func (o *operatorService) WithdrawMarketFunds(
 			feeChangePathByAsset[o.network.AssetID] =
 				feeAccount.DerivationPathByScript[feeInfo.Script]
 
-			txHex, usedUnspentKeys, err := sendToMany(sendToManyOpts{
+			_txHex, usedUnspentKeys, err := sendToMany(sendToManyOpts{
 				mnemonic:              mnemonic,
 				unspents:              marketUnspents,
 				feeUnspents:           feeUnspents,
@@ -773,13 +773,13 @@ func (o *operatorService) WithdrawMarketFunds(
 			}
 
 			if req.Push {
-				if _, err := o.explorerSvc.BroadcastTransaction(txHex); err != nil {
+				if _, err := o.explorerSvc.BroadcastTransaction(_txHex); err != nil {
 					return nil, err
 				}
 			}
 
 			selectedUnspentKeys = usedUnspentKeys
-			rawTx, _ = hex.DecodeString(txHex)
+			txHex = _txHex
 
 			return v, nil
 		},
@@ -788,7 +788,15 @@ func (o *operatorService) WithdrawMarketFunds(
 	}
 
 	go spendUnspents(o.unspentRepository, selectedUnspentKeys)
+	go extractAndAddUnspentsFromTx(
+		o.unspentRepository,
+		o.vaultRepository,
+		o.network,
+		txHex,
+		market.AccountIndex,
+	)
 
+	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
 }
 
