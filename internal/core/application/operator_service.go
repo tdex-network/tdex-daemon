@@ -787,16 +787,21 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, err
 	}
 
-	go func() {
-		spendUnspents(o.unspentRepository, selectedUnspentKeys)
-		extractAndAddUnspentsFromTx(
-			o.unspentRepository,
-			o.vaultRepository,
-			o.network,
-			txHex,
-			market.AccountIndex,
-		)
-	}()
+	// req.Push is false only when testing. Interfaces always set it to true
+	// So let's rpevent race conditions when testing by skipping the invocation
+	// of the go routine
+	if req.Push {
+		go func() {
+			spendUnspents(o.unspentRepository, selectedUnspentKeys)
+			extractAndAddUnspentsFromTx(
+				o.unspentRepository,
+				o.vaultRepository,
+				o.network,
+				txHex,
+				market.AccountIndex,
+			)
+		}()
+	}
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
