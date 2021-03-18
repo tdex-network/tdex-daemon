@@ -35,7 +35,7 @@ func NewDbManager(baseDbDir string, logger badger.Logger) (*DbManager, error) {
 		return nil, fmt.Errorf("opening prices db: %w", err)
 	}
 
-	unspentDb, err := createDb(filepath.Join(baseDbDir, "unspents"), logger)
+	unspentDb, err := createDb("", logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening unspents db: %w", err)
 	}
@@ -201,8 +201,12 @@ func EncodeKey(key interface{}, typeName string) ([]byte, error) {
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
 	opts := badger.DefaultOptions(dbDir)
 	opts.Logger = logger
-	opts.ValueLogLoadingMode = options.FileIO
-	opts.Compression = options.ZSTD
+	if len(dbDir) > 0 {
+		opts.ValueLogLoadingMode = options.FileIO
+		opts.Compression = options.ZSTD
+	} else {
+		opts.InMemory = true
+	}
 
 	db, err := badgerhold.Open(badgerhold.Options{
 		Encoder:          badgerhold.DefaultEncode,
