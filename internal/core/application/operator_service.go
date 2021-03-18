@@ -787,14 +787,16 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, err
 	}
 
-	go spendUnspents(o.unspentRepository, selectedUnspentKeys)
-	go extractAndAddUnspentsFromTx(
-		o.unspentRepository,
-		o.vaultRepository,
-		o.network,
-		txHex,
-		market.AccountIndex,
-	)
+	go func() {
+		spendUnspents(o.unspentRepository, selectedUnspentKeys)
+		extractAndAddUnspentsFromTx(
+			o.unspentRepository,
+			o.vaultRepository,
+			o.network,
+			txHex,
+			market.AccountIndex,
+		)
+	}()
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil

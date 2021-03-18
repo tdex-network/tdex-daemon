@@ -447,14 +447,16 @@ func (w *walletService) SendToMany(
 		return nil, err
 	}
 
-	go spendUnspents(w.unspentRepository, selectedUnspentKeys)
-	go extractAndAddUnspentsFromTx(
-		w.unspentRepository,
-		w.vaultRepository,
-		w.network,
-		txHex,
-		domain.FeeAccount,
-	)
+	go func() {
+		spendUnspents(w.unspentRepository, selectedUnspentKeys)
+		extractAndAddUnspentsFromTx(
+			w.unspentRepository,
+			w.vaultRepository,
+			w.network,
+			txHex,
+			domain.FeeAccount,
+		)
+	}()
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
