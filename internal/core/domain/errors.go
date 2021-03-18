@@ -82,8 +82,8 @@ var (
 		"trade must be in accepted state for being completed",
 	)
 	// ErrTradeMustBeCompleted ...
-	ErrTradeMustBeCompleted = errors.New(
-		"trade must be in completed state to add txid",
+	ErrTradeMustBeCompletedOrAccepted = errors.New(
+		"trade must be in completed or accepted to be settled",
 	)
 	// ErrTradeExpirationDateNotReached ...
 	ErrTradeExpirationDateNotReached = errors.New(

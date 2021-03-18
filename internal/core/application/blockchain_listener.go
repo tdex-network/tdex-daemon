@@ -11,7 +11,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/vulpemventures/go-elements/transaction"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 const readOnlyTx = true
@@ -43,6 +43,7 @@ type blockchainListener struct {
 	feeBalanceLowLogged bool
 	marketBaseAsset     string
 	feeBalanceThreshold uint64
+	network             *network.Network
 
 	mutex *sync.RWMutex
 }
@@ -58,6 +59,7 @@ func NewBlockchainListener(
 	dbManager ports.DbManager,
 	marketBaseAsset string,
 	feeBalanceThreshold uint64,
+	net *network.Network,
 ) BlockchainListener {
 	return newBlockchainListener(
 		unspentRepository,
@@ -69,6 +71,7 @@ func NewBlockchainListener(
 		dbManager,
 		marketBaseAsset,
 		feeBalanceThreshold,
+		net,
 	)
 }
 
@@ -82,6 +85,7 @@ func newBlockchainListener(
 	dbManager ports.DbManager,
 	marketBaseAsset string,
 	feeBalanceThreshold uint64,
+	net *network.Network,
 ) *blockchainListener {
 	return &blockchainListener{
 		unspentRepository:   unspentRepository,
@@ -95,6 +99,7 @@ func newBlockchainListener(
 		pendingObservables:  make([]crawler.Observable, 0),
 		marketBaseAsset:     marketBaseAsset,
 		feeBalanceThreshold: feeBalanceThreshold,
+		network:             net,
 	}
 }
 
@@ -194,8 +199,8 @@ func (b *blockchainListener) listenToEventChannel() {
 					log.Warnf("trying to settle trade with id %s: %v", trade.ID, err)
 					break
 				}
-				if err := b.confirmUnspents(trade.TxHex, trade.TxID); err != nil {
-					log.Warnf("trying to confirm unspents: %v", err)
+				if err := b.confirmOrAddUnspents(e.TxHex, e.TxID, trade.MarketQuoteAsset); err != nil {
+					log.Warnf("trying to confirm or add unspents: %v", err)
 					break
 				}
 				// stop watching for a tx after it's confirmed
@@ -223,8 +228,12 @@ func (b *blockchainListener) settleTrade(tradeID *uuid.UUID, event crawler.Trans
 		context.Background(),
 		tradeID,
 		func(t *domain.Trade) (*domain.Trade, error) {
+			mustAddTxHex := t.IsAccepted()
 			if _, err := t.Settle(uint64(event.BlockTime)); err != nil {
 				return nil, err
+			}
+			if mustAddTxHex {
+				t.TxHex = event.TxHex
 			}
 
 			return t, nil
@@ -237,26 +246,54 @@ func (b *blockchainListener) settleTrade(tradeID *uuid.UUID, event crawler.Trans
 	return nil
 }
 
-func (b *blockchainListener) confirmUnspents(txHex string, txID string) error {
-	tx, err := transaction.NewTxFromHex(txHex)
-	if err != nil {
-		return err
-	}
-	keysLen := len(tx.Outputs)
-	unspentKeys := make([]domain.UnspentKey, keysLen, keysLen)
-	for i := 0; i < keysLen; i++ {
-		unspentKeys[i] = domain.UnspentKey{
-			TxID: txID,
-			VOut: uint32(i),
-		}
-	}
-
+func (b *blockchainListener) confirmOrAddUnspents(
+	txHex string,
+	txID string,
+	mktAsset string,
+) error {
 	ctx := context.Background()
-	count, err := b.unspentRepository.ConfirmUnspents(ctx, unspentKeys)
+	_, accountIndex, err := b.marketRepository.GetMarketByAsset(ctx, mktAsset)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("confirmed %d unspents", count)
+	unspentsToAdd, unspentsToSpend, err := extractUnspentsFromTx(
+		b.vaultRepository,
+		b.network,
+		txHex,
+		accountIndex,
+	)
+	if err != nil {
+		return err
+	}
+
+	uLen := len(unspentsToAdd)
+	unspentAddresses := make([]string, uLen, uLen)
+	for i, u := range unspentsToAdd {
+		unspentAddresses[i] = u.Address
+	}
+
+	u, err := b.unspentRepository.GetAllUnspentsForAddresses(ctx, unspentAddresses)
+	if err != nil {
+		return err
+	}
+	if len(u) > 0 {
+		unspentKeys := make([]domain.UnspentKey, uLen, uLen)
+		for i, u := range unspentsToAdd {
+			unspentKeys[i] = u.Key()
+		}
+		count, err := b.unspentRepository.ConfirmUnspents(ctx, unspentsToSpend)
+		if err != nil {
+			return err
+		}
+		log.Debugf("confirmed %d unspents", count)
+		return nil
+	}
+
+	go func() {
+		addUnspents(b.unspentRepository, unspentsToAdd)
+		spendUnspents(b.unspentRepository, unspentsToSpend)
+	}()
+
 	return nil
 }

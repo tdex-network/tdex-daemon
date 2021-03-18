@@ -129,6 +129,7 @@ func newMockServices(
 		dbManager,
 		mktBaseAsset,
 		feeThreshold,
+		regtest,
 	)
 
 	walletSvc, err := newWalletService(
@@ -262,6 +263,7 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		dbManager,
 		mktBaseAsset,
 		feeThreshold,
+		regtest,
 	)
 
 	walletSvc, _ := newWalletService(

@@ -94,6 +94,7 @@ func main() {
 		dbManager,
 		marketsBaseAsset,
 		feeThreshold,
+		network,
 	)
 
 	traderSvc := application.NewTradeService(

@@ -324,6 +324,10 @@ func TestTradeSettle(t *testing.T) {
 		trade *domain.Trade
 	}{
 		{
+			name:  "with_trade_accepted",
+			trade: newTradeAccepted(),
+		},
+		{
 			name:  "with_trade_completed",
 			trade: newTradeCompleted(),
 		},
@@ -363,10 +367,6 @@ func TestFailingTradeSettle(t *testing.T) {
 				name:  "with_trade_proposal",
 				trade: newTradeProposal(),
 			},
-			{
-				name:  "with_trade_accepted",
-				trade: newTradeAccepted(),
-			},
 		}
 
 		for i := range tests {
@@ -376,7 +376,7 @@ func TestFailingTradeSettle(t *testing.T) {
 				t.Parallel()
 
 				ok, err := tt.trade.Settle(now)
-				require.EqualError(t, err, domain.ErrTradeMustBeCompleted.Error())
+				require.EqualError(t, err, domain.ErrTradeMustBeCompletedOrAccepted.Error())
 				require.False(t, ok)
 				require.False(t, tt.trade.IsSettled())
 			})
