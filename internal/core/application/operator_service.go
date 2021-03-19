@@ -88,6 +88,7 @@ type OperatorService interface {
 		ctx context.Context,
 		market Market,
 	) (*ReportMarketFee, error)
+	ReloadUtxos(ctx context.Context) error
 }
 
 type operatorService struct {
@@ -834,6 +835,61 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 		return -1, err
 	}
 	return int64(baseAssetAmount), nil
+}
+
+// ReloadUtxos triggers reloading of unspents for stored addresses from blockchain
+func (o *operatorService) ReloadUtxos(ctx context.Context) error {
+	//get all addresses
+	vault, err := o.vaultRepository.GetOrCreateVault(
+		ctx,
+		nil,
+		"",
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	addressesInfo := vault.AllDerivedAddressesInfo()
+	for _, v := range addressesInfo {
+		go func(addrInfo domain.AddressInfo) {
+			utxos, err := o.explorerSvc.GetUnspents(
+				addrInfo.Address,
+				[][]byte{addrInfo.BlindingKey},
+			)
+			if err != nil {
+				log.Error(err.Error())
+			}
+
+			unspents := make([]domain.Unspent, 0)
+			for _, v := range utxos {
+				u := domain.Unspent{
+					TxID:            v.Hash(),
+					VOut:            v.Index(),
+					Value:           v.Value(),
+					AssetHash:       v.Asset(),
+					ValueCommitment: v.ValueCommitment(),
+					AssetCommitment: v.AssetCommitment(),
+					ValueBlinder:    v.ValueBlinder(),
+					AssetBlinder:    v.AssetBlinder(),
+					ScriptPubKey:    v.Script(),
+					Nonce:           v.Nonce(),
+					RangeProof:      v.RangeProof(),
+					SurjectionProof: v.SurjectionProof(),
+					Confirmed:       v.IsConfirmed(),
+					Address:         addrInfo.Address,
+				}
+				unspents = append(unspents, u)
+			}
+
+			err = o.unspentRepository.AddUnspents(ctx, unspents)
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}(v)
+	}
+
+	return nil
 }
 
 // ClaimMarketDeposit method add unspents to the market
