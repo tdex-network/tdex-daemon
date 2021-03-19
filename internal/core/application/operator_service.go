@@ -717,7 +717,6 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, ErrWalletNotFunded
 	}
 
-	var selectedUnspentKeys []domain.UnspentKey
 	var txHex string
 
 	if err := o.vaultRepository.UpdateVault(
@@ -755,7 +754,7 @@ func (o *operatorService) WithdrawMarketFunds(
 			feeChangePathByAsset[o.network.AssetID] =
 				feeAccount.DerivationPathByScript[feeInfo.Script]
 
-			_txHex, usedUnspentKeys, err := sendToMany(sendToManyOpts{
+			_txHex, err := sendToMany(sendToManyOpts{
 				mnemonic:              mnemonic,
 				unspents:              marketUnspents,
 				feeUnspents:           feeUnspents,
@@ -778,7 +777,6 @@ func (o *operatorService) WithdrawMarketFunds(
 				}
 			}
 
-			selectedUnspentKeys = usedUnspentKeys
 			txHex = _txHex
 
 			return v, nil
@@ -787,16 +785,13 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, err
 	}
 
-	go func() {
-		spendUnspents(o.unspentRepository, selectedUnspentKeys)
-		extractAndAddUnspentsFromTx(
-			o.unspentRepository,
-			o.vaultRepository,
-			o.network,
-			txHex,
-			market.AccountIndex,
-		)
-	}()
+	go extractUnspentsFromTxAndUpdateUtxoSet(
+		o.unspentRepository,
+		o.vaultRepository,
+		o.network,
+		txHex,
+		market.AccountIndex,
+	)
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
@@ -997,17 +992,18 @@ func (o *operatorService) claimDeposit(
 					return err
 				}
 				log.Infof("funded market with account %d", accountIndex)
-				go addUnspents(o.unspentRepository, unspents)
-			} else {
-				go func() {
-					addUnspents(o.unspentRepository, unspents)
+			}
+
+			go func() {
+				addUnspents(o.unspentRepository, unspents)
+				if depositType == feeDeposit {
 					if err := o.checkAccountBalance(infoPerAccount[accountIndex]); err != nil {
 						log.Warn(err)
 						return
 					}
 					log.Info("fee account funded. Trades can be served")
-				}()
-			}
+				}
+			}()
 
 			return nil
 		}

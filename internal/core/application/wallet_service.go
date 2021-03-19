@@ -378,7 +378,6 @@ func (w *walletService) SendToMany(
 		return nil, ErrFeeAccountNotFunded
 	}
 
-	var selectedUnspentKeys []domain.UnspentKey
 	var txHex string
 
 	if err := w.vaultRepository.UpdateVault(
@@ -412,7 +411,7 @@ func (w *walletService) SendToMany(
 			}
 			feeChangePathByAsset[w.network.AssetID] = feeInfo.DerivationPath
 
-			_txHex, usedUnspentKeys, err := sendToMany(sendToManyOpts{
+			_txHex, err := sendToMany(sendToManyOpts{
 				mnemonic:              mnemonic,
 				unspents:              walletUnspents,
 				feeUnspents:           feeUnspents,
@@ -430,7 +429,7 @@ func (w *walletService) SendToMany(
 			}
 
 			txHex = _txHex
-			selectedUnspentKeys = usedUnspentKeys
+
 			if !req.Push {
 				return v, nil
 			}
@@ -447,16 +446,13 @@ func (w *walletService) SendToMany(
 		return nil, err
 	}
 
-	go func() {
-		spendUnspents(w.unspentRepository, selectedUnspentKeys)
-		extractAndAddUnspentsFromTx(
-			w.unspentRepository,
-			w.vaultRepository,
-			w.network,
-			txHex,
-			domain.FeeAccount,
-		)
-	}()
+	go extractUnspentsFromTxAndUpdateUtxoSet(
+		w.unspentRepository,
+		w.vaultRepository,
+		w.network,
+		txHex,
+		domain.FeeAccount,
+	)
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
@@ -594,12 +590,12 @@ type sendToManyOpts struct {
 	network               *network.Network
 }
 
-func sendToMany(opts sendToManyOpts) (string, []domain.UnspentKey, error) {
+func sendToMany(opts sendToManyOpts) (string, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: opts.mnemonic,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	// default to MinMilliSatPerByte if needed
@@ -611,7 +607,7 @@ func sendToMany(opts sendToManyOpts) (string, []domain.UnspentKey, error) {
 	// create the transaction
 	newPset, err := w.CreateTx()
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 	network := opts.network
 
@@ -625,7 +621,7 @@ func sendToMany(opts sendToManyOpts) (string, []domain.UnspentKey, error) {
 		Network:            network,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	// update the list of output blinding keys with those of the eventual changes
@@ -644,7 +640,7 @@ func sendToMany(opts sendToManyOpts) (string, []domain.UnspentKey, error) {
 		WantChangeForFees:  true,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	// again, add changes' blinding keys to the list of those of the outputs
@@ -658,7 +654,7 @@ func sendToMany(opts sendToManyOpts) (string, []domain.UnspentKey, error) {
 		OutputBlindingKeys: outputsBlindingKeys,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	// add the explicit fee amount
@@ -668,7 +664,7 @@ func sendToMany(opts sendToManyOpts) (string, []domain.UnspentKey, error) {
 		Network:    network,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	// sign the inputs
@@ -678,7 +674,7 @@ func sendToMany(opts sendToManyOpts) (string, []domain.UnspentKey, error) {
 		DerivationPathMap: inputPathsByScript,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	// finalize, extract and return the transaction
@@ -688,26 +684,10 @@ func sendToMany(opts sendToManyOpts) (string, []domain.UnspentKey, error) {
 		},
 	)
 	if err != nil {
-		return "", nil, err
-	}
-	keysLen := len(updateResult.SelectedUnspents) + len(feeUpdateResult.SelectedUnspents)
-	selectedUnspentKeys := make([]domain.UnspentKey, keysLen, keysLen)
-
-	for i, u := range updateResult.SelectedUnspents {
-		selectedUnspentKeys[i] = domain.UnspentKey{
-			TxID: u.Hash(),
-			VOut: u.Index(),
-		}
-	}
-	for i, u := range feeUpdateResult.SelectedUnspents {
-		i += len(updateResult.SelectedUnspents)
-		selectedUnspentKeys[i] = domain.UnspentKey{
-			TxID: u.Hash(),
-			VOut: u.Index(),
-		}
+		return "", err
 	}
 
-	return txHex, selectedUnspentKeys, nil
+	return txHex, nil
 }
 
 func getDerivationPathsForUnspents(
@@ -1009,14 +989,14 @@ func extractUnspentsFromTx(
 	return unspentsToAdd, unspentsToSpend, nil
 }
 
-func extractAndAddUnspentsFromTx(
+func extractUnspentsFromTxAndUpdateUtxoSet(
 	unspentRepo domain.UnspentRepository,
 	vaultRepo domain.VaultRepository,
 	net *network.Network,
 	txHex string,
 	accountIndex int,
 ) {
-	unspentsToAdd, _, err := extractUnspentsFromTx(
+	unspentsToAdd, unspentsToSpend, err := extractUnspentsFromTx(
 		vaultRepo,
 		net,
 		txHex,
@@ -1031,4 +1011,5 @@ func extractAndAddUnspentsFromTx(
 		return
 	}
 	addUnspents(unspentRepo, unspentsToAdd)
+	spendUnspents(unspentRepo, unspentsToSpend)
 }
