@@ -91,6 +91,8 @@ func (t tradeRepositoryImpl) UpdateTrade(
 	ID *uuid.UUID,
 	updateFn func(t *domain.Trade) (*domain.Trade, error),
 ) error {
+	txIsNotGiven := ctx.Value("tx") == nil
+
 	currentTrade, err := t.getOrCreateTrade(ctx, ID)
 	if err != nil {
 		return err
@@ -101,7 +103,15 @@ func (t tradeRepositoryImpl) UpdateTrade(
 		return err
 	}
 
-	return t.updateTrade(ctx, updatedTrade.ID, *updatedTrade)
+	for {
+		err := t.updateTrade(ctx, updatedTrade.ID, *updatedTrade)
+		if err != nil {
+			if txIsNotGiven && isTransactionConflict(err) {
+				continue
+			}
+		}
+		return err
+	}
 }
 
 func (t tradeRepositoryImpl) GetCompletedTradesByMarket(

@@ -420,37 +420,48 @@ func (t *tradeService) TradeComplete(
 func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapComplete) (txID string, swapFail *pb.SwapFail, err error) {
 	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
 	if err != nil {
-		return "", nil, err
+		return
 	}
 
-	tradeID := trade.ID
-	err = t.tradeRepository.UpdateTrade(
-		ctx,
-		&tradeID,
-		func(trade *domain.Trade) (*domain.Trade, error) {
-			psetBase64 := swapComplete.GetTransaction()
-			res, err := trade.Complete(psetBase64)
-			if err != nil {
-				return nil, err
-			}
-			if !res.OK {
-				swapFail = trade.SwapFailMessage()
-				return trade, nil
-			}
+	psetBase64 := swapComplete.GetTransaction()
 
-			log.Info("trade with id ", tradeID, " completed")
+	// here we manipulate the trade to reach the Complete status
+	res, err := trade.Complete(psetBase64)
+	if err != nil {
+		return
+	}
+	// for domain related errors, we check for swap failures that can happens
+	// for tradin related problems or transaction manomission
+	if !res.OK {
+		swapFail = trade.SwapFailMessage()
+		return
+	}
+	log.Info("trade with id ", trade.ID, " completed")
 
-			if _, err := t.explorerSvc.BroadcastTransaction(res.TxHex); err != nil {
-				return nil, err
-			}
+	// we are going to broadcast the transaction, this will actually tell if the
+	//transaction is a valid one to be included in blockcchain
+	if _, err = t.explorerSvc.BroadcastTransaction(res.TxHex); err != nil {
+		return
+	}
 
-			txID = res.TxID
+	txID = res.TxID
+	log.Info("trade with id ", trade.ID, " broadcasted: ", txID)
 
-			log.Info("trade with id ", tradeID, " broadcasted: ", txID)
+	// we make sure that any problem happening at this point
+	// is not influencing the trade therefore we run as goroutine
+	// this method will take care to retry to handle potential
+	// datastore conflicts (if any) at repository level
+	go func() {
+		err := t.tradeRepository.UpdateTrade(
+			ctx,
+			&trade.ID,
+			func(previousTrade *domain.Trade) (*domain.Trade, error) { return trade, nil },
+		)
+		if err != nil {
+			log.Error("unable to persist completed trade with id ", trade.ID, " : ", err.Error())
+		}
+	}()
 
-			return trade, nil
-		},
-	)
 	return
 }
 

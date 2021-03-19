@@ -134,7 +134,7 @@ func (d DbManager) runTransaction(
 		tx, ctx := args.ctxMaker()
 		res, err := args.handler(ctx)
 		if err != nil {
-			if args.readOnly && d.isTransactionConflict(err) {
+			if args.readOnly && isTransactionConflict(err) {
 				time.Sleep(50 * time.Millisecond)
 				continue
 			}
@@ -143,7 +143,7 @@ func (d DbManager) runTransaction(
 
 		if !args.readOnly {
 			if err := tx.Commit(); err != nil {
-				if !d.isTransactionConflict(err) {
+				if !isTransactionConflict(err) {
 					return nil, err
 				}
 				time.Sleep(50 * time.Millisecond)
@@ -156,7 +156,7 @@ func (d DbManager) runTransaction(
 
 // isTransactionConflict returns wheter the error occured when commiting a
 // transacton is a conflict
-func (d DbManager) isTransactionConflict(err error) bool {
+func isTransactionConflict(err error) bool {
 	return err == badger.ErrConflict
 }
 
