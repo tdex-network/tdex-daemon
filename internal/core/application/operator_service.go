@@ -996,6 +996,7 @@ func (o *operatorService) claimDeposit(
 				if err := o.fundMarket(accountIndex, unspents); err != nil {
 					return err
 				}
+				log.Infof("funded market with account %d", accountIndex)
 				go addUnspents(o.unspentRepository, unspents)
 			} else {
 				go func() {
