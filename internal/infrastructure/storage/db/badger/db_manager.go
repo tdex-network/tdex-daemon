@@ -22,8 +22,10 @@ type DbManager struct {
 	UnspentStore *badgerhold.Store
 }
 
-// NewDbManager opens (or creates if not exists) the badger store on disk. It expects a base data dir and an optional logger.
-// It creates a dedicated directory for main, price and unspent.
+// NewDbManager opens (or creates if not exists) the badger store on disk.
+// It expects a base data dir and an optional logger.
+// It creates a dedicated directory for main and prices stores, while the
+// unspent repository lives in memory.
 func NewDbManager(baseDbDir string, logger badger.Logger) (*DbManager, error) {
 	mainDb, err := createDb(filepath.Join(baseDbDir, "main"), logger)
 	if err != nil {
