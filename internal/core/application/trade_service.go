@@ -441,6 +441,7 @@ func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapC
 	// we are going to broadcast the transaction, this will actually tell if the
 	//transaction is a valid one to be included in blockcchain
 	if _, err = t.explorerSvc.BroadcastTransaction(res.TxHex); err != nil {
+		log.Error("explorer: ", err)
 		return
 	}
 
