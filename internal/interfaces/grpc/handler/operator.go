@@ -146,6 +146,28 @@ func (o operatorHandler) ReportMarketFee(
 	return o.reportMarketFee(ctx, req)
 }
 
+func (o operatorHandler) ReloadUtxos(
+	ctx context.Context,
+	rew *pb.ReloadUtxosRequest,
+) (*pb.ReloadUtxosReply, error) {
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			if err := o.operatorSvc.ReloadUtxos(ctx); err != nil {
+				return nil, err
+			}
+
+			return &pb.ReloadUtxosReply{}, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*pb.ReloadUtxosReply), nil
+}
+
 func (o operatorHandler) depositMarket(
 	reqCtx context.Context,
 	req *pb.DepositMarketRequest,
