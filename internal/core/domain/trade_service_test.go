@@ -385,6 +385,74 @@ func TestFailingTradeSettle(t *testing.T) {
 	})
 }
 
+func TestTradeExpire(t *testing.T) {
+	oneDayAgo := uint64(time.Now().AddDate(0, 0, -1).Unix())
+
+	tests := []struct {
+		name  string
+		trade *domain.Trade
+	}{
+		{
+			name:  "with_trade_accepted",
+			trade: newTradeAccepted(),
+		},
+		{
+			name:  "with_trade_completed",
+			trade: newTradeCompleted(),
+		},
+	}
+
+	for i := range tests {
+		tt := tests[i]
+		tt.trade.ExpiryTime = oneDayAgo
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ok, err := tt.trade.Expire()
+			require.NoError(t, err)
+			require.True(t, ok)
+			require.True(t, tt.trade.IsExpired())
+		})
+	}
+}
+
+func TestFailingTradeExpire(t *testing.T) {
+	t.Run("failing_because_invalid_status", func(t *testing.T) {
+		tests := []struct {
+			name  string
+			trade *domain.Trade
+		}{
+			{
+				name:  "with_trade_empty",
+				trade: newTradeEmpty(),
+			},
+			{
+				name:  "with_trade_proposal",
+				trade: newTradeProposal(),
+			},
+			{
+				name:  "with_trade_settled",
+				trade: newTradeSettled(),
+			},
+		}
+
+		for i := range tests {
+			tt := tests[i]
+
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+
+				ok, err := tt.trade.Expire()
+				require.EqualError(t, err, domain.ErrTradeNullExpirationDate.Error())
+				require.False(t, ok)
+				require.False(t, tt.trade.IsExpired())
+			})
+		}
+
+	})
+}
+
 func newTradeEmpty() *domain.Trade {
 	return domain.NewTrade()
 }

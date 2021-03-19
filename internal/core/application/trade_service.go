@@ -627,7 +627,9 @@ func (t *tradeService) checkTradeExpiration(
 			ctx,
 			&trade.ID,
 			func(tt *domain.Trade) (*domain.Trade, error) {
-				tt.Fail(tt.SwapAccept.ID, int(pkgswap.ErrCodeFailedToComplete), "expired")
+				if _, err := tt.Expire(); err != nil {
+					return nil, err
+				}
 				return tt, nil
 			},
 		); err != nil {

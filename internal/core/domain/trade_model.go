@@ -54,6 +54,13 @@ var (
 	SettledStatus = Status{
 		Code: Settled,
 	}
+	// ExpiredStatus represents the status of a trade that has been expired,
+	// meaning that it was at least accepted, but not settled within the
+	// expiration time frame.
+	ExpiredStatus = Status{
+		Code:   Expired,
+		Failed: true,
+	}
 )
 
 // AcceptArgs ...

@@ -87,8 +87,12 @@ var (
 	)
 	// ErrTradeExpirationDateNotReached ...
 	ErrTradeExpirationDateNotReached = errors.New(
-		"trade did not reached expiration date yet and cannot be set expired",
+		"trade must have reached the expiration date to be set expired",
 	)
 	// ErrTradeExpired ...
 	ErrTradeExpired = errors.New("trade has expired")
+	// ErrTradeNullExpirationDate ...
+	ErrTradeNullExpirationDate = errors.New(
+		"trade must have an expiration date set to be set expired",
+	)
 )
