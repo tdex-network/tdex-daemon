@@ -6,12 +6,12 @@ require (
 	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
-	github.com/dgraph-io/badger v1.6.2
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/gogo/protobuf v1.2.1
 	github.com/google/uuid v1.1.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/improbable-eng/grpc-web v0.13.0
+	github.com/kr/pretty v0.2.0 // indirect
 	github.com/magiconair/properties v1.8.1
 	github.com/prometheus/client_golang v0.9.3
 	github.com/rs/cors v1.7.0 // indirect
