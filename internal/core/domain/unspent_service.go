@@ -67,6 +67,14 @@ func (u *Unspent) Unlock() {
 	u.LockedBy = nil
 }
 
+func (u *Unspent) ToOutpointWithAsset() OutpointWithAsset {
+	return OutpointWithAsset{
+		Asset: u.AssetHash,
+		Txid:  u.TxID,
+		Vout:  int(u.VOut),
+	}
+}
+
 // ToUtxo returns the current unpsent as an explorer.Utxo interface
 func (u *Unspent) ToUtxo() explorer.Utxo {
 	return esplora.NewWitnessUtxo(

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/btcsuite/btcd/btcec"
 	log "github.com/sirupsen/logrus"
@@ -62,47 +63,65 @@ type WalletService interface {
 type walletService struct {
 	vaultRepository    domain.VaultRepository
 	unspentRepository  domain.UnspentRepository
+	marketRepository   domain.MarketRepository
 	explorerService    explorer.Service
 	blockchainListener BlockchainListener
 	walletInitialized  bool
 	walletIsSyncing    bool
 	withElements       bool
 	network            *network.Network
+	marketFee          int64
+	marketBaseAsset    string
+
+	lock *sync.RWMutex
 }
 
 func NewWalletService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
+	marketRepository domain.MarketRepository,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
 	withElements bool,
 	net *network.Network,
+	marketFee int64,
+	marketBaseAsset string,
 ) (WalletService, error) {
 	return newWalletService(
 		vaultRepository,
 		unspentRepository,
+		marketRepository,
 		explorerService,
 		blockchainListener,
 		withElements,
 		net,
+		marketFee,
+		marketBaseAsset,
 	)
 }
 
 func newWalletService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
+	marketRepository domain.MarketRepository,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
 	withElements bool,
 	net *network.Network,
+	marketFee int64,
+	marketBaseAsset string,
 ) (*walletService, error) {
 	w := &walletService{
 		vaultRepository:    vaultRepository,
 		unspentRepository:  unspentRepository,
+		marketRepository:   marketRepository,
 		explorerService:    explorerService,
 		blockchainListener: blockchainListener,
 		withElements:       withElements,
 		network:            net,
+		marketFee:          marketFee,
+		marketBaseAsset:    marketBaseAsset,
+		lock:               &sync.RWMutex{},
 	}
 	// to understand if the service has an already initialized wallet we check
 	// if the inner vaultRepo is able to return a Vault without passing mnemonic
@@ -120,7 +139,7 @@ func newWalletService(
 		); err != nil {
 			return nil, err
 		}
-		w.walletInitialized = true
+		w.setInitialized(true)
 	}
 	return w, nil
 }
@@ -155,8 +174,12 @@ func (w *walletService) InitWallet(
 		)
 	}
 
-	w.walletIsSyncing = true
-	info := make(domain.AddressesInfo, 0)
+	w.setSyncing(true)
+	if restore {
+		log.Debug("restoring wallet")
+	} else {
+		log.Debug("creating wallet")
+	}
 
 	vault, err := w.vaultRepository.GetOrCreateVault(ctx, mnemonic, passphrase, w.network)
 	if err != nil {
@@ -164,67 +187,18 @@ func (w *walletService) InitWallet(
 	}
 	defer vault.Lock()
 
-	if err := w.vaultRepository.UpdateVault(
-		ctx,
-		func(v *domain.Vault) (*domain.Vault, error) {
-			vault = v
-
-			log.Debug("start syncing wallet")
-			ww, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-				SigningMnemonic: mnemonic,
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			feeLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.FeeAccount, w.explorerService, restore, w.network)
-			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService, restore, w.network)
-			marketsLastDerivedIndex := getLatestDerivationIndexForMarkets(ww, w.explorerService, restore, w.network)
-
-			feeAddresses, err := initVaultAccount(v, domain.FeeAccount, feeLastDerivedIndex)
-			if err != nil {
-				return nil, err
-			}
-			// we dont't want to let the crawler watch for WalletAccount addresses
-			if _, err := initVaultAccount(v, domain.WalletAccount, walletLastDerivedIndex); err != nil {
-				return nil, err
-			}
-			marketAddresses := make(domain.AddressesInfo, 0)
-			for i, m := range marketsLastDerivedIndex {
-				addresses, err := initVaultAccount(v, domain.MarketAccountStart+i, m)
-				if err != nil {
-					return nil, err
-				}
-				marketAddresses = append(marketAddresses, addresses...)
-			}
-
-			info = append(info, feeAddresses...)
-			info = append(info, marketAddresses...)
-			w.walletInitialized = true
-			return v, nil
-		},
-	); err != nil {
-		log.Debug("ended syncing wallet with error")
-		w.walletIsSyncing = false
+	unspents, markets, err := w.restoreState(ctx, mnemonic, vault, restore)
+	if err != nil {
 		return err
 	}
 
-	w.walletIsSyncing = false
-	log.Debug("ended syncing wallet")
+	if err := w.persistRestoredState(ctx, vault, unspents, markets); err != nil {
+		return err
+	}
 
-	go func() {
-		if err := fetchUnspents(
-			w.explorerService,
-			w.unspentRepository,
-			info,
-		); err != nil {
-			log.Warnf(
-				"unexpected error occured while restoring the utxo set. You must "+
-					"manually run ReloadUtxo RPC as soon as possible to restore the utxo "+
-					"set of the internal wallet. Error: %v", err,
-			)
-		}
-	}()
+	w.setSyncing(false)
+	log.Debug("done")
+
 	return nil
 }
 
@@ -456,6 +430,276 @@ func (w *walletService) SendToMany(
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
+}
+
+func (w *walletService) isSyncing() bool {
+	w.lock.RLock()
+	defer w.lock.RUnlock()
+
+	return w.walletIsSyncing
+}
+
+func (w *walletService) setSyncing(val bool) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	w.walletIsSyncing = val
+}
+
+func (w *walletService) isInitialized() bool {
+	w.lock.RLock()
+	defer w.lock.RUnlock()
+
+	return w.walletInitialized
+}
+
+func (w *walletService) setInitialized(val bool) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	w.walletInitialized = val
+}
+
+func (w *walletService) restoreState(
+	ctx context.Context,
+	mnemonic []string,
+	vault *domain.Vault,
+	restore bool,
+) ([]domain.Unspent, []*domain.Market, error) {
+	ww, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: mnemonic,
+	})
+
+	var feeRestoreInfo, walletRestoreInfo *accountLastDerivedIndex
+	var marketsRestoreInfo []*accountLastDerivedIndex
+	var allInfo domain.AddressesInfo
+
+	if restore {
+		feeRestoreInfo = w.restoreAccount(ww, domain.FeeAccount)
+		walletRestoreInfo = w.restoreAccount(ww, domain.WalletAccount)
+		marketsRestoreInfo = w.restoreMarketAccounts(ww)
+	}
+
+	// restore vault accounts
+	feeInfo, err := initVaultAccount(vault, domain.FeeAccount, feeRestoreInfo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if _, err := initVaultAccount(vault, domain.WalletAccount, walletRestoreInfo); err != nil {
+		return nil, nil, err
+	}
+	allInfo = append(allInfo, feeInfo...)
+
+	marketInfoByAccount := make(map[int]domain.AddressesInfo)
+	for i, m := range marketsRestoreInfo {
+		accountIndex := domain.MarketAccountStart + i
+		info, err := initVaultAccount(vault, accountIndex, m)
+		if err != nil {
+			return nil, nil, err
+		}
+		marketInfoByAccount[accountIndex] = info
+		allInfo = append(allInfo, info...)
+	}
+
+	var unspents []domain.Unspent
+	var markets []*domain.Market
+	if restore {
+		// restore unspents
+		unspents, err = w.restoreUnspents(allInfo)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// group unspents by address to facilitate market restoration
+		unspentsByAddress := make(map[string][]domain.Unspent)
+		for _, u := range unspents {
+			unspentsByAddress[u.Address] = append(unspentsByAddress[u.Address], u)
+		}
+
+		// restore markets
+		mLen := len(marketInfoByAccount)
+		markets = make([]*domain.Market, mLen, mLen)
+		i := 0
+		for accountIndex, info := range marketInfoByAccount {
+			market, err := w.restoreMarket(ctx, accountIndex, info, unspentsByAddress)
+			if err != nil {
+				return nil, nil, err
+			}
+			markets[i] = market
+			i++
+		}
+	}
+
+	return unspents, markets, nil
+}
+
+func (w *walletService) restoreAccount(
+	ww *wallet.Wallet,
+	accountIndex int,
+) *accountLastDerivedIndex {
+	lastDerivedIndex := &accountLastDerivedIndex{}
+	for chainIndex := 0; chainIndex <= 1; chainIndex++ {
+		firstUnusedAddress := -1
+		unusedAddressesCounter := 0
+		i := 0
+		for unusedAddressesCounter < 20 {
+			ctAddress, script, _ := ww.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
+				DerivationPath: fmt.Sprintf("%d'/%d/%d", accountIndex, chainIndex, i),
+				Network:        w.network,
+			})
+			blindKey, _, _ := ww.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
+				Script: script,
+			})
+
+			if !isAddressFunded(ctAddress, blindKey.Serialize(), w.explorerService) {
+				if firstUnusedAddress < 0 {
+					firstUnusedAddress = i
+				}
+				unusedAddressesCounter++
+			} else {
+				if firstUnusedAddress >= 0 {
+					firstUnusedAddress = -1
+					unusedAddressesCounter = 0
+				}
+			}
+			i++
+		}
+		if chainIndex == 0 {
+			lastDerivedIndex.external = firstUnusedAddress - 1
+		} else {
+			lastDerivedIndex.internal = firstUnusedAddress - 1
+		}
+	}
+
+	if lastDerivedIndex.external < 0 && lastDerivedIndex.internal < 0 {
+		log.Debugf("account %d empty", accountIndex)
+		return nil
+	}
+	log.Debugf("account %d last derived external address %d", accountIndex, lastDerivedIndex.external)
+	return lastDerivedIndex
+}
+
+func (w *walletService) restoreMarketAccounts(
+	ww *wallet.Wallet,
+) []*accountLastDerivedIndex {
+	marketsLastIndex := make([]*accountLastDerivedIndex, 0)
+	i := 0
+	for {
+		marketIndex := domain.MarketAccountStart + i
+		lastDerivedIndex := w.restoreAccount(
+			ww,
+			marketIndex,
+		)
+		if lastDerivedIndex == nil {
+			break
+		}
+		marketsLastIndex = append(marketsLastIndex, lastDerivedIndex)
+		i++
+	}
+	return marketsLastIndex
+}
+
+func (w *walletService) restoreUnspents(info domain.AddressesInfo) ([]domain.Unspent, error) {
+	utxos, err := w.explorerService.GetUnspentsForAddresses(info.AddressesAndKeys())
+	if err != nil {
+		return nil, err
+	}
+
+	unspentsLen := len(utxos)
+	unspents := make([]domain.Unspent, unspentsLen, unspentsLen)
+	infoByScript := groupAddressesInfoByScript(info)
+
+	for i, u := range utxos {
+		addr := infoByScript[hex.EncodeToString(u.Script())].Address
+		unspents[i] = domain.Unspent{
+			TxID:            u.Hash(),
+			VOut:            u.Index(),
+			Value:           u.Value(),
+			AssetHash:       u.Asset(),
+			ValueCommitment: u.ValueCommitment(),
+			AssetCommitment: u.AssetCommitment(),
+			ValueBlinder:    u.ValueBlinder(),
+			AssetBlinder:    u.AssetBlinder(),
+			ScriptPubKey:    u.Script(),
+			Nonce:           u.Nonce(),
+			RangeProof:      u.RangeProof(),
+			SurjectionProof: u.SurjectionProof(),
+			Confirmed:       u.IsConfirmed(),
+			Address:         addr,
+		}
+	}
+
+	return unspents, nil
+}
+
+func (w *walletService) restoreMarket(
+	ctx context.Context,
+	accountIndex int,
+	info domain.AddressesInfo,
+	unspentsByAddress map[string][]domain.Unspent,
+) (*domain.Market, error) {
+	market, err := w.marketRepository.GetOrCreateMarket(ctx, &domain.Market{
+		AccountIndex: accountIndex,
+		Fee:          w.marketFee,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(unspentsByAddress) > 0 {
+		outpoints := make([]domain.OutpointWithAsset, 0)
+		for _, i := range info {
+			unspentsForAddress := unspentsByAddress[i.Address]
+			for _, u := range unspentsForAddress {
+				outpoints = append(outpoints, u.ToOutpointWithAsset())
+			}
+		}
+
+		if err := market.FundMarket(outpoints, w.marketBaseAsset); err != nil {
+			return nil, err
+		}
+	}
+
+	return market, nil
+}
+
+func (w *walletService) persistRestoredState(
+	ctx context.Context,
+	vault *domain.Vault,
+	unspents []domain.Unspent,
+	markets []*domain.Market,
+) error {
+	// update changes to vault
+	if err := w.vaultRepository.UpdateVault(
+		ctx,
+		func(v *domain.Vault) (*domain.Vault, error) {
+			return vault, nil
+		},
+	); err != nil {
+		return fmt.Errorf("unable to persist changes to the vault repo: %s", err)
+	}
+
+	// update utxo set
+	if err := w.unspentRepository.AddUnspents(ctx, unspents); err != nil {
+		return fmt.Errorf("unable to persist changes to the unspent repo: %s", err)
+	}
+
+	// update changes to markets
+	for _, m := range markets {
+		if err := w.marketRepository.UpdateMarket(
+			ctx,
+			m.AccountIndex,
+			func(_ *domain.Market) (*domain.Market, error) {
+				return m, nil
+			},
+		); err != nil {
+			return fmt.Errorf("unable to persist changes to the market repo: %s", err)
+		}
+	}
+
+	w.setInitialized(true)
+	return nil
 }
 
 func (w *walletService) getAllUnspentsForAccount(
@@ -711,86 +955,6 @@ type accountLastDerivedIndex struct {
 
 func (a *accountLastDerivedIndex) total() int {
 	return (a.external + 1) + (a.internal + 1)
-}
-
-func getLatestDerivationIndexForAccount(
-	w *wallet.Wallet,
-	accountIndex int,
-	explorerSvc explorer.Service,
-	restore bool,
-	net *network.Network,
-) *accountLastDerivedIndex {
-	if !restore {
-		log.Debugf("skip restore - account %d empty", accountIndex)
-		return nil
-	}
-
-	lastDerivedIndex := &accountLastDerivedIndex{}
-	for chainIndex := 0; chainIndex <= 1; chainIndex++ {
-		firstUnfundedAddress := -1
-		unfundedAddressesCounter := 0
-		i := 0
-		for unfundedAddressesCounter < 20 {
-			ctAddress, script, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
-				DerivationPath: fmt.Sprintf("%d'/%d/%d", accountIndex, chainIndex, i),
-				Network:        net,
-			})
-			blindKey, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
-				Script: script,
-			})
-
-			if !isAddressFunded(ctAddress, blindKey.Serialize(), explorerSvc) {
-				if firstUnfundedAddress < 0 {
-					firstUnfundedAddress = i
-				}
-				unfundedAddressesCounter++
-			} else {
-				if firstUnfundedAddress >= 0 {
-					firstUnfundedAddress = -1
-					unfundedAddressesCounter = 0
-				}
-			}
-			i++
-		}
-		if chainIndex == 0 {
-			lastDerivedIndex.external = firstUnfundedAddress - 1
-		} else {
-			lastDerivedIndex.internal = firstUnfundedAddress - 1
-		}
-	}
-
-	if lastDerivedIndex.external < 0 && lastDerivedIndex.internal < 0 {
-		log.Debugf("account %d empty", accountIndex)
-		return nil
-	}
-	log.Debugf("account %d last derived external address %d", accountIndex, lastDerivedIndex.external)
-	return lastDerivedIndex
-}
-
-func getLatestDerivationIndexForMarkets(
-	w *wallet.Wallet,
-	explorerSvc explorer.Service,
-	restore bool,
-	net *network.Network,
-) []*accountLastDerivedIndex {
-	marketsLastIndex := make([]*accountLastDerivedIndex, 0)
-	i := 0
-	for {
-		marketIndex := domain.MarketAccountStart + i
-		lastDerivedIndex := getLatestDerivationIndexForAccount(
-			w,
-			marketIndex,
-			explorerSvc,
-			restore,
-			net,
-		)
-		if lastDerivedIndex == nil {
-			break
-		}
-		marketsLastIndex = append(marketsLastIndex, lastDerivedIndex)
-		i++
-	}
-	return marketsLastIndex
 }
 
 func initVaultAccount(

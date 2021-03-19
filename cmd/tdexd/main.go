@@ -124,10 +124,13 @@ func main() {
 	walletSvc, err := application.NewWalletService(
 		vaultRepository,
 		unspentRepository,
+		marketRepository,
 		explorerSvc,
 		blockchainListener,
 		withElementsSvc,
 		network,
+		marketsFee,
+		marketsBaseAsset,
 	)
 	if err != nil {
 		log.WithError(err).Panic("error while setting up wallet service")

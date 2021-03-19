@@ -135,10 +135,13 @@ func newMockServices(
 	walletSvc, err := newWalletService(
 		vaultRepo,
 		unspentRepo,
+		marketRepo,
 		explorerSvc,
 		blockchainListener,
 		false,
 		regtest,
+		mktFee,
+		mktBaseAsset,
 	)
 	if err != nil {
 		panic(err)
@@ -269,10 +272,13 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 	walletSvc, _ := newWalletService(
 		vaultRepo,
 		unspentRepo,
+		marketRepo,
 		explorerSvc,
 		blockchainListener,
 		false,
 		regtest,
+		mktFee,
+		mktBaseAsset,
 	)
 
 	ctx := context.Background()
