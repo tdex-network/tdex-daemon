@@ -183,16 +183,19 @@ func (w *walletService) InitWallet(
 
 	vault, err := w.vaultRepository.GetOrCreateVault(ctx, mnemonic, passphrase, w.network)
 	if err != nil {
+		log.WithError(err).Warn("unable to retrieve vault")
 		return err
 	}
 	defer vault.Lock()
 
 	unspents, markets, err := w.restoreState(ctx, mnemonic, vault, restore)
 	if err != nil {
+		log.WithError(err).Warn("unexpected error while restoring state")
 		return err
 	}
 
 	if err := w.persistRestoredState(ctx, vault, unspents, markets); err != nil {
+		log.WithError(err).Warn("unexpected error while persisting restored state")
 		return err
 	}
 
@@ -298,7 +301,8 @@ func (w *walletService) GetWalletBalance(
 		return nil, err
 	}
 
-	unspents, err := w.getUnspents(info.AddressesAndKeys())
+	addresses, keys := info.AddressesAndKeys()
+	unspents, err := w.explorerService.GetUnspentsForAddresses(addresses, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -576,7 +580,10 @@ func (w *walletService) restoreAccount(
 		log.Debugf("account %d empty", accountIndex)
 		return nil
 	}
-	log.Debugf("account %d last derived external address %d", accountIndex, lastDerivedIndex.external)
+	log.Debugf(
+		"account %d total fetched addresses: %d",
+		accountIndex, lastDerivedIndex.total(),
+	)
 	return lastDerivedIndex
 }
 
@@ -727,36 +734,6 @@ func (w *walletService) getAllUnspentsForAccount(
 		utxos = append(utxos, u.ToUtxo())
 	}
 	return utxos, nil
-}
-
-func (w *walletService) getUnspents(addresses []string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
-	chUnspents := make(chan []explorer.Utxo)
-	chErr := make(chan error, 1)
-	unspents := make([]explorer.Utxo, 0)
-
-	for _, addr := range addresses {
-		go w.getUnspentsForAddress(addr, blindingKeys, chUnspents, chErr)
-
-		select {
-		case err := <-chErr:
-			close(chErr)
-			close(chUnspents)
-			return nil, err
-		case unspentsForAddress := <-chUnspents:
-			unspents = append(unspents, unspentsForAddress...)
-		}
-	}
-
-	return unspents, nil
-}
-
-func (w *walletService) getUnspentsForAddress(addr string, blindingKeys [][]byte, chUnspents chan []explorer.Utxo, chErr chan error) {
-	unspents, err := w.explorerService.GetUnspents(addr, blindingKeys)
-	if err != nil {
-		chErr <- err
-		return
-	}
-	chUnspents <- unspents
 }
 
 func parseRequestOutputs(reqOutputs []TxOut) (
