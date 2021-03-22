@@ -845,3 +845,48 @@ func getBalancesByAsset(unspents []explorer.Utxo) map[string]BalanceInfo {
 	}
 	return balances
 }
+
+func fetchUnspents(
+	explorerSvc explorer.Service,
+	unspentRepo domain.UnspentRepository,
+	info domain.AddressesInfo,
+) error {
+	utxos, err := explorerSvc.GetUnspentsForAddresses(info.AddressesAndKeys())
+	if err != nil {
+		return err
+	}
+
+	unspentsLen := len(utxos)
+	unspents := make([]domain.Unspent, unspentsLen, unspentsLen)
+	infoByScript := groupAddressesInfoByScript(info)
+
+	for i, u := range utxos {
+		addr := infoByScript[hex.EncodeToString(u.Script())].Address
+		unspents[i] = domain.Unspent{
+			TxID:            u.Hash(),
+			VOut:            u.Index(),
+			Value:           u.Value(),
+			AssetHash:       u.Asset(),
+			ValueCommitment: u.ValueCommitment(),
+			AssetCommitment: u.AssetCommitment(),
+			ValueBlinder:    u.ValueBlinder(),
+			AssetBlinder:    u.AssetBlinder(),
+			ScriptPubKey:    u.Script(),
+			Nonce:           u.Nonce(),
+			RangeProof:      u.RangeProof(),
+			SurjectionProof: u.SurjectionProof(),
+			Confirmed:       u.IsConfirmed(),
+			Address:         addr,
+		}
+	}
+
+	return unspentRepo.AddUnspents(context.Background(), unspents)
+}
+
+func groupAddressesInfoByScript(info domain.AddressesInfo) map[string]domain.AddressInfo {
+	group := make(map[string]domain.AddressInfo)
+	for _, i := range info {
+		group[i.Script] = i
+	}
+	return group
+}

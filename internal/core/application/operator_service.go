@@ -88,6 +88,7 @@ type OperatorService interface {
 		ctx context.Context,
 		market Market,
 	) (*ReportMarketFee, error)
+	ReloadUtxos(ctx context.Context) error
 }
 
 type operatorService struct {
@@ -834,6 +835,27 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 		return -1, err
 	}
 	return int64(baseAssetAmount), nil
+}
+
+// ReloadUtxos triggers reloading of unspents for stored addresses from blockchain
+func (o *operatorService) ReloadUtxos(ctx context.Context) error {
+	//get all addresses
+	vault, err := o.vaultRepository.GetOrCreateVault(
+		ctx,
+		nil,
+		"",
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	addressesInfo := vault.AllDerivedAddressesInfo()
+	return fetchUnspents(
+		o.explorerSvc,
+		o.unspentRepository,
+		addressesInfo,
+	)
 }
 
 // ClaimMarketDeposit method add unspents to the market
