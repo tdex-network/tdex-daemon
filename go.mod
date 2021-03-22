@@ -17,7 +17,7 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210317222720-0adcc0c066a5
-	github.com/tdex-network/tdex-protobuf v0.0.0-20210318141407-3deb7464a430
+	github.com/tdex-network/tdex-protobuf v0.0.0-20210322132201-a185bdfeb24f
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect

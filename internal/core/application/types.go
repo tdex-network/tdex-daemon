@@ -113,3 +113,19 @@ type TxOutpoint struct {
 	Hash  string
 	Index int
 }
+
+type UtxoInfoPerAccount struct {
+	UtxoInfoPerAccount map[uint64]UtxoInfoList
+}
+
+type UtxoInfoList struct {
+	Unspents []UtxoInfo
+	Spents   []UtxoInfo
+	Locks    []UtxoInfo
+}
+
+type UtxoInfo struct {
+	Outpoint *TxOutpoint
+	Value    uint64
+	Asset    string
+}
