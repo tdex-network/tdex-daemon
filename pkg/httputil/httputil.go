@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var client = &http.Client{Timeout: 3 * time.Second}
+var client = &http.Client{Timeout: 10 * time.Second}
 
 // NewHTTPRequest function builds http call
 // @param method <string>: http method
