@@ -468,23 +468,13 @@ func (t *tradeService) tradeComplete(
 			ctx,
 			trade.MarketQuoteAsset,
 		)
-
-		unspentsToAdd, unspentsToSpend, err := extractUnspentsFromTx(
+		extractUnspentsFromTxAndUpdateUtxoSet(
+			t.unspentRepository,
 			t.vaultRepository,
 			t.network,
 			res.TxHex,
 			accountIndex,
 		)
-		if err != nil {
-			log.Warnf(
-				"unable to retrieve addresses info for account %d. You must run "+
-					"ReloadUtxo RPC as soon as possible to restore the utxo set of the "+
-					"internal wallet. Error: %v", accountIndex, err,
-			)
-			return
-		}
-		addUnspents(t.unspentRepository, unspentsToAdd)
-		spendUnspents(t.unspentRepository, unspentsToSpend)
 	}()
 
 	return
