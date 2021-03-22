@@ -146,6 +146,108 @@ func (o operatorHandler) ReportMarketFee(
 	return o.reportMarketFee(ctx, req)
 }
 
+func (o operatorHandler) ReloadUtxos(
+	ctx context.Context,
+	rew *pb.ReloadUtxosRequest,
+) (*pb.ReloadUtxosReply, error) {
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			if err := o.operatorSvc.ReloadUtxos(ctx); err != nil {
+				return nil, err
+			}
+
+			return &pb.ReloadUtxosReply{}, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*pb.ReloadUtxosReply), nil
+}
+
+func (o operatorHandler) ListUtxos(
+	ctx context.Context,
+	req *pb.ListUtxosRequest,
+) (*pb.ListUtxosReply, error) {
+	return o.listUtxos(ctx, req)
+}
+
+func (o operatorHandler) listUtxos(
+	ctx context.Context,
+	req *pb.ListUtxosRequest,
+) (*pb.ListUtxosReply, error) {
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			utxoInfoPerAccount, err := o.operatorSvc.ListUtxos(
+				ctx,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			infoPerAccount := make(map[uint64]*pb.UtxoInfoList)
+
+			for k, v := range utxoInfoPerAccount.UtxoInfoPerAccount {
+				unspents := make([]*pb.UtxoInfo, 0)
+				for _, u := range v.Unspents {
+					unspents = append(unspents, &pb.UtxoInfo{
+						Outpoint: &pb.TxOutpoint{
+							Hash:  u.Outpoint.Hash,
+							Index: int32(u.Outpoint.Index),
+						},
+						Value: u.Value,
+						Asset: u.Asset,
+					})
+				}
+
+				spents := make([]*pb.UtxoInfo, 0)
+				for _, u := range v.Spents {
+					spents = append(spents, &pb.UtxoInfo{
+						Outpoint: &pb.TxOutpoint{
+							Hash:  u.Outpoint.Hash,
+							Index: int32(u.Outpoint.Index),
+						},
+						Value: u.Value,
+						Asset: u.Asset,
+					})
+				}
+
+				locks := make([]*pb.UtxoInfo, 0)
+				for _, u := range v.Locks {
+					locks = append(locks, &pb.UtxoInfo{
+						Outpoint: &pb.TxOutpoint{
+							Hash:  u.Outpoint.Hash,
+							Index: int32(u.Outpoint.Index),
+						},
+						Value: u.Value,
+						Asset: u.Asset,
+					})
+				}
+
+				infoPerAccount[k] = &pb.UtxoInfoList{
+					Unspents: unspents,
+					Spents:   spents,
+					Locks:    locks,
+				}
+			}
+
+			return &pb.ListUtxosReply{
+				InfoPerAccount: infoPerAccount,
+			}, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*pb.ListUtxosReply), nil
+}
+
 func (o operatorHandler) depositMarket(
 	reqCtx context.Context,
 	req *pb.DepositMarketRequest,

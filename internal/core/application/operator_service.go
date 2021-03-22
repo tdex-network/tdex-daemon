@@ -89,6 +89,8 @@ type OperatorService interface {
 		ctx context.Context,
 		market Market,
 	) (*ReportMarketFee, error)
+	ListUtxos(ctx context.Context) (*UtxoInfoPerAccount, error)
+	ReloadUtxos(ctx context.Context) error
 }
 
 type operatorService struct {
@@ -820,6 +822,77 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 	return int64(baseAssetAmount), nil
 }
 
+func (o *operatorService) ListUtxos(
+	ctx context.Context,
+) (*UtxoInfoPerAccount, error) {
+	utxoInfoPerAccount := make(map[uint64]UtxoInfoList)
+
+	u := o.unspentRepository.GetAllUnspents(ctx)
+	for _, v := range u {
+		_, accountIndex, err := o.vaultRepository.GetAccountByAddress(
+			ctx,
+			v.Address,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if value, ok := utxoInfoPerAccount[uint64(accountIndex)]; ok {
+			if v.Locked {
+				value.Locks = appendUnspent(v, value.Locks)
+			} else if v.Spent {
+				value.Spents = appendUnspent(v, value.Spents)
+			} else {
+				value.Unspents = appendUnspent(v, value.Unspents)
+			}
+			utxoInfoPerAccount[uint64(accountIndex)] = value
+		} else {
+			unspents := make([]UtxoInfo, 0)
+			spents := make([]UtxoInfo, 0)
+			locks := make([]UtxoInfo, 0)
+			if v.Locked {
+				locks = appendUnspent(v, locks)
+			} else if v.Spent {
+				spents = appendUnspent(v, spents)
+			} else {
+				unspents = appendUnspent(v, unspents)
+			}
+
+			utxoInfoPerAccount[uint64(accountIndex)] = UtxoInfoList{
+				Unspents: unspents,
+				Spents:   spents,
+				Locks:    locks,
+			}
+		}
+
+	}
+
+	return &UtxoInfoPerAccount{
+		UtxoInfoPerAccount: utxoInfoPerAccount,
+	}, nil
+}
+
+// ReloadUtxos triggers reloading of unspents for stored addresses from blockchain
+func (o *operatorService) ReloadUtxos(ctx context.Context) error {
+	//get all addresses
+	vault, err := o.vaultRepository.GetOrCreateVault(
+		ctx,
+		nil,
+		"",
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	addressesInfo := vault.AllDerivedAddressesInfo()
+	return fetchUnspents(
+		o.explorerSvc,
+		o.unspentRepository,
+		addressesInfo,
+	)
+}
+
 // ClaimMarketDeposit method add unspents to the market
 func (o *operatorService) ClaimMarketDeposit(
 	ctx context.Context,
@@ -1160,4 +1233,15 @@ func groupAddressesInfoByScript(info domain.AddressesInfo) map[string]domain.Add
 		group[i.Script] = i
 	}
 	return group
+}
+
+func appendUnspent(unspent domain.Unspent, list []UtxoInfo) []UtxoInfo {
+	return append(list, UtxoInfo{
+		Outpoint: &TxOutpoint{
+			Hash:  unspent.TxID,
+			Index: int(unspent.VOut),
+		},
+		Value: unspent.Value,
+		Asset: unspent.AssetHash,
+	})
 }
