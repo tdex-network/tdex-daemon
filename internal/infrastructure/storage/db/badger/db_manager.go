@@ -201,13 +201,16 @@ func EncodeKey(key interface{}, typeName string) ([]byte, error) {
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
+	isInMemory := len(dbDir) <= 0
+
 	opts := badger.DefaultOptions(dbDir)
 	opts.Logger = logger
-	if len(dbDir) > 0 {
+
+	if isInMemory {
+		opts.InMemory = true
+	} else {
 		opts.ValueLogLoadingMode = options.FileIO
 		opts.Compression = options.ZSTD
-	} else {
-		opts.InMemory = true
 	}
 
 	db, err := badgerhold.Open(badgerhold.Options{
@@ -220,18 +223,20 @@ func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
 		return nil, err
 	}
 
-	ticker := time.NewTicker(30 * time.Minute)
+	if !isInMemory {
+		ticker := time.NewTicker(30 * time.Minute)
 
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				if err := db.Badger().RunValueLogGC(0.5); err != nil && err != badger.ErrNoRewrite {
-					log.Error(err)
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					if err := db.Badger().RunValueLogGC(0.5); err != nil && err != badger.ErrNoRewrite {
+						log.Error(err)
+					}
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	return db, nil
 }
