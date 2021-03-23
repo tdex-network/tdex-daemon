@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -48,7 +49,16 @@ func TestInitWalletWrongSeed(t *testing.T) {
 	t.Cleanup(close)
 
 	wrongSeed := []string{"test"}
-	err := walletSvc.InitWallet(ctx, wrongSeed, "pass", !restoreWallet)
+	chErr := make(chan error, 1)
+	walletSvc.InitWallet(
+		ctx,
+		wrongSeed,
+		"pass",
+		!restoreWallet,
+		make(chan *InitWalletReply),
+		chErr,
+	)
+	err := <-chErr
 	assert.Error(t, err)
 }
 
@@ -79,11 +89,29 @@ func TestInitEmptyWallet(t *testing.T) {
 		Network:        &network.Regtest,
 	})
 
-	err := walletSvc.InitWallet(ctx, emptyWallet.mnemonic, emptyWallet.password, !restoreWallet)
-	if err != nil {
-		t.Fatal(err)
+	chReplies := make(chan *InitWalletReply)
+	chErr := make(chan error, 1)
+	go walletSvc.InitWallet(
+		ctx,
+		emptyWallet.mnemonic,
+		emptyWallet.password,
+		!restoreWallet,
+		chReplies,
+		chErr,
+	)
+
+	for {
+		select {
+		case err := <-chErr:
+			t.Fatal(err)
+		case reply := <-chReplies:
+			if reply == nil {
+				break
+			}
+			fmt.Println(reply)
+		}
+		break
 	}
-	assert.Equal(t, true, walletSvc.walletInitialized)
 
 	if err := walletSvc.UnlockWallet(ctx, emptyWallet.password); err != nil {
 		t.Fatal(err)
@@ -119,10 +147,30 @@ func TestInitUsedWallet(t *testing.T) {
 		Network:        &network.Regtest,
 	})
 
-	err := walletSvc.InitWallet(ctx, usedWallet.mnemonic, usedWallet.password, restoreWallet)
-	if err != nil {
-		t.Fatal(err)
+	chReplies := make(chan *InitWalletReply)
+	chErr := make(chan error, 1)
+	go walletSvc.InitWallet(
+		ctx,
+		usedWallet.mnemonic,
+		usedWallet.password,
+		restoreWallet,
+		chReplies,
+		chErr,
+	)
+
+	for {
+		select {
+		case err := <-chErr:
+			t.Fatal(err)
+		case reply := <-chReplies:
+			if reply == nil {
+				break
+			}
+			fmt.Println(reply.Data)
+		}
+		break
 	}
+
 	if err := walletSvc.UnlockWallet(ctx, usedWallet.password); err != nil {
 		t.Fatal(err)
 	}

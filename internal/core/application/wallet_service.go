@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -39,7 +41,9 @@ type WalletService interface {
 		mnemonic []string,
 		passphrase string,
 		restore bool,
-	) error
+		chRes chan *InitWalletReply,
+		chErr chan error,
+	)
 	UnlockWallet(
 		ctx context.Context,
 		passphrase string,
@@ -132,13 +136,15 @@ func newWalletService(
 		context.Background(), nil, "", nil,
 	); err == nil {
 		info := vault.AllDerivedAddressesInfo()
-		if err := fetchUnspents(
+		if err := fetchAndAddUnspents(
 			w.explorerService,
 			w.unspentRepository,
+			w.blockchainListener,
 			info,
 		); err != nil {
 			return nil, err
 		}
+
 		w.setInitialized(true)
 	}
 	return w, nil
@@ -152,26 +158,38 @@ func (w *walletService) GenSeed(ctx context.Context) ([]string, error) {
 	return mnemonic, nil
 }
 
+type InitWalletReply struct {
+	AccountIndex int
+	AddressIndex int
+	Status       int
+	Data         string
+}
+
 func (w *walletService) InitWallet(
 	ctx context.Context,
 	mnemonic []string,
 	passphrase string,
 	restore bool,
-) error {
+	chRes chan *InitWalletReply,
+	chErr chan error,
+) {
 	if w.walletInitialized {
-		return nil
+		chRes <- nil
+		return
 	}
 	// this prevents strange behaviors by making consecutive calls to InitWallet
 	// while it's still syncing
 	if w.walletIsSyncing {
-		return nil
+		chRes <- nil
+		return
 	}
 
 	if restore && w.withElements {
-		return fmt.Errorf(
+		chErr <- fmt.Errorf(
 			"Restoring a wallet through the Elements explorer is not availble at the " +
 				"moment. Please restart the daemon using the Esplora block explorer.",
 		)
+		return
 	}
 
 	w.setSyncing(true)
@@ -183,26 +201,85 @@ func (w *walletService) InitWallet(
 
 	vault, err := w.vaultRepository.GetOrCreateVault(ctx, mnemonic, passphrase, w.network)
 	if err != nil {
-		log.WithError(err).Warn("unable to retrieve vault")
-		return err
+		chErr <- fmt.Errorf("unable to retrieve vault: %v", err)
+		return
 	}
 	defer vault.Lock()
 
-	unspents, markets, err := w.restoreState(ctx, mnemonic, vault, restore)
+	if restore {
+		data := "addresses discovery"
+		if w.withElements {
+			data += ". With elements this may take a while"
+		}
+		chRes <- &InitWalletReply{
+			Status: Processing,
+			Data:   data,
+		}
+	}
+
+	allInfo := make(domain.AddressesInfo, 0)
+	feeInfo, marketInfoByAccount, err := w.restoreVault(ctx, mnemonic, vault, restore)
 	if err != nil {
-		log.WithError(err).Warn("unexpected error while restoring state")
-		return err
+		chErr <- fmt.Errorf("unable to restore vault: %v", err)
+		return
+	}
+
+	if restore {
+		chRes <- &InitWalletReply{
+			Status: Done,
+			Data:   "addresses discovery",
+		}
+	}
+
+	allInfo = append(allInfo, feeInfo...)
+	for _, marketInfo := range marketInfoByAccount {
+		allInfo = append(allInfo, marketInfo...)
+	}
+
+	var unspents []domain.Unspent
+	var markets []*domain.Market
+
+	if restore {
+		// restore unspents
+		unspents, err = w.restoreUnspents(allInfo, chRes)
+		if err != nil {
+			chErr <- fmt.Errorf("unable to restore unspents: %v", err)
+			return
+		}
+
+		// group unspents by address to facilitate market restoration
+		unspentsByAddress := make(map[string][]domain.Unspent)
+		for _, u := range unspents {
+			unspentsByAddress[u.Address] = append(unspentsByAddress[u.Address], u)
+		}
+
+		// restore markets
+		mLen := len(marketInfoByAccount)
+		markets = make([]*domain.Market, mLen, mLen)
+		i := 0
+		for accountIndex, info := range marketInfoByAccount {
+			market, err := w.restoreMarket(ctx, accountIndex, info, unspentsByAddress)
+			if err != nil {
+				chErr <- fmt.Errorf("unable to restore market: %v", err)
+				return
+			}
+			markets[i] = market
+			i++
+		}
 	}
 
 	if err := w.persistRestoredState(ctx, vault, unspents, markets); err != nil {
-		log.WithError(err).Warn("unexpected error while persisting restored state")
-		return err
+		chErr <- fmt.Errorf("unable to persist restored state: %v", err)
+		return
 	}
 
+	// notify the interface that no more replies will be sent and the channel
+	// can be closed.
+	chRes <- nil
+	go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
+	w.setInitialized(true)
 	w.setSyncing(false)
 	log.Debug("done")
-
-	return nil
 }
 
 func (w *walletService) UnlockWallet(
@@ -464,19 +541,18 @@ func (w *walletService) setInitialized(val bool) {
 	w.walletInitialized = val
 }
 
-func (w *walletService) restoreState(
+func (w *walletService) restoreVault(
 	ctx context.Context,
 	mnemonic []string,
 	vault *domain.Vault,
 	restore bool,
-) ([]domain.Unspent, []*domain.Market, error) {
+) (domain.AddressesInfo, map[int]domain.AddressesInfo, error) {
 	ww, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: mnemonic,
 	})
 
 	var feeRestoreInfo, walletRestoreInfo *accountLastDerivedIndex
 	var marketsRestoreInfo []*accountLastDerivedIndex
-	var allInfo domain.AddressesInfo
 
 	if restore {
 		feeRestoreInfo = w.restoreAccount(ww, domain.FeeAccount)
@@ -493,7 +569,6 @@ func (w *walletService) restoreState(
 	if _, err := initVaultAccount(vault, domain.WalletAccount, walletRestoreInfo); err != nil {
 		return nil, nil, err
 	}
-	allInfo = append(allInfo, feeInfo...)
 
 	marketInfoByAccount := make(map[int]domain.AddressesInfo)
 	for i, m := range marketsRestoreInfo {
@@ -503,39 +578,9 @@ func (w *walletService) restoreState(
 			return nil, nil, err
 		}
 		marketInfoByAccount[accountIndex] = info
-		allInfo = append(allInfo, info...)
 	}
 
-	var unspents []domain.Unspent
-	var markets []*domain.Market
-	if restore {
-		// restore unspents
-		unspents, err = w.restoreUnspents(allInfo)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// group unspents by address to facilitate market restoration
-		unspentsByAddress := make(map[string][]domain.Unspent)
-		for _, u := range unspents {
-			unspentsByAddress[u.Address] = append(unspentsByAddress[u.Address], u)
-		}
-
-		// restore markets
-		mLen := len(marketInfoByAccount)
-		markets = make([]*domain.Market, mLen, mLen)
-		i := 0
-		for accountIndex, info := range marketInfoByAccount {
-			market, err := w.restoreMarket(ctx, accountIndex, info, unspentsByAddress)
-			if err != nil {
-				return nil, nil, err
-			}
-			markets[i] = market
-			i++
-		}
-	}
-
-	return unspents, markets, nil
+	return feeInfo, marketInfoByAccount, nil
 }
 
 func (w *walletService) restoreAccount(
@@ -607,39 +652,6 @@ func (w *walletService) restoreMarketAccounts(
 	return marketsLastIndex
 }
 
-func (w *walletService) restoreUnspents(info domain.AddressesInfo) ([]domain.Unspent, error) {
-	utxos, err := w.explorerService.GetUnspentsForAddresses(info.AddressesAndKeys())
-	if err != nil {
-		return nil, err
-	}
-
-	unspentsLen := len(utxos)
-	unspents := make([]domain.Unspent, unspentsLen, unspentsLen)
-	infoByScript := groupAddressesInfoByScript(info)
-
-	for i, u := range utxos {
-		addr := infoByScript[hex.EncodeToString(u.Script())].Address
-		unspents[i] = domain.Unspent{
-			TxID:            u.Hash(),
-			VOut:            u.Index(),
-			Value:           u.Value(),
-			AssetHash:       u.Asset(),
-			ValueCommitment: u.ValueCommitment(),
-			AssetCommitment: u.AssetCommitment(),
-			ValueBlinder:    u.ValueBlinder(),
-			AssetBlinder:    u.AssetBlinder(),
-			ScriptPubKey:    u.Script(),
-			Nonce:           u.Nonce(),
-			RangeProof:      u.RangeProof(),
-			SurjectionProof: u.SurjectionProof(),
-			Confirmed:       u.IsConfirmed(),
-			Address:         addr,
-		}
-	}
-
-	return unspents, nil
-}
-
 func (w *walletService) restoreMarket(
 	ctx context.Context,
 	accountIndex int,
@@ -705,7 +717,6 @@ func (w *walletService) persistRestoredState(
 		}
 	}
 
-	w.setInitialized(true)
 	return nil
 }
 
@@ -734,6 +745,94 @@ func (w *walletService) getAllUnspentsForAccount(
 		utxos = append(utxos, u.ToUtxo())
 	}
 	return utxos, nil
+}
+
+type unspentInfo struct {
+	info     domain.AddressInfo
+	unspents []domain.Unspent
+}
+
+func (w *walletService) restoreUnspents(
+	info domain.AddressesInfo,
+	chRes chan *InitWalletReply,
+) ([]domain.Unspent, error) {
+	chUnspentsInfo := make(chan unspentInfo)
+	chErr := make(chan error, 1)
+	unspents := make([]domain.Unspent, 0)
+
+	for _, in := range info {
+		path := strings.Split(in.DerivationPath, "/")
+		addressIndex, _ := strconv.Atoi(path[len(path)-1])
+		chRes <- &InitWalletReply{
+			AccountIndex: in.AccountIndex,
+			AddressIndex: addressIndex,
+			Status:       Processing,
+			Data: fmt.Sprintf(
+				"account %d index %d", in.AccountIndex, addressIndex,
+			),
+		}
+		go w.getUnspentsForAddress(in, chUnspentsInfo, chErr)
+
+		select {
+		case err := <-chErr:
+			close(chErr)
+			close(chUnspentsInfo)
+			return nil, err
+		case unspentsInfo := <-chUnspentsInfo:
+			unspents = append(unspents, unspentsInfo.unspents...)
+
+			info := unspentsInfo.info
+			path := strings.Split(info.DerivationPath, "/")
+			addressIndex, _ := strconv.Atoi(path[len(path)-1])
+			chRes <- &InitWalletReply{
+				AccountIndex: info.AccountIndex,
+				AddressIndex: addressIndex,
+				Status:       Done,
+				Data: fmt.Sprintf(
+					"account %d index %d",
+					info.AccountIndex,
+					addressIndex,
+				),
+			}
+		}
+	}
+
+	return unspents, nil
+}
+
+func (w *walletService) getUnspentsForAddress(
+	info domain.AddressInfo,
+	chUnspentsInfo chan unspentInfo,
+	chErr chan error,
+) {
+	addr := info.Address
+	blindingKeys := [][]byte{info.BlindingKey}
+	utxos, err := w.explorerService.GetUnspents(addr, blindingKeys)
+	if err != nil {
+		chErr <- err
+		return
+	}
+
+	unspents := make([]domain.Unspent, len(utxos), len(utxos))
+	for i, u := range utxos {
+		unspents[i] = domain.Unspent{
+			TxID:            u.Hash(),
+			VOut:            u.Index(),
+			Value:           u.Value(),
+			AssetHash:       u.Asset(),
+			ValueCommitment: u.ValueCommitment(),
+			AssetCommitment: u.AssetCommitment(),
+			ValueBlinder:    u.ValueBlinder(),
+			AssetBlinder:    u.AssetBlinder(),
+			ScriptPubKey:    u.Script(),
+			Nonce:           u.Nonce(),
+			RangeProof:      u.RangeProof(),
+			SurjectionProof: u.SurjectionProof(),
+			Confirmed:       u.IsConfirmed(),
+			Address:         addr,
+		}
+	}
+	chUnspentsInfo <- unspentInfo{info, unspents}
 }
 
 func parseRequestOutputs(reqOutputs []TxOut) (
@@ -990,14 +1089,14 @@ func getBalancesByAsset(unspents []explorer.Utxo) map[string]BalanceInfo {
 	return balances
 }
 
-func fetchUnspents(
-	explorerSvc explorer.Service,
-	unspentRepo domain.UnspentRepository,
-	info domain.AddressesInfo,
-) error {
+func fetchUnspents(explorerSvc explorer.Service, info domain.AddressesInfo) ([]domain.Unspent, error) {
+	if len(info) <= 0 {
+		return nil, nil
+	}
+
 	utxos, err := explorerSvc.GetUnspentsForAddresses(info.AddressesAndKeys())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	unspentsLen := len(utxos)
@@ -1024,11 +1123,39 @@ func fetchUnspents(
 		}
 	}
 
+	return unspents, nil
+}
+
+func addUnspents(unspentRepo domain.UnspentRepository, unspents []domain.Unspent) error {
 	return unspentRepo.AddUnspents(context.Background(), unspents)
 }
 
-func addUnspents(unspentRepo domain.UnspentRepository, unspents []domain.Unspent) {
-	if err := unspentRepo.AddUnspents(context.Background(), unspents); err != nil {
+func fetchAndAddUnspents(
+	explorerSvc explorer.Service,
+	unspentRepo domain.UnspentRepository,
+	bcListener BlockchainListener,
+	info domain.AddressesInfo,
+) error {
+	unspents, err := fetchUnspents(explorerSvc, info)
+	if err != nil {
+		return err
+	}
+	if unspents == nil {
+		return nil
+	}
+	go startObserveUnconfirmedUnspents(bcListener, unspents)
+	return addUnspents(unspentRepo, unspents)
+}
+
+func spendUnspents(
+	unspentRepo domain.UnspentRepository,
+	unspentKeys []domain.UnspentKey,
+) (int, error) {
+	return unspentRepo.SpendUnspents(context.Background(), unspentKeys)
+}
+
+func addUnspentsAsync(unspentRepo domain.UnspentRepository, unspents []domain.Unspent) {
+	if err := addUnspents(unspentRepo, unspents); err != nil {
 		log.Warnf(
 			"unexpected error occured while adding unspents to the utxo set. "+
 				"You must manually run ReloadUtxo RPC as soon as possible to restore "+
@@ -1038,11 +1165,11 @@ func addUnspents(unspentRepo domain.UnspentRepository, unspents []domain.Unspent
 	log.Debugf("added %d unspents", len(unspents))
 }
 
-func spendUnspents(
+func spendUnspentsAsync(
 	unspentRepo domain.UnspentRepository,
 	unspentKeys []domain.UnspentKey,
 ) {
-	count, err := unspentRepo.SpendUnspents(context.Background(), unspentKeys)
+	count, err := spendUnspents(unspentRepo, unspentKeys)
 	if err != nil {
 		log.Warnf(
 			"unexpected error occured while updating the utxo set trying to mark "+
@@ -1052,6 +1179,21 @@ func spendUnspents(
 		)
 	}
 	log.Debugf("spent %d unspents", count)
+}
+
+func startObserveUnconfirmedUnspents(
+	bcListener BlockchainListener,
+	unspents []domain.Unspent) {
+	count := 0
+	for _, u := range unspents {
+		if !u.IsConfirmed() {
+			bcListener.StartObserveTx(u.TxID)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Debugf("num of unconfirmed unspents to watch: %d", count)
+	}
 }
 
 func extractUnspentsFromTx(

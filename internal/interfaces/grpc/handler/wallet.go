@@ -108,30 +108,39 @@ func (w walletHandler) initWallet(
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := w.dbManager.RunTransaction(
+	chReplies := make(chan *application.InitWalletReply)
+	chErr := make(chan error, 1)
+	go w.walletSvc.InitWallet(
 		stream.Context(),
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			if err := w.walletSvc.InitWallet(
-				ctx,
-				mnemonic,
-				string(password),
-				req.GetRestore(),
-			); err != nil {
-				return nil, err
-			}
-
-			return &pb.InitWalletReply{}, nil
-		},
+		mnemonic,
+		string(password),
+		req.GetRestore(),
+		chReplies,
+		chErr,
 	)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
 
-	if err := stream.Send(res.(*pb.InitWalletReply)); err != nil {
-		return status.Error(codes.Internal, err.Error())
+	for {
+		select {
+		case err := <-chErr:
+			close(chErr)
+			close(chReplies)
+			return err
+		case reply := <-chReplies:
+			if reply == nil {
+				close(chErr)
+				close(chReplies)
+				return nil
+			}
+			if err := stream.Send(&pb.InitWalletReply{
+				Account: uint64(reply.AccountIndex),
+				Index:   uint64(reply.AddressIndex),
+				Status:  pb.InitWalletReply_Status(reply.Status),
+				Data:    reply.Data,
+			}); err != nil {
+				return err
+			}
+		}
 	}
-	return nil
 }
 
 func (w walletHandler) unlockWallet(

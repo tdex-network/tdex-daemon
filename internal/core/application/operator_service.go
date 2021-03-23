@@ -886,9 +886,10 @@ func (o *operatorService) ReloadUtxos(ctx context.Context) error {
 	}
 
 	addressesInfo := vault.AllDerivedAddressesInfo()
-	return fetchUnspents(
+	return fetchAndAddUnspents(
 		o.explorerSvc,
 		o.unspentRepository,
+		o.blockchainListener,
 		addressesInfo,
 	)
 }
@@ -1068,7 +1069,7 @@ func (o *operatorService) claimDeposit(
 			}
 
 			go func() {
-				addUnspents(o.unspentRepository, unspents)
+				addUnspentsAsync(o.unspentRepository, unspents)
 				if depositType == feeDeposit {
 					if err := o.checkAccountBalance(infoPerAccount[accountIndex]); err != nil {
 						log.Warn(err)

@@ -295,8 +295,8 @@ func (b *blockchainListener) confirmOrAddUnspents(
 		for i := range unspentsToAdd {
 			unspentsToAdd[i].Confirmed = true
 		}
-		addUnspents(b.unspentRepository, unspentsToAdd)
-		spendUnspents(b.unspentRepository, unspentsToSpend)
+		addUnspentsAsync(b.unspentRepository, unspentsToAdd)
+		spendUnspentsAsync(b.unspentRepository, unspentsToSpend)
 	}()
 
 	return nil
