@@ -395,11 +395,13 @@ func (t *tradeService) TradePropose(
 		return nil, nil, 0, err
 	}
 
-	go t.blockchainListener.StartObserveTx(trade.TxID)
-	go t.checkTradeExpiration(trade.TxID, selectedUnspentKeys)
+	if swapFail == nil {
+		go t.blockchainListener.StartObserveTx(trade.TxID)
+		go t.checkTradeExpiration(trade.TxID, selectedUnspentKeys)
 
-	log.Infof("trade with %s accepted", tradeID)
-	log.Debugf("locked %d unspents", lockedUnspentsCount)
+		log.Infof("trade with %s accepted", tradeID)
+		log.Debugf("locked %d unspents", lockedUnspentsCount)
+	}
 
 	return swapAccept, swapFail, swapExpiryTime, nil
 }
