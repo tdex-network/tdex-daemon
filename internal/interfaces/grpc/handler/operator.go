@@ -175,6 +175,39 @@ func (o operatorHandler) ListUtxos(
 	return o.listUtxos(ctx, req)
 }
 
+func (o operatorHandler) DropMarket(
+	ctx context.Context,
+	req *pb.DropMarketRequest,
+) (*pb.DropMarketReply, error) {
+	return o.dropMarket(ctx, req)
+}
+
+func (o operatorHandler) dropMarket(
+	ctx context.Context,
+	req *pb.DropMarketRequest,
+) (*pb.DropMarketReply, error) {
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			err := o.operatorSvc.DropMarket(
+				ctx,
+				int(req.GetAccountIndex()),
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return &pb.DropMarketReply{}, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*pb.DropMarketReply), nil
+}
+
 func (o operatorHandler) listUtxos(
 	ctx context.Context,
 	req *pb.ListUtxosRequest,
@@ -726,20 +759,28 @@ func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketReque
 				return nil, err
 			}
 
-			pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos), len(marketInfos))
+			pbMarketInfos := make([]*pb.MarketInfo, 0, len(marketInfos))
 
-			for index, marketInfo := range marketInfos {
-				pbMarketInfos[index] = &pb.MarketInfo{
-					Fee: &pbtypes.Fee{
-						BasisPoint: marketInfo.Fee.BasisPoint,
-					},
+			for _, marketInfo := range marketInfos {
+				basePrice, _ := marketInfo.Price.BasePrice.BigFloat().Float32()
+				quotePrice, _ := marketInfo.Price.QuotePrice.BigFloat().Float32()
+
+				pbMarketInfos = append(pbMarketInfos, &pb.MarketInfo{
 					Market: &pbtypes.Market{
 						BaseAsset:  marketInfo.Market.BaseAsset,
 						QuoteAsset: marketInfo.Market.QuoteAsset,
 					},
+					Fee: &pbtypes.Fee{
+						BasisPoint: marketInfo.Fee.BasisPoint,
+					},
 					Tradable:     marketInfo.Tradable,
 					StrategyType: pb.StrategyType(marketInfo.StrategyType),
-				}
+					AccountIndex: marketInfo.AccountIndex,
+					Price: &pbtypes.Price{
+						BasePrice:  basePrice,
+						QuotePrice: quotePrice,
+					},
+				})
 			}
 
 			return &pb.ListMarketReply{Markets: pbMarketInfos}, nil

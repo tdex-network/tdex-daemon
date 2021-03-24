@@ -276,6 +276,8 @@ github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210317222720-0adcc0c06
 github.com/tdex-network/tdex-protobuf v0.0.0-20210312170501-eac8b4a88d04/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/tdex-network/tdex-protobuf v0.0.0-20210322132201-a185bdfeb24f h1:V+hWp9ORmRNAfyvJ3G/g0a3Gm5CpLm8ayrSLAOk+JOE=
 github.com/tdex-network/tdex-protobuf v0.0.0-20210322132201-a185bdfeb24f/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20210324125236-78f6c6c0618b h1:nypIb9lNXnMtnZG3jdjB3P2D5cTmVLUkDKdK/Mltdbg=
+github.com/tdex-network/tdex-protobuf v0.0.0-20210324125236-78f6c6c0618b/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/thanhpk/randstr v1.0.4/go.mod h1:M/H2P1eNLZzlDwAzpkkkUvoyNNMbzRGhESZuEQk3r0U=
 github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4/go.mod h1:DZdjzq3LBgyWcoNEDiEbO7weCcZbebdFzeJiap0qwr0=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=

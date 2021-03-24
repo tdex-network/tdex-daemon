@@ -378,3 +378,23 @@ func restoreStrategy(market *domain.Market) {
 		}
 	}
 }
+
+func (m marketRepositoryImpl) DeleteMarket(
+	ctx context.Context,
+	accountIndex int,
+) error {
+	var err error
+
+	if ctx.Value("tx") != nil {
+		tx := ctx.Value("tx").(*badger.Txn)
+		err = m.db.Store.TxDelete(tx, accountIndex, domain.Market{})
+	} else {
+		err = m.db.Store.Delete(accountIndex, domain.Market{})
+	}
+	if err != nil {
+		if err != badgerhold.ErrNotFound {
+			return err
+		}
+	}
+	return nil
+}

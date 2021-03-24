@@ -181,6 +181,15 @@ func (r *MarketRepositoryImpl) UpdatePrices(_ context.Context, accountIndex int,
 	return nil
 }
 
+func (r *MarketRepositoryImpl) DeleteMarket(
+	_ context.Context,
+	accountIndex int,
+) error {
+	delete(r.db.marketStore.markets, accountIndex)
+
+	return nil
+}
+
 func (r MarketRepositoryImpl) getOrCreateMarket(market *domain.Market) (*domain.Market, error) {
 	if market == nil {
 		return nil, ErrMarketInvalidRequest

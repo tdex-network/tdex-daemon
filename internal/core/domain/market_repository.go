@@ -28,4 +28,6 @@ type MarketRepository interface {
 	CloseMarket(ctx context.Context, quoteAsset string) error
 	// Update only the price without touching market details
 	UpdatePrices(ctx context.Context, accountIndex int, prices Prices) error
+	// DeleteMarket deletes market for accountIndex
+	DeleteMarket(ctx context.Context, accountIndex int) error
 }
