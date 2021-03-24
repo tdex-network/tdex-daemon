@@ -1,4 +1,4 @@
-package httputil
+package esplora
 
 import (
 	"errors"
@@ -9,19 +9,19 @@ import (
 	"time"
 )
 
-type Service struct {
+type Client struct {
 	*http.Client
 }
 
-func NewService(requestTimeout time.Duration) *Service {
-	return &Service{&http.Client{Timeout: requestTimeout}}
+func NewHTTPClient(requestTimeout time.Duration) *Client {
+	return &Client{&http.Client{Timeout: requestTimeout}}
 }
 
 // NewHTTPRequest function builds http call
 // @param method <string>: http method
 // @param url <string>: URL http to call
 // @return <string>, error
-func (s *Service) NewHTTPRequest(
+func (s *Client) NewHTTPRequest(
 	method, url, bodyString string,
 	header map[string]string,
 ) (int, string, error) {
@@ -39,7 +39,7 @@ func (s *Service) NewHTTPRequest(
 	}
 }
 
-func (s *Service) get(url string, header map[string]string) (int, string, error) {
+func (s *Client) get(url string, header map[string]string) (int, string, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return 0, "", err
@@ -65,7 +65,7 @@ func (s *Service) get(url string, header map[string]string) (int, string, error)
 	return rs.StatusCode, string(bodyBytes), nil
 }
 
-func (s *Service) list(url string, header map[string]string) (int, string, error) {
+func (s *Client) list(url string, header map[string]string) (int, string, error) {
 	req, err := http.NewRequest("LIST", url, nil)
 	if err != nil {
 		return 0, "", err
@@ -91,7 +91,7 @@ func (s *Service) list(url string, header map[string]string) (int, string, error
 	return rs.StatusCode, string(bodyBytes), nil
 }
 
-func (s *Service) delete(url string, header map[string]string) (int, string, error) {
+func (s *Client) delete(url string, header map[string]string) (int, string, error) {
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return 0, "", err
@@ -117,7 +117,7 @@ func (s *Service) delete(url string, header map[string]string) (int, string, err
 	return rs.StatusCode, string(bodyBytes), nil
 }
 
-func (s *Service) post(url, bodyString string, header map[string]string) (int, string, error) {
+func (s *Client) post(url, bodyString string, header map[string]string) (int, string, error) {
 	body := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {

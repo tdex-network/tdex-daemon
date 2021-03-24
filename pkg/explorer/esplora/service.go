@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
 const (
@@ -14,7 +13,7 @@ const (
 
 type esplora struct {
 	apiURL string
-	client *httputil.Service
+	client *Client
 }
 
 // NewService returns a new esplora service as an explorer.Service interface
@@ -23,7 +22,7 @@ func NewService(apiURL string, requestTimeout int) (explorer.Service, error) {
 	if d < minRequestTimeout {
 		return nil, fmt.Errorf("request timeout must be at least 5 seconds")
 	}
-	client := httputil.NewService(d)
+	client := NewHTTPClient(d)
 	service := &esplora{apiURL, client}
 
 	if _, err := service.GetBlockHeight(); err != nil {
