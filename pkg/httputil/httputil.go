@@ -9,28 +9,37 @@ import (
 	"time"
 )
 
-var client = &http.Client{Timeout: 10 * time.Second}
+type Service struct {
+	*http.Client
+}
+
+func NewService(requestTimeout time.Duration) *Service {
+	return &Service{&http.Client{Timeout: requestTimeout}}
+}
 
 // NewHTTPRequest function builds http call
 // @param method <string>: http method
 // @param url <string>: URL http to call
 // @return <string>, error
-func NewHTTPRequest(method string, url string, bodyString string, header map[string]string) (int, string, error) {
+func (s *Service) NewHTTPRequest(
+	method, url, bodyString string,
+	header map[string]string,
+) (int, string, error) {
 	switch method {
 	case "GET":
-		return get(url, header)
+		return s.get(url, header)
 	case "LIST":
-		return list(url, header)
+		return s.list(url, header)
 	case "DELETE":
-		return delete(url, header)
+		return s.delete(url, header)
 	case "POST":
-		return post(url, bodyString, header)
+		return s.post(url, bodyString, header)
 	default:
 		return 0, "", fmt.Errorf("verb not supported %s", method)
 	}
 }
 
-func get(url string, header map[string]string) (int, string, error) {
+func (s *Service) get(url string, header map[string]string) (int, string, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return 0, "", err
@@ -40,7 +49,7 @@ func get(url string, header map[string]string) (int, string, error) {
 		req.Header.Set(key, value)
 	}
 
-	rs, err := client.Do(req)
+	rs, err := s.Do(req)
 
 	// process response
 	if err != nil {
@@ -56,7 +65,7 @@ func get(url string, header map[string]string) (int, string, error) {
 	return rs.StatusCode, string(bodyBytes), nil
 }
 
-func list(url string, header map[string]string) (int, string, error) {
+func (s *Service) list(url string, header map[string]string) (int, string, error) {
 	req, err := http.NewRequest("LIST", url, nil)
 	if err != nil {
 		return 0, "", err
@@ -66,7 +75,7 @@ func list(url string, header map[string]string) (int, string, error) {
 		req.Header.Set(key, value)
 	}
 
-	rs, err := client.Do(req)
+	rs, err := s.Do(req)
 
 	// process response
 	if err != nil {
@@ -82,7 +91,7 @@ func list(url string, header map[string]string) (int, string, error) {
 	return rs.StatusCode, string(bodyBytes), nil
 }
 
-func delete(url string, header map[string]string) (int, string, error) {
+func (s *Service) delete(url string, header map[string]string) (int, string, error) {
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return 0, "", err
@@ -92,7 +101,7 @@ func delete(url string, header map[string]string) (int, string, error) {
 		req.Header.Set(key, value)
 	}
 
-	rs, err := client.Do(req)
+	rs, err := s.Do(req)
 
 	// process response
 	if err != nil {
@@ -108,7 +117,7 @@ func delete(url string, header map[string]string) (int, string, error) {
 	return rs.StatusCode, string(bodyBytes), nil
 }
 
-func post(url string, bodyString string, header map[string]string) (int, string, error) {
+func (s *Service) post(url, bodyString string, header map[string]string) (int, string, error) {
 	body := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
@@ -119,7 +128,7 @@ func post(url string, bodyString string, header map[string]string) (int, string,
 		req.Header.Set(key, value)
 	}
 
-	rs, err := client.Do(req)
+	rs, err := s.Do(req)
 	if err != nil {
 		return 0, "", errors.New("Failed to create named key request: " + err.Error())
 	}

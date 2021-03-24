@@ -26,6 +26,8 @@ const (
 	OperatorListeningPortKey = "OPERATOR_LISTENING_PORT"
 	// ExplorerEndpointKey is the endpoint where the Electrs (for Liquid) REST API is listening
 	ExplorerEndpointKey = "EXPLORER_ENDPOINT"
+	// ExplorerRequestTimeoutKey is the max time to wait for HTTP responses before it expires
+	ExplorerRequestTimeoutKey = "EXPLORER_REQUEST_TIMEOUT"
 	// DataDirPathKey is the local data directory to store the internal state of daemon
 	DataDirPathKey = "DATA_DIR_PATH"
 	// LogLevelKey are the different logging levels. For reference on the values https://godoc.org/github.com/sirupsen/logrus#Level
@@ -79,6 +81,7 @@ func init() {
 	vip.SetDefault(TraderListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
 	vip.SetDefault(ExplorerEndpointKey, "https://blockstream.info/liquid/api")
+	vip.SetDefault(ExplorerRequestTimeoutKey, 15000)
 	vip.SetDefault(LogLevelKey, 4)
 	vip.SetDefault(DefaultFeeKey, 0.25)
 	vip.SetDefault(CrawlIntervalKey, 5000)
@@ -151,7 +154,10 @@ func GetExplorer() (explorer.Service, error) {
 		}
 		return elements.NewService(rpcEndpoint, rescanTime)
 	}
-	return esplora.NewService(GetString(ExplorerEndpointKey))
+
+	endpoint := GetString(ExplorerEndpointKey)
+	reqTimeout := GetInt(ExplorerRequestTimeoutKey)
+	return esplora.NewService(endpoint, reqTimeout)
 }
 
 // Set a value for the given key

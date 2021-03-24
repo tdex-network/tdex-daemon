@@ -26,10 +26,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-//RegtestExplorerAPI ...
-const RegtestExplorerAPI = "http://127.0.0.1:3001"
-
 var (
+	reqTimeout     = 5000
 	regtest        = &network.Regtest
 	mktBaseAsset   = regtest.AssetID
 	mktFee         = int64(25)
@@ -296,7 +294,7 @@ func getExplorer() (explorer.Service, error) {
 		return elements.NewService(endpoint, nil)
 	}
 	if endpoint := os.Getenv("TDEX_EXPLORER_ENDPOINT"); endpoint != "" {
-		return esplora.NewService(endpoint)
+		return esplora.NewService(endpoint, reqTimeout)
 	}
 	return nil, fmt.Errorf("Esplora or Elements endpoint must be set")
 }

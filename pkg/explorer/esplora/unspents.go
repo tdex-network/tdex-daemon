@@ -1,7 +1,6 @@
 package esplora
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/vulpemventures/go-elements/transaction"
 )
@@ -27,10 +25,6 @@ func (e *esplora) GetUnspentsForAddresses(
 	unspents := make([]explorer.Utxo, 0)
 
 	for _, addr := range addresses {
-		if err := e.rateLimiter.Wait(context.Background()); err != nil {
-			return nil, err
-		}
-
 		go e.getUnspentsForAddress(addr, blindingKeys, chUnspents, chErr)
 
 		select {
@@ -52,7 +46,7 @@ func (e *esplora) getUnspents(addr string, blindingKeys [][]byte) ([]explorer.Ut
 		e.apiURL,
 		addr,
 	)
-	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
+	status, resp, err := e.client.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on retrieving utxos: %s", err)
 	}
@@ -110,7 +104,7 @@ func (e *esplora) getUnspentsForAddress(
 	chUnspents chan []explorer.Utxo,
 	chErr chan error,
 ) {
-	unspents, err := e.GetUnspents(addr, blindingKeys)
+	unspents, err := e.getUnspents(addr, blindingKeys)
 	if err != nil {
 		chErr <- err
 		return

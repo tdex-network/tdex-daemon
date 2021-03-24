@@ -13,7 +13,7 @@ var explorerSvc explorer.Service
 
 func initExplorer() error {
 	var err error
-	explorerSvc, err = esplora.NewService("http://localhost:3001")
+	explorerSvc, err = esplora.NewService("http://localhost:3001", 5000)
 	return err
 }
 

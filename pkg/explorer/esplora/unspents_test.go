@@ -84,7 +84,8 @@ func newService() (explorer.Service, error) {
 	if endpoint == "" {
 		endpoint = "http://127.0.0.1:3001"
 	}
-	return NewService(endpoint)
+	requestTimeout := 5000
+	return NewService(endpoint, requestTimeout)
 }
 
 func newTestData() (string, []byte, error) {
