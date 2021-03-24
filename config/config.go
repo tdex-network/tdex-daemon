@@ -26,7 +26,7 @@ const (
 	OperatorListeningPortKey = "OPERATOR_LISTENING_PORT"
 	// ExplorerEndpointKey is the endpoint where the Electrs (for Liquid) REST API is listening
 	ExplorerEndpointKey = "EXPLORER_ENDPOINT"
-	// ExplorerRequestTimeoutKey is the max time to wait for HTTP responses before it expires
+	// ExplorerRequestTimeoutKey are the milliseconds to wait for HTTP responses before timeouts
 	ExplorerRequestTimeoutKey = "EXPLORER_REQUEST_TIMEOUT"
 	// DataDirPathKey is the local data directory to store the internal state of daemon
 	DataDirPathKey = "DATA_DIR_PATH"
