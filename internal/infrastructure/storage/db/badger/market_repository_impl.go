@@ -391,10 +391,8 @@ func (m marketRepositoryImpl) DeleteMarket(
 	} else {
 		err = m.db.Store.Delete(accountIndex, domain.Market{})
 	}
-	if err != nil {
-		if err != badgerhold.ErrNotFound {
-			return err
-		}
+	if err != nil && err != badgerhold.ErrNotFound {
+		return err
 	}
 	return nil
 }
