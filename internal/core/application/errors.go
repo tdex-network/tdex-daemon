@@ -18,5 +18,5 @@ var (
 	// ErrInvalidOutpoint ...
 	ErrInvalidOutpoint = errors.New("outpoint refers to inexistent tx output")
 	// ErrInvalidOutpoints ...
-	ErrInvalidOutpoints = errors.New("all outpoints must be funds of to the same account")
+	ErrInvalidOutpoints = errors.New("all outpoints must be funded for the same account")
 )
