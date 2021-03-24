@@ -397,7 +397,11 @@ func (t *tradeService) TradePropose(
 
 	if swapFail == nil {
 		go t.blockchainListener.StartObserveTx(trade.TxID)
-		go t.checkTradeExpiration(trade.TxID, selectedUnspentKeys)
+		go func() {
+			// admit a tollerance of 1 minute past the expiration time.
+			time.Sleep(time.Duration(t.expiryDuration+60) * time.Second)
+			t.checkTradeExpiration(trade.TxID, selectedUnspentKeys)
+		}()
 
 		log.Infof("trade with %s accepted", tradeID)
 		log.Debugf("locked %d unspents", lockedUnspentsCount)
@@ -593,8 +597,6 @@ func (t *tradeService) checkTradeExpiration(
 	tradeTxID string,
 	selectedUnspentKeys []domain.UnspentKey,
 ) {
-	// admit a tollerance of 1 minute past the expiration time.
-	time.Sleep(time.Duration(t.expiryDuration+60) * time.Second)
 	ctx := context.Background()
 
 	// if the trade is expired it's required to unlock the unspents used as input

@@ -49,13 +49,14 @@ func TestInitWalletWrongSeed(t *testing.T) {
 	t.Cleanup(close)
 
 	wrongSeed := []string{"test"}
+	chReplies := make(chan *InitWalletReply)
 	chErr := make(chan error, 1)
 	walletSvc.InitWallet(
 		ctx,
 		wrongSeed,
 		"pass",
 		!restoreWallet,
-		make(chan *InitWalletReply),
+		chReplies,
 		chErr,
 	)
 	err := <-chErr
