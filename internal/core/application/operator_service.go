@@ -1046,7 +1046,7 @@ func (o *operatorService) claimDeposit(
 				Value:           unconfidential.Value,
 				AssetHash:       unconfidential.AssetHash,
 				ValueCommitment: bufferutil.CommitmentFromBytes(txOut.Value),
-				AssetCommitment: bufferutil.CommitmentFromBytes(txOut.Value),
+				AssetCommitment: bufferutil.CommitmentFromBytes(txOut.Asset),
 				ValueBlinder:    unconfidential.ValueBlinder,
 				AssetBlinder:    unconfidential.AssetBlinder,
 				ScriptPubKey:    txOut.Script,
