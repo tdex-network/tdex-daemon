@@ -11,6 +11,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	log "github.com/sirupsen/logrus"
+	"github.com/sony/gobreaker"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -759,6 +760,7 @@ func (w *walletService) restoreUnspents(
 	chUnspentsInfo := make(chan unspentInfo)
 	chErr := make(chan error, 1)
 	unspents := make([]domain.Unspent, 0)
+	cb := newCircuitBreaker()
 
 	for _, in := range info {
 		path := strings.Split(in.DerivationPath, "/")
@@ -771,7 +773,7 @@ func (w *walletService) restoreUnspents(
 				"account %d index %d", in.AccountIndex, addressIndex,
 			),
 		}
-		go w.getUnspentsForAddress(in, chUnspentsInfo, chErr)
+		go w.restoreUnspentsForAddress(cb, in, chUnspentsInfo, chErr)
 
 		select {
 		case err := <-chErr:
@@ -800,18 +802,23 @@ func (w *walletService) restoreUnspents(
 	return unspents, nil
 }
 
-func (w *walletService) getUnspentsForAddress(
+func (w *walletService) restoreUnspentsForAddress(
+	cb *gobreaker.CircuitBreaker,
 	info domain.AddressInfo,
 	chUnspentsInfo chan unspentInfo,
 	chErr chan error,
 ) {
 	addr := info.Address
 	blindingKeys := [][]byte{info.BlindingKey}
-	utxos, err := w.explorerService.GetUnspents(addr, blindingKeys)
+
+	iUtxos, err := cb.Execute(func() (interface{}, error) {
+		return w.explorerService.GetUnspents(addr, blindingKeys)
+	})
 	if err != nil {
 		chErr <- err
 		return
 	}
+	utxos := iUtxos.([]explorer.Utxo)
 
 	unspents := make([]domain.Unspent, len(utxos), len(utxos))
 	for i, u := range utxos {
@@ -1093,11 +1100,15 @@ func fetchUnspents(explorerSvc explorer.Service, info domain.AddressesInfo) ([]d
 	if len(info) <= 0 {
 		return nil, nil
 	}
+	cb := newCircuitBreaker()
 
-	utxos, err := explorerSvc.GetUnspentsForAddresses(info.AddressesAndKeys())
+	iUtxos, err := cb.Execute(func() (interface{}, error) {
+		return explorerSvc.GetUnspentsForAddresses(info.AddressesAndKeys())
+	})
 	if err != nil {
 		return nil, err
 	}
+	utxos := iUtxos.([]explorer.Utxo)
 
 	unspentsLen := len(utxos)
 	unspents := make([]domain.Unspent, unspentsLen, unspentsLen)
@@ -1293,6 +1304,27 @@ func extractUnspentsFromTxAndUpdateUtxoSet(
 		)
 		return
 	}
-	addUnspents(unspentRepo, unspentsToAdd)
-	spendUnspents(unspentRepo, unspentsToSpend)
+	addUnspentsAsync(unspentRepo, unspentsToAdd)
+	spendUnspentsAsync(unspentRepo, unspentsToSpend)
+}
+
+func newCircuitBreaker() *gobreaker.CircuitBreaker {
+	return gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		Name: "explorer",
+		ReadyToTrip: func(counts gobreaker.Counts) bool {
+			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
+			return counts.Requests > 20 && failureRatio >= 0.7
+		},
+		OnStateChange: func(name string, from, to gobreaker.State) {
+			if to == gobreaker.StateOpen {
+				log.Warn("explorer seems down, stop allowing requests")
+			}
+			if from == gobreaker.StateOpen && to == gobreaker.StateHalfOpen {
+				log.Info("checking explorer status")
+			}
+			if from == gobreaker.StateHalfOpen && to == gobreaker.StateClosed {
+				log.Info("explorer seems ok, restart allowing requests")
+			}
+		},
+	})
 }
