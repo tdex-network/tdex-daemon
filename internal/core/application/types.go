@@ -114,10 +114,6 @@ type TxOutpoint struct {
 	Index int
 }
 
-type UtxoInfoPerAccount struct {
-	UtxoInfoPerAccount map[uint64]UtxoInfoList
-}
-
 type UtxoInfoList struct {
 	Unspents []UtxoInfo
 	Spents   []UtxoInfo

@@ -89,7 +89,7 @@ type OperatorService interface {
 		ctx context.Context,
 		market Market,
 	) (*ReportMarketFee, error)
-	ListUtxos(ctx context.Context) (*UtxoInfoPerAccount, error)
+	ListUtxos(ctx context.Context) (map[uint64]UtxoInfoList, error)
 	ReloadUtxos(ctx context.Context) error
 }
 
@@ -824,52 +824,31 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (
 
 func (o *operatorService) ListUtxos(
 	ctx context.Context,
-) (*UtxoInfoPerAccount, error) {
+) (map[uint64]UtxoInfoList, error) {
 	utxoInfoPerAccount := make(map[uint64]UtxoInfoList)
 
-	u := o.unspentRepository.GetAllUnspents(ctx)
-	for _, v := range u {
+	unspents := o.unspentRepository.GetAllUnspents(ctx)
+	for _, u := range unspents {
 		_, accountIndex, err := o.vaultRepository.GetAccountByAddress(
 			ctx,
-			v.Address,
+			u.Address,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		if value, ok := utxoInfoPerAccount[uint64(accountIndex)]; ok {
-			if v.Locked {
-				value.Locks = appendUnspent(v, value.Locks)
-			} else if v.Spent {
-				value.Spents = appendUnspent(v, value.Spents)
-			} else {
-				value.Unspents = appendUnspent(v, value.Unspents)
-			}
-			utxoInfoPerAccount[uint64(accountIndex)] = value
+		utxoInfo := utxoInfoPerAccount[uint64(accountIndex)]
+		if u.Spent {
+			utxoInfo.Spents = appendUtxoInfo(utxoInfo.Spents, u)
+		} else if u.Locked {
+			utxoInfo.Locks = appendUtxoInfo(utxoInfo.Locks, u)
 		} else {
-			unspents := make([]UtxoInfo, 0)
-			spents := make([]UtxoInfo, 0)
-			locks := make([]UtxoInfo, 0)
-			if v.Locked {
-				locks = appendUnspent(v, locks)
-			} else if v.Spent {
-				spents = appendUnspent(v, spents)
-			} else {
-				unspents = appendUnspent(v, unspents)
-			}
-
-			utxoInfoPerAccount[uint64(accountIndex)] = UtxoInfoList{
-				Unspents: unspents,
-				Spents:   spents,
-				Locks:    locks,
-			}
+			utxoInfo.Unspents = appendUtxoInfo(utxoInfo.Unspents, u)
 		}
-
+		utxoInfoPerAccount[uint64(accountIndex)] = utxoInfo
 	}
 
-	return &UtxoInfoPerAccount{
-		UtxoInfoPerAccount: utxoInfoPerAccount,
-	}, nil
+	return utxoInfoPerAccount, nil
 }
 
 // ReloadUtxos triggers reloading of unspents for stored addresses from blockchain
@@ -1236,7 +1215,7 @@ func groupAddressesInfoByScript(info domain.AddressesInfo) map[string]domain.Add
 	return group
 }
 
-func appendUnspent(unspent domain.Unspent, list []UtxoInfo) []UtxoInfo {
+func appendUtxoInfo(list []UtxoInfo, unspent domain.Unspent) []UtxoInfo {
 	return append(list, UtxoInfo{
 		Outpoint: &TxOutpoint{
 			Hash:  unspent.TxID,
