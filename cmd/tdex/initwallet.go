@@ -68,6 +68,9 @@ func initWalletAction(ctx *cli.Context) error {
 		prevReply = reply
 		reply, err = stream.Recv()
 		if err == io.EOF {
+			if prevReply != nil {
+				fmt.Println("restore account", prevReply.GetAccount(), prevReply.GetStatus())
+			}
 			break
 		}
 		if err != nil {
