@@ -271,11 +271,9 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/tdex-network/tdex-daemon v0.2.1-0.20210317215952-93a47434cc41/go.mod h1:fwFH5N+hlzLDxdOlFnEjxS/+yTEuQKTVrJWbeKo2+MA=
-github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210317222720-0adcc0c066a5 h1:3xFdTWVotGpXDnZsqvrLGaxcgu2bhxd56SCBKKqgeEY=
-github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210317222720-0adcc0c066a5/go.mod h1:4gMUHFqbQCzBULCsmoyuvFKXX1Yr6a6r6qyhlTtR+KM=
+github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210322164638-77a31ea9e66d h1:9RwaMu/1iLcHOxAYwGRcY6+b90lPh6EZvk3VmFDIu5o=
+github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210322164638-77a31ea9e66d/go.mod h1:4gMUHFqbQCzBULCsmoyuvFKXX1Yr6a6r6qyhlTtR+KM=
 github.com/tdex-network/tdex-protobuf v0.0.0-20210312170501-eac8b4a88d04/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
-github.com/tdex-network/tdex-protobuf v0.0.0-20210322132201-a185bdfeb24f h1:V+hWp9ORmRNAfyvJ3G/g0a3Gm5CpLm8ayrSLAOk+JOE=
-github.com/tdex-network/tdex-protobuf v0.0.0-20210322132201-a185bdfeb24f/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/tdex-network/tdex-protobuf v0.0.0-20210324125236-78f6c6c0618b h1:nypIb9lNXnMtnZG3jdjB3P2D5cTmVLUkDKdK/Mltdbg=
 github.com/tdex-network/tdex-protobuf v0.0.0-20210324125236-78f6c6c0618b/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/thanhpk/randstr v1.0.4/go.mod h1:M/H2P1eNLZzlDwAzpkkkUvoyNNMbzRGhESZuEQk3r0U=
