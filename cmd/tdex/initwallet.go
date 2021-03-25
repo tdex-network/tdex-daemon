@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	pbwallet "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
@@ -60,8 +61,15 @@ func initWalletAction(ctx *cli.Context) error {
 		return err
 	}
 
-	if _, err := stream.Recv(); err != nil {
-		return err
+	for {
+		reply, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		fmt.Println(reply.Data, reply.Status)
 	}
 
 	fmt.Println()
