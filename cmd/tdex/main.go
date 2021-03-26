@@ -12,7 +12,6 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/urfave/cli/v2"
-	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/grpc"
 
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -20,24 +19,9 @@ import (
 )
 
 var (
-	networkFlag = cli.StringFlag{
-		Name:  "network, n",
-		Usage: "the network tdexd is running on: liquid or regtest",
-		Value: network.Regtest.Name,
-	}
-
-	rpcFlag = cli.StringFlag{
-		Name:  "rpcserver",
-		Usage: "tdexd daemon address host:port",
-		Value: "localhost:9000",
-	}
-
-	macaroonFlag = cli.StringFlag{
-		Name:  "macaroon",
-		Usage: "hex encoded admin macaroon",
-		Value: "",
-	}
-
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 	// maxMsgRecvSize is the largest message our client will receive. We
 	// set this to 200MiB atm.
 	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 200)
@@ -49,28 +33,25 @@ var (
 func main() {
 	app := cli.NewApp()
 
-	app.Version = "0.0.1" //TODO use goreleaser for setting version
+	app.Version = formatVersion()
 	app.Name = "tdex operator CLI"
 	app.Usage = "Command line interface for tdexd daemon operators"
-	app.Flags = []cli.Flag{
-		&networkFlag,
-		&rpcFlag,
-		&macaroonFlag,
-	}
 	app.Commands = append(
 		app.Commands,
+		&cliConfig,
 		&genseed,
 		&initwallet,
 		&unlockwallet,
 		&depositfee,
 		&depositmarket,
-		&market,
 		&listmarket,
 		&listswaps,
 		&openmarket,
 		&closemarket,
 		&updatestrategy,
 		&updateprice,
+		&listutxos,
+		&reloadtxos,
 	)
 
 	err := app.Run(os.Args)
@@ -84,7 +65,7 @@ func getState() (map[string]string, error) {
 
 	file, err := ioutil.ReadFile(statePath)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("get config state error: try 'config init'")
 	}
 	json.Unmarshal(file, &data)
 
@@ -136,6 +117,13 @@ func merge(maps ...map[string]string) map[string]string {
 	return merge
 }
 
+func formatVersion() string {
+	return fmt.Sprintf(
+		"\nVersion: %s\nCommit: %s\nDate: %s",
+		version, commit, date,
+	)
+}
+
 /*
 Modified from https://github.com/lightninglabs/pool/blob/master/cmd/pool/main.go
 Original Copyright 2017 Oliver Gugger. All Rights Reserved.
@@ -159,11 +147,7 @@ func printRespJSON(resp interface{}) {
 func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),
 	error) {
 
-	rpcServer := ctx.String("rpcserver")
-
-	var macaroonHex = ""
-
-	conn, err := getClientConn(rpcServer, macaroonHex)
+	conn, err := getClientConn()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -175,11 +159,7 @@ func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),
 func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(),
 	error) {
 
-	rpcServer := ctx.String("rpcserver")
-
-	var macaroonHex = ""
-
-	conn, err := getClientConn(rpcServer, macaroonHex)
+	conn, err := getClientConn()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -188,8 +168,18 @@ func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(),
 	return pbwallet.NewWalletClient(conn), cleanup, nil
 }
 
-func getClientConn(address, macaroonHex string) (*grpc.ClientConn,
+func getClientConn() (*grpc.ClientConn,
 	error) {
+
+	state, err := getState()
+	if err != nil {
+		return nil, err
+	}
+	address, ok := state["rpcserver"]
+	if !ok {
+		return nil, errors.New("set rpcserver with `config set rpcserver`")
+	}
+	//macaroon := state["macaroon"]
 
 	opts := []grpc.DialOption{grpc.WithDefaultCallOptions(maxMsgRecvSize), grpc.WithInsecure()}
 

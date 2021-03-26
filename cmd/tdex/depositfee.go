@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"time"
+
+	"github.com/tdex-network/tdex-daemon/config"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	"time"
 
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 
@@ -33,6 +36,10 @@ var depositfee = cli.Command{
 			Usage: "explorer endpoint url",
 			Value: "http://127.0.0.1:3001",
 		},
+		&cli.IntFlag{
+			Name:  "num_of_addresses",
+			Usage: "the number of addresses to retrieve",
+		},
 	},
 }
 
@@ -44,13 +51,16 @@ func depositFeeAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	net, baseAssetKey := getNetworkAndBaseAssetKey(ctx.String("network"))
-	explorerUrl := ctx.String("explorer")
 	fragmentationDisabled := ctx.Bool("no-fragment")
 
 	if fragmentationDisabled {
+		numOfAddresses := int64(1)
+		if ctx.Int64("num_of_addresses") > 1 {
+			numOfAddresses = ctx.Int64("num_of_addresses")
+		}
 		resp, err := client.DepositFeeAccount(
 			context.Background(), &pboperator.DepositFeeAccountRequest{
-				NumOfAddresses: 1,
+				NumOfAddresses: numOfAddresses,
 			},
 		)
 		if err != nil {
@@ -68,7 +78,10 @@ func depositFeeAction(ctx *cli.Context) error {
 	}
 
 	log.Warnf("fund address: %v", randomWallet.Address())
-	explorerSvc := explorer.NewService(explorerUrl)
+	explorerSvc, err := config.GetExplorer()
+	if err != nil {
+		log.WithError(err).Panic("error while setting up explorer service")
+	}
 	baseAssetPair, unspents := findBaseAssetsUnspents(
 		randomWallet,
 		explorerSvc,

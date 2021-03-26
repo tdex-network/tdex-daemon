@@ -1,8 +1,8 @@
 # tdex-daemon
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/tdex-network/tdex-daemon?style=flat-square)](https://goreportcard.com/report/github.com/tdex-network/tdex-daemon)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tdex-network/tdex-daemon)](https://goreportcard.com/report/github.com/tdex-network/tdex-daemon)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/tdex-network/tdex-daemon)](https://pkg.go.dev/github.com/tdex-network/tdex-daemon)
-[![Release](https://img.shields.io/github/release/tdex-network/tdex-daemon.svg?style=flat-square)](https://github.com/tdex-network/tdex-daemon/releases/latest)
+[![Release](https://img.shields.io/github/release/tdex-network/tdex-daemon.svg)](https://github.com/tdex-network/tdex-daemon/releases/latest)
 
 Go implementation of the TDex Daemon
 
@@ -33,11 +33,7 @@ Below is a list of commands you will probably find useful for development.
 Builds `tdexd` as static binary and runs the project with default configuration.
 
 ```bash
-# Max OSX
-$ make run-mac
-
-# Linux
-$ make run-linux
+$ make run
 ```
 
 ### Build daemon
@@ -45,14 +41,7 @@ $ make run-linux
 Builds `tdexd` as static binary in the `./build` folder
 
 ```bash
-# Max OSX
-$ make build-mac
-
-# Linux
-$ make build-linux
-
-# ARM
-$ make build-arm
+$ make build
 ```
 
 ### Build CLI
@@ -60,14 +49,7 @@ $ make build-arm
 Builds `tdex` as static binary in the `./build` folder
 
 ```bash
-# Max OSX
-$ make build-cli-mac
-
-# Linux
-$ make build-cli-linux
-
-# ARM
-$ make build-cli-arm
+$ make build-cli
 ```
 
 ### Build and Run with docker
@@ -85,13 +67,13 @@ docker build --pull --rm -f "Dockerfile" -t tdexd:latest "."
 #### Run the daemon
 
 ```bash
-docker run -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex-daemon tdexd:latest
+docker run -d -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex-daemon tdexd:latest
 ```
 
 #### Use the CLI
 
 ```bash
-alias tdex-cli="docker exec -it tdex tdex"
+alias tdex="docker exec -it tdexd tdex"
 ```
 
 ### Test

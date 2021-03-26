@@ -2,14 +2,16 @@ package grpchandler
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
-	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
+	"github.com/tdex-network/tdex-protobuf/generated/go/types"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -88,15 +90,14 @@ func (t traderHandler) markets(
 				return nil, err
 			}
 
-			marketsWithFee := make([]*pbtypes.MarketWithFee, 0, len(markets))
+			marketsWithFee := make([]*types.MarketWithFee, 0, len(markets))
 			for _, v := range markets {
-				m := &pbtypes.MarketWithFee{
-					Market: &pbtypes.Market{
+				m := &types.MarketWithFee{
+					Market: &types.Market{
 						BaseAsset:  v.BaseAsset,
 						QuoteAsset: v.QuoteAsset,
 					},
-					Fee: &pbtypes.Fee{
-						Asset:      v.FeeAsset,
+					Fee: &types.Fee{
 						BasisPoint: v.BasisPoint,
 					},
 				}
@@ -137,14 +138,13 @@ func (t traderHandler) balances(
 				return nil, err
 			}
 
-			balancesWithFee := make([]*pbtypes.BalanceWithFee, 0)
-			balancesWithFee = append(balancesWithFee, &pbtypes.BalanceWithFee{
-				Balance: &pbtypes.Balance{
+			balancesWithFee := make([]*types.BalanceWithFee, 0)
+			balancesWithFee = append(balancesWithFee, &types.BalanceWithFee{
+				Balance: &types.Balance{
 					BaseAmount:  balance.BaseAmount,
 					QuoteAmount: balance.QuoteAmount,
 				},
-				Fee: &pbtypes.Fee{
-					Asset:      balance.FeeAsset,
+				Fee: &types.Fee{
 					BasisPoint: balance.BasisPoint,
 				},
 			})
@@ -177,6 +177,10 @@ func (t traderHandler) marketPrice(
 	if err := validateAmount(amount); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	asset := req.GetAsset()
+	if err := validateAsset(asset); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	res, err := t.dbManager.RunTransaction(
 		reqCtx,
@@ -190,6 +194,7 @@ func (t traderHandler) marketPrice(
 				},
 				int(tradeType),
 				amount,
+				asset,
 			)
 			if err != nil {
 				return nil, err
@@ -206,10 +211,10 @@ func (t traderHandler) marketPrice(
 							QuotePrice: float32(quotePrice),
 						},
 						Fee: &pbtypes.Fee{
-							Asset:      price.FeeAsset,
 							BasisPoint: price.BasisPoint,
 						},
 						Amount: price.Amount,
+						Asset:  price.Asset,
 					},
 				},
 			}, nil
@@ -248,7 +253,7 @@ func (t traderHandler) tradePropose(
 		stream.Context(),
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			swapAccept, swapFail, swapExpiryTime, err := t.traderSvc.TradePropose(
+			accept, fail, swapExpiryTime, err := t.traderSvc.TradePropose(
 				ctx,
 				market,
 				int(tradeType),
@@ -256,6 +261,27 @@ func (t traderHandler) tradePropose(
 			)
 			if err != nil {
 				return nil, err
+			}
+
+			var swapAccept *pbswap.SwapAccept
+			var swapFail *pbswap.SwapFail
+
+			if accept != nil {
+				swapAccept = &pbswap.SwapAccept{
+					Id:                accept.GetId(),
+					RequestId:         accept.GetRequestId(),
+					Transaction:       accept.GetTransaction(),
+					InputBlindingKey:  accept.GetInputBlindingKey(),
+					OutputBlindingKey: accept.GetOutputBlindingKey(),
+				}
+			}
+			if fail != nil {
+				swapFail = &pbswap.SwapFail{
+					Id:             fail.GetId(),
+					MessageId:      fail.GetMessageId(),
+					FailureCode:    fail.GetFailureCode(),
+					FailureMessage: fail.GetFailureMessage(),
+				}
 			}
 
 			return &pb.TradeProposeReply{
@@ -280,17 +306,39 @@ func (t traderHandler) tradeComplete(
 	req *pb.TradeCompleteRequest,
 	stream pb.Trade_TradeCompleteServer,
 ) error {
+	var swapCompletePtr *domain.SwapComplete
+	var swapComplete domain.SwapComplete
+	if s := req.SwapComplete; s != nil {
+		swapComplete = s
+		swapCompletePtr = &swapComplete
+	}
+	var swapFailPtr *domain.SwapFail
+	var swapFail domain.SwapFail
+	if s := req.SwapFail; s != nil {
+		swapFail = s
+		swapFailPtr = &swapFail
+	}
 	res, err := t.dbManager.RunTransaction(
 		stream.Context(),
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			txID, swapFail, err := t.traderSvc.TradeComplete(
+			txID, fail, err := t.traderSvc.TradeComplete(
 				ctx,
-				req.GetSwapComplete(),
-				req.GetSwapFail(),
+				swapCompletePtr,
+				swapFailPtr,
 			)
 			if err != nil {
 				return nil, err
+			}
+
+			var swapFail *pbswap.SwapFail
+			if fail != nil {
+				swapFail = &pbswap.SwapFail{
+					Id:             fail.GetId(),
+					MessageId:      fail.GetMessageId(),
+					FailureCode:    fail.GetFailureCode(),
+					FailureMessage: fail.GetFailureMessage(),
+				}
 			}
 
 			return &pb.TradeCompleteReply{
@@ -311,7 +359,7 @@ func (t traderHandler) tradeComplete(
 	return nil
 }
 
-func validateTradeType(tType pbtrade.TradeType) error {
+func validateTradeType(tType pb.TradeType) error {
 	if int(tType) < application.TradeBuy || int(tType) > application.TradeSell {
 		return errors.New("trade type is unknown")
 	}
@@ -337,6 +385,13 @@ func validateSwapRequest(swapRequest *pbswap.SwapRequest) error {
 		len(swapRequest.GetInputBlindingKey()) <= 0 ||
 		len(swapRequest.GetOutputBlindingKey()) <= 0 {
 		return errors.New("swap request is malformed")
+	}
+	return nil
+}
+
+func validateAsset(asset string) error {
+	if buf, err := hex.DecodeString(asset); err != nil || len(buf) != 32 {
+		return errors.New("invalid asset")
 	}
 	return nil
 }

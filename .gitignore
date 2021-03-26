@@ -33,3 +33,6 @@ DS_Store
 internal/core/application/testDatadir/
 
 .vscode/
+
+localhost.key
+localhost.crt

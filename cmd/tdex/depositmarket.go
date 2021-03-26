@@ -3,6 +3,13 @@ package main
 import (
 	"context"
 	"errors"
+	"sort"
+	"time"
+
+	"github.com/vulpemventures/go-elements/elementsutil"
+
+	"github.com/tdex-network/tdex-daemon/config"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -11,12 +18,9 @@ import (
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"github.com/vulpemventures/go-elements/address"
-	"github.com/vulpemventures/go-elements/confidential"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
-	"sort"
-	"time"
 
 	"github.com/urfave/cli/v2"
 )
@@ -47,6 +51,10 @@ var depositmarket = cli.Command{
 			Usage: "explorer endpoint url",
 			Value: "http://127.0.0.1:3001",
 		},
+		&cli.IntFlag{
+			Name:  "num_of_addresses",
+			Usage: "the number of addresses to generate for the market",
+		},
 	},
 	Action: depositMarketAction,
 }
@@ -73,7 +81,6 @@ func depositMarketAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	net, baseAssetKey := getNetworkAndBaseAssetKey(ctx.String("network"))
-	explorerUrl := ctx.String("explorer")
 	fragmentationDisabled := ctx.Bool("no-fragment")
 	quoteAssetOpt := ctx.String("quote_asset")
 	baseAssetOpt := ""
@@ -82,13 +89,17 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 
 	if fragmentationDisabled {
+		numOfAddresses := int64(1)
+		if ctx.Int64("num_of_addresses") > 1 {
+			numOfAddresses = ctx.Int64("num_of_addresses")
+		}
 		resp, err := client.DepositMarket(
 			context.Background(), &pboperator.DepositMarketRequest{
 				Market: &pbtypes.Market{
 					BaseAsset:  baseAssetOpt,
 					QuoteAsset: quoteAssetOpt,
 				},
-				NumOfAddresses: 1,
+				NumOfAddresses: numOfAddresses,
 			},
 		)
 		if err != nil {
@@ -106,7 +117,10 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 
 	log.Warnf("fund address: %v", randomWallet.Address())
-	explorerSvc := explorer.NewService(explorerUrl)
+	explorerSvc, err := config.GetExplorer()
+	if err != nil {
+		log.WithError(err).Panic("error while setting up explorer service")
+	}
 	assetValuePair, unspents := findAssetsUnspents(
 		randomWallet,
 		explorerSvc,
@@ -434,7 +448,7 @@ func craftTransaction(
 		return "", err
 	}
 
-	feeValue, _ := confidential.SatoshiToElementsValue(feeAmount)
+	feeValue, _ := elementsutil.SatoshiToElementsValue(feeAmount)
 	lbtc, err := bufferutil.AssetHashToBytes(baseAssetKey)
 	if err != nil {
 		return "", err
@@ -526,7 +540,7 @@ func parseConfidentialAddress(
 	addr string,
 	network network.Network,
 ) ([]byte, []byte, error) {
-	script, err := address.ToOutputScript(addr, network)
+	script, err := address.ToOutputScript(addr)
 	if err != nil {
 		return nil, nil, err
 	}

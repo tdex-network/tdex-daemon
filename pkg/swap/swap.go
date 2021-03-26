@@ -3,6 +3,7 @@ package swap
 import (
 	"encoding/hex"
 	"errors"
+
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
@@ -17,7 +18,7 @@ func compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccep
 	}
 
 	for index, input := range decodedFromRequest.Inputs {
-		if (input.WitnessUtxo == nil && input.NonWitnessUtxo != nil) {
+		if input.WitnessUtxo == nil && input.NonWitnessUtxo != nil {
 			inputVout := decodedFromRequest.UnsignedTx.Inputs[index].Index
 			decodedFromRequest.Inputs[index].WitnessUtxo = input.NonWitnessUtxo.Outputs[inputVout]
 		}
@@ -97,7 +98,7 @@ func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, ass
 			}
 		}
 		// unconfidential check
-	 	if bufferutil.ValueFromBytes(output.Value) == value && bufferutil.AssetHashFromBytes(output.Asset) == asset {
+		if bufferutil.ValueFromBytes(output.Value) == value && bufferutil.AssetHashFromBytes(output.Asset) == asset {
 			return true, nil
 		}
 	}
@@ -106,21 +107,21 @@ func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, ass
 }
 
 func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) (uint64, error) {
-		var amount uint64 = 0
+	var amount uint64 = 0
 
-		// filter the utxos using assetHash
-		filteredUtxos, err := utxosFilteredByAssetHashAndUnblinded(utxos, asset, inputBlindKeys)
-		if (err != nil) {
-			return 0, err
-		}
+	// filter the utxos using assetHash
+	filteredUtxos, err := utxosFilteredByAssetHashAndUnblinded(utxos, asset, inputBlindKeys)
+	if err != nil {
+		return 0, err
+	}
 
-		// sum all the filteredUtxos' values
-		for _, utxo := range filteredUtxos {
-			value := bufferutil.ValueFromBytes(utxo.WitnessUtxo.Value)
-			amount += value
-		}
+	// sum all the filteredUtxos' values
+	for _, utxo := range filteredUtxos {
+		value := bufferutil.ValueFromBytes(utxo.WitnessUtxo.Value)
+		amount += value
+	}
 
-		return amount, nil
+	return amount, nil
 }
 
 func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inputBlindKeys map[string][]byte) ([]pset.PInput, error) {
@@ -146,7 +147,7 @@ func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inp
 				if err != nil {
 					return nil, err
 				}
-				utxo.WitnessUtxo.Asset = assetBytes 
+				utxo.WitnessUtxo.Asset = assetBytes
 
 				valueBytes, err := bufferutil.ValueToBytes(unblinded.Value)
 				if err != nil {

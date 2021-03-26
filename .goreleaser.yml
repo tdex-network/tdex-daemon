@@ -25,6 +25,8 @@ builds:
     binary: tdexd-darwin
   - id: "tdex"
     main: ./cmd/tdex
+    ldflags:
+      - -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
     env:
       - CGO_ENABLED=0
     goos:
@@ -33,6 +35,9 @@ builds:
     goarch:
       - amd64
     binary: tdex
+## flag the semver v**.**.**-<tag>.* as pre-release on Github
+release:
+  prerelease: auto
 checksum:
   name_template: "checksums.txt"
 signs:
@@ -61,25 +66,62 @@ archives:
     builds:
       - tdexd-linux
       - tdexd-darwin
-    name_template: "tdexd-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    name_template: "tdexd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
   - id: tdex
     format: binary
     builds:
       - tdex
-    name_template: "tdex-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 dockers:
-  - 
-    goos: linux
-    goarch: amd64
-    goarm: ''
-    binaries:
-    - tdexd-linux
-    - tdex
+  # push always either release or prerelease with a docker tag with the semver only
+  - skip_push: false
+    dockerfile: Dockerfile
+    # image templates
     image_templates:
-    - "ghcr.io/tdex-network/tdexd:latest"
-    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
-    dockerfile: goreleaser.Dockerfile
+      - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
+    # GOOS of the built binaries/packages that should be used.
+    goos: linux
+    # GOARCH of the built binaries/packages that should be used.
+    goarch: amd64
+    # Template of the docker build flags.
     build_flag_templates:
-    - "--pull"
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--build-arg=VERSION={{.Version}}"
+      - "--build-arg=COMMIT={{.Commit}}"
+      - "--build-arg=DATE={{.Date}}"
 
-  
+    extra_files:
+      - go.mod
+      - go.sum
+      - internal
+      - config
+      - pkg
+      - cmd
+  # push only release with both a docker tag latest and one with the semver
+  - skip_push: auto
+    dockerfile: Dockerfile
+    # image templates
+    image_templates:
+      - "ghcr.io/tdex-network/tdexd:latest"
+    # GOOS of the built binaries/packages that should be used.
+    goos: linux
+    # GOARCH of the built binaries/packages that should be used.
+    goarch: amd64
+    # Template of the docker build flags.
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - go.mod
+      - go.sum
+      - internal
+      - config
+      - pkg
+      - cmd

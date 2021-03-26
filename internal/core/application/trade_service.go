@@ -4,21 +4,20 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
+	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 )
 
@@ -29,18 +28,19 @@ type TradeService interface {
 		market Market,
 		tradeType int,
 		amount uint64,
+		asset string,
 	) (*PriceWithFee, error)
 	TradePropose(
 		ctx context.Context,
 		market Market,
 		tradeType int,
-		swapRequest *pb.SwapRequest,
-	) (*pb.SwapAccept, *pb.SwapFail, uint64, error)
+		swapRequest domain.SwapRequest,
+	) (domain.SwapAccept, domain.SwapFail, uint64, error)
 	TradeComplete(
 		ctx context.Context,
-		swapComplete *pb.SwapComplete,
-		swapFail *pb.SwapFail,
-	) (string, *pb.SwapFail, error)
+		swapComplete *domain.SwapComplete,
+		swapFail *domain.SwapFail,
+	) (string, domain.SwapFail, error)
 	GetMarketBalance(
 		ctx context.Context,
 		market Market,
@@ -48,12 +48,16 @@ type TradeService interface {
 }
 
 type tradeService struct {
-	marketRepository  domain.MarketRepository
-	tradeRepository   domain.TradeRepository
-	vaultRepository   domain.VaultRepository
-	unspentRepository domain.UnspentRepository
-	explorerSvc       explorer.Service
-	crawlerSvc        crawler.Service
+	marketRepository   domain.MarketRepository
+	tradeRepository    domain.TradeRepository
+	vaultRepository    domain.VaultRepository
+	unspentRepository  domain.UnspentRepository
+	explorerSvc        explorer.Service
+	blockchainListener BlockchainListener
+	marketBaseAsset    string
+	expiryDuration     uint64
+	priceSlippage      decimal.Decimal
+	network            *network.Network
 }
 
 func NewTradeService(
@@ -62,7 +66,11 @@ func NewTradeService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
-	crawlerSvc crawler.Service,
+	bcListener BlockchainListener,
+	marketBaseAsset string,
+	expiryDuration time.Duration,
+	priceSlippage decimal.Decimal,
+	net *network.Network,
 ) TradeService {
 	return newTradeService(
 		marketRepository,
@@ -70,7 +78,11 @@ func NewTradeService(
 		vaultRepository,
 		unspentRepository,
 		explorerSvc,
-		crawlerSvc,
+		bcListener,
+		marketBaseAsset,
+		uint64(expiryDuration),
+		priceSlippage,
+		net,
 	)
 }
 
@@ -80,15 +92,23 @@ func newTradeService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
 	explorerSvc explorer.Service,
-	crawlerSvc crawler.Service,
+	bcListener BlockchainListener,
+	marketBaseAsset string,
+	expiryDuration uint64,
+	priceSlippage decimal.Decimal,
+	net *network.Network,
 ) *tradeService {
 	return &tradeService{
-		marketRepository:  marketRepository,
-		tradeRepository:   tradeRepository,
-		vaultRepository:   vaultRepository,
-		unspentRepository: unspentRepository,
-		explorerSvc:       explorerSvc,
-		crawlerSvc:        crawlerSvc,
+		marketRepository:   marketRepository,
+		tradeRepository:    tradeRepository,
+		vaultRepository:    vaultRepository,
+		unspentRepository:  unspentRepository,
+		explorerSvc:        explorerSvc,
+		blockchainListener: bcListener,
+		marketBaseAsset:    marketBaseAsset,
+		expiryDuration:     expiryDuration,
+		priceSlippage:      priceSlippage,
+		network:            net,
 	}
 }
 
@@ -110,7 +130,6 @@ func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 				QuoteAsset: mkt.QuoteAsset,
 			},
 			Fee: Fee{
-				FeeAsset:   mkt.FeeAsset,
 				BasisPoint: mkt.Fee,
 			},
 		})
@@ -125,22 +144,29 @@ func (t *tradeService) GetMarketPrice(
 	market Market,
 	tradeType int,
 	amount uint64,
+	asset string,
 ) (*PriceWithFee, error) {
 	// check the asset strings
-	err := validateAssetString(market.BaseAsset)
-	if err != nil {
-		return nil, domain.ErrInvalidBaseAsset
+	if err := validateAssetString(market.BaseAsset); err != nil {
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
-	err = validateAssetString(market.QuoteAsset)
-	if err != nil {
-		return nil, domain.ErrInvalidQuoteAsset
+	if err := validateAssetString(market.QuoteAsset); err != nil {
+		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	// Checks if base asset is correct
-	if market.BaseAsset != config.GetString(config.BaseAssetKey) {
-		return nil, domain.ErrMarketNotExist
+	if market.BaseAsset != t.marketBaseAsset {
+		return nil, ErrMarketNotExist
 	}
+
+	if err := validateAssetString(asset); err != nil {
+		return nil, errors.New("invalid asset")
+	}
+	if asset != market.BaseAsset && asset != market.QuoteAsset {
+		return nil, errors.New("asset must match one of those of the market")
+	}
+
 	//Checks if market exist
 	mkt, mktAccountIndex, err := t.marketRepository.GetMarketByAsset(
 		ctx,
@@ -150,7 +176,7 @@ func (t *tradeService) GetMarketPrice(
 		return nil, err
 	}
 	if mktAccountIndex < 0 {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
 	if !mkt.IsTradable() {
@@ -162,18 +188,23 @@ func (t *tradeService) GetMarketPrice(
 		return nil, err
 	}
 
-	price, previewAmount, err := getPriceAndPreviewForMarket(unspents, mkt, tradeType, amount)
+	price, previewAmount, err := getPriceAndPreviewForMarket(unspents, mkt, tradeType, amount, asset)
 	if err != nil {
 		return nil, err
+	}
+
+	previewAsset := market.BaseAsset
+	if asset == market.BaseAsset {
+		previewAsset = market.QuoteAsset
 	}
 
 	return &PriceWithFee{
 		Price: price,
 		Fee: Fee{
-			FeeAsset:   mkt.FeeAsset,
 			BasisPoint: mkt.Fee,
 		},
 		Amount: previewAmount,
+		Asset:  previewAsset,
 	}, nil
 }
 
@@ -182,22 +213,22 @@ func (t *tradeService) TradePropose(
 	ctx context.Context,
 	market Market,
 	tradeType int,
-	swapRequest *pb.SwapRequest,
+	swapRequest domain.SwapRequest,
 ) (
-	swapAccept *pb.SwapAccept,
-	swapFail *pb.SwapFail,
+	swapAccept domain.SwapAccept,
+	swapFail domain.SwapFail,
 	swapExpiryTime uint64,
 	err error,
 ) {
 	// check the asset strings
 	_err := validateAssetString(market.BaseAsset)
 	if _err != nil {
-		return nil, nil, 0, domain.ErrInvalidBaseAsset
+		return nil, nil, 0, domain.ErrMarketInvalidBaseAsset
 	}
 
 	_err = validateAssetString(market.QuoteAsset)
 	if _err != nil {
-		return nil, nil, 0, domain.ErrInvalidQuoteAsset
+		return nil, nil, 0, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	mkt, marketAccountIndex, _err := t.marketRepository.GetMarketByAsset(
@@ -209,7 +240,7 @@ func (t *tradeService) TradePropose(
 		return
 	}
 	if marketAccountIndex < 0 {
-		return nil, nil, 0, domain.ErrMarketNotExist
+		return nil, nil, 0, ErrMarketNotExist
 	}
 
 	// get all unspents for market account (both as []domain.Unspents and as
@@ -241,71 +272,45 @@ func (t *tradeService) TradePropose(
 		return
 	}
 
-	amount := swapRequest.AmountR
-	if tradeType == TradeSell {
-		amount = swapRequest.AmountP
-	}
-
-	_, previewAmount, _err := getPriceAndPreviewForMarket(
-		marketUnspents,
-		mkt, tradeType, amount,
-	)
-	if _err != nil {
-		err = _err
-		return
-	}
-
 	var mnemonic []string
-	var tradeID uuid.UUID
-	var selectedUnspents []explorer.Utxo
+	var tradeTxID string
 	var outputBlindingKeysByScript map[string][]byte
 	var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
 	type blindKeyAndAccountIndex struct {
 		blindkey     []byte
 		accountIndex int
 	}
-	var addressesToObserve map[string]blindKeyAndAccountIndex
+	var addressesToObserve []domain.AddressInfo
 
 	// derive output and change address for market, and change address for fee account
 	if err := t.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err = v.GetMnemonicSafe()
 			if err != nil {
 				return nil, err
 			}
-			outputAddress, outputScript, outputBlindKey, err :=
-				v.DeriveNextExternalAddressForAccount(marketAccountIndex)
+			info, err := v.DeriveNextExternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			changeAddress, changeScript, changeBlindKey, err :=
-				v.DeriveNextInternalAddressForAccount(marketAccountIndex)
+			changeInfo, err := v.DeriveNextInternalAddressForAccount(marketAccountIndex)
 			if err != nil {
 				return nil, err
 			}
-			feeChangeAddress, feeChangeScript, feeChangeBlindKey, err :=
-				v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			feeChangeInfo, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
-			marketAccount, _ := v.AccountByIndex(marketAccountIndex)
-			feeAccount, _ := v.AccountByIndex(domain.FeeAccount)
 
 			outputBlindingKeysByScript = map[string][]byte{
-				outputScript: outputBlindKey,
-				changeScript: changeBlindKey,
+				info.Script:       info.BlindingKey,
+				changeInfo.Script: changeInfo.BlindingKey,
 			}
-			addressesToObserve = map[string]blindKeyAndAccountIndex{
-				outputAddress:    blindKeyAndAccountIndex{outputBlindKey, marketAccountIndex},
-				changeAddress:    blindKeyAndAccountIndex{changeBlindKey, marketAccountIndex},
-				feeChangeAddress: blindKeyAndAccountIndex{feeChangeBlindKey, domain.FeeAccount},
-			}
-			outputDerivationPath, _ = marketAccount.DerivationPathByScript[outputScript]
-			changeDerivationPath, _ = marketAccount.DerivationPathByScript[changeScript]
-			feeChangeDerivationPath, _ = feeAccount.DerivationPathByScript[feeChangeScript]
+
+			outputDerivationPath = info.DerivationPath
+			changeDerivationPath = changeInfo.DerivationPath
+			feeChangeDerivationPath = feeChangeInfo.DerivationPath
 
 			return v, nil
 		}); err != nil {
@@ -313,11 +318,20 @@ func (t *tradeService) TradePropose(
 	}
 
 	// parse swap proposal and possibly accept
+	trade, err := t.tradeRepository.GetOrCreateTrade(ctx, nil)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
 	if err := t.tradeRepository.UpdateTrade(
 		ctx,
-		nil,
+		&trade.ID,
 		func(trade *domain.Trade) (*domain.Trade, error) {
-			ok, err := trade.Propose(swapRequest, market.QuoteAsset, nil)
+			ok, err := trade.Propose(
+				swapRequest,
+				market.QuoteAsset, mkt.Fee,
+				nil,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -326,16 +340,15 @@ func (t *tradeService) TradePropose(
 				return trade, nil
 			}
 
-			if !isValidTradePrice(swapRequest, tradeType, previewAmount) {
+			if !isValidTradePrice(swapRequest, tradeType, mkt, marketUnspents, t.priceSlippage) {
 				trade.Fail(
 					swapRequest.GetId(),
-					domain.ProposalRejectedStatus,
-					pkgswap.ErrCodeInvalidSwapRequest,
+					int(pkgswap.ErrCodeInvalidSwapRequest),
 					"bad pricing",
 				)
+				swapFail = trade.SwapFailMessage()
 				return trade, nil
 			}
-			tradeID = trade.ID
 
 			acceptSwapResult, err := acceptSwap(acceptSwapOpts{
 				mnemonic:                   mnemonic,
@@ -350,6 +363,7 @@ func (t *tradeService) TradePropose(
 				outputDerivationPath:       outputDerivationPath,
 				changeDerivationPath:       changeDerivationPath,
 				feeChangeDerivationPath:    feeChangeDerivationPath,
+				network:                    t.network,
 			})
 			if err != nil {
 				return nil, err
@@ -359,42 +373,38 @@ func (t *tradeService) TradePropose(
 				acceptSwapResult.psetBase64,
 				acceptSwapResult.inputBlindingKeys,
 				acceptSwapResult.outputBlindingKeys,
+				t.expiryDuration,
 			)
 			if err != nil {
 				return nil, err
 			}
 			if !ok {
 				swapFail = trade.SwapFailMessage()
-			} else {
-				swapAccept = trade.SwapAcceptMessage()
-				swapExpiryTime = trade.SwapExpiryTime()
-				selectedUnspents = acceptSwapResult.selectedUnspents
+				return trade, nil
+			}
+			swapAccept = trade.SwapAcceptMessage()
+			swapExpiryTime = trade.ExpiryTime
+
+			// Last thing to do is to lock the unspents. In case something goes wrong
+			// here, an error is returned and the accepted trade is discarded.
+			selectedUnspentKeys := getUnspentKeys(acceptSwapResult.selectedUnspents)
+			if err := t.unspentRepository.LockUnspents(
+				ctx,
+				selectedUnspentKeys,
+				trade.ID,
+			); err != nil {
+				return nil, err
 			}
 
 			trade.MarketFee = mkt.Fee
-			trade.MarketFeeAsset = mkt.FeeAsset
+			tradeTxID = trade.TxID
 
 			return trade, nil
 		}); err != nil {
 		return nil, nil, 0, err
 	}
 
-	selectedUnspentKeys := getUnspentKeys(selectedUnspents)
-	if err := t.unspentRepository.LockUnspents(
-		ctx,
-		selectedUnspentKeys,
-		tradeID,
-	); err != nil {
-		return nil, nil, 0, err
-	}
-
-	for addr, info := range addressesToObserve {
-		t.crawlerSvc.AddObservable(&crawler.AddressObservable{
-			AccountIndex: info.accountIndex,
-			Address:      addr,
-			BlindingKey:  info.blindkey,
-		})
-	}
+	go t.startObservingAddressesAndTx(addressesToObserve, tradeTxID)
 
 	return
 }
@@ -402,18 +412,21 @@ func (t *tradeService) TradePropose(
 // TradeComplete is the domain controller for the TradeComplete RPC
 func (t *tradeService) TradeComplete(
 	ctx context.Context,
-	swapComplete *pb.SwapComplete,
-	swapFail *pb.SwapFail,
-) (string, *pb.SwapFail, error) {
+	swapComplete *domain.SwapComplete,
+	swapFail *domain.SwapFail,
+) (string, domain.SwapFail, error) {
 	if swapFail != nil {
-		swapFailMsg, err := t.tradeFail(ctx, swapFail)
+		swapFailMsg, err := t.tradeFail(ctx, *swapFail)
 		return "", swapFailMsg, err
 	}
 
-	return t.tradeComplete(ctx, swapComplete)
+	return t.tradeComplete(ctx, *swapComplete)
 }
 
-func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapComplete) (txID string, swapFail *pb.SwapFail, err error) {
+func (t *tradeService) tradeComplete(
+	ctx context.Context,
+	swapComplete domain.SwapComplete,
+) (txID string, swapFail domain.SwapFail, err error) {
 	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
 	if err != nil {
 		return "", nil, err
@@ -425,7 +438,7 @@ func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapC
 		&tradeID,
 		func(trade *domain.Trade) (*domain.Trade, error) {
 			psetBase64 := swapComplete.GetTransaction()
-			res, err := trade.Complete(psetBase64, txID)
+			res, err := trade.Complete(psetBase64)
 			if err != nil {
 				return nil, err
 			}
@@ -450,7 +463,10 @@ func (t *tradeService) tradeComplete(ctx context.Context, swapComplete *pb.SwapC
 	return
 }
 
-func (t *tradeService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*pb.SwapFail, error) {
+func (t *tradeService) tradeFail(
+	ctx context.Context,
+	swapFail domain.SwapFail,
+) (domain.SwapFail, error) {
 	swapID := swapFail.GetMessageId()
 	trade, err := t.tradeRepository.GetTradeBySwapAcceptID(ctx, swapID)
 	if err != nil {
@@ -464,8 +480,7 @@ func (t *tradeService) tradeFail(ctx context.Context, swapFail *pb.SwapFail) (*p
 		func(trade *domain.Trade) (*domain.Trade, error) {
 			trade.Fail(
 				swapID,
-				domain.FailedToCompleteStatus,
-				pkgswap.ErrCodeFailedToComplete,
+				int(pkgswap.ErrCodeFailedToComplete),
 				"set failed by counter-party",
 			)
 			return trade, nil
@@ -487,11 +502,11 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 	map[string]string,
 	error,
 ) {
-	derivedAddresses, blindingKeys, err := t.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, account)
+	info, err := t.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, account)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
+	derivedAddresses, blindingKeys := info.AddressesAndKeys()
 
 	unspents, err := t.unspentRepository.GetAvailableUnspentsForAddresses(
 		ctx,
@@ -507,7 +522,7 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 
 	scripts := make([]string, 0, len(derivedAddresses))
 	for _, addr := range derivedAddresses {
-		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
+		script, _ := address.ToOutputScript(addr)
 		scripts = append(scripts, hex.EncodeToString(script))
 	}
 	derivationPaths, _ := t.vaultRepository.GetDerivationPathByScript(
@@ -518,16 +533,29 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 
 	blindingKeysByScript := map[string][]byte{}
 	for i, addr := range derivedAddresses {
-		script, _ := address.ToOutputScript(addr, *config.GetNetwork())
+		script, _ := address.ToOutputScript(addr)
 		blindingKeysByScript[hex.EncodeToString(script)] = blindingKeys[i]
 	}
 
 	return unspents, utxos, blindingKeysByScript, derivationPaths, nil
 }
 
+func (t *tradeService) startObservingAddressesAndTx(addressesToObserve []domain.AddressInfo, txid string) {
+	t.blockchainListener.StartObserveTx(txid)
+
+	for _, info := range addressesToObserve {
+		t.blockchainListener.StartObserveAddress(
+			info.AccountIndex,
+			info.Address,
+			info.BlindingKey,
+		)
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
 type acceptSwapOpts struct {
 	mnemonic                   []string
-	swapRequest                *pb.SwapRequest
+	swapRequest                domain.SwapRequest
 	marketUnspents             []explorer.Utxo
 	feeUnspents                []explorer.Utxo
 	marketBlindingKeysByScript map[string][]byte
@@ -538,6 +566,7 @@ type acceptSwapOpts struct {
 	outputDerivationPath       string
 	changeDerivationPath       string
 	feeChangeDerivationPath    string
+	network                    *network.Network
 }
 
 type acceptSwapResult struct {
@@ -554,7 +583,7 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 	if err != nil {
 		return
 	}
-	network := config.GetNetwork()
+	network := opts.network
 	// fill swap request transaction with daemon's inputs and outputs
 	psetBase64, selectedUnspentsForSwap, err := w.UpdateSwapTx(wallet.UpdateSwapTxOpts{
 		PsetBase64:           opts.swapRequest.GetTransaction(),
@@ -618,7 +647,7 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 	// add the explicit fee output to the tx
 	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64: blindedPset,
-		Outputs:    transactionutil.NewFeeOutput(psetWithFeesResult.FeeAmount),
+		Outputs:    transactionutil.NewFeeOutput(psetWithFeesResult.FeeAmount, network),
 		Network:    network,
 	})
 	if err != nil {
@@ -730,21 +759,62 @@ func getPriceAndPreviewForMarket(
 	market *domain.Market,
 	tradeType int,
 	amount uint64,
-) (
-	price Price,
-	previewAmount uint64,
-	err error,
-) {
+	asset string,
+) (Price, uint64, error) {
+	balances := getBalanceByAsset(unspents)
+	baseAssetBalance := balances[market.BaseAsset]
+	quoteAssetBalance := balances[market.QuoteAsset]
+
+	if tradeType == TradeBuy {
+		if asset == market.BaseAsset && amount >= baseAssetBalance {
+			return Price{}, 0, errors.New("provided amount is too big")
+		}
+	} else {
+		if asset == market.QuoteAsset && amount >= quoteAssetBalance {
+			return Price{}, 0, errors.New("provided amount is too big")
+		}
+	}
+
 	if market.IsStrategyPluggable() {
-		previewAmount = calcPreviewAmount(market, tradeType, amount)
-		price = Price{
+		previewAmount := calcPreviewAmount(
+			market,
+			baseAssetBalance,
+			quoteAssetBalance,
+			tradeType,
+			amount,
+			asset,
+		)
+
+		price := Price{
 			BasePrice:  market.BaseAssetPrice(),
 			QuotePrice: market.QuoteAssetPrice(),
 		}
-		return
+		return price, previewAmount, nil
 	}
 
-	return previewFromFormula(unspents, market, tradeType, amount)
+	price, previewAmount, err := previewFromFormula(
+		market,
+		baseAssetBalance,
+		quoteAssetBalance,
+		tradeType,
+		amount,
+		asset,
+	)
+	if err != nil {
+		return Price{}, 0, err
+	}
+
+	if tradeType == TradeBuy {
+		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
+			return Price{}, 0, errors.New("provided amount is too big")
+		}
+	} else {
+		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
+			return Price{}, 0, errors.New("provided amount is too big")
+		}
+	}
+
+	return *price, previewAmount, nil
 }
 
 func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
@@ -762,20 +832,27 @@ func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
 // depending on the trade type and the base asset amount provided.
 // The market fees are either added or subtracted to the converted amount
 // basing on the trade type.
-func calcPreviewAmount(market *domain.Market, tradeType int, amount uint64) uint64 {
-	if tradeType == TradeBuy {
-		return calcProposeAmount(
-			amount,
-			market.Fee,
-			market.QuoteAssetPrice(),
-		)
+func calcPreviewAmount(
+	market *domain.Market,
+	baseAssetBalance, quoteAssetBalance uint64,
+	tradeType int,
+	amount uint64,
+	asset string,
+) uint64 {
+	price := market.QuoteAssetPrice()
+	if asset != market.BaseAsset {
+		price = market.BaseAssetPrice()
 	}
 
-	return calcExpectedAmount(
-		amount,
-		market.Fee,
-		market.QuoteAssetPrice(),
-	)
+	chargeFeesOnTheWayIn := asset == market.BaseAsset
+	var previewAmount uint64
+	if tradeType == TradeBuy {
+		previewAmount = calcProposeAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+	} else {
+		previewAmount = calcExpectedAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+	}
+
+	return previewAmount
 }
 
 // calcProposeAmount returns the quote asset amount due for a BUY trade, that,
@@ -804,96 +881,196 @@ func calcProposeAmount(
 	amount uint64,
 	feeAmount int64,
 	price decimal.Decimal,
+	chargeFeesOnTheWayIn bool,
 ) uint64 {
-	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
-	amountR := decimal.NewFromInt(int64(amount))
+	netAmountR := decimal.NewFromInt(int64(amount)).Mul(price).BigInt().Uint64()
+	if !chargeFeesOnTheWayIn {
+		amountP, _ := mathutil.LessFee(netAmountR, uint64(feeAmount))
+		return amountP
+	}
 
-	// amountP = amountR * price * (1 + feePercentage)
-	amountP := amountR.Mul(price).Mul(decimal.NewFromInt(1).Add(feePercentage))
-	return amountP.BigInt().Uint64()
+	amountP, _ := mathutil.PlusFee(netAmountR, uint64(feeAmount))
+	return amountP
 }
 
 func calcExpectedAmount(
 	amount uint64,
 	feeAmount int64,
 	price decimal.Decimal,
+	chargeFeesOnTheWayIn bool,
 ) uint64 {
-	feePercentage := decimal.NewFromInt(feeAmount).Div(decimal.NewFromInt(100))
-	amountP := decimal.NewFromInt(int64(amount))
+	netAmountP := decimal.NewFromInt(int64(amount)).Mul(price).BigInt().Uint64()
 
-	// amountR = amountP + price * (1 - feePercentage)
-	amountR := amountP.Mul(price).Mul(decimal.NewFromInt(1).Sub(feePercentage))
-	return amountR.BigInt().Uint64()
+	if !chargeFeesOnTheWayIn {
+		amountR, _ := mathutil.PlusFee(netAmountP, uint64(feeAmount))
+		return amountR
+	}
+
+	amountR, _ := mathutil.LessFee(netAmountP, uint64(feeAmount))
+	return amountR
 }
 
 func previewFromFormula(
-	unspents []domain.Unspent,
 	market *domain.Market,
+	baseAssetBalance, quoteAssetBalance uint64,
 	tradeType int,
 	amount uint64,
-) (price Price, previewAmount uint64, err error) {
-	balances := getBalanceByAsset(unspents)
-	baseBalanceAvailable := balances[market.BaseAsset]
-	quoteBalanceAvailable := balances[market.QuoteAsset]
+	asset string,
+) (price *Price, previewAmount uint64, err error) {
 	formula := market.Strategy.Formula()
 
 	if tradeType == TradeBuy {
-		previewAmount, err = formula.InGivenOut(
-			&mm.FormulaOpts{
-				BalanceIn:           quoteBalanceAvailable,
-				BalanceOut:          baseBalanceAvailable,
-				Fee:                 uint64(market.Fee),
-				ChargeFeeOnTheWayIn: market.FeeAsset == market.BaseAsset,
-			},
-			amount,
-		)
+		if asset == market.BaseAsset {
+			previewAmount, err = formula.InGivenOut(
+				&mm.FormulaOpts{
+					BalanceIn:           quoteAssetBalance,
+					BalanceOut:          baseAssetBalance,
+					Fee:                 uint64(market.Fee),
+					ChargeFeeOnTheWayIn: true,
+				},
+				amount,
+			)
+		} else {
+			previewAmount, err = formula.OutGivenIn(
+				&mm.FormulaOpts{
+					BalanceIn:           quoteAssetBalance,
+					BalanceOut:          baseAssetBalance,
+					Fee:                 uint64(market.Fee),
+					ChargeFeeOnTheWayIn: true,
+				},
+				amount,
+			)
+		}
 	} else {
-		previewAmount, err = formula.OutGivenIn(
-			&mm.FormulaOpts{
-				BalanceIn:           baseBalanceAvailable,
-				BalanceOut:          quoteBalanceAvailable,
-				Fee:                 uint64(market.Fee),
-				ChargeFeeOnTheWayIn: market.FeeAsset == market.QuoteAsset,
-			},
-			amount,
-		)
+		if asset == market.BaseAsset {
+			previewAmount, err = formula.OutGivenIn(
+				&mm.FormulaOpts{
+					BalanceIn:           baseAssetBalance,
+					BalanceOut:          quoteAssetBalance,
+					Fee:                 uint64(market.Fee),
+					ChargeFeeOnTheWayIn: true,
+				},
+				amount,
+			)
+		} else {
+			previewAmount, err = formula.InGivenOut(
+				&mm.FormulaOpts{
+					BalanceIn:           baseAssetBalance,
+					BalanceOut:          quoteAssetBalance,
+					Fee:                 uint64(market.Fee),
+					ChargeFeeOnTheWayIn: true,
+				},
+				amount,
+			)
+		}
 	}
 	if err != nil {
 		return
 	}
 
-	basePrice, err := formula.SpotPrice(&mm.FormulaOpts{
-		BalanceIn:  quoteBalanceAvailable,
-		BalanceOut: baseBalanceAvailable,
-	})
-	if err != nil {
-		return
-	}
-	quotePrice, err := formula.SpotPrice(&mm.FormulaOpts{
-		BalanceIn:  baseBalanceAvailable,
-		BalanceOut: quoteBalanceAvailable,
-	})
-	if err != nil {
-		return
-	}
-
-	price = Price{
-		BasePrice:  basePrice,
-		QuotePrice: quotePrice,
-	}
+	// we can ignore errors because if the above function calls do not return
+	// any, we can assume the following do the same because they all perform the
+	// same checks.
+	price, _ = priceFromBalances(formula, baseAssetBalance, quoteAssetBalance)
 
 	return price, previewAmount, nil
 }
 
-func isValidTradePrice(swapRequest *pb.SwapRequest, tradeType int, previewAmount uint64) bool {
+func priceFromBalances(
+	formula mm.MakingFormula,
+	baseAssetBalance,
+	quoteAssetBalance uint64,
+) (*Price, error) {
+	basePrice, err := formula.SpotPrice(&mm.FormulaOpts{
+		BalanceIn:  quoteAssetBalance,
+		BalanceOut: baseAssetBalance,
+	})
+	if err != nil {
+		return nil, err
+	}
+	quotePrice, _ := formula.SpotPrice(&mm.FormulaOpts{
+		BalanceIn:  baseAssetBalance,
+		BalanceOut: quoteAssetBalance,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Price{
+		BasePrice:  basePrice,
+		QuotePrice: quotePrice,
+	}, nil
+}
+
+// isValidPrice checks that the amounts of the trade are valid by
+// making a preview of each counter amounts of the swap given the
+// current price of the market.
+// Since the price is variable in time, the predicted amounts are not compared
+// against those of the swap, but rather they are used to create a range in
+// which the swap amounts must be included to be considered valid.
+func isValidTradePrice(
+	swapRequest domain.SwapRequest,
+	tradeType int,
+	market *domain.Market,
+	unspents []domain.Unspent,
+	slippage decimal.Decimal,
+) bool {
+	// TODO: parallelize the 2 ways of calculating and valifdating the preview
+	// amount to speed up the process.
+	amount := swapRequest.GetAmountR()
+	if tradeType == TradeSell {
+		amount = swapRequest.GetAmountP()
+	}
+
+	_, previewAmount, _ := getPriceAndPreviewForMarket(
+		unspents,
+		market,
+		tradeType,
+		amount,
+		market.BaseAsset,
+	)
+
+	if isPriceInRange(swapRequest, tradeType, previewAmount, true, slippage) {
+		return true
+	}
+
+	amount = swapRequest.GetAmountP()
+	if tradeType == TradeSell {
+		amount = swapRequest.GetAmountR()
+	}
+
+	_, previewAmount, _ = getPriceAndPreviewForMarket(
+		unspents,
+		market,
+		tradeType,
+		amount,
+		market.QuoteAsset,
+	)
+
+	return isPriceInRange(swapRequest, tradeType, previewAmount, false, slippage)
+}
+
+func isPriceInRange(
+	swapRequest domain.SwapRequest,
+	tradeType int,
+	previewAmount uint64,
+	isPreviewForQuoteAsset bool,
+	slippage decimal.Decimal,
+) bool {
 	amountToCheck := decimal.NewFromInt(int64(swapRequest.GetAmountP()))
 	if tradeType == TradeSell {
-		amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
+		if isPreviewForQuoteAsset {
+			amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
+		}
+	} else {
+		if !isPreviewForQuoteAsset {
+			amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
+		}
 	}
-	slippage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
+
 	expectedAmount := decimal.NewFromInt(int64(previewAmount))
-	lowerBound := expectedAmount.Sub(expectedAmount.Mul(slippage))
-	upperBound := expectedAmount.Add(expectedAmount.Mul(slippage))
+	lowerBound := expectedAmount.Mul(decimal.NewFromInt(1).Sub(slippage))
+	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
 
 	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
 }
@@ -905,12 +1082,12 @@ func (t *tradeService) GetMarketBalance(
 	// check the asset strings
 	err := validateAssetString(market.BaseAsset)
 	if err != nil {
-		return nil, domain.ErrInvalidBaseAsset
+		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
 	err = validateAssetString(market.QuoteAsset)
 	if err != nil {
-		return nil, domain.ErrInvalidQuoteAsset
+		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
 	m, accountIndex, err := t.marketRepository.GetMarketByAsset(
@@ -921,14 +1098,14 @@ func (t *tradeService) GetMarketBalance(
 		return nil, err
 	}
 	if accountIndex < 0 {
-		return nil, domain.ErrMarketNotExist
+		return nil, ErrMarketNotExist
 	}
 
-	marketAddresses, _, err := t.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, m.AccountIndex)
+	info, err := t.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, m.AccountIndex)
 	if err != nil {
 		return nil, err
 	}
+	marketAddresses := info.Addresses()
 
 	baseAssetBalance, err := t.unspentRepository.GetBalance(
 		ctx,
@@ -954,7 +1131,6 @@ func (t *tradeService) GetMarketBalance(
 			QuoteAmount: int64(quoteAssetBalance),
 		},
 		Fee: Fee{
-			FeeAsset:   m.BaseAsset,
 			BasisPoint: m.Fee,
 		},
 	}, nil

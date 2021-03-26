@@ -3,12 +3,16 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/btcsuite/btcutil"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/elements"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -40,8 +44,28 @@ const (
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey is the percentage of the slipage for accepting trades compared to current spot price
 	PriceSlippageKey = "PRICE_SLIPPAGE"
+	// SSLCertPathKey is the path to the SSL certificate
+	SSLCertPathKey = "SSL_CERT"
+	// SSLKeyPathKey is the path to the SSL private key
+	SSLKeyPathKey = "SSL_KEY"
 	// MnemonicKey is the mnemonic of the master private key of the daemon's wallet
 	MnemonicKey = "MNEMONIC"
+	// EnableProfilerKey nables profiler that can be used to investigate performance issues
+	EnableProfilerKey = "ENABLE_PROFILER"
+	// StatsIntervalKey defines interval for printing basic tdex statistics
+	StatsIntervalKey = "STATS_INTERVAL"
+	// ElementsRPCEndpointKey is the url for the RPC interface of the Elements
+	// node in the form protocol://user:password@host:port
+	ElementsRPCEndpointKey = "ELEMENTS_RPC_ENDPOINT"
+	// ElementsStartRescanTimestampKey is the date in Unix seconds of the block
+	// from where the node should start rescanning addresses
+	ElementsStartRescanTimestampKey = "ELEMENTS_START_RESCAN_TIMESTAMP"
+	// CrawlLimitKey represents number of requests per second that crawler
+	//makes to explorer
+	CrawlLimitKey = "CRAWL_LIMIT"
+	// CrawlTokenBurst represents number of bursts tokens permitted from
+	//crawler to explorer
+	CrawlTokenBurst = "CRAWL_TOKEN"
 )
 
 var vip *viper.Viper
@@ -57,13 +81,17 @@ func init() {
 	vip.SetDefault(ExplorerEndpointKey, "https://blockstream.info/liquid/api")
 	vip.SetDefault(LogLevelKey, 4)
 	vip.SetDefault(DefaultFeeKey, 0.25)
-	vip.SetDefault(CrawlIntervalKey, 1000)               //TODO check this value
-	vip.SetDefault(FeeAccountBalanceThresholdKey, 50000) //TODO check this value
+	vip.SetDefault(CrawlIntervalKey, 5000)
+	vip.SetDefault(FeeAccountBalanceThresholdKey, 5000)
 	vip.SetDefault(NetworkKey, network.Liquid.Name)
 	vip.SetDefault(BaseAssetKey, network.Liquid.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 	vip.SetDefault(DataDirPathKey, defaultDataDir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
+	vip.SetDefault(EnableProfilerKey, false)
+	vip.SetDefault(StatsIntervalKey, 600)
+	vip.SetDefault(CrawlLimitKey, 10)
+	vip.SetDefault(CrawlTokenBurst, 1)
 
 	validate()
 
@@ -114,9 +142,26 @@ func GetNetwork() *network.Network {
 	return &network.Liquid
 }
 
+//GetExplorer ...
+func GetExplorer() (explorer.Service, error) {
+	if rpcEndpoint := GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
+		var rescanTime interface{}
+		if vip.IsSet(ElementsStartRescanTimestampKey) {
+			rescanTime = vip.GetInt(ElementsStartRescanTimestampKey)
+		}
+		return elements.NewService(rpcEndpoint, rescanTime)
+	}
+	return esplora.NewService(GetString(ExplorerEndpointKey))
+}
+
 // Set a value for the given key
 func Set(key string, value interface{}) {
 	vip.Set(key, value)
+}
+
+// IsSet returns whether the give key is set
+func IsSet(key string) bool {
+	return vip.IsSet(key)
 }
 
 // GetMnemonic returns the current set mnemonic
@@ -132,15 +177,39 @@ func GetMnemonic() []string {
 // Validate method of config will panic
 func validate() {
 	if err := validateDefaultFee(vip.GetFloat64(DefaultFeeKey)); err != nil {
-		log.Fatalln(err)
+		log.WithError(err).Panic("default fee is not valid")
 	}
 	if err := validateDefaultNetwork(vip.GetString(NetworkKey)); err != nil {
-		log.Fatalln(err)
+		log.WithError(err).Panic("default network is not valid")
 	}
 	path := vip.GetString(DataDirPathKey)
 	if path != defaultDataDir {
 		if err := validatePath(path); err != nil {
-			log.Fatalln(err)
+			log.WithError(err).Panic("datadir is not valid")
+		}
+	}
+	certPath, keyPath := vip.GetString(SSLCertPathKey), vip.GetString(SSLKeyPathKey)
+	if (certPath != "" && keyPath == "") || (certPath == "" && keyPath != "") {
+		log.Fatalln("SSL requires both key and certificate when enabled")
+	}
+
+	if rpcEndpoint := vip.GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
+		if err := validateEndpoint(rpcEndpoint); err != nil {
+			log.WithError(err).Panic("Elements RPC endpoint is not a valid url")
+		}
+		// ElementsStartRescanTimestamp can assume the 0 value that means scanning
+		// the entire blockchain. This wil be used only in regtest mode
+		if vip.IsSet(ElementsStartRescanTimestampKey) {
+			rescanTime := vip.GetInt(ElementsStartRescanTimestampKey)
+			if rescanTime < 0 {
+				log.WithError(
+					fmt.Errorf("timestamp must not be a negative number"),
+				).Panic("Elements rescan timestamp is not valid")
+			}
+		}
+	} else {
+		if err := validateEndpoint(vip.GetString(ExplorerEndpointKey)); err != nil {
+			log.WithError(err).Panic("explorer endpoint is not a valid url")
 		}
 	}
 }
@@ -179,6 +248,11 @@ func validatePath(path string) error {
 	return nil
 }
 
+func validateEndpoint(endpoint string) error {
+	_, err := url.Parse(endpoint)
+	return err
+}
+
 func initDataDir() error {
 	dataDir := GetString(DataDirPathKey)
 	if err := makeDirectoryIfNotExists(dataDir); err != nil {
@@ -188,6 +262,9 @@ func initDataDir() error {
 	}
 	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "db")); err != nil {
 		log.WithError(err).Panic("error while creating db folder")
+	}
+	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "stats")); err != nil {
+		log.WithError(err).Panic("error while creating stats folder")
 	}
 
 	return nil

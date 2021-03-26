@@ -2,6 +2,7 @@ package tradeclient
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 
@@ -48,6 +49,7 @@ type MarketPriceOpts struct {
 	Market    trademarket.Market
 	TradeType tradetype.TradeType
 	Amount    uint64
+	Asset     string
 }
 
 func (o MarketPriceOpts) validate() error {
@@ -59,6 +61,9 @@ func (o MarketPriceOpts) validate() error {
 	}
 	if o.Amount == 0 {
 		return errors.New("amount must be greater than 0")
+	}
+	if buf, err := hex.DecodeString(o.Asset); err != nil || len(buf) != 32 {
+		return errors.New("asset must be a 32-byte array in hex format")
 	}
 	return nil
 }
@@ -76,6 +81,7 @@ func (c *Client) MarketPrice(opts MarketPriceOpts) (*pbtrade.MarketPriceReply, e
 		},
 		Type:   pbtrade.TradeType(opts.TradeType),
 		Amount: opts.Amount,
+		Asset:  opts.Asset,
 	}
 	return c.client.MarketPrice(context.Background(), request)
 }

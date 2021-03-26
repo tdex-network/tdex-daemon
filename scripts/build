@@ -7,7 +7,10 @@ PARENT_PATH=$(dirname $(
   pwd -P
 ))
 
+OS=$(eval "go env GOOS")
+ARCH=$(eval "go env GOARCH")
+
 pushd $PARENT_PATH
 mkdir -p build
-GOOS=$1 GOARCH=$2 go build -ldflags="-s -w" -o build/tdexd-$1-$2 cmd/tdexd/main.go
+GO111MODULE=on CGO_ENABLED=1 go build -ldflags="-s -w" -o build/tdexd-$OS-$ARCH cmd/tdexd/main.go
 popd

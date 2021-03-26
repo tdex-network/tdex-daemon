@@ -4,16 +4,16 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
-	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -35,6 +35,7 @@ type WalletService interface {
 		ctx context.Context,
 		mnemonic []string,
 		passphrase string,
+		restore bool,
 	) error
 	UnlockWallet(
 		ctx context.Context,
@@ -49,7 +50,7 @@ type WalletService interface {
 	) (address string, blindingKey string, err error)
 	GetWalletBalance(
 		ctx context.Context,
-	) (map[string]domain.BalanceInfo, error)
+	) (map[string]BalanceInfo, error)
 	SendToMany(
 		ctx context.Context,
 		req SendToManyRequest,
@@ -57,39 +58,49 @@ type WalletService interface {
 }
 
 type walletService struct {
-	vaultRepository   domain.VaultRepository
-	unspentRepository domain.UnspentRepository
-	crawlerService    crawler.Service
-	explorerService   explorer.Service
-	walletInitialized bool
-	walletIsSyncing   bool
+	vaultRepository    domain.VaultRepository
+	unspentRepository  domain.UnspentRepository
+	explorerService    explorer.Service
+	blockchainListener BlockchainListener
+	walletInitialized  bool
+	walletIsSyncing    bool
+	withElements       bool
+	network            *network.Network
 }
 
 func NewWalletService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
-	crawlerService crawler.Service,
 	explorerService explorer.Service,
+	blockchainListener BlockchainListener,
+	withElements bool,
+	net *network.Network,
 ) WalletService {
 	return newWalletService(
 		vaultRepository,
 		unspentRepository,
-		crawlerService,
 		explorerService,
+		blockchainListener,
+		withElements,
+		net,
 	)
 }
 
 func newWalletService(
 	vaultRepository domain.VaultRepository,
 	unspentRepository domain.UnspentRepository,
-	crawlerService crawler.Service,
 	explorerService explorer.Service,
+	blockchainListener BlockchainListener,
+	withElements bool,
+	net *network.Network,
 ) *walletService {
 	w := &walletService{
-		vaultRepository:   vaultRepository,
-		unspentRepository: unspentRepository,
-		crawlerService:    crawlerService,
-		explorerService:   explorerService,
+		vaultRepository:    vaultRepository,
+		unspentRepository:  unspentRepository,
+		explorerService:    explorerService,
+		blockchainListener: blockchainListener,
+		withElements:       withElements,
+		network:            net,
 	}
 	// to understand if the service has an already initialized wallet we check
 	// if the inner vaultRepo is able to return a Vault without passing mnemonic
@@ -97,18 +108,13 @@ func newWalletService(
 	// therefore we let the crawler to start watch all derived addresses and mark
 	// the wallet as initialized
 	if vault, err := w.vaultRepository.GetOrCreateVault(
-		context.Background(), nil, "",
+		context.Background(), nil, "", nil,
 	); err == nil {
-		addressesInfo := vault.AllDerivedAddressesInfo()
-		for _, info := range addressesInfo {
-			if info.AccountIndex != domain.WalletAccount {
-				w.crawlerService.AddObservable(&crawler.AddressObservable{
-					AccountIndex: info.AccountIndex,
-					Address:      info.Address,
-					BlindingKey:  info.BlindingKey,
-				})
-			}
-		}
+		addresses := vault.AllDerivedAddressesInfo()
+		// the addresses' observation is required to be blocking here because the
+		// wallet can be considered initialized after the listener had started
+		// watching for all derived addresses.
+		w.startObservingAddresses(addresses)
 		w.walletInitialized = true
 	}
 	return w
@@ -126,6 +132,7 @@ func (w *walletService) InitWallet(
 	ctx context.Context,
 	mnemonic []string,
 	passphrase string,
+	restore bool,
 ) error {
 	if w.walletInitialized {
 		return nil
@@ -136,13 +143,27 @@ func (w *walletService) InitWallet(
 		return nil
 	}
 
-	w.walletIsSyncing = true
+	if restore && w.withElements {
+		return fmt.Errorf(
+			"Restoring a wallet through the Elements explorer is not availble at the " +
+				"moment. Please restart the daemon using the Esplora block explorer.",
+		)
+	}
 
-	err := w.vaultRepository.UpdateVault(
+	w.walletIsSyncing = true
+	walletAddresses := make([]domain.AddressInfo, 0)
+
+	vault, err := w.vaultRepository.GetOrCreateVault(ctx, mnemonic, passphrase, w.network)
+	if err != nil {
+		return err
+	}
+	defer vault.Lock()
+
+	if err := w.vaultRepository.UpdateVault(
 		ctx,
-		mnemonic,
-		passphrase,
 		func(v *domain.Vault) (*domain.Vault, error) {
+			vault = v
+
 			log.Debug("start syncing wallet")
 			ww, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 				SigningMnemonic: mnemonic,
@@ -151,31 +172,42 @@ func (w *walletService) InitWallet(
 				return nil, err
 			}
 
-			feeLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.FeeAccount, w.explorerService)
-			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService)
-			marketsLastDerivedIndex := getLatestDerivationIndexForMarkets(ww, w.explorerService)
+			feeLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.FeeAccount, w.explorerService, restore, w.network)
+			walletLastDerivedIndex := getLatestDerivationIndexForAccount(ww, domain.WalletAccount, w.explorerService, restore, w.network)
+			marketsLastDerivedIndex := getLatestDerivationIndexForMarkets(ww, w.explorerService, restore, w.network)
 
-			if err := initVaultAccount(v, domain.FeeAccount, feeLastDerivedIndex, w.crawlerService); err != nil {
+			feeAddresses, err := initVaultAccount(v, domain.FeeAccount, feeLastDerivedIndex)
+			if err != nil {
 				return nil, err
 			}
 			// we dont't want to let the crawler watch for WalletAccount addresses
-			if err := initVaultAccount(v, domain.WalletAccount, walletLastDerivedIndex, nil); err != nil {
+			if _, err := initVaultAccount(v, domain.WalletAccount, walletLastDerivedIndex); err != nil {
 				return nil, err
 			}
+			marketAddresses := make([]domain.AddressInfo, 0)
 			for i, m := range marketsLastDerivedIndex {
-				if err := initVaultAccount(v, domain.MarketAccountStart+i, m, w.crawlerService); err != nil {
+				addresses, err := initVaultAccount(v, domain.MarketAccountStart+i, m)
+				if err != nil {
 					return nil, err
 				}
+				marketAddresses = append(marketAddresses, addresses...)
 			}
-			v.Lock()
+
+			walletAddresses = append(walletAddresses, feeAddresses...)
+			walletAddresses = append(walletAddresses, marketAddresses...)
 			w.walletInitialized = true
 			return v, nil
 		},
-	)
+	); err != nil {
+		log.Debug("ended syncing wallet with error")
+		w.walletIsSyncing = false
+		return err
+	}
 
+	go w.startObservingAddresses(walletAddresses)
 	w.walletIsSyncing = false
 	log.Debug("ended syncing wallet")
-	return err
+	return nil
 }
 
 func (w *walletService) UnlockWallet(
@@ -189,17 +221,20 @@ func (w *walletService) UnlockWallet(
 		return ErrWalletNotInitialized
 	}
 
-	return w.vaultRepository.UpdateVault(
+	if err := w.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			if err := v.Unlock(passphrase); err != nil {
 				return nil, err
 			}
 			return v, nil
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	w.blockchainListener.StartObservation()
+	return nil
 }
 
 func (w *walletService) ChangePassword(
@@ -216,8 +251,6 @@ func (w *walletService) ChangePassword(
 
 	return w.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			err := v.ChangePassphrase(currentPassphrase, newPassphrase)
 			if err != nil {
@@ -240,19 +273,16 @@ func (w *walletService) GenerateAddressAndBlindingKey(
 
 	err = w.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
-			adr, _, bk, err1 := v.DeriveNextExternalAddressForAccount(
+			info, err := v.DeriveNextExternalAddressForAccount(
 				domain.WalletAccount,
 			)
-			if err1 != nil {
-				err = err1
-				return nil, err1
+			if err != nil {
+				return nil, err
 			}
 
-			address = adr
-			blindingKey = hex.EncodeToString(bk)
+			address = info.Address
+			blindingKey = hex.EncodeToString(info.BlindingKey)
 
 			return v, nil
 		},
@@ -263,7 +293,7 @@ func (w *walletService) GenerateAddressAndBlindingKey(
 
 func (w *walletService) GetWalletBalance(
 	ctx context.Context,
-) (map[string]domain.BalanceInfo, error) {
+) (map[string]BalanceInfo, error) {
 	if w.walletIsSyncing {
 		return nil, ErrWalletIsSyncing
 	}
@@ -271,13 +301,12 @@ func (w *walletService) GetWalletBalance(
 		return nil, ErrWalletNotInitialized
 	}
 
-	derivedAddresses, prvBlindingKeys, err := w.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, domain.WalletAccount)
+	info, err := w.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, domain.WalletAccount)
 	if err != nil {
 		return nil, err
 	}
 
-	unspents, err := w.getUnspents(derivedAddresses, prvBlindingKeys)
+	unspents, err := w.getUnspents(info.AddressesAndKeys())
 	if err != nil {
 		return nil, err
 	}
@@ -332,12 +361,11 @@ func (w *walletService) SendToMany(
 	}
 
 	var rawTx []byte
-	var addressToObserve *crawler.AddressObservable
+	var addressToObserve string
+	var blindkeyToObserve []byte
 
 	err = w.vaultRepository.UpdateVault(
 		ctx,
-		nil,
-		"",
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err := v.GetMnemonicSafe()
 			if err != nil {
@@ -355,25 +383,19 @@ func (w *walletService) SendToMany(
 			changePathsByAsset := map[string]string{}
 			feeChangePathByAsset := map[string]string{}
 			for _, asset := range getAssetsOfOutputs(outputs) {
-				_, script, _, err := v.DeriveNextInternalAddressForAccount(
-					domain.WalletAccount,
-				)
+				info, err := v.DeriveNextInternalAddressForAccount(domain.WalletAccount)
 				if err != nil {
 					return nil, err
 				}
-				derivationPath, _ := walletAccount.DerivationPathByScript[script]
-				changePathsByAsset[asset] = derivationPath
+				changePathsByAsset[asset] = info.DerivationPath
 			}
-			feeAddress, script, feeBlindkey, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+			feeInfo, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 			if err != nil {
 				return nil, err
 			}
-			feeChangePathByAsset[config.GetNetwork().AssetID] = feeAccount.DerivationPathByScript[script]
-			addressToObserve = &crawler.AddressObservable{
-				AccountIndex: domain.FeeAccount,
-				Address:      feeAddress,
-				BlindingKey:  feeBlindkey,
-			}
+			feeChangePathByAsset[w.network.AssetID] = feeInfo.DerivationPath
+			addressToObserve = feeInfo.Address
+			blindkeyToObserve = feeInfo.BlindingKey
 
 			txHex, _, err := sendToMany(sendToManyOpts{
 				mnemonic:              mnemonic,
@@ -386,6 +408,7 @@ func (w *walletService) SendToMany(
 				inputPathsByScript:    walletAccount.DerivationPathByScript,
 				feeInputPathsByScript: feeAccount.DerivationPathByScript,
 				milliSatPerByte:       int(req.MillisatPerByte),
+				network:               w.network,
 			})
 			if err != nil {
 				return nil, err
@@ -411,7 +434,13 @@ func (w *walletService) SendToMany(
 	}
 
 	// of course, do not forget of starting watching new address of fee account
-	w.crawlerService.AddObservable(addressToObserve)
+	go w.startObservingAddresses([]domain.AddressInfo{
+		{
+			AccountIndex: int(domain.FeeAccount),
+			Address:      addressToObserve,
+			BlindingKey:  blindkeyToObserve,
+		},
+	})
 
 	return rawTx, nil
 }
@@ -421,11 +450,11 @@ func (w *walletService) getAllUnspentsForAccount(
 	accountIndex int,
 	useExplorer bool,
 ) ([]explorer.Utxo, error) {
-	addresses, blindingKeys, err := w.vaultRepository.
-		GetAllDerivedAddressesAndBlindingKeysForAccount(ctx, accountIndex)
+	info, err := w.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, accountIndex)
 	if err != nil {
 		return nil, err
 	}
+	addresses, blindingKeys := info.AddressesAndKeys()
 
 	if useExplorer {
 		return w.explorerService.GetUnspentsForAddresses(addresses, blindingKeys)
@@ -473,6 +502,21 @@ func (w *walletService) getUnspentsForAddress(addr string, blindingKeys [][]byte
 	chUnspents <- unspents
 }
 
+func (w *walletService) startObservingAddresses(addresses []domain.AddressInfo) {
+	if len(addresses) <= 0 {
+		return
+	}
+
+	for _, info := range addresses {
+		w.blockchainListener.StartObserveAddress(
+			info.AccountIndex,
+			info.Address,
+			info.BlindingKey,
+		)
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
 func parseRequestOutputs(reqOutputs []TxOut) (
 	[]*transaction.TxOutput,
 	[][]byte,
@@ -503,7 +547,7 @@ func parseRequestOutputs(reqOutputs []TxOut) (
 }
 
 func parseConfidentialAddress(addr string) ([]byte, []byte, error) {
-	script, err := address.ToOutputScript(addr, *config.GetNetwork())
+	script, err := address.ToOutputScript(addr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -545,6 +589,7 @@ type sendToManyOpts struct {
 	inputPathsByScript    map[string]string
 	feeInputPathsByScript map[string]string
 	milliSatPerByte       int
+	network               *network.Network
 }
 
 func sendToMany(opts sendToManyOpts) (string, string, error) {
@@ -566,6 +611,7 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	network := opts.network
 
 	// add inputs and outputs
 	updateResult, err := w.UpdateTx(wallet.UpdateTxOpts{
@@ -574,7 +620,7 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 		Outputs:            opts.outputs,
 		ChangePathsByAsset: opts.changePathsByAsset,
 		MilliSatsPerBytes:  milliSatPerByte,
-		Network:            config.GetNetwork(),
+		Network:            network,
 	})
 	if err != nil {
 		return "", "", err
@@ -592,7 +638,7 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 		Unspents:           opts.feeUnspents,
 		ChangePathsByAsset: opts.feeChangePathByAsset,
 		MilliSatsPerBytes:  milliSatPerByte,
-		Network:            config.GetNetwork(),
+		Network:            network,
 		WantChangeForFees:  true,
 	})
 	if err != nil {
@@ -616,8 +662,8 @@ func sendToMany(opts sendToManyOpts) (string, string, error) {
 	// add the explicit fee amount
 	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64: blindedPset,
-		Outputs:    transactionutil.NewFeeOutput(updateResult.FeeAmount),
-		Network:    config.GetNetwork(),
+		Outputs:    transactionutil.NewFeeOutput(updateResult.FeeAmount, network),
+		Network:    network,
 	})
 	if err != nil {
 		return "", "", err
@@ -660,19 +706,37 @@ type accountLastDerivedIndex struct {
 	internal int
 }
 
-func getLatestDerivationIndexForAccount(w *wallet.Wallet, accountIndex int, explorerSvc explorer.Service) *accountLastDerivedIndex {
+func (a *accountLastDerivedIndex) total() int {
+	return (a.external + 1) + (a.internal + 1)
+}
+
+func getLatestDerivationIndexForAccount(
+	w *wallet.Wallet,
+	accountIndex int,
+	explorerSvc explorer.Service,
+	restore bool,
+	net *network.Network,
+) *accountLastDerivedIndex {
+	if !restore {
+		log.Debugf("skip restore - account %d empty", accountIndex)
+		return nil
+	}
+
 	lastDerivedIndex := &accountLastDerivedIndex{}
 	for chainIndex := 0; chainIndex <= 1; chainIndex++ {
 		firstUnfundedAddress := -1
 		unfundedAddressesCounter := 0
 		i := 0
 		for unfundedAddressesCounter < 20 {
-			ctAddress, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
+			ctAddress, script, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 				DerivationPath: fmt.Sprintf("%d'/%d/%d", accountIndex, chainIndex, i),
-				Network:        config.GetNetwork(),
+				Network:        net,
+			})
+			blindKey, _, _ := w.DeriveBlindingKeyPair(wallet.DeriveBlindingKeyPairOpts{
+				Script: script,
 			})
 
-			if !isAddressFunded(ctAddress, explorerSvc) {
+			if !isAddressFunded(ctAddress, blindKey.Serialize(), explorerSvc) {
 				if firstUnfundedAddress < 0 {
 					firstUnfundedAddress = i
 				}
@@ -700,12 +764,23 @@ func getLatestDerivationIndexForAccount(w *wallet.Wallet, accountIndex int, expl
 	return lastDerivedIndex
 }
 
-func getLatestDerivationIndexForMarkets(w *wallet.Wallet, explorerSvc explorer.Service) []*accountLastDerivedIndex {
+func getLatestDerivationIndexForMarkets(
+	w *wallet.Wallet,
+	explorerSvc explorer.Service,
+	restore bool,
+	net *network.Network,
+) []*accountLastDerivedIndex {
 	marketsLastIndex := make([]*accountLastDerivedIndex, 0)
 	i := 0
 	for {
 		marketIndex := domain.MarketAccountStart + i
-		lastDerivedIndex := getLatestDerivationIndexForAccount(w, marketIndex, explorerSvc)
+		lastDerivedIndex := getLatestDerivationIndexForAccount(
+			w,
+			marketIndex,
+			explorerSvc,
+			restore,
+			net,
+		)
 		if lastDerivedIndex == nil {
 			break
 		}
@@ -715,43 +790,36 @@ func getLatestDerivationIndexForMarkets(w *wallet.Wallet, explorerSvc explorer.S
 	return marketsLastIndex
 }
 
-func initVaultAccount(v *domain.Vault, accountIndex int, lastDerivedIndex *accountLastDerivedIndex, crawlerSvc crawler.Service) error {
+func initVaultAccount(
+	v *domain.Vault,
+	accountIndex int,
+	lastDerivedIndex *accountLastDerivedIndex,
+) ([]domain.AddressInfo, error) {
 	if lastDerivedIndex == nil {
 		v.InitAccount(accountIndex)
-		return nil
+		return nil, nil
 	}
 
+	addresses := make([]domain.AddressInfo, 0, lastDerivedIndex.total())
 	for i := 0; i <= lastDerivedIndex.external; i++ {
-		addr, _, blindingKey, err := v.DeriveNextExternalAddressForAccount(accountIndex)
+		info, err := v.DeriveNextExternalAddressForAccount(accountIndex)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if crawlerSvc != nil {
-			crawlerSvc.AddObservable(&crawler.AddressObservable{
-				AccountIndex: accountIndex,
-				Address:      addr,
-				BlindingKey:  blindingKey,
-			})
-		}
+		addresses = append(addresses, *info)
 	}
 	for i := 0; i <= lastDerivedIndex.internal; i++ {
-		addr, _, blindingKey, err := v.DeriveNextInternalAddressForAccount(accountIndex)
+		info, err := v.DeriveNextInternalAddressForAccount(accountIndex)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if crawlerSvc != nil {
-			crawlerSvc.AddObservable(&crawler.AddressObservable{
-				AccountIndex: accountIndex,
-				Address:      addr,
-				BlindingKey:  blindingKey,
-			})
-		}
+		addresses = append(addresses, *info)
 	}
-	return nil
+	return addresses, nil
 }
 
-func isAddressFunded(addr string, explorerSvc explorer.Service) bool {
-	txs, err := explorerSvc.GetTransactionsForAddress(addr)
+func isAddressFunded(addr string, blindKey []byte, explorerSvc explorer.Service) bool {
+	txs, err := explorerSvc.GetTransactionsForAddress(addr, blindKey)
 	if err != nil {
 		// should we retry?
 		return false
@@ -759,11 +827,11 @@ func isAddressFunded(addr string, explorerSvc explorer.Service) bool {
 	return len(txs) > 0
 }
 
-func getBalancesByAsset(unspents []explorer.Utxo) map[string]domain.BalanceInfo {
-	balances := map[string]domain.BalanceInfo{}
+func getBalancesByAsset(unspents []explorer.Utxo) map[string]BalanceInfo {
+	balances := map[string]BalanceInfo{}
 	for _, unspent := range unspents {
 		if _, ok := balances[unspent.Asset()]; !ok {
-			balances[unspent.Asset()] = domain.BalanceInfo{}
+			balances[unspent.Asset()] = BalanceInfo{}
 		}
 
 		balance := balances[unspent.Asset()]
@@ -776,4 +844,49 @@ func getBalancesByAsset(unspents []explorer.Utxo) map[string]domain.BalanceInfo 
 		balances[unspent.Asset()] = balance
 	}
 	return balances
+}
+
+func fetchUnspents(
+	explorerSvc explorer.Service,
+	unspentRepo domain.UnspentRepository,
+	info domain.AddressesInfo,
+) error {
+	utxos, err := explorerSvc.GetUnspentsForAddresses(info.AddressesAndKeys())
+	if err != nil {
+		return err
+	}
+
+	unspentsLen := len(utxos)
+	unspents := make([]domain.Unspent, unspentsLen, unspentsLen)
+	infoByScript := groupAddressesInfoByScript(info)
+
+	for i, u := range utxos {
+		addr := infoByScript[hex.EncodeToString(u.Script())].Address
+		unspents[i] = domain.Unspent{
+			TxID:            u.Hash(),
+			VOut:            u.Index(),
+			Value:           u.Value(),
+			AssetHash:       u.Asset(),
+			ValueCommitment: u.ValueCommitment(),
+			AssetCommitment: u.AssetCommitment(),
+			ValueBlinder:    u.ValueBlinder(),
+			AssetBlinder:    u.AssetBlinder(),
+			ScriptPubKey:    u.Script(),
+			Nonce:           u.Nonce(),
+			RangeProof:      u.RangeProof(),
+			SurjectionProof: u.SurjectionProof(),
+			Confirmed:       u.IsConfirmed(),
+			Address:         addr,
+		}
+	}
+
+	return unspentRepo.AddUnspents(context.Background(), unspents)
+}
+
+func groupAddressesInfoByScript(info domain.AddressesInfo) map[string]domain.AddressInfo {
+	group := make(map[string]domain.AddressInfo)
+	for _, i := range info {
+		group[i.Script] = i
+	}
+	return group
 }

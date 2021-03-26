@@ -3,7 +3,6 @@ package crawler
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -14,75 +13,73 @@ import (
 func TestCrawler(t *testing.T) {
 	mockExplorerSvc := MockExplorer{}
 
-	observables := make([]Observable, 0)
-	for i := 0; i < 100; i++ {
-		adrObservable := AddressObservable{
-			AccountIndex: 1,
-			Address:      strconv.Itoa(i),
-		}
-		trxObservable := TransactionObservable{
-			TxID: strconv.Itoa(i),
-		}
-		observables = append(observables, &adrObservable)
-		observables = append(observables, &trxObservable)
-	}
-
 	crawlSvc := NewService(Opts{
-		ExplorerSvc:            mockExplorerSvc,
-		Observables:            []Observable{},
-		ErrorHandler:           func(err error) {},
-		IntervalInMilliseconds: 500,
+		ExplorerSvc: mockExplorerSvc,
+		ErrorHandler: func(err error) {
+			if err != nil {
+				fmt.Println(err)
+			}
+		},
+		CrawlerInterval:    500,
+		ExplorerLimit:      10,
+		ExplorerTokenBurst: 1,
 	})
 
 	go crawlSvc.Start()
+	go listen(t, crawlSvc)
 
-	go removeObservableAfterTimeout(crawlSvc)
+	addObservableAfterTimeout(crawlSvc)
+	time.Sleep(2 * time.Second)
+	removeObservableAfterTimeout(crawlSvc)
+	crawlSvc.Stop()
+}
 
-	go addObservableAfterTimeout(crawlSvc)
-
-	go stopCrawlerAfterTimeout(crawlSvc)
-
-	for event := range crawlSvc.GetEventChannel() {
-
-		switch e := event.(type) {
-		case AddressEvent:
-			for _, u := range e.Utxos {
-				t.Log(fmt.Sprintf("%v %v %v", "ADR", e.EventType, u.Value()))
-			}
-		case TransactionEvent:
-			if e.EventType == TransactionConfirmed {
-				t.Log(fmt.Sprintf("%v %v %v", "TX", e.EventType, e.TxID))
+func listen(t *testing.T, crawlSvc Service) {
+	eventChan := crawlSvc.GetEventChannel()
+loop:
+	for {
+		select {
+		case event := <-eventChan:
+			switch e := event.(type) {
+			case CloseEvent:
+				break loop
+			case AddressEvent:
+				for _, u := range e.Utxos {
+					t.Log(fmt.Sprintf("%v %v %v", "ADR", e.EventType, u.Value()))
+				}
+			case TransactionEvent:
+				if e.EventType == TransactionConfirmed {
+					t.Log(fmt.Sprintf("%v %v %v", "TX", e.EventType, e.TxID))
+				}
 			}
 		}
-
 	}
 
 	t.Log("finished")
-
 }
 
 func stopCrawlerAfterTimeout(crawler Service) {
-	time.Sleep(7 * time.Second)
 	crawler.Stop()
 }
 
 func removeObservableAfterTimeout(crawler Service) {
-	time.Sleep(2 * time.Second)
 	crawler.RemoveObservable(&AddressObservable{
 		AccountIndex: 0,
-		Address:      "2",
+		Address:      "101",
 	})
+	time.Sleep(400 * time.Millisecond)
 	crawler.RemoveObservable(&TransactionObservable{
-		TxID: "5",
+		TxID: "102",
 	})
 }
 
 func addObservableAfterTimeout(crawler Service) {
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	crawler.AddObservable(&AddressObservable{
 		AccountIndex: 0,
 		Address:      "101",
 	})
+	time.Sleep(300 * time.Millisecond)
 	crawler.AddObservable(&TransactionObservable{
 		TxID: "102",
 	})
@@ -91,6 +88,10 @@ func addObservableAfterTimeout(crawler Service) {
 // MOCK //
 
 type MockExplorer struct{}
+
+func (m MockExplorer) GetBlockHeight() (int, error) {
+	panic("implement me")
+}
 
 func (m MockExplorer) GetUnspentsForAddresses(addresses []string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
 	panic("implement me")
@@ -105,20 +106,15 @@ func (m MockExplorer) GetTransactionStatus(txID string) (
 	error,
 ) {
 	status := make(map[string]interface{}, 0)
-	status["confirmed"] = true
-	status["block_hash"] = "afbd0d4e3db10be68371b3fee107397297e9c057e3c52ee9e9a76fd62fc069a6"
-	status["block_time"] = 1600178119
+	status["confirmed"] = false
 
-	if txID == "4" {
-		return status, nil
-	} else if txID == "5" {
-		return status, nil
-	} else if txID == "6" {
-		return status, nil
-	} else if txID == "102" {
-		return status, nil
+	if txID == "4" || txID == "5" || txID == "6" || txID == "102" {
+		status["confirmed"] = true
+		status["block_hash"] = "afbd0d4e3db10be68371b3fee107397297e9c057e3c52ee9e9a76fd62fc069a6"
+		status["block_time"] = 1600178119
 	}
-	return nil, nil
+
+	return status, nil
 }
 
 func (m MockExplorer) GetUnspents(addr string, blindKeys [][]byte) (
@@ -140,7 +136,7 @@ func (m MockExplorer) GetUnspents(addr string, blindKeys [][]byte) (
 func (m MockExplorer) GetTransactionHex(txID string) (string, error) {
 	return "", errors.New("implement me")
 }
-func (m MockExplorer) GetTransactionsForAddress(addr string) ([]explorer.Transaction, error) {
+func (m MockExplorer) GetTransactionsForAddress(addr string, blindingKey []byte) ([]explorer.Transaction, error) {
 	return nil, errors.New("implement me")
 }
 func (m MockExplorer) BroadcastTransaction(txHex string) (string, error) {
@@ -181,6 +177,14 @@ func (m MockUtxo) AssetCommitment() string {
 	panic("implement me")
 }
 
+func (m MockUtxo) ValueBlinder() []byte {
+	panic("implement me")
+}
+
+func (m MockUtxo) AssetBlinder() []byte {
+	panic("implement me")
+}
+
 func (m MockUtxo) Nonce() []byte {
 	panic("implement me")
 }
@@ -201,15 +205,7 @@ func (m MockUtxo) IsConfidential() bool {
 	panic("implement me")
 }
 
-func (m MockUtxo) SetScript(script []byte) {
-	panic("implement me")
-}
-
-func (m MockUtxo) SetUnconfidential(asset string, value uint64) {
-	panic("implement me")
-}
-
-func (m MockUtxo) SetConfidential(nonce, rangeProof, surjectionProof []byte) {
+func (m MockUtxo) IsRevealed() bool {
 	panic("implement me")
 }
 

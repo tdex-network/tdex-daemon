@@ -7,6 +7,7 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/timshannon/badgerhold/v2"
+	"github.com/vulpemventures/go-elements/network"
 )
 
 const (
@@ -29,19 +30,21 @@ func (v vaultRepositoryImpl) GetOrCreateVault(
 	ctx context.Context,
 	mnemonic []string,
 	passphrase string,
+	net *network.Network,
 ) (*domain.Vault, error) {
-	return v.getOrCreateVault(ctx, mnemonic, passphrase)
+	return v.getOrCreateVault(ctx, mnemonic, passphrase, net)
 }
 
 func (v vaultRepositoryImpl) UpdateVault(
 	ctx context.Context,
-	mnemonic []string,
-	passphrase string,
 	updateFn func(v *domain.Vault) (*domain.Vault, error),
 ) error {
-	vault, err := v.getOrCreateVault(ctx, mnemonic, passphrase)
+	vault, err := v.getVault(ctx)
 	if err != nil {
 		return err
+	}
+	if vault == nil {
+		return ErrVaultNotFound
 	}
 
 	updatedVault, err := updateFn(vault)
@@ -60,6 +63,9 @@ func (v vaultRepositoryImpl) GetAccountByIndex(
 	if err != nil {
 		return nil, err
 	}
+	if vault == nil {
+		return nil, ErrVaultNotFound
+	}
 
 	account, err := vault.AccountByIndex(accountIndex)
 	if err != nil {
@@ -75,39 +81,48 @@ func (v vaultRepositoryImpl) GetAccountByAddress(
 ) (*domain.Account, int, error) {
 	vault, err := v.getVault(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, -1, err
+	}
+	if vault == nil {
+		return nil, -1, ErrVaultNotFound
 	}
 
 	account, accountIndex, err := vault.AccountByAddress(addr)
 	if err != nil {
-		return nil, 0, err
+		return nil, -1, err
 	}
 
 	return account, accountIndex, nil
 }
 
-func (v vaultRepositoryImpl) GetAllDerivedAddressesAndBlindingKeysForAccount(
+func (v vaultRepositoryImpl) GetAllDerivedAddressesInfoForAccount(
 	ctx context.Context,
 	accountIndex int,
-) ([]string, [][]byte, error) {
-	vault, err := v.getVault(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return vault.AllDerivedAddressesAndBlindingKeysForAccount(accountIndex)
-}
-
-func (v vaultRepositoryImpl) GetAllDerivedExternalAddressesForAccount(
-	ctx context.Context,
-	accountIndex int,
-) ([]string, error) {
+) (domain.AddressesInfo, error) {
 	vault, err := v.getVault(ctx)
 	if err != nil {
 		return nil, err
 	}
+	if vault == nil {
+		return nil, ErrVaultNotFound
+	}
 
-	return vault.AllDerivedExternalAddressesForAccount(accountIndex)
+	return vault.AllDerivedAddressesInfoForAccount(accountIndex)
+}
+
+func (v vaultRepositoryImpl) GetAllDerivedExternalAddressesInfoForAccount(
+	ctx context.Context,
+	accountIndex int,
+) (domain.AddressesInfo, error) {
+	vault, err := v.getVault(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if vault == nil {
+		return nil, ErrVaultNotFound
+	}
+
+	return vault.AllDerivedExternalAddressesInfoForAccount(accountIndex)
 }
 
 func (v vaultRepositoryImpl) GetDerivationPathByScript(
@@ -118,6 +133,9 @@ func (v vaultRepositoryImpl) GetDerivationPathByScript(
 	vault, err := v.getVault(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if vault == nil {
+		return nil, ErrVaultNotFound
 	}
 
 	return v.getDerivationPathByScript(vault, accountIndex, scripts)
@@ -152,6 +170,7 @@ func (v vaultRepositoryImpl) getOrCreateVault(
 	ctx context.Context,
 	mnemonic []string,
 	passphrase string,
+	net *network.Network,
 ) (*domain.Vault, error) {
 	vault, err := v.getVault(ctx)
 	if err != nil {
@@ -159,7 +178,7 @@ func (v vaultRepositoryImpl) getOrCreateVault(
 	}
 
 	if vault == nil {
-		vault, err = domain.NewVault(mnemonic, passphrase)
+		vault, err = domain.NewVault(mnemonic, passphrase, net)
 		if err != nil {
 			return nil, err
 		}

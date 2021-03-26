@@ -140,14 +140,8 @@ func (w *Wallet) UpdateSwapTx(opts UpdateSwapTxOpts) (string, []explorer.Utxo, e
 
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
-	unspentsBlinidingKeys, err := opts.getUnspentsUnblindingKeys(w)
-	if err != nil {
-		return "", nil, err
-	}
-
 	selectedUnspents, change, err := explorer.SelectUnspents(
 		opts.Unspents,
-		unspentsBlinidingKeys,
 		opts.InputAmount,
 		opts.InputAsset,
 	)
@@ -319,7 +313,6 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 		// calculate target amount of each asset for coin selection
 		totalAmountsByAsset := opts.getOutputsTotalAmountsByAsset()
 		// retrieve input prv blinding keys
-		unspentsBlinidingKeys := opts.getUnspentsUnblindingKeys(w)
 
 		// select unspents and update the list of inputs to add and eventually the
 		// list of outputs to add by adding the change output if necessary
@@ -327,7 +320,6 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 			if totalAmountsByAsset[asset] > 0 {
 				selectedUnspents, change, err := explorer.SelectUnspents(
 					opts.Unspents,
-					unspentsBlinidingKeys,
 					totalAmountsByAsset[asset],
 					asset,
 				)
@@ -396,7 +388,6 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					unspents := getRemainingUnspents(opts.Unspents, inputsToAdd)
 					selectedUnspents, change, err := explorer.SelectUnspents(
 						unspents,
-						unspentsBlinidingKeys,
 						feeAmount,
 						opts.Network.AssetID,
 					)
@@ -417,7 +408,6 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				unspents := getRemainingUnspents(opts.Unspents, inputsToAdd)
 				selectedUnspents, change, err := explorer.SelectUnspents(
 					unspents,
-					unspentsBlinidingKeys,
 					feeAmount,
 					opts.Network.AssetID,
 				)

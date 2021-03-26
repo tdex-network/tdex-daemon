@@ -1,12 +1,47 @@
 package crawler
 
 import (
-	"bytes"
+	"context"
 	"sync"
+	"time"
 
+	"golang.org/x/time/rate"
+
+	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
+
+const (
+	New       Status = "NEW"
+	Waiting   Status = "WAITING"
+	Processed Status = "PROCESSED"
+)
+
+type Status string
+
+type observableStatus struct {
+	sync.RWMutex
+	status Status
+}
+
+func NewObservableStatus() *observableStatus {
+	return &observableStatus{
+		status: New,
+	}
+}
+
+func (o *observableStatus) Get() Status {
+	o.RLock()
+	defer o.RUnlock()
+	return o.status
+}
+
+func (o *observableStatus) Set(status Status) {
+	o.Lock()
+	defer o.Unlock()
+	o.status = status
+}
 
 type AddressObservable struct {
 	AccountIndex int
@@ -15,21 +50,30 @@ type AddressObservable struct {
 }
 
 func (a *AddressObservable) observe(
-	w *sync.WaitGroup,
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
+	observableStatus *observableStatus,
+	rateLimiter *rate.Limiter,
 ) {
-	defer w.Done()
-
 	if a == nil {
+		return
+	}
+
+	observableStatus.Set(Waiting)
+	if err := rateLimiter.Wait(context.Background()); err != nil {
+		errChan <- err
 		return
 	}
 
 	unspents, err := explorerSvc.GetUnspents(a.Address, [][]byte{a.BlindingKey})
 	if err != nil {
 		errChan <- err
+		return
 	}
+
+	observableStatus.Set(Processed)
+
 	var eventType EventType
 	switch a.AccountIndex {
 	case domain.FeeAccount:
@@ -46,19 +90,8 @@ func (a *AddressObservable) observe(
 	eventChan <- event
 }
 
-func (a *AddressObservable) isEqual(observable Observable) bool {
-	switch observable.(type) {
-	case *AddressObservable:
-		return a.equalsTo(observable.(*AddressObservable))
-	default:
-		return false
-	}
-}
-
-func (a *AddressObservable) equalsTo(o *AddressObservable) bool {
-	return a.AccountIndex == o.AccountIndex &&
-		a.Address == o.Address &&
-		bytes.Equal(a.BlindingKey, o.BlindingKey)
+func (a *AddressObservable) key() string {
+	return a.Address
 }
 
 type TransactionObservable struct {
@@ -66,21 +99,29 @@ type TransactionObservable struct {
 }
 
 func (t *TransactionObservable) observe(
-	w *sync.WaitGroup,
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
+	observableStatus *observableStatus,
+	rateLimiter *rate.Limiter,
 ) {
-	defer w.Done()
-
 	if t == nil {
+		return
+	}
+
+	observableStatus.Set(Waiting)
+	if err := rateLimiter.Wait(context.Background()); err != nil {
+		errChan <- err
 		return
 	}
 
 	txStatus, err := explorerSvc.GetTransactionStatus(t.TxID)
 	if err != nil {
 		errChan <- err
+		return
 	}
+
+	observableStatus.Set(Processed)
 
 	var confirmed bool
 	var blockHash string
@@ -119,15 +160,82 @@ func (t *TransactionObservable) observe(
 	eventChan <- event
 }
 
-func (t *TransactionObservable) isEqual(observable Observable) bool {
-	switch observable.(type) {
-	case *TransactionObservable:
-		return t.equalsTo(observable.(*TransactionObservable))
-	default:
-		return false
+func (t *TransactionObservable) key() string {
+	return t.TxID
+}
+
+type observableHandler struct {
+	observable       Observable
+	explorerSvc      explorer.Service
+	wg               *sync.WaitGroup
+	ticker           *time.Ticker
+	eventChan        chan Event
+	errChan          chan error
+	stopChan         chan int
+	observableStatus *observableStatus
+	rateLimiter      *rate.Limiter
+}
+
+func newObservableHandler(
+	observable Observable,
+	explorerSvc explorer.Service,
+	wg *sync.WaitGroup,
+	interval int,
+	eventChan chan Event,
+	errChan chan error,
+	rateLimiter *rate.Limiter,
+) *observableHandler {
+	ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
+	stopChan := make(chan int, 1)
+
+	return &observableHandler{
+		observable,
+		explorerSvc,
+		wg,
+		ticker,
+		eventChan,
+		errChan,
+		stopChan,
+		NewObservableStatus(),
+		rateLimiter,
 	}
 }
 
-func (t *TransactionObservable) equalsTo(o *TransactionObservable) bool {
-	return t.TxID == o.TxID
+func (oh *observableHandler) start() {
+	oh.logAction("start")
+	oh.wg.Add(1)
+	for {
+		select {
+		case <-oh.ticker.C:
+			if oh.observableStatus.Get() != Waiting {
+				oh.observable.observe(
+					oh.explorerSvc,
+					oh.errChan,
+					oh.eventChan,
+					oh.observableStatus,
+					oh.rateLimiter,
+				)
+			}
+		case <-oh.stopChan:
+			oh.ticker.Stop()
+			close(oh.stopChan)
+			return
+		}
+	}
+}
+
+func (oh *observableHandler) stop() {
+	oh.logAction("stop")
+	oh.stopChan <- 1
+	oh.wg.Done()
+}
+
+func (oh *observableHandler) logAction(action string) {
+	obs := oh.observable
+	switch obs.(type) {
+	case *AddressObservable:
+		log.Debugf("%s observing address: %v", action, obs.key())
+	case *TransactionObservable:
+		log.Debugf("%s observing tx: %v", action, obs.key())
+	}
 }

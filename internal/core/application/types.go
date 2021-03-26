@@ -21,10 +21,12 @@ type SwapInfo struct {
 
 // MarketInfo is the data struct returned by ListMarket RPC.
 type MarketInfo struct {
+	AccountIndex uint64
 	Market       Market
 	Fee          Fee
 	Tradable     bool
 	StrategyType int
+	Price        domain.Prices
 }
 
 type Market struct {
@@ -37,9 +39,11 @@ type MarketWithFee struct {
 	Fee
 }
 
-// Fee is a couple amount / asset type and represents fees in a transaction.
+// Fee is the market fee percentage in basis point:
+// 	- 0,01% -> 1 bp
+//	- 1,00% -> 100 bp
+//	- 99,99% -> 9999 bp
 type Fee struct {
-	FeeAsset   string
 	BasisPoint int64
 }
 
@@ -57,6 +61,7 @@ type PriceWithFee struct {
 	Price
 	Fee
 	Amount uint64
+	Asset  string
 }
 
 type MarketStrategy struct {
@@ -74,6 +79,12 @@ type BalanceWithFee struct {
 	Fee
 }
 
+type BalanceInfo struct {
+	TotalBalance       uint64
+	ConfirmedBalance   uint64
+	UnconfirmedBalance uint64
+}
+
 type WithdrawMarketReq struct {
 	Market
 	BalanceToWithdraw Balance
@@ -83,11 +94,40 @@ type WithdrawMarketReq struct {
 }
 
 type ReportMarketFee struct {
-	CollectedFees              []Fee
+	CollectedFees              []FeeInfo
 	TotalCollectedFeesPerAsset map[string]int64
 }
 
-type AddressWithBlindingKey struct {
+type AddressAndBlindingKey struct {
 	Address     string
 	BlindingKey string
+}
+
+type FeeInfo struct {
+	TradeID     string
+	BasisPoint  int64
+	Asset       string
+	Amount      uint64
+	MarketPrice decimal.Decimal
+}
+
+type TxOutpoint struct {
+	Hash  string
+	Index int
+}
+
+type UtxoInfoPerAccount struct {
+	UtxoInfoPerAccount map[uint64]UtxoInfoList
+}
+
+type UtxoInfoList struct {
+	Unspents []UtxoInfo
+	Spents   []UtxoInfo
+	Locks    []UtxoInfo
+}
+
+type UtxoInfo struct {
+	Outpoint *TxOutpoint
+	Value    uint64
+	Asset    string
 }

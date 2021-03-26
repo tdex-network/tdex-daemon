@@ -1,122 +1,55 @@
 package explorer
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"net/http"
 	"sort"
-
-	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
-func (e *explorer) GetUnspentsForAddresses(
-	addresses []string,
-	blindingKeys [][]byte,
-) ([]Utxo, error) {
-	chUnspents := make(chan []Utxo)
-	chErr := make(chan error, 1)
-	unspents := make([]Utxo, 0)
+// SelectUnspents performs a coin selection over the given list of Utxos and
+// returns a subset of them of type targetAsset to cover the targetAmount.
+// In case any utxo is confidential, it's required that's already unblinded
+func SelectUnspents(
+	utxos []Utxo,
+	targetAmount uint64,
+	targetAsset string,
+) (coins []Utxo, change uint64, err error) {
+	unblindedUtxos := make([]Utxo, 0)
+	totalAmount := uint64(0)
 
-	for _, addr := range addresses {
-		go e.getUnspentsForAddress(addr, blindingKeys, chUnspents, chErr)
-
-		select {
-		case err := <-chErr:
-			close(chErr)
-			close(chUnspents)
-			return nil, err
-		case unspentsForAddress := <-chUnspents:
-			unspents = append(unspents, unspentsForAddress...)
+	for i := range utxos {
+		utxo := utxos[i]
+		if utxo.IsConfidential() && !utxo.IsRevealed() {
+			err = fmt.Errorf(
+				"error on utxos: all confidential utxos must be already unblinded",
+			)
+			return
+		}
+		if utxo.Asset() == targetAsset {
+			unblindedUtxos = append(unblindedUtxos, utxo)
 		}
 	}
 
-	return unspents, nil
-}
+	indexes := getCoinsIndexes(targetAmount, unblindedUtxos)
 
-func (e *explorer) getUnspentsForAddress(
-	addr string,
-	blindingKeys [][]byte,
-	chUnspents chan []Utxo,
-	chErr chan error,
-) {
-	unspents, err := e.GetUnspents(addr, blindingKeys)
-	if err != nil {
-		chErr <- err
-		return
-	}
-	chUnspents <- unspents
-}
-
-func (e *explorer) GetUnspents(addr string, blindingKeys [][]byte) (coins []Utxo, err error) {
-	url := fmt.Sprintf(
-		"%s/address/%s/utxo",
-		e.apiUrl,
-		addr,
-	)
-	status, resp, err1 := httputil.NewHTTPRequest("GET", url, "", nil)
-	if err1 != nil {
+	selectedUtxos := make([]Utxo, 0)
+	if len(indexes) <= 0 {
 		coins = nil
-		err = fmt.Errorf("error on retrieving utxos: %s", err1)
-		return
-	}
-	if status != http.StatusOK {
-		coins = nil
-		err = fmt.Errorf(resp)
-		return
-	}
-
-	var witnessOuts []witnessUtxo
-	err1 = json.Unmarshal([]byte(resp), &witnessOuts)
-	if err1 != nil {
-		coins = nil
-		err = fmt.Errorf("error on retrieving utxos: %s", err1)
+		change = 0
+		err = errors.New(
+			"error on target amount: total utxo amount does not cover target amount",
+		)
 		return
 	}
 
-	unspents := make([]Utxo, len(witnessOuts))
-	chUnspents := make(chan Utxo, len(witnessOuts))
-	chErr := make(chan error, 1)
-
-	for i := range witnessOuts {
-
-		out := witnessOuts[i]
-		go e.getUtxoDetails(out, chUnspents, chErr)
-		select {
-
-		case err1 := <-chErr:
-
-			if err1 != nil {
-				close(chErr)
-				close(chUnspents)
-				coins = nil
-				err = fmt.Errorf("error on retrieving utxos: %s", err1)
-				return
-			}
-
-		case unspent := <-chUnspents:
-
-			if out.IsConfidential() && len(blindingKeys) > 0 {
-				go unblindUtxo(unspent, blindingKeys, chUnspents, chErr)
-				select {
-
-				case err1 := <-chErr:
-					close(chErr)
-					close(chUnspents)
-					coins = nil
-					err = fmt.Errorf("error on unblinding utxos: %s", err1)
-					return
-
-				case u := <-chUnspents:
-					unspents[i] = u
-				}
-
-			} else {
-				unspents[i] = unspent
-			}
-
-		}
+	for _, v := range indexes {
+		totalAmount += unblindedUtxos[v].Value()
+		selectedUtxos = append(selectedUtxos, unblindedUtxos[v])
 	}
-	coins = unspents
+
+	changeAmount := totalAmount - targetAmount
+	coins = selectedUtxos
+	change = changeAmount
 
 	return
 }

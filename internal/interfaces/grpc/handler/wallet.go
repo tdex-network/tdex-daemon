@@ -116,6 +116,7 @@ func (w walletHandler) initWallet(
 				ctx,
 				mnemonic,
 				string(password),
+				req.GetRestore(),
 			); err != nil {
 				return nil, err
 			}

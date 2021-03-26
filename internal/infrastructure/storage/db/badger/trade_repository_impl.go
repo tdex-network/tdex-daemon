@@ -2,8 +2,6 @@ package dbbadger
 
 import (
 	"context"
-	"errors"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
@@ -46,16 +44,18 @@ func (t tradeRepositoryImpl) GetAllTradesByMarket(
 	marketQuoteAsset string,
 ) ([]*domain.Trade, error) {
 	query := badgerhold.Where("MarketQuoteAsset").Eq(marketQuoteAsset)
-	tr, err := t.findTrades(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	trades := make([]*domain.Trade, 0, len(tr))
-	for _, v := range tr {
-		trades = append(trades, &v)
-	}
+	return t.findTrades(ctx, query)
+}
 
-	return trades, nil
+func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
+	ctx context.Context,
+	marketQuoteAsset string,
+) ([]*domain.Trade, error) {
+	query := badgerhold.
+		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
+		And("Status.Code").Ge(domain.Completed).
+		And("Status.Failed").Eq(false)
+	return t.findTrades(ctx, query)
 }
 
 func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
@@ -70,11 +70,28 @@ func (t tradeRepositoryImpl) GetTradeBySwapAcceptID(
 	}
 
 	if len(trades) <= 0 {
-		return nil, errors.New("trade not found")
+		return nil, nil
 	}
 
-	trade := &trades[0]
-	return trade, nil
+	return trades[0], nil
+}
+
+func (t tradeRepositoryImpl) GetTradeByTxID(
+	ctx context.Context,
+	txID string,
+) (*domain.Trade, error) {
+	query := badgerhold.Where("TxID").Eq(txID)
+
+	trades, err := t.findTrades(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(trades) <= 0 {
+		return nil, ErrTradeNotFound
+	}
+
+	return trades[0], nil
 }
 
 func (t tradeRepositoryImpl) UpdateTrade(
@@ -82,7 +99,7 @@ func (t tradeRepositoryImpl) UpdateTrade(
 	ID *uuid.UUID,
 	updateFn func(t *domain.Trade) (*domain.Trade, error),
 ) error {
-	currentTrade, err := t.getOrCreateTrade(ctx, ID)
+	currentTrade, err := t.getTrade(ctx, *ID)
 	if err != nil {
 		return err
 	}
@@ -93,25 +110,6 @@ func (t tradeRepositoryImpl) UpdateTrade(
 	}
 
 	return t.updateTrade(ctx, updatedTrade.ID, *updatedTrade)
-}
-
-func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
-	ctx context.Context,
-	marketQuoteAsset string,
-) ([]*domain.Trade, error) {
-	query := badgerhold.
-		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
-		And("Status.Code").Eq(pb.SwapStatus_COMPLETE)
-	tr, err := t.findTrades(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	trades := make([]*domain.Trade, 0, len(tr))
-	for _, v := range tr {
-		trades = append(trades, &v)
-	}
-
-	return trades, nil
 }
 
 func (t tradeRepositoryImpl) getOrCreateTrade(
@@ -132,14 +130,20 @@ func (t tradeRepositoryImpl) getOrCreateTrade(
 func (t tradeRepositoryImpl) findTrades(
 	ctx context.Context,
 	query *badgerhold.Query,
-) ([]domain.Trade, error) {
-	var trades []domain.Trade
+) ([]*domain.Trade, error) {
+	var tr []domain.Trade
 	var err error
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = t.db.Store.TxFind(tx, &trades, query)
+		err = t.db.Store.TxFind(tx, &tr, query)
 	} else {
-		err = t.db.Store.Find(&trades, query)
+		err = t.db.Store.Find(&tr, query)
+	}
+
+	trades := make([]*domain.Trade, len(tr), len(tr))
+	for i := range tr {
+		trade := tr[i]
+		trades[i] = &trade
 	}
 
 	return trades, err
@@ -158,6 +162,9 @@ func (t tradeRepositoryImpl) getTrade(
 		err = t.db.Store.Get(ID, &trade)
 	}
 	if err != nil {
+		if err == badgerhold.ErrNotFound {
+			return nil, ErrTradeNotFound
+		}
 		return nil, err
 	}
 
@@ -208,7 +215,7 @@ func (t tradeRepositoryImpl) getAllTrades(ctx context.Context) []*domain.Trade {
 			item := it.Item()
 			data, _ := item.ValueCopy(nil)
 			var trade domain.Trade
-			err := JSONDecode(data, &trade)
+			err := badgerhold.DefaultDecode(data, &trade)
 			if err == nil {
 				trades = append(trades, &trade)
 			}

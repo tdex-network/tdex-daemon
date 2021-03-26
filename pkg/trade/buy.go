@@ -12,13 +12,14 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/vulpemventures/go-elements/address"
-	"github.com/vulpemventures/go-elements/network"
 	"google.golang.org/protobuf/proto"
 )
 
 var (
 	// ErrNullAddress ...
 	ErrNullAddress = errors.New("address must not be null")
+	// ErrInvalidAsset ...
+	ErrInvalidAsset = errors.New("asset must be a 32-byte array in hex format")
 	// ErrInvalidAddress ...
 	ErrInvalidAddress = errors.New("address is not valid")
 	// ErrNullPrivateKey ...
@@ -31,6 +32,7 @@ var (
 type BuyOrSellOpts struct {
 	Market      trademarket.Market
 	Amount      uint64
+	Asset       string
 	Address     string
 	BlindingKey []byte
 }
@@ -42,13 +44,14 @@ func (o BuyOrSellOpts) validate() error {
 	if o.Amount <= 0 {
 		return ErrInvalidAmount
 	}
+	if buf, err := hex.DecodeString(o.Asset); err != nil || len(buf) != 32 {
+		return ErrInvalidAsset
+	}
 	if len(o.Address) <= 0 {
 		return ErrNullAddress
 	}
-	if _, err := address.ToOutputScript(o.Address, network.Liquid); err != nil {
-		if _, err := address.ToOutputScript(o.Address, network.Regtest); err != nil {
-			return ErrInvalidAddress
-		}
+	if _, err := address.ToOutputScript(o.Address); err != nil {
+		return ErrInvalidAddress
 	}
 	if len(o.BlindingKey) <= 0 {
 		return ErrNullBlindingKey
@@ -68,6 +71,7 @@ func (t *Trade) Buy(opts BuyOrSellOpts) ([]byte, error) {
 		opts.Market,
 		tradetype.Buy,
 		opts.Amount,
+		opts.Asset,
 		opts.Address,
 		opts.BlindingKey,
 	)
@@ -78,6 +82,7 @@ type BuyOrSellAndCompleteOpts struct {
 	Market      trademarket.Market
 	TradeType   int
 	Amount      uint64
+	Asset       string
 	PrivateKey  []byte
 	BlindingKey []byte
 }
@@ -91,6 +96,9 @@ func (o BuyOrSellAndCompleteOpts) validate() error {
 	}
 	if o.Amount <= 0 {
 		return ErrInvalidAmount
+	}
+	if buf, err := hex.DecodeString(o.Asset); err != nil || len(buf) != 32 {
+		return ErrInvalidAsset
 	}
 	if len(o.PrivateKey) <= 0 {
 		return ErrNullPrivateKey
@@ -115,6 +123,7 @@ func (t *Trade) BuyAndComplete(opts BuyOrSellAndCompleteOpts) (string, error) {
 		opts.Market,
 		tradetype.Buy,
 		opts.Amount,
+		opts.Asset,
 		w.Address(),
 		opts.BlindingKey,
 	)
@@ -129,6 +138,7 @@ func (t *Trade) marketOrderRequest(
 	market trademarket.Market,
 	tradeType tradetype.TradeType,
 	amount uint64,
+	asset string,
 	addr string,
 	blindingKey []byte,
 ) ([]byte, error) {
@@ -144,17 +154,17 @@ func (t *Trade) marketOrderRequest(
 		Market:    market,
 		TradeType: int(tradeType),
 		Amount:    amount,
+		Asset:     asset,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	outputScript, _ := address.ToOutputScript(addr, *t.network)
+	outputScript, _ := address.ToOutputScript(addr)
 	outputScriptHex := hex.EncodeToString(outputScript)
 
 	psetBase64, err := NewSwapTx(
 		unspents,
-		blindingKey,
 		preview.AssetToSend,
 		preview.AmountToSend,
 		preview.AssetToReceive,

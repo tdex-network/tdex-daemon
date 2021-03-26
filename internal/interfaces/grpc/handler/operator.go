@@ -111,6 +111,20 @@ func (o operatorHandler) BalanceFeeAccount(
 	return o.balanceFeeAccount(ctx, req)
 }
 
+func (o operatorHandler) ClaimMarketDeposit(
+	ctx context.Context,
+	req *pb.ClaimMarketDepositRequest,
+) (*pb.ClaimMarketDepositReply, error) {
+	return o.claimMarketDeposit(ctx, req)
+}
+
+func (o operatorHandler) ClaimFeeDeposit(
+	ctx context.Context,
+	req *pb.ClaimFeeDepositRequest,
+) (*pb.ClaimFeeDepositReply, error) {
+	return o.claimFeeDeposit(ctx, req)
+}
+
 func (o operatorHandler) ListDepositMarket(
 	ctx context.Context,
 	req *pb.ListDepositMarketRequest,
@@ -130,6 +144,141 @@ func (o operatorHandler) ReportMarketFee(
 	req *pb.ReportMarketFeeRequest,
 ) (*pb.ReportMarketFeeReply, error) {
 	return o.reportMarketFee(ctx, req)
+}
+
+func (o operatorHandler) ReloadUtxos(
+	ctx context.Context,
+	rew *pb.ReloadUtxosRequest,
+) (*pb.ReloadUtxosReply, error) {
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			if err := o.operatorSvc.ReloadUtxos(ctx); err != nil {
+				return nil, err
+			}
+
+			return &pb.ReloadUtxosReply{}, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*pb.ReloadUtxosReply), nil
+}
+
+func (o operatorHandler) ListUtxos(
+	ctx context.Context,
+	req *pb.ListUtxosRequest,
+) (*pb.ListUtxosReply, error) {
+	return o.listUtxos(ctx, req)
+}
+
+func (o operatorHandler) DropMarket(
+	ctx context.Context,
+	req *pb.DropMarketRequest,
+) (*pb.DropMarketReply, error) {
+	return o.dropMarket(ctx, req)
+}
+
+func (o operatorHandler) dropMarket(
+	ctx context.Context,
+	req *pb.DropMarketRequest,
+) (*pb.DropMarketReply, error) {
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			err := o.operatorSvc.DropMarket(
+				ctx,
+				int(req.GetAccountIndex()),
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return &pb.DropMarketReply{}, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*pb.DropMarketReply), nil
+}
+
+func (o operatorHandler) listUtxos(
+	ctx context.Context,
+	req *pb.ListUtxosRequest,
+) (*pb.ListUtxosReply, error) {
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			utxoInfoPerAccount, err := o.operatorSvc.ListUtxos(
+				ctx,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			infoPerAccount := make(map[uint64]*pb.UtxoInfoList)
+
+			for k, v := range utxoInfoPerAccount.UtxoInfoPerAccount {
+				unspents := make([]*pb.UtxoInfo, 0)
+				for _, u := range v.Unspents {
+					unspents = append(unspents, &pb.UtxoInfo{
+						Outpoint: &pb.TxOutpoint{
+							Hash:  u.Outpoint.Hash,
+							Index: int32(u.Outpoint.Index),
+						},
+						Value: u.Value,
+						Asset: u.Asset,
+					})
+				}
+
+				spents := make([]*pb.UtxoInfo, 0)
+				for _, u := range v.Spents {
+					spents = append(spents, &pb.UtxoInfo{
+						Outpoint: &pb.TxOutpoint{
+							Hash:  u.Outpoint.Hash,
+							Index: int32(u.Outpoint.Index),
+						},
+						Value: u.Value,
+						Asset: u.Asset,
+					})
+				}
+
+				locks := make([]*pb.UtxoInfo, 0)
+				for _, u := range v.Locks {
+					locks = append(locks, &pb.UtxoInfo{
+						Outpoint: &pb.TxOutpoint{
+							Hash:  u.Outpoint.Hash,
+							Index: int32(u.Outpoint.Index),
+						},
+						Value: u.Value,
+						Asset: u.Asset,
+					})
+				}
+
+				infoPerAccount[k] = &pb.UtxoInfoList{
+					Unspents: unspents,
+					Spents:   spents,
+					Locks:    locks,
+				}
+			}
+
+			return &pb.ListUtxosReply{
+				InfoPerAccount: infoPerAccount,
+			}, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*pb.ListUtxosReply), nil
 }
 
 func (o operatorHandler) depositMarket(
@@ -168,7 +317,7 @@ func (o operatorHandler) depositFeeAccount(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			addressesWithBlindingKey, err := o.operatorSvc.DepositFeeAccount(
+			deposits, err := o.operatorSvc.DepositFeeAccount(
 				ctx,
 				int(req.GetNumOfAddresses()),
 			)
@@ -176,21 +325,16 @@ func (o operatorHandler) depositFeeAccount(
 				return nil, err
 			}
 
-			result := make(
-				[]*pbtypes.AddressWithBlindingKey,
-				0,
-				len(addressesWithBlindingKey),
-			)
-
-			for _, v := range addressesWithBlindingKey {
-				result = append(result, &pbtypes.AddressWithBlindingKey{
-					Address:  v.Address,
-					Blinding: v.BlindingKey,
+			addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(deposits))
+			for _, d := range deposits {
+				addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+					Address:  d.Address,
+					Blinding: d.BlindingKey,
 				})
 			}
 
 			return &pb.DepositFeeAccountReply{
-				AddressWithBlindingKey: result,
+				AddressWithBlindingKey: addressesAndKeys,
 			}, nil
 		},
 	)
@@ -278,7 +422,6 @@ func (o operatorHandler) updateMarketFee(
 			QuoteAsset: marketWithFee.GetMarket().GetQuoteAsset(),
 		},
 		Fee: application.Fee{
-			FeeAsset:   marketWithFee.GetFee().GetAsset(),
 			BasisPoint: marketWithFee.GetFee().GetBasisPoint(),
 		},
 	}
@@ -299,7 +442,6 @@ func (o operatorHandler) updateMarketFee(
 						QuoteAsset: result.QuoteAsset,
 					},
 					Fee: &pbtypes.Fee{
-						Asset:      result.FeeAsset,
 						BasisPoint: result.BasisPoint,
 					},
 				},
@@ -417,12 +559,11 @@ func (o operatorHandler) listSwaps(
 					AmountR: swapInfo.AmountR,
 					AssetR:  swapInfo.AssetR,
 					MarketFee: &pbtypes.Fee{
-						Asset:      swapInfo.MarketFee.FeeAsset,
 						BasisPoint: swapInfo.MarketFee.BasisPoint,
 					},
 					RequestTimeUnix:  swapInfo.RequestTimeUnix,
 					AcceptTimeUnix:   swapInfo.AcceptTimeUnix,
-					CompleteTimeUnix: swapInfo.RequestTimeUnix,
+					CompleteTimeUnix: swapInfo.CompleteTimeUnix,
 					ExpiryTimeUnix:   swapInfo.ExpiryTimeUnix,
 				}
 			}
@@ -502,6 +643,78 @@ func (o operatorHandler) balanceFeeAccount(
 	return res.(*pb.BalanceFeeAccountReply), nil
 }
 
+func (o operatorHandler) claimMarketDeposit(
+	ctx context.Context,
+	req *pb.ClaimMarketDepositRequest,
+) (*pb.ClaimMarketDepositReply, error) {
+	outputs := make([]application.TxOutpoint, 0, len(req.GetOutpoints()))
+	for _, v := range req.GetOutpoints() {
+		outputs = append(outputs, application.TxOutpoint{
+			Hash:  v.Hash,
+			Index: int(v.Index),
+		})
+	}
+
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			err := o.operatorSvc.ClaimMarketDeposit(
+				ctx,
+				application.Market{
+					BaseAsset:  req.GetMarket().GetBaseAsset(),
+					QuoteAsset: req.GetMarket().GetQuoteAsset(),
+				},
+				outputs,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return &pb.ClaimMarketDepositReply{}, nil
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return res.(*pb.ClaimMarketDepositReply), nil
+}
+
+func (o operatorHandler) claimFeeDeposit(
+	ctx context.Context,
+	req *pb.ClaimFeeDepositRequest,
+) (*pb.ClaimFeeDepositReply, error) {
+	outputs := make([]application.TxOutpoint, 0, len(req.GetOutpoints()))
+	for _, v := range req.GetOutpoints() {
+		outputs = append(outputs, application.TxOutpoint{
+			Hash:  v.Hash,
+			Index: int(v.Index),
+		})
+	}
+
+	res, err := o.dbManager.RunTransaction(
+		ctx,
+		!readOnlyTx,
+		func(ctx context.Context) (interface{}, error) {
+			err := o.operatorSvc.ClaimFeeDeposit(
+				ctx,
+				outputs,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return &pb.ClaimFeeDepositReply{}, nil
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return res.(*pb.ClaimFeeDepositReply), nil
+}
+
 func (o operatorHandler) listDepositMarket(
 	ctx context.Context,
 	req *pb.ListDepositMarketRequest,
@@ -546,21 +759,28 @@ func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketReque
 				return nil, err
 			}
 
-			pbMarketInfos := make([]*pb.MarketInfo, len(marketInfos), len(marketInfos))
+			pbMarketInfos := make([]*pb.MarketInfo, 0, len(marketInfos))
 
-			for index, marketInfo := range marketInfos {
-				pbMarketInfos[index] = &pb.MarketInfo{
-					Fee: &pbtypes.Fee{
-						BasisPoint: marketInfo.Fee.BasisPoint,
-						Asset:      marketInfo.Fee.FeeAsset,
-					},
+			for _, marketInfo := range marketInfos {
+				basePrice, _ := marketInfo.Price.BasePrice.BigFloat().Float32()
+				quotePrice, _ := marketInfo.Price.QuotePrice.BigFloat().Float32()
+
+				pbMarketInfos = append(pbMarketInfos, &pb.MarketInfo{
 					Market: &pbtypes.Market{
 						BaseAsset:  marketInfo.Market.BaseAsset,
 						QuoteAsset: marketInfo.Market.QuoteAsset,
 					},
+					Fee: &pbtypes.Fee{
+						BasisPoint: marketInfo.Fee.BasisPoint,
+					},
 					Tradable:     marketInfo.Tradable,
 					StrategyType: pb.StrategyType(marketInfo.StrategyType),
-				}
+					AccountIndex: marketInfo.AccountIndex,
+					Price: &pbtypes.Price{
+						BasePrice:  basePrice,
+						QuotePrice: quotePrice,
+					},
+				})
 			}
 
 			return &pb.ListMarketReply{Markets: pbMarketInfos}, nil
@@ -596,11 +816,15 @@ func (o operatorHandler) reportMarketFee(
 				return nil, err
 			}
 
-			collectedFees := make([]*pbtypes.Fee, 0)
-			for _, v := range report.CollectedFees {
-				collectedFees = append(collectedFees, &pbtypes.Fee{
-					Asset:      v.FeeAsset,
-					BasisPoint: v.BasisPoint,
+			collectedFees := make([]*pb.FeeInfo, 0)
+			for _, fee := range report.CollectedFees {
+				marketPrice, _ := fee.MarketPrice.BigFloat().Float32()
+				collectedFees = append(collectedFees, &pb.FeeInfo{
+					TradeId:     fee.TradeID,
+					BasisPoint:  fee.BasisPoint,
+					Asset:       fee.Asset,
+					Amount:      fee.Amount,
+					MarketPrice: marketPrice,
 				})
 			}
 
@@ -642,7 +866,7 @@ func validateMarket(market *pbtypes.Market) error {
 	}
 
 	if market.GetBaseAsset() != config.GetString(config.BaseAssetKey) {
-		return domain.ErrInvalidBaseAsset
+		return domain.ErrMarketInvalidBaseAsset
 	}
 	return nil
 }
@@ -650,9 +874,6 @@ func validateMarket(market *pbtypes.Market) error {
 func validateFee(fee *pbtypes.Fee) error {
 	if fee == nil {
 		return errors.New("fee is null")
-	}
-	if len(fee.GetAsset()) <= 0 {
-		return errors.New("fee asset is null")
 	}
 	if fee.GetBasisPoint() <= 0 {
 		return errors.New("fee basis point is too low")
