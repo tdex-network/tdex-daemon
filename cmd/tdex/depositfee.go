@@ -40,6 +40,10 @@ var depositfee = cli.Command{
 			Name:  "num_of_addresses",
 			Usage: "the number of addresses to retrieve",
 		},
+		&cli.IntFlag{
+			Name:  "num_of_addresses",
+			Usage: "the number of addresses to retrieve",
+		},
 	},
 }
 
@@ -131,6 +135,7 @@ func depositFeeAction(ctx *cli.Context) error {
 		log.Error(err)
 	}
 
+	var txID string
 retry:
 	for {
 		resp, err := explorerSvc.BroadcastTransaction(txHex)
@@ -140,7 +145,28 @@ retry:
 			continue retry
 		}
 		log.Info(resp)
+		txID = resp
 		break retry
+	}
+
+	outpoints := make([]*pboperator.TxOutpoint, 0, len(outputs))
+	for i := 0; i < len(outputs); i++ {
+		outpoints = append(outpoints, &pboperator.TxOutpoint{
+			Hash:  txID,
+			Index: int32(i),
+		})
+	}
+
+	//wait one min so that tx get confirmed
+	time.Sleep(5 * time.Second)
+
+	_, err = client.ClaimFeeDeposit(
+		context.Background(), &pboperator.ClaimFeeDepositRequest{
+			Outpoints: outpoints,
+		},
+	)
+	if err != nil {
+		return err
 	}
 
 	return nil

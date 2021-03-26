@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"github.com/vulpemventures/go-elements/elementsutil"
 
 	"github.com/tdex-network/tdex-daemon/config"
@@ -180,6 +181,7 @@ func depositMarketAction(ctx *cli.Context) error {
 
 	log.Info("broadcasting transaction ...")
 
+	var txID string
 	for {
 		resp, err := explorerSvc.BroadcastTransaction(txHex)
 		if err != nil {
@@ -188,7 +190,32 @@ func depositMarketAction(ctx *cli.Context) error {
 			continue
 		}
 		log.Info(resp)
+		txID = resp
 		break
+	}
+
+	outpoints := make([]*pboperator.TxOutpoint, 0, len(outputs))
+	for i := 0; i < len(outputs); i++ {
+		outpoints = append(outpoints, &pboperator.TxOutpoint{
+			Hash:  txID,
+			Index: int32(i),
+		})
+	}
+
+	//wait one min so that tx get confirmed
+	time.Sleep(5 * time.Second)
+
+	_, err = client.ClaimMarketDeposit(
+		context.Background(), &pboperator.ClaimMarketDepositRequest{
+			Market: &types.Market{
+				BaseAsset:  assetValuePair.BaseAsset,
+				QuoteAsset: assetValuePair.QuoteAsset,
+			},
+			Outpoints: outpoints,
+		},
+	)
+	if err != nil {
+		return err
 	}
 
 	return nil
