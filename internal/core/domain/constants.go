@@ -19,9 +19,11 @@ const (
 )
 
 const (
-	Empty = iota
+	Empty = iota - 1
+	Undefined
 	Proposal
 	Accepted
 	Completed
 	Settled
+	Expired
 )

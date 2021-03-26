@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-
-	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
 func (e *esplora) GetBlockHeight() (int, error) {
@@ -13,7 +11,7 @@ func (e *esplora) GetBlockHeight() (int, error) {
 		"%v/blocks/tip/height",
 		e.apiURL,
 	)
-	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
+	status, resp, err := e.client.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
 		return -1, err
 	}

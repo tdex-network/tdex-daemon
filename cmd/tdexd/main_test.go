@@ -107,7 +107,10 @@ func stopDaemon() {
 
 func initExplorer() error {
 	var err error
-	explorerSvc, err = esplora.NewService(config.GetString(config.ExplorerEndpointKey))
+	explorerSvc, err = esplora.NewService(
+		config.GetString(config.ExplorerEndpointKey),
+		config.GetInt(config.ExplorerRequestTimeoutKey),
+	)
 	return err
 }
 

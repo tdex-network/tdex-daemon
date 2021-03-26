@@ -10,7 +10,7 @@ import (
 func validateAmount(satoshis decimal.Decimal) error {
 	if satoshis.IsZero() || satoshis.IsNegative() {
 		return errors.New("amount must be greater than zero")
-	} 
+	}
 
 	if satoshis.Cmp(decimal.NewFromInt(2099999997690000)) > 0 {
 		return errors.New("amount cannot be greater than 2099999997690000")
@@ -20,7 +20,7 @@ func validateAmount(satoshis decimal.Decimal) error {
 }
 
 func validateAssetString(asset string) error {
-	const regularExpression = `[0-9A-Fa-f]{64}`	
+	const regularExpression = `[0-9a-f]{64}`
 
 	matched, err := regexp.Match(regularExpression, []byte(asset))
 	if err != nil {

@@ -67,7 +67,7 @@ func main() {
 	network := config.GetNetwork()
 	feeThreshold := uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
 
-	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager, tradesExpiryDuration)
+	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
 	vaultRepository := dbbadger.NewVaultRepositoryImpl(dbManager)
 	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
 	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
@@ -94,6 +94,7 @@ func main() {
 		dbManager,
 		marketsBaseAsset,
 		feeThreshold,
+		network,
 	)
 
 	traderSvc := application.NewTradeService(
@@ -108,14 +109,6 @@ func main() {
 		pricesSlippagePercentage,
 		network,
 	)
-	walletSvc := application.NewWalletService(
-		vaultRepository,
-		unspentRepository,
-		explorerSvc,
-		blockchainListener,
-		withElementsSvc,
-		network,
-	)
 	operatorSvc := application.NewOperatorService(
 		marketRepository,
 		vaultRepository,
@@ -128,6 +121,20 @@ func main() {
 		network,
 		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
 	)
+	walletSvc, err := application.NewWalletService(
+		vaultRepository,
+		unspentRepository,
+		marketRepository,
+		explorerSvc,
+		blockchainListener,
+		withElementsSvc,
+		network,
+		marketsFee,
+		marketsBaseAsset,
+	)
+	if err != nil {
+		log.WithError(err).Panic("error while setting up wallet service")
+	}
 
 	// Ports
 	traderAddress := fmt.Sprintf(":%+v", config.GetInt(config.TraderListeningPortKey))

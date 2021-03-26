@@ -83,8 +83,7 @@ func (t *Trade) Accept(
 	t.SwapAccept.Message = swapAcceptMsg
 	t.SwapAccept.Timestamp = now
 	t.PsetBase64 = psetBase64
-	txID, _ := PsetParserManager.GetTxID(psetBase64)
-	t.TxID = txID
+	t.TxID, _ = PsetParserManager.GetTxID(psetBase64)
 
 	return true, nil
 }
@@ -148,8 +147,8 @@ func (t *Trade) Settle(settlementTime uint64) (bool, error) {
 		return true, nil
 	}
 
-	if !t.IsCompleted() && !t.Status.Failed {
-		return false, ErrTradeMustBeCompleted
+	if !(t.IsCompleted() || t.IsAccepted() || t.Status.Failed) {
+		return false, ErrTradeMustBeCompletedOrAccepted
 	}
 
 	t.ExpiryTime = 0
@@ -169,6 +168,28 @@ func (t *Trade) Fail(swapID string, errCode int, errMsg string) {
 	t.SwapFail.ID = swapFailID
 	t.SwapFail.Message = swapFailMsg
 	t.Status.Failed = true
+}
+
+// Expire brings the trade to the Expired status if its expiration date was
+// previosly set. This infers that it must be in any of the Accepted, Completed,
+// or related failed statuses. This method makes also sure that the expiration
+// date has passed before changing the status.
+func (t *Trade) Expire() (bool, error) {
+	if t.Status.Code == Expired {
+		return true, nil
+	}
+
+	if t.ExpiryTime <= 0 {
+		return false, ErrTradeNullExpirationDate
+	}
+
+	now := uint64(time.Now().Unix())
+	if now < t.ExpiryTime {
+		return false, ErrTradeExpirationDateNotReached
+	}
+
+	t.Status = ExpiredStatus
+	return true, nil
 }
 
 // IsEmpty returns whether the Trade is empty.
@@ -201,11 +222,12 @@ func (t *Trade) IsRejected() bool {
 	return t.Status.Failed
 }
 
-// IsExpired returns whether the trade has reached the expiration date, ie if
-// the trade is not in Settle status and now is after the expriation date
+// IsExpired returns whether the trade has is in Expired status, or if its
+// expiration date has passed.
 func (t *Trade) IsExpired() bool {
 	now := uint64(time.Now().Unix())
-	return !t.IsSettled() && !t.IsEmpty() && now >= t.ExpiryTime
+	return t.Status.Code == Expired ||
+		(t.ExpiryTime > 0 && now >= t.ExpiryTime)
 }
 
 // ContainsSwap returns whether a swap identified by its id belongs to the

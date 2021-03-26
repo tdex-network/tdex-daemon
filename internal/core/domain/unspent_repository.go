@@ -37,13 +37,13 @@ type UnspentRepository interface {
 	GetUnlockedBalance(ctx context.Context, addresses []string, assetHash string) (uint64, error)
 	// SpendUnspents let mark the provided list of unspent UTXOs (identified by their
 	// keys) as spent.
-	SpendUnspents(ctx context.Context, unspentKeys []UnspentKey) error
+	SpendUnspents(ctx context.Context, unspentKeys []UnspentKey) (int, error)
 	// ConfirmUnspents let mark the provided list of unconfirmed unspent UTXOs as
 	// confirmed.
-	ConfirmUnspents(ctx context.Context, unspentKeys []UnspentKey) error
+	ConfirmUnspents(ctx context.Context, unspentKeys []UnspentKey) (int, error)
 	// LockUnspents let lock the provided list of unlocked, unspent UTXOs,
 	// referring to a certain trade by its UUID.
-	LockUnspents(ctx context.Context, unspentKeys []UnspentKey, tradeID uuid.UUID) error
+	LockUnspents(ctx context.Context, unspentKeys []UnspentKey, tradeID uuid.UUID) (int, error)
 	// UnlockUnspents let unlock the provided list of locked, unspent UTXOs.
-	UnlockUnspents(ctx context.Context, unspentKeys []UnspentKey) error
+	UnlockUnspents(ctx context.Context, unspentKeys []UnspentKey) (int, error)
 }

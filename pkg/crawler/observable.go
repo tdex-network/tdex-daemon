@@ -95,7 +95,8 @@ func (a *AddressObservable) key() string {
 }
 
 type TransactionObservable struct {
-	TxID string
+	TxID  string
+	TxHex string
 }
 
 func (t *TransactionObservable) observe(
@@ -119,6 +120,12 @@ func (t *TransactionObservable) observe(
 	if err != nil {
 		errChan <- err
 		return
+	}
+	if len(t.TxHex) <= 0 {
+		txHex, err := explorerSvc.GetTransactionHex(t.TxID)
+		if err == nil {
+			t.TxHex = txHex
+		}
 	}
 
 	observableStatus.Set(Processed)
@@ -152,6 +159,7 @@ func (t *TransactionObservable) observe(
 
 	event := TransactionEvent{
 		TxID:      t.TxID,
+		TxHex:     t.TxHex,
 		EventType: trxStatus,
 		BlockHash: blockHash,
 		BlockTime: blockTime,

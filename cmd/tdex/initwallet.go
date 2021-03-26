@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	pbwallet "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
@@ -60,8 +61,42 @@ func initWalletAction(ctx *cli.Context) error {
 		return err
 	}
 
-	if _, err := stream.Recv(); err != nil {
-		return err
+	m := make(map[int]struct{})
+	var reply *pbwallet.InitWalletReply
+	var prevReply *pbwallet.InitWalletReply
+	for {
+		prevReply = reply
+		reply, err = stream.Recv()
+		if err == io.EOF {
+			if prevReply != nil {
+				fmt.Println("restore account", prevReply.GetAccount(), prevReply.GetStatus())
+			}
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		status := reply.GetStatus()
+		data := reply.GetData()
+		if strings.Contains(data, "addresses") {
+			fmt.Println(data, status)
+			continue
+		}
+
+		prevAccount := prevReply.GetAccount()
+		prevStatus := prevReply.GetStatus()
+		account := reply.GetAccount()
+		if status == pbwallet.InitWalletReply_PROCESSING {
+			if prevStatus == pbwallet.InitWalletReply_DONE && account != prevAccount {
+				fmt.Println("restore account", prevAccount, prevStatus)
+			}
+
+			if _, ok := m[int(account)]; !ok {
+				fmt.Println("restore account", account, status)
+				m[int(account)] = struct{}{}
+			}
+		}
 	}
 
 	fmt.Println()

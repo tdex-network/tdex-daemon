@@ -8,79 +8,12 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
 func (e *esplora) GetUnspents(addr string, blindingKeys [][]byte) (coins []explorer.Utxo, err error) {
-	url := fmt.Sprintf(
-		"%s/address/%s/utxo",
-		e.apiURL,
-		addr,
-	)
-	status, resp, err1 := httputil.NewHTTPRequest("GET", url, "", nil)
-	if err1 != nil {
-		coins = nil
-		err = fmt.Errorf("error on retrieving utxos: %s", err1)
-		return
-	}
-	if status != http.StatusOK {
-		coins = nil
-		err = fmt.Errorf(resp)
-		return
-	}
-
-	var witnessOuts []witnessUtxo
-	err1 = json.Unmarshal([]byte(resp), &witnessOuts)
-	if err1 != nil {
-		coins = nil
-		err = fmt.Errorf("error on retrieving utxos: %s", err1)
-		return
-	}
-
-	unspents := make([]explorer.Utxo, len(witnessOuts))
-	chUnspents := make(chan explorer.Utxo)
-	chErr := make(chan error, 1)
-
-	for i := range witnessOuts {
-		out := witnessOuts[i]
-		go e.getUtxoDetails(out, chUnspents, chErr)
-
-		select {
-		case err1 := <-chErr:
-			if err1 != nil {
-				close(chErr)
-				close(chUnspents)
-				coins = nil
-				err = fmt.Errorf("error on retrieving utxos: %s", err1)
-				return
-			}
-
-		case unspent := <-chUnspents:
-			if out.IsConfidential() && len(blindingKeys) > 0 {
-				go unblindUtxo(unspent, blindingKeys, chUnspents, chErr)
-				select {
-
-				case err1 := <-chErr:
-					close(chErr)
-					close(chUnspents)
-					coins = nil
-					err = fmt.Errorf("error on unblinding utxos: %s", err1)
-					return
-
-				case u := <-chUnspents:
-					unspents[i] = u
-				}
-
-			} else {
-				unspents[i] = unspent
-			}
-		}
-	}
-
-	coins = unspents
-	return
+	return e.getUnspents(addr, blindingKeys)
 }
 
 func (e *esplora) GetUnspentsForAddresses(
@@ -107,13 +40,71 @@ func (e *esplora) GetUnspentsForAddresses(
 	return unspents, nil
 }
 
+func (e *esplora) getUnspents(addr string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
+	url := fmt.Sprintf(
+		"%s/address/%s/utxo",
+		e.apiURL,
+		addr,
+	)
+	status, resp, err := e.client.NewHTTPRequest("GET", url, "", nil)
+	if err != nil {
+		return nil, fmt.Errorf("error on retrieving utxos: %s", err)
+	}
+	if status != http.StatusOK {
+		return nil, fmt.Errorf(resp)
+	}
+
+	var witnessOuts []witnessUtxo
+	if err := json.Unmarshal([]byte(resp), &witnessOuts); err != nil {
+		return nil, fmt.Errorf("error on retrieving utxos: %s", err)
+	}
+
+	unspents := make([]explorer.Utxo, len(witnessOuts))
+	chUnspents := make(chan explorer.Utxo)
+	chErr := make(chan error, 1)
+
+	for i := range witnessOuts {
+		out := witnessOuts[i]
+		go e.getUtxoDetails(out, chUnspents, chErr)
+
+		select {
+		case err := <-chErr:
+			if err != nil {
+				close(chErr)
+				close(chUnspents)
+				return nil, fmt.Errorf("error on retrieving utxos: %s", err)
+			}
+
+		case unspent := <-chUnspents:
+			if out.IsConfidential() && len(blindingKeys) > 0 {
+				go unblindUtxo(unspent, blindingKeys, chUnspents, chErr)
+				select {
+
+				case err := <-chErr:
+					close(chErr)
+					close(chUnspents)
+					return nil, fmt.Errorf("error on unblinding utxos: %s", err)
+
+				case u := <-chUnspents:
+					unspents[i] = u
+				}
+
+			} else {
+				unspents[i] = unspent
+			}
+		}
+	}
+
+	return unspents, nil
+}
+
 func (e *esplora) getUnspentsForAddress(
 	addr string,
 	blindingKeys [][]byte,
 	chUnspents chan []explorer.Utxo,
 	chErr chan error,
 ) {
-	unspents, err := e.GetUnspents(addr, blindingKeys)
+	unspents, err := e.getUnspents(addr, blindingKeys)
 	if err != nil {
 		chErr <- err
 		return
