@@ -2,7 +2,6 @@ package dbbadger
 
 import (
 	"context"
-	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/google/uuid"
@@ -19,14 +18,12 @@ const (
 var unspentTablePrefixKey = []byte(UnspentBadgerholdKeyPrefix)
 
 type unspentRepositoryImpl struct {
-	db         *DbManager
-	unspentTtl time.Duration
+	db *DbManager
 }
 
-func NewUnspentRepositoryImpl(db *DbManager, unspentTTL time.Duration) domain.UnspentRepository {
+func NewUnspentRepositoryImpl(db *DbManager) domain.UnspentRepository {
 	return unspentRepositoryImpl{
-		db:         db,
-		unspentTtl: unspentTTL,
+		db: db,
 	}
 }
 
@@ -149,14 +146,14 @@ func (u unspentRepositoryImpl) GetUnlockedBalance(
 func (u unspentRepositoryImpl) SpendUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
-) error {
+) (int, error) {
 	return u.spendUnspents(ctx, unspentKeys)
 }
 
 func (u unspentRepositoryImpl) ConfirmUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
-) error {
+) (int, error) {
 	return u.confirmUnspents(ctx, unspentKeys)
 }
 
@@ -164,13 +161,14 @@ func (u unspentRepositoryImpl) LockUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
 	tradeID uuid.UUID,
-) error {
+) (int, error) {
 	return u.lockUnspents(ctx, unspentKeys, tradeID)
 }
 
 func (u unspentRepositoryImpl) UnlockUnspents(
 	ctx context.Context,
-	unspentKeys []domain.UnspentKey) error {
+	unspentKeys []domain.UnspentKey,
+) (int, error) {
 	return u.unlockUnspents(ctx, unspentKeys)
 }
 
@@ -259,129 +257,165 @@ func (u unspentRepositoryImpl) getBalance(
 func (u unspentRepositoryImpl) spendUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
-) error {
+) (int, error) {
+	count := 0
 	for _, key := range unspentKeys {
-		if err := u.spendUnspent(ctx, key); err != nil {
-			return err
+		done, err := u.spendUnspent(ctx, key)
+		if err != nil {
+			return -1, err
+		}
+		if done {
+			count++
 		}
 	}
-	return nil
+	return count, nil
 }
 
 func (u unspentRepositoryImpl) spendUnspent(
 	ctx context.Context,
 	key domain.UnspentKey,
-) error {
+) (bool, error) {
 	unspent, err := u.getUnspent(ctx, key)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if unspent == nil {
-		return nil
+		return false, nil
 	}
 
 	unspent.Spend()
 	unspent.Unlock() // prevent conflict, locks not stored under unspent prefix
 
-	return u.updateUnspent(ctx, key, *unspent)
+	if err := u.updateUnspent(ctx, key, *unspent); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (u unspentRepositoryImpl) confirmUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
-) error {
+) (int, error) {
+	count := 0
 	for _, key := range unspentKeys {
-		if err := u.confirmUnspent(ctx, key); err != nil {
-			return err
+		done, err := u.confirmUnspent(ctx, key)
+		if err != nil {
+			return -1, err
+		}
+		if done {
+			count++
 		}
 	}
-	return nil
+	return count, nil
 }
 
 func (u unspentRepositoryImpl) confirmUnspent(
 	ctx context.Context,
 	key domain.UnspentKey,
-) error {
+) (bool, error) {
 	unspent, err := u.getUnspent(ctx, key)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if unspent == nil {
-		return nil
+		return false, nil
 	}
 
 	unspent.Confirm()
 	unspent.Unlock() // prevent conflict, locks not stored under unspent prefix
 
-	return u.updateUnspent(ctx, key, *unspent)
+	if err := u.updateUnspent(ctx, key, *unspent); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (u unspentRepositoryImpl) lockUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
 	tradeID uuid.UUID,
-) error {
+) (int, error) {
+	count := 0
 	for _, key := range unspentKeys {
-		if err := u.lockUnspent(ctx, key, tradeID); err != nil {
-			return err
+		done, err := u.lockUnspent(ctx, key, tradeID)
+		if err != nil {
+			return -1, err
+		}
+		if done {
+			count++
 		}
 	}
-	return nil
+	return count, nil
 }
 
 func (u unspentRepositoryImpl) lockUnspent(
 	ctx context.Context,
 	key domain.UnspentKey,
 	tradeID uuid.UUID,
-) error {
+) (bool, error) {
 	unspent, err := u.getUnspent(ctx, key)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if unspent == nil {
-		return nil
+		return false, nil
 	}
 
 	if unspent.IsLocked() {
-		return nil
+		return false, nil
 	}
 
-	return u.insertLock(ctx, key, tradeID)
+	if err := u.insertLock(ctx, key, tradeID); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (u unspentRepositoryImpl) unlockUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
-) error {
+) (int, error) {
+	count := 0
 	for _, key := range unspentKeys {
-		if err := u.unlockUnspent(ctx, key); err != nil {
-			return err
+		done, err := u.unlockUnspent(ctx, key)
+		if err != nil {
+			return -1, err
+		}
+		if done {
+			count++
 		}
 	}
-	return nil
+	return count, nil
 }
 
 func (u unspentRepositoryImpl) unlockUnspent(
 	ctx context.Context,
 	key domain.UnspentKey,
-) error {
+) (bool, error) {
 	unspent, err := u.getUnspent(ctx, key)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if unspent == nil {
-		return nil
+		return false, nil
 	}
 
 	if !unspent.IsLocked() {
-		return nil
+		return false, nil
 	}
 
-	return u.deleteLock(ctx, key)
+	if err := u.deleteLock(ctx, key); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (u unspentRepositoryImpl) findUnspents(
@@ -532,12 +566,12 @@ func (u unspentRepositoryImpl) insertLock(
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
 		return tx.SetEntry(
-			badger.NewEntry(encKey, encData).WithTTL(u.unspentTtl * time.Second),
+			badger.NewEntry(encKey, encData),
 		)
 	} else {
 		err = u.db.Store.Badger().Update(func(txn *badger.Txn) error {
 			return txn.SetEntry(
-				badger.NewEntry(encKey, encData).WithTTL(u.unspentTtl * time.Second),
+				badger.NewEntry(encKey, encData),
 			)
 		})
 	}

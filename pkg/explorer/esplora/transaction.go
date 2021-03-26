@@ -1,14 +1,11 @@
 package esplora
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/httputil"
 )
 
 func (e *esplora) GetTransactionHex(hash string) (string, error) {
@@ -17,7 +14,7 @@ func (e *esplora) GetTransactionHex(hash string) (string, error) {
 		e.apiURL,
 		hash,
 	)
-	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
+	status, resp, err := e.client.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -49,12 +46,12 @@ func (e *esplora) GetTransactionStatus(txID string) (map[string]interface{}, err
 		e.apiURL,
 		txID,
 	)
-	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
+	status, resp, err := e.client.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
 		return nil, err
 	}
 	if status != http.StatusOK {
-		return nil, err
+		return nil, fmt.Errorf(resp)
 	}
 
 	var trxStatus map[string]interface{}
@@ -68,7 +65,7 @@ func (e *esplora) GetTransactionStatus(txID string) (map[string]interface{}, err
 
 func (e *esplora) GetTransactionsForAddress(address string, _ []byte) ([]explorer.Transaction, error) {
 	url := fmt.Sprintf("%s/address/%s/txs", e.apiURL, address)
-	status, resp, err := httputil.NewHTTPRequest("GET", url, "", nil)
+	status, resp, err := e.client.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +82,7 @@ func (e *esplora) BroadcastTransaction(txHex string) (string, error) {
 		"Content-Type": "text/plain",
 	}
 
-	status, resp, err := httputil.NewHTTPRequest(
+	status, resp, err := e.client.NewHTTPRequest(
 		"POST",
 		url,
 		txHex,
@@ -95,7 +92,7 @@ func (e *esplora) BroadcastTransaction(txHex string) (string, error) {
 		return "", err
 	}
 	if status != http.StatusOK {
-		return "", fmt.Errorf("electrs: %s", resp)
+		return "", fmt.Errorf(resp)
 	}
 
 	return resp, nil
@@ -105,42 +102,49 @@ func (e *esplora) Faucet(address string) (string, error) {
 	url := fmt.Sprintf("%s/faucet", e.apiURL)
 	payload := map[string]string{"address": address}
 	body, _ := json.Marshal(payload)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		return "", err
-	}
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	respBody := map[string]string{}
-	err = json.Unmarshal(data, &respBody)
-	if err != nil {
-		return "", err
+	bodyString := string(body)
+	headers := map[string]string{
+		"Content-Type": "application/json",
 	}
 
-	return respBody["txId"], nil
+	status, resp, err := e.client.NewHTTPRequest(
+		"POST", url, bodyString, headers,
+	)
+	if err != nil {
+		return "", err
+	}
+	if status != http.StatusOK {
+		return "", fmt.Errorf(resp)
+	}
+
+	var rr map[string]string
+	json.Unmarshal([]byte(resp), &rr)
+
+	return rr["txId"], nil
 }
 
 func (e *esplora) Mint(address string, amount int) (string, string, error) {
 	url := fmt.Sprintf("%s/mint", e.apiURL)
 	payload := map[string]interface{}{"address": address, "quantity": amount}
 	body, _ := json.Marshal(payload)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	bodyString := string(body)
+	headers := map[string]string{
+		"Content-Type": "application/json",
+	}
+	status, resp, err := e.client.NewHTTPRequest(
+		"POST", url, bodyString, headers,
+	)
 	if err != nil {
 		return "", "", err
 	}
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", err
-	}
-	respBody := map[string]interface{}{}
-	err = json.Unmarshal(data, &respBody)
-	if err != nil {
-		return "", "", err
+	if status != http.StatusOK {
+		return "", "", fmt.Errorf(resp)
 	}
 
-	return respBody["txId"].(string), respBody["asset"].(string), nil
+	var rr map[string]string
+	json.Unmarshal([]byte(resp), &rr)
+
+	return rr["txId"], rr["asset"], nil
 }
 
 func parseTransactions(txList string) ([]explorer.Transaction, error) {
@@ -148,9 +152,9 @@ func parseTransactions(txList string) ([]explorer.Transaction, error) {
 	if err := json.Unmarshal([]byte(txList), &txInterfaces); err != nil {
 		return nil, err
 	}
-	txs := make([]explorer.Transaction, 0, len(txInterfaces))
 
-	for _, txi := range txInterfaces {
+	txs := make([]explorer.Transaction, len(txInterfaces), len(txInterfaces))
+	for i, txi := range txInterfaces {
 		t, err := json.Marshal(txi)
 		if err != nil {
 			return nil, err
@@ -159,7 +163,8 @@ func parseTransactions(txList string) ([]explorer.Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		txs = append(txs, trx)
+		txs[i] = trx
 	}
+
 	return txs, nil
 }

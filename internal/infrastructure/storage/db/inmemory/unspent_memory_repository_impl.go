@@ -2,8 +2,6 @@ package inmemory
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -151,42 +149,46 @@ func (r UnspentRepositoryImpl) GetUnlockedBalance(
 func (r UnspentRepositoryImpl) SpendUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
-) error {
+) (int, error) {
 	r.db.unspentStore.locker.Lock()
 	defer r.db.unspentStore.locker.Unlock()
 
+	count := 0
 	for _, key := range unspentKeys {
 		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
 			if !unspent.IsSpent() {
 				unspent.Spend()
 				unspent.Unlock()
 				r.db.unspentStore.unspents[key] = unspent
+				count++
 			}
 		}
 	}
 
-	return nil
+	return count, nil
 }
 
 // ConfirmUnspents ...
 func (r UnspentRepositoryImpl) ConfirmUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
-) error {
+) (int, error) {
 	r.db.unspentStore.locker.Lock()
 	defer r.db.unspentStore.locker.Unlock()
 
+	count := 0
 	for _, key := range unspentKeys {
 		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
 			if !unspent.IsConfirmed() {
 				unspent.Confirm()
 				unspent.Unlock()
 				r.db.unspentStore.unspents[key] = unspent
+				count++
 			}
 		}
 	}
 
-	return nil
+	return count, nil
 }
 
 // LockUnspents ...
@@ -194,20 +196,9 @@ func (r UnspentRepositoryImpl) LockUnspents(
 	_ context.Context,
 	unspentKeys []domain.UnspentKey,
 	tradeID uuid.UUID,
-) error {
+) (int, error) {
 	r.db.unspentStore.locker.Lock()
 	defer r.db.unspentStore.locker.Unlock()
-
-	go func() {
-		time.Sleep(3 * time.Second)
-		r.db.unspentStore.locker.Lock()
-		defer r.db.unspentStore.locker.Unlock()
-		for _, key := range unspentKeys {
-			unspent := r.db.unspentStore.unspents[key]
-			unspent.Unlock()
-			r.db.unspentStore.unspents[key] = unspent
-		}
-	}()
 
 	return r.lockUnspents(unspentKeys, tradeID)
 }
@@ -216,7 +207,7 @@ func (r UnspentRepositoryImpl) LockUnspents(
 func (r UnspentRepositoryImpl) UnlockUnspents(
 	_ context.Context,
 	unspentKeys []domain.UnspentKey,
-) error {
+) (int, error) {
 	r.db.unspentStore.locker.Lock()
 	defer r.db.unspentStore.locker.Unlock()
 
@@ -317,32 +308,31 @@ func (r UnspentRepositoryImpl) getUnspents(addresses []string, isLocked bool) []
 	return unspents
 }
 
-func (r UnspentRepositoryImpl) lockUnspents(unspentKeys []domain.UnspentKey, tradeID uuid.UUID) error {
+func (r UnspentRepositoryImpl) lockUnspents(
+	unspentKeys []domain.UnspentKey,
+	tradeID uuid.UUID,
+) (int, error) {
+	count := 0
 	for _, key := range unspentKeys {
-		if _, ok := r.db.unspentStore.unspents[key]; !ok {
-			return fmt.Errorf("unspent not found for key %v", key)
+		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
+			unspent.Lock(&tradeID)
+			r.db.unspentStore.unspents[key] = unspent
+			count++
 		}
 	}
-
-	for _, key := range unspentKeys {
-		unspent := r.db.unspentStore.unspents[key]
-		unspent.Lock(&tradeID)
-		r.db.unspentStore.unspents[key] = unspent
-	}
-	return nil
+	return count, nil
 }
 
-func (r UnspentRepositoryImpl) unlockUnspents(unspentKeys []domain.UnspentKey) error {
+func (r UnspentRepositoryImpl) unlockUnspents(
+	unspentKeys []domain.UnspentKey,
+) (int, error) {
+	count := 0
 	for _, key := range unspentKeys {
-		if _, ok := r.db.unspentStore.unspents[key]; !ok {
-			return fmt.Errorf("unspent not found for key %v", key)
+		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
+			unspent.Unlock()
+			r.db.unspentStore.unspents[key] = unspent
+			count++
 		}
 	}
-
-	for _, key := range unspentKeys {
-		unspent := r.db.unspentStore.unspents[key]
-		unspent.Unlock()
-		r.db.unspentStore.unspents[key] = unspent
-	}
-	return nil
+	return count, nil
 }

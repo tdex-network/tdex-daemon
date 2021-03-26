@@ -26,10 +26,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-//RegtestExplorerAPI ...
-const RegtestExplorerAPI = "http://127.0.0.1:3001"
-
 var (
+	reqTimeout     = 5000
 	regtest        = &network.Regtest
 	mktBaseAsset   = regtest.AssetID
 	mktFee         = int64(25)
@@ -129,16 +127,23 @@ func newMockServices(
 		dbManager,
 		mktBaseAsset,
 		feeThreshold,
+		regtest,
 	)
 
-	walletSvc := newWalletService(
+	walletSvc, err := newWalletService(
 		vaultRepo,
 		unspentRepo,
+		marketRepo,
 		explorerSvc,
 		blockchainListener,
 		false,
 		regtest,
+		mktFee,
+		mktBaseAsset,
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	if !vaultRepositoryIsEmpty {
 		if err := vaultRepo.UpdateVault(ctx, func(v *domain.Vault) (*domain.Vault, error) {
@@ -259,15 +264,19 @@ func newTestWallet(w *mockedWallet) (*walletService, context.Context, func()) {
 		dbManager,
 		mktBaseAsset,
 		feeThreshold,
+		regtest,
 	)
 
-	walletSvc := newWalletService(
+	walletSvc, _ := newWalletService(
 		vaultRepo,
 		unspentRepo,
+		marketRepo,
 		explorerSvc,
 		blockchainListener,
 		false,
 		regtest,
+		mktFee,
+		mktBaseAsset,
 	)
 
 	ctx := context.Background()
@@ -285,7 +294,7 @@ func getExplorer() (explorer.Service, error) {
 		return elements.NewService(endpoint, nil)
 	}
 	if endpoint := os.Getenv("TDEX_EXPLORER_ENDPOINT"); endpoint != "" {
-		return esplora.NewService(endpoint)
+		return esplora.NewService(endpoint, reqTimeout)
 	}
 	return nil, fmt.Errorf("Esplora or Elements endpoint must be set")
 }

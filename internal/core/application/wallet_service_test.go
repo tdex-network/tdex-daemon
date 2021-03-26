@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -48,7 +49,17 @@ func TestInitWalletWrongSeed(t *testing.T) {
 	t.Cleanup(close)
 
 	wrongSeed := []string{"test"}
-	err := walletSvc.InitWallet(ctx, wrongSeed, "pass", !restoreWallet)
+	chReplies := make(chan *InitWalletReply)
+	chErr := make(chan error, 1)
+	walletSvc.InitWallet(
+		ctx,
+		wrongSeed,
+		"pass",
+		!restoreWallet,
+		chReplies,
+		chErr,
+	)
+	err := <-chErr
 	assert.Error(t, err)
 }
 
@@ -79,11 +90,29 @@ func TestInitEmptyWallet(t *testing.T) {
 		Network:        &network.Regtest,
 	})
 
-	err := walletSvc.InitWallet(ctx, emptyWallet.mnemonic, emptyWallet.password, !restoreWallet)
-	if err != nil {
-		t.Fatal(err)
+	chReplies := make(chan *InitWalletReply)
+	chErr := make(chan error, 1)
+	go walletSvc.InitWallet(
+		ctx,
+		emptyWallet.mnemonic,
+		emptyWallet.password,
+		!restoreWallet,
+		chReplies,
+		chErr,
+	)
+
+	for {
+		select {
+		case err := <-chErr:
+			t.Fatal(err)
+		case reply := <-chReplies:
+			if reply == nil {
+				break
+			}
+			fmt.Println(reply)
+		}
+		break
 	}
-	assert.Equal(t, true, walletSvc.walletInitialized)
 
 	if err := walletSvc.UnlockWallet(ctx, emptyWallet.password); err != nil {
 		t.Fatal(err)
@@ -119,10 +148,30 @@ func TestInitUsedWallet(t *testing.T) {
 		Network:        &network.Regtest,
 	})
 
-	err := walletSvc.InitWallet(ctx, usedWallet.mnemonic, usedWallet.password, restoreWallet)
-	if err != nil {
-		t.Fatal(err)
+	chReplies := make(chan *InitWalletReply)
+	chErr := make(chan error, 1)
+	go walletSvc.InitWallet(
+		ctx,
+		usedWallet.mnemonic,
+		usedWallet.password,
+		restoreWallet,
+		chReplies,
+		chErr,
+	)
+
+	for {
+		select {
+		case err := <-chErr:
+			t.Fatal(err)
+		case reply := <-chReplies:
+			if reply == nil {
+				break
+			}
+			fmt.Println(reply.Data)
+		}
+		break
 	}
+
 	if err := walletSvc.UnlockWallet(ctx, usedWallet.password); err != nil {
 		t.Fatal(err)
 	}
@@ -202,74 +251,4 @@ func TestGenerateAddressAndWalletBalance(t *testing.T) {
 		true,
 		int(balance[network.Regtest.AssetID].ConfirmedBalance) >= 100000000,
 	)
-}
-
-func TestSendToMany(t *testing.T) {
-	reqs := []SendToManyRequest{
-		{
-			Outputs: []TxOut{
-				{
-					Asset:   network.Regtest.AssetID,
-					Value:   1000000,
-					Address: "el1qqf7z4k7tmarjcymzqtpy00chfl0qn0rx9f42ldw34l2teckh9csqumsc6s2k8nzpn8v5xyzd6pwxez0nlvt36338yzjrxptnk",
-				},
-			},
-			MillisatPerByte: 100,
-			Push:            false,
-		},
-		{
-			Outputs: []TxOut{
-				{
-					Asset:   network.Regtest.AssetID,
-					Value:   1000000,
-					Address: "CTEkZW2f7iixzWLkkoFeh85twpK7XYetyFmPqpQjCGdcEYUV1ZjyxqP6zc3qpBKEbdg6tjweJTC5yWrh",
-				},
-			},
-			MillisatPerByte: 100,
-			Push:            false,
-		},
-		{
-			Outputs: []TxOut{
-				{
-					Asset:   network.Regtest.AssetID,
-					Value:   1000000,
-					Address: "AzpnKwnveEJtDJNQVaTjcPNAJYDwWSYRMYaN2Y8crVFRBSZ4H2xM98WXy6seCR3mqCQFTRnJkfChFJpM",
-				},
-			},
-			MillisatPerByte: 100,
-			Push:            false,
-		},
-	}
-
-	walletSvc, ctx, close := newTestWallet(tradeWallet)
-	t.Cleanup(close)
-
-	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	walletSvc.vaultRepository.UpdateVault(
-		ctx,
-		func(v *domain.Vault) (*domain.Vault, error) {
-			v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
-			return v, nil
-		},
-	)
-	walletSvc.unspentRepository.AddUnspents(ctx, feeUnspents)
-
-	_, err = walletSvc.explorerService.Faucet(address)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	time.Sleep(5 * time.Second)
-
-	for _, req := range reqs {
-		rawTx, err := walletSvc.SendToMany(ctx, req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		assert.Equal(t, true, len(rawTx) > 0)
-	}
 }

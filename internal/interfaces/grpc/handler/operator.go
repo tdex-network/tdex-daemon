@@ -225,41 +225,44 @@ func (o operatorHandler) listUtxos(
 
 			infoPerAccount := make(map[uint64]*pb.UtxoInfoList)
 
-			for k, v := range utxoInfoPerAccount.UtxoInfoPerAccount {
-				unspents := make([]*pb.UtxoInfo, 0)
-				for _, u := range v.Unspents {
-					unspents = append(unspents, &pb.UtxoInfo{
+			for k, v := range utxoInfoPerAccount {
+				uLen := len(v.Unspents)
+				unspents := make([]*pb.UtxoInfo, uLen, uLen)
+				for i, u := range v.Unspents {
+					unspents[i] = &pb.UtxoInfo{
 						Outpoint: &pb.TxOutpoint{
 							Hash:  u.Outpoint.Hash,
 							Index: int32(u.Outpoint.Index),
 						},
 						Value: u.Value,
 						Asset: u.Asset,
-					})
+					}
 				}
 
-				spents := make([]*pb.UtxoInfo, 0)
-				for _, u := range v.Spents {
-					spents = append(spents, &pb.UtxoInfo{
+				sLen := len(v.Spents)
+				spents := make([]*pb.UtxoInfo, sLen, sLen)
+				for i, u := range v.Spents {
+					spents[i] = &pb.UtxoInfo{
 						Outpoint: &pb.TxOutpoint{
 							Hash:  u.Outpoint.Hash,
 							Index: int32(u.Outpoint.Index),
 						},
 						Value: u.Value,
 						Asset: u.Asset,
-					})
+					}
 				}
 
-				locks := make([]*pb.UtxoInfo, 0)
-				for _, u := range v.Locks {
-					locks = append(locks, &pb.UtxoInfo{
+				lLen := len(v.Locks)
+				locks := make([]*pb.UtxoInfo, lLen, lLen)
+				for i, u := range v.Locks {
+					locks[i] = &pb.UtxoInfo{
 						Outpoint: &pb.TxOutpoint{
 							Hash:  u.Outpoint.Hash,
 							Index: int32(u.Outpoint.Index),
 						},
 						Value: u.Value,
 						Asset: u.Asset,
-					})
+					}
 				}
 
 				infoPerAccount[k] = &pb.UtxoInfoList{
@@ -598,7 +601,7 @@ func (o operatorHandler) withdrawMarket(
 		},
 		MillisatPerByte: req.GetMillisatPerByte(),
 		Address:         req.GetAddress(),
-		Push:            req.GetPush(),
+		Push:            true,
 	}
 
 	res, err := o.dbManager.RunTransaction(

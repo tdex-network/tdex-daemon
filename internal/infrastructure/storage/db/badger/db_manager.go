@@ -22,8 +22,10 @@ type DbManager struct {
 	UnspentStore *badgerhold.Store
 }
 
-// NewDbManager opens (or creates if not exists) the badger store on disk. It expects a base data dir and an optional logger.
-// It creates a dedicated directory for main, price and unspent.
+// NewDbManager opens (or creates if not exists) the badger store on disk.
+// It expects a base data dir and an optional logger.
+// It creates a dedicated directory for main and prices stores, while the
+// unspent repository lives in memory.
 func NewDbManager(baseDbDir string, logger badger.Logger) (*DbManager, error) {
 	mainDb, err := createDb(filepath.Join(baseDbDir, "main"), logger)
 	if err != nil {
@@ -35,7 +37,7 @@ func NewDbManager(baseDbDir string, logger badger.Logger) (*DbManager, error) {
 		return nil, fmt.Errorf("opening prices db: %w", err)
 	}
 
-	unspentDb, err := createDb(filepath.Join(baseDbDir, "unspents"), logger)
+	unspentDb, err := createDb("", logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening unspents db: %w", err)
 	}
@@ -134,7 +136,7 @@ func (d DbManager) runTransaction(
 		tx, ctx := args.ctxMaker()
 		res, err := args.handler(ctx)
 		if err != nil {
-			if args.readOnly && d.isTransactionConflict(err) {
+			if args.readOnly && isTransactionConflict(err) {
 				time.Sleep(50 * time.Millisecond)
 				continue
 			}
@@ -143,7 +145,7 @@ func (d DbManager) runTransaction(
 
 		if !args.readOnly {
 			if err := tx.Commit(); err != nil {
-				if !d.isTransactionConflict(err) {
+				if !isTransactionConflict(err) {
 					return nil, err
 				}
 				time.Sleep(50 * time.Millisecond)
@@ -156,7 +158,7 @@ func (d DbManager) runTransaction(
 
 // isTransactionConflict returns wheter the error occured when commiting a
 // transacton is a conflict
-func (d DbManager) isTransactionConflict(err error) bool {
+func isTransactionConflict(err error) bool {
 	return err == badger.ErrConflict
 }
 
@@ -199,10 +201,17 @@ func EncodeKey(key interface{}, typeName string) ([]byte, error) {
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
+	isInMemory := len(dbDir) <= 0
+
 	opts := badger.DefaultOptions(dbDir)
 	opts.Logger = logger
-	opts.ValueLogLoadingMode = options.FileIO
-	opts.Compression = options.ZSTD
+
+	if isInMemory {
+		opts.InMemory = true
+	} else {
+		opts.ValueLogLoadingMode = options.FileIO
+		opts.Compression = options.ZSTD
+	}
 
 	db, err := badgerhold.Open(badgerhold.Options{
 		Encoder:          badgerhold.DefaultEncode,
@@ -214,18 +223,20 @@ func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
 		return nil, err
 	}
 
-	ticker := time.NewTicker(30 * time.Minute)
+	if !isInMemory {
+		ticker := time.NewTicker(30 * time.Minute)
 
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				if err := db.Badger().RunValueLogGC(0.5); err != nil && err != badger.ErrNoRewrite {
-					log.Error(err)
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					if err := db.Badger().RunValueLogGC(0.5); err != nil && err != badger.ErrNoRewrite {
+						log.Error(err)
+					}
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	return db, nil
 }

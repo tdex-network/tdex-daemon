@@ -48,6 +48,7 @@ func (a AddressEvent) Type() EventType {
 
 type TransactionEvent struct {
 	TxID      string
+	TxHex     string
 	EventType EventType
 	BlockHash string
 	BlockTime float64
