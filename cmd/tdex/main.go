@@ -44,10 +44,13 @@ func main() {
 		&unlockwallet,
 		&depositfee,
 		&depositmarket,
+		&claimfee,
+		&claimmarket,
 		&listmarket,
 		&listswaps,
 		&openmarket,
 		&closemarket,
+		&dropmarket,
 		&updatestrategy,
 		&updateprice,
 		&listutxos,
@@ -151,7 +154,7 @@ func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),
 	if err != nil {
 		return nil, nil, err
 	}
-	cleanup := func() { _ = conn.Close() }
+	cleanup := func() { conn.Close() }
 
 	return pboperator.NewOperatorClient(conn), cleanup, nil
 }
