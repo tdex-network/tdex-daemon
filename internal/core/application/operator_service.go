@@ -91,6 +91,7 @@ type OperatorService interface {
 	) (*ReportMarketFee, error)
 	ListUtxos(ctx context.Context) (map[uint64]UtxoInfoList, error)
 	ReloadUtxos(ctx context.Context) error
+	DropMarket(ctx context.Context, accountIndex int) error
 }
 
 type operatorService struct {
@@ -589,10 +590,11 @@ func (o *operatorService) ListMarket(
 		return nil, err
 	}
 
-	marketInfos := make([]MarketInfo, len(markets))
+	marketInfos := make([]MarketInfo, 0, len(markets))
 
-	for index, market := range markets {
-		marketInfos[index] = MarketInfo{
+	for _, market := range markets {
+		marketInfos = append(marketInfos, MarketInfo{
+			AccountIndex: uint64(market.AccountIndex),
 			Market: Market{
 				BaseAsset:  market.BaseAsset,
 				QuoteAsset: market.QuoteAsset,
@@ -602,7 +604,8 @@ func (o *operatorService) ListMarket(
 			},
 			Tradable:     market.Tradable,
 			StrategyType: market.Strategy.Type,
-		}
+			Price:        market.Price,
+		})
 	}
 
 	return marketInfos, nil
@@ -1224,4 +1227,11 @@ func appendUtxoInfo(list []UtxoInfo, unspent domain.Unspent) []UtxoInfo {
 		Value: unspent.Value,
 		Asset: unspent.AssetHash,
 	})
+}
+
+func (o *operatorService) DropMarket(
+	ctx context.Context,
+	accountIndex int,
+) error {
+	return o.marketRepository.DeleteMarket(ctx, accountIndex)
 }

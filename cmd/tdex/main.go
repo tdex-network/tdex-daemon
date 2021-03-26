@@ -50,6 +50,8 @@ func main() {
 		&closemarket,
 		&updatestrategy,
 		&updateprice,
+		&listutxos,
+		&reloadtxos,
 	)
 
 	err := app.Run(os.Args)

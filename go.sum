@@ -286,7 +286,6 @@ github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/subosito/gotenv v1.2.0 h1:Slr1R9HxAlEKefgq5jn9U+DnETlIUa6HfgEzj0g5d7s=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/tdex-network/tdex-daemon v0.2.1-0.20210324163246-ed408aba2ec6/go.mod h1:+z4oJgZunJkfsjvcULRIT43RNTcm+2zsglU8p9JtwI8=
-github.com/tdex-network/tdex-protobuf v0.0.0-20210322132201-a185bdfeb24f h1:V+hWp9ORmRNAfyvJ3G/g0a3Gm5CpLm8ayrSLAOk+JOE=
 github.com/tdex-network/tdex-protobuf v0.0.0-20210322132201-a185bdfeb24f/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/tdex-network/tdex-protobuf v0.0.0-20210324125236-78f6c6c0618b h1:nypIb9lNXnMtnZG3jdjB3P2D5cTmVLUkDKdK/Mltdbg=
 github.com/tdex-network/tdex-protobuf v0.0.0-20210324125236-78f6c6c0618b/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
