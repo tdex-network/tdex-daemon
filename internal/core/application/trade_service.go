@@ -704,7 +704,7 @@ func acceptSwap(opts acceptSwapOpts) (res acceptSwapResult, err error) {
 	)
 
 	// blind the transaction
-	blindedPset, err := w.BlindSwapTransaction(wallet.BlindSwapTransactionOpts{
+	blindedPset, err := w.BlindSwapTransactionWithKeys(wallet.BlindSwapTransactionWithKeysOpts{
 		PsetBase64:         psetWithFeesResult.PsetBase64,
 		InputBlindingKeys:  inputBlindingKeys,
 		OutputBlindingKeys: outputBlindingKeys,

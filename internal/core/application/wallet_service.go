@@ -967,7 +967,7 @@ func sendToMany(opts sendToManyOpts) (string, error) {
 	}
 
 	// blind the transaction
-	blindedPset, err := w.BlindTransaction(wallet.BlindTransactionOpts{
+	blindedPset, err := w.BlindTransactionWithKeys(wallet.BlindTransactionWithKeysOpts{
 		PsetBase64:         feeUpdateResult.PsetBase64,
 		OutputBlindingKeys: outputsBlindingKeys,
 	})

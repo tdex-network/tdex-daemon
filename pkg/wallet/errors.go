@@ -38,6 +38,8 @@ var (
 	ErrNullChangePathsByAsset = errors.New(
 		"derivation paths for eventual change(s) must not be null",
 	)
+	// ErrNullInputBlindingData ...
+	ErrNullInputBlindingData = errors.New("input blinding data must not be null")
 
 	// ErrInvalidSigningMnemonic ...
 	ErrInvalidSigningMnemonic = errors.New("signing mnemonic is invalid")
@@ -82,6 +84,12 @@ var (
 		"attempts must be a number in range [0, %d]",
 		MaxBlindingAttempts,
 	)
+	// ErrInvalidInputIndex ...
+	ErrInvalidInputIndex = errors.New("index of input blinder is invalid")
+	// ErrInvalidInputAssetBlinder ...
+	ErrInvalidInputAssetBlinder = errors.New("asset blinder must be a 32-byte array")
+	// ErrInvalidInputAmountBlinder ...
+	ErrInvalidInputAmountBlinder = errors.New("amount blinder must be a 32-byte array")
 
 	// ErrEmptyDerivationPaths ...
 	ErrEmptyDerivationPaths = errors.New("derivation path list must not be empty")
