@@ -13,11 +13,8 @@ ENV GO111MODULE=on \
 
 WORKDIR /tdex-daemon
 
-COPY go.mod .
-COPY go.sum .
-RUN go mod download
-
 COPY . .
+RUN go mod download
 
 RUN go build -ldflags="-s -w " -o tdexd-linux cmd/tdexd/main.go
 RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o tdex cmd/tdex/*
