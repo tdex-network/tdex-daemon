@@ -405,24 +405,16 @@ func createUnspentRepositories(t *testing.T) ([]unspentRepository, func()) {
 			{
 				Name:       "badger",
 				DBManager:  badgerDBManager,
-				Repository: newBadgerUnspentRepository(badgerDBManager),
+				Repository: badgerDBManager.UnspentRepository(),
 			},
 			{
 				Name:       "inmemory",
 				DBManager:  inmemoryDBManager,
-				Repository: newInMemoryUnspentRepository(inmemoryDBManager),
+				Repository: inmemoryDBManager.UnspentRepository(),
 			},
 		}, func() {
 			os.RemoveAll(datadir)
 		}
-}
-
-func newBadgerUnspentRepository(dbmanager *dbbadger.DbManager) domain.UnspentRepository {
-	return dbbadger.NewUnspentRepositoryImpl(dbmanager)
-}
-
-func newInMemoryUnspentRepository(dbmanager *inmemory.DbManager) domain.UnspentRepository {
-	return inmemory.NewUnspentRepositoryImpl(dbmanager)
 }
 
 type unspentRepository struct {

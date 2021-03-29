@@ -9,14 +9,12 @@ import (
 
 // UnspentRepositoryImpl represents an in memory storage
 type UnspentRepositoryImpl struct {
-	db *DbManager
+	store *unspentInmemoryStore
 }
 
 //NewUnspentRepositoryImpl returns a new empty MarketRepositoryImpl
-func NewUnspentRepositoryImpl(db *DbManager) domain.UnspentRepository {
-	return &UnspentRepositoryImpl{
-		db: db,
-	}
+func NewUnspentRepositoryImpl(store *unspentInmemoryStore) domain.UnspentRepository {
+	return &UnspentRepositoryImpl{store}
 }
 
 //AddUnspents method is used by crawler to add unspent's to the memory,
@@ -27,16 +25,16 @@ func NewUnspentRepositoryImpl(db *DbManager) domain.UnspentRepository {
 //in case that unspent's, passed to the function, are not already in memory
 //it will mark unspent in memory, as spent
 func (r UnspentRepositoryImpl) AddUnspents(_ context.Context, unspents []domain.Unspent) error {
-	r.db.unspentStore.locker.Lock()
-	defer r.db.unspentStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	return r.addUnspents(unspents)
 }
 
 // GetAllUnspents returns all the unspents stored
 func (r UnspentRepositoryImpl) GetAllUnspents(_ context.Context) []domain.Unspent {
-	r.db.unspentStore.locker.RLock()
-	defer r.db.unspentStore.locker.RUnlock()
+	r.store.locker.RLock()
+	defer r.store.locker.RUnlock()
 
 	includeSpent := true
 	return r.getAllUnspents(includeSpent)
@@ -44,8 +42,8 @@ func (r UnspentRepositoryImpl) GetAllUnspents(_ context.Context) []domain.Unspen
 
 // GetAvailableUnspents ...
 func (r UnspentRepositoryImpl) GetAvailableUnspents(_ context.Context) ([]domain.Unspent, error) {
-	r.db.unspentStore.locker.RLock()
-	defer r.db.unspentStore.locker.RUnlock()
+	r.store.locker.RLock()
+	defer r.store.locker.RUnlock()
 
 	return r.getAvailableUnspents(nil), nil
 }
@@ -55,12 +53,12 @@ func (r UnspentRepositoryImpl) GetAllUnspentsForAddresses(
 	ctx context.Context,
 	addresses []string,
 ) ([]domain.Unspent, error) {
-	r.db.unspentStore.locker.Lock()
-	defer r.db.unspentStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	results := make([]domain.Unspent, 0)
 
-	for _, unspent := range r.db.unspentStore.unspents {
+	for _, unspent := range r.store.unspents {
 		unspentAddress := unspent.Address
 		for _, addr := range addresses {
 			if unspentAddress == addr {
@@ -77,8 +75,8 @@ func (r UnspentRepositoryImpl) GetUnspentsForAddresses(
 	_ context.Context,
 	addresses []string,
 ) ([]domain.Unspent, error) {
-	r.db.unspentStore.locker.RLock()
-	defer r.db.unspentStore.locker.RUnlock()
+	r.store.locker.RLock()
+	defer r.store.locker.RUnlock()
 
 	return r.getUnspentsForAddresses(addresses), nil
 }
@@ -88,8 +86,8 @@ func (r UnspentRepositoryImpl) GetAvailableUnspentsForAddresses(
 	_ context.Context,
 	addresses []string,
 ) ([]domain.Unspent, error) {
-	r.db.unspentStore.locker.RLock()
-	defer r.db.unspentStore.locker.RUnlock()
+	r.store.locker.RLock()
+	defer r.store.locker.RUnlock()
 
 	return r.getAvailableUnspents(addresses), nil
 }
@@ -99,10 +97,10 @@ func (r UnspentRepositoryImpl) GetUnspentWithKey(
 	_ context.Context,
 	unspentKey domain.UnspentKey,
 ) (*domain.Unspent, error) {
-	r.db.unspentStore.locker.RLock()
-	defer r.db.unspentStore.locker.RUnlock()
+	r.store.locker.RLock()
+	defer r.store.locker.RUnlock()
 
-	unspent, ok := r.db.unspentStore.unspents[unspentKey]
+	unspent, ok := r.store.unspents[unspentKey]
 	if !ok {
 		return nil, nil
 	}
@@ -117,8 +115,8 @@ func (r UnspentRepositoryImpl) GetBalance(
 ) (uint64, error) {
 	balance := uint64(0)
 
-	r.db.unspentStore.locker.RLock()
-	defer r.db.unspentStore.locker.RUnlock()
+	r.store.locker.RLock()
+	defer r.store.locker.RUnlock()
 
 	for _, address := range addresses {
 		balance += r.getBalance(address, assetHash)
@@ -135,8 +133,8 @@ func (r UnspentRepositoryImpl) GetUnlockedBalance(
 ) (uint64, error) {
 	balance := uint64(0)
 
-	r.db.unspentStore.locker.RLock()
-	defer r.db.unspentStore.locker.RUnlock()
+	r.store.locker.RLock()
+	defer r.store.locker.RUnlock()
 
 	for _, address := range addresses {
 		balance += r.getUnlockedBalance(address, assetHash)
@@ -150,16 +148,16 @@ func (r UnspentRepositoryImpl) SpendUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
 ) (int, error) {
-	r.db.unspentStore.locker.Lock()
-	defer r.db.unspentStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	count := 0
 	for _, key := range unspentKeys {
-		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
+		if unspent, ok := r.store.unspents[key]; ok {
 			if !unspent.IsSpent() {
 				unspent.Spend()
 				unspent.Unlock()
-				r.db.unspentStore.unspents[key] = unspent
+				r.store.unspents[key] = unspent
 				count++
 			}
 		}
@@ -173,16 +171,16 @@ func (r UnspentRepositoryImpl) ConfirmUnspents(
 	ctx context.Context,
 	unspentKeys []domain.UnspentKey,
 ) (int, error) {
-	r.db.unspentStore.locker.Lock()
-	defer r.db.unspentStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	count := 0
 	for _, key := range unspentKeys {
-		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
+		if unspent, ok := r.store.unspents[key]; ok {
 			if !unspent.IsConfirmed() {
 				unspent.Confirm()
 				unspent.Unlock()
-				r.db.unspentStore.unspents[key] = unspent
+				r.store.unspents[key] = unspent
 				count++
 			}
 		}
@@ -197,8 +195,8 @@ func (r UnspentRepositoryImpl) LockUnspents(
 	unspentKeys []domain.UnspentKey,
 	tradeID uuid.UUID,
 ) (int, error) {
-	r.db.unspentStore.locker.Lock()
-	defer r.db.unspentStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	return r.lockUnspents(unspentKeys, tradeID)
 }
@@ -208,8 +206,8 @@ func (r UnspentRepositoryImpl) UnlockUnspents(
 	_ context.Context,
 	unspentKeys []domain.UnspentKey,
 ) (int, error) {
-	r.db.unspentStore.locker.Lock()
-	defer r.db.unspentStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	return r.unlockUnspents(unspentKeys)
 }
@@ -217,8 +215,8 @@ func (r UnspentRepositoryImpl) UnlockUnspents(
 func (r UnspentRepositoryImpl) addUnspents(unspents []domain.Unspent) error {
 	//add new unspent
 	for _, newUnspent := range unspents {
-		if _, ok := r.db.unspentStore.unspents[newUnspent.Key()]; !ok {
-			r.db.unspentStore.unspents[domain.UnspentKey{
+		if _, ok := r.store.unspents[newUnspent.Key()]; !ok {
+			r.store.unspents[domain.UnspentKey{
 				TxID: newUnspent.TxID,
 				VOut: newUnspent.VOut,
 			}] = newUnspent
@@ -226,7 +224,7 @@ func (r UnspentRepositoryImpl) addUnspents(unspents []domain.Unspent) error {
 	}
 
 	//update spent
-	for key, oldUnspent := range r.db.unspentStore.unspents {
+	for key, oldUnspent := range r.store.unspents {
 		exist := false
 		for _, newUnspent := range unspents {
 			if newUnspent.IsKeyEqual(oldUnspent.Key()) {
@@ -234,7 +232,7 @@ func (r UnspentRepositoryImpl) addUnspents(unspents []domain.Unspent) error {
 			}
 		}
 		if !exist {
-			r.db.unspentStore.unspents[key] = oldUnspent
+			r.store.unspents[key] = oldUnspent
 		}
 	}
 
@@ -243,7 +241,7 @@ func (r UnspentRepositoryImpl) addUnspents(unspents []domain.Unspent) error {
 
 func (r UnspentRepositoryImpl) getAllUnspents(includeSpent bool) []domain.Unspent {
 	unspents := make([]domain.Unspent, 0)
-	for _, u := range r.db.unspentStore.unspents {
+	for _, u := range r.store.unspents {
 		if includeSpent {
 			unspents = append(unspents, u)
 			continue
@@ -258,7 +256,7 @@ func (r UnspentRepositoryImpl) getAllUnspents(includeSpent bool) []domain.Unspen
 
 func (r UnspentRepositoryImpl) getBalance(address string, assetHash string) uint64 {
 	var balance uint64
-	for _, u := range r.db.unspentStore.unspents {
+	for _, u := range r.store.unspents {
 		if u.Address == address && u.AssetHash == assetHash && !u.IsSpent() && u.IsConfirmed() {
 			balance += u.Value
 		}
@@ -269,7 +267,7 @@ func (r UnspentRepositoryImpl) getBalance(address string, assetHash string) uint
 func (r UnspentRepositoryImpl) getUnlockedBalance(address string, assetHash string) uint64 {
 	var balance uint64
 
-	for _, u := range r.db.unspentStore.unspents {
+	for _, u := range r.store.unspents {
 		if u.Address == address && u.AssetHash == assetHash &&
 			!u.IsSpent() && !u.IsLocked() && u.IsConfirmed() {
 			balance += u.Value
@@ -291,7 +289,7 @@ func (r UnspentRepositoryImpl) getAvailableUnspents(addresses []string) []domain
 
 func (r UnspentRepositoryImpl) getUnspents(addresses []string, isLocked bool) []domain.Unspent {
 	unspents := make([]domain.Unspent, 0)
-	for _, u := range r.db.unspentStore.unspents {
+	for _, u := range r.store.unspents {
 		if !u.IsSpent() && u.IsLocked() == isLocked && u.IsConfirmed() {
 			if len(addresses) == 0 {
 				unspents = append(unspents, u)
@@ -314,9 +312,9 @@ func (r UnspentRepositoryImpl) lockUnspents(
 ) (int, error) {
 	count := 0
 	for _, key := range unspentKeys {
-		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
+		if unspent, ok := r.store.unspents[key]; ok {
 			unspent.Lock(&tradeID)
-			r.db.unspentStore.unspents[key] = unspent
+			r.store.unspents[key] = unspent
 			count++
 		}
 	}
@@ -328,9 +326,9 @@ func (r UnspentRepositoryImpl) unlockUnspents(
 ) (int, error) {
 	count := 0
 	for _, key := range unspentKeys {
-		if unspent, ok := r.db.unspentStore.unspents[key]; ok {
+		if unspent, ok := r.store.unspents[key]; ok {
 			unspent.Unlock()
-			r.db.unspentStore.unspents[key] = unspent
+			r.store.unspents[key] = unspent
 			count++
 		}
 	}

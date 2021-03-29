@@ -29,10 +29,6 @@ type BlockchainListener interface {
 }
 
 type blockchainListener struct {
-	unspentRepository  domain.UnspentRepository
-	marketRepository   domain.MarketRepository
-	vaultRepository    domain.VaultRepository
-	tradeRepository    domain.TradeRepository
 	crawlerSvc         crawler.Service
 	explorerSvc        explorer.Service
 	dbManager          ports.DbManager
@@ -50,10 +46,6 @@ type blockchainListener struct {
 
 // NewBlockchainListener returns a BlockchainListener with all the needed services
 func NewBlockchainListener(
-	unspentRepository domain.UnspentRepository,
-	marketRepository domain.MarketRepository,
-	vaultRepository domain.VaultRepository,
-	tradeRepository domain.TradeRepository,
 	crawlerSvc crawler.Service,
 	explorerSvc explorer.Service,
 	dbManager ports.DbManager,
@@ -62,10 +54,6 @@ func NewBlockchainListener(
 	net *network.Network,
 ) BlockchainListener {
 	return newBlockchainListener(
-		unspentRepository,
-		marketRepository,
-		vaultRepository,
-		tradeRepository,
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
@@ -76,10 +64,6 @@ func NewBlockchainListener(
 }
 
 func newBlockchainListener(
-	unspentRepository domain.UnspentRepository,
-	marketRepository domain.MarketRepository,
-	vaultRepository domain.VaultRepository,
-	tradeRepository domain.TradeRepository,
 	crawlerSvc crawler.Service,
 	explorerSvc explorer.Service,
 	dbManager ports.DbManager,
@@ -88,10 +72,6 @@ func newBlockchainListener(
 	net *network.Network,
 ) *blockchainListener {
 	return &blockchainListener{
-		unspentRepository:   unspentRepository,
-		marketRepository:    marketRepository,
-		vaultRepository:     vaultRepository,
-		tradeRepository:     tradeRepository,
 		crawlerSvc:          crawlerSvc,
 		explorerSvc:         explorerSvc,
 		dbManager:           dbManager,
@@ -189,7 +169,7 @@ func (b *blockchainListener) listenToEventChannel() {
 				e := event.(crawler.TransactionEvent)
 				ctx := context.Background()
 
-				trade, err := b.tradeRepository.GetTradeByTxID(ctx, e.TxID)
+				trade, err := b.dbManager.TradeRepository().GetTradeByTxID(ctx, e.TxID)
 				if err != nil {
 					log.Warnf("unable to find trade with id %s: %v", e.TxID, err)
 					break
@@ -224,7 +204,7 @@ func (b *blockchainListener) startPendingObservables() {
 }
 
 func (b *blockchainListener) settleTrade(tradeID *uuid.UUID, event crawler.TransactionEvent) error {
-	if err := b.tradeRepository.UpdateTrade(
+	if err := b.dbManager.TradeRepository().UpdateTrade(
 		context.Background(),
 		tradeID,
 		func(t *domain.Trade) (*domain.Trade, error) {
@@ -252,13 +232,13 @@ func (b *blockchainListener) confirmOrAddUnspents(
 	mktAsset string,
 ) error {
 	ctx := context.Background()
-	_, accountIndex, err := b.marketRepository.GetMarketByAsset(ctx, mktAsset)
+	_, accountIndex, err := b.dbManager.MarketRepository().GetMarketByAsset(ctx, mktAsset)
 	if err != nil {
 		return err
 	}
 
 	unspentsToAdd, unspentsToSpend, err := extractUnspentsFromTx(
-		b.vaultRepository,
+		b.dbManager.VaultRepository(),
 		b.network,
 		txHex,
 		accountIndex,
@@ -273,7 +253,7 @@ func (b *blockchainListener) confirmOrAddUnspents(
 		unspentAddresses[i] = u.Address
 	}
 
-	u, err := b.unspentRepository.GetAllUnspentsForAddresses(ctx, unspentAddresses)
+	u, err := b.dbManager.UnspentRepository().GetAllUnspentsForAddresses(ctx, unspentAddresses)
 	if err != nil {
 		return err
 	}
@@ -282,7 +262,7 @@ func (b *blockchainListener) confirmOrAddUnspents(
 		for i, u := range unspentsToAdd {
 			unspentKeys[i] = u.Key()
 		}
-		count, err := b.unspentRepository.ConfirmUnspents(ctx, unspentKeys)
+		count, err := b.dbManager.UnspentRepository().ConfirmUnspents(ctx, unspentKeys)
 		if err != nil {
 			return err
 		}
@@ -295,8 +275,8 @@ func (b *blockchainListener) confirmOrAddUnspents(
 		for i := range unspentsToAdd {
 			unspentsToAdd[i].Confirmed = true
 		}
-		addUnspentsAsync(b.unspentRepository, unspentsToAdd)
-		spendUnspentsAsync(b.unspentRepository, unspentsToSpend)
+		addUnspentsAsync(b.dbManager.UnspentRepository(), unspentsToAdd)
+		spendUnspentsAsync(b.dbManager.UnspentRepository(), unspentsToSpend)
 	}()
 
 	return nil

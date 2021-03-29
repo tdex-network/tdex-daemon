@@ -18,13 +18,12 @@ const (
 var unspentTablePrefixKey = []byte(UnspentBadgerholdKeyPrefix)
 
 type unspentRepositoryImpl struct {
-	db *DbManager
+	store     *badgerhold.Store
+	lockStore *badgerhold.Store
 }
 
-func NewUnspentRepositoryImpl(db *DbManager) domain.UnspentRepository {
-	return unspentRepositoryImpl{
-		db: db,
-	}
+func NewUnspentRepositoryImpl(store, lockStore *badgerhold.Store) domain.UnspentRepository {
+	return unspentRepositoryImpl{store, lockStore}
 }
 
 func (u unspentRepositoryImpl) AddUnspents(
@@ -46,12 +45,7 @@ func (u unspentRepositoryImpl) GetAvailableUnspents(
 	query := badgerhold.Where("Spent").Eq(false).And("Confirmed").Eq(true)
 	unlockedOnly := true
 
-	unspents, err := u.findUnspents(ctx, query, unlockedOnly)
-	if err != nil {
-		return nil, err
-	}
-
-	return unspents, nil
+	return u.findUnspents(ctx, query, unlockedOnly)
 }
 
 func (u unspentRepositoryImpl) GetAllUnspentsForAddresses(
@@ -66,12 +60,7 @@ func (u unspentRepositoryImpl) GetAllUnspentsForAddresses(
 	query := badgerhold.Where("Address").In(iface...)
 	unlockedOnly := false
 
-	unspents, err := u.findUnspents(ctx, query, unlockedOnly)
-	if err != nil {
-		return nil, err
-	}
-
-	return unspents, nil
+	return u.findUnspents(ctx, query, unlockedOnly)
 }
 
 func (u unspentRepositoryImpl) GetUnspentsForAddresses(
@@ -88,12 +77,7 @@ func (u unspentRepositoryImpl) GetUnspentsForAddresses(
 		And("Address").In(iface...)
 	unlockedOnly := false
 
-	unspents, err := u.findUnspents(ctx, query, unlockedOnly)
-	if err != nil {
-		return nil, err
-	}
-
-	return unspents, nil
+	return u.findUnspents(ctx, query, unlockedOnly)
 }
 
 func (u unspentRepositoryImpl) GetAvailableUnspentsForAddresses(
@@ -110,12 +94,7 @@ func (u unspentRepositoryImpl) GetAvailableUnspentsForAddresses(
 		And("Address").In(iface...)
 	unlockedOnly := true
 
-	unspents, err := u.findUnspents(ctx, query, unlockedOnly)
-	if err != nil {
-		return nil, err
-	}
-
-	return unspents, nil
+	return u.findUnspents(ctx, query, unlockedOnly)
 }
 
 func (u unspentRepositoryImpl) GetUnspentWithKey(
@@ -186,42 +165,7 @@ func (u unspentRepositoryImpl) addUnspents(
 }
 
 func (u unspentRepositoryImpl) getAllUnspents(ctx context.Context) []domain.Unspent {
-	scan := func(tx *badger.Txn) []domain.Unspent {
-		unspents := make([]domain.Unspent, 0)
-
-		iter := badger.DefaultIteratorOptions
-		it := tx.NewIterator(iter)
-		iter.PrefetchValues = false
-		defer it.Close()
-
-		for it.Seek(unspentTablePrefixKey); it.ValidForPrefix(unspentTablePrefixKey); it.Next() {
-			item := it.Item()
-			data, _ := item.ValueCopy(nil)
-			var unspent domain.Unspent
-			err := badgerhold.DefaultDecode(data, &unspent)
-			if err == nil {
-				tradeID, err := u.getLock(ctx, unspent.Key())
-				if err == nil {
-					if tradeID != nil {
-						unspent.Lock(tradeID)
-					}
-					unspents = append(unspents, unspent)
-				}
-			}
-		}
-
-		return unspents
-	}
-
-	if ctx.Value("utx") != nil {
-		return scan(ctx.Value("utx").(*badger.Txn))
-	}
-
-	var unspents []domain.Unspent
-	u.db.UnspentStore.Badger().View(func(tx *badger.Txn) error {
-		unspents = scan(tx)
-		return nil
-	})
+	unspents, _ := u.findUnspents(ctx, nil, false)
 	return unspents
 }
 
@@ -428,23 +372,25 @@ func (u unspentRepositoryImpl) findUnspents(
 
 	if ctx.Value("utx") != nil {
 		tx := ctx.Value("utx").(*badger.Txn)
-		if err := u.db.UnspentStore.TxFind(tx, &unspents, query); err != nil {
+		if err := u.store.TxFind(tx, &unspents, query); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := u.db.UnspentStore.Find(&unspents, query); err != nil {
+		if err := u.store.Find(&unspents, query); err != nil {
 			return nil, err
 		}
 	}
 
-	for _, unspent := range unspents {
+	for i, unspent := range unspents {
 		tradeID, err := u.getLock(ctx, unspent.Key())
 		if err != nil {
 			return nil, err
 		}
 		if tradeID != nil {
 			unspent.Lock(tradeID)
-		} else {
+			unspents[i] = unspent
+		}
+		if unlockedOnly && !unspent.IsLocked() {
 			unlockedUnspents = append(unlockedUnspents, unspent)
 		}
 	}
@@ -464,9 +410,9 @@ func (u unspentRepositoryImpl) getUnspent(
 
 	if ctx.Value("utx") != nil {
 		tx := ctx.Value("utx").(*badger.Txn)
-		err = u.db.UnspentStore.TxGet(tx, key, &unspent)
+		err = u.store.TxGet(tx, key, &unspent)
 	} else {
-		err = u.db.UnspentStore.Get(key, &unspent)
+		err = u.store.Get(key, &unspent)
 	}
 	if err != nil {
 		if err == badgerhold.ErrNotFound {
@@ -493,10 +439,10 @@ func (u unspentRepositoryImpl) updateUnspent(
 ) error {
 	if ctx.Value("utx") != nil {
 		tx := ctx.Value("utx").(*badger.Txn)
-		return u.db.UnspentStore.TxUpdate(tx, key, unspent)
+		return u.store.TxUpdate(tx, key, unspent)
 	}
 
-	return u.db.UnspentStore.Update(key, unspent)
+	return u.store.Update(key, unspent)
 }
 
 func (u unspentRepositoryImpl) insertUnspent(
@@ -506,9 +452,9 @@ func (u unspentRepositoryImpl) insertUnspent(
 	var err error
 	if ctx.Value("utx") != nil {
 		tx := ctx.Value("utx").(*badger.Txn)
-		err = u.db.UnspentStore.TxInsert(tx, unspent.Key(), &unspent)
+		err = u.store.TxInsert(tx, unspent.Key(), &unspent)
 	} else {
-		err = u.db.UnspentStore.Insert(unspent.Key(), &unspent)
+		err = u.store.Insert(unspent.Key(), &unspent)
 	}
 
 	if err != nil {
@@ -530,11 +476,16 @@ func (u unspentRepositoryImpl) getLock(
 	var lockedUnspent LockedUnspent
 	var err error
 
+	encKey, err := EncodeKey(key, LockedUnspentBadgerholdKeyPrefix)
+	if err != nil {
+		return nil, err
+	}
+
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = u.db.Store.TxGet(tx, key, &lockedUnspent)
+		err = u.lockStore.TxGet(tx, encKey, &lockedUnspent)
 	} else {
-		err = u.db.Store.Get(key, &lockedUnspent)
+		err = u.lockStore.Get(encKey, &lockedUnspent)
 	}
 	if err != nil {
 		if err == badgerhold.ErrNotFound {
@@ -558,22 +509,11 @@ func (u unspentRepositoryImpl) insertLock(
 		return err
 	}
 
-	encData, err := badgerhold.DefaultEncode(LockedUnspent{tradeID})
-	if err != nil {
-		return err
-	}
-
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		return tx.SetEntry(
-			badger.NewEntry(encKey, encData),
-		)
+		err = u.lockStore.TxInsert(tx, encKey, LockedUnspent{tradeID})
 	} else {
-		err = u.db.Store.Badger().Update(func(txn *badger.Txn) error {
-			return txn.SetEntry(
-				badger.NewEntry(encKey, encData),
-			)
-		})
+		err = u.lockStore.Insert(encKey, LockedUnspent{tradeID})
 	}
 	if err != nil {
 		if err != badgerhold.ErrKeyExists {
@@ -589,11 +529,16 @@ func (u unspentRepositoryImpl) deleteLock(
 ) error {
 	var err error
 
+	encKey, err := EncodeKey(key, LockedUnspentBadgerholdKeyPrefix)
+	if err != nil {
+		return err
+	}
+
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = u.db.Store.TxDelete(tx, key, LockedUnspent{})
+		err = u.lockStore.TxDelete(tx, encKey, LockedUnspent{})
 	} else {
-		err = u.db.Store.Delete(key, LockedUnspent{})
+		err = u.lockStore.Delete(encKey, LockedUnspent{})
 	}
 	if err != nil {
 		if err != badgerhold.ErrNotFound {

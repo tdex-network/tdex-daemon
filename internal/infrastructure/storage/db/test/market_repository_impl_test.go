@@ -364,24 +364,16 @@ func createMarketRepositories(t *testing.T) ([]marketRepository, func()) {
 			{
 				Name:       "badger",
 				DBManager:  badgerDBManager,
-				Repository: newBadgerMarketRepository(badgerDBManager),
+				Repository: badgerDBManager.MarketRepository(),
 			},
 			{
 				Name:       "inmemory",
 				DBManager:  inmemoryDBManager,
-				Repository: newInMemoryMarketRepository(inmemoryDBManager),
+				Repository: inmemoryDBManager.MarketRepository(),
 			},
 		}, func() {
 			os.RemoveAll(datadir)
 		}
-}
-
-func newBadgerMarketRepository(dbmanager *dbbadger.DbManager) domain.MarketRepository {
-	return dbbadger.NewMarketRepositoryImpl(dbmanager)
-}
-
-func newInMemoryMarketRepository(dbmanager *inmemory.DbManager) domain.MarketRepository {
-	return inmemory.NewMarketRepositoryImpl(dbmanager)
 }
 
 type marketRepository struct {

@@ -24,6 +24,7 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 
@@ -67,11 +68,6 @@ func main() {
 	network := config.GetNetwork()
 	feeThreshold := uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
 
-	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
-	vaultRepository := dbbadger.NewVaultRepositoryImpl(dbManager)
-	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
-	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
-
 	explorerSvc, err := config.GetExplorer()
 	if err != nil {
 		log.WithError(err).Panic("error while setting up explorer service")
@@ -85,10 +81,6 @@ func main() {
 		ExplorerTokenBurst: config.GetInt(config.CrawlTokenBurst),
 	})
 	blockchainListener := application.NewBlockchainListener(
-		unspentRepository,
-		marketRepository,
-		vaultRepository,
-		tradeRepository,
 		crawlerSvc,
 		explorerSvc,
 		dbManager,
@@ -98,10 +90,7 @@ func main() {
 	)
 
 	traderSvc := application.NewTradeService(
-		marketRepository,
-		tradeRepository,
-		vaultRepository,
-		unspentRepository,
+		dbManager,
 		explorerSvc,
 		blockchainListener,
 		marketsBaseAsset,
@@ -110,10 +99,7 @@ func main() {
 		network,
 	)
 	operatorSvc := application.NewOperatorService(
-		marketRepository,
-		vaultRepository,
-		tradeRepository,
-		unspentRepository,
+		dbManager,
 		explorerSvc,
 		blockchainListener,
 		marketsBaseAsset,
@@ -122,9 +108,7 @@ func main() {
 		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
 	)
 	walletSvc, err := application.NewWalletService(
-		vaultRepository,
-		unspentRepository,
-		marketRepository,
+		dbManager,
 		explorerSvc,
 		blockchainListener,
 		withElementsSvc,
@@ -141,12 +125,12 @@ func main() {
 	operatorAddress := fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
 	// Grpc Server
 	traderGrpcServer := grpc.NewServer(
-		interceptor.UnaryInterceptor(dbManager),
-		interceptor.StreamInterceptor(dbManager),
+		interceptor.UnaryInterceptor(),
+		interceptor.StreamInterceptor(),
 	)
 	operatorGrpcServer := grpc.NewServer(
-		interceptor.UnaryInterceptor(dbManager),
-		interceptor.StreamInterceptor(dbManager),
+		interceptor.UnaryInterceptor(),
+		interceptor.StreamInterceptor(),
 	)
 
 	traderHandler := grpchandler.NewTraderHandler(traderSvc, dbManager)
@@ -200,7 +184,7 @@ func main() {
 }
 
 func stop(
-	dbManager *dbbadger.DbManager,
+	dbManager ports.DbManager,
 	blockchainListener application.BlockchainListener,
 	traderServer *grpc.Server,
 	operatorServer *grpc.Server,
@@ -224,9 +208,7 @@ func stop(
 		time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond,
 	)
 
-	dbManager.Store.Close()
-	dbManager.UnspentStore.Close()
-	dbManager.PriceStore.Close()
+	dbManager.Close()
 	log.Debug("closed connection with database")
 
 	log.Debug("exiting")

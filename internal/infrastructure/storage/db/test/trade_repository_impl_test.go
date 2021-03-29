@@ -286,24 +286,16 @@ func createTradeRepositories(t *testing.T) ([]tradeRepository, func()) {
 			{
 				Name:       "badger",
 				DBManager:  badgerDBManager,
-				Repository: newBadgerTradeRepository(badgerDBManager),
+				Repository: badgerDBManager.TradeRepository(),
 			},
 			{
 				Name:       "inmemory",
 				DBManager:  inmemoryDBManager,
-				Repository: newInMemoryTradeRepository(inmemoryDBManager),
+				Repository: inmemoryDBManager.TradeRepository(),
 			},
 		}, func() {
 			os.RemoveAll(datadir)
 		}
-}
-
-func newBadgerTradeRepository(dbmanager *dbbadger.DbManager) domain.TradeRepository {
-	return dbbadger.NewTradeRepositoryImpl(dbmanager)
-}
-
-func newInMemoryTradeRepository(dbmanager *inmemory.DbManager) domain.TradeRepository {
-	return inmemory.NewTradeRepositoryImpl(dbmanager)
 }
 
 type tradeRepository struct {

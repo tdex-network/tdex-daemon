@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
@@ -66,9 +67,7 @@ type WalletService interface {
 }
 
 type walletService struct {
-	vaultRepository    domain.VaultRepository
-	unspentRepository  domain.UnspentRepository
-	marketRepository   domain.MarketRepository
+	dbManager          ports.DbManager
 	explorerService    explorer.Service
 	blockchainListener BlockchainListener
 	walletInitialized  bool
@@ -82,9 +81,7 @@ type walletService struct {
 }
 
 func NewWalletService(
-	vaultRepository domain.VaultRepository,
-	unspentRepository domain.UnspentRepository,
-	marketRepository domain.MarketRepository,
+	dbManager ports.DbManager,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
 	withElements bool,
@@ -93,9 +90,7 @@ func NewWalletService(
 	marketBaseAsset string,
 ) (WalletService, error) {
 	return newWalletService(
-		vaultRepository,
-		unspentRepository,
-		marketRepository,
+		dbManager,
 		explorerService,
 		blockchainListener,
 		withElements,
@@ -106,9 +101,7 @@ func NewWalletService(
 }
 
 func newWalletService(
-	vaultRepository domain.VaultRepository,
-	unspentRepository domain.UnspentRepository,
-	marketRepository domain.MarketRepository,
+	dbManager ports.DbManager,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
 	withElements bool,
@@ -117,9 +110,7 @@ func newWalletService(
 	marketBaseAsset string,
 ) (*walletService, error) {
 	w := &walletService{
-		vaultRepository:    vaultRepository,
-		unspentRepository:  unspentRepository,
-		marketRepository:   marketRepository,
+		dbManager:          dbManager,
 		explorerService:    explorerService,
 		blockchainListener: blockchainListener,
 		withElements:       withElements,
@@ -133,13 +124,13 @@ func newWalletService(
 	// and passphrase. If it does, it means it's been retrieved from storage,
 	// therefore we let the crawler to start watch all derived addresses and mark
 	// the wallet as initialized
-	if vault, err := w.vaultRepository.GetOrCreateVault(
+	if vault, err := w.dbManager.VaultRepository().GetOrCreateVault(
 		context.Background(), nil, "", nil,
 	); err == nil {
 		info := vault.AllDerivedAddressesInfo()
 		if err := fetchAndAddUnspents(
 			w.explorerService,
-			w.unspentRepository,
+			w.dbManager.UnspentRepository(),
 			w.blockchainListener,
 			info,
 		); err != nil {
@@ -200,7 +191,7 @@ func (w *walletService) InitWallet(
 		log.Debug("creating wallet")
 	}
 
-	vault, err := w.vaultRepository.GetOrCreateVault(ctx, mnemonic, passphrase, w.network)
+	vault, err := w.dbManager.VaultRepository().GetOrCreateVault(ctx, mnemonic, passphrase, w.network)
 	if err != nil {
 		chErr <- fmt.Errorf("unable to retrieve vault: %v", err)
 		return
@@ -294,7 +285,7 @@ func (w *walletService) UnlockWallet(
 		return ErrWalletNotInitialized
 	}
 
-	if err := w.vaultRepository.UpdateVault(
+	if err := w.dbManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			if err := v.Unlock(passphrase); err != nil {
@@ -322,7 +313,7 @@ func (w *walletService) ChangePassword(
 		return ErrWalletNotInitialized
 	}
 
-	return w.vaultRepository.UpdateVault(
+	return w.dbManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			err := v.ChangePassphrase(currentPassphrase, newPassphrase)
@@ -344,7 +335,7 @@ func (w *walletService) GenerateAddressAndBlindingKey(
 		return "", "", ErrWalletNotInitialized
 	}
 
-	err = w.vaultRepository.UpdateVault(
+	err = w.dbManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			info, err := v.DeriveNextExternalAddressForAccount(
@@ -374,7 +365,7 @@ func (w *walletService) GetWalletBalance(
 		return nil, ErrWalletNotInitialized
 	}
 
-	info, err := w.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, domain.WalletAccount)
+	info, err := w.dbManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(ctx, domain.WalletAccount)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +427,7 @@ func (w *walletService) SendToMany(
 
 	var txHex string
 
-	if err := w.vaultRepository.UpdateVault(
+	if err := w.dbManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err := v.GetMnemonicSafe()
@@ -503,8 +494,8 @@ func (w *walletService) SendToMany(
 	}
 
 	go extractUnspentsFromTxAndUpdateUtxoSet(
-		w.unspentRepository,
-		w.vaultRepository,
+		w.dbManager.UnspentRepository(),
+		w.dbManager.VaultRepository(),
 		w.network,
 		txHex,
 		domain.FeeAccount,
@@ -659,7 +650,7 @@ func (w *walletService) restoreMarket(
 	info domain.AddressesInfo,
 	unspentsByAddress map[string][]domain.Unspent,
 ) (*domain.Market, error) {
-	market, err := w.marketRepository.GetOrCreateMarket(ctx, &domain.Market{
+	market, err := w.dbManager.MarketRepository().GetOrCreateMarket(ctx, &domain.Market{
 		AccountIndex: accountIndex,
 		Fee:          w.marketFee,
 	})
@@ -691,7 +682,7 @@ func (w *walletService) persistRestoredState(
 	markets []*domain.Market,
 ) error {
 	// update changes to vault
-	if err := w.vaultRepository.UpdateVault(
+	if err := w.dbManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			return vault, nil
@@ -701,13 +692,13 @@ func (w *walletService) persistRestoredState(
 	}
 
 	// update utxo set
-	if err := w.unspentRepository.AddUnspents(ctx, unspents); err != nil {
+	if err := w.dbManager.UnspentRepository().AddUnspents(ctx, unspents); err != nil {
 		return fmt.Errorf("unable to persist changes to the unspent repo: %s", err)
 	}
 
 	// update changes to markets
 	for _, m := range markets {
-		if err := w.marketRepository.UpdateMarket(
+		if err := w.dbManager.MarketRepository().UpdateMarket(
 			ctx,
 			m.AccountIndex,
 			func(_ *domain.Market) (*domain.Market, error) {
@@ -726,7 +717,7 @@ func (w *walletService) getAllUnspentsForAccount(
 	accountIndex int,
 	useExplorer bool,
 ) ([]explorer.Utxo, error) {
-	info, err := w.vaultRepository.GetAllDerivedAddressesInfoForAccount(ctx, accountIndex)
+	info, err := w.dbManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(ctx, accountIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -736,7 +727,7 @@ func (w *walletService) getAllUnspentsForAccount(
 		return w.explorerService.GetUnspentsForAddresses(addresses, blindingKeys)
 	}
 
-	unspents, err := w.unspentRepository.GetAvailableUnspentsForAddresses(ctx, addresses)
+	unspents, err := w.dbManager.UnspentRepository().GetAvailableUnspentsForAddresses(ctx, addresses)
 	if err != nil {
 		return nil, err
 	}

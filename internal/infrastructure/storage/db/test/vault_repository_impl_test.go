@@ -141,24 +141,16 @@ func createVaultRepositories(t *testing.T) ([]vaultRepository, func()) {
 			{
 				Name:       "badger",
 				DBManager:  badgerDBManager,
-				Repository: newBadgerVaultRepository(badgerDBManager),
+				Repository: badgerDBManager.VaultRepository(),
 			},
 			{
 				Name:       "inmemory",
 				DBManager:  inmemoryDBManager,
-				Repository: newInMemoryVaultRepository(inmemoryDBManager),
+				Repository: inmemoryDBManager.VaultRepository(),
 			},
 		}, func() {
 			os.RemoveAll(datadir)
 		}
-}
-
-func newBadgerVaultRepository(dbmanager *dbbadger.DbManager) domain.VaultRepository {
-	return dbbadger.NewVaultRepositoryImpl(dbmanager)
-}
-
-func newInMemoryVaultRepository(dbmanager *inmemory.DbManager) domain.VaultRepository {
-	return inmemory.NewVaultRepositoryImpl(dbmanager)
 }
 
 type vaultRepository struct {

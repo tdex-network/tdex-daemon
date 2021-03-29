@@ -38,6 +38,11 @@ type DbManager struct {
 	tradeStore   *tradeInmemoryStore
 	unspentStore *unspentInmemoryStore
 	vaultStore   *vaultInmemoryStore
+
+	marketRepository  domain.MarketRepository
+	unspentRepository domain.UnspentRepository
+	tradeRepository   domain.TradeRepository
+	vaultRepository   domain.VaultRepository
 }
 
 type InmemoryTx struct {
@@ -57,29 +62,61 @@ func (tx *InmemoryTx) Discard() {
 	tx.success = false
 }
 
-func NewDbManager() *DbManager {
+func NewDbManager() ports.DbManager {
+	marketStore := &marketInmemoryStore{
+		markets:         map[int]domain.Market{},
+		accountsByAsset: map[string]int{},
+		locker:          &sync.Mutex{},
+	}
+	tradeStore := &tradeInmemoryStore{
+		trades:               map[uuid.UUID]domain.Trade{},
+		tradesBySwapAcceptID: map[string]uuid.UUID{},
+		tradesByMarket:       map[string][]uuid.UUID{},
+		locker:               &sync.Mutex{},
+	}
+	unspentStore := &unspentInmemoryStore{
+		unspents: map[domain.UnspentKey]domain.Unspent{},
+		locker:   &sync.RWMutex{},
+	}
+	vaultStore := &vaultInmemoryStore{
+		vault:  &domain.Vault{},
+		locker: &sync.Mutex{},
+	}
+
+	marketRepo := NewMarketRepositoryImpl(marketStore)
+	tradeRepo := NewTradeRepositoryImpl(tradeStore)
+	unspentRepo := NewUnspentRepositoryImpl(unspentStore)
+	vaultRepo := NewVaultRepositoryImpl(vaultStore)
+
 	return &DbManager{
-		marketStore: &marketInmemoryStore{
-			markets:         map[int]domain.Market{},
-			accountsByAsset: map[string]int{},
-			locker:          &sync.Mutex{},
-		},
-		tradeStore: &tradeInmemoryStore{
-			trades:               map[uuid.UUID]domain.Trade{},
-			tradesBySwapAcceptID: map[string]uuid.UUID{},
-			tradesByMarket:       map[string][]uuid.UUID{},
-			locker:               &sync.Mutex{},
-		},
-		unspentStore: &unspentInmemoryStore{
-			unspents: map[domain.UnspentKey]domain.Unspent{},
-			locker:   &sync.RWMutex{},
-		},
-		vaultStore: &vaultInmemoryStore{
-			vault:  &domain.Vault{},
-			locker: &sync.Mutex{},
-		},
+		marketStore:       marketStore,
+		tradeStore:        tradeStore,
+		unspentStore:      unspentStore,
+		vaultStore:        vaultStore,
+		marketRepository:  marketRepo,
+		tradeRepository:   tradeRepo,
+		unspentRepository: unspentRepo,
+		vaultRepository:   vaultRepo,
 	}
 }
+
+func (d *DbManager) MarketRepository() domain.MarketRepository {
+	return d.marketRepository
+}
+
+func (d *DbManager) UnspentRepository() domain.UnspentRepository {
+	return d.unspentRepository
+}
+
+func (d *DbManager) TradeRepository() domain.TradeRepository {
+	return d.tradeRepository
+}
+
+func (d *DbManager) VaultRepository() domain.VaultRepository {
+	return d.vaultRepository
+}
+
+func (d *DbManager) Close() {}
 
 func (db *DbManager) NewTransaction() ports.Transaction {
 	return &InmemoryTx{
