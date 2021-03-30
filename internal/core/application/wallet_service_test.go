@@ -1,0 +1,333 @@
+package application_test
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"math/big"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
+	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/network"
+)
+
+var (
+	regtest                    = &network.Regtest
+	marketBaseAsset            = regtest.AssetID
+	marketFee           int64  = 25
+	feeBalanceThreshold uint64 = 5000
+	restore                    = true
+	passphrase                 = "passphrase"
+	mnemonic                   = []string{
+		"curious", "alien", "peanut", "protect", "capable", "charge", "recipe", "hub",
+		"volume", "deal", "math", "make", "suggest", "bleak", "seat", "swim",
+		"into", "save", "hint", "wood", "pioneer", "ball", "decline", "universe",
+	}
+	mnemonicStr       = strings.Join(mnemonic, " ")
+	encryptedMnemonic = "RF0mJIJzHqokOgSD8fbHSy9YpN56qTZAaMxRQD6DSH27Q1Y7npNy4wuznaBbJL3s6j7HkmBOEGLpj8gf9PHo4cbv+6uIStF8DE0wTNxSu8AJKPQDbYi/lx59mhIkisL77Zx2cZQKFrFvTGHw5En8Zt8eKgFSnrM1goZZbsU9oe5C6MRK8zLdmVau9ipTN3nhTFMfTR1KsQ5OLhXWpjIdezrdb1LmN/7I/CU3Ts81/+R5fefzaa4vB+3g02TgPJmcvr1Yg53gjfwBpUVtrK4naQ=="
+)
+
+func TestMain(t *testing.T) {
+	domain.EncrypterManager = mockCryptoHandler{
+		encrypt: func(_, _ string) (string, error) {
+			return encryptedMnemonic, nil
+		},
+		decrypt: func(_, _ string) (string, error) {
+			return mnemonicStr, nil
+		},
+	}
+	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
+}
+
+func TestInitWallet(t *testing.T) {
+	t.Run("wallet_from_scratch", func(t *testing.T) {
+		t.Parallel()
+
+		walletSvc, err := newWalletService()
+		require.NoError(t, err)
+		require.NotNil(t, walletSvc)
+
+		chReplies := make(chan *application.InitWalletReply)
+		chErr := make(chan error, 1)
+
+		go walletSvc.InitWallet(
+			context.Background(),
+			mnemonic,
+			passphrase,
+			!restore,
+			chReplies,
+			chErr,
+		)
+
+		replies, err := listenToReplies(chReplies, chErr)
+		require.NoError(t, err)
+		require.Len(t, replies, 0)
+	})
+
+	t.Run("wallet_from_restart", func(t *testing.T) {
+		t.Parallel()
+
+		walletSvc, err := newWalletServiceRestart()
+		require.NoError(t, err)
+		require.NotNil(t, walletSvc)
+
+		// No need to call InitWallet when restarting a wallet service!
+		// This is the only case where we can call directly Unlock because the
+		// service doesn't make any async ops.
+		err = walletSvc.UnlockWallet(context.Background(), passphrase)
+		require.NoError(t, err)
+	})
+
+	t.Run("wallet_from_restore", func(t *testing.T) {
+		t.Parallel()
+
+		walletSvc, err := newWalletServiceRestore()
+		require.NoError(t, err)
+		require.NotNil(t, walletSvc)
+
+		chReplies := make(chan *application.InitWalletReply)
+		chErr := make(chan error, 1)
+
+		go walletSvc.InitWallet(
+			context.Background(),
+			mnemonic,
+			passphrase,
+			restore,
+			chReplies,
+			chErr,
+		)
+
+		replies, err := listenToReplies(chReplies, chErr)
+		require.NoError(t, err)
+		require.Greater(t, len(replies), 0)
+	})
+}
+
+func newWalletService() (application.WalletService, error) {
+	dbManager, explorerSvc, bcListener := newServices()
+
+	return application.NewWalletService(
+		dbManager,
+		explorerSvc,
+		bcListener,
+		false,
+		regtest,
+		marketFee,
+		marketBaseAsset,
+	)
+}
+
+// When the wallet service is instatiated, it automatically takes care of
+// restoring the utxo set if it finds a vault in the Vault repository.
+// This function creates a new vault in the repo before passing the db manager
+// down to the wallet service to simulate the described situation.
+func newWalletServiceRestart() (application.WalletService, error) {
+	dbManager, explorerSvc, bcListener := newServices()
+	v, err := dbManager.VaultRepository().GetOrCreateVault(
+		context.Background(),
+		mnemonic, passphrase, regtest,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	info := v.AllDerivedAddressesInfo()
+	addresses, keys := info.AddressesAndKeys()
+	explorerSvc.(*mockExplorer).
+		On("GetUnspentsForAddresses", addresses, keys).
+		Return(randomUtxos(addresses), nil)
+
+	return application.NewWalletService(
+		dbManager,
+		explorerSvc,
+		bcListener,
+		false,
+		regtest,
+		marketFee,
+		marketBaseAsset,
+	)
+}
+
+// Restoring a wallet is an operation that depends almost entirely on the
+// explorer service. This function mocks explorer's responses in order to
+// emulate an already used wallet with some used Fee account's addresses.
+func newWalletServiceRestore() (application.WalletService, error) {
+	dbManager, explorerSvc, bcListener := newServices()
+
+	v, _ := domain.NewVault(mnemonic, passphrase, regtest)
+	accountIndexes := []int{
+		domain.FeeAccount,
+		domain.WalletAccount,
+		domain.MarketAccountStart,
+	}
+	usedAddresses := make([]string, 0)
+	usedKeys := make([][]byte, 0)
+	unusedAddresses := make([]string, 0)
+	unusedKeys := make([][]byte, 0)
+	for i := range accountIndexes {
+		accountIndex := accountIndexes[i]
+		for j := 0; j < 22; j++ {
+			v.Unlock(passphrase)
+			extInfo, _ := v.DeriveNextExternalAddressForAccount(accountIndex)
+			v.Unlock(passphrase)
+			inInfo, _ := v.DeriveNextInternalAddressForAccount(accountIndex)
+			if j < 2 && accountIndex < domain.WalletAccount {
+				usedAddresses = append(usedAddresses, extInfo.Address)
+				usedAddresses = append(usedAddresses, inInfo.Address)
+				usedKeys = append(usedKeys, extInfo.BlindingKey)
+				usedKeys = append(usedKeys, inInfo.BlindingKey)
+			} else {
+				unusedAddresses = append(unusedAddresses, extInfo.Address)
+				unusedAddresses = append(unusedAddresses, inInfo.Address)
+				unusedKeys = append(unusedKeys, extInfo.BlindingKey)
+				unusedKeys = append(unusedKeys, inInfo.BlindingKey)
+			}
+		}
+	}
+
+	for i, addr := range usedAddresses {
+		key := usedKeys[i]
+		explorerSvc.(*mockExplorer).
+			On("GetTransactionsForAddress", addr, key).
+			Return(randomTxs(), nil)
+		explorerSvc.(*mockExplorer).
+			On("GetUnspents", addr, [][]byte{key}).
+			Return(randomUtxos([]string{addr}), nil)
+	}
+
+	// fmt.Printf("\nUNUSED\n")
+	for i, addr := range unusedAddresses {
+		key := unusedKeys[i]
+		// fmt.Println(addr)
+		explorerSvc.(*mockExplorer).
+			On("GetTransactionsForAddress", addr, key).
+			Return(nil, nil)
+	}
+
+	return application.NewWalletService(
+		dbManager,
+		explorerSvc,
+		bcListener,
+		false,
+		regtest,
+		marketFee,
+		marketBaseAsset,
+	)
+}
+
+func newServices() (
+	ports.DbManager,
+	explorer.Service,
+	application.BlockchainListener,
+) {
+	dbManager := inmemory.NewDbManager()
+	explorerSvc := &mockExplorer{}
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:        explorerSvc,
+		ExplorerLimit:      10,
+		ExplorerTokenBurst: 1,
+		CrawlerInterval:    1000,
+	})
+	bcListener := application.NewBlockchainListener(
+		crawlerSvc,
+		dbManager,
+		marketBaseAsset,
+		feeBalanceThreshold,
+		regtest,
+	)
+	return dbManager, explorerSvc, bcListener
+}
+
+func listenToReplies(
+	chReplies chan *application.InitWalletReply,
+	chErr chan error,
+) ([]*application.InitWalletReply, error) {
+	replies := make([]*application.InitWalletReply, 0)
+	for {
+		select {
+		case err := <-chErr:
+			close(chErr)
+			close(chReplies)
+			return nil, err
+		case reply := <-chReplies:
+			if reply == nil {
+				close(chErr)
+				close(chReplies)
+				return replies, nil
+			}
+			replies = append(replies, reply)
+		}
+	}
+}
+
+func randomUtxos(addresses []string) []explorer.Utxo {
+	uLen := len(addresses)
+	utxos := make([]explorer.Utxo, uLen, uLen)
+	for i, addr := range addresses {
+		script, _ := address.ToOutputScript(addr)
+		utxos[i] = esplora.NewWitnessUtxo(
+			randomHex(32),           //hash
+			randomVout(),            // index
+			randomValue(),           // value
+			randomHex(32),           // asset
+			randomValueCommitment(), // valuecommitment
+			randomAssetCommitment(), // assetcommitment
+			randomBytes(32),         // valueblinder
+			randomBytes(32),         // assetblinder
+			script,
+			randomBytes(32),  // nonce
+			randomBytes(100), // rangeproof
+			randomBytes(100), // surjectionproof
+			true,             // confirmed
+		)
+	}
+	return utxos
+}
+
+func randomTxs() []explorer.Transaction {
+	return []explorer.Transaction{&mockTransaction{}}
+}
+
+func randomValueCommitment() string {
+	c := randomBytes(32)
+	c[0] = 9
+	return hex.EncodeToString(c)
+}
+
+func randomAssetCommitment() string {
+	c := randomBytes(32)
+	c[0] = 10
+	return hex.EncodeToString(c)
+}
+
+func randomHex(len int) string {
+	return hex.EncodeToString(randomBytes(len))
+}
+
+func randomVout() uint32 {
+	return uint32(randomIntInRange(0, 15))
+}
+
+func randomValue() uint64 {
+	return uint64(randomIntInRange(1, 100000000))
+}
+
+func randomBytes(len int) []byte {
+	b := make([]byte, len)
+	rand.Read(b)
+	return b
+}
+
+func randomIntInRange(min, max int) int {
+	n, _ := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	return int(int(n.Int64())) + min
+}
