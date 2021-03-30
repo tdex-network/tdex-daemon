@@ -47,7 +47,6 @@ type blockchainListener struct {
 // NewBlockchainListener returns a BlockchainListener with all the needed services
 func NewBlockchainListener(
 	crawlerSvc crawler.Service,
-	explorerSvc explorer.Service,
 	dbManager ports.DbManager,
 	marketBaseAsset string,
 	feeBalanceThreshold uint64,
@@ -55,7 +54,6 @@ func NewBlockchainListener(
 ) BlockchainListener {
 	return newBlockchainListener(
 		crawlerSvc,
-		explorerSvc,
 		dbManager,
 		marketBaseAsset,
 		feeBalanceThreshold,
@@ -65,7 +63,6 @@ func NewBlockchainListener(
 
 func newBlockchainListener(
 	crawlerSvc crawler.Service,
-	explorerSvc explorer.Service,
 	dbManager ports.DbManager,
 	marketBaseAsset string,
 	feeBalanceThreshold uint64,
@@ -73,7 +70,6 @@ func newBlockchainListener(
 ) *blockchainListener {
 	return &blockchainListener{
 		crawlerSvc:          crawlerSvc,
-		explorerSvc:         explorerSvc,
 		dbManager:           dbManager,
 		mutex:               &sync.RWMutex{},
 		pendingObservables:  make([]crawler.Observable, 0),

@@ -82,7 +82,6 @@ func main() {
 	})
 	blockchainListener := application.NewBlockchainListener(
 		crawlerSvc,
-		explorerSvc,
 		dbManager,
 		marketsBaseAsset,
 		feeThreshold,
