@@ -11,7 +11,7 @@ import (
 )
 
 func TestCrawler(t *testing.T) {
-	mockExplorerSvc := MockExplorer{}
+	mockExplorerSvc := mockExplorer{}
 
 	crawlSvc := NewService(Opts{
 		ExplorerSvc: mockExplorerSvc,
@@ -87,21 +87,21 @@ func addObservableAfterTimeout(crawler Service) {
 
 // MOCK //
 
-type MockExplorer struct{}
+type mockExplorer struct{}
 
-func (m MockExplorer) GetBlockHeight() (int, error) {
+func (m mockExplorer) GetBlockHeight() (int, error) {
 	panic("implement me")
 }
 
-func (m MockExplorer) GetUnspentsForAddresses(addresses []string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
+func (m mockExplorer) GetUnspentsForAddresses(addresses []string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
 	panic("implement me")
 }
 
-func (m MockExplorer) IsTransactionConfirmed(txID string) (bool, error) {
+func (m mockExplorer) IsTransactionConfirmed(txID string) (bool, error) {
 	return false, nil
 }
 
-func (m MockExplorer) GetTransactionStatus(txID string) (
+func (m mockExplorer) GetTransactionStatus(txID string) (
 	map[string]interface{},
 	error,
 ) {
@@ -117,102 +117,105 @@ func (m MockExplorer) GetTransactionStatus(txID string) (
 	return status, nil
 }
 
-func (m MockExplorer) GetUnspents(addr string, blindKeys [][]byte) (
+func (m mockExplorer) GetUnspents(addr string, blindKeys [][]byte) (
 	[]explorer.Utxo,
 	error,
 ) {
 	if addr == "1" {
-		return []explorer.Utxo{MockUtxo{value: 1}}, nil
+		return []explorer.Utxo{mockUtxo{value: 1}}, nil
 	} else if addr == "2" {
-		return []explorer.Utxo{MockUtxo{value: 2}}, nil
+		return []explorer.Utxo{mockUtxo{value: 2}}, nil
 	} else if addr == "3" {
-		return []explorer.Utxo{MockUtxo{value: 3}}, nil
+		return []explorer.Utxo{mockUtxo{value: 3}}, nil
 	} else if addr == "101" {
-		return []explorer.Utxo{MockUtxo{value: 101}}, nil
+		return []explorer.Utxo{mockUtxo{value: 101}}, nil
 	}
 	return nil, nil
 }
 
-func (m MockExplorer) GetTransactionHex(txID string) (string, error) {
-	return "", errors.New("implement me")
-}
-func (m MockExplorer) GetTransactionsForAddress(addr string, blindingKey []byte) ([]explorer.Transaction, error) {
+func (m mockExplorer) GetTransaction(txID string) (explorer.Transaction, error) {
 	return nil, errors.New("implement me")
 }
-func (m MockExplorer) BroadcastTransaction(txHex string) (string, error) {
+func (m mockExplorer) GetTransactionHex(txID string) (string, error) {
 	return "", errors.New("implement me")
 }
-func (m MockExplorer) Faucet(addr string) (string, error) {
+func (m mockExplorer) GetTransactionsForAddress(addr string, blindingKey []byte) ([]explorer.Transaction, error) {
+	return nil, errors.New("implement me")
+}
+func (m mockExplorer) BroadcastTransaction(txHex string) (string, error) {
 	return "", errors.New("implement me")
 }
-func (m MockExplorer) Mint(addr string, amount int) (string, string, error) {
+func (m mockExplorer) Faucet(addr string) (string, error) {
+	return "", errors.New("implement me")
+}
+func (m mockExplorer) Mint(addr string, amount int) (string, string, error) {
 	return "", "", errors.New("implement me")
 }
 
-type MockUtxo struct {
+type mockUtxo struct {
 	value uint64
 }
 
-func (m MockUtxo) Hash() string {
+func (m mockUtxo) Hash() string {
 	panic("implement me")
 }
 
-func (m MockUtxo) Index() uint32 {
+func (m mockUtxo) Index() uint32 {
 	panic("implement me")
 }
 
-func (m MockUtxo) Value() uint64 {
+func (m mockUtxo) Value() uint64 {
 	return m.value
 }
 
-func (m MockUtxo) Asset() string {
+func (m mockUtxo) Asset() string {
 	panic("implement me")
 }
 
-func (m MockUtxo) ValueCommitment() string {
+func (m mockUtxo) ValueCommitment() string {
 	panic("implement me")
 }
 
-func (m MockUtxo) AssetCommitment() string {
+func (m mockUtxo) AssetCommitment() string {
 	panic("implement me")
 }
 
-func (m MockUtxo) ValueBlinder() []byte {
+func (m mockUtxo) ValueBlinder() []byte {
 	panic("implement me")
 }
 
-func (m MockUtxo) AssetBlinder() []byte {
+func (m mockUtxo) AssetBlinder() []byte {
 	panic("implement me")
 }
 
-func (m MockUtxo) Nonce() []byte {
+func (m mockUtxo) Nonce() []byte {
 	panic("implement me")
 }
 
-func (m MockUtxo) Script() []byte {
+func (m mockUtxo) Script() []byte {
 	panic("implement me")
 }
 
-func (m MockUtxo) RangeProof() []byte {
+func (m mockUtxo) RangeProof() []byte {
 	panic("implement me")
 }
 
-func (m MockUtxo) SurjectionProof() []byte {
+func (m mockUtxo) SurjectionProof() []byte {
 	panic("implement me")
 }
 
-func (m MockUtxo) IsConfidential() bool {
+func (m mockUtxo) IsConfidential() bool {
 	panic("implement me")
 }
 
-func (m MockUtxo) IsRevealed() bool {
+func (m mockUtxo) IsRevealed() bool {
 	panic("implement me")
 }
 
-func (m MockUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, error) {
+func (m mockUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, error) {
 	panic("implement me")
 }
 
-func (m MockUtxo) IsConfirmed() bool {
+func (m mockUtxo) IsConfirmed() bool {
 	panic("implement me")
 }
