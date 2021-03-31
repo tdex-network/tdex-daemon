@@ -1249,7 +1249,7 @@ func extractUnspentsFromTx(
 	for i, out := range tx.Outputs {
 		script := hex.EncodeToString(out.Script)
 		if info, ok := infoByScript[script]; ok {
-			unconfidential, ok := transactionutil.UnblindOutput(out, info.BlindingKey)
+			unconfidential, ok := BlinderManager.UnblindOutput(out, info.BlindingKey)
 			if !ok {
 				return nil, nil, errors.New("unable to unblind output")
 			}

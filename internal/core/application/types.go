@@ -3,6 +3,8 @@ package application
 import (
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
+	"github.com/vulpemventures/go-elements/transaction"
 )
 
 // SwapInfo is the data struct returned by ListSwap RPC.
@@ -126,4 +128,27 @@ type UtxoInfo struct {
 	Outpoint *TxOutpoint
 	Value    uint64
 	Asset    string
+}
+
+type UnblindedResult *transactionutil.UnblindedResult
+
+type Blinder interface {
+	UnblindOutput(txout *transaction.TxOutput, key []byte) (UnblindedResult, bool)
+}
+
+var (
+	BlinderManager Blinder
+)
+
+type blinderManager struct{}
+
+func (b blinderManager) UnblindOutput(
+	txout *transaction.TxOutput,
+	key []byte,
+) (UnblindedResult, bool) {
+	return transactionutil.UnblindOutput(txout, key)
+}
+
+func init() {
+	BlinderManager = blinderManager{}
 }

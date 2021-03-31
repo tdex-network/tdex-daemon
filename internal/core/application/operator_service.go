@@ -6,14 +6,12 @@ import (
 	"errors"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/vulpemventures/go-elements/transaction"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
-	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/vulpemventures/go-elements/network"
 )
 
@@ -29,7 +27,7 @@ type OperatorService interface {
 		baseAsset string,
 		quoteAsset string,
 		numOfAddresses int,
-	) ([]string, error)
+	) ([]AddressAndBlindingKey, error)
 	DepositFeeAccount(
 		ctx context.Context,
 		numOfAddresses int,
@@ -131,7 +129,7 @@ func (o *operatorService) DepositMarket(
 	baseAsset string,
 	quoteAsset string,
 	numOfAddresses int,
-) ([]string, error) {
+) ([]AddressAndBlindingKey, error) {
 	var accountIndex int
 
 	// First case: the assets are given. If are valid and a market exist we need to derive a new address for that account.
@@ -192,8 +190,6 @@ func (o *operatorService) DepositMarket(
 	}
 
 	list := make([]AddressAndBlindingKey, numOfAddresses, numOfAddresses)
-	addresses := make([]string, numOfAddresses, numOfAddresses)
-	//Derive an address for that specific market
 	if err := o.dbManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
@@ -206,7 +202,6 @@ func (o *operatorService) DepositMarket(
 					Address:     info.Address,
 					BlindingKey: hex.EncodeToString(info.BlindingKey),
 				}
-				addresses[i] = info.Address
 			}
 
 			return v, nil
@@ -214,7 +209,7 @@ func (o *operatorService) DepositMarket(
 		return nil, err
 	}
 
-	return addresses, nil
+	return list, nil
 }
 
 func (o *operatorService) DepositFeeAccount(
@@ -225,7 +220,7 @@ func (o *operatorService) DepositFeeAccount(
 		numOfAddresses = 1
 	}
 
-	list := make([]AddressAndBlindingKey, 0, numOfAddresses)
+	list := make([]AddressAndBlindingKey, numOfAddresses, numOfAddresses)
 	if err := o.dbManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
@@ -235,10 +230,10 @@ func (o *operatorService) DepositFeeAccount(
 					return nil, err
 				}
 
-				list = append(list, AddressAndBlindingKey{
+				list[i] = AddressAndBlindingKey{
 					Address:     info.Address,
 					BlindingKey: hex.EncodeToString(info.BlindingKey),
-				})
+				}
 			}
 
 			return v, nil
@@ -878,15 +873,16 @@ func (o *operatorService) ClaimMarketDeposit(
 		return err
 	}
 
-	market, accountIndex, err := o.dbManager.MarketRepository().GetMarketByAsset(ctx,
-		marketReq.QuoteAsset)
+	market, accountIndex, err := o.dbManager.MarketRepository().GetMarketByAsset(
+		ctx, marketReq.QuoteAsset,
+	)
 	if err != nil {
 		return err
 	}
 
 	infoPerAccount := make(map[int]domain.AddressesInfo)
 
-	// if market exist,s fetch all receiving addresses and relative blinding keys
+	// if market exists, fetch all receiving addresses and relative blinding keys
 	// for the known market.
 	if market != nil {
 		info, err := o.dbManager.VaultRepository().GetAllDerivedExternalAddressesInfoForAccount(
@@ -989,24 +985,21 @@ func (o *operatorService) claimDeposit(
 			return ErrTxNotConfirmed
 		}
 
-		// TODO: Add a GetTransaction method to explorer interface to prevent
-		// direct usage of go-elements here.
-		txHex, err := o.explorerSvc.GetTransactionHex(v.Hash)
+		tx, err := o.explorerSvc.GetTransaction(v.Hash)
 		if err != nil {
 			return err
 		}
-		tx, _ := transaction.NewTxFromHex(txHex)
 
-		if len(tx.Outputs) <= v.Index {
+		if len(tx.Outputs()) <= v.Index {
 			return ErrInvalidOutpoint
 		}
 
-		txOut := tx.Outputs[v.Index]
+		txOut := tx.Outputs()[v.Index]
 		script := hex.EncodeToString(txOut.Script)
 		if info, ok := infoByScript[script]; ok {
 			counter[info.AccountIndex]++
 
-			unconfidential, ok := transactionutil.UnblindOutput(
+			unconfidential, ok := BlinderManager.UnblindOutput(
 				txOut,
 				info.BlindingKey,
 			)
@@ -1015,7 +1008,7 @@ func (o *operatorService) claimDeposit(
 			}
 
 			unspents[i] = domain.Unspent{
-				TxID:            tx.TxHash().String(),
+				TxID:            v.Hash,
 				VOut:            uint32(v.Index),
 				Value:           unconfidential.Value,
 				AssetHash:       unconfidential.AssetHash,
