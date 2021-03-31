@@ -25,7 +25,7 @@ var (
 	}
 )
 
-func TestA(t *testing.T) {
+func TestAccountManagement(t *testing.T) {
 	operatorSvc, err := newOperatorService()
 	require.NoError(t, err)
 
