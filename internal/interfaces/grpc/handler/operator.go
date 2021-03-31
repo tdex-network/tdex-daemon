@@ -292,7 +292,7 @@ func (o operatorHandler) depositMarket(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			addresses, err := o.operatorSvc.DepositMarket(
+			addressesAndKeys, err := o.operatorSvc.DepositMarket(
 				ctx,
 				req.GetMarket().GetBaseAsset(),
 				req.GetMarket().GetQuoteAsset(),
@@ -300,6 +300,11 @@ func (o operatorHandler) depositMarket(
 			)
 			if err != nil {
 				return nil, err
+			}
+			aLen := len(addressesAndKeys)
+			addresses := make([]string, aLen, aLen)
+			for i, a := range addressesAndKeys {
+				addresses[i] = a.Address
 			}
 
 			return &pb.DepositMarketReply{Addresses: addresses}, nil
