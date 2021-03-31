@@ -7,6 +7,16 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
+// GetTransaction returns the transaction indentified by its hash
+// by calling the getrawtrancation RPC
+func (e *elements) GetTransaction(txid string) (explorer.Transaction, error) {
+	r, err := e.client.call("getrawtransaction", []interface{}{txid, 1})
+	if err = handleError(err, &r); err != nil {
+		return nil, fmt.Errorf("rawtx: %w", err)
+	}
+	return NewTxFromJSON(string(r.Result))
+}
+
 // GetTransactionHex returns the hex of the transaction indentified by its hash
 // by calling the getrawtrancation RPC
 func (e *elements) GetTransactionHex(txid string) (string, error) {
@@ -104,7 +114,6 @@ func (e *elements) GetTransactionsForAddress(addr string, blindingKey []byte) ([
 	if len(data) > 0 {
 		info := data[0].(map[string]interface{})
 		txids := info["txids"].([]interface{})
-		confirmations := int(info["confirmations"].(float64))
 
 		txs := make([]explorer.Transaction, 0, len(txids))
 		chTxs := make(chan explorer.Transaction)
@@ -114,7 +123,7 @@ func (e *elements) GetTransactionsForAddress(addr string, blindingKey []byte) ([
 		// blinders for blinding instead of forcing to unblind inputs with
 		// blinding private keys.
 		for _, txid := range txids {
-			go e.getTxDetails(txid.(string), confirmations, chTxs, chErr)
+			go e.getTxDetails(txid.(string), chTxs, chErr)
 			select {
 			case tx := <-chTxs:
 				if tx != nil {
@@ -213,17 +222,10 @@ func (e *elements) getTransaction(txid string) (map[string]interface{}, error) {
 
 func (e *elements) getTxDetails(
 	txid string,
-	confirmations int,
 	chTxs chan explorer.Transaction,
 	chErr chan error,
 ) {
-	txhex, err := e.GetTransactionHex(txid)
-	if err != nil {
-		chErr <- err
-		return
-	}
-
-	tx, err := NewTxFromHex(txhex, confirmations)
+	tx, err := e.GetTransaction(txid)
 	if err != nil {
 		chErr <- err
 		return

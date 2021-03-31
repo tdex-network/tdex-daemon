@@ -7,6 +7,32 @@ import (
 	"github.com/magiconair/properties/assert"
 )
 
+func TestGetTransaction(t *testing.T) {
+	addr, _, err := newTestData()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	explorerSvc, err := newService()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Fund sender address.
+	txID, err := explorerSvc.Faucet(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(5 * time.Second)
+
+	tx, err := explorerSvc.GetTransaction(txID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, true, tx != nil)
+}
+
 func TestGetTransactionStatus(t *testing.T) {
 	addr, _, err := newTestData()
 	if err != nil {

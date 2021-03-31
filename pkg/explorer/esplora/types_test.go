@@ -34,7 +34,6 @@ func TestNewTxFromJSON(t *testing.T) {
 		assert.Equal(t, toInt(tt["numOutputs"]), len(trx.Outputs()))
 		assert.Equal(t, toInt(tt["size"]), trx.Size())
 		assert.Equal(t, toInt(tt["weight"]), trx.Weight())
-		assert.Equal(t, toInt(tt["fee"]), trx.Fee())
 		assert.Equal(t, tt["confirmed"].(bool), trx.Confirmed())
 	}
 }

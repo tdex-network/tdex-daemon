@@ -8,6 +8,23 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
+func (e *esplora) GetTransaction(hash string) (explorer.Transaction, error) {
+	url := fmt.Sprintf(
+		"%s/tx/%s",
+		e.apiURL,
+		hash,
+	)
+	status, resp, err := e.client.NewHTTPRequest("GET", url, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, fmt.Errorf(resp)
+	}
+
+	return NewTxFromJSON(resp)
+}
+
 func (e *esplora) GetTransactionHex(hash string) (string, error) {
 	url := fmt.Sprintf(
 		"%s/tx/%s/hex",

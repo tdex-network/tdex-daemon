@@ -3,6 +3,7 @@ package esplora
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -29,7 +30,7 @@ type tx struct {
 func NewTxFromJSON(txJSON string) (explorer.Transaction, error) {
 	t := &tx{}
 	if err := json.Unmarshal([]byte(txJSON), t); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid tx JSON")
 	}
 	return t, nil
 }
@@ -70,10 +71,6 @@ func (t *tx) Size() int {
 
 func (t *tx) Weight() int {
 	return t.TxWeight
-}
-
-func (t *tx) Fee() int {
-	return t.TxFee
 }
 
 func (t *tx) Confirmed() bool {
