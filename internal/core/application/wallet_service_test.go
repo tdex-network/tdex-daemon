@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"math/big"
+	"os"
 	"strings"
 	"testing"
 
@@ -34,9 +35,10 @@ var (
 	}
 	mnemonicStr       = strings.Join(mnemonic, " ")
 	encryptedMnemonic = "RF0mJIJzHqokOgSD8fbHSy9YpN56qTZAaMxRQD6DSH27Q1Y7npNy4wuznaBbJL3s6j7HkmBOEGLpj8gf9PHo4cbv+6uIStF8DE0wTNxSu8AJKPQDbYi/lx59mhIkisL77Zx2cZQKFrFvTGHw5En8Zt8eKgFSnrM1goZZbsU9oe5C6MRK8zLdmVau9ipTN3nhTFMfTR1KsQ5OLhXWpjIdezrdb1LmN/7I/CU3Ts81/+R5fefzaa4vB+3g02TgPJmcvr1Yg53gjfwBpUVtrK4naQ=="
+	ctx               = context.Background()
 )
 
-func TestMain(t *testing.T) {
+func TestMain(m *testing.M) {
 	domain.EncrypterManager = mockCryptoHandler{
 		encrypt: func(_, _ string) (string, error) {
 			return encryptedMnemonic, nil
@@ -46,6 +48,8 @@ func TestMain(t *testing.T) {
 		},
 	}
 	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
+
+	os.Exit(m.Run())
 }
 
 func TestInitWallet(t *testing.T) {
@@ -60,7 +64,7 @@ func TestInitWallet(t *testing.T) {
 		chErr := make(chan error, 1)
 
 		go walletSvc.InitWallet(
-			context.Background(),
+			ctx,
 			mnemonic,
 			passphrase,
 			!restore,
@@ -83,7 +87,7 @@ func TestInitWallet(t *testing.T) {
 		// No need to call InitWallet when restarting a wallet service!
 		// This is the only case where we can call directly Unlock because the
 		// service doesn't make any async ops.
-		err = walletSvc.UnlockWallet(context.Background(), passphrase)
+		err = walletSvc.UnlockWallet(ctx, passphrase)
 		require.NoError(t, err)
 	})
 
@@ -98,7 +102,7 @@ func TestInitWallet(t *testing.T) {
 		chErr := make(chan error, 1)
 
 		go walletSvc.InitWallet(
-			context.Background(),
+			ctx,
 			mnemonic,
 			passphrase,
 			restore,
@@ -133,8 +137,7 @@ func newWalletService() (application.WalletService, error) {
 func newWalletServiceRestart() (application.WalletService, error) {
 	dbManager, explorerSvc, bcListener := newServices()
 	v, err := dbManager.VaultRepository().GetOrCreateVault(
-		context.Background(),
-		mnemonic, passphrase, regtest,
+		ctx, mnemonic, passphrase, regtest,
 	)
 	if err != nil {
 		return nil, err
@@ -198,7 +201,7 @@ func newWalletServiceRestore() (application.WalletService, error) {
 		key := usedKeys[i]
 		explorerSvc.(*mockExplorer).
 			On("GetTransactionsForAddress", addr, key).
-			Return(randomTxs(), nil)
+			Return(randomTxs(addr), nil)
 		explorerSvc.(*mockExplorer).
 			On("GetUnspents", addr, [][]byte{key}).
 			Return(randomUtxos([]string{addr}), nil)
@@ -293,8 +296,8 @@ func randomUtxos(addresses []string) []explorer.Utxo {
 	return utxos
 }
 
-func randomTxs() []explorer.Transaction {
-	return []explorer.Transaction{&mockTransaction{}}
+func randomTxs(addr string) []explorer.Transaction {
+	return []explorer.Transaction{&mockTransaction{addr}}
 }
 
 func randomValueCommitment() string {

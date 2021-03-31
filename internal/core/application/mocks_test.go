@@ -5,10 +5,34 @@ import (
 	"sync"
 
 	"github.com/stretchr/testify/mock"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/transaction"
 )
+
+// **** BlinderMager ****
+type mockBlinderManager struct {
+	mock.Mock
+}
+
+func (m *mockBlinderManager) UnblindOutput(
+	txout *transaction.TxOutput,
+	key []byte,
+) (application.UnblindedResult, bool) {
+	args := m.Called(txout, key)
+
+	var res application.UnblindedResult
+	if a := args.Get(0); a != nil {
+		res = a.(application.UnblindedResult)
+	}
+	var res1 bool
+	if a := args.Get(1); a != nil {
+		res1 = a.(bool)
+	}
+	return res, res1
+}
 
 // **** Explorer ****
 
@@ -38,6 +62,16 @@ func (m *mockExplorer) GetUnspentsForAddresses(
 	var res []explorer.Utxo
 	if a := args.Get(0); a != nil {
 		res = a.([]explorer.Utxo)
+	}
+	return res, args.Error(1)
+}
+
+func (m *mockExplorer) GetTransaction(txid string) (explorer.Transaction, error) {
+	args := m.Called(txid)
+
+	var res explorer.Transaction
+	if a := args.Get(0); a != nil {
+		res = a.(explorer.Transaction)
 	}
 	return res, args.Error(1)
 }
@@ -131,10 +165,12 @@ func (m *mockExplorer) GetBlockHeight() (int, error) {
 
 // **** Explorer's Transaction ****
 
-type mockTransaction struct{}
+type mockTransaction struct {
+	address string
+}
 
 func (m *mockTransaction) Hash() string {
-	return ""
+	return randomHex(32)
 }
 
 func (m *mockTransaction) Version() int {
@@ -145,23 +181,37 @@ func (m *mockTransaction) Locktime() int {
 	return 0
 }
 func (m *mockTransaction) Inputs() []*transaction.TxInput {
-	return nil
+	inLen := randomIntInRange(1, 3)
+	ins := make([]*transaction.TxInput, inLen, inLen)
+	for i := 0; i < inLen; i++ {
+		ins[i] = transaction.NewTxInput(randomBytes(32), 0)
+	}
+	return ins
 }
 
 func (m *mockTransaction) Outputs() []*transaction.TxOutput {
-	return nil
+	outLen := randomIntInRange(2, 5)
+	outs := make([]*transaction.TxOutput, outLen, outLen)
+	script, _ := address.ToOutputScript(m.address)
+	for i := 0; i < outLen; i++ {
+		outs[i] = &transaction.TxOutput{
+			Asset:           randomBytes(32),
+			Value:           randomBytes(32),
+			Script:          script,
+			Nonce:           randomBytes(32),
+			RangeProof:      randomBytes(100),
+			SurjectionProof: randomBytes(100),
+		}
+	}
+	return outs
 }
 
 func (m *mockTransaction) Size() int {
-	return 100
+	return randomIntInRange(200, 500)
 }
 
 func (m *mockTransaction) Weight() int {
-	return 100
-}
-
-func (m *mockTransaction) Fee() int {
-	return 100
+	return randomIntInRange(500, 1000)
 }
 
 func (m *mockTransaction) Confirmed() bool {
