@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,13 +32,17 @@ func TestEstimateTxSize(t *testing.T) {
 			outScriptTypes: []int{P2WPKH, P2WPKH, P2WPKH, P2WPKH, P2WPKH},
 			expectedSize:   6258,
 		},
+		{
+			inScriptTypes:  []int{P2WPKH, P2WPKH, P2WPKH, P2WPKH, P2WPKH, P2WPKH, P2WPKH},
+			outScriptTypes: []int{P2WPKH, P2WPKH, P2WPKH, P2WPKH, P2WPKH},
+			expectedSize:   6532,
+		},
 	}
 	for _, tt := range tests {
 		size := EstimateTxSize(
 			tt.inScriptTypes, tt.outScriptTypes,
 			tt.inAuxiliaryP2ShSize, tt.outAuxiliaryP2ShSize,
 		)
-		fmt.Println(tt.expectedSize, size)
 		assert.GreaterOrEqual(t, size, tt.expectedSize)
 	}
 }
