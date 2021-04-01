@@ -15,15 +15,14 @@ import (
 
 // tx is the implementation of the explorer's Transaction interface
 type tx struct {
-	TxHash     string                 `json:"txid"`
-	TxVersion  int                    `json:"version"`
-	TxLocktime int                    `json:"locktime"`
-	TxInputs   []interface{}          `json:"vin"`
-	TxOutputs  []interface{}          `json:"vout"`
-	TxSize     int                    `json:"size"`
-	TxWeight   int                    `json:"weight"`
-	TxFee      int                    `json:"fee"`
-	TxStatus   map[string]interface{} `json:"status"`
+	TxHash      string
+	TxVersion   int
+	TxLocktime  int
+	TxInputs    []*transaction.TxInput
+	TxOutputs   []*transaction.TxOutput
+	TxSize      int
+	TxWeight    int
+	TxConfirmed bool
 }
 
 // NewTxFromJSON is the factory for a Transaction in given its JSON format.
@@ -33,6 +32,24 @@ func NewTxFromJSON(txJSON string) (explorer.Transaction, error) {
 		return nil, fmt.Errorf("invalid tx JSON")
 	}
 	return t, nil
+}
+
+func NewTxFromHex(txhex string, confirmed bool) (explorer.Transaction, error) {
+	t, err := transaction.NewTxFromHex(txhex)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tx{
+		TxHash:      t.TxHash().String(),
+		TxVersion:   int(t.Version),
+		TxLocktime:  int(t.Locktime),
+		TxSize:      t.VirtualSize(),
+		TxWeight:    t.Weight(),
+		TxInputs:    t.Inputs,
+		TxOutputs:   t.Outputs,
+		TxConfirmed: confirmed,
+	}, nil
 }
 
 func (t *tx) Hash() string {
@@ -48,21 +65,11 @@ func (t *tx) Locktime() int {
 }
 
 func (t *tx) Inputs() []*transaction.TxInput {
-	ins := make([]*transaction.TxInput, 0, len(t.TxInputs))
-	for _, v := range t.TxInputs {
-		in := parseInput(v)
-		ins = append(ins, in)
-	}
-	return ins
+	return t.TxInputs
 }
 
 func (t *tx) Outputs() []*transaction.TxOutput {
-	outs := make([]*transaction.TxOutput, 0, len(t.TxOutputs))
-	for _, v := range t.TxOutputs {
-		out := parseOutput(v)
-		outs = append(outs, out)
-	}
-	return outs
+	return t.TxOutputs
 }
 
 func (t *tx) Size() int {
@@ -74,7 +81,7 @@ func (t *tx) Weight() int {
 }
 
 func (t *tx) Confirmed() bool {
-	return t.TxStatus["confirmed"].(bool)
+	return t.TxConfirmed
 }
 
 func parseInput(i interface{}) *transaction.TxInput {
