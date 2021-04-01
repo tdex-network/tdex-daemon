@@ -367,10 +367,15 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 
 			inScriptTypes, outScriptTypes,
 				inAuxiliaryP2ShSize, outAuxiliaryP2ShSize := extractScriptTypesFromPset(ptx)
-			for range inputsToAdd {
+			// expect to add 1 input more to pay for network fees
+			for i := 0; i < len(inputsToAdd)+1; i++ {
 				inScriptTypes = append(inScriptTypes, P2WPKH)
 			}
 			for range outputsToAdd {
+				outScriptTypes = append(outScriptTypes, P2WPKH)
+			}
+			// in case there's no LBTC change, let's expect to add 1 output more.
+			if !anyOutputWithScript(outputsToAdd, lbtcChangeScript) {
 				outScriptTypes = append(outScriptTypes, P2WPKH)
 			}
 			txSize := EstimateTxSize(
