@@ -195,10 +195,10 @@ func (m *mockTransaction) Outputs() []*transaction.TxOutput {
 	script, _ := address.ToOutputScript(m.address)
 	for i := 0; i < outLen; i++ {
 		outs[i] = &transaction.TxOutput{
-			Asset:           randomBytes(32),
-			Value:           randomBytes(32),
+			Asset:           randomBytes(33),
+			Value:           randomBytes(33),
 			Script:          script,
-			Nonce:           randomBytes(32),
+			Nonce:           randomBytes(33),
 			RangeProof:      randomBytes(100),
 			SurjectionProof: randomBytes(100),
 		}

@@ -165,13 +165,13 @@ func (w *walletService) InitWallet(
 	chRes chan *InitWalletReply,
 	chErr chan error,
 ) {
-	if w.walletInitialized {
+	if w.isInitialized() {
 		chRes <- nil
 		return
 	}
 	// this prevents strange behaviors by making consecutive calls to InitWallet
 	// while it's still syncing
-	if w.walletIsSyncing {
+	if w.isSyncing() {
 		chRes <- nil
 		return
 	}
@@ -278,10 +278,10 @@ func (w *walletService) UnlockWallet(
 	ctx context.Context,
 	passphrase string,
 ) error {
-	if w.walletIsSyncing {
+	if w.isSyncing() {
 		return ErrWalletIsSyncing
 	}
-	if !w.walletInitialized {
+	if !w.isInitialized() {
 		return ErrWalletNotInitialized
 	}
 
@@ -306,10 +306,10 @@ func (w *walletService) ChangePassword(
 	currentPassphrase string,
 	newPassphrase string,
 ) error {
-	if w.walletIsSyncing {
+	if w.isSyncing() {
 		return ErrWalletIsSyncing
 	}
-	if !w.walletInitialized {
+	if !w.isInitialized() {
 		return ErrWalletNotInitialized
 	}
 
@@ -328,10 +328,10 @@ func (w *walletService) ChangePassword(
 func (w *walletService) GenerateAddressAndBlindingKey(
 	ctx context.Context,
 ) (address string, blindingKey string, err error) {
-	if w.walletIsSyncing {
+	if w.isSyncing() {
 		return "", "", ErrWalletIsSyncing
 	}
-	if !w.walletInitialized {
+	if !w.isInitialized() {
 		return "", "", ErrWalletNotInitialized
 	}
 
@@ -358,10 +358,10 @@ func (w *walletService) GenerateAddressAndBlindingKey(
 func (w *walletService) GetWalletBalance(
 	ctx context.Context,
 ) (map[string]BalanceInfo, error) {
-	if w.walletIsSyncing {
+	if w.isSyncing() {
 		return nil, ErrWalletIsSyncing
 	}
-	if !w.walletInitialized {
+	if !w.isInitialized() {
 		return nil, ErrWalletNotInitialized
 	}
 
@@ -395,10 +395,10 @@ func (w *walletService) SendToMany(
 	ctx context.Context,
 	req SendToManyRequest,
 ) ([]byte, error) {
-	if w.walletIsSyncing {
+	if w.isSyncing() {
 		return nil, ErrWalletIsSyncing
 	}
-	if !w.walletInitialized {
+	if !w.isInitialized() {
 		return nil, ErrWalletNotInitialized
 	}
 
