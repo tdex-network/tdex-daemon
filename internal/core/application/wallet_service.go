@@ -184,8 +184,8 @@ func (w *walletService) InitWallet(
 		return
 	}
 
-	w.setSyncing(true)
 	if restore {
+		w.setSyncing(true)
 		log.Debug("restoring wallet")
 	} else {
 		log.Debug("creating wallet")
@@ -270,7 +270,9 @@ func (w *walletService) InitWallet(
 	chRes <- nil
 	go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
 	w.setInitialized(true)
-	w.setSyncing(false)
+	if w.isSyncing() {
+		w.setSyncing(false)
+	}
 	log.Debug("done")
 }
 
