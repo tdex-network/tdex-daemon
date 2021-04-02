@@ -111,9 +111,9 @@ func TestAccountManagement(t *testing.T) {
 
 // newOperatorService returns a new service with brand new and unlocked wallet.
 func newOperatorService() (application.OperatorService, error) {
-	dbManager, explorerSvc, bcListener := newServices()
+	repoManager, explorerSvc, bcListener := newServices()
 
-	if _, err := dbManager.VaultRepository().GetOrCreateVault(
+	if _, err := repoManager.VaultRepository().GetOrCreateVault(
 		ctx, mnemonic, passphrase, regtest,
 	); err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func newOperatorService() (application.OperatorService, error) {
 		Return(true, nil)
 
 	return application.NewOperatorService(
-		dbManager,
+		repoManager,
 		explorerSvc,
 		bcListener,
 		marketBaseAsset,

@@ -49,7 +49,7 @@ type TradeService interface {
 }
 
 type tradeService struct {
-	dbManager          ports.DbManager
+	repoManager        ports.RepoManager
 	explorerSvc        explorer.Service
 	blockchainListener BlockchainListener
 	marketBaseAsset    string
@@ -59,7 +59,7 @@ type tradeService struct {
 }
 
 func NewTradeService(
-	dbManager ports.DbManager,
+	repoManager ports.RepoManager,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
 	marketBaseAsset string,
@@ -68,7 +68,7 @@ func NewTradeService(
 	net *network.Network,
 ) TradeService {
 	return newTradeService(
-		dbManager,
+		repoManager,
 		explorerSvc,
 		bcListener,
 		marketBaseAsset,
@@ -79,7 +79,7 @@ func NewTradeService(
 }
 
 func newTradeService(
-	dbManager ports.DbManager,
+	repoManager ports.RepoManager,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
 	marketBaseAsset string,
@@ -88,7 +88,7 @@ func newTradeService(
 	net *network.Network,
 ) *tradeService {
 	return &tradeService{
-		dbManager:          dbManager,
+		repoManager:        repoManager,
 		explorerSvc:        explorerSvc,
 		blockchainListener: bcListener,
 		marketBaseAsset:    marketBaseAsset,
@@ -103,7 +103,7 @@ func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 	[]MarketWithFee,
 	error,
 ) {
-	tradableMarkets, err := t.dbManager.MarketRepository().GetTradableMarkets(ctx)
+	tradableMarkets, err := t.repoManager.MarketRepository().GetTradableMarkets(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (t *tradeService) GetMarketPrice(
 	}
 
 	//Checks if market exist
-	mkt, mktAccountIndex, err := t.dbManager.MarketRepository().GetMarketByAsset(
+	mkt, mktAccountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
 	)
@@ -210,7 +210,7 @@ func (t *tradeService) TradePropose(
 		return nil, nil, 0, domain.ErrMarketInvalidQuoteAsset
 	}
 
-	mkt, marketAccountIndex, err := t.dbManager.MarketRepository().GetMarketByAsset(
+	mkt, marketAccountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
 	)
@@ -251,7 +251,7 @@ func (t *tradeService) TradePropose(
 	var outputDerivationPath, changeDerivationPath, feeChangeDerivationPath string
 
 	// derive output and change address for market, and change address for fee account
-	if err := t.dbManager.VaultRepository().UpdateVault(
+	if err := t.repoManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			mnemonic, err = v.GetMnemonicSafe()
@@ -293,12 +293,12 @@ func (t *tradeService) TradePropose(
 	var lockedUnspentsCount int
 
 	// parse swap proposal and possibly accept
-	trade, err := t.dbManager.TradeRepository().GetOrCreateTrade(ctx, nil)
+	trade, err := t.repoManager.TradeRepository().GetOrCreateTrade(ctx, nil)
 	if err != nil {
 		return nil, nil, 0, err
 	}
 
-	if err := t.dbManager.TradeRepository().UpdateTrade(
+	if err := t.repoManager.TradeRepository().UpdateTrade(
 		ctx,
 		&trade.ID,
 		func(tt *domain.Trade) (*domain.Trade, error) {
@@ -361,7 +361,7 @@ func (t *tradeService) TradePropose(
 			// Last thing to do is to lock the unspents. In case something goes wrong
 			// here, an error is returned and the accepted trade is discarded.
 			selectedUnspentKeys = getUnspentKeys(acceptSwapResult.selectedUnspents)
-			count, err := t.dbManager.UnspentRepository().LockUnspents(
+			count, err := t.repoManager.UnspentRepository().LockUnspents(
 				ctx,
 				selectedUnspentKeys,
 				tt.ID,
@@ -414,7 +414,7 @@ func (t *tradeService) tradeComplete(
 	ctx context.Context,
 	swapComplete domain.SwapComplete,
 ) (txID string, swapFail domain.SwapFail, err error) {
-	trade, err := t.dbManager.TradeRepository().GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
+	trade, err := t.repoManager.TradeRepository().GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
 	if err != nil {
 		return
 	}
@@ -449,7 +449,7 @@ func (t *tradeService) tradeComplete(
 	// this method will take care to retry to handle potential
 	// datastore conflicts (if any) at repository level
 	go func() {
-		if err := t.dbManager.TradeRepository().UpdateTrade(
+		if err := t.repoManager.TradeRepository().UpdateTrade(
 			ctx,
 			&trade.ID,
 			func(previousTrade *domain.Trade) (*domain.Trade, error) { return trade, nil },
@@ -457,13 +457,13 @@ func (t *tradeService) tradeComplete(
 			log.Error("unable to persist completed trade with id ", trade.ID, " : ", err.Error())
 		}
 
-		_, accountIndex, _ := t.dbManager.MarketRepository().GetMarketByAsset(
+		_, accountIndex, _ := t.repoManager.MarketRepository().GetMarketByAsset(
 			ctx,
 			trade.MarketQuoteAsset,
 		)
 		extractUnspentsFromTxAndUpdateUtxoSet(
-			t.dbManager.UnspentRepository(),
-			t.dbManager.VaultRepository(),
+			t.repoManager.UnspentRepository(),
+			t.repoManager.VaultRepository(),
 			t.network,
 			res.TxHex,
 			accountIndex,
@@ -478,13 +478,13 @@ func (t *tradeService) tradeFail(
 	swapFail domain.SwapFail,
 ) (domain.SwapFail, error) {
 	swapID := swapFail.GetMessageId()
-	trade, err := t.dbManager.TradeRepository().GetTradeBySwapAcceptID(ctx, swapID)
+	trade, err := t.repoManager.TradeRepository().GetTradeBySwapAcceptID(ctx, swapID)
 	if err != nil {
 		return nil, err
 	}
 
 	tradeID := trade.ID
-	if err := t.dbManager.TradeRepository().UpdateTrade(
+	if err := t.repoManager.TradeRepository().UpdateTrade(
 		ctx,
 		&tradeID,
 		func(trade *domain.Trade) (*domain.Trade, error) {
@@ -515,13 +515,13 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 	map[string]string,
 	error,
 ) {
-	info, err := t.dbManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(ctx, account)
+	info, err := t.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(ctx, account)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 	derivedAddresses, blindingKeys := info.AddressesAndKeys()
 
-	unspents, err := t.dbManager.UnspentRepository().GetAvailableUnspentsForAddresses(
+	unspents, err := t.repoManager.UnspentRepository().GetAvailableUnspentsForAddresses(
 		ctx,
 		derivedAddresses,
 	)
@@ -538,7 +538,7 @@ func (t *tradeService) getUnspentsBlindingsAndDerivationPathsForAccount(
 		script, _ := address.ToOutputScript(addr)
 		scripts = append(scripts, hex.EncodeToString(script))
 	}
-	derivationPaths, _ := t.dbManager.VaultRepository().GetDerivationPathByScript(
+	derivationPaths, _ := t.repoManager.VaultRepository().GetDerivationPathByScript(
 		ctx,
 		account,
 		scripts,
@@ -565,7 +565,7 @@ func (t *tradeService) unlockUnspentsForTrade(trade *domain.Trade) {
 		}
 	}
 
-	count, err := t.dbManager.UnspentRepository().UnlockUnspents(
+	count, err := t.repoManager.UnspentRepository().UnlockUnspents(
 		context.Background(),
 		unspentKeys,
 	)
@@ -588,11 +588,11 @@ func (t *tradeService) checkTradeExpiration(
 
 	// if the trade is expired it's required to unlock the unspents used as input
 	// and to bring the trade to failed status
-	trade, _ := t.dbManager.TradeRepository().GetTradeByTxID(ctx, tradeTxID)
+	trade, _ := t.repoManager.TradeRepository().GetTradeByTxID(ctx, tradeTxID)
 	if trade.IsExpired() {
 		t.blockchainListener.StopObserveTx(trade.TxID)
 
-		count, err := t.dbManager.UnspentRepository().UnlockUnspents(ctx, selectedUnspentKeys)
+		count, err := t.repoManager.UnspentRepository().UnlockUnspents(ctx, selectedUnspentKeys)
 		if err != nil {
 			log.Warnf(
 				"trade with id %s has expired but an error occured while "+
@@ -604,7 +604,7 @@ func (t *tradeService) checkTradeExpiration(
 		}
 		log.Debugf("unlocked %d unspents", count)
 
-		if err := t.dbManager.TradeRepository().UpdateTrade(
+		if err := t.repoManager.TradeRepository().UpdateTrade(
 			ctx,
 			&trade.ID,
 			func(tt *domain.Trade) (*domain.Trade, error) {
@@ -1159,7 +1159,7 @@ func (t *tradeService) GetMarketBalance(
 		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
-	m, accountIndex, err := t.dbManager.MarketRepository().GetMarketByAsset(
+	m, accountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
 	)
@@ -1170,13 +1170,13 @@ func (t *tradeService) GetMarketBalance(
 		return nil, ErrMarketNotExist
 	}
 
-	info, err := t.dbManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(ctx, m.AccountIndex)
+	info, err := t.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(ctx, m.AccountIndex)
 	if err != nil {
 		return nil, err
 	}
 	marketAddresses := info.Addresses()
 
-	baseAssetBalance, err := t.dbManager.UnspentRepository().GetBalance(
+	baseAssetBalance, err := t.repoManager.UnspentRepository().GetBalance(
 		ctx,
 		marketAddresses,
 		m.BaseAsset,
@@ -1185,7 +1185,7 @@ func (t *tradeService) GetMarketBalance(
 		return nil, err
 	}
 
-	quoteAssetBalance, err := t.dbManager.UnspentRepository().GetBalance(
+	quoteAssetBalance, err := t.repoManager.UnspentRepository().GetBalance(
 		ctx,
 		marketAddresses,
 		m.QuoteAsset,

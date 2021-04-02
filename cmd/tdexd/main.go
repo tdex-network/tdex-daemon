@@ -55,7 +55,7 @@ func main() {
 	}
 
 	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "db")
-	dbManager, err := dbbadger.NewDbManager(dbDir, log.New())
+	repoManager, err := dbbadger.NewRepoManager(dbDir, log.New())
 	if err != nil {
 		log.WithError(err).Panic("error while opening db")
 	}
@@ -82,14 +82,14 @@ func main() {
 	})
 	blockchainListener := application.NewBlockchainListener(
 		crawlerSvc,
-		dbManager,
+		repoManager,
 		marketsBaseAsset,
 		feeThreshold,
 		network,
 	)
 
 	traderSvc := application.NewTradeService(
-		dbManager,
+		repoManager,
 		explorerSvc,
 		blockchainListener,
 		marketsBaseAsset,
@@ -98,7 +98,7 @@ func main() {
 		network,
 	)
 	operatorSvc := application.NewOperatorService(
-		dbManager,
+		repoManager,
 		explorerSvc,
 		blockchainListener,
 		marketsBaseAsset,
@@ -107,7 +107,7 @@ func main() {
 		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
 	)
 	walletSvc, err := application.NewWalletService(
-		dbManager,
+		repoManager,
 		explorerSvc,
 		blockchainListener,
 		withElementsSvc,
@@ -132,9 +132,9 @@ func main() {
 		interceptor.StreamInterceptor(),
 	)
 
-	traderHandler := grpchandler.NewTraderHandler(traderSvc, dbManager)
-	walletHandler := grpchandler.NewWalletHandler(walletSvc, dbManager)
-	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc, dbManager)
+	traderHandler := grpchandler.NewTraderHandler(traderSvc, repoManager)
+	walletHandler := grpchandler.NewWalletHandler(walletSvc, repoManager)
+	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc, repoManager)
 
 	// Register proto implementations on Trader interface
 	pbtrader.RegisterTradeServer(traderGrpcServer, traderHandler)
@@ -157,7 +157,7 @@ func main() {
 	}
 
 	defer stop(
-		dbManager,
+		repoManager,
 		blockchainListener,
 		traderGrpcServer,
 		operatorGrpcServer,
@@ -183,7 +183,7 @@ func main() {
 }
 
 func stop(
-	dbManager ports.DbManager,
+	repoManager ports.RepoManager,
 	blockchainListener application.BlockchainListener,
 	traderServer *grpc.Server,
 	operatorServer *grpc.Server,
@@ -207,7 +207,7 @@ func stop(
 		time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond,
 	)
 
-	dbManager.Close()
+	repoManager.Close()
 	log.Debug("closed connection with database")
 
 	log.Debug("exiting")

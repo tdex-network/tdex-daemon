@@ -6,8 +6,8 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
-// DbManager interface defines the methods for swap, price and unspent.
-type DbManager interface {
+// RepoManager interface defines the methods for swap, price and unspent.
+type RepoManager interface {
 	VaultRepository() domain.VaultRepository
 	MarketRepository() domain.MarketRepository
 	UnspentRepository() domain.UnspentRepository

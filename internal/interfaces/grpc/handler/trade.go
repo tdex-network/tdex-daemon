@@ -21,24 +21,24 @@ const ErrCannotServeRequest = "cannot serve request, please retry"
 
 type traderHandler struct {
 	pb.UnimplementedTradeServer
-	traderSvc application.TradeService
-	dbManager ports.DbManager
+	traderSvc   application.TradeService
+	repoManager ports.RepoManager
 }
 
 func NewTraderHandler(
 	traderSvc application.TradeService,
-	dbManager ports.DbManager,
+	repoManager ports.RepoManager,
 ) pb.TradeServer {
-	return newTraderHandler(traderSvc, dbManager)
+	return newTraderHandler(traderSvc, repoManager)
 }
 
 func newTraderHandler(
 	traderSvc application.TradeService,
-	dbManager ports.DbManager,
+	repoManager ports.RepoManager,
 ) *traderHandler {
 	return &traderHandler{
-		traderSvc: traderSvc,
-		dbManager: dbManager,
+		traderSvc:   traderSvc,
+		repoManager: repoManager,
 	}
 }
 
@@ -81,7 +81,7 @@ func (t traderHandler) markets(
 	reqCtx context.Context,
 	req *pb.MarketsRequest,
 ) (*pb.MarketsReply, error) {
-	res, err := t.dbManager.RunTransaction(
+	res, err := t.repoManager.RunTransaction(
 		reqCtx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -123,7 +123,7 @@ func (t traderHandler) balances(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := t.dbManager.RunTransaction(
+	res, err := t.repoManager.RunTransaction(
 		reqCtx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -182,7 +182,7 @@ func (t traderHandler) marketPrice(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := t.dbManager.RunTransaction(
+	res, err := t.repoManager.RunTransaction(
 		reqCtx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -249,7 +249,7 @@ func (t traderHandler) tradePropose(
 		QuoteAsset: mkt.GetQuoteAsset(),
 	}
 
-	res, err := t.dbManager.RunTransaction(
+	res, err := t.repoManager.RunTransaction(
 		stream.Context(),
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {

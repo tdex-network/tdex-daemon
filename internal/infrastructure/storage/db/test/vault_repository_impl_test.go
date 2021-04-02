@@ -55,7 +55,7 @@ func TestVaultRepositoryImplementations(t *testing.T) {
 
 			// TODO: uncomment - the following test demonstrate that in case of error,
 			// any change to the db is rolled back. Currently, the transactional
-			// component is not properly implemented for inmemory DbManager and the
+			// component is not properly implemented for inmemory RepoManager and the
 			// test below would fail for te inmemory implementation.
 
 			// t.Run("testUpdateVault_rollback", func(t *testing.T) {
@@ -133,8 +133,8 @@ func createVaultRepositories(t *testing.T) ([]vaultRepository, func()) {
 	err := os.Mkdir(datadir, os.ModePerm)
 	require.NoError(t, err)
 
-	inmemoryDBManager := inmemory.NewDbManager()
-	badgerDBManager, err := dbbadger.NewDbManager(datadir, nil)
+	inmemoryDBManager := inmemory.NewRepoManager()
+	badgerDBManager, err := dbbadger.NewRepoManager(datadir, nil)
 	require.NoError(t, err)
 
 	return []vaultRepository{
@@ -155,7 +155,7 @@ func createVaultRepositories(t *testing.T) ([]vaultRepository, func()) {
 
 type vaultRepository struct {
 	Name       string
-	DBManager  ports.DbManager
+	DBManager  ports.RepoManager
 	Repository domain.VaultRepository
 }
 

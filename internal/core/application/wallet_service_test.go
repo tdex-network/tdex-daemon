@@ -117,10 +117,10 @@ func TestInitWallet(t *testing.T) {
 }
 
 func newWalletService() (application.WalletService, error) {
-	dbManager, explorerSvc, bcListener := newServices()
+	repoManager, explorerSvc, bcListener := newServices()
 
 	return application.NewWalletService(
-		dbManager,
+		repoManager,
 		explorerSvc,
 		bcListener,
 		false,
@@ -135,8 +135,8 @@ func newWalletService() (application.WalletService, error) {
 // This function creates a new vault in the repo before passing the db manager
 // down to the wallet service to simulate the described situation.
 func newWalletServiceRestart() (application.WalletService, error) {
-	dbManager, explorerSvc, bcListener := newServices()
-	v, err := dbManager.VaultRepository().GetOrCreateVault(
+	repoManager, explorerSvc, bcListener := newServices()
+	v, err := repoManager.VaultRepository().GetOrCreateVault(
 		ctx, mnemonic, passphrase, regtest,
 	)
 	if err != nil {
@@ -150,7 +150,7 @@ func newWalletServiceRestart() (application.WalletService, error) {
 		Return(randomUtxos(addresses), nil)
 
 	return application.NewWalletService(
-		dbManager,
+		repoManager,
 		explorerSvc,
 		bcListener,
 		false,
@@ -164,7 +164,7 @@ func newWalletServiceRestart() (application.WalletService, error) {
 // explorer service. This function mocks explorer's responses in order to
 // emulate an already used wallet with some used Fee account's addresses.
 func newWalletServiceRestore() (application.WalletService, error) {
-	dbManager, explorerSvc, bcListener := newServices()
+	repoManager, explorerSvc, bcListener := newServices()
 
 	v, _ := domain.NewVault(mnemonic, passphrase, regtest)
 	accountIndexes := []int{
@@ -217,7 +217,7 @@ func newWalletServiceRestore() (application.WalletService, error) {
 	}
 
 	return application.NewWalletService(
-		dbManager,
+		repoManager,
 		explorerSvc,
 		bcListener,
 		false,
@@ -228,11 +228,11 @@ func newWalletServiceRestore() (application.WalletService, error) {
 }
 
 func newServices() (
-	ports.DbManager,
+	ports.RepoManager,
 	explorer.Service,
 	application.BlockchainListener,
 ) {
-	dbManager := inmemory.NewDbManager()
+	repoManager := inmemory.NewRepoManager()
 	explorerSvc := &mockExplorer{}
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:        explorerSvc,
@@ -242,12 +242,12 @@ func newServices() (
 	})
 	bcListener := application.NewBlockchainListener(
 		crawlerSvc,
-		dbManager,
+		repoManager,
 		marketBaseAsset,
 		feeBalanceThreshold,
 		regtest,
 	)
-	return dbManager, explorerSvc, bcListener
+	return repoManager, explorerSvc, bcListener
 }
 
 func listenToReplies(

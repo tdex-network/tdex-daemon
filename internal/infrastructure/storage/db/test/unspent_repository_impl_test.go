@@ -397,8 +397,8 @@ func createUnspentRepositories(t *testing.T) ([]unspentRepository, func()) {
 	err := os.Mkdir(datadir, os.ModePerm)
 	require.NoError(t, err)
 
-	inmemoryDBManager := inmemory.NewDbManager()
-	badgerDBManager, err := dbbadger.NewDbManager(datadir, nil)
+	inmemoryDBManager := inmemory.NewRepoManager()
+	badgerDBManager, err := dbbadger.NewRepoManager(datadir, nil)
 	require.NoError(t, err)
 
 	return []unspentRepository{
@@ -419,7 +419,7 @@ func createUnspentRepositories(t *testing.T) ([]unspentRepository, func()) {
 
 type unspentRepository struct {
 	Name       string
-	DBManager  ports.DbManager
+	DBManager  ports.RepoManager
 	Repository domain.UnspentRepository
 }
 

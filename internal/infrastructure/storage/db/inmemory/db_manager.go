@@ -33,7 +33,7 @@ type vaultInmemoryStore struct {
 	locker *sync.Mutex
 }
 
-type DbManager struct {
+type RepoManager struct {
 	marketStore  *marketInmemoryStore
 	tradeStore   *tradeInmemoryStore
 	unspentStore *unspentInmemoryStore
@@ -46,7 +46,7 @@ type DbManager struct {
 }
 
 type InmemoryTx struct {
-	db      *DbManager
+	db      *RepoManager
 	success bool
 }
 
@@ -62,7 +62,7 @@ func (tx *InmemoryTx) Discard() {
 	tx.success = false
 }
 
-func NewDbManager() ports.DbManager {
+func NewRepoManager() ports.RepoManager {
 	marketStore := &marketInmemoryStore{
 		markets:         map[int]domain.Market{},
 		accountsByAsset: map[string]int{},
@@ -88,7 +88,7 @@ func NewDbManager() ports.DbManager {
 	unspentRepo := NewUnspentRepositoryImpl(unspentStore)
 	vaultRepo := NewVaultRepositoryImpl(vaultStore)
 
-	return &DbManager{
+	return &RepoManager{
 		marketStore:       marketStore,
 		tradeStore:        tradeStore,
 		unspentStore:      unspentStore,
@@ -100,40 +100,40 @@ func NewDbManager() ports.DbManager {
 	}
 }
 
-func (d *DbManager) MarketRepository() domain.MarketRepository {
+func (d *RepoManager) MarketRepository() domain.MarketRepository {
 	return d.marketRepository
 }
 
-func (d *DbManager) UnspentRepository() domain.UnspentRepository {
+func (d *RepoManager) UnspentRepository() domain.UnspentRepository {
 	return d.unspentRepository
 }
 
-func (d *DbManager) TradeRepository() domain.TradeRepository {
+func (d *RepoManager) TradeRepository() domain.TradeRepository {
 	return d.tradeRepository
 }
 
-func (d *DbManager) VaultRepository() domain.VaultRepository {
+func (d *RepoManager) VaultRepository() domain.VaultRepository {
 	return d.vaultRepository
 }
 
-func (d *DbManager) Close() {}
+func (d *RepoManager) Close() {}
 
-func (db *DbManager) NewTransaction() ports.Transaction {
+func (db *RepoManager) NewTransaction() ports.Transaction {
 	return &InmemoryTx{
 		db:      db,
 		success: false,
 	}
 }
 
-func (db *DbManager) NewUnspentsTransaction() ports.Transaction {
+func (db *RepoManager) NewUnspentsTransaction() ports.Transaction {
 	return db.NewTransaction()
 }
 
-func (db *DbManager) NewPricesTransaction() ports.Transaction {
+func (db *RepoManager) NewPricesTransaction() ports.Transaction {
 	return db.NewTransaction()
 }
 
-func (db *DbManager) RunTransaction(
+func (db *RepoManager) RunTransaction(
 	ctx context.Context,
 	_ bool,
 	handler func(ctx context.Context) (interface{}, error),
@@ -141,7 +141,7 @@ func (db *DbManager) RunTransaction(
 	return db.runTransaction(ctx, handler)
 }
 
-func (db *DbManager) RunUnspentsTransaction(
+func (db *RepoManager) RunUnspentsTransaction(
 	ctx context.Context,
 	readOnly bool,
 	handler func(ctx context.Context) (interface{}, error),
@@ -149,7 +149,7 @@ func (db *DbManager) RunUnspentsTransaction(
 	return db.RunTransaction(ctx, readOnly, handler)
 }
 
-func (db *DbManager) RunPricesTransaction(
+func (db *RepoManager) RunPricesTransaction(
 	ctx context.Context,
 	readOnly bool,
 	handler func(ctx context.Context) (interface{}, error),
@@ -157,7 +157,7 @@ func (db *DbManager) RunPricesTransaction(
 	return db.RunTransaction(ctx, readOnly, handler)
 }
 
-func (db *DbManager) runTransaction(
+func (db *RepoManager) runTransaction(
 	ctx context.Context,
 	handler func(ctx context.Context) (interface{}, error),
 ) (interface{}, error) {
