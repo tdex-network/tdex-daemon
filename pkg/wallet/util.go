@@ -161,9 +161,10 @@ func addInsAndOutsToPset(
 	return ptx.ToBase64()
 }
 
-func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int) {
+func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int, []int) {
 	inScriptTypes := make([]int, len(ptx.Inputs), len(ptx.Inputs))
-	inAuxiliaryP2ShSize := make([]int, 0)
+	inAuxiliaryRedeemScriptSize := make([]int, 0)
+	inAuxiliaryWitnessSize := make([]int, 0)
 	for i, in := range ptx.Inputs {
 		var prevout *transaction.TxOutput
 		if in.WitnessUtxo != nil {
@@ -178,6 +179,15 @@ func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int) {
 		case address.P2ShScript:
 			if in.WitnessScript != nil {
 				inScriptTypes[i] = P2SH_P2WSH
+				// redeem script is treated as a multisig one. In case it's something
+				// different, it is treated as a singlesig instead.
+				m, _, _ := txscript.CalcMultiSigStats(in.RedeemScript)
+				if m <= 0 {
+					m = 1
+				}
+				scriptLen := len(in.RedeemScript)
+				scriptSize := 1 + (1+72)*m + 1 + varIntSerializeSize(uint64(scriptLen)) + scriptLen
+				inAuxiliaryWitnessSize = append(inAuxiliaryWitnessSize, scriptSize)
 			} else if in.RedeemScript != nil {
 				inScriptTypes[i] = P2SH_P2WPKH
 			}
@@ -187,23 +197,22 @@ func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int) {
 			break
 		case address.P2WshScript:
 			inScriptTypes[i] = P2WSH
+			scriptSize := calcWitnessSizeFromRedeemScript(in.RedeemScript)
+			inAuxiliaryWitnessSize = append(inAuxiliaryWitnessSize, scriptSize)
 			break
 		case address.P2PkhScript:
 			inScriptTypes[i] = P2PKH
 			break
 		case address.P2MultiSigScript:
 			inScriptTypes[i] = P2MS
-			m, _, _ := txscript.CalcMultiSigStats(prevout.Script)
-			scriptLen := len(prevout.Script)
-			// opcode + m * (size(sig)+sig) + opcode + size(redeemScript) + redeemScript
-			scriptSize := 1 + (1+72)*m + 1 + varIntSerializeSize(uint64(scriptLen)) + scriptLen
-			inAuxiliaryP2ShSize = append(inAuxiliaryP2ShSize, scriptSize)
+			scriptSize := calcWitnessSizeFromRedeemScript(in.RedeemScript)
+			inAuxiliaryRedeemScriptSize = append(inAuxiliaryRedeemScriptSize, scriptSize)
 			break
 		}
 	}
 
 	outScriptTypes := make([]int, len(ptx.Outputs), len(ptx.Outputs))
-	outAuxiliaryP2ShSize := make([]int, 0)
+	outAuxiliaryRedeemScriptSize := make([]int, 0)
 	for i, out := range ptx.UnsignedTx.Outputs {
 		sType := address.GetScriptType(out.Script)
 		switch sType {
@@ -213,7 +222,7 @@ func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int) {
 			outScriptTypes[i] = P2MS
 			scriptLen := len(out.Script)
 			scriptSize := varIntSerializeSize(uint64(scriptLen)) + scriptLen
-			outAuxiliaryP2ShSize = append(outAuxiliaryP2ShSize, scriptSize)
+			outAuxiliaryRedeemScriptSize = append(outAuxiliaryRedeemScriptSize, scriptSize)
 		case address.P2WpkhScript:
 			outScriptTypes[i] = P2WPKH
 		case address.P2WshScript:
@@ -221,5 +230,18 @@ func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int) {
 		}
 	}
 
-	return inScriptTypes, outScriptTypes, inAuxiliaryP2ShSize, outAuxiliaryP2ShSize
+	return inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+		outScriptTypes, outAuxiliaryRedeemScriptSize
+}
+
+func calcWitnessSizeFromRedeemScript(script []byte) int {
+	// redeem script is treated as a multisig one. In case it's something
+	// different, it is treated as a singlesig instead.
+	m, _, _ := txscript.CalcMultiSigStats(script)
+	if m <= 0 {
+		m = 1
+	}
+	scriptLen := len(script)
+	scriptSize := 1 + (1+72)*m + 1 + varIntSerializeSize(uint64(scriptLen)) + scriptLen
+	return scriptSize
 }

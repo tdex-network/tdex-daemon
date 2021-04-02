@@ -8,11 +8,12 @@ import (
 
 func TestEstimateTxSize(t *testing.T) {
 	tests := []struct {
-		inScriptTypes        []int
-		outScriptTypes       []int
-		inAuxiliaryP2ShSize  []int
-		outAuxiliaryP2ShSize []int
-		expectedSize         int
+		inScriptTypes               []int
+		outScriptTypes              []int
+		inAuxiliaryRedeemScriptSize []int
+		outAuxiliaryRedeemSize      []int
+		inAuxiliaryWitnessSize      []int
+		expectedSize                int
 	}{
 		// https://blockstream.info/liquid/tx/3bf5b21f9b5785de089be6dc4963058b4734bf86a9434c9910ad739dbf742eb0
 		{
@@ -37,11 +38,18 @@ func TestEstimateTxSize(t *testing.T) {
 			outScriptTypes: []int{P2WPKH, P2WPKH, P2WPKH, P2WPKH, P2WPKH},
 			expectedSize:   6532,
 		},
+		// https://blockstream.info/liquid/tx/14a920f9af73e3f9e34fcb4707b1cccd0adca86e27003a32ed77184d4d41d0f6
+		{
+			inScriptTypes:          []int{P2SH_P2WSH},
+			outScriptTypes:         []int{P2WPKH},
+			inAuxiliaryWitnessSize: []int{229},
+			expectedSize:           1373,
+		},
 	}
 	for _, tt := range tests {
 		size := EstimateTxSize(
-			tt.inScriptTypes, tt.outScriptTypes,
-			tt.inAuxiliaryP2ShSize, tt.outAuxiliaryP2ShSize,
+			tt.inScriptTypes, tt.inAuxiliaryRedeemScriptSize, tt.inAuxiliaryWitnessSize,
+			tt.outScriptTypes, tt.outAuxiliaryRedeemSize,
 		)
 		assert.GreaterOrEqual(t, size, tt.expectedSize)
 	}

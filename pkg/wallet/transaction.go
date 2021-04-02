@@ -365,8 +365,8 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				},
 			)
 
-			inScriptTypes, outScriptTypes,
-				inAuxiliaryP2ShSize, outAuxiliaryP2ShSize := extractScriptTypesFromPset(ptx)
+			inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+				outScriptTypes, outAuxiliaryRedeemScriptSize := extractScriptTypesFromPset(ptx)
 			// expect to add 1 input more to pay for network fees
 			for i := 0; i < len(inputsToAdd)+1; i++ {
 				inScriptTypes = append(inScriptTypes, P2WPKH)
@@ -379,8 +379,8 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				outScriptTypes = append(outScriptTypes, P2WPKH)
 			}
 			txSize := EstimateTxSize(
-				inScriptTypes, outScriptTypes,
-				inAuxiliaryP2ShSize, outAuxiliaryP2ShSize,
+				inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+				outScriptTypes, outAuxiliaryRedeemScriptSize,
 			)
 
 			millisatsPerByte := float64(opts.MilliSatsPerBytes) / 1000

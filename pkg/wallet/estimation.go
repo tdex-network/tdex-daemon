@@ -17,18 +17,18 @@ const (
 // In case some inputs or outputs are of type P2MS, it is mandatory to pass
 // their redeem script sizes as auxiliary slices in accordance.
 func EstimateTxSize(
-	inScriptTypes, outScriptTypes,
-	inAuxiliaryP2ShSize, outAuxiliaryP2ShSize []int,
+	inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+	outScriptTypes, outAuxiliaryRedeemScriptSize []int,
 ) int {
 	baseSize := calcTxSize(
 		false,
-		inScriptTypes, outScriptTypes,
-		inAuxiliaryP2ShSize, outAuxiliaryP2ShSize,
+		inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+		outScriptTypes, outAuxiliaryRedeemScriptSize,
 	)
 	totalSize := calcTxSize(
 		true,
-		inScriptTypes, outScriptTypes,
-		inAuxiliaryP2ShSize, outAuxiliaryP2ShSize,
+		inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+		outScriptTypes, outAuxiliaryRedeemScriptSize,
 	)
 
 	weight := baseSize*3 + totalSize
@@ -39,15 +39,18 @@ func EstimateTxSize(
 
 func calcTxSize(
 	withWitness bool,
-	inScriptTypes, outScriptTypes,
-	inAuxiliaryP2ShSize, outAuxiliaryP2ShSize []int,
+	inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+	outScriptTypes, outAuxiliaryRedeemScriptSize []int,
 ) int {
 	txSize := calcTxBaseSize(
-		inScriptTypes, outScriptTypes,
-		inAuxiliaryP2ShSize, outAuxiliaryP2ShSize,
+		inScriptTypes, inAuxiliaryRedeemScriptSize,
+		outScriptTypes, outAuxiliaryRedeemScriptSize,
 	)
 	if withWitness {
-		txSize += calcTxWitnessSize(inScriptTypes, outScriptTypes)
+		txSize += calcTxWitnessSize(
+			inScriptTypes, inAuxiliaryWitnessSize,
+			outScriptTypes,
+		)
 	}
 	return txSize
 }
@@ -72,8 +75,8 @@ var (
 )
 
 func calcTxBaseSize(
-	inScriptTypes, outScriptTypes,
-	inAuxiliaryP2ShSize, outAuxiliaryP2ShSize []int,
+	inScriptTypes, inAuxiliaryRedeemScriptSize,
+	outScriptTypes, outAuxiliaryRedeemScriptSize []int,
 ) int {
 	// hash + index + sequence
 	inBaseSize := 40
@@ -82,7 +85,7 @@ func calcTxBaseSize(
 	for _, scriptType := range inScriptTypes {
 		scriptSize, ok := scripsigtSizeByScriptType[scriptType]
 		if !ok {
-			scriptSize = inAuxiliaryP2ShSize[auxCount]
+			scriptSize = inAuxiliaryRedeemScriptSize[auxCount]
 			auxCount++
 		}
 		insSize += inBaseSize + scriptSize
@@ -95,7 +98,7 @@ func calcTxBaseSize(
 	for _, scriptType := range outScriptTypes {
 		scriptSize, ok := scriptPubKeySizeByScriptType[scriptType]
 		if !ok {
-			scriptSize = outAuxiliaryP2ShSize[auxCount]
+			scriptSize = outAuxiliaryRedeemScriptSize[auxCount]
 			auxCount++
 		}
 		outsSize += outBaseSize + scriptSize
@@ -110,12 +113,20 @@ func calcTxBaseSize(
 		insSize + outsSize
 }
 
-func calcTxWitnessSize(inScriptTypes, outScriptTypes []int) int {
+func calcTxWitnessSize(
+	inScriptTypes, inAuxiliaryWitnessSize,
+	outScriptTypes []int,
+) int {
 	insSize := 0
+	auxCount := 0
 	for _, scriptType := range inScriptTypes {
-		if scriptType > P2MS {
+		if scriptType == P2SH_P2WPKH || scriptType == P2WPKH {
 			// len + witness[sig,pubkey] + no issuance proof + no token proof + no pegin
 			insSize += (1 + 107 + 1 + 1 + 1)
+		}
+		if scriptType == P2SH_P2WSH || scriptType == P2WSH {
+			insSize += inAuxiliaryWitnessSize[auxCount]
+			auxCount++
 		}
 	}
 
