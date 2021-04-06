@@ -36,13 +36,12 @@ func TestCrawler(t *testing.T) {
 
 func listen(t *testing.T, crawlSvc Service) {
 	eventChan := crawlSvc.GetEventChannel()
-loop:
 	for {
 		select {
 		case event := <-eventChan:
 			switch e := event.(type) {
 			case CloseEvent:
-				break loop
+				return
 			case AddressEvent:
 				for _, u := range e.Utxos {
 					t.Log(fmt.Sprintf("%v %v %v", "ADR", e.EventType, u.Value()))
@@ -54,8 +53,6 @@ loop:
 			}
 		}
 	}
-
-	t.Log("finished")
 }
 
 func stopCrawlerAfterTimeout(crawler Service) {
