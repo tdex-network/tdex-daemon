@@ -8,7 +8,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"google.golang.org/grpc/codes"
@@ -20,24 +19,20 @@ const readOnlyTx = true
 type operatorHandler struct {
 	pb.UnimplementedOperatorServer
 	operatorSvc application.OperatorService
-	repoManager ports.RepoManager
 }
 
 // NewOperatorHandler is a constructor function returning an protobuf OperatorServer.
 func NewOperatorHandler(
 	operatorSvc application.OperatorService,
-	repoManager ports.RepoManager,
 ) pb.OperatorServer {
-	return newOperatorHandler(operatorSvc, repoManager)
+	return newOperatorHandler(operatorSvc)
 }
 
 func newOperatorHandler(
 	operatorSvc application.OperatorService,
-	repoManager ports.RepoManager,
 ) *operatorHandler {
 	return &operatorHandler{
 		operatorSvc: operatorSvc,
-		repoManager: repoManager,
 	}
 }
 
@@ -150,22 +145,10 @@ func (o operatorHandler) ReloadUtxos(
 	ctx context.Context,
 	rew *pb.ReloadUtxosRequest,
 ) (*pb.ReloadUtxosReply, error) {
-	res, err := o.repoManager.RunTransaction(
-		ctx,
-		readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			if err := o.operatorSvc.ReloadUtxos(ctx); err != nil {
-				return nil, err
-			}
-
-			return &pb.ReloadUtxosReply{}, nil
-		},
-	)
-	if err != nil {
+	if err := o.operatorSvc.ReloadUtxos(ctx); err != nil {
 		return nil, err
 	}
-
-	return res.(*pb.ReloadUtxosReply), nil
+	return &pb.ReloadUtxosReply{}, nil
 }
 
 func (o operatorHandler) ListUtxos(
@@ -186,175 +169,130 @@ func (o operatorHandler) dropMarket(
 	ctx context.Context,
 	req *pb.DropMarketRequest,
 ) (*pb.DropMarketReply, error) {
-	res, err := o.repoManager.RunTransaction(
+	if err := o.operatorSvc.DropMarket(
 		ctx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			err := o.operatorSvc.DropMarket(
-				ctx,
-				int(req.GetAccountIndex()),
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.DropMarketReply{}, nil
-		},
-	)
-	if err != nil {
+		int(req.GetAccountIndex()),
+	); err != nil {
 		return nil, err
 	}
 
-	return res.(*pb.DropMarketReply), nil
+	return &pb.DropMarketReply{}, nil
 }
 
 func (o operatorHandler) listUtxos(
 	ctx context.Context,
 	req *pb.ListUtxosRequest,
 ) (*pb.ListUtxosReply, error) {
-	res, err := o.repoManager.RunTransaction(
+	utxoInfoPerAccount, err := o.operatorSvc.ListUtxos(
 		ctx,
-		readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			utxoInfoPerAccount, err := o.operatorSvc.ListUtxos(
-				ctx,
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			infoPerAccount := make(map[uint64]*pb.UtxoInfoList)
-
-			for k, v := range utxoInfoPerAccount {
-				uLen := len(v.Unspents)
-				unspents := make([]*pb.UtxoInfo, uLen, uLen)
-				for i, u := range v.Unspents {
-					unspents[i] = &pb.UtxoInfo{
-						Outpoint: &pb.TxOutpoint{
-							Hash:  u.Outpoint.Hash,
-							Index: int32(u.Outpoint.Index),
-						},
-						Value: u.Value,
-						Asset: u.Asset,
-					}
-				}
-
-				sLen := len(v.Spents)
-				spents := make([]*pb.UtxoInfo, sLen, sLen)
-				for i, u := range v.Spents {
-					spents[i] = &pb.UtxoInfo{
-						Outpoint: &pb.TxOutpoint{
-							Hash:  u.Outpoint.Hash,
-							Index: int32(u.Outpoint.Index),
-						},
-						Value: u.Value,
-						Asset: u.Asset,
-					}
-				}
-
-				lLen := len(v.Locks)
-				locks := make([]*pb.UtxoInfo, lLen, lLen)
-				for i, u := range v.Locks {
-					locks[i] = &pb.UtxoInfo{
-						Outpoint: &pb.TxOutpoint{
-							Hash:  u.Outpoint.Hash,
-							Index: int32(u.Outpoint.Index),
-						},
-						Value: u.Value,
-						Asset: u.Asset,
-					}
-				}
-
-				infoPerAccount[k] = &pb.UtxoInfoList{
-					Unspents: unspents,
-					Spents:   spents,
-					Locks:    locks,
-				}
-			}
-
-			return &pb.ListUtxosReply{
-				InfoPerAccount: infoPerAccount,
-			}, nil
-		},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return res.(*pb.ListUtxosReply), nil
+	infoPerAccount := make(map[uint64]*pb.UtxoInfoList)
+
+	for k, v := range utxoInfoPerAccount {
+		uLen := len(v.Unspents)
+		unspents := make([]*pb.UtxoInfo, uLen, uLen)
+		for i, u := range v.Unspents {
+			unspents[i] = &pb.UtxoInfo{
+				Outpoint: &pb.TxOutpoint{
+					Hash:  u.Outpoint.Hash,
+					Index: int32(u.Outpoint.Index),
+				},
+				Value: u.Value,
+				Asset: u.Asset,
+			}
+		}
+
+		sLen := len(v.Spents)
+		spents := make([]*pb.UtxoInfo, sLen, sLen)
+		for i, u := range v.Spents {
+			spents[i] = &pb.UtxoInfo{
+				Outpoint: &pb.TxOutpoint{
+					Hash:  u.Outpoint.Hash,
+					Index: int32(u.Outpoint.Index),
+				},
+				Value: u.Value,
+				Asset: u.Asset,
+			}
+		}
+
+		lLen := len(v.Locks)
+		locks := make([]*pb.UtxoInfo, lLen, lLen)
+		for i, u := range v.Locks {
+			locks[i] = &pb.UtxoInfo{
+				Outpoint: &pb.TxOutpoint{
+					Hash:  u.Outpoint.Hash,
+					Index: int32(u.Outpoint.Index),
+				},
+				Value: u.Value,
+				Asset: u.Asset,
+			}
+		}
+
+		infoPerAccount[k] = &pb.UtxoInfoList{
+			Unspents: unspents,
+			Spents:   spents,
+			Locks:    locks,
+		}
+	}
+
+	return &pb.ListUtxosReply{
+		InfoPerAccount: infoPerAccount,
+	}, nil
 }
 
 func (o operatorHandler) depositMarket(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.DepositMarketRequest,
 ) (*pb.DepositMarketReply, error) {
-	res, err := o.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			addressesAndKeys, err := o.operatorSvc.DepositMarket(
-				ctx,
-				req.GetMarket().GetBaseAsset(),
-				req.GetMarket().GetQuoteAsset(),
-				int(req.GetNumOfAddresses()),
-			)
-			if err != nil {
-				return nil, err
-			}
-			aLen := len(addressesAndKeys)
-			addresses := make([]string, aLen, aLen)
-			for i, a := range addressesAndKeys {
-				addresses[i] = a.Address
-			}
+	addressesAndKeys, err := o.operatorSvc.DepositMarket(
+		ctx,
+		req.GetMarket().GetBaseAsset(),
+		req.GetMarket().GetQuoteAsset(),
+		int(req.GetNumOfAddresses()),
+	)
+	if err != nil {
+		return nil, err
+	}
+	aLen := len(addressesAndKeys)
+	addresses := make([]string, aLen, aLen)
+	for i, a := range addressesAndKeys {
+		addresses[i] = a.Address
+	}
 
-			return &pb.DepositMarketReply{Addresses: addresses}, nil
-		},
+	return &pb.DepositMarketReply{Addresses: addresses}, nil
+}
+
+func (o operatorHandler) depositFeeAccount(
+	ctx context.Context,
+	req *pb.DepositFeeAccountRequest,
+) (*pb.DepositFeeAccountReply, error) {
+	deposits, err := o.operatorSvc.DepositFeeAccount(
+		ctx,
+		int(req.GetNumOfAddresses()),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return res.(*pb.DepositMarketReply), nil
-}
-
-func (o operatorHandler) depositFeeAccount(
-	reqCtx context.Context,
-	req *pb.DepositFeeAccountRequest,
-) (*pb.DepositFeeAccountReply, error) {
-	res, err := o.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			deposits, err := o.operatorSvc.DepositFeeAccount(
-				ctx,
-				int(req.GetNumOfAddresses()),
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(deposits))
-			for _, d := range deposits {
-				addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
-					Address:  d.Address,
-					Blinding: d.BlindingKey,
-				})
-			}
-
-			return &pb.DepositFeeAccountReply{
-				AddressWithBlindingKey: addressesAndKeys,
-			}, nil
-		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(deposits))
+	for _, d := range deposits {
+		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+			Address:  d.Address,
+			Blinding: d.BlindingKey,
+		})
 	}
 
-	return res.(*pb.DepositFeeAccountReply), nil
+	return &pb.DepositFeeAccountReply{
+		AddressWithBlindingKey: addressesAndKeys,
+	}, nil
 }
 
 func (o operatorHandler) openMarket(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.OpenMarketRequest,
 ) (*pb.OpenMarketReply, error) {
 	market := req.GetMarket()
@@ -362,30 +300,19 @@ func (o operatorHandler) openMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := o.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			if err := o.operatorSvc.OpenMarket(
-				ctx,
-				market.GetBaseAsset(),
-				market.GetQuoteAsset(),
-			); err != nil {
-				return nil, err
-			}
-
-			return &pb.OpenMarketReply{}, nil
-		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := o.operatorSvc.OpenMarket(
+		ctx,
+		market.GetBaseAsset(),
+		market.GetQuoteAsset(),
+	); err != nil {
+		return nil, err
 	}
 
-	return res.(*pb.OpenMarketReply), nil
+	return &pb.OpenMarketReply{}, nil
 }
 
 func (o operatorHandler) closeMarket(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.CloseMarketRequest,
 ) (*pb.CloseMarketReply, error) {
 	market := req.GetMarket()
@@ -393,30 +320,19 @@ func (o operatorHandler) closeMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := o.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			if err := o.operatorSvc.CloseMarket(
-				ctx,
-				market.GetBaseAsset(),
-				market.GetQuoteAsset(),
-			); err != nil {
-				return nil, err
-			}
-
-			return &pb.CloseMarketReply{}, nil
-		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := o.operatorSvc.CloseMarket(
+		ctx,
+		market.GetBaseAsset(),
+		market.GetQuoteAsset(),
+	); err != nil {
+		return nil, err
 	}
 
-	return res.(*pb.CloseMarketReply), nil
+	return &pb.CloseMarketReply{}, nil
 }
 
 func (o operatorHandler) updateMarketFee(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.UpdateMarketFeeRequest,
 ) (*pb.UpdateMarketFeeReply, error) {
 	marketWithFee := req.GetMarketWithFee()
@@ -434,37 +350,26 @@ func (o operatorHandler) updateMarketFee(
 		},
 	}
 
-	res, err := o.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			result, err := o.operatorSvc.UpdateMarketFee(ctx, mwf)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.UpdateMarketFeeReply{
-				MarketWithFee: &pbtypes.MarketWithFee{
-					Market: &pbtypes.Market{
-						BaseAsset:  result.BaseAsset,
-						QuoteAsset: result.QuoteAsset,
-					},
-					Fee: &pbtypes.Fee{
-						BasisPoint: result.BasisPoint,
-					},
-				},
-			}, nil
-		},
-	)
+	result, err := o.operatorSvc.UpdateMarketFee(ctx, mwf)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.UpdateMarketFeeReply), nil
+	return &pb.UpdateMarketFeeReply{
+		MarketWithFee: &pbtypes.MarketWithFee{
+			Market: &pbtypes.Market{
+				BaseAsset:  result.BaseAsset,
+				QuoteAsset: result.QuoteAsset,
+			},
+			Fee: &pbtypes.Fee{
+				BasisPoint: result.BasisPoint,
+			},
+		},
+	}, nil
 }
 
 func (o operatorHandler) updateMarketPrice(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.UpdateMarketPriceRequest,
 ) (*pb.UpdateMarketPriceReply, error) {
 	market := req.GetMarket()
@@ -487,26 +392,15 @@ func (o operatorHandler) updateMarketPrice(
 		},
 	}
 
-	res, err := o.repoManager.RunPricesTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			if err := o.operatorSvc.UpdateMarketPrice(ctx, mwp); err != nil {
-				return nil, err
-			}
-
-			return &pb.UpdateMarketPriceReply{}, nil
-		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := o.operatorSvc.UpdateMarketPrice(ctx, mwp); err != nil {
+		return nil, err
 	}
 
-	return res.(*pb.UpdateMarketPriceReply), nil
+	return &pb.UpdateMarketPriceReply{}, nil
 }
 
 func (o operatorHandler) updateMarketStrategy(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.UpdateMarketStrategyRequest,
 ) (*pb.UpdateMarketStrategyReply, error) {
 	market := req.GetMarket()
@@ -525,69 +419,46 @@ func (o operatorHandler) updateMarketStrategy(
 		},
 		Strategy: domain.StrategyType(strategyType),
 	}
-
-	res, err := o.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			if err := o.operatorSvc.UpdateMarketStrategy(ctx, ms); err != nil {
-				return nil, err
-			}
-
-			return &pb.UpdateMarketStrategyReply{}, nil
-		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := o.operatorSvc.UpdateMarketStrategy(ctx, ms); err != nil {
+		return nil, err
 	}
 
-	return res.(*pb.UpdateMarketStrategyReply), nil
+	return &pb.UpdateMarketStrategyReply{}, nil
 }
 
 func (o operatorHandler) listSwaps(
 	ctx context.Context,
 	req *pb.ListSwapsRequest,
 ) (*pb.ListSwapsReply, error) {
-	res, err := o.repoManager.RunTransaction(
-		ctx,
-		readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			swapInfos, err := o.operatorSvc.ListSwaps(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			pbSwapInfos := make([]*pb.SwapInfo, len(swapInfos), len(swapInfos))
-
-			for index, swapInfo := range swapInfos {
-				pbSwapInfos[index] = &pb.SwapInfo{
-					Status:  pb.SwapStatus(swapInfo.Status),
-					AmountP: swapInfo.AmountP,
-					AssetP:  swapInfo.AssetP,
-					AmountR: swapInfo.AmountR,
-					AssetR:  swapInfo.AssetR,
-					MarketFee: &pbtypes.Fee{
-						BasisPoint: swapInfo.MarketFee.BasisPoint,
-					},
-					RequestTimeUnix:  swapInfo.RequestTimeUnix,
-					AcceptTimeUnix:   swapInfo.AcceptTimeUnix,
-					CompleteTimeUnix: swapInfo.CompleteTimeUnix,
-					ExpiryTimeUnix:   swapInfo.ExpiryTimeUnix,
-				}
-			}
-
-			return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
-		},
-	)
+	swapInfos, err := o.operatorSvc.ListSwaps(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.ListSwapsReply), nil
+	pbSwapInfos := make([]*pb.SwapInfo, len(swapInfos), len(swapInfos))
+
+	for index, swapInfo := range swapInfos {
+		pbSwapInfos[index] = &pb.SwapInfo{
+			Status:  pb.SwapStatus(swapInfo.Status),
+			AmountP: swapInfo.AmountP,
+			AssetP:  swapInfo.AssetP,
+			AmountR: swapInfo.AmountR,
+			AssetR:  swapInfo.AssetR,
+			MarketFee: &pbtypes.Fee{
+				BasisPoint: swapInfo.MarketFee.BasisPoint,
+			},
+			RequestTimeUnix:  swapInfo.RequestTimeUnix,
+			AcceptTimeUnix:   swapInfo.AcceptTimeUnix,
+			CompleteTimeUnix: swapInfo.CompleteTimeUnix,
+			ExpiryTimeUnix:   swapInfo.ExpiryTimeUnix,
+		}
+	}
+
+	return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
 }
 
 func (o operatorHandler) withdrawMarket(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.WithdrawMarketRequest,
 ) (*pb.WithdrawMarketReply, error) {
 	market := req.GetMarket()
@@ -609,46 +480,24 @@ func (o operatorHandler) withdrawMarket(
 		Push:            true,
 	}
 
-	res, err := o.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			rawTx, err := o.operatorSvc.WithdrawMarketFunds(ctx, wm)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.WithdrawMarketReply{RawTx: rawTx}, nil
-		},
-	)
+	rawTx, err := o.operatorSvc.WithdrawMarketFunds(ctx, wm)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.WithdrawMarketReply), nil
+	return &pb.WithdrawMarketReply{RawTx: rawTx}, nil
 }
 
 func (o operatorHandler) balanceFeeAccount(
 	ctx context.Context,
 	req *pb.BalanceFeeAccountRequest,
 ) (*pb.BalanceFeeAccountReply, error) {
-	res, err := o.repoManager.RunTransaction(
-		ctx,
-		readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			balance, err := o.operatorSvc.FeeAccountBalance(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.BalanceFeeAccountReply{Balance: balance}, nil
-		},
-	)
+	balance, err := o.operatorSvc.FeeAccountBalance(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.BalanceFeeAccountReply), nil
+	return &pb.BalanceFeeAccountReply{Balance: balance}, nil
 }
 
 func (o operatorHandler) claimMarketDeposit(
@@ -663,30 +512,18 @@ func (o operatorHandler) claimMarketDeposit(
 		})
 	}
 
-	res, err := o.repoManager.RunTransaction(
+	if err := o.operatorSvc.ClaimMarketDeposit(
 		ctx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			err := o.operatorSvc.ClaimMarketDeposit(
-				ctx,
-				application.Market{
-					BaseAsset:  req.GetMarket().GetBaseAsset(),
-					QuoteAsset: req.GetMarket().GetQuoteAsset(),
-				},
-				outputs,
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.ClaimMarketDepositReply{}, nil
+		application.Market{
+			BaseAsset:  req.GetMarket().GetBaseAsset(),
+			QuoteAsset: req.GetMarket().GetQuoteAsset(),
 		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		outputs,
+	); err != nil {
+		return nil, err
 	}
 
-	return res.(*pb.ClaimMarketDepositReply), nil
+	return &pb.ClaimMarketDepositReply{}, nil
 }
 
 func (o operatorHandler) claimFeeDeposit(
@@ -701,26 +538,14 @@ func (o operatorHandler) claimFeeDeposit(
 		})
 	}
 
-	res, err := o.repoManager.RunTransaction(
+	if err := o.operatorSvc.ClaimFeeDeposit(
 		ctx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			err := o.operatorSvc.ClaimFeeDeposit(
-				ctx,
-				outputs,
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.ClaimFeeDepositReply{}, nil
-		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		outputs,
+	); err != nil {
+		return nil, err
 	}
 
-	return res.(*pb.ClaimFeeDepositReply), nil
+	return &pb.ClaimFeeDepositReply{}, nil
 }
 
 func (o operatorHandler) listDepositMarket(
@@ -731,74 +556,52 @@ func (o operatorHandler) listDepositMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := o.repoManager.RunTransaction(
+	addresses, err := o.operatorSvc.ListMarketExternalAddresses(
 		ctx,
-		readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			addresses, err := o.operatorSvc.ListMarketExternalAddresses(
-				ctx,
-				application.Market{
-					BaseAsset:  req.GetMarket().GetBaseAsset(),
-					QuoteAsset: req.GetMarket().GetQuoteAsset(),
-				},
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.ListDepositMarketReply{Address: addresses}, nil
+		application.Market{
+			BaseAsset:  req.GetMarket().GetBaseAsset(),
+			QuoteAsset: req.GetMarket().GetQuoteAsset(),
 		},
 	)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.ListDepositMarketReply), nil
+	return &pb.ListDepositMarketReply{Address: addresses}, nil
 }
 
 // ListMarket returns the result of the ListMarket method of the operator service.
 func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketRequest) (*pb.ListMarketReply, error) {
-	res, err := o.repoManager.RunTransaction(
-		ctx,
-		readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			marketInfos, err := o.operatorSvc.ListMarket(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			pbMarketInfos := make([]*pb.MarketInfo, 0, len(marketInfos))
-
-			for _, marketInfo := range marketInfos {
-				basePrice, _ := marketInfo.Price.BasePrice.BigFloat().Float32()
-				quotePrice, _ := marketInfo.Price.QuotePrice.BigFloat().Float32()
-
-				pbMarketInfos = append(pbMarketInfos, &pb.MarketInfo{
-					Market: &pbtypes.Market{
-						BaseAsset:  marketInfo.Market.BaseAsset,
-						QuoteAsset: marketInfo.Market.QuoteAsset,
-					},
-					Fee: &pbtypes.Fee{
-						BasisPoint: marketInfo.Fee.BasisPoint,
-					},
-					Tradable:     marketInfo.Tradable,
-					StrategyType: pb.StrategyType(marketInfo.StrategyType),
-					AccountIndex: marketInfo.AccountIndex,
-					Price: &pbtypes.Price{
-						BasePrice:  basePrice,
-						QuotePrice: quotePrice,
-					},
-				})
-			}
-
-			return &pb.ListMarketReply{Markets: pbMarketInfos}, nil
-		},
-	)
+	marketInfos, err := o.operatorSvc.ListMarket(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.ListMarketReply), nil
+	pbMarketInfos := make([]*pb.MarketInfo, 0, len(marketInfos))
+
+	for _, marketInfo := range marketInfos {
+		basePrice, _ := marketInfo.Price.BasePrice.BigFloat().Float32()
+		quotePrice, _ := marketInfo.Price.QuotePrice.BigFloat().Float32()
+
+		pbMarketInfos = append(pbMarketInfos, &pb.MarketInfo{
+			Market: &pbtypes.Market{
+				BaseAsset:  marketInfo.Market.BaseAsset,
+				QuoteAsset: marketInfo.Market.QuoteAsset,
+			},
+			Fee: &pbtypes.Fee{
+				BasisPoint: marketInfo.Fee.BasisPoint,
+			},
+			Tradable:     marketInfo.Tradable,
+			StrategyType: pb.StrategyType(marketInfo.StrategyType),
+			AccountIndex: marketInfo.AccountIndex,
+			Price: &pbtypes.Price{
+				BasePrice:  basePrice,
+				QuotePrice: quotePrice,
+			},
+		})
+	}
+
+	return &pb.ListMarketReply{Markets: pbMarketInfos}, nil
 }
 
 func (o operatorHandler) reportMarketFee(
@@ -809,44 +612,33 @@ func (o operatorHandler) reportMarketFee(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := o.repoManager.RunTransaction(
+	report, err := o.operatorSvc.GetCollectedMarketFee(
 		ctx,
-		readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			report, err := o.operatorSvc.GetCollectedMarketFee(
-				ctx,
-				application.Market{
-					BaseAsset:  req.GetMarket().GetBaseAsset(),
-					QuoteAsset: req.GetMarket().GetQuoteAsset(),
-				},
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			collectedFees := make([]*pb.FeeInfo, 0)
-			for _, fee := range report.CollectedFees {
-				marketPrice, _ := fee.MarketPrice.BigFloat().Float32()
-				collectedFees = append(collectedFees, &pb.FeeInfo{
-					TradeId:     fee.TradeID,
-					BasisPoint:  fee.BasisPoint,
-					Asset:       fee.Asset,
-					Amount:      fee.Amount,
-					MarketPrice: marketPrice,
-				})
-			}
-
-			return &pb.ReportMarketFeeReply{
-				CollectedFees:              collectedFees,
-				TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
-			}, nil
+		application.Market{
+			BaseAsset:  req.GetMarket().GetBaseAsset(),
+			QuoteAsset: req.GetMarket().GetQuoteAsset(),
 		},
 	)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.ReportMarketFeeReply), nil
+	collectedFees := make([]*pb.FeeInfo, 0)
+	for _, fee := range report.CollectedFees {
+		marketPrice, _ := fee.MarketPrice.BigFloat().Float32()
+		collectedFees = append(collectedFees, &pb.FeeInfo{
+			TradeId:     fee.TradeID,
+			BasisPoint:  fee.BasisPoint,
+			Asset:       fee.Asset,
+			Amount:      fee.Amount,
+			MarketPrice: marketPrice,
+		})
+	}
+
+	return &pb.ReportMarketFeeReply{
+		CollectedFees:              collectedFees,
+		TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
+	}, nil
 }
 
 func validateMarketWithFee(marketWithFee *pbtypes.MarketWithFee) error {

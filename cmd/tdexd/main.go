@@ -132,9 +132,9 @@ func main() {
 		interceptor.StreamInterceptor(),
 	)
 
-	traderHandler := grpchandler.NewTraderHandler(traderSvc, repoManager)
-	walletHandler := grpchandler.NewWalletHandler(walletSvc, repoManager)
-	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc, repoManager)
+	traderHandler := grpchandler.NewTraderHandler(traderSvc)
+	walletHandler := grpchandler.NewWalletHandler(walletSvc)
+	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc)
 
 	// Register proto implementations on Trader interface
 	pbtrader.RegisterTradeServer(traderGrpcServer, traderHandler)
