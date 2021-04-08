@@ -67,7 +67,7 @@ type AssetValuePair struct {
 	QuoteAsset string
 }
 
-var fragmentationMap = map[int]int{
+var fragmentationMapConfig = map[int]int{
 	1: 30,
 	2: 15,
 	3: 10,
@@ -90,10 +90,7 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 
 	if fragmentationDisabled {
-		numOfAddresses := int64(1)
-		if ctx.Int64("num_of_addresses") > 1 {
-			numOfAddresses = ctx.Int64("num_of_addresses")
-		}
+		numOfAddresses := ctx.Int64("num_of_addresses")
 		resp, err := client.DepositMarket(
 			context.Background(), &pboperator.DepositMarketRequest{
 				Market: &pbtypes.Market{
@@ -129,7 +126,10 @@ func depositMarketAction(ctx *cli.Context) error {
 	)
 
 	log.Info("calculating fragments ...")
-	baseFragments, quoteFragments := fragmentUnspents(assetValuePair)
+	baseFragments, quoteFragments := fragmentUnspents(
+		assetValuePair,
+		fragmentationMapConfig,
+	)
 	outsLen := len(baseFragments) + len(quoteFragments)
 
 	log.Infof("base fragments: %v", baseFragments)
@@ -203,7 +203,7 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 
 	//wait one min so that tx get confirmed
-	time.Sleep(5 * time.Second)
+	time.Sleep(60 * time.Second)
 
 	_, err = client.ClaimMarketDeposit(
 		context.Background(), &pboperator.ClaimMarketDepositRequest{
@@ -279,7 +279,7 @@ func createOutputs(
 	return outputs
 }
 
-func fragmentUnspents(pair AssetValuePair) ([]uint64, []uint64) {
+func fragmentUnspents(pair AssetValuePair, fragmentationMap map[int]int) ([]uint64, []uint64) {
 
 	baseAssetFragments := make([]uint64, 0)
 	quoteAssetFragments := make([]uint64, 0)

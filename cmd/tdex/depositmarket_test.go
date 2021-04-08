@@ -1,14 +1,16 @@
 package main
 
 import (
-	"github.com/urfave/cli/v2"
 	"reflect"
 	"testing"
+
+	"github.com/urfave/cli/v2"
 )
 
 func TestFragmentation(t *testing.T) {
 	type args struct {
-		pair AssetValuePair
+		pair   AssetValuePair
+		config map[int]int
 	}
 	tests := []struct {
 		name  string
@@ -23,6 +25,7 @@ func TestFragmentation(t *testing.T) {
 					BaseValue:  100000000,
 					QuoteValue: 400000000000000,
 				},
+				config: fragmentationMapConfig,
 			},
 			want: []uint64{
 				2000000,
@@ -58,6 +61,7 @@ func TestFragmentation(t *testing.T) {
 					BaseValue:  110,
 					QuoteValue: 113,
 				},
+				config: fragmentationMapConfig,
 			},
 			want:  []uint64{2, 2, 2, 2, 2, 11, 11, 11, 16, 16, 35},
 			want1: []uint64{2, 2, 2, 2, 2, 11, 11, 11, 16, 16, 38},
@@ -65,7 +69,7 @@ func TestFragmentation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := fragmentUnspents(tt.args.pair)
+			got, got1 := fragmentUnspents(tt.args.pair, tt.args.config)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("fragmentUnspents() got = %v, numOfTrx %v", got, tt.want)
 			}
@@ -96,7 +100,7 @@ func TestDepositMarketCli(t *testing.T) {
 		&depositmarket,
 	)
 
-	err := app.Run([]string{"", "depositmarket"})
+	err := app.Run([]string{"", "--network=regtest", "depositmarket"})
 	if err != nil {
 		t.Fatal(err)
 	}

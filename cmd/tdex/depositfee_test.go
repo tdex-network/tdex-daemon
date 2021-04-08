@@ -1,9 +1,10 @@
 package main
 
 import (
+	"testing"
+
 	"github.com/magiconair/properties/assert"
 	"github.com/urfave/cli/v2"
-	"testing"
 )
 
 func TestDepositFeeCli(t *testing.T) {
@@ -33,7 +34,7 @@ func TestDepositFeeCli(t *testing.T) {
 		&depositfee,
 	)
 
-	err := app.Run([]string{"", "depositfee"})
+	err := app.Run([]string{"", "--network=regtest", "depositfee"})
 	if err != nil {
 		t.Fatal(err)
 	}

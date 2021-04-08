@@ -40,10 +40,6 @@ var depositfee = cli.Command{
 			Name:  "num_of_addresses",
 			Usage: "the number of addresses to retrieve",
 		},
-		&cli.IntFlag{
-			Name:  "num_of_addresses",
-			Usage: "the number of addresses to retrieve",
-		},
 	},
 }
 
@@ -58,10 +54,7 @@ func depositFeeAction(ctx *cli.Context) error {
 	fragmentationDisabled := ctx.Bool("no-fragment")
 
 	if fragmentationDisabled {
-		numOfAddresses := int64(1)
-		if ctx.Int64("num_of_addresses") > 1 {
-			numOfAddresses = ctx.Int64("num_of_addresses")
-		}
+		numOfAddresses := ctx.Int64("num_of_addresses")
 		resp, err := client.DepositFeeAccount(
 			context.Background(), &pboperator.DepositFeeAccountRequest{
 				NumOfAddresses: numOfAddresses,
@@ -86,7 +79,7 @@ func depositFeeAction(ctx *cli.Context) error {
 	if err != nil {
 		log.WithError(err).Panic("error while setting up explorer service")
 	}
-	baseAssetPair, unspents := findBaseAssetsUnspents(
+	baseAssetValue, unspents := findBaseAssetsUnspents(
 		randomWallet,
 		explorerSvc,
 		baseAssetKey,
@@ -94,11 +87,15 @@ func depositFeeAction(ctx *cli.Context) error {
 
 	log.Info("calculating fragments ...")
 	baseFragments := fragmentFeeUnspents(
-		baseAssetPair.BaseValue,
+		baseAssetValue,
 		MinFee,
 		MaxNumOfOutputs,
 	)
-	log.Infof("base fragments: %v", baseFragments)
+	log.Infof(
+		"fetched %d funds that will be split into %d fragments",
+		len(unspents),
+		len(baseFragments),
+	)
 
 	addresses, err := fetchFeeAccountAddresses(
 		len(baseFragments),
@@ -158,7 +155,7 @@ retry:
 	}
 
 	//wait one min so that tx get confirmed
-	time.Sleep(5 * time.Second)
+	time.Sleep(60 * time.Second)
 
 	_, err = client.ClaimFeeDeposit(
 		context.Background(), &pboperator.ClaimFeeDepositRequest{
@@ -220,18 +217,13 @@ func createOutputsForDepositFeeTransaction(
 	return outputs
 }
 
-type BaseAssetPair struct {
-	BaseValue uint64
-	BaseAsset string
-}
-
 // findBaseAssetsUnspents polls blockchain until base asset unspent is noticed
 func findBaseAssetsUnspents(
 	randomWallet *trade.Wallet,
 	explorerSvc explorer.Service,
 	baseAssetKey string,
 ) (
-	BaseAssetPair,
+	uint64,
 	[]explorer.Utxo,
 ) {
 
@@ -255,36 +247,28 @@ events:
 				valuePerAsset[v.Asset()] += v.Value()
 			}
 
-			switch len(valuePerAsset) {
-			case 1:
-				for k, v := range valuePerAsset {
-					if k == baseAssetKey {
-						if v < MinFee {
-							log.Warnf(
-								"min base deposit is %v please top up",
-								MinFee,
-							)
-							continue events
-						}
-						log.Infof(
-							"base asset %v funded with value %v",
-							k,
-							v,
-						)
-						break events
-					}
-
+			if baseTotalAmount, ok := valuePerAsset[baseAssetKey]; ok {
+				if baseTotalAmount < MinFee {
+					log.Warnf(
+						"min base deposit is %v please top up",
+						MinFee,
+					)
+					continue events
 				}
+				log.Infof(
+					"base asset %v funded with value %v",
+					baseAssetKey,
+					baseTotalAmount,
+				)
+				break events
 			}
+
 		}
 
 		time.Sleep(time.Duration(CrawlInterval) * time.Second)
 	}
 
-	return BaseAssetPair{
-		BaseValue: valuePerAsset[baseAssetKey],
-		BaseAsset: baseAssetKey,
-	}, unspents
+	return valuePerAsset[baseAssetKey], unspents
 }
 
 func fetchFeeAccountAddresses(
