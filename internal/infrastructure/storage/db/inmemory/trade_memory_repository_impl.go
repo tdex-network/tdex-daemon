@@ -9,40 +9,38 @@ import (
 )
 
 type tradeRepositoryImpl struct {
-	db *DbManager
+	store *tradeInmemoryStore
 }
 
 // NewTradeRepositoryImpl returns a new inmemory TradeRepository implementation.
-func NewTradeRepositoryImpl(db *DbManager) domain.TradeRepository {
-	return &tradeRepositoryImpl{
-		db: db,
-	}
+func NewTradeRepositoryImpl(store *tradeInmemoryStore) domain.TradeRepository {
+	return &tradeRepositoryImpl{store}
 }
 
 func (r tradeRepositoryImpl) GetOrCreateTrade(_ context.Context, tradeID *uuid.UUID) (*domain.Trade, error) {
-	r.db.tradeStore.locker.Lock()
-	defer r.db.tradeStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	return r.getOrCreateTrade(tradeID)
 }
 
 func (r tradeRepositoryImpl) GetAllTrades(_ context.Context) ([]*domain.Trade, error) {
-	r.db.tradeStore.locker.Lock()
-	defer r.db.tradeStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	return r.getAllTrades()
 }
 
 func (r tradeRepositoryImpl) GetAllTradesByMarket(_ context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
-	r.db.tradeStore.locker.Lock()
-	defer r.db.tradeStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	return r.getAllTradesByMarket(marketQuoteAsset)
 }
 
 func (r tradeRepositoryImpl) GetCompletedTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
-	r.db.tradeStore.locker.Lock()
-	defer r.db.tradeStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	tradesByMarkets, err := r.getAllTradesByMarket(marketQuoteAsset)
 	if err != nil {
@@ -63,8 +61,8 @@ func (r tradeRepositoryImpl) GetTradeByTxID(
 	ctx context.Context,
 	txID string,
 ) (*domain.Trade, error) {
-	r.db.tradeStore.locker.Lock()
-	defer r.db.tradeStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	trades, err := r.getAllTrades()
 	if err != nil {
@@ -80,8 +78,8 @@ func (r tradeRepositoryImpl) GetTradeByTxID(
 }
 
 func (r tradeRepositoryImpl) GetTradeBySwapAcceptID(_ context.Context, swapAcceptID string) (*domain.Trade, error) {
-	r.db.tradeStore.locker.Lock()
-	defer r.db.tradeStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	return r.getTradeBySwapAcceptID(swapAcceptID)
 }
@@ -91,8 +89,8 @@ func (r tradeRepositoryImpl) UpdateTrade(
 	tradeID *uuid.UUID,
 	updateFn func(t *domain.Trade) (*domain.Trade, error),
 ) error {
-	r.db.tradeStore.locker.Lock()
-	defer r.db.tradeStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	currentTrade, err := r.getOrCreateTrade(tradeID)
 	if err != nil {
@@ -105,14 +103,14 @@ func (r tradeRepositoryImpl) UpdateTrade(
 	}
 
 	if swapAccept := updatedTrade.SwapAcceptMessage(); swapAccept != nil {
-		if _, ok := r.db.tradeStore.tradesBySwapAcceptID[swapAccept.GetId()]; !ok {
-			r.db.tradeStore.tradesBySwapAcceptID[swapAccept.GetId()] = currentTrade.ID
+		if _, ok := r.store.tradesBySwapAcceptID[swapAccept.GetId()]; !ok {
+			r.store.tradesBySwapAcceptID[swapAccept.GetId()] = currentTrade.ID
 		}
 	}
 
 	r.addTradeByMarket(updatedTrade.MarketQuoteAsset, currentTrade.ID)
 
-	r.db.tradeStore.trades[updatedTrade.ID] = *updatedTrade
+	r.store.trades[updatedTrade.ID] = *updatedTrade
 
 	return nil
 }
@@ -120,7 +118,7 @@ func (r tradeRepositoryImpl) UpdateTrade(
 func (r tradeRepositoryImpl) getOrCreateTrade(tradeID *uuid.UUID) (*domain.Trade, error) {
 	createTrade := func() (*domain.Trade, error) {
 		t := domain.NewTrade()
-		r.db.tradeStore.trades[t.ID] = *t
+		r.store.trades[t.ID] = *t
 		return t, nil
 	}
 
@@ -128,7 +126,7 @@ func (r tradeRepositoryImpl) getOrCreateTrade(tradeID *uuid.UUID) (*domain.Trade
 		return createTrade()
 	}
 
-	currentTrade, ok := r.db.tradeStore.trades[*tradeID]
+	currentTrade, ok := r.store.trades[*tradeID]
 	if !ok {
 		return nil, ErrTradeNotFound
 	}
@@ -138,41 +136,41 @@ func (r tradeRepositoryImpl) getOrCreateTrade(tradeID *uuid.UUID) (*domain.Trade
 
 func (r tradeRepositoryImpl) getAllTrades() ([]*domain.Trade, error) {
 	allTrades := make([]*domain.Trade, 0)
-	for _, trade := range r.db.tradeStore.trades {
+	for _, trade := range r.store.trades {
 		allTrades = append(allTrades, &trade)
 	}
 	return allTrades, nil
 }
 
 func (r tradeRepositoryImpl) getAllTradesByMarket(marketQuoteAsset string) ([]*domain.Trade, error) {
-	tradeIDs, ok := r.db.tradeStore.tradesByMarket[marketQuoteAsset]
+	tradeIDs, ok := r.store.tradesByMarket[marketQuoteAsset]
 	if !ok {
 		return nil, nil
 	}
 
-	tradeList := tradesFromIDs(r.db.tradeStore.trades, tradeIDs)
+	tradeList := tradesFromIDs(r.store.trades, tradeIDs)
 	return tradeList, nil
 }
 
 func (r tradeRepositoryImpl) getTradeBySwapAcceptID(swapAcceptID string) (*domain.Trade, error) {
-	tradeID, ok := r.db.tradeStore.tradesBySwapAcceptID[swapAcceptID]
+	tradeID, ok := r.store.tradesBySwapAcceptID[swapAcceptID]
 	if !ok {
 		return nil, nil
 	}
-	trade := r.db.tradeStore.trades[tradeID]
+	trade := r.store.trades[tradeID]
 	return &trade, nil
 }
 
 func (r tradeRepositoryImpl) addTradeByMarket(key string, val uuid.UUID) {
-	trades, ok := r.db.tradeStore.tradesByMarket[key]
+	trades, ok := r.store.tradesByMarket[key]
 	if !ok {
-		r.db.tradeStore.tradesByMarket[key] = []uuid.UUID{val}
+		r.store.tradesByMarket[key] = []uuid.UUID{val}
 		return
 	}
 
 	if !contain(trades, val) {
-		r.db.tradeStore.tradesByMarket[key] = append(
-			r.db.tradeStore.tradesByMarket[key],
+		r.store.tradesByMarket[key] = append(
+			r.store.tradesByMarket[key],
 			val,
 		)
 	}

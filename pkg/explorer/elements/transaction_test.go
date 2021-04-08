@@ -7,6 +7,29 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestGetTransaction(t *testing.T) {
+	elementsSvc, err := newService()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr, _, err := newTestData()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txid, err := elementsSvc.Faucet(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tx, err := elementsSvc.GetTransaction(txid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, true, tx != nil)
+}
+
 func TestGetTransactionHex(t *testing.T) {
 	elementsSvc, err := newService()
 	if err != nil {

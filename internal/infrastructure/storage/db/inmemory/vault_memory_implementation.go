@@ -10,14 +10,12 @@ import (
 
 // VaultRepositoryImpl represents an in memory storage
 type VaultRepositoryImpl struct {
-	db *DbManager
+	store *vaultInmemoryStore
 }
 
 // NewVaultRepositoryImpl returns a new empty VaultRepositoryImpl
-func NewVaultRepositoryImpl(db *DbManager) domain.VaultRepository {
-	return &VaultRepositoryImpl{
-		db: db,
-	}
+func NewVaultRepositoryImpl(store *vaultInmemoryStore) domain.VaultRepository {
+	return &VaultRepositoryImpl{store}
 }
 
 func (r VaultRepositoryImpl) GetOrCreateVault(
@@ -26,8 +24,8 @@ func (r VaultRepositoryImpl) GetOrCreateVault(
 	passphrase string,
 	net *network.Network,
 ) (*domain.Vault, error) {
-	r.db.vaultStore.locker.Lock()
-	defer r.db.vaultStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	return r.getOrCreateVault(ctx, mnemonic, passphrase, net)
 }
@@ -36,8 +34,8 @@ func (r VaultRepositoryImpl) GetAllDerivedExternalAddressesInfoForAccount(
 	ctx context.Context,
 	accountIndex int,
 ) (domain.AddressesInfo, error) {
-	r.db.vaultStore.locker.Lock()
-	defer r.db.vaultStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	v := r.getVault(ctx)
 	if v == nil {
@@ -52,8 +50,8 @@ func (r VaultRepositoryImpl) UpdateVault(
 	ctx context.Context,
 	updateFn func(*domain.Vault) (*domain.Vault, error),
 ) error {
-	r.db.vaultStore.locker.Lock()
-	defer r.db.vaultStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	v := r.getVault(ctx)
 	if v == nil {
@@ -65,37 +63,37 @@ func (r VaultRepositoryImpl) UpdateVault(
 		return err
 	}
 
-	r.db.vaultStore.vault = updatedVault
+	r.store.vault = updatedVault
 
 	return nil
 }
 
 func (r VaultRepositoryImpl) GetAccountByIndex(ctx context.Context,
 	accountIndex int) (*domain.Account, error) {
-	r.db.vaultStore.locker.Lock()
-	defer r.db.vaultStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
-	return r.db.vaultStore.vault.AccountByIndex(accountIndex)
+	return r.store.vault.AccountByIndex(accountIndex)
 }
 
 func (r VaultRepositoryImpl) GetAccountByAddress(
 	ctx context.Context,
 	addr string,
 ) (*domain.Account, int, error) {
-	r.db.vaultStore.locker.Lock()
-	defer r.db.vaultStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
-	return r.db.vaultStore.vault.AccountByAddress(addr)
+	return r.store.vault.AccountByAddress(addr)
 }
 
 func (r VaultRepositoryImpl) GetAllDerivedAddressesInfoForAccount(
 	ctx context.Context,
 	accountIndex int,
 ) (domain.AddressesInfo, error) {
-	r.db.vaultStore.locker.Lock()
-	defer r.db.vaultStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
-	return r.db.vaultStore.vault.AllDerivedAddressesInfoForAccount(accountIndex)
+	return r.store.vault.AllDerivedAddressesInfoForAccount(accountIndex)
 }
 
 func (r VaultRepositoryImpl) GetDerivationPathByScript(
@@ -103,8 +101,8 @@ func (r VaultRepositoryImpl) GetDerivationPathByScript(
 	accountIndex int,
 	scripts []string,
 ) (map[string]string, error) {
-	r.db.vaultStore.locker.Lock()
-	defer r.db.vaultStore.locker.Unlock()
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
 
 	return r.getDerivationPathByScript(accountIndex, scripts)
 }
@@ -120,23 +118,23 @@ func (r VaultRepositoryImpl) getOrCreateVault(
 		if err != nil {
 			return nil, err
 		}
-		r.db.vaultStore.vault = v
+		r.store.vault = v
 	}
-	return r.db.vaultStore.vault, nil
+	return r.store.vault, nil
 }
 
 func (r VaultRepositoryImpl) getVault(_ context.Context) *domain.Vault {
-	if r.db.vaultStore.vault.IsZero() {
+	if r.store.vault.IsZero() {
 		return nil
 	}
-	return r.db.vaultStore.vault
+	return r.store.vault
 }
 
 func (r VaultRepositoryImpl) getDerivationPathByScript(
 	accountIndex int,
 	scripts []string) (map[string]string, error,
 ) {
-	account, err := r.db.vaultStore.vault.AccountByIndex(accountIndex)
+	account, err := r.store.vault.AccountByIndex(accountIndex)
 	if err != nil {
 		return nil, err
 	}

@@ -17,4 +17,6 @@ var (
 	ErrInvalidAddress = fmt.Errorf("invalid address")
 	// ErrBlindKeyNotFound ...
 	ErrBlindKeyNotFound = fmt.Errorf("blindkey not found for address")
+	// ErrInvalidTxJSON ...
+	ErrInvalidTxJSON = fmt.Errorf("invalid tx JSON")
 )

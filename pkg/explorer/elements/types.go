@@ -2,6 +2,7 @@ package elements
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"math"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
@@ -11,45 +12,68 @@ import (
 )
 
 type tx struct {
-	tx            *transaction.Transaction
-	confirmations int
+	TxHash      string      `json:"txid"`
+	TxVersion   int         `json:"version"`
+	TxLocktime  int         `json:"locktime"`
+	TxSize      int         `json:"size"`
+	TxWeight    int         `json:"weight"`
+	TxInputs    interface{} `json:"vin"`
+	TxOutputs   interface{} `json:"vout"`
+	TxConfirmed bool
 }
 
-func NewTxFromHex(txhex string, confirmations int) (explorer.Transaction, error) {
-	transaction, err := transaction.NewTxFromHex(txhex)
+func NewTxFromHex(txhex string, confirmed bool) (explorer.Transaction, error) {
+	t, err := transaction.NewTxFromHex(txhex)
 	if err != nil {
 		return nil, err
 	}
 
-	return &tx{transaction, confirmations}, nil
+	return &tx{
+		TxHash:      t.TxHash().String(),
+		TxVersion:   int(t.Version),
+		TxLocktime:  int(t.Locktime),
+		TxSize:      t.VirtualSize(),
+		TxWeight:    t.Weight(),
+		TxInputs:    t.Inputs,
+		TxOutputs:   t.Outputs,
+		TxConfirmed: confirmed,
+	}, nil
+}
+
+func NewTxFromJSON(txJSON string) (explorer.Transaction, error) {
+	var t tx
+	if err := json.Unmarshal([]byte(txJSON), &t); err != nil {
+		return nil, ErrInvalidTxJSON
+	}
+	return &t, nil
 }
 
 func (t *tx) Hash() string {
-	return t.tx.TxHash().String()
+	return t.TxHash
 }
 
 func (t *tx) Version() int {
-	return int(t.tx.Version)
+	return t.TxVersion
 }
 
 func (t *tx) Locktime() int {
-	return int(t.tx.Locktime)
+	return t.TxLocktime
 }
 
 func (t *tx) Inputs() []*transaction.TxInput {
-	return t.tx.Inputs
+	return t.TxInputs.([]*transaction.TxInput)
 }
 
 func (t *tx) Outputs() []*transaction.TxOutput {
-	return t.tx.Outputs
+	return t.TxOutputs.([]*transaction.TxOutput)
 }
 
 func (t *tx) Size() int {
-	return t.tx.Weight()
+	return t.TxSize
 }
 
 func (t *tx) Weight() int {
-	return t.tx.VirtualSize()
+	return t.TxWeight
 }
 
 func (t *tx) Fee() int {
@@ -63,7 +87,7 @@ func (t *tx) Fee() int {
 }
 
 func (t *tx) Confirmed() bool {
-	return t.confirmations > 0
+	return t.TxConfirmed
 }
 
 type elementsUnspent struct {

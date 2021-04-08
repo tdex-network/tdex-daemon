@@ -20,24 +20,24 @@ const readOnlyTx = true
 type operatorHandler struct {
 	pb.UnimplementedOperatorServer
 	operatorSvc application.OperatorService
-	dbManager   ports.DbManager
+	repoManager ports.RepoManager
 }
 
 // NewOperatorHandler is a constructor function returning an protobuf OperatorServer.
 func NewOperatorHandler(
 	operatorSvc application.OperatorService,
-	dbManager ports.DbManager,
+	repoManager ports.RepoManager,
 ) pb.OperatorServer {
-	return newOperatorHandler(operatorSvc, dbManager)
+	return newOperatorHandler(operatorSvc, repoManager)
 }
 
 func newOperatorHandler(
 	operatorSvc application.OperatorService,
-	dbManager ports.DbManager,
+	repoManager ports.RepoManager,
 ) *operatorHandler {
 	return &operatorHandler{
 		operatorSvc: operatorSvc,
-		dbManager:   dbManager,
+		repoManager: repoManager,
 	}
 }
 
@@ -150,7 +150,7 @@ func (o operatorHandler) ReloadUtxos(
 	ctx context.Context,
 	rew *pb.ReloadUtxosRequest,
 ) (*pb.ReloadUtxosReply, error) {
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -186,7 +186,7 @@ func (o operatorHandler) dropMarket(
 	ctx context.Context,
 	req *pb.DropMarketRequest,
 ) (*pb.DropMarketReply, error) {
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -212,7 +212,7 @@ func (o operatorHandler) listUtxos(
 	ctx context.Context,
 	req *pb.ListUtxosRequest,
 ) (*pb.ListUtxosReply, error) {
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -288,11 +288,11 @@ func (o operatorHandler) depositMarket(
 	reqCtx context.Context,
 	req *pb.DepositMarketRequest,
 ) (*pb.DepositMarketReply, error) {
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
-			addresses, err := o.operatorSvc.DepositMarket(
+			addressesAndKeys, err := o.operatorSvc.DepositMarket(
 				ctx,
 				req.GetMarket().GetBaseAsset(),
 				req.GetMarket().GetQuoteAsset(),
@@ -300,6 +300,11 @@ func (o operatorHandler) depositMarket(
 			)
 			if err != nil {
 				return nil, err
+			}
+			aLen := len(addressesAndKeys)
+			addresses := make([]string, aLen, aLen)
+			for i, a := range addressesAndKeys {
+				addresses[i] = a.Address
 			}
 
 			return &pb.DepositMarketReply{Addresses: addresses}, nil
@@ -316,7 +321,7 @@ func (o operatorHandler) depositFeeAccount(
 	reqCtx context.Context,
 	req *pb.DepositFeeAccountRequest,
 ) (*pb.DepositFeeAccountReply, error) {
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -357,7 +362,7 @@ func (o operatorHandler) openMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -388,7 +393,7 @@ func (o operatorHandler) closeMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -429,7 +434,7 @@ func (o operatorHandler) updateMarketFee(
 		},
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -482,7 +487,7 @@ func (o operatorHandler) updateMarketPrice(
 		},
 	}
 
-	res, err := o.dbManager.RunPricesTransaction(
+	res, err := o.repoManager.RunPricesTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -521,7 +526,7 @@ func (o operatorHandler) updateMarketStrategy(
 		Strategy: domain.StrategyType(strategyType),
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -543,7 +548,7 @@ func (o operatorHandler) listSwaps(
 	ctx context.Context,
 	req *pb.ListSwapsRequest,
 ) (*pb.ListSwapsReply, error) {
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -604,7 +609,7 @@ func (o operatorHandler) withdrawMarket(
 		Push:            true,
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -627,7 +632,7 @@ func (o operatorHandler) balanceFeeAccount(
 	ctx context.Context,
 	req *pb.BalanceFeeAccountRequest,
 ) (*pb.BalanceFeeAccountReply, error) {
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -658,7 +663,7 @@ func (o operatorHandler) claimMarketDeposit(
 		})
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -696,7 +701,7 @@ func (o operatorHandler) claimFeeDeposit(
 		})
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -726,7 +731,7 @@ func (o operatorHandler) listDepositMarket(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -753,7 +758,7 @@ func (o operatorHandler) listDepositMarket(
 
 // ListMarket returns the result of the ListMarket method of the operator service.
 func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketRequest) (*pb.ListMarketReply, error) {
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -804,7 +809,7 @@ func (o operatorHandler) reportMarketFee(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := o.dbManager.RunTransaction(
+	res, err := o.repoManager.RunTransaction(
 		ctx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {

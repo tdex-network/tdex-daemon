@@ -1,538 +1,155 @@
-package application
+package application_test
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"github.com/tdex-network/tdex-daemon/config"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 )
 
-const (
-	marketRepoIsEmpty  = true
-	tradeRepoIsEmpty   = true
-	vaultRepoIsEmpty   = true
-	unspentRepoIsEmpty = true
-	marketPluggable    = true
+var (
+	marketQuoteAsset = randomHex(32)
+	feeOutpoints     = []application.TxOutpoint{
+		{Hash: randomHex(32), Index: 0},
+		{Hash: randomHex(32), Index: 0},
+	}
+	mktOutpoints = []application.TxOutpoint{
+		{Hash: randomHex(32), Index: 0},
+		{Hash: randomHex(32), Index: 0},
+	}
 )
 
-var baseAsset = config.GetString(config.BaseAssetKey)
+func TestAccountManagement(t *testing.T) {
+	operatorSvc, err := newOperatorService()
+	require.NoError(t, err)
 
-func TestListMarket(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
+	feeAddressesAndKeys, err := operatorSvc.DepositFeeAccount(ctx, 2)
+	require.NoError(t, err)
 
-	marketList, err := operatorService.ListMarket(ctx)
-	if err != nil {
-		t.Fatal(err)
+	mockedBlinderManager := &mockBlinderManager{}
+	for _, f := range feeAddressesAndKeys {
+		key, _ := hex.DecodeString(f.BlindingKey)
+		mockedBlinderManager.
+			On("UnblindOutput", mock.AnythingOfType("*transaction.TxOutput"), key).
+			Return(application.UnblindedResult(&transactionutil.UnblindedResult{
+				AssetHash:    regtest.AssetID,
+				Value:        randomValue(),
+				AssetBlinder: randomBytes(32),
+				ValueBlinder: randomBytes(32),
+			}), true)
 	}
 
-	assert.Equal(t, 2, len(marketList))
-}
+	mktAddressesAndKeys, err := operatorSvc.DepositMarket(ctx, "", "", 2)
+	require.NoError(t, err)
 
-func TestDepositMarket(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		!vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
-	}
-
-	tests := []struct {
-		baseAsset      string
-		quoteAsset     string
-		numOfAddresses int
-	}{
-		{
-			"",
-			"",
-			2,
-		},
-		{
-			market.BaseAsset,
-			market.QuoteAsset,
-			0,
-		},
-	}
-
-	for _, tt := range tests {
-		addresses, err := operatorService.DepositMarket(
-			ctx,
-			tt.baseAsset,
-			tt.quoteAsset,
-			tt.numOfAddresses,
-		)
-		if err != nil {
-			t.Fatal(err)
+	for i, m := range mktAddressesAndKeys {
+		asset := marketBaseAsset
+		if i == 0 {
+			asset = marketQuoteAsset
 		}
-		expectedLen := tt.numOfAddresses
-		if tt.numOfAddresses == 0 {
-			expectedLen = 1
+		key, _ := hex.DecodeString(m.BlindingKey)
+		mockedBlinderManager.
+			On("UnblindOutput", mock.Anything, key).
+			Return(application.UnblindedResult(&transactionutil.UnblindedResult{
+				AssetHash:    asset,
+				Value:        randomValue(),
+				AssetBlinder: randomBytes(32),
+				ValueBlinder: randomBytes(32),
+			}), true)
+	}
+
+	application.BlinderManager = mockedBlinderManager
+
+	err = operatorSvc.ClaimFeeDeposit(ctx, feeOutpoints)
+	require.NoError(t, err)
+
+	feeBalance, err := operatorSvc.FeeAccountBalance(ctx)
+	require.NoError(t, err)
+	require.Greater(t, feeBalance, int64(0))
+
+	mkt := application.Market{
+		BaseAsset:  marketBaseAsset,
+		QuoteAsset: marketQuoteAsset,
+	}
+	err = operatorSvc.ClaimMarketDeposit(ctx, mkt, mktOutpoints)
+	require.NoError(t, err)
+
+	markets, err := operatorSvc.ListMarket(ctx)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(markets), 1)
+	require.False(t, markets[0].Tradable)
+
+	err = operatorSvc.OpenMarket(ctx, marketBaseAsset, marketQuoteAsset)
+	require.NoError(t, err)
+
+	markets, err = operatorSvc.ListMarket(ctx)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(markets), 1)
+	require.True(t, markets[0].Tradable)
+
+	err = operatorSvc.CloseMarket(ctx, marketBaseAsset, marketQuoteAsset)
+	require.NoError(t, err)
+
+	markets, err = operatorSvc.ListMarket(ctx)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(markets), 1)
+	require.False(t, markets[0].Tradable)
+
+	err = operatorSvc.DropMarket(ctx, int(markets[0].AccountIndex))
+	require.NoError(t, err)
+
+	markets, err = operatorSvc.ListMarket(ctx)
+	require.NoError(t, err)
+	require.Len(t, markets, 0)
+}
+
+// newOperatorService returns a new service with brand new and unlocked wallet.
+func newOperatorService() (application.OperatorService, error) {
+	repoManager, explorerSvc, bcListener := newServices()
+
+	if _, err := repoManager.VaultRepository().GetOrCreateVault(
+		ctx, mnemonic, passphrase, regtest,
+	); err != nil {
+		return nil, err
+	}
+
+	w, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: mnemonic,
+	})
+
+	accounts := []int{domain.FeeAccount, domain.MarketAccountStart}
+	for _, accountIndex := range accounts {
+		for i := 0; i < 2; i++ {
+			addr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
+				DerivationPath: fmt.Sprintf("%d'/0/%d", accountIndex, i),
+				Network:        regtest,
+			})
+			txid := feeOutpoints[i].Hash
+			if accountIndex == domain.MarketAccountStart {
+				txid = mktOutpoints[i].Hash
+			}
+			explorerSvc.(*mockExplorer).On("GetTransaction", txid).
+				Return(randomTxs(addr)[0], nil)
 		}
-		assert.Equal(t, expectedLen, len(addresses))
-	}
-}
-
-func TestFailingDepositMarket(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
 	}
 
-	tests := []struct {
-		baseAsset     string
-		quoteAsset    string
-		expectedError error
-	}{
-		{
-			"",
-			market.QuoteAsset,
-			domain.ErrMarketInvalidBaseAsset,
-		},
-		{
-			"ldjbwjkbfjksdbjkvcsbdjkbcdsjkb",
-			market.QuoteAsset,
-			domain.ErrMarketInvalidBaseAsset,
-		},
-		{
-			market.BaseAsset,
-			"",
-			domain.ErrMarketInvalidQuoteAsset,
-		},
-		{
-			market.BaseAsset,
-			"ldjbwjkbfjksdbjkvcsbdjkbcdsjkb",
-			domain.ErrMarketInvalidQuoteAsset,
-		},
-	}
+	explorerSvc.(*mockExplorer).
+		On("IsTransactionConfirmed", mock.AnythingOfType("string")).
+		Return(true, nil)
 
-	for _, tt := range tests {
-		_, err := operatorService.DepositMarket(ctx, tt.baseAsset, tt.quoteAsset, 0)
-		assert.Equal(t, tt.expectedError, err)
-	}
-}
-
-func TestUpdateMarketPrice(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
-	}
-
-	args := MarketWithPrice{
-		Market: market,
-		Price: Price{
-			BasePrice:  decimal.NewFromFloat(0.0001234),
-			QuotePrice: decimal.NewFromFloat(9876.54321),
-		},
-	}
-
-	// update the price
-	if err := operatorService.UpdateMarketPrice(ctx, args); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestFailingUpdateMarketPrice(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
-	}
-
-	tests := []struct {
-		basePrice     float64
-		quotePrice    float64
-		expectedError error
-	}{
-		{
-			-1,
-			10000,
-			domain.ErrMarketInvalidBasePrice,
-		},
-		{
-			0,
-			10000,
-			domain.ErrMarketInvalidBasePrice,
-		},
-		{
-			2099999997690000 + 1,
-			10000,
-			domain.ErrMarketInvalidBasePrice,
-		},
-		{
-			1,
-			-1,
-			domain.ErrMarketInvalidQuotePrice,
-		},
-		{
-			1,
-			0,
-			domain.ErrMarketInvalidQuotePrice,
-		},
-		{
-			1,
-			2099999997690000 + 1,
-			domain.ErrMarketInvalidQuotePrice,
-		},
-	}
-
-	for _, tt := range tests {
-		args := MarketWithPrice{
-			Market: market,
-			Price: Price{
-				BasePrice:  decimal.NewFromFloat(tt.basePrice),
-				QuotePrice: decimal.NewFromFloat(tt.quotePrice),
-			},
-		}
-
-		err := operatorService.UpdateMarketPrice(ctx, args)
-		assert.Equal(t, tt.expectedError, err)
-	}
-}
-func TestListSwap(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		!tradeRepoIsEmpty,
-		vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	swapInfos, err := operatorService.ListSwaps(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 1, len(swapInfos))
-}
-
-func TestBalanceFeeAccount(t *testing.T) {
-	operatorService, _, _, ctx, close, _ := newMockServices(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		!vaultRepoIsEmpty,
-		!unspentRepoIsEmpty,
-		false,
-	)
-	t.Cleanup(close)
-
-	balance, err := operatorService.FeeAccountBalance(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, int64(100000000), balance)
-}
-
-func TestGetCollectedMarketFee(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		!tradeRepoIsEmpty,
-		vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
-	}
-
-	fee, err := operatorService.GetCollectedMarketFee(ctx, market)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 0, len(fee.CollectedFees))
-}
-
-func TestListMarketExternalAddresses(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		!vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
-	}
-
-	addresses, err := operatorService.ListMarketExternalAddresses(ctx, market)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, 1, len(addresses))
-}
-
-func TestFailingListMarketExternalAddresses(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		!vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	tests := []struct {
-		market        Market
-		expectedError error
-	}{
-		{
-			Market{
-				"",
-				marketUnspents[1].AssetHash,
-			},
-			domain.ErrMarketInvalidBaseAsset,
-		},
-		{
-			Market{
-				marketUnspents[0].AssetHash,
-				"",
-			},
-			domain.ErrMarketInvalidQuoteAsset,
-		},
-		{
-			Market{
-				marketUnspents[0].AssetHash,
-				marketUnspents[0].AssetHash,
-			},
-			ErrMarketNotExist,
-		},
-	}
-
-	for _, tt := range tests {
-		_, err := operatorService.ListMarketExternalAddresses(ctx, tt.market)
-		assert.Equal(t, tt.expectedError, err)
-	}
-}
-
-func TestOpenMarket(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
-	}
-
-	err := operatorService.OpenMarket(ctx, market.BaseAsset, market.QuoteAsset)
-	assert.Equal(t, ErrFeeAccountNotFunded, err)
-
-	if _, err := operatorService.DepositFeeAccount(ctx, 1); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := operatorService.OpenMarket(
-		ctx,
-		market.BaseAsset,
-		market.QuoteAsset,
-	); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestFailingOpenMarket(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		!vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
-	}
-
-	tests := []struct {
-		baseAsset     string
-		quoteAsset    string
-		expectedError error
-	}{
-		{
-			"",
-			market.QuoteAsset,
-			domain.ErrMarketInvalidBaseAsset,
-		},
-		{
-			"invalidasset",
-			market.QuoteAsset,
-			domain.ErrMarketInvalidBaseAsset,
-		},
-		{
-			market.BaseAsset,
-			"",
-			domain.ErrMarketInvalidQuoteAsset,
-		},
-		{
-			market.BaseAsset,
-			"invalidasset",
-			domain.ErrMarketInvalidQuoteAsset,
-		},
-		{
-			market.BaseAsset,
-			"0ddfa690c7b2ba3b8ecee8200da2420fc502f57f8312c83d466b6f8dced70441",
-			ErrMarketNotExist,
-		},
-	}
-
-	for _, tt := range tests {
-		err := operatorService.OpenMarket(ctx, tt.baseAsset, tt.quoteAsset)
-		assert.Equal(t, tt.expectedError, err)
-	}
-}
-
-func TestUpdateMarketStrategy(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		!vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
-	}
-
-	err := operatorService.UpdateMarketStrategy(
-		ctx,
-		MarketStrategy{
-			Market:   market,
-			Strategy: domain.StrategyTypePluggable,
-		},
-	)
-	assert.Equal(t, domain.ErrMarketMustBeClosed, err)
-
-	if err := operatorService.CloseMarket(
-		ctx,
-		market.BaseAsset,
-		market.QuoteAsset,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := operatorService.UpdateMarketStrategy(
-		ctx,
-		MarketStrategy{
-			Market:   market,
-			Strategy: domain.StrategyTypePluggable,
-		},
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := operatorService.UpdateMarketStrategy(
-		ctx,
-		MarketStrategy{
-			Market:   market,
-			Strategy: domain.StrategyTypeBalanced,
-		},
-	); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestFailingUpdateMarketStratergy(t *testing.T) {
-	operatorService, ctx, close := newTestOperator(
-		!marketRepoIsEmpty,
-		tradeRepoIsEmpty,
-		!vaultRepoIsEmpty,
-	)
-	t.Cleanup(close)
-
-	market := Market{
-		BaseAsset:  marketUnspents[0].AssetHash,
-		QuoteAsset: marketUnspents[1].AssetHash,
-	}
-
-	tests := []struct {
-		baseAsset     string
-		quoteAsset    string
-		strategyType  domain.StrategyType
-		expectedError error
-	}{
-		{
-			"",
-			market.QuoteAsset,
-			domain.StrategyTypePluggable,
-			domain.ErrMarketInvalidBaseAsset,
-		},
-		{
-			"invalidasset",
-			market.QuoteAsset,
-			domain.StrategyTypePluggable,
-			domain.ErrMarketInvalidBaseAsset,
-		},
-		{
-			market.QuoteAsset,
-			"",
-			domain.StrategyTypePluggable,
-			domain.ErrMarketInvalidQuoteAsset,
-		},
-		{
-			market.QuoteAsset,
-			"invalidasset",
-			domain.StrategyTypePluggable,
-			domain.ErrMarketInvalidQuoteAsset,
-		},
-		{
-			market.QuoteAsset,
-			"0ddfa690c7b2ba3b8ecee8200da2420fc502f57f8312c83d466b6f8dced8a441",
-			domain.StrategyTypePluggable,
-			ErrMarketNotExist,
-		},
-		{
-			market.BaseAsset,
-			market.QuoteAsset,
-			domain.StrategyTypeUnbalanced,
-			ErrUnknownStrategy,
-		},
-	}
-
-	for _, tt := range tests {
-		err := operatorService.UpdateMarketStrategy(
-			ctx,
-			MarketStrategy{
-				Market: Market{
-					tt.baseAsset,
-					tt.quoteAsset,
-				},
-				Strategy: tt.strategyType,
-			},
-		)
-		assert.Equal(t, tt.expectedError, err)
-	}
+	return application.NewOperatorService(
+		repoManager,
+		explorerSvc,
+		bcListener,
+		marketBaseAsset,
+		marketFee,
+		regtest,
+		feeBalanceThreshold,
+	), nil
 }

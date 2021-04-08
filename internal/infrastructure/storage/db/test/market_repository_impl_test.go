@@ -61,7 +61,7 @@ func TestMarketRepositoryImplementations(t *testing.T) {
 
 			// TODO: uncomment - the following test demonstrate that in case of error,
 			// any change to the db is rolled back. Currently, the transactional
-			// component is not properly implemented for inmemory DbManager and the
+			// component is not properly implemented for inmemory RepoManager and the
 			// test below would fail for te inmemory implementation.
 
 			// t.Run("testWrite_rollback", func(t *testing.T) {
@@ -356,37 +356,29 @@ func createMarketRepositories(t *testing.T) ([]marketRepository, func()) {
 	err := os.Mkdir(datadir, os.ModePerm)
 	require.NoError(t, err)
 
-	inmemoryDBManager := inmemory.NewDbManager()
-	badgerDBManager, err := dbbadger.NewDbManager(datadir, nil)
+	inmemoryDBManager := inmemory.NewRepoManager()
+	badgerDBManager, err := dbbadger.NewRepoManager(datadir, nil)
 	require.NoError(t, err)
 
 	return []marketRepository{
 			{
 				Name:       "badger",
 				DBManager:  badgerDBManager,
-				Repository: newBadgerMarketRepository(badgerDBManager),
+				Repository: badgerDBManager.MarketRepository(),
 			},
 			{
 				Name:       "inmemory",
 				DBManager:  inmemoryDBManager,
-				Repository: newInMemoryMarketRepository(inmemoryDBManager),
+				Repository: inmemoryDBManager.MarketRepository(),
 			},
 		}, func() {
 			os.RemoveAll(datadir)
 		}
 }
 
-func newBadgerMarketRepository(dbmanager *dbbadger.DbManager) domain.MarketRepository {
-	return dbbadger.NewMarketRepositoryImpl(dbmanager)
-}
-
-func newInMemoryMarketRepository(dbmanager *inmemory.DbManager) domain.MarketRepository {
-	return inmemory.NewMarketRepositoryImpl(dbmanager)
-}
-
 type marketRepository struct {
 	Name       string
-	DBManager  ports.DbManager
+	DBManager  ports.RepoManager
 	Repository domain.MarketRepository
 }
 

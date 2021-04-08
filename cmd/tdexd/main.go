@@ -24,6 +24,7 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 
@@ -54,7 +55,7 @@ func main() {
 	}
 
 	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "db")
-	dbManager, err := dbbadger.NewDbManager(dbDir, log.New())
+	repoManager, err := dbbadger.NewRepoManager(dbDir, log.New())
 	if err != nil {
 		log.WithError(err).Panic("error while opening db")
 	}
@@ -66,11 +67,6 @@ func main() {
 	pricesSlippagePercentage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
 	network := config.GetNetwork()
 	feeThreshold := uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
-
-	unspentRepository := dbbadger.NewUnspentRepositoryImpl(dbManager)
-	vaultRepository := dbbadger.NewVaultRepositoryImpl(dbManager)
-	marketRepository := dbbadger.NewMarketRepositoryImpl(dbManager)
-	tradeRepository := dbbadger.NewTradeRepositoryImpl(dbManager)
 
 	explorerSvc, err := config.GetExplorer()
 	if err != nil {
@@ -85,23 +81,15 @@ func main() {
 		ExplorerTokenBurst: config.GetInt(config.CrawlTokenBurst),
 	})
 	blockchainListener := application.NewBlockchainListener(
-		unspentRepository,
-		marketRepository,
-		vaultRepository,
-		tradeRepository,
 		crawlerSvc,
-		explorerSvc,
-		dbManager,
+		repoManager,
 		marketsBaseAsset,
 		feeThreshold,
 		network,
 	)
 
 	traderSvc := application.NewTradeService(
-		marketRepository,
-		tradeRepository,
-		vaultRepository,
-		unspentRepository,
+		repoManager,
 		explorerSvc,
 		blockchainListener,
 		marketsBaseAsset,
@@ -110,10 +98,7 @@ func main() {
 		network,
 	)
 	operatorSvc := application.NewOperatorService(
-		marketRepository,
-		vaultRepository,
-		tradeRepository,
-		unspentRepository,
+		repoManager,
 		explorerSvc,
 		blockchainListener,
 		marketsBaseAsset,
@@ -122,9 +107,7 @@ func main() {
 		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
 	)
 	walletSvc, err := application.NewWalletService(
-		vaultRepository,
-		unspentRepository,
-		marketRepository,
+		repoManager,
 		explorerSvc,
 		blockchainListener,
 		withElementsSvc,
@@ -141,17 +124,17 @@ func main() {
 	operatorAddress := fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
 	// Grpc Server
 	traderGrpcServer := grpc.NewServer(
-		interceptor.UnaryInterceptor(dbManager),
-		interceptor.StreamInterceptor(dbManager),
+		interceptor.UnaryInterceptor(),
+		interceptor.StreamInterceptor(),
 	)
 	operatorGrpcServer := grpc.NewServer(
-		interceptor.UnaryInterceptor(dbManager),
-		interceptor.StreamInterceptor(dbManager),
+		interceptor.UnaryInterceptor(),
+		interceptor.StreamInterceptor(),
 	)
 
-	traderHandler := grpchandler.NewTraderHandler(traderSvc, dbManager)
-	walletHandler := grpchandler.NewWalletHandler(walletSvc, dbManager)
-	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc, dbManager)
+	traderHandler := grpchandler.NewTraderHandler(traderSvc, repoManager)
+	walletHandler := grpchandler.NewWalletHandler(walletSvc, repoManager)
+	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc, repoManager)
 
 	// Register proto implementations on Trader interface
 	pbtrader.RegisterTradeServer(traderGrpcServer, traderHandler)
@@ -174,7 +157,7 @@ func main() {
 	}
 
 	defer stop(
-		dbManager,
+		repoManager,
 		blockchainListener,
 		traderGrpcServer,
 		operatorGrpcServer,
@@ -200,7 +183,7 @@ func main() {
 }
 
 func stop(
-	dbManager *dbbadger.DbManager,
+	repoManager ports.RepoManager,
 	blockchainListener application.BlockchainListener,
 	traderServer *grpc.Server,
 	operatorServer *grpc.Server,
@@ -224,9 +207,7 @@ func stop(
 		time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond,
 	)
 
-	dbManager.Store.Close()
-	dbManager.UnspentStore.Close()
-	dbManager.PriceStore.Close()
+	repoManager.Close()
 	log.Debug("closed connection with database")
 
 	log.Debug("exiting")
