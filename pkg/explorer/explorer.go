@@ -33,7 +33,6 @@ type Transaction interface {
 	Outputs() []*transaction.TxOutput
 	Size() int
 	Weight() int
-	Fee() int
 	Confirmed() bool
 }
 
@@ -49,6 +48,8 @@ type Service interface {
 		addresses []string,
 		blindingKeys [][]byte,
 	) (unspents []Utxo, err error)
+	// GetTransaction fetches the transaction given its hash.
+	GetTransaction(txid string) (tx Transaction, err error)
 	// GetTransactionHex fetches the transaction in hex format given its hash.
 	GetTransactionHex(txid string) (txhex string, err error)
 	// IsTransactionConfirmed returns whether the tx identified by its hash has

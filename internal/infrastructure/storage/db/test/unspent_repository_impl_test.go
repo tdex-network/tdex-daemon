@@ -397,37 +397,29 @@ func createUnspentRepositories(t *testing.T) ([]unspentRepository, func()) {
 	err := os.Mkdir(datadir, os.ModePerm)
 	require.NoError(t, err)
 
-	inmemoryDBManager := inmemory.NewDbManager()
-	badgerDBManager, err := dbbadger.NewDbManager(datadir, nil)
+	inmemoryDBManager := inmemory.NewRepoManager()
+	badgerDBManager, err := dbbadger.NewRepoManager(datadir, nil)
 	require.NoError(t, err)
 
 	return []unspentRepository{
 			{
 				Name:       "badger",
 				DBManager:  badgerDBManager,
-				Repository: newBadgerUnspentRepository(badgerDBManager),
+				Repository: badgerDBManager.UnspentRepository(),
 			},
 			{
 				Name:       "inmemory",
 				DBManager:  inmemoryDBManager,
-				Repository: newInMemoryUnspentRepository(inmemoryDBManager),
+				Repository: inmemoryDBManager.UnspentRepository(),
 			},
 		}, func() {
 			os.RemoveAll(datadir)
 		}
 }
 
-func newBadgerUnspentRepository(dbmanager *dbbadger.DbManager) domain.UnspentRepository {
-	return dbbadger.NewUnspentRepositoryImpl(dbmanager)
-}
-
-func newInMemoryUnspentRepository(dbmanager *inmemory.DbManager) domain.UnspentRepository {
-	return inmemory.NewUnspentRepositoryImpl(dbmanager)
-}
-
 type unspentRepository struct {
 	Name       string
-	DBManager  ports.DbManager
+	DBManager  ports.RepoManager
 	Repository domain.UnspentRepository
 }
 
@@ -572,12 +564,12 @@ func mockUnspent(addr, asset *string, spent, confirmed bool) domain.Unspent {
 		VOut:            uint32(randomIntInRange(0, 15)),
 		Value:           uint64(randomIntInRange(1, 100000000)),
 		AssetHash:       mockedAsset,
-		ValueCommitment: randomString(32),
-		AssetCommitment: randomString(32),
+		ValueCommitment: randomString(33),
+		AssetCommitment: randomString(33),
 		ValueBlinder:    randomBytes(32),
 		AssetBlinder:    randomBytes(32),
 		ScriptPubKey:    make([]byte, 20),
-		Nonce:           make([]byte, 32),
+		Nonce:           make([]byte, 33),
 		RangeProof:      make([]byte, 100),
 		SurjectionProof: make([]byte, 67),
 		Address:         mockedAddress,

@@ -11,22 +11,28 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	log "github.com/sirupsen/logrus"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/timshannon/badgerhold/v2"
 )
 
-// DbManager holds all the badgerhold stores in a single data structure.
-type DbManager struct {
-	Store        *badgerhold.Store
-	PriceStore   *badgerhold.Store
-	UnspentStore *badgerhold.Store
+// RepoManager holds all the badgerhold stores in a single data structure.
+type RepoManager struct {
+	store        *badgerhold.Store
+	priceStore   *badgerhold.Store
+	unspentStore *badgerhold.Store
+
+	marketRepository  domain.MarketRepository
+	unspentRepository domain.UnspentRepository
+	tradeRepository   domain.TradeRepository
+	vaultRepository   domain.VaultRepository
 }
 
-// NewDbManager opens (or creates if not exists) the badger store on disk.
+// NewRepoManager opens (or creates if not exists) the badger store on disk.
 // It expects a base data dir and an optional logger.
 // It creates a dedicated directory for main and prices stores, while the
 // unspent repository lives in memory.
-func NewDbManager(baseDbDir string, logger badger.Logger) (*DbManager, error) {
+func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, error) {
 	mainDb, err := createDb(filepath.Join(baseDbDir, "main"), logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening main db: %w", err)
@@ -42,31 +48,62 @@ func NewDbManager(baseDbDir string, logger badger.Logger) (*DbManager, error) {
 		return nil, fmt.Errorf("opening unspents db: %w", err)
 	}
 
-	return &DbManager{
-		Store:        mainDb,
-		PriceStore:   priceDb,
-		UnspentStore: unspentDb,
+	marketRepo := NewMarketRepositoryImpl(mainDb, priceDb)
+	unspentRepo := NewUnspentRepositoryImpl(unspentDb, mainDb)
+	tradeRepo := NewTradeRepositoryImpl(mainDb)
+	vaultRepo := NewVaultRepositoryImpl(mainDb)
+
+	return &RepoManager{
+		store:             mainDb,
+		priceStore:        priceDb,
+		unspentStore:      unspentDb,
+		marketRepository:  marketRepo,
+		unspentRepository: unspentRepo,
+		tradeRepository:   tradeRepo,
+		vaultRepository:   vaultRepo,
 	}, nil
 }
 
-// NewTransaction implements the DbManager interface
-func (d DbManager) NewTransaction() ports.Transaction {
-	return d.Store.Badger().NewTransaction(true)
+func (d *RepoManager) MarketRepository() domain.MarketRepository {
+	return d.marketRepository
 }
 
-// NewPricesTransaction implements the DbManager interface
-func (d DbManager) NewPricesTransaction() ports.Transaction {
-	return d.PriceStore.Badger().NewTransaction(true)
+func (d *RepoManager) UnspentRepository() domain.UnspentRepository {
+	return d.unspentRepository
 }
 
-// NewUnspentsTransaction implements the DbManager interface
-func (d DbManager) NewUnspentsTransaction() ports.Transaction {
-	return d.UnspentStore.Badger().NewTransaction(true)
+func (d *RepoManager) TradeRepository() domain.TradeRepository {
+	return d.tradeRepository
+}
+
+func (d *RepoManager) VaultRepository() domain.VaultRepository {
+	return d.vaultRepository
+}
+
+func (d *RepoManager) Close() {
+	d.store.Close()
+	d.priceStore.Close()
+	d.unspentStore.Close()
+}
+
+// NewTransaction implements the RepoManager interface
+func (d *RepoManager) NewTransaction() ports.Transaction {
+	return d.store.Badger().NewTransaction(true)
+}
+
+// NewPricesTransaction implements the RepoManager interface
+func (d *RepoManager) NewPricesTransaction() ports.Transaction {
+	return d.priceStore.Badger().NewTransaction(true)
+}
+
+// NewUnspentsTransaction implements the RepoManager interface
+func (d *RepoManager) NewUnspentsTransaction() ports.Transaction {
+	return d.unspentStore.Badger().NewTransaction(true)
 }
 
 // RunTransaction invokes the given handler and retries in case the transaction
 // returns a conflict error
-func (d DbManager) RunTransaction(
+func (d *RepoManager) RunTransaction(
 	ctx context.Context,
 	readOnly bool,
 	handler func(ctx context.Context) (interface{}, error),
@@ -85,7 +122,7 @@ func (d DbManager) RunTransaction(
 
 // RunUnspentsTransaction invokes the given handler and retries in case the
 // unspents transaction returns a conflict error
-func (d DbManager) RunUnspentsTransaction(
+func (d *RepoManager) RunUnspentsTransaction(
 	ctx context.Context,
 	readOnly bool,
 	handler func(ctx context.Context) (interface{}, error),
@@ -105,7 +142,7 @@ func (d DbManager) RunUnspentsTransaction(
 
 // RunPricesTransaction invokes the given handler and retries in case the
 // unspents transaction returns a conflict error
-func (d DbManager) RunPricesTransaction(
+func (d *RepoManager) RunPricesTransaction(
 	ctx context.Context,
 	readOnly bool,
 	handler func(ctx context.Context) (interface{}, error),
@@ -129,7 +166,7 @@ type runTransactionArgs struct {
 	handler  func(ctx context.Context) (interface{}, error)
 }
 
-func (d DbManager) runTransaction(
+func (d *RepoManager) runTransaction(
 	args runTransactionArgs,
 ) (interface{}, error) {
 	for {

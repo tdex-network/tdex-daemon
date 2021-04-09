@@ -365,12 +365,26 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				},
 			)
 
-			feeAmount = EstimateTxSize(
-				len(inputsToAdd)+len(ptx.Inputs),
-				len(outputsToAdd)+len(ptx.Outputs),
-				!anyOutputWithScript(outputsToAdd, lbtcChangeScript),
-				opts.MilliSatsPerBytes,
+			inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+				outScriptTypes, outAuxiliaryRedeemScriptSize := extractScriptTypesFromPset(ptx)
+			// expect to add 1 input more to pay for network fees
+			for i := 0; i < len(inputsToAdd)+1; i++ {
+				inScriptTypes = append(inScriptTypes, P2WPKH)
+			}
+			for range outputsToAdd {
+				outScriptTypes = append(outScriptTypes, P2WPKH)
+			}
+			// in case there's no LBTC change, let's expect to add 1 output more.
+			if !anyOutputWithScript(outputsToAdd, lbtcChangeScript) {
+				outScriptTypes = append(outScriptTypes, P2WPKH)
+			}
+			txSize := EstimateTxSize(
+				inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+				outScriptTypes, outAuxiliaryRedeemScriptSize,
 			)
+
+			millisatsPerByte := float64(opts.MilliSatsPerBytes) / 1000
+			feeAmount = uint64(float64(txSize) * millisatsPerByte)
 
 			// if a LBTC change output already exists and its value covers the
 			// estimated fee amount, it's enough to add the fee output and updating

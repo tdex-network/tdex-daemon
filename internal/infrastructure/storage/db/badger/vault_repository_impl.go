@@ -17,13 +17,11 @@ const (
 )
 
 type vaultRepositoryImpl struct {
-	db *DbManager
+	store *badgerhold.Store
 }
 
-func NewVaultRepositoryImpl(db *DbManager) domain.VaultRepository {
-	return vaultRepositoryImpl{
-		db: db,
-	}
+func NewVaultRepositoryImpl(store *badgerhold.Store) domain.VaultRepository {
+	return vaultRepositoryImpl{store}
 }
 
 func (v vaultRepositoryImpl) GetOrCreateVault(
@@ -200,9 +198,9 @@ func (v vaultRepositoryImpl) insertVault(
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = v.db.Store.TxInsert(tx, vaultKey, &vault)
+		err = v.store.TxInsert(tx, vaultKey, &vault)
 	} else {
-		err = v.db.Store.Insert(vaultKey, &vault)
+		err = v.store.Insert(vaultKey, &vault)
 	}
 	if err != nil {
 		if err != badgerhold.ErrKeyExists {
@@ -219,9 +217,9 @@ func (v vaultRepositoryImpl) getVault(ctx context.Context) (*domain.Vault, error
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = v.db.Store.TxGet(tx, vaultKey, &vault)
+		err = v.store.TxGet(tx, vaultKey, &vault)
 	} else {
-		err = v.db.Store.Get(vaultKey, &vault)
+		err = v.store.Get(vaultKey, &vault)
 	}
 
 	if err != nil {
@@ -240,7 +238,7 @@ func (v vaultRepositoryImpl) updateVault(
 ) error {
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		return v.db.Store.TxUpdate(tx, vaultKey, vault)
+		return v.store.TxUpdate(tx, vaultKey, vault)
 	}
-	return v.db.Store.Update(vaultKey, vault)
+	return v.store.Update(vaultKey, vault)
 }

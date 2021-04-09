@@ -17,13 +17,11 @@ const (
 var tradeTablePrefixKey = []byte(TradeBadgerholdKeyPrefix)
 
 type tradeRepositoryImpl struct {
-	db *DbManager
+	store *badgerhold.Store
 }
 
-func NewTradeRepositoryImpl(db *DbManager) domain.TradeRepository {
-	return tradeRepositoryImpl{
-		db: db,
-	}
+func NewTradeRepositoryImpl(store *badgerhold.Store) domain.TradeRepository {
+	return tradeRepositoryImpl{store}
 }
 
 func (t tradeRepositoryImpl) GetOrCreateTrade(
@@ -145,9 +143,12 @@ func (t tradeRepositoryImpl) findTrades(
 	var err error
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = t.db.Store.TxFind(tx, &tr, query)
+		err = t.store.TxFind(tx, &tr, query)
 	} else {
-		err = t.db.Store.Find(&tr, query)
+		err = t.store.Find(&tr, query)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	trades := make([]*domain.Trade, len(tr), len(tr))
@@ -156,7 +157,7 @@ func (t tradeRepositoryImpl) findTrades(
 		trades[i] = &trade
 	}
 
-	return trades, err
+	return trades, nil
 }
 
 func (t tradeRepositoryImpl) getTrade(
@@ -167,9 +168,9 @@ func (t tradeRepositoryImpl) getTrade(
 	var err error
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = t.db.Store.TxGet(tx, ID, &trade)
+		err = t.store.TxGet(tx, ID, &trade)
 	} else {
-		err = t.db.Store.Get(ID, &trade)
+		err = t.store.Get(ID, &trade)
 	}
 	if err != nil {
 		if err == badgerhold.ErrNotFound {
@@ -188,9 +189,9 @@ func (t tradeRepositoryImpl) updateTrade(
 ) error {
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		return t.db.Store.TxUpdate(tx, ID, trade)
+		return t.store.TxUpdate(tx, ID, trade)
 	}
-	return t.db.Store.Update(ID, trade)
+	return t.store.Update(ID, trade)
 }
 
 func (t tradeRepositoryImpl) insertTrade(
@@ -200,9 +201,9 @@ func (t tradeRepositoryImpl) insertTrade(
 	var err error
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = t.db.Store.TxInsert(tx, trade.ID, &trade)
+		err = t.store.TxInsert(tx, trade.ID, &trade)
 	} else {
-		err = t.db.Store.Insert(trade.ID, &trade)
+		err = t.store.Insert(trade.ID, &trade)
 	}
 	if err != nil {
 		if err != badgerhold.ErrKeyExists {
@@ -213,35 +214,6 @@ func (t tradeRepositoryImpl) insertTrade(
 }
 
 func (t tradeRepositoryImpl) getAllTrades(ctx context.Context) []*domain.Trade {
-	scan := func(tx *badger.Txn) []*domain.Trade {
-		trades := make([]*domain.Trade, 0)
-
-		iter := badger.DefaultIteratorOptions
-		iter.PrefetchValues = false
-		it := tx.NewIterator(iter)
-		defer it.Close()
-
-		for it.Seek(tradeTablePrefixKey); it.ValidForPrefix(tradeTablePrefixKey); it.Next() {
-			item := it.Item()
-			data, _ := item.ValueCopy(nil)
-			var trade domain.Trade
-			err := badgerhold.DefaultDecode(data, &trade)
-			if err == nil {
-				trades = append(trades, &trade)
-			}
-		}
-		return trades
-	}
-
-	if ctx.Value("tx") != nil {
-		tx := ctx.Value("tx").(*badger.Txn)
-		return scan(tx)
-	}
-
-	var trades []*domain.Trade
-	t.db.Store.Badger().View(func(tx *badger.Txn) error {
-		trades = scan(tx)
-		return nil
-	})
+	trades, _ := t.findTrades(ctx, nil)
 	return trades
 }

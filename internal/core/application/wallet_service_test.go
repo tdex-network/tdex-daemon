@@ -1,254 +1,336 @@
-package application
+package application_test
 
 import (
-	"fmt"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"math/big"
+	"os"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
+	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
+	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/network"
 )
 
-const restoreWallet = true
-
-func TestNewWalletService(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
+var (
+	regtest                    = &network.Regtest
+	marketBaseAsset            = regtest.AssetID
+	marketFee           int64  = 25
+	feeBalanceThreshold uint64 = 5000
+	restore                    = true
+	passphrase                 = "passphrase"
+	mnemonic                   = []string{
+		"curious", "alien", "peanut", "protect", "capable", "charge", "recipe", "hub",
+		"volume", "deal", "math", "make", "suggest", "bleak", "seat", "swim",
+		"into", "save", "hint", "wood", "pioneer", "ball", "decline", "universe",
 	}
+	mnemonicStr       = strings.Join(mnemonic, " ")
+	encryptedMnemonic = "RF0mJIJzHqokOgSD8fbHSy9YpN56qTZAaMxRQD6DSH27Q1Y7npNy4wuznaBbJL3s6j7HkmBOEGLpj8gf9PHo4cbv+6uIStF8DE0wTNxSu8AJKPQDbYi/lx59mhIkisL77Zx2cZQKFrFvTGHw5En8Zt8eKgFSnrM1goZZbsU9oe5C6MRK8zLdmVau9ipTN3nhTFMfTR1KsQ5OLhXWpjIdezrdb1LmN/7I/CU3Ts81/+R5fefzaa4vB+3g02TgPJmcvr1Yg53gjfwBpUVtrK4naQ=="
+	ctx               = context.Background()
+)
 
-	ws, _, close := newTestWallet(nil)
-	t.Cleanup(close)
+func TestMain(m *testing.M) {
+	domain.EncrypterManager = mockCryptoHandler{
+		encrypt: func(_, _ string) (string, error) {
+			return encryptedMnemonic, nil
+		},
+		decrypt: func(_, _ string) (string, error) {
+			return mnemonicStr, nil
+		},
+	}
+	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
-	assert.Equal(t, false, ws.walletInitialized)
-	assert.Equal(t, false, ws.walletIsSyncing)
+	os.Exit(m.Run())
 }
 
-func TestGenSeed(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
+func TestInitWallet(t *testing.T) {
+	t.Run("wallet_from_scratch", func(t *testing.T) {
+		t.Parallel()
 
-	walletSvc, ctx, close := newTestWallet(nil)
-	t.Cleanup(close)
+		walletSvc, err := newWalletService()
+		require.NoError(t, err)
+		require.NotNil(t, walletSvc)
 
-	seed, err := walletSvc.GenSeed(ctx)
+		chReplies := make(chan *application.InitWalletReply)
+		chErr := make(chan error, 1)
+
+		go walletSvc.InitWallet(
+			ctx,
+			mnemonic,
+			passphrase,
+			!restore,
+			chReplies,
+			chErr,
+		)
+
+		replies, err := listenToReplies(chReplies, chErr)
+		require.NoError(t, err)
+		require.Len(t, replies, 0)
+	})
+
+	t.Run("wallet_from_restart", func(t *testing.T) {
+		t.Parallel()
+
+		walletSvc, err := newWalletServiceRestart()
+		require.NoError(t, err)
+		require.NotNil(t, walletSvc)
+
+		// No need to call InitWallet when restarting a wallet service!
+		// This is the only case where we can call directly Unlock because the
+		// service doesn't make any async ops.
+		err = walletSvc.UnlockWallet(ctx, passphrase)
+		require.NoError(t, err)
+	})
+
+	t.Run("wallet_from_restore", func(t *testing.T) {
+		t.Parallel()
+
+		walletSvc, err := newWalletServiceRestore()
+		require.NoError(t, err)
+		require.NotNil(t, walletSvc)
+
+		chReplies := make(chan *application.InitWalletReply)
+		chErr := make(chan error, 1)
+
+		go walletSvc.InitWallet(
+			ctx,
+			mnemonic,
+			passphrase,
+			restore,
+			chReplies,
+			chErr,
+		)
+
+		replies, err := listenToReplies(chReplies, chErr)
+		require.NoError(t, err)
+		require.Greater(t, len(replies), 0)
+	})
+}
+
+func newWalletService() (application.WalletService, error) {
+	repoManager, explorerSvc, bcListener := newServices()
+
+	return application.NewWalletService(
+		repoManager,
+		explorerSvc,
+		bcListener,
+		false,
+		regtest,
+		marketFee,
+		marketBaseAsset,
+	)
+}
+
+// When the wallet service is instatiated, it automatically takes care of
+// restoring the utxo set if it finds a vault in the Vault repository.
+// This function creates a new vault in the repo before passing the db manager
+// down to the wallet service to simulate the described situation.
+func newWalletServiceRestart() (application.WalletService, error) {
+	repoManager, explorerSvc, bcListener := newServices()
+	v, err := repoManager.VaultRepository().GetOrCreateVault(
+		ctx, mnemonic, passphrase, regtest,
+	)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
-	assert.Equal(t, 24, len(seed))
+
+	info := v.AllDerivedAddressesInfo()
+	addresses, keys := info.AddressesAndKeys()
+	explorerSvc.(*mockExplorer).
+		On("GetUnspentsForAddresses", addresses, keys).
+		Return(randomUtxos(addresses), nil)
+
+	return application.NewWalletService(
+		repoManager,
+		explorerSvc,
+		bcListener,
+		false,
+		regtest,
+		marketFee,
+		marketBaseAsset,
+	)
 }
 
-func TestInitWalletWrongSeed(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
+// Restoring a wallet is an operation that depends almost entirely on the
+// explorer service. This function mocks explorer's responses in order to
+// emulate an already used wallet with some used Fee account's addresses.
+func newWalletServiceRestore() (application.WalletService, error) {
+	repoManager, explorerSvc, bcListener := newServices()
+
+	v, _ := domain.NewVault(mnemonic, passphrase, regtest)
+	accountIndexes := []int{
+		domain.FeeAccount,
+		domain.WalletAccount,
+		domain.MarketAccountStart,
+	}
+	usedAddresses := make([]string, 0)
+	usedKeys := make([][]byte, 0)
+	unusedAddresses := make([]string, 0)
+	unusedKeys := make([][]byte, 0)
+	for i := range accountIndexes {
+		accountIndex := accountIndexes[i]
+		for j := 0; j < 22; j++ {
+			v.Unlock(passphrase)
+			extInfo, _ := v.DeriveNextExternalAddressForAccount(accountIndex)
+			v.Unlock(passphrase)
+			inInfo, _ := v.DeriveNextInternalAddressForAccount(accountIndex)
+			if j < 2 && accountIndex < domain.WalletAccount {
+				usedAddresses = append(usedAddresses, extInfo.Address)
+				usedAddresses = append(usedAddresses, inInfo.Address)
+				usedKeys = append(usedKeys, extInfo.BlindingKey)
+				usedKeys = append(usedKeys, inInfo.BlindingKey)
+			} else {
+				unusedAddresses = append(unusedAddresses, extInfo.Address)
+				unusedAddresses = append(unusedAddresses, inInfo.Address)
+				unusedKeys = append(unusedKeys, extInfo.BlindingKey)
+				unusedKeys = append(unusedKeys, inInfo.BlindingKey)
+			}
+		}
 	}
 
-	walletSvc, ctx, close := newTestWallet(nil)
-	t.Cleanup(close)
+	for i, addr := range usedAddresses {
+		key := usedKeys[i]
+		explorerSvc.(*mockExplorer).
+			On("GetTransactionsForAddress", addr, key).
+			Return(randomTxs(addr), nil)
+		explorerSvc.(*mockExplorer).
+			On("GetUnspents", addr, [][]byte{key}).
+			Return(randomUtxos([]string{addr}), nil)
+	}
 
-	wrongSeed := []string{"test"}
-	chReplies := make(chan *InitWalletReply)
-	chErr := make(chan error, 1)
-	walletSvc.InitWallet(
-		ctx,
-		wrongSeed,
-		"pass",
-		!restoreWallet,
-		chReplies,
-		chErr,
+	// fmt.Printf("\nUNUSED\n")
+	for i, addr := range unusedAddresses {
+		key := unusedKeys[i]
+		// fmt.Println(addr)
+		explorerSvc.(*mockExplorer).
+			On("GetTransactionsForAddress", addr, key).
+			Return(nil, nil)
+	}
+
+	return application.NewWalletService(
+		repoManager,
+		explorerSvc,
+		bcListener,
+		false,
+		regtest,
+		marketFee,
+		marketBaseAsset,
 	)
-	err := <-chErr
-	assert.Error(t, err)
 }
 
-func TestInitEmptyWallet(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	walletSvc, ctx, close := newTestWallet(emptyWallet)
-	t.Cleanup(close)
-
-	// If the vault repository is not empty when the wallet service is
-	// instantiated, this behaves like it  it was shut down and restarted again.
-	// Therefore, the service restores its previous state and "marks" the wallet
-	// as initialized by setting the internal walletInitialized bool field to
-	// true. InitWallet, on its side, does not perform any operation if the
-	// wallet looks already initialized.
-	// In this test and in the next one, the walletInitialized field is manually
-	// set to false because a mocked Vault repository is used that would cause
-	// the bool field to be set to true when at service instantiation.
-	walletSvc.walletInitialized = false
-
-	w, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: emptyWallet.mnemonic,
+func newServices() (
+	ports.RepoManager,
+	explorer.Service,
+	application.BlockchainListener,
+) {
+	repoManager := inmemory.NewRepoManager()
+	explorerSvc := &mockExplorer{}
+	crawlerSvc := crawler.NewService(crawler.Opts{
+		ExplorerSvc:        explorerSvc,
+		ExplorerLimit:      10,
+		ExplorerTokenBurst: 1,
+		CrawlerInterval:    1000,
 	})
-	firstWalletAccountAddr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
-		DerivationPath: "1'/0/0",
-		Network:        &network.Regtest,
-	})
-
-	chReplies := make(chan *InitWalletReply)
-	chErr := make(chan error, 1)
-	go walletSvc.InitWallet(
-		ctx,
-		emptyWallet.mnemonic,
-		emptyWallet.password,
-		!restoreWallet,
-		chReplies,
-		chErr,
+	bcListener := application.NewBlockchainListener(
+		crawlerSvc,
+		repoManager,
+		marketBaseAsset,
+		feeBalanceThreshold,
+		regtest,
 	)
+	return repoManager, explorerSvc, bcListener
+}
 
+func listenToReplies(
+	chReplies chan *application.InitWalletReply,
+	chErr chan error,
+) ([]*application.InitWalletReply, error) {
+	replies := make([]*application.InitWalletReply, 0)
 	for {
 		select {
 		case err := <-chErr:
-			t.Fatal(err)
+			close(chErr)
+			close(chReplies)
+			return nil, err
 		case reply := <-chReplies:
 			if reply == nil {
-				break
+				close(chErr)
+				close(chReplies)
+				return replies, nil
 			}
-			fmt.Println(reply)
+			replies = append(replies, reply)
 		}
-		break
 	}
-
-	if err := walletSvc.UnlockWallet(ctx, emptyWallet.password); err != nil {
-		t.Fatal(err)
-	}
-	addr, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, firstWalletAccountAddr, addr)
 }
 
-func TestInitUsedWallet(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
+func randomUtxos(addresses []string) []explorer.Utxo {
+	uLen := len(addresses)
+	utxos := make([]explorer.Utxo, uLen, uLen)
+	for i, addr := range addresses {
+		script, _ := address.ToOutputScript(addr)
+		utxos[i] = esplora.NewWitnessUtxo(
+			randomHex(32),           //hash
+			randomVout(),            // index
+			randomValue(),           // value
+			randomHex(32),           // asset
+			randomValueCommitment(), // valuecommitment
+			randomAssetCommitment(), // assetcommitment
+			randomBytes(32),         // valueblinder
+			randomBytes(32),         // assetblinder
+			script,
+			randomBytes(32),  // nonce
+			randomBytes(100), // rangeproof
+			randomBytes(100), // surjectionproof
+			true,             // confirmed
+		)
 	}
-
-	walletSvc, ctx, close := newTestWallet(usedWallet)
-	walletSvc.walletInitialized = false
-	t.Cleanup(close)
-
-	w, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
-		SigningMnemonic: usedWallet.mnemonic,
-	})
-	mockedLastDerivedAddr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
-		DerivationPath: "1'/0/15",
-		Network:        &network.Regtest,
-	})
-	if _, err := walletSvc.explorerService.Faucet(mockedLastDerivedAddr); err != nil {
-		t.Fatal(err)
-	}
-	firstWalletAccountAddr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
-		DerivationPath: "1'/0/16",
-		Network:        &network.Regtest,
-	})
-
-	chReplies := make(chan *InitWalletReply)
-	chErr := make(chan error, 1)
-	go walletSvc.InitWallet(
-		ctx,
-		usedWallet.mnemonic,
-		usedWallet.password,
-		restoreWallet,
-		chReplies,
-		chErr,
-	)
-
-	for {
-		select {
-		case err := <-chErr:
-			t.Fatal(err)
-		case reply := <-chReplies:
-			if reply == nil {
-				break
-			}
-			fmt.Println(reply.Data)
-		}
-		break
-	}
-
-	if err := walletSvc.UnlockWallet(ctx, usedWallet.password); err != nil {
-		t.Fatal(err)
-	}
-	addr, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, firstWalletAccountAddr, addr)
+	return utxos
 }
 
-func TestWalletUnlock(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
-	t.Cleanup(close)
-
-	address, blindingKey, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
-	assert.Equal(t, domain.ErrVaultMustBeUnlocked, err)
-
-	err = walletSvc.UnlockWallet(ctx, dryLockedWallet.password)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	address, blindingKey, err = walletSvc.GenerateAddressAndBlindingKey(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, true, len(address) > 0)
-	assert.Equal(t, true, len(blindingKey) > 0)
+func randomTxs(addr string) []explorer.Transaction {
+	return []explorer.Transaction{&mockTransaction{addr}}
 }
 
-func TestWalletChangePass(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	walletSvc, ctx, close := newTestWallet(dryLockedWallet)
-	t.Cleanup(close)
-
-	err := walletSvc.ChangePassword(ctx, "wrongPass", "newPass")
-	assert.Equal(t, domain.ErrVaultInvalidPassphrase, err)
-
-	err = walletSvc.ChangePassword(ctx, dryLockedWallet.password, "newPass")
-	assert.NoError(t, err)
-
-	err = walletSvc.UnlockWallet(ctx, dryLockedWallet.password)
-	assert.Equal(t, wallet.ErrInvalidPassphrase, err)
+func randomValueCommitment() string {
+	c := randomBytes(32)
+	c[0] = 9
+	return hex.EncodeToString(c)
 }
 
-func TestGenerateAddressAndWalletBalance(t *testing.T) {
-	walletSvc, ctx, close := newTestWallet(dryWallet)
-	t.Cleanup(close)
+func randomAssetCommitment() string {
+	c := randomBytes(32)
+	c[0] = 10
+	return hex.EncodeToString(c)
+}
 
-	address, _, err := walletSvc.GenerateAddressAndBlindingKey(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+func randomHex(len int) string {
+	return hex.EncodeToString(randomBytes(len))
+}
 
-	_, err = walletSvc.explorerService.Faucet(address)
-	if err != nil {
-		t.Fatal(err)
-	}
+func randomVout() uint32 {
+	return uint32(randomIntInRange(0, 15))
+}
 
-	time.Sleep(5 * time.Second)
+func randomValue() uint64 {
+	return uint64(randomIntInRange(1, 100000000))
+}
 
-	balance, err := walletSvc.GetWalletBalance(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+func randomBytes(len int) []byte {
+	b := make([]byte, len)
+	rand.Read(b)
+	return b
+}
 
-	assert.Equal(
-		t,
-		true,
-		int(balance[network.Regtest.AssetID].ConfirmedBalance) >= 100000000,
-	)
+func randomIntInRange(min, max int) int {
+	n, _ := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	return int(int(n.Int64())) + min
 }

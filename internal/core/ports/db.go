@@ -1,9 +1,20 @@
 package ports
 
-import "context"
+import (
+	"context"
 
-// DbManager interface defines the methods for swap, price and unspent.
-type DbManager interface {
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+)
+
+// RepoManager interface defines the methods for swap, price and unspent.
+type RepoManager interface {
+	VaultRepository() domain.VaultRepository
+	MarketRepository() domain.MarketRepository
+	UnspentRepository() domain.UnspentRepository
+	TradeRepository() domain.TradeRepository
+
+	Close()
+
 	NewTransaction() Transaction
 	NewPricesTransaction() Transaction
 	NewUnspentsTransaction() Transaction

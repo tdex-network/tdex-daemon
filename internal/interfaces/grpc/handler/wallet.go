@@ -14,24 +14,24 @@ import (
 
 type walletHandler struct {
 	pb.UnimplementedWalletServer
-	walletSvc application.WalletService
-	dbManager ports.DbManager
+	walletSvc   application.WalletService
+	repoManager ports.RepoManager
 }
 
 func NewWalletHandler(
 	walletSvc application.WalletService,
-	dbManager ports.DbManager,
+	repoManager ports.RepoManager,
 ) pb.WalletServer {
-	return newWalletHandler(walletSvc, dbManager)
+	return newWalletHandler(walletSvc, repoManager)
 }
 
 func newWalletHandler(
 	walletSvc application.WalletService,
-	dbManager ports.DbManager,
+	repoManager ports.RepoManager,
 ) *walletHandler {
 	return &walletHandler{
-		walletSvc: walletSvc,
-		dbManager: dbManager,
+		walletSvc:   walletSvc,
+		repoManager: repoManager,
 	}
 }
 
@@ -152,7 +152,7 @@ func (w walletHandler) unlockWallet(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := w.dbManager.RunTransaction(
+	res, err := w.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -183,7 +183,7 @@ func (w walletHandler) changePassword(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := w.dbManager.RunTransaction(
+	res, err := w.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -209,7 +209,7 @@ func (w walletHandler) walletAddress(
 	reqCtx context.Context,
 	req *pb.WalletAddressRequest,
 ) (*pb.WalletAddressReply, error) {
-	res, err := w.dbManager.RunTransaction(
+	res, err := w.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -235,7 +235,7 @@ func (w walletHandler) walletBalance(
 	reqCtx context.Context,
 	req *pb.WalletBalanceRequest,
 ) (*pb.WalletBalanceReply, error) {
-	res, err := w.dbManager.RunTransaction(
+	res, err := w.repoManager.RunTransaction(
 		reqCtx,
 		readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {
@@ -286,7 +286,7 @@ func (w walletHandler) sendToMany(
 		outputs = append(outputs, output)
 	}
 
-	res, err := w.dbManager.RunTransaction(
+	res, err := w.repoManager.RunTransaction(
 		reqCtx,
 		!readOnlyTx,
 		func(ctx context.Context) (interface{}, error) {

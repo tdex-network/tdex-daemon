@@ -6,11 +6,13 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-bip39"
+	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/slip77"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -20,9 +22,6 @@ const (
 	// MaxHardenedValue is the max value for hardened indexes of BIP32
 	// derivation paths
 	MaxHardenedValue = math.MaxUint32 - hdkeychain.HardenedKeyStart
-	// MinRelayFee is the minimum fee amount that the Liquid miners accept to
-	// broadcast the transaction
-	MinRelayFee = 650
 )
 
 func generateMnemonic(entropySize int) ([]string, error) {
@@ -103,73 +102,6 @@ func getRemainingUnspents(unspents, unspentsToRemove []explorer.Utxo) []explorer
 	return remainingUnspents
 }
 
-func EstimateTxSize(
-	numInputs,
-	numOutputs int,
-	withChange bool,
-	milliSatsPerBytes int,
-) uint64 {
-	satsPerBytes := float64(milliSatsPerBytes) / 1000
-	baseSize := calcTxSize(
-		false, withChange,
-		numInputs, numOutputs,
-	)
-	totalSize := calcTxSize(
-		true, withChange,
-		numInputs, numOutputs,
-	)
-	weight := baseSize*3 + totalSize
-	vsize := (weight + 3) / 4
-
-	size := uint64(float64(vsize) * satsPerBytes)
-	if size < MinRelayFee {
-		return MinRelayFee
-	}
-	return size
-}
-
-func calcTxSize(withWitness, withChange bool, numInputs, numOutputs int) int {
-	inputsSize := calcInputsSize(withWitness, numInputs)
-	outputsSize := calcOutputsSize(withWitness, withChange, numOutputs)
-
-	return 9 +
-		varIntSerializeSize(uint64(numInputs)) +
-		varIntSerializeSize(uint64(numOutputs)) +
-		inputsSize +
-		outputsSize
-}
-
-func calcInputsSize(withWitness bool, numInputs int) int {
-	// prevout hash & index for each input
-	size := (32 + 8) * numInputs
-	if withWitness {
-		// scriptsig + pubkey per each witness of all inputs
-		size += numInputs * (72 + 33)
-	}
-	return size
-}
-
-func calcOutputsSize(withWitness, withChange bool, numOutputs int) int {
-	// assetcommitment, valuecommitment, nonce
-	baseOutputSize := 33 + 33 + 33
-	size := baseOutputSize * numOutputs
-	if withWitness {
-		// rangeproof & surjection proof
-		size += (4174 + 67) * numOutputs
-	}
-
-	if withChange {
-		size += baseOutputSize
-		if withWitness {
-			size += 4174 + 67
-		}
-	}
-
-	// fee asset, fee nonce, fee amount
-	size += 33 + 1 + 9
-	return size
-}
-
 func varIntSerializeSize(val uint64) int {
 	// The value is small enough to be represented by itself, so it's
 	// just 1 byte.
@@ -227,4 +159,89 @@ func addInsAndOutsToPset(
 	}
 
 	return ptx.ToBase64()
+}
+
+func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int, []int) {
+	inScriptTypes := make([]int, len(ptx.Inputs), len(ptx.Inputs))
+	inAuxiliaryRedeemScriptSize := make([]int, 0)
+	inAuxiliaryWitnessSize := make([]int, 0)
+	for i, in := range ptx.Inputs {
+		var prevout *transaction.TxOutput
+		if in.WitnessUtxo != nil {
+			prevout = in.WitnessUtxo
+		} else {
+			prevoutIndex := ptx.UnsignedTx.Inputs[i].Index
+			prevout = in.NonWitnessUtxo.Outputs[prevoutIndex]
+		}
+
+		sType := address.GetScriptType(prevout.Script)
+		switch sType {
+		case address.P2ShScript:
+			if in.WitnessScript != nil {
+				inScriptTypes[i] = P2SH_P2WSH
+				// redeem script is treated as a multisig one. In case it's something
+				// different, it is treated as a singlesig instead.
+				m, _, _ := txscript.CalcMultiSigStats(in.RedeemScript)
+				if m <= 0 {
+					m = 1
+				}
+				scriptLen := len(in.RedeemScript)
+				scriptSize := 1 + (1+72)*m + 1 + varIntSerializeSize(uint64(scriptLen)) + scriptLen
+				inAuxiliaryWitnessSize = append(inAuxiliaryWitnessSize, scriptSize)
+			} else if in.RedeemScript != nil {
+				inScriptTypes[i] = P2SH_P2WPKH
+			}
+			break
+		case address.P2WpkhScript:
+			inScriptTypes[i] = P2WPKH
+			break
+		case address.P2WshScript:
+			inScriptTypes[i] = P2WSH
+			scriptSize := calcWitnessSizeFromRedeemScript(in.RedeemScript)
+			inAuxiliaryWitnessSize = append(inAuxiliaryWitnessSize, scriptSize)
+			break
+		case address.P2PkhScript:
+			inScriptTypes[i] = P2PKH
+			break
+		case address.P2MultiSigScript:
+			inScriptTypes[i] = P2MS
+			scriptSize := calcWitnessSizeFromRedeemScript(in.RedeemScript)
+			inAuxiliaryRedeemScriptSize = append(inAuxiliaryRedeemScriptSize, scriptSize)
+			break
+		}
+	}
+
+	outScriptTypes := make([]int, len(ptx.Outputs), len(ptx.Outputs))
+	outAuxiliaryRedeemScriptSize := make([]int, 0)
+	for i, out := range ptx.UnsignedTx.Outputs {
+		sType := address.GetScriptType(out.Script)
+		switch sType {
+		case address.P2PkhScript:
+			outScriptTypes[i] = P2PKH
+		case address.P2MultiSigScript:
+			outScriptTypes[i] = P2MS
+			scriptLen := len(out.Script)
+			scriptSize := varIntSerializeSize(uint64(scriptLen)) + scriptLen
+			outAuxiliaryRedeemScriptSize = append(outAuxiliaryRedeemScriptSize, scriptSize)
+		case address.P2WpkhScript:
+			outScriptTypes[i] = P2WPKH
+		case address.P2WshScript:
+			outScriptTypes[i] = P2WSH
+		}
+	}
+
+	return inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+		outScriptTypes, outAuxiliaryRedeemScriptSize
+}
+
+func calcWitnessSizeFromRedeemScript(script []byte) int {
+	// redeem script is treated as a multisig one. In case it's something
+	// different, it is treated as a singlesig instead.
+	m, _, _ := txscript.CalcMultiSigStats(script)
+	if m <= 0 {
+		m = 1
+	}
+	scriptLen := len(script)
+	scriptSize := 1 + (1+72)*m + 1 + varIntSerializeSize(uint64(scriptLen)) + scriptLen
+	return scriptSize
 }

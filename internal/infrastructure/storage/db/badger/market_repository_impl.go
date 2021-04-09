@@ -12,14 +12,13 @@ import (
 )
 
 type marketRepositoryImpl struct {
-	db *DbManager
+	store      *badgerhold.Store
+	priceStore *badgerhold.Store
 }
 
 // NewMarketRepositoryImpl initialize a badger implementation of the domain.MarketRepository
-func NewMarketRepositoryImpl(db *DbManager) domain.MarketRepository {
-	return marketRepositoryImpl{
-		db: db,
-	}
+func NewMarketRepositoryImpl(store, priceStore *badgerhold.Store) domain.MarketRepository {
+	return marketRepositoryImpl{store, priceStore}
 }
 
 func (m marketRepositoryImpl) GetOrCreateMarket(
@@ -225,9 +224,9 @@ func (m marketRepositoryImpl) insertMarket(
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = m.db.Store.TxInsert(tx, accountIndex, market)
+		err = m.store.TxInsert(tx, accountIndex, market)
 	} else {
-		err = m.db.Store.Insert(accountIndex, market)
+		err = m.store.Insert(accountIndex, market)
 	}
 	if err != nil {
 		if err != badgerhold.ErrKeyExists {
@@ -253,9 +252,9 @@ func (m marketRepositoryImpl) getMarket(
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = m.db.Store.TxGet(tx, accountIndex, &market)
+		err = m.store.TxGet(tx, accountIndex, &market)
 	} else {
-		err = m.db.Store.Get(accountIndex, &market)
+		err = m.store.Get(accountIndex, &market)
 	}
 	if err != nil {
 		if err == badgerhold.ErrNotFound {
@@ -290,9 +289,9 @@ func (m marketRepositoryImpl) updateMarket(
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = m.db.Store.TxUpdate(tx, accountIndex, market)
+		err = m.store.TxUpdate(tx, accountIndex, market)
 	} else {
-		err = m.db.Store.Update(accountIndex, market)
+		err = m.store.Update(accountIndex, market)
 	}
 
 	if err != nil {
@@ -311,9 +310,9 @@ func (m marketRepositoryImpl) findMarkets(
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = m.db.Store.TxFind(tx, &markets, query)
+		err = m.store.TxFind(tx, &markets, query)
 	} else {
-		err = m.db.Store.Find(&markets, query)
+		err = m.store.Find(&markets, query)
 	}
 	for i, mkt := range markets {
 		// Let's get the price from PriceStore
@@ -336,9 +335,9 @@ func (m marketRepositoryImpl) getPriceByAccountIndex(ctx context.Context, accoun
 
 	if ctx.Value("ptx") != nil {
 		tx := ctx.Value("ptx").(*badger.Txn)
-		err = m.db.Store.TxGet(tx, accountIndex, &prices)
+		err = m.store.TxGet(tx, accountIndex, &prices)
 	} else {
-		err = m.db.PriceStore.Get(accountIndex, &prices)
+		err = m.priceStore.Get(accountIndex, &prices)
 	}
 
 	if err != nil {
@@ -351,13 +350,13 @@ func (m marketRepositoryImpl) getPriceByAccountIndex(ctx context.Context, accoun
 func (m marketRepositoryImpl) updatePriceByAccountIndex(ctx context.Context, accountIndex int, prices domain.Prices) (err error) {
 	if ctx.Value("ptx") != nil {
 		tx := ctx.Value("ptx").(*badger.Txn)
-		err = m.db.Store.TxUpsert(
+		err = m.store.TxUpsert(
 			tx,
 			accountIndex,
 			prices,
 		)
 	} else {
-		err = m.db.PriceStore.Upsert(
+		err = m.priceStore.Upsert(
 			accountIndex,
 			prices,
 		)
@@ -387,9 +386,9 @@ func (m marketRepositoryImpl) DeleteMarket(
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = m.db.Store.TxDelete(tx, accountIndex, domain.Market{})
+		err = m.store.TxDelete(tx, accountIndex, domain.Market{})
 	} else {
-		err = m.db.Store.Delete(accountIndex, domain.Market{})
+		err = m.store.Delete(accountIndex, domain.Market{})
 	}
 	if err != nil && err != badgerhold.ErrNotFound {
 		return err

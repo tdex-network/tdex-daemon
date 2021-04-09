@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/pset"
 )
 
@@ -17,14 +18,14 @@ const (
 	DefaultBlindingAttempts = 4
 )
 
-// BlindTransactionOpts is the struct given to BlindTransaction method
-type BlindTransactionOpts struct {
+// BlindTransactionWithKeysOpts is the struct given to BlindTransactionWithKeys method
+type BlindTransactionWithKeysOpts struct {
 	PsetBase64         string
 	OutputBlindingKeys [][]byte
 	Attempts           int
 }
 
-func (o BlindTransactionOpts) validate() error {
+func (o BlindTransactionWithKeysOpts) validate() error {
 	if len(o.PsetBase64) <= 0 {
 		return ErrNullPset
 	}
@@ -48,16 +49,16 @@ func (o BlindTransactionOpts) validate() error {
 	return nil
 }
 
-func (o BlindTransactionOpts) maxAttempts() int {
+func (o BlindTransactionWithKeysOpts) maxAttempts() int {
 	if o.Attempts == 0 {
 		return DefaultBlindingAttempts
 	}
 	return o.Attempts
 }
 
-// BlindTransaction blinds the outputs of the provided partial transaction
+// BlindTransactionWithKeys blinds the outputs of the provided partial transaction
 // by deriving the blinding keys from the output scripts following SLIP-77 spec
-func (w *Wallet) BlindTransaction(opts BlindTransactionOpts) (string, error) {
+func (w *Wallet) BlindTransactionWithKeys(opts BlindTransactionWithKeysOpts) (string, error) {
 	if err := opts.validate(); err != nil {
 		return "", err
 	}
@@ -67,18 +68,24 @@ func (w *Wallet) BlindTransaction(opts BlindTransactionOpts) (string, error) {
 
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
-	inputBlindingKeys := make([][]byte, 0, len(ptx.Inputs))
-	for _, in := range ptx.Inputs {
+	inKeysLen := len(ptx.Inputs)
+	inBlindingKeys := make([]pset.BlindingDataLike, inKeysLen, inKeysLen)
+	for i, in := range ptx.Inputs {
 		blindingPrvkey, _, _ := w.DeriveBlindingKeyPair(DeriveBlindingKeyPairOpts{
 			Script: in.WitnessUtxo.Script,
 		})
-		inputBlindingKeys = append(inputBlindingKeys, blindingPrvkey.Serialize())
+		inBlindingKeys[i] = pset.PrivateBlindingKey(blindingPrvkey.Serialize())
+	}
+
+	outBlindingKeys := make(map[int][]byte)
+	for i, k := range opts.OutputBlindingKeys {
+		outBlindingKeys[i] = k
 	}
 
 	if err := w.blindTransaction(
 		ptx,
-		inputBlindingKeys,
-		opts.OutputBlindingKeys,
+		inBlindingKeys,
+		outBlindingKeys,
 		opts.maxAttempts(),
 	); err != nil {
 		return "", err
@@ -87,15 +94,15 @@ func (w *Wallet) BlindTransaction(opts BlindTransactionOpts) (string, error) {
 	return ptx.ToBase64()
 }
 
-// BlindSwapTransactionOpts is the struct given to BlindSwapTransaction method
-type BlindSwapTransactionOpts struct {
+// BlindSwapTransactionWithKeysOpts is the struct given to BlindSwapTransactionWithKeys method
+type BlindSwapTransactionWithKeysOpts struct {
 	PsetBase64         string
 	InputBlindingKeys  map[string][]byte
 	OutputBlindingKeys map[string][]byte
 	Attempts           int
 }
 
-func (o BlindSwapTransactionOpts) validate() error {
+func (o BlindSwapTransactionWithKeysOpts) validate() error {
 	if len(o.PsetBase64) <= 0 {
 		return ErrNullPset
 	}
@@ -128,14 +135,14 @@ func (o BlindSwapTransactionOpts) validate() error {
 	return nil
 }
 
-func (o BlindSwapTransactionOpts) maxAttempts() int {
+func (o BlindSwapTransactionWithKeysOpts) maxAttempts() int {
 	if o.Attempts == 0 {
 		return DefaultBlindingAttempts
 	}
 	return o.Attempts
 }
 
-// BlindSwapTransaction blinds the outputs of a swap transaction. Since this
+// BlindSwapTransactionWithKeys blinds the outputs of a swap transaction. Since this
 // type of transaciton is composed of inputs and outputs owned by 2 different
 // parties, the blinding keys for inputs and outputs are provided through maps
 // outputScript -> blinding key. Note that all the blinding keys provided must
@@ -143,7 +150,7 @@ func (o BlindSwapTransactionOpts) maxAttempts() int {
 // blinding keys to get the list of all public keys. This of course also means
 // that no blinding keys are derived internally, but these are all provided as
 // function arguments.
-func (w *Wallet) BlindSwapTransaction(opts BlindSwapTransactionOpts) (string, error) {
+func (w *Wallet) BlindSwapTransactionWithKeys(opts BlindSwapTransactionWithKeysOpts) (string, error) {
 	if err := opts.validate(); err != nil {
 		return "", err
 	}
@@ -153,23 +160,233 @@ func (w *Wallet) BlindSwapTransaction(opts BlindSwapTransactionOpts) (string, er
 
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
-	inputBlindingKeys := make([][]byte, 0, len(ptx.Inputs))
-	for _, in := range ptx.Inputs {
+	inKeysLen := len(opts.InputBlindingKeys)
+	inBlindingKeys := make([]pset.BlindingDataLike, inKeysLen, inKeysLen)
+	for i, in := range ptx.Inputs {
 		script := hex.EncodeToString(in.WitnessUtxo.Script)
-		inputBlindingKeys = append(inputBlindingKeys, opts.InputBlindingKeys[script])
+		inBlindingKeys[i] = pset.PrivateBlindingKey(opts.InputBlindingKeys[script])
 	}
 
-	outputBlindingKeys := make([][]byte, 0, len(ptx.Outputs))
-	for _, out := range ptx.UnsignedTx.Outputs {
+	outBlindingKeys := make(map[int][]byte)
+	for i, out := range ptx.UnsignedTx.Outputs {
 		script := hex.EncodeToString(out.Script)
 		_, pubkey := btcec.PrivKeyFromBytes(btcec.S256(), opts.OutputBlindingKeys[script])
-		outputBlindingKeys = append(outputBlindingKeys, pubkey.SerializeCompressed())
+		outBlindingKeys[i] = pubkey.SerializeCompressed()
 	}
 
 	if err := w.blindTransaction(
 		ptx,
-		inputBlindingKeys,
-		outputBlindingKeys,
+		inBlindingKeys,
+		outBlindingKeys,
+		opts.maxAttempts(),
+	); err != nil {
+		return "", err
+	}
+
+	return ptx.ToBase64()
+}
+
+type BlindingData struct {
+	Asset         string
+	Amount        uint64
+	AssetBlinder  []byte
+	AmountBlinder []byte
+}
+
+func (b BlindingData) validate() error {
+	asset, err := hex.DecodeString(b.Asset)
+	if err != nil || len(asset) != 32 {
+		return ErrInvalidInputAsset
+	}
+	if len(b.AssetBlinder) != 32 {
+		return ErrInvalidInputAssetBlinder
+	}
+	if len(b.AmountBlinder) != 32 {
+		return ErrInvalidInputAmountBlinder
+	}
+	return nil
+}
+
+func (b BlindingData) ToBlindingData() pset.BlindingData {
+	asset, _ := hex.DecodeString(b.Asset)
+	return pset.BlindingData{
+		Asset:               elementsutil.ReverseBytes(asset),
+		Value:               b.Amount,
+		AssetBlindingFactor: b.AssetBlinder,
+		ValueBlindingFactor: b.AmountBlinder,
+	}
+}
+
+// BlindTransactionWithDataOpts is the struct given to BlindTransactionWithData method
+type BlindTransactionWithDataOpts struct {
+	PsetBase64         string
+	InputBlindingData  map[int]BlindingData
+	OutputBlindingKeys [][]byte
+	Attempts           int
+}
+
+func (o BlindTransactionWithDataOpts) validate() error {
+	if len(o.PsetBase64) <= 0 {
+		return ErrNullPset
+	}
+	ptx, err := pset.NewPsetFromBase64(o.PsetBase64)
+	if err != nil {
+		return err
+	}
+	for _, in := range ptx.Inputs {
+		if in.WitnessUtxo == nil {
+			return ErrNullInputWitnessUtxo
+		}
+	}
+
+	if o.InputBlindingData == nil {
+		return ErrNullInputBlindingData
+	}
+	for i, b := range o.InputBlindingData {
+		if i < 0 || i >= len(ptx.Inputs) {
+			return ErrInvalidInputIndex
+		}
+		if err := b.validate(); err != nil {
+			return err
+		}
+	}
+
+	if len(o.OutputBlindingKeys) != len(ptx.Outputs) {
+		return ErrInvalidOutputBlindingKeysLen
+	}
+
+	if o.Attempts < 0 || o.Attempts > MaxBlindingAttempts {
+		return ErrInvalidAttempts
+	}
+	return nil
+}
+
+func (o BlindTransactionWithDataOpts) maxAttempts() int {
+	if o.Attempts == 0 {
+		return DefaultBlindingAttempts
+	}
+	return o.Attempts
+}
+
+// BlindTransactionWithData blinds the outputs of the provided partial transaction
+// by using the provided input blinding data.
+func (w *Wallet) BlindTransactionWithData(opts BlindTransactionWithDataOpts) (string, error) {
+	if err := opts.validate(); err != nil {
+		return "", err
+	}
+	if err := w.validate(); err != nil {
+		return "", err
+	}
+
+	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
+
+	dataLen := len(opts.InputBlindingData)
+	inBlindingData := make([]pset.BlindingDataLike, dataLen, dataLen)
+	for i, b := range opts.InputBlindingData {
+		inBlindingData[i] = b.ToBlindingData()
+	}
+
+	outBlindingKeys := make(map[int][]byte)
+	for i, k := range opts.OutputBlindingKeys {
+		outBlindingKeys[i] = k
+	}
+
+	if err := w.blindTransaction(
+		ptx,
+		inBlindingData,
+		outBlindingKeys,
+		opts.maxAttempts(),
+	); err != nil {
+		return "", err
+	}
+
+	return ptx.ToBase64()
+}
+
+// BlindSwapTransactionWithDataOpts is the struct given to BlindSwapTransactionWithKeys method
+type BlindSwapTransactionWithDataOpts struct {
+	PsetBase64         string
+	InputBlindingData  map[string]BlindingData
+	OutputBlindingKeys map[string][]byte
+	Attempts           int
+}
+
+func (o BlindSwapTransactionWithDataOpts) validate() error {
+	if len(o.PsetBase64) <= 0 {
+		return ErrNullPset
+	}
+	ptx, err := pset.NewPsetFromBase64(o.PsetBase64)
+	if err != nil {
+		return err
+	}
+
+	for i, in := range ptx.Inputs {
+		script := hex.EncodeToString(in.WitnessUtxo.Script)
+		if _, ok := o.InputBlindingData[script]; !ok {
+			return fmt.Errorf(
+				"missing blinding data for input %d with script '%s'", i, script,
+			)
+		}
+	}
+	for i, out := range ptx.UnsignedTx.Outputs {
+		script := hex.EncodeToString(out.Script)
+		if _, ok := o.OutputBlindingKeys[script]; !ok {
+			return fmt.Errorf(
+				"missing blinding data for output %d with script '%s'", i, script,
+			)
+		}
+	}
+
+	if o.Attempts < 0 || o.Attempts > MaxBlindingAttempts {
+		return ErrInvalidAttempts
+	}
+
+	return nil
+}
+
+func (o BlindSwapTransactionWithDataOpts) maxAttempts() int {
+	if o.Attempts == 0 {
+		return DefaultBlindingAttempts
+	}
+	return o.Attempts
+}
+
+// BlindSwapTransactionWithData blinds the outputs of a swap transaction.
+// Since this type of transaciton is composed of inputs and outputs owned by 2
+//  different parties, the blinding keys for inputs and outputs are provided
+// through maps outputScript -> blinding key. Note that all the blinding keys
+// provided must be private, thus for the outputs this function will use the
+// provided blinding keys to get the list of all public keys. This of course
+// also means that no blinding keys are derived internally, but these are all
+// provided as function arguments.
+func (w *Wallet) BlindSwapTransactionWithData(opts BlindSwapTransactionWithDataOpts) (string, error) {
+	if err := opts.validate(); err != nil {
+		return "", err
+	}
+	if err := w.validate(); err != nil {
+		return "", err
+	}
+
+	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
+
+	dataLen := len(opts.InputBlindingData)
+	inBlindingData := make([]pset.BlindingDataLike, dataLen, dataLen)
+	for i, in := range ptx.Inputs {
+		script := hex.EncodeToString(in.WitnessUtxo.Script)
+		inBlindingData[i] = opts.InputBlindingData[script].ToBlindingData()
+	}
+
+	outBlindingKeys := make(map[int][]byte)
+	for i, out := range ptx.UnsignedTx.Outputs {
+		script := hex.EncodeToString(out.Script)
+		_, pubkey := btcec.PrivKeyFromBytes(btcec.S256(), opts.OutputBlindingKeys[script])
+		outBlindingKeys[i] = pubkey.SerializeCompressed()
+	}
+
+	if err := w.blindTransaction(
+		ptx,
+		inBlindingData,
+		outBlindingKeys,
 		opts.maxAttempts(),
 	); err != nil {
 		return "", err
@@ -180,12 +397,13 @@ func (w *Wallet) BlindSwapTransaction(opts BlindSwapTransactionOpts) (string, er
 
 func (w *Wallet) blindTransaction(
 	ptx *pset.Pset,
-	inBlindingKeys, outBlindingKeys [][]byte,
+	inBlindingData []pset.BlindingDataLike,
+	outBlindingKeys map[int][]byte,
 	maxAttempts int,
 ) error {
 	blinder, err := pset.NewBlinder(
 		ptx,
-		inBlindingKeys,
+		inBlindingData,
 		outBlindingKeys,
 		nil,
 		nil,
