@@ -9,8 +9,6 @@ import (
 	"github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"github.com/vulpemventures/go-elements/elementsutil"
 
-	"github.com/tdex-network/tdex-daemon/config"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -81,7 +79,11 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	net, baseAssetKey := getNetworkAndBaseAssetKey(ctx.String("network"))
+	net, err := getNetworkFromState()
+	if err != nil {
+		return err
+	}
+	baseAssetKey := net.AssetID
 	fragmentationDisabled := ctx.Bool("no-fragment")
 	quoteAssetOpt := ctx.String("quote_asset")
 	baseAssetOpt := ""
@@ -109,13 +111,14 @@ func depositMarketAction(ctx *cli.Context) error {
 		return nil
 	}
 
-	randomWallet, err := trade.NewRandomWallet(&net)
+	randomWallet, err := trade.NewRandomWallet(net)
 	if err != nil {
 		return err
 	}
 
-	log.Warnf("fund address: %v", randomWallet.Address())
-	explorerSvc, err := config.GetExplorer()
+	log.Info("fund address: ", randomWallet.Address())
+
+	explorerSvc, err := getExplorerFromState()
 	if err != nil {
 		log.WithError(err).Panic("error while setting up explorer service")
 	}
@@ -135,12 +138,17 @@ func depositMarketAction(ctx *cli.Context) error {
 	log.Infof("base fragments: %v", baseFragments)
 	log.Infof("quote fragments: %v", quoteFragments)
 
-	feeAmount := wallet.EstimateTxSize(
-		len(unspents),
-		outsLen,
-		false,
-		MinMilliSatPerByte,
-	)
+	inLen := len(unspents)
+	ins := make([]int, inLen, inLen)
+	for i := range unspents {
+		ins[i] = wallet.P2WPKH
+	}
+	outs := make([]int, outsLen, outsLen)
+	for i := 0; i < outsLen; i++ {
+		outs[i] = wallet.P2WPKH
+	}
+	estimatedSize := wallet.EstimateTxSize(ins, nil, nil, outs, nil)
+	feeAmount := uint64(float64(estimatedSize) * 0.1)
 
 	addresses, err := fetchMarketAddresses(
 		outsLen,
@@ -429,11 +437,10 @@ func craftTransaction(
 	unspents []explorer.Utxo,
 	outs []TxOut,
 	feeAmount uint64,
-	network network.Network,
+	network *network.Network,
 	baseAssetKey string,
 	inputBlindingKeys [][]byte,
 ) (string, error) {
-
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs, network)
 	if err != nil {
 		return "", err
@@ -454,9 +461,15 @@ func craftTransaction(
 		return "", err
 	}
 
+	keyLen := len(inputBlindingKeys)
+	inBlindKeys := make([]pset.BlindingDataLike, keyLen, keyLen)
+	for i, k := range inputBlindingKeys {
+		inBlindKeys[i] = pset.PrivateBlindingKey(k)
+	}
+
 	blinder, err := pset.NewBlinder(
 		ptx,
-		inputBlindingKeys,
+		inBlindKeys,
 		outputsBlindingKeys,
 		nil,
 		nil,
@@ -531,15 +544,16 @@ type TxOut struct {
 	Address string
 }
 
-func parseRequestOutputs(reqOutputs []TxOut, network network.Network) (
+func parseRequestOutputs(reqOutputs []TxOut, network *network.Network) (
 	[]*transaction.TxOutput,
-	[][]byte,
+	map[int][]byte,
 	error,
 ) {
-	outputs := make([]*transaction.TxOutput, 0, len(reqOutputs))
-	blindingKeys := make([][]byte, 0, len(reqOutputs))
+	outLen := len(reqOutputs)
+	outputs := make([]*transaction.TxOutput, outLen, outLen)
+	blindingKeys := make(map[int][]byte)
 
-	for _, out := range reqOutputs {
+	for i, out := range reqOutputs {
 		asset, err := bufferutil.AssetHashToBytes(out.Asset)
 		if err != nil {
 			return nil, nil, err
@@ -557,15 +571,15 @@ func parseRequestOutputs(reqOutputs []TxOut, network network.Network) (
 		}
 
 		output := transaction.NewTxOutput(asset, value, script)
-		outputs = append(outputs, output)
-		blindingKeys = append(blindingKeys, blindingKey)
+		outputs[i] = output
+		blindingKeys[i] = blindingKey
 	}
 	return outputs, blindingKeys, nil
 }
 
 func parseConfidentialAddress(
 	addr string,
-	network network.Network,
+	network *network.Network,
 ) ([]byte, []byte, error) {
 	script, err := address.ToOutputScript(addr)
 	if err != nil {
@@ -602,11 +616,4 @@ func addInsAndOutsToPset(
 	}
 
 	return ptx, nil
-}
-
-func getNetworkAndBaseAssetKey(net string) (network.Network, string) {
-	if net == network.Regtest.Name {
-		return network.Regtest, network.Regtest.AssetID
-	}
-	return network.Liquid, network.Liquid.AssetID
 }

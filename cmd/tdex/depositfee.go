@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/tdex-network/tdex-daemon/config"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
@@ -50,7 +48,12 @@ func depositFeeAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	net, baseAssetKey := getNetworkAndBaseAssetKey(ctx.String("network"))
+	net, err := getNetworkFromState()
+	if err != nil {
+		return err
+	}
+	baseAssetKey := net.AssetID
+
 	fragmentationDisabled := ctx.Bool("no-fragment")
 
 	if fragmentationDisabled {
@@ -69,16 +72,18 @@ func depositFeeAction(ctx *cli.Context) error {
 		return nil
 	}
 
-	randomWallet, err := trade.NewRandomWallet(&net)
+	explorerSvc, err := getExplorerFromState()
+	if err != nil {
+		log.WithError(err).Panic("error while setting up explorer service")
+	}
+
+	randomWallet, err := trade.NewRandomWallet(net)
 	if err != nil {
 		return err
 	}
 
-	log.Warnf("fund address: %v", randomWallet.Address())
-	explorerSvc, err := config.GetExplorer()
-	if err != nil {
-		log.WithError(err).Panic("error while setting up explorer service")
-	}
+	log.Info("fund address: ", randomWallet.Address())
+
 	baseAssetValue, unspents := findBaseAssetsUnspents(
 		randomWallet,
 		explorerSvc,
@@ -105,12 +110,18 @@ func depositFeeAction(ctx *cli.Context) error {
 		log.Error(err)
 	}
 
-	feeAmount := wallet.EstimateTxSize(
-		len(unspents),
-		len(baseFragments),
-		false,
-		MinMilliSatPerByte,
-	)
+	inLen := len(unspents)
+	ins := make([]int, inLen, inLen)
+	for i := range unspents {
+		ins[i] = wallet.P2WPKH
+	}
+	outLen := len(baseFragments)
+	outs := make([]int, outLen, outLen)
+	for i := range baseFragments {
+		outs[i] = wallet.P2WPKH
+	}
+	estimatedSize := wallet.EstimateTxSize(ins, nil, nil, outs, nil)
+	feeAmount := uint64(float64(estimatedSize) * 0.1)
 
 	outputs := createOutputsForDepositFeeTransaction(
 		baseFragments,

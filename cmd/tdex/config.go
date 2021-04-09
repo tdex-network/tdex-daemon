@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/network"
 )
@@ -52,7 +54,6 @@ var cliConfig = cli.Command{
 }
 
 func configAction(ctx *cli.Context) error {
-
 	state, err := getState()
 	if err != nil {
 		return err
@@ -80,7 +81,6 @@ func configInitAction(c *cli.Context) error {
 }
 
 func configSetAction(c *cli.Context) error {
-
 	if c.NArg() < 2 {
 		return errors.New("key and value are missing")
 	}
@@ -96,6 +96,22 @@ func configSetAction(c *cli.Context) error {
 	fmt.Printf("%s %s has been set\n", key, value)
 
 	return nil
+}
+
+func getNetworkFromState() (*network.Network, error) {
+	state, err := getState()
+	if err != nil {
+		return nil, err
+	}
+
+	net, ok := state["network"]
+	if !ok {
+		return &network.Liquid, nil
+	}
+	if net == "regtest" {
+		return &network.Regtest, nil
+	}
+	return &network.Liquid, nil
 }
 
 func getMarketFromState() (string, string, error) {
@@ -115,9 +131,17 @@ func getMarketFromState() (string, string, error) {
 	return baseAsset, quoteAsset, nil
 }
 
-func setMarketIntoState(baseAsset, quoteAsset string) error {
-	return setState(map[string]string{
-		"base_asset":  baseAsset,
-		"quote_asset": quoteAsset,
-	})
+func getExplorerFromState() (explorer.Service, error) {
+	state, err := getState()
+	if err != nil {
+		return nil, err
+	}
+
+	reqTimeout := 15000
+	url, ok := state["explorer_url"]
+	if !ok {
+		url = "https://blockstream.info/liquid/api"
+	}
+
+	return esplora.NewService(url, reqTimeout)
 }
