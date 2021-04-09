@@ -202,8 +202,8 @@ func depositMarketAction(ctx *cli.Context) error {
 		})
 	}
 
-	//wait one min so that tx get confirmed
-	time.Sleep(60 * time.Second)
+	//wait so that tx get confirmed
+	time.Sleep(65 * time.Second)
 
 	_, err = client.ClaimMarketDeposit(
 		context.Background(), &pboperator.ClaimMarketDepositRequest{
