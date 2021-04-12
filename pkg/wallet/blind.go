@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/pset"
 )
@@ -352,13 +353,9 @@ func (o BlindSwapTransactionWithDataOpts) maxAttempts() int {
 }
 
 // BlindSwapTransactionWithData blinds the outputs of a swap transaction.
-// Since this type of transaciton is composed of inputs and outputs owned by 2
-//  different parties, the blinding keys for inputs and outputs are provided
-// through maps outputScript -> blinding key. Note that all the blinding keys
-// provided must be private, thus for the outputs this function will use the
-// provided blinding keys to get the list of all public keys. This of course
-// also means that no blinding keys are derived internally, but these are all
-// provided as function arguments.
+// Instead of unblinding the input proofs with keys, blinding data
+// (asset, value and respective blinders) are provided as a map
+// script -> blinding_data.
 func (w *Wallet) BlindSwapTransactionWithData(opts BlindSwapTransactionWithDataOpts) (string, error) {
 	if err := opts.validate(); err != nil {
 		return "", err
@@ -427,4 +424,41 @@ func (w *Wallet) blindTransaction(
 		}
 		return nil
 	}
+}
+
+// ExtractBlindingDataFromTx unblinds the confidential inputs of the given tx
+// (in pset's base64 format) with the provided blinding keys.
+// The revealed data are returned mapped by output script.
+func ExtractBlindingDataFromTx(
+	psetBase64 string,
+	inBlindingKeys map[string][]byte,
+) (map[string]BlindingData, error) {
+	ptx, err := pset.NewPsetFromBase64(psetBase64)
+	if err != nil {
+		return nil, err
+	}
+
+	blindingData := make(map[string]BlindingData)
+	for _, in := range ptx.Inputs {
+		if prevout := in.WitnessUtxo; prevout != nil && prevout.IsConfidential() {
+			script := hex.EncodeToString(prevout.Script)
+			blindKey, ok := inBlindingKeys[script]
+			if !ok {
+				return nil, ErrMissingInBlindingKey
+			}
+
+			res, ok := transactionutil.UnblindOutput(prevout, blindKey)
+			if !ok {
+				return nil, ErrInvalidInBlindingKey
+			}
+			blindingData[script] = BlindingData{
+				Asset:         res.AssetHash,
+				Amount:        res.Value,
+				AssetBlinder:  res.AssetBlinder,
+				AmountBlinder: res.ValueBlinder,
+			}
+		}
+	}
+
+	return blindingData, nil
 }
