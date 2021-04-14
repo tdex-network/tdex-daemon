@@ -174,25 +174,47 @@ func (o *operatorService) DepositMarket(
 		numOfAddresses = 1
 	}
 
-	list := make([]AddressAndBlindingKey, numOfAddresses, numOfAddresses)
-	if err := o.repoManager.VaultRepository().UpdateVault(
-		ctx,
-		func(v *domain.Vault) (*domain.Vault, error) {
-			for i := 0; i < numOfAddresses; i++ {
-				info, err := v.DeriveNextExternalAddressForAccount(accountIndex)
-				if err != nil {
-					return nil, err
-				}
-				list[i] = AddressAndBlindingKey{
-					Address:     info.Address,
-					BlindingKey: hex.EncodeToString(info.BlindingKey),
-				}
-			}
-
-			return v, nil
-		}); err != nil {
+	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
 		return nil, err
 	}
+
+	list := make([]AddressAndBlindingKey, numOfAddresses, numOfAddresses)
+	for i := 0; i < numOfAddresses; i++ {
+		info, err := vault.DeriveNextExternalAddressForAccount(accountIndex)
+		if err != nil {
+			return nil, err
+		}
+		list[i] = AddressAndBlindingKey{
+			Address:     info.Address,
+			BlindingKey: hex.EncodeToString(info.BlindingKey),
+		}
+	}
+
+	go func() {
+		if _, err := o.repoManager.RunTransaction(ctx, false, func(ctx context.Context) (interface{}, error) {
+			// this makes sure that the market is created if it needs to. Otherwise,
+			// this does not commit any change to the marekt repo.
+			if _, err := o.repoManager.MarketRepository().GetOrCreateMarket(
+				ctx,
+				&domain.Market{AccountIndex: accountIndex, Fee: o.marketFee},
+			); err != nil {
+				return nil, err
+			}
+
+			if err := o.repoManager.VaultRepository().UpdateVault(
+				ctx,
+				func(_ *domain.Vault) (*domain.Vault, error) {
+					return vault, nil
+				}); err != nil {
+				return nil, err
+			}
+
+			return nil, nil
+		}); err != nil {
+			log.WithError(err).Warn("unable to persist changes")
+		}
+	}()
 
 	return list, nil
 }
@@ -205,27 +227,34 @@ func (o *operatorService) DepositFeeAccount(
 		numOfAddresses = 1
 	}
 
-	list := make([]AddressAndBlindingKey, numOfAddresses, numOfAddresses)
-	if err := o.repoManager.VaultRepository().UpdateVault(
-		ctx,
-		func(v *domain.Vault) (*domain.Vault, error) {
-			for i := 0; i < numOfAddresses; i++ {
-				info, err := v.DeriveNextExternalAddressForAccount(domain.FeeAccount)
-				if err != nil {
-					return nil, err
-				}
-
-				list[i] = AddressAndBlindingKey{
-					Address:     info.Address,
-					BlindingKey: hex.EncodeToString(info.BlindingKey),
-				}
-			}
-
-			return v, nil
-		},
-	); err != nil {
+	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
 		return nil, err
 	}
+
+	list := make([]AddressAndBlindingKey, numOfAddresses, numOfAddresses)
+	for i := 0; i < numOfAddresses; i++ {
+		info, err := vault.DeriveNextExternalAddressForAccount(domain.FeeAccount)
+		if err != nil {
+			return nil, err
+		}
+
+		list[i] = AddressAndBlindingKey{
+			Address:     info.Address,
+			BlindingKey: hex.EncodeToString(info.BlindingKey),
+		}
+	}
+
+	go func() {
+		if err := o.repoManager.VaultRepository().UpdateVault(
+			ctx,
+			func(_ *domain.Vault) (*domain.Vault, error) {
+				return vault, nil
+			},
+		); err != nil {
+			log.WithError(err).Warn("unable to update vault")
+		}
+	}()
 
 	return list, nil
 }
