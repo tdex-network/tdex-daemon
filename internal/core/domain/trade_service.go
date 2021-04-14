@@ -117,7 +117,6 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 	}
 
 	swapCompleteID, swapCompleteMsg, err := SwapParserManager.SerializeComplete(
-		t.SwapRequest.Message,
 		t.SwapAccept.Message,
 		psetBase64,
 	)

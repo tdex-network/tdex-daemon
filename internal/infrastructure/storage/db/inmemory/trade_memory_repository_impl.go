@@ -116,22 +116,19 @@ func (r tradeRepositoryImpl) UpdateTrade(
 }
 
 func (r tradeRepositoryImpl) getOrCreateTrade(tradeID *uuid.UUID) (*domain.Trade, error) {
-	createTrade := func() (*domain.Trade, error) {
-		t := domain.NewTrade()
-		r.store.trades[t.ID] = *t
-		return t, nil
+	if tradeID != nil {
+		tr, ok := r.store.trades[*tradeID]
+		if ok {
+			return &tr, nil
+		}
 	}
 
-	if tradeID == nil {
-		return createTrade()
+	trade := domain.NewTrade()
+	if tradeID != nil {
+		trade.ID = *tradeID
 	}
-
-	currentTrade, ok := r.store.trades[*tradeID]
-	if !ok {
-		return nil, ErrTradeNotFound
-	}
-
-	return &currentTrade, nil
+	r.store.trades[trade.ID] = *trade
+	return trade, nil
 }
 
 func (r tradeRepositoryImpl) getAllTrades() ([]*domain.Trade, error) {
