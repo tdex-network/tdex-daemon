@@ -120,11 +120,11 @@ func (t traderHandler) balances(
 	balancesWithFee := make([]*types.BalanceWithFee, 0)
 	balancesWithFee = append(balancesWithFee, &types.BalanceWithFee{
 		Balance: &types.Balance{
-			BaseAmount:  balance.BaseAmount,
-			QuoteAmount: balance.QuoteAmount,
+			BaseAmount:  balance.Balance.BaseAmount,
+			QuoteAmount: balance.Balance.QuoteAmount,
 		},
 		Fee: &types.Fee{
-			BasisPoint: balance.BasisPoint,
+			BasisPoint: balance.Fee.BasisPoint,
 		},
 	})
 
@@ -154,7 +154,7 @@ func (t traderHandler) marketPrice(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	price, err := t.traderSvc.GetMarketPrice(
+	preview, err := t.traderSvc.GetMarketPrice(
 		ctx,
 		application.Market{
 			BaseAsset:  market.GetBaseAsset(),
@@ -168,8 +168,8 @@ func (t traderHandler) marketPrice(
 		return nil, err
 	}
 
-	basePrice, _ := price.BasePrice.Float64()
-	quotePrice, _ := price.QuotePrice.Float64()
+	basePrice, _ := preview.Price.BasePrice.Float64()
+	quotePrice, _ := preview.Price.QuotePrice.Float64()
 
 	return &pb.MarketPriceReply{
 		Prices: []*pbtypes.PriceWithFee{
@@ -179,10 +179,10 @@ func (t traderHandler) marketPrice(
 					QuotePrice: float32(quotePrice),
 				},
 				Fee: &pbtypes.Fee{
-					BasisPoint: price.BasisPoint,
+					BasisPoint: preview.Fee.BasisPoint,
 				},
-				Amount: price.Amount,
-				Asset:  price.Asset,
+				Amount: preview.Amount,
+				Asset:  preview.Asset,
 			},
 		},
 	}, nil
