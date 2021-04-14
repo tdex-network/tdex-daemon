@@ -439,24 +439,32 @@ func ExtractBlindingDataFromTx(
 	}
 
 	blindingData := make(map[string]BlindingData)
-	for _, in := range ptx.Inputs {
-		if prevout := in.WitnessUtxo; prevout != nil && prevout.IsConfidential() {
-			script := hex.EncodeToString(prevout.Script)
-			blindKey, ok := inBlindingKeys[script]
+	for i, in := range ptx.Inputs {
+		prevout := in.WitnessUtxo
+		if in.WitnessUtxo == nil {
+			prevoutIndex := ptx.UnsignedTx.Inputs[i].Index
+			prevout = in.NonWitnessUtxo.Outputs[prevoutIndex]
+		}
+		script := hex.EncodeToString(prevout.Script)
+		var blindKey []byte
+
+		if prevout.IsConfidential() {
+			var ok bool
+			blindKey, ok = inBlindingKeys[script]
 			if !ok {
 				return nil, ErrMissingInBlindingKey
 			}
+		}
+		res, ok := transactionutil.UnblindOutput(prevout, blindKey)
+		if !ok {
+			return nil, ErrInvalidInBlindingKey
+		}
 
-			res, ok := transactionutil.UnblindOutput(prevout, blindKey)
-			if !ok {
-				return nil, ErrInvalidInBlindingKey
-			}
-			blindingData[script] = BlindingData{
-				Asset:         res.AssetHash,
-				Amount:        res.Value,
-				AssetBlinder:  res.AssetBlinder,
-				AmountBlinder: res.ValueBlinder,
-			}
+		blindingData[script] = BlindingData{
+			Asset:         res.AssetHash,
+			Amount:        res.Value,
+			AssetBlinder:  res.AssetBlinder,
+			AmountBlinder: res.ValueBlinder,
 		}
 	}
 
