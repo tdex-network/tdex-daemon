@@ -9,11 +9,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
@@ -49,13 +51,16 @@ func TestMain(m *testing.M) {
 	}
 	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 
+	mockedPsetParser := &mockPsetParser{}
+	mockedPsetParser.On("GetTxID", mock.AnythingOfType("string")).Return(randomHex(32), nil)
+	mockedPsetParser.On("GetTxHex", mock.AnythingOfType("string")).Return(randomHex(1000), nil)
+	domain.PsetParserManager = mockedPsetParser
+
 	os.Exit(m.Run())
 }
 
 func TestInitWallet(t *testing.T) {
 	t.Run("wallet_from_scratch", func(t *testing.T) {
-		t.Parallel()
-
 		walletSvc, err := newWalletService()
 		require.NoError(t, err)
 		require.NotNil(t, walletSvc)
@@ -78,8 +83,6 @@ func TestInitWallet(t *testing.T) {
 	})
 
 	t.Run("wallet_from_restart", func(t *testing.T) {
-		t.Parallel()
-
 		walletSvc, err := newWalletServiceRestart()
 		require.NoError(t, err)
 		require.NotNil(t, walletSvc)
@@ -92,8 +95,6 @@ func TestInitWallet(t *testing.T) {
 	})
 
 	t.Run("wallet_from_restore", func(t *testing.T) {
-		t.Parallel()
-
 		walletSvc, err := newWalletServiceRestore()
 		require.NoError(t, err)
 		require.NotNil(t, walletSvc)
@@ -207,10 +208,8 @@ func newWalletServiceRestore() (application.WalletService, error) {
 			Return(randomUtxos([]string{addr}), nil)
 	}
 
-	// fmt.Printf("\nUNUSED\n")
 	for i, addr := range unusedAddresses {
 		key := unusedKeys[i]
-		// fmt.Println(addr)
 		explorerSvc.(*mockExplorer).
 			On("GetTransactionsForAddress", addr, key).
 			Return(nil, nil)
@@ -232,7 +231,7 @@ func newServices() (
 	explorer.Service,
 	application.BlockchainListener,
 ) {
-	repoManager := inmemory.NewRepoManager()
+	repoManager, _ := dbbadger.NewRepoManager("", nil)
 	explorerSvc := &mockExplorer{}
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:        explorerSvc,
@@ -312,6 +311,10 @@ func randomAssetCommitment() string {
 	return hex.EncodeToString(c)
 }
 
+func randomId() string {
+	return uuid.New().String()
+}
+
 func randomHex(len int) string {
 	return hex.EncodeToString(randomBytes(len))
 }
@@ -321,7 +324,7 @@ func randomVout() uint32 {
 }
 
 func randomValue() uint64 {
-	return uint64(randomIntInRange(1, 100000000))
+	return uint64(randomIntInRange(1000000, 10000000000))
 }
 
 func randomBytes(len int) []byte {

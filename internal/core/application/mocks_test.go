@@ -36,6 +36,36 @@ func (m *mockBlinderManager) UnblindOutput(
 
 // **** Explorer ****
 
+type mockTradeManager struct {
+	mock.Mock
+	counter int
+	lock    *sync.Mutex
+}
+
+func newMockedTradeManager() *mockTradeManager {
+	return &mockTradeManager{
+		lock: &sync.Mutex{},
+	}
+}
+
+func (m *mockTradeManager) FillProposal(
+	opts application.FillProposalOpts,
+) (*application.FillProposalResult, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	m.counter++
+	args := m.Called(opts)
+
+	var res *application.FillProposalResult
+	if a := args.Get(0); a != nil {
+		res = a.(*application.FillProposalResult)
+	}
+	return res, args.Error(1)
+}
+
+// **** Explorer ****
+
 type mockExplorer struct {
 	mock.Mock
 }
@@ -273,4 +303,28 @@ func (c mockCryptoHandler) Encrypt(mnemonic, passpharse string) (string, error) 
 
 func (c mockCryptoHandler) Decrypt(encryptedMnemonic, passpharse string) (string, error) {
 	return c.decrypt(encryptedMnemonic, passpharse)
+}
+
+// **** PsetParser ****
+
+type mockPsetParser struct {
+	mock.Mock
+}
+
+func (m mockPsetParser) GetTxID(psetBase64 string) (string, error) {
+	args := m.Called(psetBase64)
+	var res string
+	if a := args.Get(0); a != nil {
+		res = a.(string)
+	}
+	return res, args.Error(1)
+}
+
+func (m mockPsetParser) GetTxHex(psetBase64 string) (string, error) {
+	args := m.Called(psetBase64)
+	var res string
+	if a := args.Get(0); a != nil {
+		res = a.(string)
+	}
+	return res, args.Error(1)
 }
