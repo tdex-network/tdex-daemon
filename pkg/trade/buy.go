@@ -180,8 +180,8 @@ func (t *Trade) marketOrderRequest(
 	}
 
 	swapRequestMsg, err := swap.Request(swap.RequestOpts{
-		AssetToBeSent:      preview.AssetToSend,
-		AmountToBeSent:     preview.AmountToSend,
+		AssetToSend:        preview.AssetToSend,
+		AmountToSend:       preview.AmountToSend,
 		AssetToReceive:     preview.AssetToReceive,
 		AmountToReceive:    preview.AmountToReceive,
 		PsetBase64:         psetBase64,

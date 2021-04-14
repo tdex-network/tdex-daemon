@@ -1,10 +1,9 @@
 package swap
 
 import (
-	"testing"
 	"encoding/hex"
+	"testing"
 )
-
 
 const USDT = "2dcf5a8834645654911964ec3602426fd3b9b4017554d3f9c19403e7fc1411d3"
 const LBTC = "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225"
@@ -31,8 +30,8 @@ func TestCore_Request(t *testing.T) {
 		{
 			"Alice can create a Swap Request message",
 			args{RequestOpts{
-				AssetToBeSent:   USDT,
-				AmountToBeSent:  30000000000,
+				AssetToSend:     USDT,
+				AmountToSend:    30000000000,
 				AssetToReceive:  LBTC,
 				AmountToReceive: 5000000,
 				PsetBase64:      initialPsbtOfAlice,
@@ -43,11 +42,11 @@ func TestCore_Request(t *testing.T) {
 		{
 			"Alice can create Swap request message (legacy inputs)",
 			args{RequestOpts{
-				AssetToBeSent: LBTC,
-				AmountToBeSent: 100000000,
-				AssetToReceive: altcoin,
-				AmountToReceive: 10000000000,
-				PsetBase64: initialPsetOfAliceLegacyInputs,
+				AssetToSend:       LBTC,
+				AmountToSend:      100000000,
+				AssetToReceive:    altcoin,
+				AmountToReceive:   10000000000,
+				PsetBase64:        initialPsetOfAliceLegacyInputs,
 				InputBlindingKeys: inBlindKeys,
 			}},
 			make([]byte, 12656),

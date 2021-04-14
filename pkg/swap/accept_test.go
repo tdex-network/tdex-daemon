@@ -9,8 +9,8 @@ const initialPsbtOfBob = "cHNldP8BAP1lAQIAAAAAAu1FUTUGQ6cvcZgqyRmduZP/jCOJf6CiVj
 func TestCore_Accept(t *testing.T) {
 	t.Run("Bob can import a SwapRequest and create a SwapAccept message", func(t *testing.T) {
 		messageRequest, err := Request(RequestOpts{
-			AssetToBeSent:   USDT,
-			AmountToBeSent:  30000000000,
+			AssetToSend:     USDT,
+			AmountToSend:    30000000000,
 			AssetToReceive:  LBTC,
 			AmountToReceive: 5000000,
 			PsetBase64:      initialPsbtOfAlice,

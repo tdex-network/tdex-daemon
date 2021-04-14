@@ -9,8 +9,8 @@ const finalPsbtOfAlice = "cHNldP8BAP1lAQIAAAAAAu1FUTUGQ6cvcZgqyRmduZP/jCOJf6CiVj
 func TestSwap_Complete(t *testing.T) {
 	t.Run("Alice can import a SwapAccept message and create a SwapComplete message", func(t *testing.T) {
 		messageRequest, _ := Request(RequestOpts{
-			AssetToBeSent:   USDT,
-			AmountToBeSent:  30000000000,
+			AssetToSend:     USDT,
+			AmountToSend:    30000000000,
 			AssetToReceive:  LBTC,
 			AmountToReceive: 5000000,
 			PsetBase64:      initialPsbtOfAlice,
