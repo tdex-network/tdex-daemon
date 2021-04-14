@@ -127,6 +127,8 @@ func newWalletService(
 	if vault, err := w.repoManager.VaultRepository().GetOrCreateVault(
 		context.Background(), nil, "", nil,
 	); err == nil {
+		log.Info("Restoring internal wallet's utxo set. This could take a while...")
+
 		info := vault.AllDerivedAddressesInfo()
 		if err := fetchAndAddUnspents(
 			w.explorerService,
@@ -136,8 +138,8 @@ func newWalletService(
 		); err != nil {
 			return nil, err
 		}
-
 		w.setInitialized(true)
+		log.Info("Done.")
 	}
 	return w, nil
 }
