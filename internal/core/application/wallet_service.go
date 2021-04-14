@@ -826,8 +826,6 @@ func (w *walletService) restoreUnspentsForAddress(
 			AssetBlinder:    u.AssetBlinder(),
 			ScriptPubKey:    u.Script(),
 			Nonce:           u.Nonce(),
-			RangeProof:      u.RangeProof(),
-			SurjectionProof: u.SurjectionProof(),
 			Confirmed:       u.IsConfirmed(),
 			Address:         addr,
 		}
@@ -1120,8 +1118,6 @@ func fetchUnspents(explorerSvc explorer.Service, info domain.AddressesInfo) ([]d
 			AssetBlinder:    u.AssetBlinder(),
 			ScriptPubKey:    u.Script(),
 			Nonce:           u.Nonce(),
-			RangeProof:      u.RangeProof(),
-			SurjectionProof: u.SurjectionProof(),
 			Confirmed:       u.IsConfirmed(),
 			Address:         addr,
 		}
@@ -1187,7 +1183,8 @@ func spendUnspentsAsync(
 
 func startObserveUnconfirmedUnspents(
 	bcListener BlockchainListener,
-	unspents []domain.Unspent) {
+	unspents []domain.Unspent,
+) {
 	count := 0
 	for _, u := range unspents {
 		if !u.IsConfirmed() {
@@ -1266,8 +1263,6 @@ func extractUnspentsFromTx(
 				AssetBlinder:    unconfidential.AssetBlinder,
 				ScriptPubKey:    out.Script,
 				Nonce:           out.Nonce,
-				RangeProof:      out.RangeProof,
-				SurjectionProof: out.SurjectionProof,
 				Address:         info.Address,
 				Confirmed:       false,
 			})
