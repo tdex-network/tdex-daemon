@@ -84,7 +84,6 @@ func main() {
 		crawlerSvc,
 		repoManager,
 		marketsBaseAsset,
-		feeThreshold,
 		network,
 	)
 
@@ -104,7 +103,7 @@ func main() {
 		marketsBaseAsset,
 		marketsFee,
 		network,
-		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
+		feeThreshold,
 	)
 	walletSvc, err := application.NewWalletService(
 		repoManager,

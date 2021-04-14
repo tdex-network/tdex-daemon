@@ -243,7 +243,6 @@ func newServices() (
 		crawlerSvc,
 		repoManager,
 		marketBaseAsset,
-		feeBalanceThreshold,
 		regtest,
 	)
 	return repoManager, explorerSvc, bcListener
