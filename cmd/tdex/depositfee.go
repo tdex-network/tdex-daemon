@@ -139,7 +139,7 @@ func depositFeeAction(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("txid: %s", txID)
+	log.Infof("fee account funding txid: %s", txID)
 
 	log.Info("waiting for tx to get confirmed...")
 	if err := waitUntilTxConfirmed(explorerSvc, txID); err != nil {

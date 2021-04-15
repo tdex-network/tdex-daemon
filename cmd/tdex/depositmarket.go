@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -186,6 +187,8 @@ func depositMarketAction(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to braodcast tx: %v", err)
 	}
+
+	log.Infof("market account funding txid: %s", txID)
 
 	log.Info("waiting for tx to get confirmed...")
 	if err := waitUntilTxConfirmed(explorerSvc, txID); err != nil {
@@ -424,15 +427,21 @@ func craftTransaction(
 		return "", err
 	}
 
-	keyLen := len(unspents)
-	inBlindKeys := make([]pset.BlindingDataLike, keyLen, keyLen)
-	for i := range unspents {
-		inBlindKeys[i] = pset.PrivateBlindingKey(randomWallet.BlindingKey())
+	dataLen := len(unspents)
+	inBlindData := make([]pset.BlindingDataLike, dataLen, dataLen)
+	for i, u := range unspents {
+		asset, _ := hex.DecodeString(u.Asset())
+		inBlindData[i] = pset.BlindingData{
+			Value:               u.Value(),
+			Asset:               elementsutil.ReverseBytes(asset),
+			ValueBlindingFactor: u.ValueBlinder(),
+			AssetBlindingFactor: u.AssetBlinder(),
+		}
 	}
 
 	blinder, err := pset.NewBlinder(
 		ptx,
-		inBlindKeys,
+		inBlindData,
 		outputsBlindingKeys,
 		nil,
 		nil,
