@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
-	"time"
 
 	"github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"github.com/vulpemventures/go-elements/elementsutil"
@@ -13,7 +13,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"github.com/vulpemventures/go-elements/address"
@@ -41,7 +40,7 @@ var depositmarket = cli.Command{
 			Value: "",
 		},
 		&cli.BoolFlag{
-			Name:  "no-fragment",
+			Name:  "no_fragments",
 			Usage: "disable utxo fragmentation",
 			Value: false,
 		},
@@ -107,51 +106,59 @@ func depositMarketAction(ctx *cli.Context) error {
 		}
 
 		printRespJSON(resp)
-
 		return nil
+	}
+
+	explorerSvc, err := getExplorerFromState()
+	if err != nil {
+		return fmt.Errorf("error while setting up explorer service: %v", err)
 	}
 
 	randomWallet, err := trade.NewRandomWallet(net)
 	if err != nil {
 		return err
 	}
+	log.Info("send funds to address: ", randomWallet.Address())
 
-	log.Info("fund address: ", randomWallet.Address())
+	funds := waitForOperatorFunds()
 
-	explorerSvc, err := getExplorerFromState()
-	if err != nil {
-		log.WithError(err).Panic("error while setting up explorer service")
-	}
-	assetValuePair, unspents := findAssetsUnspents(
+	assetValuePair, unspents, err := findAssetsUnspents(
 		randomWallet,
 		explorerSvc,
 		baseAssetKey,
+		funds,
 	)
+	if err != nil {
+		return err
+	}
 
-	log.Info("calculating fragments ...")
+	log.Info("calculating fragments...")
 	baseFragments, quoteFragments := fragmentUnspents(
 		assetValuePair,
 		fragmentationMapConfig,
 	)
-	outsLen := len(baseFragments) + len(quoteFragments)
+	numUnspents := len(unspents)
+	numFragments := len(baseFragments) + len(quoteFragments)
+	log.Infof(
+		"fetched %d funds that will be split into %d fragments",
+		numUnspents,
+		numFragments,
+	)
+	log.Infof(
+		"base asset amount %d will be split into %d fragments",
+		assetValuePair.BaseValue,
+		len(baseFragments),
+	)
+	log.Infof(
+		"quote asset amount %d will be split into %d fragments",
+		assetValuePair.QuoteValue,
+		len(quoteFragments),
+	)
 
-	log.Infof("base fragments: %v", baseFragments)
-	log.Infof("quote fragments: %v", quoteFragments)
-
-	inLen := len(unspents)
-	ins := make([]int, inLen, inLen)
-	for i := range unspents {
-		ins[i] = wallet.P2WPKH
-	}
-	outs := make([]int, outsLen, outsLen)
-	for i := 0; i < outsLen; i++ {
-		outs[i] = wallet.P2WPKH
-	}
-	estimatedSize := wallet.EstimateTxSize(ins, nil, nil, outs, nil)
-	feeAmount := uint64(float64(estimatedSize) * 0.1)
+	feeAmount := estimateFees(numUnspents, numFragments)
 
 	addresses, err := fetchMarketAddresses(
-		outsLen,
+		numFragments,
 		client,
 		baseAssetOpt,
 		quoteAssetOpt,
@@ -160,60 +167,34 @@ func depositMarketAction(ctx *cli.Context) error {
 		return err
 	}
 
-	outputs := createOutputs(
-		baseFragments,
-		quoteFragments,
-		feeAmount,
-		addresses,
-		assetValuePair,
-		baseAssetKey,
-	)
-
-	log.Info("crafting transaction ...")
-	inputBlindingKeys := [][]byte{
-		randomWallet.BlindingKey(),
-		randomWallet.BlindingKey(),
-	}
+	log.Info("crafting transaction...")
 	txHex, err := craftTransaction(
 		randomWallet,
 		unspents,
-		outputs,
+		baseFragments, quoteFragments,
+		addresses,
 		feeAmount,
 		net,
-		baseAssetKey,
-		inputBlindingKeys,
+		assetValuePair,
 	)
 	if err != nil {
 		return err
 	}
 
-	log.Info("broadcasting transaction ...")
-
-	var txID string
-	for {
-		resp, err := explorerSvc.BroadcastTransaction(txHex)
-		if err != nil {
-			log.Warn(err)
-			log.Info("transaction broadcast retry")
-			continue
-		}
-		log.Info(resp)
-		txID = resp
-		break
+	log.Info("sending transaction...")
+	txID, err := explorerSvc.BroadcastTransaction(txHex)
+	if err != nil {
+		return fmt.Errorf("failed to braodcast tx: %v", err)
 	}
 
-	outpoints := make([]*pboperator.TxOutpoint, 0, len(outputs))
-	for i := 0; i < len(outputs); i++ {
-		outpoints = append(outpoints, &pboperator.TxOutpoint{
-			Hash:  txID,
-			Index: int32(i),
-		})
+	log.Info("waiting for tx to get confirmed...")
+	if err := waitUntilTxConfirmed(explorerSvc, txID); err != nil {
+		return err
 	}
 
-	//wait so that tx get confirmed
-	time.Sleep(65 * time.Second)
-
-	_, err = client.ClaimMarketDeposit(
+	log.Info("claiming market deposits...")
+	outpoints := createOutpoints(txID, numFragments)
+	if _, err := client.ClaimMarketDeposit(
 		context.Background(), &pboperator.ClaimMarketDepositRequest{
 			Market: &types.Market{
 				BaseAsset:  assetValuePair.BaseAsset,
@@ -221,11 +202,11 @@ func depositMarketAction(ctx *cli.Context) error {
 			},
 			Outpoints: outpoints,
 		},
-	)
-	if err != nil {
+	); err != nil {
 		return err
 	}
 
+	log.Info("done")
 	return nil
 }
 
@@ -288,7 +269,6 @@ func createOutputs(
 }
 
 func fragmentUnspents(pair AssetValuePair, fragmentationMap map[int]int) ([]uint64, []uint64) {
-
 	baseAssetFragments := make([]uint64, 0)
 	quoteAssetFragments := make([]uint64, 0)
 
@@ -296,13 +276,17 @@ func fragmentUnspents(pair AssetValuePair, fragmentationMap map[int]int) ([]uint
 	quoteSum := uint64(0)
 	for numOfUtxo, percentage := range fragmentationMap {
 		for ; numOfUtxo > 0; numOfUtxo-- {
-			baseAssetPart := percent(int(pair.BaseValue), percentage)
-			baseSum += uint64(baseAssetPart)
-			baseAssetFragments = append(baseAssetFragments, uint64(baseAssetPart))
+			if pair.BaseValue > 0 {
+				baseAssetPart := percent(int(pair.BaseValue), percentage)
+				baseSum += uint64(baseAssetPart)
+				baseAssetFragments = append(baseAssetFragments, uint64(baseAssetPart))
+			}
 
-			quoteAssetPart := percent(int(pair.QuoteValue), percentage)
-			quoteSum += uint64(quoteAssetPart)
-			quoteAssetFragments = append(quoteAssetFragments, uint64(quoteAssetPart))
+			if pair.QuoteValue > 0 {
+				quoteAssetPart := percent(int(pair.QuoteValue), percentage)
+				quoteSum += uint64(quoteAssetPart)
+				quoteAssetFragments = append(quoteAssetFragments, uint64(quoteAssetPart))
+			}
 		}
 	}
 
@@ -345,102 +329,81 @@ func findAssetsUnspents(
 	randomWallet *trade.Wallet,
 	explorerSvc explorer.Service,
 	baseAssetKey string,
-) (
-	AssetValuePair,
-	[]explorer.Utxo,
-) {
-
+	txids []string,
+) (AssetValuePair, []explorer.Utxo, error) {
 	var assetValuePair AssetValuePair
 	var unspents []explorer.Utxo
-	var err error
+	valuePerAsset := make(map[string]uint64, 0)
 
-events:
-	for {
-		unspents, err = explorerSvc.GetUnspents(
-			randomWallet.Address(),
-			[][]byte{randomWallet.BlindingKey()},
-		)
+	for _, txid := range txids {
+		u, err := getUnspents(explorerSvc, randomWallet, txid)
 		if err != nil {
-			log.Warn(err)
+			return assetValuePair, nil, err
 		}
 
-		if len(unspents) > 0 {
-
-			valuePerAsset := make(map[string]uint64, 0)
-			for _, v := range unspents {
+		if len(u) > 0 {
+			for _, v := range u {
 				valuePerAsset[v.Asset()] += v.Value()
 			}
-
-			switch len(valuePerAsset) {
-			case 1:
-				for k, v := range valuePerAsset {
-					if k == baseAssetKey {
-						log.Warnf(
-							"only base asset %v funded with value %v",
-							k,
-							v,
-						)
-					} else {
-						log.Warnf(
-							"only quote asset %v funded with value %v",
-							k,
-							v,
-						)
-					}
-				}
-			case 2:
-				for k, v := range valuePerAsset {
-					if k == baseAssetKey {
-						if v < MinBaseDeposit {
-							log.Warnf(
-								"min base deposit is %v please top up",
-								MinBaseDeposit,
-							)
-							continue events
-						}
-						assetValuePair.BaseAsset = k
-						assetValuePair.BaseValue = v
-						log.Infof(
-							"base asset %v funded with value %v",
-							k,
-							v,
-						)
-					} else {
-						if v < MinBaseDeposit {
-							log.Warnf(
-								"min quote deposit is %v, please top up",
-								MinQuoteDeposit,
-							)
-							continue events
-						}
-						assetValuePair.QuoteAsset = k
-						assetValuePair.QuoteValue = v
-						log.Infof(
-							"quote asset %v funded with value %v",
-							k,
-							v,
-						)
-					}
-				}
-				break events
-			}
+			unspents = append(unspents, u...)
 		}
-
-		time.Sleep(time.Duration(CrawlInterval) * time.Second)
 	}
 
-	return assetValuePair, unspents
+	for k, v := range valuePerAsset {
+		if k == baseAssetKey {
+			assetValuePair.BaseAsset = k
+			assetValuePair.BaseValue = v
+		} else {
+			if assetValuePair.QuoteAsset == "" {
+				assetValuePair.QuoteAsset = k
+				assetValuePair.QuoteValue = v
+			} else {
+				if k != assetValuePair.QuoteAsset {
+					log.Warn("congrats! You just lost %d of asset %s 🎉", k, v)
+				}
+			}
+		}
+	}
+
+	if assetValuePair.BaseValue == 0 {
+		log.Warnf("base asset not funded, you'll need to make another depositmarket operation")
+	} else if assetValuePair.BaseValue < MinBaseDeposit {
+		log.Warnf(
+			"min base deposit is %v, you'll need to topup another depositmarket operation",
+			MinBaseDeposit,
+		)
+	}
+	if assetValuePair.QuoteValue == 0 {
+		log.Warn("quote asset not funded, you'll need to make another depositmarket operation")
+	} else if assetValuePair.QuoteValue < MinQuoteDeposit {
+		log.Warnf(
+			"min quote deposit is %v, you'll need to topup another depositmarket operation",
+			MinQuoteDeposit,
+		)
+	}
+
+	return assetValuePair, unspents, nil
 }
 
 func craftTransaction(
 	randomWallet *trade.Wallet,
 	unspents []explorer.Utxo,
-	outs []TxOut,
+	baseFragments, quoteFragments []uint64,
+	addresses []string,
 	feeAmount uint64,
 	network *network.Network,
-	baseAssetKey string,
-	inputBlindingKeys [][]byte,
+	assetValuePair AssetValuePair,
 ) (string, error) {
+	baseAssetKey := assetValuePair.BaseAsset
+	outs := createOutputs(
+		baseFragments,
+		quoteFragments,
+		feeAmount,
+		addresses,
+		assetValuePair,
+		baseAssetKey,
+	)
+
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs, network)
 	if err != nil {
 		return "", err
@@ -461,10 +424,10 @@ func craftTransaction(
 		return "", err
 	}
 
-	keyLen := len(inputBlindingKeys)
+	keyLen := len(unspents)
 	inBlindKeys := make([]pset.BlindingDataLike, keyLen, keyLen)
-	for i, k := range inputBlindingKeys {
-		inBlindKeys[i] = pset.PrivateBlindingKey(k)
+	for i := range unspents {
+		inBlindKeys[i] = pset.PrivateBlindingKey(randomWallet.BlindingKey())
 	}
 
 	blinder, err := pset.NewBlinder(

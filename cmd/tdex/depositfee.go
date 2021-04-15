@@ -1,12 +1,19 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/hex"
+	"os"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 
 	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
@@ -25,7 +32,7 @@ var depositfee = cli.Command{
 	Action: depositFeeAction,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "no-fragment",
+			Name:  "no_fragments",
 			Usage: "disable utxo fragmentation",
 			Value: false,
 		},
@@ -68,7 +75,6 @@ func depositFeeAction(ctx *cli.Context) error {
 		}
 
 		printRespJSON(resp)
-
 		return nil
 	}
 
@@ -81,102 +87,76 @@ func depositFeeAction(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	log.Infof("send funds to address: %s", randomWallet.Address())
 
-	log.Info("fund address: ", randomWallet.Address())
+	funds := waitForOperatorFunds()
 
-	baseAssetValue, unspents := findBaseAssetsUnspents(
+	baseAssetValue, unspents, err := findBaseAssetsUnspents(
 		randomWallet,
 		explorerSvc,
 		baseAssetKey,
-	)
-
-	log.Info("calculating fragments ...")
-	baseFragments := fragmentFeeUnspents(
-		baseAssetValue,
-		MinFee,
-		MaxNumOfOutputs,
-	)
-	log.Infof(
-		"fetched %d funds that will be split into %d fragments",
-		len(unspents),
-		len(baseFragments),
-	)
-
-	addresses, err := fetchFeeAccountAddresses(
-		len(baseFragments),
-		client,
-	)
-	if err != nil {
-		log.Error(err)
-	}
-
-	inLen := len(unspents)
-	ins := make([]int, inLen, inLen)
-	for i := range unspents {
-		ins[i] = wallet.P2WPKH
-	}
-	outLen := len(baseFragments)
-	outs := make([]int, outLen, outLen)
-	for i := range baseFragments {
-		outs[i] = wallet.P2WPKH
-	}
-	estimatedSize := wallet.EstimateTxSize(ins, nil, nil, outs, nil)
-	feeAmount := uint64(float64(estimatedSize) * 0.1)
-
-	outputs := createOutputsForDepositFeeTransaction(
-		baseFragments,
-		feeAmount,
-		addresses,
-		baseAssetKey,
-	)
-
-	txHex, err := craftTransaction(
-		randomWallet,
-		unspents,
-		outputs,
-		feeAmount,
-		net,
-		baseAssetKey,
-		[][]byte{randomWallet.BlindingKey()},
-	)
-	if err != nil {
-		log.Error(err)
-	}
-
-	var txID string
-retry:
-	for {
-		resp, err := explorerSvc.BroadcastTransaction(txHex)
-		if err != nil {
-			log.Warn(err)
-			log.Info("transaction broadcast retry")
-			continue retry
-		}
-		log.Info(resp)
-		txID = resp
-		break retry
-	}
-
-	outpoints := make([]*pboperator.TxOutpoint, 0, len(outputs))
-	for i := 0; i < len(outputs); i++ {
-		outpoints = append(outpoints, &pboperator.TxOutpoint{
-			Hash:  txID,
-			Index: int32(i),
-		})
-	}
-
-	//wait so that tx get confirmed
-	time.Sleep(65 * time.Second)
-
-	_, err = client.ClaimFeeDeposit(
-		context.Background(), &pboperator.ClaimFeeDepositRequest{
-			Outpoints: outpoints,
-		},
+		funds,
 	)
 	if err != nil {
 		return err
 	}
 
+	log.Info("calculating fragments...")
+	baseFragments := fragmentFeeUnspents(baseAssetValue, MinFee, MaxNumOfOutputs)
+
+	numUnspents := len(unspents)
+	numFragments := len(baseFragments)
+	log.Infof(
+		"fetched %d fund(s) of total amount %d that will be split into %d fragments",
+		numUnspents,
+		baseAssetValue,
+		numFragments,
+	)
+
+	addresses, err := fetchFeeAccountAddresses(numFragments, client)
+	if err != nil {
+		return err
+	}
+
+	feeAmount := estimateFees(numUnspents, numFragments)
+
+	log.Info("crafting transaction...")
+	txHex, err := craftTransaction(
+		randomWallet,
+		unspents,
+		baseFragments, nil,
+		addresses,
+		feeAmount,
+		net,
+		AssetValuePair{BaseAsset: baseAssetKey},
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Info("sending transactions...")
+	txID, err := explorerSvc.BroadcastTransaction(txHex)
+	if err != nil {
+		return err
+	}
+	log.Infof("txid: %s", txID)
+
+	log.Info("waiting for tx to get confirmed...")
+	if err := waitUntilTxConfirmed(explorerSvc, txID); err != nil {
+		return err
+	}
+
+	log.Info("claiming fee deposits...")
+	outpoints := createOutpoints(txID, numFragments)
+	if _, err := client.ClaimFeeDeposit(
+		context.Background(), &pboperator.ClaimFeeDepositRequest{
+			Outpoints: outpoints,
+		},
+	); err != nil {
+		return err
+	}
+
+	log.Info("done")
 	return nil
 }
 
@@ -195,7 +175,11 @@ func fragmentFeeUnspents(
 		valueToBeFragmented -= minFragmentValue
 	}
 	if valueToBeFragmented > 0 {
-		res[len(res)-1] += valueToBeFragmented
+		if len(res) > 0 {
+			res[len(res)-1] += valueToBeFragmented
+		} else {
+			res = append(res, valueToBeFragmented)
+		}
 	}
 
 	return res
@@ -213,7 +197,7 @@ func createOutputsForDepositFeeTransaction(
 	index := 0
 	for i, v := range baseFragments {
 		value := int64(v)
-		//deduct fee from last(largest) fragment
+		// deduct fee from last(largest) fragment
 		if i == len(baseFragments)-1 {
 			value = int64(v) - int64(feeAmount)
 		}
@@ -233,53 +217,40 @@ func findBaseAssetsUnspents(
 	randomWallet *trade.Wallet,
 	explorerSvc explorer.Service,
 	baseAssetKey string,
-) (
-	uint64,
-	[]explorer.Utxo,
-) {
-
-	var unspents []explorer.Utxo
-	var err error
+	txids []string,
+) (uint64, []explorer.Utxo, error) {
+	unspents := make([]explorer.Utxo, 0)
 	valuePerAsset := make(map[string]uint64, 0)
 
-events:
-	for {
-		unspents, err = explorerSvc.GetUnspents(
-			randomWallet.Address(),
-			[][]byte{randomWallet.BlindingKey()},
-		)
+	for _, txid := range txids {
+		u, err := getUnspents(explorerSvc, randomWallet, txid)
 		if err != nil {
-			log.Warn(err)
+			return 0, nil, err
 		}
-
-		if len(unspents) > 0 {
-
-			for _, v := range unspents {
+		if len(u) > 0 {
+			for _, v := range u {
 				valuePerAsset[v.Asset()] += v.Value()
 			}
-
-			if baseTotalAmount, ok := valuePerAsset[baseAssetKey]; ok {
-				if baseTotalAmount < MinFee {
-					log.Warnf(
-						"min base deposit is %v please top up",
-						MinFee,
-					)
-					continue events
-				}
-				log.Infof(
-					"base asset %v funded with value %v",
-					baseAssetKey,
-					baseTotalAmount,
-				)
-				break events
-			}
-
+			unspents = append(unspents, u...)
 		}
-
-		time.Sleep(time.Duration(CrawlInterval) * time.Second)
 	}
 
-	return valuePerAsset[baseAssetKey], unspents
+	if baseTotalAmount, ok := valuePerAsset[baseAssetKey]; ok {
+		if baseTotalAmount < MinFee {
+			log.Warnf(
+				"min base deposit is %v please top up with another depositfee operation",
+				MinFee,
+			)
+		} else {
+			log.Infof(
+				"base asset %v funded with value %v",
+				baseAssetKey,
+				baseTotalAmount,
+			)
+		}
+	}
+
+	return valuePerAsset[baseAssetKey], unspents, nil
 }
 
 func fetchFeeAccountAddresses(
@@ -301,4 +272,89 @@ func fetchFeeAccountAddresses(
 	}
 
 	return addresses, nil
+}
+
+func estimateFees(numIns, numOuts int) uint64 {
+	ins := make([]int, numIns, numIns)
+	for i := 0; i < numIns; i++ {
+		ins[i] = wallet.P2WPKH
+	}
+
+	outs := make([]int, numOuts, numOuts)
+	for i := 0; i < numOuts; i++ {
+		outs[i] = wallet.P2WPKH
+	}
+
+	size := wallet.EstimateTxSize(ins, nil, nil, outs, nil)
+	return uint64(float64(size) * 0.1)
+}
+
+func waitUntilTxConfirmed(explorerSvc explorer.Service, txid string) error {
+	for {
+		isConfirmed, err := explorerSvc.IsTransactionConfirmed(txid)
+		if err != nil {
+			return err
+		}
+		if isConfirmed {
+			return nil
+		}
+		sleepTime := 20 * time.Second
+		time.Sleep(sleepTime)
+	}
+}
+
+func createOutpoints(txid string, numOuts int) []*pboperator.TxOutpoint {
+	outpoints := make([]*pboperator.TxOutpoint, 0, numOuts)
+	for i := 0; i < numOuts; i++ {
+		outpoints = append(outpoints, &pboperator.TxOutpoint{
+			Hash:  txid,
+			Index: int32(i),
+		})
+	}
+	return outpoints
+}
+
+func getUnspents(explorerSvc explorer.Service, w *trade.Wallet, txid string) ([]explorer.Utxo, error) {
+	tx, err := explorerSvc.GetTransaction(txid)
+	if err != nil {
+		return nil, err
+	}
+
+	utxos := make([]explorer.Utxo, 0)
+	_, script := w.Script()
+	for i, out := range tx.Outputs() {
+		if bytes.Equal(out.Script, script) {
+			revealed, _ := transactionutil.UnblindOutput(out, w.BlindingKey())
+			var valueCommitment, assetCommitment string
+			if out.IsConfidential() {
+				valueCommitment = hex.EncodeToString(out.Value)
+				assetCommitment = hex.EncodeToString(out.Asset)
+			}
+
+			utxos = append(utxos, esplora.NewWitnessUtxo(
+				txid,
+				uint32(i),
+				revealed.Value,
+				revealed.AssetHash,
+				valueCommitment,
+				assetCommitment,
+				revealed.ValueBlinder,
+				revealed.AssetBlinder,
+				script,
+				out.Nonce,
+				out.RangeProof,
+				out.SurjectionProof,
+				tx.Confirmed(),
+			))
+		}
+	}
+
+	return utxos, nil
+}
+
+func waitForOperatorFunds() []string {
+	reader := bufio.NewReader(os.Stdin)
+	log.Info("Enter txid of fund(s) separated by a blank space: ")
+	in, _ := reader.ReadString('\n')
+	return strings.Split(strings.Trim(in, "\n"), " ")
 }
