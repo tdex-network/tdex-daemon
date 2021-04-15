@@ -3,7 +3,10 @@ package application
 import (
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -60,8 +63,8 @@ type Price struct {
 }
 
 type PriceWithFee struct {
-	Price
-	Fee
+	Price  Price
+	Fee    Fee
 	Amount uint64
 	Asset  string
 }
@@ -77,8 +80,8 @@ type Balance struct {
 }
 
 type BalanceWithFee struct {
-	Balance
-	Fee
+	Balance Balance
+	Fee     Fee
 }
 
 type BalanceInfo struct {
@@ -130,14 +133,49 @@ type UtxoInfo struct {
 	Asset    string
 }
 
+type Unspents []domain.Unspent
+
+func (u Unspents) ToUtxos() []explorer.Utxo {
+	l := make([]explorer.Utxo, len(u), len(u))
+	for i := range u {
+		l[i] = u[i].ToUtxo()
+	}
+	return l
+}
+
 type UnblindedResult *transactionutil.UnblindedResult
+type BlindingData wallet.BlindingData
 
 type Blinder interface {
 	UnblindOutput(txout *transaction.TxOutput, key []byte) (UnblindedResult, bool)
 }
 
+type FillProposalOpts struct {
+	Mnemonic      []string
+	SwapRequest   domain.SwapRequest
+	MarketUtxos   []explorer.Utxo
+	FeeUtxos      []explorer.Utxo
+	MarketInfo    domain.AddressesInfo
+	FeeInfo       domain.AddressesInfo
+	OutputInfo    domain.AddressInfo
+	ChangeInfo    domain.AddressInfo
+	FeeChangeInfo domain.AddressInfo
+	Network       *network.Network
+}
+
+type FillProposalResult struct {
+	PsetBase64         string
+	SelectedUnspents   []explorer.Utxo
+	InputBlindingKeys  map[string][]byte
+	OutputBlindingKeys map[string][]byte
+}
+type TradeHandler interface {
+	FillProposal(FillProposalOpts) (*FillProposalResult, error)
+}
+
 var (
 	BlinderManager Blinder
+	TradeManager   TradeHandler
 )
 
 type blinderManager struct{}
@@ -149,6 +187,13 @@ func (b blinderManager) UnblindOutput(
 	return transactionutil.UnblindOutput(txout, key)
 }
 
+type tradeManager struct{}
+
+func (t tradeManager) FillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
+	return fillProposal(opts)
+}
+
 func init() {
 	BlinderManager = blinderManager{}
+	TradeManager = tradeManager{}
 }

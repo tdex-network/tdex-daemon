@@ -295,7 +295,7 @@ func (wu witnessUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, erro
 	input := transaction.NewTxInput(inHash, wu.UIndex)
 
 	var witnessUtxo *transaction.TxOutput
-	if len(wu.URangeProof) != 0 && len(wu.USurjectionProof) != 0 {
+	if wu.IsConfidential() {
 		assetCommitment, err := bufferutil.CommitmentToBytes(wu.UAssetCommitment)
 		if err != nil {
 			return nil, nil, err

@@ -84,7 +84,6 @@ func main() {
 		crawlerSvc,
 		repoManager,
 		marketsBaseAsset,
-		feeThreshold,
 		network,
 	)
 
@@ -104,7 +103,7 @@ func main() {
 		marketsBaseAsset,
 		marketsFee,
 		network,
-		uint64(config.GetInt(config.FeeAccountBalanceThresholdKey)),
+		feeThreshold,
 	)
 	walletSvc, err := application.NewWalletService(
 		repoManager,
@@ -132,9 +131,9 @@ func main() {
 		interceptor.StreamInterceptor(),
 	)
 
-	traderHandler := grpchandler.NewTraderHandler(traderSvc, repoManager)
-	walletHandler := grpchandler.NewWalletHandler(walletSvc, repoManager)
-	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc, repoManager)
+	traderHandler := grpchandler.NewTraderHandler(traderSvc)
+	walletHandler := grpchandler.NewWalletHandler(walletSvc)
+	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc)
 
 	// Register proto implementations on Trader interface
 	pbtrader.RegisterTradeServer(traderGrpcServer, traderHandler)

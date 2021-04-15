@@ -23,15 +23,24 @@ func UnblindOutput(
 	utxo *transaction.TxOutput,
 	blindKey []byte,
 ) (*UnblindedResult, bool) {
-	revealed, err := confidential.UnblindOutputWithKey(utxo, blindKey)
-	if err != nil {
-		return nil, false
+	if utxo.IsConfidential() {
+		revealed, err := confidential.UnblindOutputWithKey(utxo, blindKey)
+		if err != nil {
+			return nil, false
+		}
+		return &UnblindedResult{
+			AssetHash:    hex.EncodeToString(elementsutil.ReverseBytes(revealed.Asset)),
+			Value:        revealed.Value,
+			AssetBlinder: revealed.AssetBlindingFactor,
+			ValueBlinder: revealed.ValueBlindingFactor,
+		}, true
 	}
+
 	return &UnblindedResult{
-		AssetHash:    hex.EncodeToString(elementsutil.ReverseBytes(revealed.Asset)),
-		Value:        revealed.Value,
-		AssetBlinder: revealed.AssetBlindingFactor,
-		ValueBlinder: revealed.ValueBlindingFactor,
+		AssetHash:    bufferutil.AssetHashFromBytes(utxo.Asset),
+		Value:        bufferutil.ValueFromBytes(utxo.Value),
+		AssetBlinder: make([]byte, 32),
+		ValueBlinder: make([]byte, 32),
 	}, true
 }
 

@@ -24,8 +24,6 @@ type Unspent struct {
 	AssetBlinder    []byte
 	ScriptPubKey    []byte
 	Nonce           []byte
-	RangeProof      []byte
-	SurjectionProof []byte
 	Address         string
 	Spent           bool
 	Locked          bool

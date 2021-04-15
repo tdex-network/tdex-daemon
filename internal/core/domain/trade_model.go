@@ -87,7 +87,7 @@ func (s *SwapError) Error() string {
 type SwapParser interface {
 	SerializeRequest(r SwapRequest) ([]byte, *SwapError)
 	SerializeAccept(args AcceptArgs) (string, []byte, *SwapError)
-	SerializeComplete(reqMsg, accMsg []byte, tx string) (string, []byte, *SwapError)
+	SerializeComplete(accMsg []byte, tx string) (string, []byte, *SwapError)
 	SerializeFail(id string, code int, msg string) (string, []byte)
 
 	DeserializeRequest(msg []byte) (SwapRequest, error)
@@ -99,17 +99,16 @@ type SwapParser interface {
 type swapParser struct{}
 
 func (p swapParser) SerializeRequest(r SwapRequest) ([]byte, *SwapError) {
-	swapRequest := &pbswap.SwapRequest{
-		Id:                r.GetId(),
-		AssetP:            r.GetAssetP(),
-		AmountP:           r.GetAmountP(),
-		AssetR:            r.GetAssetR(),
-		AmountR:           r.GetAmountR(),
-		Transaction:       r.GetTransaction(),
-		InputBlindingKey:  r.GetInputBlindingKey(),
-		OutputBlindingKey: r.GetOutputBlindingKey(),
-	}
-	msg, err := pkgswap.ParseSwapRequest(swapRequest)
+	msg, err := pkgswap.Request(pkgswap.RequestOpts{
+		Id:                 r.GetId(),
+		AssetToSend:        r.GetAssetP(),
+		AmountToSend:       r.GetAmountP(),
+		AssetToReceive:     r.GetAssetR(),
+		AmountToReceive:    r.GetAmountR(),
+		PsetBase64:         r.GetTransaction(),
+		InputBlindingKeys:  r.GetInputBlindingKey(),
+		OutputBlindingKeys: r.GetOutputBlindingKey(),
+	})
 	if err != nil {
 		return nil, &SwapError{err, int(pkgswap.ErrCodeInvalidSwapRequest)}
 	}
@@ -129,22 +128,7 @@ func (p swapParser) SerializeAccept(args AcceptArgs) (string, []byte, *SwapError
 	return id, msg, nil
 }
 
-func (p swapParser) SerializeComplete(reqMsg, accMsg []byte, tx string) (string, []byte, *SwapError) {
-	swapRequest := &pbswap.SwapRequest{}
-	proto.Unmarshal(reqMsg, swapRequest)
-
-	swapAccept := &pbswap.SwapAccept{}
-	proto.Unmarshal(accMsg, swapAccept)
-
-	if err := pkgswap.ValidateCompletePset(pkgswap.ValidateCompletePsetOpts{
-		PsetBase64:         tx,
-		InputBlindingKeys:  swapAccept.GetInputBlindingKey(),
-		OutputBlindingKeys: swapAccept.GetOutputBlindingKey(),
-		SwapRequest:        swapRequest,
-	}); err != nil {
-		return "", nil, &SwapError{err, int(pkgswap.ErrCodeFailedToComplete)}
-	}
-
+func (p swapParser) SerializeComplete(accMsg []byte, tx string) (string, []byte, *SwapError) {
 	id, msg, err := pkgswap.Complete(pkgswap.CompleteOpts{
 		Message:    accMsg,
 		PsetBase64: tx,

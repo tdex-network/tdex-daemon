@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -45,6 +46,8 @@ func TestAccountManagement(t *testing.T) {
 			}), true)
 	}
 
+	time.Sleep(50 * time.Millisecond)
+
 	mktAddressesAndKeys, err := operatorSvc.DepositMarket(ctx, "", "", 2)
 	require.NoError(t, err)
 
@@ -63,6 +66,8 @@ func TestAccountManagement(t *testing.T) {
 				ValueBlinder: randomBytes(32),
 			}), true)
 	}
+
+	time.Sleep(50 * time.Millisecond)
 
 	application.BlinderManager = mockedBlinderManager
 

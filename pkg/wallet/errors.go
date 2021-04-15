@@ -90,6 +90,8 @@ var (
 	ErrInvalidInputAssetBlinder = errors.New("asset blinder must be a 32-byte array")
 	// ErrInvalidInputAmountBlinder ...
 	ErrInvalidInputAmountBlinder = errors.New("amount blinder must be a 32-byte array")
+	// ErrInvalidInBlindingKey ...
+	ErrInvalidInBlindingKey = errors.New("unable to recover blinding data with provided key")
 
 	// ErrEmptyDerivationPaths ...
 	ErrEmptyDerivationPaths = errors.New("derivation path list must not be empty")
@@ -115,4 +117,7 @@ var (
 	ErrReachedMaxBlindingAttempts = errors.New(
 		"max number of attempts reached for blinding the transaction",
 	)
+
+	// ErrMissingInBlindingKey ...
+	ErrMissingInBlindingKey = errors.New("missing blinding key for input")
 )

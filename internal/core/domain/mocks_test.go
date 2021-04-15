@@ -50,8 +50,8 @@ func (m mockSwapParser) SerializeAccept(acc domain.AcceptArgs) (string, []byte, 
 	return sres, bres, err
 }
 
-func (m mockSwapParser) SerializeComplete(reqMsg, accMsg []byte, tx string) (string, []byte, *domain.SwapError) {
-	args := m.Called(reqMsg, accMsg, tx)
+func (m mockSwapParser) SerializeComplete(accMsg []byte, tx string) (string, []byte, *domain.SwapError) {
+	args := m.Called(accMsg, tx)
 
 	var sres string
 	if a := args.Get(0); a != nil {

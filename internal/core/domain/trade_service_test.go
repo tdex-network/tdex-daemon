@@ -223,7 +223,6 @@ func TestTradeComplete(t *testing.T) {
 		mockedSwapParser := mockSwapParser{}
 		mockedSwapParser.On(
 			"SerializeComplete",
-			tt.trade.SwapRequest.Message,
 			tt.trade.SwapAccept.Message,
 			tx,
 		).Return(randomID(), randomBytes(100), nil)
@@ -252,7 +251,6 @@ func TestFailingTradeComplete(t *testing.T) {
 		mockedSwapParser := mockSwapParser{}
 		mockedSwapParser.On(
 			"SerializeComplete",
-			trade.SwapRequest.Message,
 			trade.SwapAccept.Message,
 			tx,
 		).Return(nil, nil, mockedErr)

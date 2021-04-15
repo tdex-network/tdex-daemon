@@ -127,6 +127,8 @@ func newWalletService(
 	if vault, err := w.repoManager.VaultRepository().GetOrCreateVault(
 		context.Background(), nil, "", nil,
 	); err == nil {
+		log.Info("Restoring internal wallet's utxo set. This could take a while...")
+
 		info := vault.AllDerivedAddressesInfo()
 		if err := fetchAndAddUnspents(
 			w.explorerService,
@@ -136,8 +138,8 @@ func newWalletService(
 		); err != nil {
 			return nil, err
 		}
-
 		w.setInitialized(true)
+		log.Info("Done.")
 	}
 	return w, nil
 }
@@ -683,32 +685,41 @@ func (w *walletService) persistRestoredState(
 	unspents []domain.Unspent,
 	markets []*domain.Market,
 ) error {
-	// update changes to vault
-	if err := w.repoManager.VaultRepository().UpdateVault(
+	if _, err := w.repoManager.RunTransaction(
 		ctx,
-		func(v *domain.Vault) (*domain.Vault, error) {
-			return vault, nil
-		},
-	); err != nil {
-		return fmt.Errorf("unable to persist changes to the vault repo: %s", err)
-	}
+		false,
+		func(ctx context.Context) (interface{}, error) {
+			// update changes to vault
+			if err := w.repoManager.VaultRepository().UpdateVault(
+				ctx,
+				func(v *domain.Vault) (*domain.Vault, error) {
+					return vault, nil
+				},
+			); err != nil {
+				return nil, fmt.Errorf("unable to persist changes to the vault repo: %s", err)
+			}
 
-	// update utxo set
-	if err := w.repoManager.UnspentRepository().AddUnspents(ctx, unspents); err != nil {
-		return fmt.Errorf("unable to persist changes to the unspent repo: %s", err)
-	}
+			// update changes to markets
+			for _, m := range markets {
+				if err := w.repoManager.MarketRepository().UpdateMarket(
+					ctx,
+					m.AccountIndex,
+					func(_ *domain.Market) (*domain.Market, error) {
+						return m, nil
+					},
+				); err != nil {
+					return nil, fmt.Errorf("unable to persist changes to the market repo: %s", err)
+				}
+			}
 
-	// update changes to markets
-	for _, m := range markets {
-		if err := w.repoManager.MarketRepository().UpdateMarket(
-			ctx,
-			m.AccountIndex,
-			func(_ *domain.Market) (*domain.Market, error) {
-				return m, nil
-			},
-		); err != nil {
-			return fmt.Errorf("unable to persist changes to the market repo: %s", err)
-		}
+			// update utxo set
+			if err := w.repoManager.UnspentRepository().AddUnspents(ctx, unspents); err != nil {
+				return nil, fmt.Errorf("unable to persist changes to the unspent repo: %s", err)
+			}
+
+			return nil, nil
+		}); err != nil {
+		return err
 	}
 
 	return nil
@@ -826,8 +837,6 @@ func (w *walletService) restoreUnspentsForAddress(
 			AssetBlinder:    u.AssetBlinder(),
 			ScriptPubKey:    u.Script(),
 			Nonce:           u.Nonce(),
-			RangeProof:      u.RangeProof(),
-			SurjectionProof: u.SurjectionProof(),
 			Confirmed:       u.IsConfirmed(),
 			Address:         addr,
 		}
@@ -1120,8 +1129,6 @@ func fetchUnspents(explorerSvc explorer.Service, info domain.AddressesInfo) ([]d
 			AssetBlinder:    u.AssetBlinder(),
 			ScriptPubKey:    u.Script(),
 			Nonce:           u.Nonce(),
-			RangeProof:      u.RangeProof(),
-			SurjectionProof: u.SurjectionProof(),
 			Confirmed:       u.IsConfirmed(),
 			Address:         addr,
 		}
@@ -1187,7 +1194,8 @@ func spendUnspentsAsync(
 
 func startObserveUnconfirmedUnspents(
 	bcListener BlockchainListener,
-	unspents []domain.Unspent) {
+	unspents []domain.Unspent,
+) {
 	count := 0
 	for _, u := range unspents {
 		if !u.IsConfirmed() {
@@ -1266,8 +1274,6 @@ func extractUnspentsFromTx(
 				AssetBlinder:    unconfidential.AssetBlinder,
 				ScriptPubKey:    out.Script,
 				Nonce:           out.Nonce,
-				RangeProof:      out.RangeProof,
-				SurjectionProof: out.SurjectionProof,
 				Address:         info.Address,
 				Confirmed:       false,
 			})

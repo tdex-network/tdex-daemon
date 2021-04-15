@@ -125,10 +125,20 @@ func (t tradeRepositoryImpl) getOrCreateTrade(
 	ID *uuid.UUID,
 ) (*domain.Trade, error) {
 	if ID != nil {
-		return t.getTrade(ctx, *ID)
+		tr, err := t.getTrade(ctx, *ID)
+		if err != nil {
+			return nil, err
+		}
+		if tr != nil {
+			return tr, nil
+		}
 	}
 
 	trade := domain.NewTrade()
+	if ID != nil {
+		trade.ID = *ID
+	}
+
 	if err := t.insertTrade(ctx, *trade); err != nil {
 		return nil, err
 	}
@@ -174,7 +184,7 @@ func (t tradeRepositoryImpl) getTrade(
 	}
 	if err != nil {
 		if err == badgerhold.ErrNotFound {
-			return nil, ErrTradeNotFound
+			return nil, nil
 		}
 		return nil, err
 	}

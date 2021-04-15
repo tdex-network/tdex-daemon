@@ -6,7 +6,6 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -14,24 +13,20 @@ import (
 
 type walletHandler struct {
 	pb.UnimplementedWalletServer
-	walletSvc   application.WalletService
-	repoManager ports.RepoManager
+	walletSvc application.WalletService
 }
 
 func NewWalletHandler(
 	walletSvc application.WalletService,
-	repoManager ports.RepoManager,
 ) pb.WalletServer {
-	return newWalletHandler(walletSvc, repoManager)
+	return newWalletHandler(walletSvc)
 }
 
 func newWalletHandler(
 	walletSvc application.WalletService,
-	repoManager ports.RepoManager,
 ) *walletHandler {
 	return &walletHandler{
-		walletSvc:   walletSvc,
-		repoManager: repoManager,
+		walletSvc: walletSvc,
 	}
 }
 
@@ -144,7 +139,7 @@ func (w walletHandler) initWallet(
 }
 
 func (w walletHandler) unlockWallet(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.UnlockWalletRequest,
 ) (*pb.UnlockWalletReply, error) {
 	password := req.GetWalletPassword()
@@ -152,26 +147,15 @@ func (w walletHandler) unlockWallet(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := w.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			if err := w.walletSvc.UnlockWallet(ctx, string(password)); err != nil {
-				return nil, err
-			}
-
-			return &pb.UnlockWalletReply{}, nil
-		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := w.walletSvc.UnlockWallet(ctx, string(password)); err != nil {
+		return nil, err
 	}
 
-	return res.(*pb.UnlockWalletReply), nil
+	return &pb.UnlockWalletReply{}, nil
 }
 
 func (w walletHandler) changePassword(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.ChangePasswordRequest,
 ) (*pb.ChangePasswordReply, error) {
 	currentPwd := req.GetCurrentPassword()
@@ -183,88 +167,56 @@ func (w walletHandler) changePassword(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	res, err := w.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			if err := w.walletSvc.ChangePassword(
-				ctx,
-				string(currentPwd),
-				string(newPwd),
-			); err != nil {
-				return nil, err
-			}
-
-			return &pb.ChangePasswordReply{}, nil
-		},
-	)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := w.walletSvc.ChangePassword(
+		ctx,
+		string(currentPwd),
+		string(newPwd),
+	); err != nil {
+		return nil, err
 	}
 
-	return res.(*pb.ChangePasswordReply), nil
+	return &pb.ChangePasswordReply{}, nil
+
 }
 
 func (w walletHandler) walletAddress(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.WalletAddressRequest,
 ) (*pb.WalletAddressReply, error) {
-	res, err := w.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			addr, blindingKey, err := w.walletSvc.GenerateAddressAndBlindingKey(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.WalletAddressReply{
-				Address:  addr,
-				Blinding: blindingKey,
-			}, nil
-		},
-	)
+	addr, blindingKey, err := w.walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.WalletAddressReply), nil
+	return &pb.WalletAddressReply{
+		Address:  addr,
+		Blinding: blindingKey,
+	}, nil
 }
 
 func (w walletHandler) walletBalance(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.WalletBalanceRequest,
 ) (*pb.WalletBalanceReply, error) {
-	res, err := w.repoManager.RunTransaction(
-		reqCtx,
-		readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			b, err := w.walletSvc.GetWalletBalance(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			balance := make(map[string]*pb.BalanceInfo)
-			for k, v := range b {
-				balance[k] = &pb.BalanceInfo{
-					TotalBalance:       v.TotalBalance,
-					ConfirmedBalance:   v.ConfirmedBalance,
-					UnconfirmedBalance: v.UnconfirmedBalance,
-				}
-			}
-
-			return &pb.WalletBalanceReply{Balance: balance}, nil
-		},
-	)
+	b, err := w.walletSvc.GetWalletBalance(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.WalletBalanceReply), nil
+	balance := make(map[string]*pb.BalanceInfo)
+	for k, v := range b {
+		balance[k] = &pb.BalanceInfo{
+			TotalBalance:       v.TotalBalance,
+			ConfirmedBalance:   v.ConfirmedBalance,
+			UnconfirmedBalance: v.UnconfirmedBalance,
+		}
+	}
+
+	return &pb.WalletBalanceReply{Balance: balance}, nil
 }
 
 func (w walletHandler) sendToMany(
-	reqCtx context.Context,
+	ctx context.Context,
 	req *pb.SendToManyRequest,
 ) (*pb.SendToManyReply, error) {
 	outs := req.GetOutputs()
@@ -286,28 +238,17 @@ func (w walletHandler) sendToMany(
 		outputs = append(outputs, output)
 	}
 
-	res, err := w.repoManager.RunTransaction(
-		reqCtx,
-		!readOnlyTx,
-		func(ctx context.Context) (interface{}, error) {
-			walletReq := application.SendToManyRequest{
-				Outputs:         outputs,
-				MillisatPerByte: msatPerByte,
-				Push:            true,
-			}
-			rawTx, err := w.walletSvc.SendToMany(ctx, walletReq)
-			if err != nil {
-				return nil, err
-			}
-
-			return &pb.SendToManyReply{RawTx: rawTx}, nil
-		},
-	)
+	walletReq := application.SendToManyRequest{
+		Outputs:         outputs,
+		MillisatPerByte: msatPerByte,
+		Push:            true,
+	}
+	rawTx, err := w.walletSvc.SendToMany(ctx, walletReq)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	return res.(*pb.SendToManyReply), nil
+	return &pb.SendToManyReply{RawTx: rawTx}, nil
 }
 
 func validateMnemonic(mnemonic []string) error {
