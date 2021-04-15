@@ -362,7 +362,7 @@ func findAssetsUnspents(
 				assetValuePair.QuoteValue = v
 			} else {
 				if k != assetValuePair.QuoteAsset {
-					log.Warn("congrats! You just lost %d of asset %s 🎉", k, v)
+					log.Warnf("congrats! You just lost %d of asset %s 🎉", k, v)
 				}
 			}
 		}
