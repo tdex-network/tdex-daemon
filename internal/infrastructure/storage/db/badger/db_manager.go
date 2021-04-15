@@ -16,8 +16,8 @@ import (
 	"github.com/timshannon/badgerhold/v2"
 )
 
-// RepoManager holds all the badgerhold stores in a single data structure.
-type RepoManager struct {
+// repoManager holds all the badgerhold stores in a single data structure.
+type repoManager struct {
 	store        *badgerhold.Store
 	priceStore   *badgerhold.Store
 	unspentStore *badgerhold.Store
@@ -33,12 +33,18 @@ type RepoManager struct {
 // It creates a dedicated directory for main and prices stores, while the
 // unspent repository lives in memory.
 func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, error) {
-	mainDb, err := createDb(filepath.Join(baseDbDir, "main"), logger)
+	var maindbDir, pricedbDir string
+	if len(baseDbDir) > 0 {
+		maindbDir = filepath.Join(baseDbDir, "main")
+		pricedbDir = filepath.Join(baseDbDir, "prices")
+	}
+
+	mainDb, err := createDb(maindbDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening main db: %w", err)
 	}
 
-	priceDb, err := createDb(filepath.Join(baseDbDir, "prices"), logger)
+	priceDb, err := createDb(pricedbDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening prices db: %w", err)
 	}
@@ -53,7 +59,7 @@ func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, 
 	tradeRepo := NewTradeRepositoryImpl(mainDb)
 	vaultRepo := NewVaultRepositoryImpl(mainDb)
 
-	return &RepoManager{
+	return &repoManager{
 		store:             mainDb,
 		priceStore:        priceDb,
 		unspentStore:      unspentDb,
@@ -64,46 +70,46 @@ func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, 
 	}, nil
 }
 
-func (d *RepoManager) MarketRepository() domain.MarketRepository {
+func (d *repoManager) MarketRepository() domain.MarketRepository {
 	return d.marketRepository
 }
 
-func (d *RepoManager) UnspentRepository() domain.UnspentRepository {
+func (d *repoManager) UnspentRepository() domain.UnspentRepository {
 	return d.unspentRepository
 }
 
-func (d *RepoManager) TradeRepository() domain.TradeRepository {
+func (d *repoManager) TradeRepository() domain.TradeRepository {
 	return d.tradeRepository
 }
 
-func (d *RepoManager) VaultRepository() domain.VaultRepository {
+func (d *repoManager) VaultRepository() domain.VaultRepository {
 	return d.vaultRepository
 }
 
-func (d *RepoManager) Close() {
+func (d *repoManager) Close() {
 	d.store.Close()
 	d.priceStore.Close()
 	d.unspentStore.Close()
 }
 
 // NewTransaction implements the RepoManager interface
-func (d *RepoManager) NewTransaction() ports.Transaction {
+func (d *repoManager) NewTransaction() ports.Transaction {
 	return d.store.Badger().NewTransaction(true)
 }
 
 // NewPricesTransaction implements the RepoManager interface
-func (d *RepoManager) NewPricesTransaction() ports.Transaction {
+func (d *repoManager) NewPricesTransaction() ports.Transaction {
 	return d.priceStore.Badger().NewTransaction(true)
 }
 
 // NewUnspentsTransaction implements the RepoManager interface
-func (d *RepoManager) NewUnspentsTransaction() ports.Transaction {
+func (d *repoManager) NewUnspentsTransaction() ports.Transaction {
 	return d.unspentStore.Badger().NewTransaction(true)
 }
 
 // RunTransaction invokes the given handler and retries in case the transaction
 // returns a conflict error
-func (d *RepoManager) RunTransaction(
+func (d *repoManager) RunTransaction(
 	ctx context.Context,
 	readOnly bool,
 	handler func(ctx context.Context) (interface{}, error),
@@ -122,7 +128,7 @@ func (d *RepoManager) RunTransaction(
 
 // RunUnspentsTransaction invokes the given handler and retries in case the
 // unspents transaction returns a conflict error
-func (d *RepoManager) RunUnspentsTransaction(
+func (d *repoManager) RunUnspentsTransaction(
 	ctx context.Context,
 	readOnly bool,
 	handler func(ctx context.Context) (interface{}, error),
@@ -142,7 +148,7 @@ func (d *RepoManager) RunUnspentsTransaction(
 
 // RunPricesTransaction invokes the given handler and retries in case the
 // unspents transaction returns a conflict error
-func (d *RepoManager) RunPricesTransaction(
+func (d *repoManager) RunPricesTransaction(
 	ctx context.Context,
 	readOnly bool,
 	handler func(ctx context.Context) (interface{}, error),
@@ -166,7 +172,7 @@ type runTransactionArgs struct {
 	handler  func(ctx context.Context) (interface{}, error)
 }
 
-func (d *RepoManager) runTransaction(
+func (d *repoManager) runTransaction(
 	args runTransactionArgs,
 ) (interface{}, error) {
 	for {

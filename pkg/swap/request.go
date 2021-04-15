@@ -8,8 +8,9 @@ import (
 
 // RequestOpts is the struct to be given to the Request method
 type RequestOpts struct {
-	AssetToBeSent      string
-	AmountToBeSent     uint64
+	Id                 string
+	AssetToSend        string
+	AmountToSend       uint64
 	AssetToReceive     string
 	AmountToReceive    uint64
 	PsetBase64         string
@@ -17,23 +18,17 @@ type RequestOpts struct {
 	OutputBlindingKeys map[string][]byte
 }
 
-// ParseSwapRequest checks whether the given swap request is well formed and
-// returns its byte serialization
-func ParseSwapRequest(request *pb.SwapRequest) ([]byte, error) {
-	if err := compareMessagesAndTransaction(request, nil); err != nil {
-		return nil, err
-	}
-	return proto.Marshal(request)
-}
-
 // Request takes a RequestOpts struct and returns a serialized protobuf message.
 func Request(opts RequestOpts) ([]byte, error) {
-	randomID := randstr.Hex(8)
+	id := opts.Id
+	if len(id) <= 0 {
+		id = randstr.Hex(8)
+	}
 	msg := &pb.SwapRequest{
-		Id: randomID,
+		Id: id,
 		// Proposer
-		AssetP:  opts.AssetToBeSent,
-		AmountP: opts.AmountToBeSent,
+		AssetP:  opts.AssetToSend,
+		AmountP: opts.AmountToSend,
 		// Receiver
 		AssetR:  opts.AssetToReceive,
 		AmountR: opts.AmountToReceive,
@@ -44,5 +39,5 @@ func Request(opts RequestOpts) ([]byte, error) {
 		OutputBlindingKey: opts.InputBlindingKeys,
 	}
 
-	return ParseSwapRequest(msg)
+	return proto.Marshal(msg)
 }

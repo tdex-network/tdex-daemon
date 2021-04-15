@@ -34,12 +34,8 @@ type blockchainListener struct {
 	repoManager        ports.RepoManager
 	started            bool
 	pendingObservables []crawler.Observable
-	// Loggers
-	feeDepositLogged    bool
-	feeBalanceLowLogged bool
-	marketBaseAsset     string
-	feeBalanceThreshold uint64
-	network             *network.Network
+	marketBaseAsset    string
+	network            *network.Network
 
 	mutex *sync.RWMutex
 }
@@ -49,14 +45,12 @@ func NewBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
 	marketBaseAsset string,
-	feeBalanceThreshold uint64,
 	net *network.Network,
 ) BlockchainListener {
 	return newBlockchainListener(
 		crawlerSvc,
 		repoManager,
 		marketBaseAsset,
-		feeBalanceThreshold,
 		net,
 	)
 }
@@ -65,17 +59,15 @@ func newBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
 	marketBaseAsset string,
-	feeBalanceThreshold uint64,
 	net *network.Network,
 ) *blockchainListener {
 	return &blockchainListener{
-		crawlerSvc:          crawlerSvc,
-		repoManager:         repoManager,
-		mutex:               &sync.RWMutex{},
-		pendingObservables:  make([]crawler.Observable, 0),
-		marketBaseAsset:     marketBaseAsset,
-		feeBalanceThreshold: feeBalanceThreshold,
-		network:             net,
+		crawlerSvc:         crawlerSvc,
+		repoManager:        repoManager,
+		mutex:              &sync.RWMutex{},
+		pendingObservables: make([]crawler.Observable, 0),
+		marketBaseAsset:    marketBaseAsset,
+		network:            net,
 	}
 }
 

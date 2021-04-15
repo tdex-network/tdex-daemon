@@ -307,6 +307,8 @@ github.com/vulpemventures/go-elements v0.1.1 h1:x8xxc6FUBrbxasNw7v3wk8vICg1qvHlw
 github.com/vulpemventures/go-elements v0.1.1/go.mod h1:OtH2q9NiwybzT9X0AWvkNY+sbxy3okD+vC9oAu5hWhE=
 github.com/vulpemventures/go-elements v0.2.0 h1:rBz1nMLMyCQS5+XSjzz6MtLjwmZ2+mdtBJOFHTVhzQs=
 github.com/vulpemventures/go-elements v0.2.0/go.mod h1:O5QYFgeOmfSPX3shsV+lvEotvzcDFtLoYY0jjdT+sVw=
+github.com/vulpemventures/go-elements v0.2.1-0.20210409173614-5b1acc1d1e95 h1:k/5gNh2T0+iGup0oWk7K3G80Xdcll7bmjcCvFa9JvZ8=
+github.com/vulpemventures/go-elements v0.2.1-0.20210409173614-5b1acc1d1e95/go.mod h1:O5QYFgeOmfSPX3shsV+lvEotvzcDFtLoYY0jjdT+sVw=
 github.com/vulpemventures/go-secp256k1-zkp v1.1.0 h1:Z3qKc/lYxEQ1cukwwjD4n7EBCrg7N6of4hylVsD+lOA=
 github.com/vulpemventures/go-secp256k1-zkp v1.1.0/go.mod h1:zo7CpgkuPgoe7fAV+inyxsI9IhGmcoFgyD8nqZaPSOM=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=

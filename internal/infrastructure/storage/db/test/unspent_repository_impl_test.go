@@ -570,8 +570,6 @@ func mockUnspent(addr, asset *string, spent, confirmed bool) domain.Unspent {
 		AssetBlinder:    randomBytes(32),
 		ScriptPubKey:    make([]byte, 20),
 		Nonce:           make([]byte, 33),
-		RangeProof:      make([]byte, 100),
-		SurjectionProof: make([]byte, 67),
 		Address:         mockedAddress,
 		Spent:           spent,
 		Confirmed:       confirmed,

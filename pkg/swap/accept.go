@@ -17,7 +17,7 @@ type AcceptOpts struct {
 }
 
 // Accept takes a AcceptOpts and returns the id of the SwapAccept entity and
-//its serialized version
+// its serialized version
 func Accept(accept AcceptOpts) (string, []byte, error) {
 	var msgRequest pb.SwapRequest
 	err := proto.Unmarshal(accept.Message, &msgRequest)
@@ -32,10 +32,6 @@ func Accept(accept AcceptOpts) (string, []byte, error) {
 		Transaction:       accept.PsetBase64,
 		InputBlindingKey:  accept.InputBlindingKeys,
 		OutputBlindingKey: accept.OutputBlindingKeys,
-	}
-
-	if err := compareMessagesAndTransaction(&msgRequest, msgAccept); err != nil {
-		return "", nil, err
 	}
 
 	msgAcceptSerialized, err := proto.Marshal(msgAccept)
