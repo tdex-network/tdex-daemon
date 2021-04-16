@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -35,11 +36,6 @@ var depositfee = cli.Command{
 			Name:  "no_fragments",
 			Usage: "disable utxo fragmentation",
 			Value: false,
-		},
-		&cli.StringFlag{
-			Name:  "explorer",
-			Usage: "explorer endpoint url",
-			Value: "http://127.0.0.1:3001",
 		},
 		&cli.IntFlag{
 			Name:  "num_of_addresses",
@@ -80,7 +76,7 @@ func depositFeeAction(ctx *cli.Context) error {
 
 	explorerSvc, err := getExplorerFromState()
 	if err != nil {
-		log.WithError(err).Panic("error while setting up explorer service")
+		return fmt.Errorf("error while setting up explorer service: %v", err)
 	}
 
 	randomWallet, err := trade.NewRandomWallet(net)
@@ -89,16 +85,22 @@ func depositFeeAction(ctx *cli.Context) error {
 	}
 	log.Infof("send funds to address: %s", randomWallet.Address())
 
-	funds := waitForOperatorFunds()
+	var baseAssetValue uint64
+	var unspents []explorer.Utxo
+	for {
+		funds := waitForOperatorFunds()
 
-	baseAssetValue, unspents, err := findBaseAssetsUnspents(
-		randomWallet,
-		explorerSvc,
-		baseAssetKey,
-		funds,
-	)
-	if err != nil {
-		return err
+		baseAssetValue, unspents, err = findBaseAssetsUnspents(
+			randomWallet,
+			explorerSvc,
+			baseAssetKey,
+			funds,
+		)
+		if err != nil {
+			log.WithError(err).Warn("an unexpected error occured, please retry entering all txids")
+			continue
+		}
+		break
 	}
 
 	log.Info("calculating fragments...")
@@ -107,13 +109,13 @@ func depositFeeAction(ctx *cli.Context) error {
 	numUnspents := len(unspents)
 	numFragments := len(baseFragments)
 	log.Infof(
-		"fetched %d fund(s) of total amount %d that will be split into %d fragments",
+		"detected %d fund(s) of total amount %d that will be split into %d fragments",
 		numUnspents,
 		baseAssetValue,
 		numFragments,
 	)
 
-	addresses, err := fetchFeeAccountAddresses(numFragments, client)
+	addresses, err := getFeeDepositAddresses(numFragments, client)
 	if err != nil {
 		return err
 	}
@@ -253,7 +255,7 @@ func findBaseAssetsUnspents(
 	return valuePerAsset[baseAssetKey], unspents, nil
 }
 
-func fetchFeeAccountAddresses(
+func getFeeDepositAddresses(
 	numOfAddresses int,
 	client pboperator.OperatorClient,
 ) ([]string, error) {

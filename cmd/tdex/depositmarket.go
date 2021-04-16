@@ -50,11 +50,6 @@ var depositmarket = cli.Command{
 			Usage: "disable utxo fragmentation",
 			Value: false,
 		},
-		&cli.StringFlag{
-			Name:  "explorer",
-			Usage: "explorer endpoint url",
-			Value: "http://127.0.0.1:3001",
-		},
 		&cli.IntFlag{
 			Name:  "num_of_addresses",
 			Usage: "the number of addresses to generate for the market",
@@ -92,7 +87,7 @@ func depositMarketAction(ctx *cli.Context) error {
 	fragmentationDisabled := ctx.Bool("no-fragment")
 	quoteAssetOpt := ctx.String("quote_asset")
 	baseAssetOpt := ctx.String("base_asset")
-	if baseAssetOpt != "" {
+	if baseAssetOpt == "" {
 		baseAssetOpt = net.AssetID
 	}
 
@@ -126,16 +121,22 @@ func depositMarketAction(ctx *cli.Context) error {
 	}
 	log.Info("send funds to address: ", randomWallet.Address())
 
-	funds := waitForOperatorFunds()
+	var assetValuePair AssetValuePair
+	var unspents []explorer.Utxo
+	for {
+		funds := waitForOperatorFunds()
 
-	assetValuePair, unspents, err := findAssetsUnspents(
-		randomWallet,
-		explorerSvc,
-		baseAssetOpt,
-		funds,
-	)
-	if err != nil {
-		return err
+		assetValuePair, unspents, err = findAssetsUnspents(
+			randomWallet,
+			explorerSvc,
+			baseAssetOpt,
+			funds,
+		)
+		if err != nil {
+			log.WithError(err).Warn("an unexpected error occured, please retry entering all txids")
+			continue
+		}
+		break
 	}
 
 	log.Info("calculating fragments...")
@@ -146,7 +147,7 @@ func depositMarketAction(ctx *cli.Context) error {
 	numUnspents := len(unspents)
 	numFragments := len(baseFragments) + len(quoteFragments)
 	log.Infof(
-		"fetched %d funds that will be split into %d fragments",
+		"detected %d coins that will be split into %d fragments",
 		numUnspents,
 		numFragments,
 	)
@@ -163,7 +164,11 @@ func depositMarketAction(ctx *cli.Context) error {
 
 	feeAmount := estimateFees(numUnspents, numFragments)
 
-	addresses, err := fetchMarketAddresses(
+	if quoteAssetOpt == "" {
+		baseAssetOpt = ""
+	}
+
+	addresses, err := getMarketDepositAddresses(
 		numFragments,
 		client,
 		baseAssetOpt,
@@ -218,7 +223,7 @@ func depositMarketAction(ctx *cli.Context) error {
 	return nil
 }
 
-func fetchMarketAddresses(
+func getMarketDepositAddresses(
 	outsLen int,
 	client pboperator.OperatorClient,
 	baseAssetOpt string,
