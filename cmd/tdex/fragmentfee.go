@@ -72,7 +72,7 @@ func fragmentFeeAction(ctx *cli.Context) error {
 	if walletKeys != nil && txids == nil {
 		return fmt.Errorf(
 			"expected to resume previous fragmentation but no txids were provided." +
-				" Please retry by specifying txids with --txids",
+				" Please retry by specifying txids with --txid",
 		)
 	}
 
