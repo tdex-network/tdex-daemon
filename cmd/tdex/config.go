@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -144,4 +145,31 @@ func getExplorerFromState() (explorer.Service, error) {
 	}
 
 	return esplora.NewService(url, reqTimeout)
+}
+
+func getWalletFromState(walletType string) (map[string]string, error) {
+	state, err := getState()
+	if err != nil {
+		return nil, err
+	}
+
+	walletKey := fmt.Sprintf("%s_wallet", walletType)
+	walletJSON, ok := state[walletKey]
+	if !ok || walletJSON == "" {
+		return nil, nil
+	}
+
+	wallet := map[string]string{}
+	if err := json.Unmarshal([]byte(walletJSON), &wallet); err != nil {
+		return nil, err
+	}
+	return wallet, nil
+}
+
+func flushWallet(walletType string) {
+	state, _ := getState()
+	walletKey := fmt.Sprintf("%s_wallet", walletType)
+	if _, ok := state[walletKey]; ok {
+		setState(map[string]string{walletKey: ""})
+	}
 }
