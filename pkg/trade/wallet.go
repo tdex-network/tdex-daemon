@@ -147,6 +147,10 @@ func (w *Wallet) Sign(psetBase64 string) (string, error) {
 	return ptx.ToBase64()
 }
 
+func (w *Wallet) PrivateKey() []byte {
+	return w.privateKey.Serialize()
+}
+
 func (w *Wallet) BlindingKey() []byte {
 	return w.blindingPrivateKey.Serialize()
 }
