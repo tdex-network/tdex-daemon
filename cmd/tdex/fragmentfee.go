@@ -363,7 +363,7 @@ func getUnspents(explorerSvc explorer.Service, w *trade.Wallet, txid string) ([]
 
 func waitForOperatorFunds() []string {
 	reader := bufio.NewReader(os.Stdin)
-	log.Info("Enter txid of fund(s) separated by a white space: ")
+	log.Info("Enter txid of fund(s) separated by a white space [press ENTER to skip or confirm]: ")
 	in, _ := reader.ReadString('\n')
 	trimmedIn := strings.Trim(in, "\n")
 	if trimmedIn == "" {
