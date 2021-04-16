@@ -18,6 +18,12 @@ var (
 		Value: network.Liquid.Name,
 	}
 
+	explorerUrlFlag = cli.StringFlag{
+		Name:  "explorer_url",
+		Usage: "explorer url for the current network",
+		Value: "https://blockstream.info/liquid/api",
+	}
+
 	rpcFlag = cli.StringFlag{
 		Name:  "rpcserver",
 		Usage: "tdexd daemon address host:port",
@@ -47,6 +53,7 @@ var cliConfig = cli.Command{
 			Action: configInitAction,
 			Flags: []cli.Flag{
 				&networkFlag,
+				&explorerUrlFlag,
 				&rpcFlag,
 				&macaroonFlag,
 			},
@@ -69,9 +76,10 @@ func configAction(ctx *cli.Context) error {
 
 func configInitAction(c *cli.Context) error {
 	err := setState(map[string]string{
-		"network":   c.String("network"),
-		"rpcserver": c.String("rpcserver"),
-		"macaroon":  c.String("macaroon"),
+		"network":      c.String("network"),
+		"explorer_url": c.String("explorer_url"),
+		"rpcserver":    c.String("rpcserver"),
+		"macaroon":     c.String("macaroon"),
 	})
 
 	if err != nil {
