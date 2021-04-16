@@ -34,7 +34,7 @@ var fragmentfee = cli.Command{
 	Action: fragmentFeeAction,
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
-			Name:  "txids",
+			Name:  "txid",
 			Usage: "txid of the funds to resume a previous fragmentfee",
 		},
 	},
@@ -54,7 +54,7 @@ func fragmentFeeAction(ctx *cli.Context) error {
 	baseAssetKey := net.AssetID
 
 	walletType := "fee"
-	txids := ctx.StringSlice("txids")
+	txids := ctx.StringSlice("txid")
 
 	explorerSvc, err := getExplorerFromState()
 	if err != nil {

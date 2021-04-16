@@ -48,7 +48,7 @@ var fragmentmarket = cli.Command{
 			Value: "",
 		},
 		&cli.StringSliceFlag{
-			Name:  "txids",
+			Name:  "txid",
 			Usage: "txid of the funds to resume a fragmentmarket",
 		},
 	},
@@ -82,7 +82,7 @@ func fragmentMarketAction(ctx *cli.Context) error {
 	}
 
 	walletType := "market"
-	txids := ctx.StringSlice("txids")
+	txids := ctx.StringSlice("txid")
 	quoteAssetOpt := ctx.String("quote_asset")
 	baseAssetOpt := ctx.String("base_asset")
 	if baseAssetOpt == "" {
@@ -112,7 +112,7 @@ func fragmentMarketAction(ctx *cli.Context) error {
 
 	if len(txids) > 0 && walletKeys != nil {
 		log.Info("resuming previous fragmentation")
-		log.Infof("you can optionally send other funds to address: ", ephWallet.Address())
+		log.Infof("you can optionally send other funds to address: %s", ephWallet.Address())
 	}
 	log.Info("send funds to address: ", ephWallet.Address())
 
