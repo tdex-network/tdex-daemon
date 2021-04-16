@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/network"
 )
@@ -13,6 +16,12 @@ var (
 		Name:  "network, n",
 		Usage: "the network tdexd is running on: liquid or regtest",
 		Value: network.Liquid.Name,
+	}
+
+	explorerUrlFlag = cli.StringFlag{
+		Name:  "explorer_url",
+		Usage: "explorer url for the current network",
+		Value: "https://blockstream.info/liquid/api",
 	}
 
 	rpcFlag = cli.StringFlag{
@@ -28,7 +37,7 @@ var (
 	}
 )
 
-var config = cli.Command{
+var cliConfig = cli.Command{
 	Name:   "config",
 	Usage:  "Print local configuration of the tdex CLI",
 	Action: configAction,
@@ -44,6 +53,7 @@ var config = cli.Command{
 			Action: configInitAction,
 			Flags: []cli.Flag{
 				&networkFlag,
+				&explorerUrlFlag,
 				&rpcFlag,
 				&macaroonFlag,
 			},
@@ -52,7 +62,6 @@ var config = cli.Command{
 }
 
 func configAction(ctx *cli.Context) error {
-
 	state, err := getState()
 	if err != nil {
 		return err
@@ -67,9 +76,10 @@ func configAction(ctx *cli.Context) error {
 
 func configInitAction(c *cli.Context) error {
 	err := setState(map[string]string{
-		"network":   c.String("network"),
-		"rpcserver": c.String("rpcserver"),
-		"macaroon":  c.String("macaroon"),
+		"network":      c.String("network"),
+		"explorer_url": c.String("explorer_url"),
+		"rpcserver":    c.String("rpcserver"),
+		"macaroon":     c.String("macaroon"),
 	})
 
 	if err != nil {
@@ -80,7 +90,6 @@ func configInitAction(c *cli.Context) error {
 }
 
 func configSetAction(c *cli.Context) error {
-
 	if c.NArg() < 2 {
 		return errors.New("key and value are missing")
 	}
@@ -96,6 +105,22 @@ func configSetAction(c *cli.Context) error {
 	fmt.Printf("%s %s has been set\n", key, value)
 
 	return nil
+}
+
+func getNetworkFromState() (*network.Network, error) {
+	state, err := getState()
+	if err != nil {
+		return nil, err
+	}
+
+	net, ok := state["network"]
+	if !ok {
+		return &network.Liquid, nil
+	}
+	if net == "regtest" {
+		return &network.Regtest, nil
+	}
+	return &network.Liquid, nil
 }
 
 func getMarketFromState() (string, string, error) {
@@ -115,9 +140,44 @@ func getMarketFromState() (string, string, error) {
 	return baseAsset, quoteAsset, nil
 }
 
-func setMarketIntoState(baseAsset, quoteAsset string) error {
-	return setState(map[string]string{
-		"base_asset":  baseAsset,
-		"quote_asset": quoteAsset,
-	})
+func getExplorerFromState() (explorer.Service, error) {
+	state, err := getState()
+	if err != nil {
+		return nil, err
+	}
+
+	reqTimeout := 15000
+	url, ok := state["explorer_url"]
+	if !ok {
+		url = "https://blockstream.info/liquid/api"
+	}
+
+	return esplora.NewService(url, reqTimeout)
+}
+
+func getWalletFromState(walletType string) (map[string]string, error) {
+	state, err := getState()
+	if err != nil {
+		return nil, err
+	}
+
+	walletKey := fmt.Sprintf("%s_wallet", walletType)
+	walletJSON, ok := state[walletKey]
+	if !ok || walletJSON == "" {
+		return nil, nil
+	}
+
+	wallet := map[string]string{}
+	if err := json.Unmarshal([]byte(walletJSON), &wallet); err != nil {
+		return nil, err
+	}
+	return wallet, nil
+}
+
+func flushWallet(walletType string) {
+	state, _ := getState()
+	walletKey := fmt.Sprintf("%s_wallet", walletType)
+	if _, ok := state[walletKey]; ok {
+		setState(map[string]string{walletKey: ""})
+	}
 }

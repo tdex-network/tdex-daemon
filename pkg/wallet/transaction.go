@@ -282,7 +282,7 @@ type UpdateTxResult struct {
 
 // UpdateTx adds the provided outputs and eventual inputs to the provided
 // partial transaction. The assets of the inputs to add is determined by the
-// assets of the provided outputs. For each assset type a derivation path for
+// assets of the provided outputs. For each asset type a derivation path for
 // an eventual change must be provided.
 // Its also mandatory to provide a derivation path for the LBTC asset type
 // since this method takes care of adding inputs (if necessary) for covering

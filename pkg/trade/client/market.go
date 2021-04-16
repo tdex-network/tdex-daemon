@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	tradetype "github.com/tdex-network/tdex-daemon/pkg/trade/type"
 
 	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 )
 
 // Markets calls the Markets rpc and returns its response

@@ -79,6 +79,7 @@ func NewRandomWallet(net *network.Network) (*Wallet, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &Wallet{prvkey, blindPrvkey, net}, nil
 }
 
@@ -144,6 +145,10 @@ func (w *Wallet) Sign(psetBase64 string) (string, error) {
 	}
 
 	return ptx.ToBase64()
+}
+
+func (w *Wallet) PrivateKey() []byte {
+	return w.privateKey.Serialize()
 }
 
 func (w *Wallet) BlindingKey() []byte {

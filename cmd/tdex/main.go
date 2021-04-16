@@ -38,7 +38,7 @@ func main() {
 	app.Usage = "Command line interface for tdexd daemon operators"
 	app.Commands = append(
 		app.Commands,
-		&config,
+		&cliConfig,
 		&genseed,
 		&initwallet,
 		&unlockwallet,
@@ -46,6 +46,8 @@ func main() {
 		&depositmarket,
 		&claimfee,
 		&claimmarket,
+		&fragmentfee,
+		&fragmentmarket,
 		&listmarket,
 		&listswaps,
 		&openmarket,
@@ -76,7 +78,6 @@ func getState() (map[string]string, error) {
 }
 
 func setState(data map[string]string) error {
-
 	if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
 		os.Mkdir(tdexDataDir, os.ModeDir|0755)
 	}
@@ -147,9 +148,7 @@ func printRespJSON(resp interface{}) {
 	fmt.Println(jsonStr)
 }
 
-func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),
-	error) {
-
+func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(), error) {
 	conn, err := getClientConn()
 	if err != nil {
 		return nil, nil, err
@@ -159,9 +158,7 @@ func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(),
 	return pboperator.NewOperatorClient(conn), cleanup, nil
 }
 
-func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(),
-	error) {
-
+func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(), error) {
 	conn, err := getClientConn()
 	if err != nil {
 		return nil, nil, err
@@ -171,9 +168,7 @@ func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(),
 	return pbwallet.NewWalletClient(conn), cleanup, nil
 }
 
-func getClientConn() (*grpc.ClientConn,
-	error) {
-
+func getClientConn() (*grpc.ClientConn, error) {
 	state, err := getState()
 	if err != nil {
 		return nil, err
