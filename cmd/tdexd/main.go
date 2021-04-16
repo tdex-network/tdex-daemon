@@ -62,13 +62,12 @@ func main() {
 
 	marketsFee := int64(config.GetFloat(config.DefaultFeeKey) * 100)
 	marketsBaseAsset := config.GetString(config.BaseAssetKey)
-	tradesExpiryDuration := config.GetDuration(config.TradeExpiryTimeKey) * time.Second
+	tradesExpiryDurationInSeconds := config.GetDuration(config.TradeExpiryTimeKey) * time.Second
 	withElementsSvc := config.IsSet(config.ElementsRPCEndpointKey)
 	pricesSlippagePercentage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
 	network := config.GetNetwork()
 	feeThreshold := uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
 
-	fmt.Println("tradesExpiryDuration", tradesExpiryDuration)
 	explorerSvc, err := config.GetExplorer()
 	if err != nil {
 		log.WithError(err).Panic("error while setting up explorer service")
@@ -93,7 +92,7 @@ func main() {
 		explorerSvc,
 		blockchainListener,
 		marketsBaseAsset,
-		tradesExpiryDuration,
+		tradesExpiryDurationInSeconds,
 		pricesSlippagePercentage,
 		network,
 	)
