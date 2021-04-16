@@ -36,6 +36,11 @@ var depositmarket = cli.Command{
 	Usage: "get a deposit address for a given market or create a new one",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
+			Name:  "base_asset",
+			Usage: "the base asset hash of an existent market",
+			Value: "",
+		},
+		&cli.StringFlag{
 			Name:  "quote_asset",
 			Usage: "the quote asset hash of an existent market",
 			Value: "",
@@ -83,12 +88,12 @@ func depositMarketAction(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	baseAssetKey := net.AssetID
+
 	fragmentationDisabled := ctx.Bool("no-fragment")
 	quoteAssetOpt := ctx.String("quote_asset")
-	baseAssetOpt := ""
-	if quoteAssetOpt != "" {
-		baseAssetOpt = baseAssetKey
+	baseAssetOpt := ctx.String("base_asset")
+	if baseAssetOpt != "" {
+		baseAssetOpt = net.AssetID
 	}
 
 	if fragmentationDisabled {
@@ -126,7 +131,7 @@ func depositMarketAction(ctx *cli.Context) error {
 	assetValuePair, unspents, err := findAssetsUnspents(
 		randomWallet,
 		explorerSvc,
-		baseAssetKey,
+		baseAssetOpt,
 		funds,
 	)
 	if err != nil {
