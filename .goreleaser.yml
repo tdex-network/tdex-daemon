@@ -30,7 +30,7 @@ builds:
   - id: "tdex-linux"
     main: ./cmd/tdex
     ldflags:
-      - -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
+      - -s -w -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
     goos:
@@ -42,7 +42,7 @@ builds:
   - id: "tdex-darwin"
     main: ./cmd/tdex
     ldflags:
-      - -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
+      - -s -w -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
       - CC=/home/runner/work/osxcross/target/bin/o64-clang
