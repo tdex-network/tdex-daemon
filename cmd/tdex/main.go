@@ -30,6 +30,19 @@ var (
 	statePath   = path.Join(tdexDataDir, "state.json")
 )
 
+func init() {
+	dataDir := os.Getenv("TDEX_CLI_DATADIR")
+	if len(dataDir) <= 0 {
+		return
+	}
+
+	if !path.IsAbs(dataDir) {
+		fatal(errors.New("cli datadir must be an absolute path"))
+	}
+	tdexDataDir = dataDir
+	statePath = path.Join(tdexDataDir, "state.json")
+}
+
 func main() {
 	app := cli.NewApp()
 
