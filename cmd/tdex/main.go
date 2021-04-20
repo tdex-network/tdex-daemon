@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/gogo/protobuf/jsonpb"
@@ -31,14 +34,11 @@ var (
 )
 
 func init() {
-	dataDir := os.Getenv("TDEX_OPERATOR_DATADIR")
+	dataDir := cleanAndExpandPath(os.Getenv("TDEX_OPERATOR_DATADIR"))
 	if len(dataDir) <= 0 {
 		return
 	}
 
-	if !path.IsAbs(dataDir) {
-		fatal(errors.New("cli datadir must be an absolute path"))
-	}
 	tdexDataDir = dataDir
 	statePath = path.Join(tdexDataDir, "state.json")
 }
@@ -201,6 +201,32 @@ func getClientConn() (*grpc.ClientConn, error) {
 	}
 
 	return conn, nil
+}
+
+// cleanAndExpandPath expands environment variables and leading ~ in the
+// passed path, cleans the result, and returns it.
+// This function is taken from https://github.com/btcsuite/btcd
+func cleanAndExpandPath(path string) string {
+	if path == "" {
+		return ""
+	}
+
+	// Expand initial ~ to OS specific home directory.
+	if strings.HasPrefix(path, "~") {
+		var homeDir string
+		u, err := user.Current()
+		if err == nil {
+			homeDir = u.HomeDir
+		} else {
+			homeDir = os.Getenv("HOME")
+		}
+
+		path = strings.Replace(path, "~", homeDir, 1)
+	}
+
+	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
+	// but the variables can still be expanded via POSIX-style $VARIABLE.
+	return filepath.Clean(os.ExpandEnv(path))
 }
 
 type invalidUsageError struct {
