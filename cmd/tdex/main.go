@@ -31,7 +31,7 @@ var (
 )
 
 func init() {
-	dataDir := os.Getenv("TDEX_CLI_DATADIR")
+	dataDir := os.Getenv("TDEX_OPERATOR_DATADIR")
 	if len(dataDir) <= 0 {
 		return
 	}
