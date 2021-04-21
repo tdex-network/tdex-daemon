@@ -130,6 +130,8 @@ func newTradeService() (application.TradeService, error) {
 			AssetBlinder:    randomBytes(32),
 			ScriptPubKey:    script,
 			Nonce:           randomBytes(32),
+			RangeProof:      make([]byte, 1),
+			SurjectionProof: make([]byte, 1),
 			Address:         info.Address,
 			Confirmed:       true,
 		})
@@ -163,6 +165,8 @@ func newTradeService() (application.TradeService, error) {
 			AssetBlinder:    randomBytes(32),
 			ScriptPubKey:    script,
 			Nonce:           randomBytes(32),
+			RangeProof:      make([]byte, 1),
+			SurjectionProof: make([]byte, 1),
 			Address:         info.Address,
 			Confirmed:       true,
 		})

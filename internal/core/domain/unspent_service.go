@@ -88,8 +88,8 @@ func (u *Unspent) ToUtxo() explorer.Utxo {
 		u.AssetBlinder,
 		u.ScriptPubKey,
 		u.Nonce,
-		nil,
-		nil,
+		u.RangeProof,
+		u.SurjectionProof,
 		u.Confirmed,
 	)
 }
