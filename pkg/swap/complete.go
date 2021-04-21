@@ -1,18 +1,20 @@
 package swap
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"github.com/thanhpk/randstr"
 	"github.com/vulpemventures/go-elements/pset"
+	"github.com/vulpemventures/go-elements/transaction"
 	"google.golang.org/protobuf/proto"
 )
 
 // CompleteOpts is the struct given to the Complete method
 type CompleteOpts struct {
-	Message    []byte
-	PsetBase64 string
+	Message     []byte
+	Transaction string
 }
 
 // Complete takes a CompleteOpts and returns the id of the SwapComplete entity
@@ -24,24 +26,30 @@ func Complete(complete CompleteOpts) (string, []byte, error) {
 		return "", nil, fmt.Errorf("unmarshal swap accept %w", err)
 	}
 
-	ptx, err := pset.NewPsetFromBase64(complete.PsetBase64)
-	if err != nil {
-		return "", nil, err
-	}
+	if !isHex(complete.Transaction) {
+		ptx, err := pset.NewPsetFromBase64(complete.Transaction)
+		if err != nil {
+			return "", nil, fmt.Errorf("transaction in base64 format is invalid")
+		}
 
-	ok, err := ptx.ValidateAllSignatures()
-	if err != nil {
-		return "", nil, err
-	}
-	if !ok {
-		return "", nil, fmt.Errorf("transaction contains invalid signatures")
+		ok, err := ptx.ValidateAllSignatures()
+		if err != nil {
+			return "", nil, err
+		}
+		if !ok {
+			return "", nil, fmt.Errorf("transaction contains invalid signatures")
+		}
+	} else {
+		if _, err := transaction.NewTxFromHex(complete.Transaction); err != nil {
+			return "", nil, fmt.Errorf("transaction in hex format is invalid")
+		}
 	}
 
 	randomID := randstr.Hex(8)
 	msgComplete := &pb.SwapComplete{
 		Id:          randomID,
 		AcceptId:    msgAccept.GetId(),
-		Transaction: complete.PsetBase64,
+		Transaction: complete.Transaction,
 	}
 
 	msgCompleteSerialized, err := proto.Marshal(msgComplete)
@@ -109,4 +117,9 @@ func ValidateCompletePset(opts ValidateCompletePsetOpts) error {
 		return fmt.Errorf("either SwapRequest.amount_p or SwapRequest.asset_p do not match the provided pset")
 	}
 	return nil
+}
+
+func isHex(s string) bool {
+	_, err := hex.DecodeString(s)
+	return err == nil
 }

@@ -216,8 +216,8 @@ func (t *Trade) marketOrderComplete(swapAcceptMsg []byte, w *Wallet) (string, er
 	}
 
 	_, swapCompleteMsg, err := swap.Complete(swap.CompleteOpts{
-		Message:    swapAcceptMsg,
-		PsetBase64: signedPset,
+		Message:     swapAcceptMsg,
+		Transaction: signedPset,
 	})
 	if err != nil {
 		return "", err

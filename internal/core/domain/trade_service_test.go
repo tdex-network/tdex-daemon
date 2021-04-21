@@ -198,22 +198,30 @@ func TestFailingTradeAccept(t *testing.T) {
 }
 
 func TestTradeComplete(t *testing.T) {
-	tx := randomBase64(100)
 	tests := []struct {
 		name  string
 		trade *domain.Trade
+		tx    string
 	}{
 		{
-			name:  "with_trade_accepted",
+			name:  "with_trade_accepted_psetBase64",
 			trade: newTradeAccepted(),
+			tx:    randomBase64(100),
+		},
+		{
+			name:  "with_trade_accepted_txHex",
+			trade: newTradeAccepted(),
+			tx:    randomHex(100),
 		},
 		{
 			name:  "with_trade_completed",
 			trade: newTradeCompleted(),
+			tx:    randomBase64(100),
 		},
 		{
 			name:  "with_trade_settled",
 			trade: newTradeSettled(),
+			tx:    randomBase64(100),
 		},
 	}
 
@@ -224,17 +232,17 @@ func TestTradeComplete(t *testing.T) {
 		mockedSwapParser.On(
 			"SerializeComplete",
 			tt.trade.SwapAccept.Message,
-			tx,
+			tt.tx,
 		).Return(randomID(), randomBytes(100), nil)
 		domain.SwapParserManager = mockedSwapParser
 
 		mockedPsetParser := mockPsetParser{}
-		mockedPsetParser.On("GetTxID", tx).Return(randomHex(32), nil)
-		mockedPsetParser.On("GetTxHex", tx).Return(randomHex(32), nil)
+		mockedPsetParser.On("GetTxID", tt.tx).Return(randomHex(32), nil)
+		mockedPsetParser.On("GetTxHex", tt.tx).Return(randomHex(32), nil)
 		domain.PsetParserManager = mockedPsetParser
 
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := tt.trade.Complete(tx)
+			res, err := tt.trade.Complete(tt.tx)
 			require.NoError(t, err)
 			require.NotNil(t, res)
 			require.True(t, res.OK)

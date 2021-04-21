@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/hex"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -100,7 +101,7 @@ type CompleteResult struct {
 // and by finalizing it and extracting the raw tx in hex format. Complete must
 // be called before the trade expires, otherwise it won't be possible to
 // actually complete an accepted trade.
-func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
+func (t *Trade) Complete(tx string) (*CompleteResult, error) {
 	if t.Status.Code >= Completed {
 		return &CompleteResult{OK: true, TxHex: t.TxHex, TxID: t.TxID}, nil
 	}
@@ -118,7 +119,7 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 
 	swapCompleteID, swapCompleteMsg, err := SwapParserManager.SerializeComplete(
 		t.SwapAccept.Message,
-		psetBase64,
+		tx,
 	)
 	if err != nil {
 		t.Fail(
@@ -129,12 +130,22 @@ func (t *Trade) Complete(psetBase64 string) (*CompleteResult, error) {
 		return &CompleteResult{OK: false}, nil
 	}
 
-	txHex, _ := PsetParserManager.GetTxHex(psetBase64)
+	var txHex string
+	var psetBase64 string
+	if isHex(tx) {
+		txHex = tx
+	} else {
+		psetBase64 = tx
+		txHex, _ = PsetParserManager.GetTxHex(tx)
+	}
+
 	t.SwapComplete.ID = swapCompleteID
 	t.SwapComplete.Message = swapCompleteMsg
 	t.Status = CompletedStatus
-	t.PsetBase64 = psetBase64
 	t.TxHex = txHex
+	if len(psetBase64) > 0 {
+		t.PsetBase64 = psetBase64
+	}
 	return &CompleteResult{OK: true, TxHex: txHex, TxID: t.TxID}, nil
 }
 
@@ -299,4 +310,9 @@ func calculateMarketPrices(
 		}
 	}
 	return
+}
+
+func isHex(s string) bool {
+	_, err := hex.DecodeString(s)
+	return err == nil
 }
