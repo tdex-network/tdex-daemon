@@ -837,6 +837,8 @@ func (w *walletService) restoreUnspentsForAddress(
 			AssetBlinder:    u.AssetBlinder(),
 			ScriptPubKey:    u.Script(),
 			Nonce:           u.Nonce(),
+			RangeProof:      make([]byte, 1),
+			SurjectionProof: make([]byte, 1),
 			Confirmed:       u.IsConfirmed(),
 			Address:         addr,
 		}
@@ -1129,6 +1131,8 @@ func fetchUnspents(explorerSvc explorer.Service, info domain.AddressesInfo) ([]d
 			AssetBlinder:    u.AssetBlinder(),
 			ScriptPubKey:    u.Script(),
 			Nonce:           u.Nonce(),
+			RangeProof:      make([]byte, 1),
+			SurjectionProof: make([]byte, 1),
 			Confirmed:       u.IsConfirmed(),
 			Address:         addr,
 		}
@@ -1274,6 +1278,8 @@ func extractUnspentsFromTx(
 				AssetBlinder:    unconfidential.AssetBlinder,
 				ScriptPubKey:    out.Script,
 				Nonce:           out.Nonce,
+				RangeProof:      make([]byte, 1),
+				SurjectionProof: make([]byte, 1),
 				Address:         info.Address,
 				Confirmed:       false,
 			})

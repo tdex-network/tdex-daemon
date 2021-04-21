@@ -1002,6 +1002,8 @@ func (o *operatorService) claimDeposit(
 				AssetBlinder:    unconfidential.AssetBlinder,
 				ScriptPubKey:    txOut.Script,
 				Nonce:           txOut.Nonce,
+				RangeProof:      make([]byte, 1),
+				SurjectionProof: make([]byte, 1),
 				Address:         info.Address,
 				Confirmed:       true,
 			}
