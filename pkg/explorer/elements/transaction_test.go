@@ -18,7 +18,7 @@ func TestGetTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txid, err := elementsSvc.Faucet(addr)
+	txid, err := elementsSvc.Faucet(addr, oneLbtc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestGetTransactionHex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txid, err := elementsSvc.Faucet(addr)
+	txid, err := elementsSvc.Faucet(addr, oneLbtc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestIsTransactionConfirmed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txid, err := elementsSvc.Faucet(addr)
+	txid, err := elementsSvc.Faucet(addr, oneLbtc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestGetTransactionStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txid, err := elementsSvc.Faucet(addr)
+	txid, err := elementsSvc.Faucet(addr, oneLbtc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestGetTransactionsForAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := elementsSvc.Faucet(addr); err != nil {
+	if _, err := elementsSvc.Faucet(addr, oneLbtc); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := elementsSvc.Mint(addr, 10); err != nil {
