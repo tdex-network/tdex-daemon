@@ -90,6 +90,7 @@ func checkTxAndBlindKeys(
 
 	checkOutputKeys := outBlindKeys != nil
 	for i, out := range ptx.UnsignedTx.Outputs {
+		fmt.Println(hex.EncodeToString(out.Script))
 		if len(out.Script) > 0 && checkOutputKeys {
 			script := hex.EncodeToString(out.Script)
 			if _, ok := outBlindKeys[script]; !ok {
