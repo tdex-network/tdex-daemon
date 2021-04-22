@@ -1,12 +1,18 @@
 package application
 
 import (
+	"encoding/hex"
+	"fmt"
+
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/network"
+	"github.com/vulpemventures/go-elements/payment"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -173,9 +179,18 @@ type TradeHandler interface {
 	FillProposal(FillProposalOpts) (*FillProposalResult, error)
 }
 
+type TransactionHandler interface {
+	ExtractUnspents(
+		txhex string,
+		infoByScript map[string]domain.AddressInfo,
+		network *network.Network,
+	) ([]domain.Unspent, []domain.UnspentKey, error)
+}
+
 var (
-	BlinderManager Blinder
-	TradeManager   TradeHandler
+	BlinderManager     Blinder
+	TradeManager       TradeHandler
+	TransactionManager TransactionHandler
 )
 
 type blinderManager struct{}
@@ -193,7 +208,67 @@ func (t tradeManager) FillProposal(opts FillProposalOpts) (*FillProposalResult, 
 	return fillProposal(opts)
 }
 
+type transactionManager struct{}
+
+func (t transactionManager) ExtractUnspents(
+	txHex string,
+	infoByScript map[string]domain.AddressInfo,
+	network *network.Network,
+) ([]domain.Unspent, []domain.UnspentKey, error) {
+	tx, err := transaction.NewTxFromHex(txHex)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	unspentsToAdd := make([]domain.Unspent, 0)
+	unspentsToSpend := make([]domain.UnspentKey, 0)
+
+	for _, in := range tx.Inputs {
+		// our unspents are native-segiwt only
+		if len(in.Witness) > 0 {
+			pubkey, _ := btcec.ParsePubKey(in.Witness[1], btcec.S256())
+			p := payment.FromPublicKey(pubkey, network, nil)
+
+			script := hex.EncodeToString(p.WitnessScript)
+			if _, ok := infoByScript[script]; ok {
+				unspentsToSpend = append(unspentsToSpend, domain.UnspentKey{
+					TxID: bufferutil.TxIDFromBytes(in.Hash),
+					VOut: in.Index,
+				})
+			}
+		}
+	}
+
+	for i, out := range tx.Outputs {
+		script := hex.EncodeToString(out.Script)
+		if info, ok := infoByScript[script]; ok {
+			unconfidential, ok := transactionutil.UnblindOutput(out, info.BlindingKey)
+			if !ok {
+				return nil, nil, fmt.Errorf("unable to unblind output")
+			}
+			unspentsToAdd = append(unspentsToAdd, domain.Unspent{
+				TxID:            tx.TxHash().String(),
+				VOut:            uint32(i),
+				Value:           unconfidential.Value,
+				AssetHash:       unconfidential.AssetHash,
+				ValueCommitment: bufferutil.CommitmentFromBytes(out.Value),
+				AssetCommitment: bufferutil.CommitmentFromBytes(out.Asset),
+				ValueBlinder:    unconfidential.ValueBlinder,
+				AssetBlinder:    unconfidential.AssetBlinder,
+				ScriptPubKey:    out.Script,
+				Nonce:           out.Nonce,
+				RangeProof:      make([]byte, 1),
+				SurjectionProof: make([]byte, 1),
+				Address:         info.Address,
+				Confirmed:       false,
+			})
+		}
+	}
+	return unspentsToAdd, unspentsToSpend, nil
+}
+
 func init() {
 	BlinderManager = blinderManager{}
 	TradeManager = tradeManager{}
+	TransactionManager = transactionManager{}
 }

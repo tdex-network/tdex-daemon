@@ -9,6 +9,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -34,7 +35,7 @@ func (m *mockBlinderManager) UnblindOutput(
 	return res, res1
 }
 
-// **** Explorer ****
+// **** TradeManager ****
 
 type mockTradeManager struct {
 	mock.Mock
@@ -62,6 +63,29 @@ func (m *mockTradeManager) FillProposal(
 		res = a.(*application.FillProposalResult)
 	}
 	return res, args.Error(1)
+}
+
+// **** TransactionManager ****
+
+type mockTransactionManager struct {
+	mock.Mock
+}
+
+func (m *mockTransactionManager) ExtractUnspents(
+	txhex string,
+	infoByScript map[string]domain.AddressInfo,
+	net *network.Network,
+) ([]domain.Unspent, []domain.UnspentKey, error) {
+	args := m.Called(txhex, infoByScript, net)
+	var res []domain.Unspent
+	if a := args.Get(0); a != nil {
+		res = a.([]domain.Unspent)
+	}
+	var res1 []domain.UnspentKey
+	if a := args.Get(1); a != nil {
+		res1 = a.([]domain.UnspentKey)
+	}
+	return res, res1, args.Error(2)
 }
 
 // **** Explorer ****
@@ -311,7 +335,7 @@ type mockPsetParser struct {
 	mock.Mock
 }
 
-func (m mockPsetParser) GetTxID(psetBase64 string) (string, error) {
+func (m *mockPsetParser) GetTxID(psetBase64 string) (string, error) {
 	args := m.Called(psetBase64)
 	var res string
 	if a := args.Get(0); a != nil {
@@ -320,11 +344,247 @@ func (m mockPsetParser) GetTxID(psetBase64 string) (string, error) {
 	return res, args.Error(1)
 }
 
-func (m mockPsetParser) GetTxHex(psetBase64 string) (string, error) {
+func (m *mockPsetParser) GetTxHex(psetBase64 string) (string, error) {
 	args := m.Called(psetBase64)
 	var res string
 	if a := args.Get(0); a != nil {
 		res = a.(string)
 	}
 	return res, args.Error(1)
+}
+
+// **** SwapParser ****
+
+type mockSwapParser struct {
+	mock.Mock
+}
+
+func (m *mockSwapParser) SerializeRequest(req domain.SwapRequest) ([]byte, *domain.SwapError) {
+	args := m.Called(req)
+
+	var res []byte
+	if a := args.Get(0); a != nil {
+		res = a.([]byte)
+	}
+
+	var err *domain.SwapError
+	if a := args.Get(1); a != nil {
+		err = a.(*domain.SwapError)
+	}
+	return res, err
+}
+
+func (m *mockSwapParser) SerializeAccept(acc domain.AcceptArgs) (string, []byte, *domain.SwapError) {
+	args := m.Called(acc)
+
+	var sres string
+	if a := args.Get(0); a != nil {
+		sres = a.(string)
+	}
+
+	var bres []byte
+	if a := args.Get(1); a != nil {
+		bres = a.([]byte)
+	}
+
+	var err *domain.SwapError
+	if args.Get(2) != nil {
+		err = args.Get(2).(*domain.SwapError)
+	}
+
+	return sres, bres, err
+}
+
+func (m *mockSwapParser) SerializeComplete(accMsg []byte, tx string) (string, []byte, *domain.SwapError) {
+	args := m.Called(accMsg, tx)
+
+	var sres string
+	if a := args.Get(0); a != nil {
+		sres = a.(string)
+	}
+
+	var bres []byte
+	if a := args.Get(1); a != nil {
+		bres = a.([]byte)
+	}
+
+	var err *domain.SwapError
+	if args.Get(2) != nil {
+		err = args.Get(2).(*domain.SwapError)
+	}
+
+	return sres, bres, err
+}
+
+func (m *mockSwapParser) SerializeFail(id string, errCode int, errMsg string) (string, []byte) {
+	args := m.Called(id, errCode, errMsg)
+
+	var sres string
+	if a := args.Get(0); a != nil {
+		sres = a.(string)
+	}
+
+	var bres []byte
+	if a := args.Get(1); a != nil {
+		bres = a.([]byte)
+	}
+
+	return sres, bres
+}
+
+func (m *mockSwapParser) DeserializeRequest(msg []byte) (domain.SwapRequest, error) {
+	args := m.Called(msg)
+	var res domain.SwapRequest
+	if a := args.Get(0); a != nil {
+		res = a.(domain.SwapRequest)
+	}
+
+	return res, args.Error(1)
+}
+
+func (m *mockSwapParser) DeserializeAccept(msg []byte) (domain.SwapAccept, error) {
+	args := m.Called(msg)
+	var res domain.SwapAccept
+	if a := args.Get(0); a != nil {
+		res = a.(domain.SwapAccept)
+	}
+	return res, args.Error(1)
+}
+
+func (m *mockSwapParser) DeserializeComplete(msg []byte) (domain.SwapComplete, error) {
+	args := m.Called(msg)
+	var res domain.SwapComplete
+	if a := args.Get(0); a != nil {
+		res = a.(domain.SwapComplete)
+	}
+	return res, args.Error(1)
+}
+
+func (m *mockSwapParser) DeserializeFail(msg []byte) (domain.SwapFail, error) {
+	args := m.Called(msg)
+	var res domain.SwapFail
+	if a := args.Get(0); a != nil {
+		res = a.(domain.SwapFail)
+	}
+	return res, args.Error(1)
+}
+
+// **** SwapRequest ****
+
+type mockSwapRequest struct {
+	id string
+}
+
+func newMockedSwapRequest() *mockSwapRequest {
+	return &mockSwapRequest{randomId()}
+}
+
+func (m *mockSwapRequest) GetId() string {
+	return m.id
+}
+
+func (m *mockSwapRequest) GetAssetP() string {
+	return randomHex(32)
+}
+
+func (m *mockSwapRequest) GetAmountP() uint64 {
+	return randomValue()
+}
+
+func (m *mockSwapRequest) GetAssetR() string {
+	return randomHex(32)
+}
+
+func (m *mockSwapRequest) GetAmountR() uint64 {
+	return randomValue()
+}
+
+func (m *mockSwapRequest) GetTransaction() string {
+	return randomBase64()
+}
+
+func (m *mockSwapRequest) GetInputBlindingKey() map[string][]byte {
+	return nil
+}
+
+func (m *mockSwapRequest) GetOutputBlindingKey() map[string][]byte {
+	return nil
+}
+
+// **** SwapAccept ****
+
+type mockSwapAccept struct {
+	id string
+}
+
+func newMockedSwapAccept() *mockSwapAccept {
+	return &mockSwapAccept{randomId()}
+}
+
+func (m *mockSwapAccept) GetId() string {
+	return m.id
+}
+
+func (m *mockSwapAccept) GetRequestId() string {
+	return randomId()
+}
+
+func (m *mockSwapAccept) GetTransaction() string {
+	return randomBase64()
+}
+
+func (m *mockSwapAccept) GetInputBlindingKey() map[string][]byte {
+	return nil
+}
+
+func (m *mockSwapAccept) GetOutputBlindingKey() map[string][]byte {
+	return nil
+}
+
+// **** SwapComplete ****
+
+type mockSwapComplete struct {
+	id string
+}
+
+func newMockedSwapComplete() *mockSwapComplete {
+	return &mockSwapComplete{randomId()}
+}
+
+func (m *mockSwapComplete) GetId() string {
+	return m.id
+}
+
+func (m *mockSwapComplete) GetAcceptId() string {
+	return randomId()
+}
+
+func (m *mockSwapComplete) GetTransaction() string {
+	return randomBase64()
+}
+
+// **** SwapFail ****
+
+type mockSwapFail struct {
+	id string
+}
+
+func newMockedSwapFail() *mockSwapFail {
+	return &mockSwapFail{randomId()}
+}
+
+func (m *mockSwapFail) GetId() string {
+	return randomId()
+}
+
+func (m *mockSwapFail) GetMessageId() string {
+	return randomId()
+}
+
+func (m *mockSwapFail) GetFailureCode() uint32 {
+	return 1
+}
+
+func (m *mockSwapFail) GetFailureMessage() string {
+	return "mocked error"
 }
