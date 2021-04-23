@@ -130,8 +130,8 @@ func (p swapParser) SerializeAccept(args AcceptArgs) (string, []byte, *SwapError
 
 func (p swapParser) SerializeComplete(accMsg []byte, tx string) (string, []byte, *SwapError) {
 	id, msg, err := pkgswap.Complete(pkgswap.CompleteOpts{
-		Message:    accMsg,
-		PsetBase64: tx,
+		Message:     accMsg,
+		Transaction: tx,
 	})
 	if err != nil {
 		return "", nil, &SwapError{err, int(pkgswap.ErrCodeFailedToComplete)}

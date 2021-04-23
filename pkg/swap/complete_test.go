@@ -20,8 +20,8 @@ func TestSwap_Complete(t *testing.T) {
 			PsetBase64: initialPsbtOfBob,
 		})
 		_, got, err := Complete(CompleteOpts{
-			Message:    messageAccept,
-			PsetBase64: finalPsbtOfAlice,
+			Message:     messageAccept,
+			Transaction: finalPsbtOfAlice,
 		})
 		if err != nil {
 			t.Errorf("Swap.Complete() error = %v ", err)

@@ -402,10 +402,10 @@ func (t *tradeService) tradeComplete(
 		return
 	}
 
-	psetBase64 := swapComplete.GetTransaction()
+	tx := swapComplete.GetTransaction()
 
 	// here we manipulate the trade to reach the Complete status
-	res, err := trade.Complete(psetBase64)
+	res, err := trade.Complete(tx)
 	if err != nil {
 		return
 	}
