@@ -3,13 +3,11 @@ package application
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/btcsuite/btcd/btcec"
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -20,7 +18,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/network"
-	"github.com/vulpemventures/go-elements/payment"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -1236,56 +1233,7 @@ func extractUnspentsFromTx(
 		}
 	}
 
-	tx, err := transaction.NewTxFromHex(txHex)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	unspentsToAdd := make([]domain.Unspent, 0)
-	unspentsToSpend := make([]domain.UnspentKey, 0)
-
-	for _, in := range tx.Inputs {
-		// our unspents are native-segiwt only
-		if len(in.Witness) > 0 {
-			pubkey, _ := btcec.ParsePubKey(in.Witness[1], btcec.S256())
-			p := payment.FromPublicKey(pubkey, network, nil)
-
-			script := hex.EncodeToString(p.WitnessScript)
-			if _, ok := infoByScript[script]; ok {
-				unspentsToSpend = append(unspentsToSpend, domain.UnspentKey{
-					TxID: bufferutil.TxIDFromBytes(in.Hash),
-					VOut: in.Index,
-				})
-			}
-		}
-	}
-
-	for i, out := range tx.Outputs {
-		script := hex.EncodeToString(out.Script)
-		if info, ok := infoByScript[script]; ok {
-			unconfidential, ok := BlinderManager.UnblindOutput(out, info.BlindingKey)
-			if !ok {
-				return nil, nil, errors.New("unable to unblind output")
-			}
-			unspentsToAdd = append(unspentsToAdd, domain.Unspent{
-				TxID:            tx.TxHash().String(),
-				VOut:            uint32(i),
-				Value:           unconfidential.Value,
-				AssetHash:       unconfidential.AssetHash,
-				ValueCommitment: bufferutil.CommitmentFromBytes(out.Value),
-				AssetCommitment: bufferutil.CommitmentFromBytes(out.Asset),
-				ValueBlinder:    unconfidential.ValueBlinder,
-				AssetBlinder:    unconfidential.AssetBlinder,
-				ScriptPubKey:    out.Script,
-				Nonce:           out.Nonce,
-				RangeProof:      make([]byte, 1),
-				SurjectionProof: make([]byte, 1),
-				Address:         info.Address,
-				Confirmed:       false,
-			})
-		}
-	}
-	return unspentsToAdd, unspentsToSpend, nil
+	return TransactionManager.ExtractUnspents(txHex, infoByScript, network)
 }
 
 func extractUnspentsFromTxAndUpdateUtxoSet(

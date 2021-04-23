@@ -225,7 +225,7 @@ func newTradeService() (application.TradeService, error) {
 		On("GetTransactionHex", mock.AnythingOfType("string")).
 		Return(randomHex(1000), nil)
 	explorerSvc.(*mockExplorer).
-		On("BroadcastTx", mock.AnythingOfType("string")).
+		On("BroadcastTransaction", mock.AnythingOfType("string")).
 		Return(randomHex(32), nil)
 
 	return application.NewTradeService(
@@ -327,9 +327,11 @@ func marketOrder(
 	}
 	swapCompletePtr = &swapComplete
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(200 * time.Millisecond)
 	_, _, err = tradeSvc.TradeComplete(ctx, swapCompletePtr, nil)
 	require.NoError(t, err)
+
+	time.Sleep(200 * time.Millisecond)
 }
 
 func randomBase64() string {

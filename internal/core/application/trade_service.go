@@ -367,7 +367,9 @@ end:
 			log.WithError(err).Warn("unable to persist changes after trade is accepted")
 		}
 
-		t.blockchainListener.StartObserveTx(trade.TxID)
+		if swapAccept != nil {
+			t.blockchainListener.StartObserveTx(trade.TxID)
+		}
 	}()
 
 	return swapAccept, swapFail, swapExpiryTime, nil

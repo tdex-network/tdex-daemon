@@ -16,11 +16,23 @@ type AcceptOpts struct {
 	OutputBlindingKeys map[string][]byte
 }
 
+func (o AcceptOpts) validate() error {
+	return checkTxAndBlindKeys(
+		o.PsetBase64,
+		o.InputBlindingKeys,
+		o.OutputBlindingKeys,
+	)
+}
+
 // Accept takes a AcceptOpts and returns the id of the SwapAccept entity and
 // its serialized version
-func Accept(accept AcceptOpts) (string, []byte, error) {
+func Accept(opts AcceptOpts) (string, []byte, error) {
+	if err := opts.validate(); err != nil {
+		return "", nil, err
+	}
+
 	var msgRequest pb.SwapRequest
-	err := proto.Unmarshal(accept.Message, &msgRequest)
+	err := proto.Unmarshal(opts.Message, &msgRequest)
 	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal swap request %w", err)
 	}
@@ -29,9 +41,9 @@ func Accept(accept AcceptOpts) (string, []byte, error) {
 	msgAccept := &pb.SwapAccept{
 		Id:                randomID,
 		RequestId:         msgRequest.GetId(),
-		Transaction:       accept.PsetBase64,
-		InputBlindingKey:  accept.InputBlindingKeys,
-		OutputBlindingKey: accept.OutputBlindingKeys,
+		Transaction:       opts.PsetBase64,
+		InputBlindingKey:  opts.InputBlindingKeys,
+		OutputBlindingKey: opts.OutputBlindingKeys,
 	}
 
 	msgAcceptSerialized, err := proto.Marshal(msgAccept)

@@ -56,6 +56,36 @@ func TestMain(m *testing.M) {
 	mockedPsetParser.On("GetTxHex", mock.AnythingOfType("string")).Return(randomHex(1000), nil)
 	domain.PsetParserManager = mockedPsetParser
 
+	mockedSwapRequest := newMockedSwapRequest()
+	mockedSwapAccept := newMockedSwapAccept()
+	mockedSwapComplete := newMockedSwapComplete()
+	mockedSwapFail := newMockedSwapFail()
+
+	mockedSwapParser := &mockSwapParser{}
+	mockedSwapParser.
+		On("SerializeRequest", mock.Anything).Return(randomBytes(100), nil)
+	mockedSwapParser.
+		On("SerializeAccept", mock.Anything).Return(mockedSwapAccept.GetId(), randomBytes(100), nil)
+	mockedSwapParser.
+		On("SerializeComplete", mock.Anything, mock.Anything).Return(mockedSwapComplete.GetId(), randomBytes(100), nil)
+	mockedSwapParser.
+		On("SerializeFail", mock.Anything, mock.Anything, mock.Anything).Return(mockedSwapFail.GetId(), nil)
+	mockedSwapParser.
+		On("DeserializeRequest", mock.Anything).Return(mockedSwapRequest, nil)
+	mockedSwapParser.
+		On("DeserializeAccept", mock.Anything).Return(mockedSwapAccept, nil)
+	mockedSwapParser.
+		On("DeserializeComplete", mock.Anything).Return(mockedSwapComplete, nil)
+	mockedSwapParser.
+		On("DeserializeFail", mock.Anything).Return(mockedSwapFail, nil)
+	domain.SwapParserManager = mockedSwapParser
+
+	mockedTransactionManager := &mockTransactionManager{}
+	mockedTransactionManager.
+		On("ExtractUnspents", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, nil, nil)
+	application.TransactionManager = mockedTransactionManager
+
 	os.Exit(m.Run())
 }
 
