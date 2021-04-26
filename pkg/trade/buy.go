@@ -80,7 +80,6 @@ func (t *Trade) Buy(opts BuyOrSellOpts) ([]byte, error) {
 // BuyOrSellAndCompleteOpts is the struct given to Buy method
 type BuyOrSellAndCompleteOpts struct {
 	Market      trademarket.Market
-	TradeType   int
 	Amount      uint64
 	Asset       string
 	PrivateKey  []byte
@@ -89,9 +88,6 @@ type BuyOrSellAndCompleteOpts struct {
 
 func (o BuyOrSellAndCompleteOpts) validate() error {
 	if err := o.Market.Validate(); err != nil {
-		return err
-	}
-	if err := tradetype.TradeType(o.TradeType).Validate(); err != nil {
 		return err
 	}
 	if o.Amount <= 0 {
