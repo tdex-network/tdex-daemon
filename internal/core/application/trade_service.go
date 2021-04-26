@@ -329,6 +329,8 @@ end:
 			time.Sleep(t.expiryDuration + time.Minute)
 			t.checkTradeExpiration(trade.TxID, selectedUnspentKeys)
 		}()
+	} else {
+		log.WithField("reason", swapFail.GetFailureMessage()).Infof("trade with id %s rejected", trade.ID)
 	}
 
 	go func() {
@@ -630,9 +632,12 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 		opts.SwapRequest.GetInputBlindingKey(),
 	)
 
-	for _, u := range selectedUnspents {
-		script := hex.EncodeToString(u.Script())
-		inputBlindingData[script] = wallet.BlindingData{
+	// get the indexes of the inputs of the tx to sign
+	existingInputs := len(inputBlindingData)
+	inputsToSign := len(selectedUnspents)
+
+	for i, u := range selectedUnspents {
+		inputBlindingData[existingInputs+i] = wallet.BlindingData{
 			Asset:         u.Asset(),
 			Amount:        u.Value(),
 			AssetBlinder:  u.AssetBlinder(),
@@ -667,9 +672,6 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 		return nil, fmt.Errorf("failed to add explicit fees: %s", err)
 	}
 
-	// get the indexes of the inputs of the tx to sign
-	inputsToSign := len(selectedUnspents)
-	existingInputs := len(inputBlindingData) - inputsToSign
 	// get the derivation paths of the selected inputs
 	allInfo := append(opts.MarketInfo, opts.FeeInfo...)
 	selectedInfo := getSelectedInfo(allInfo, selectedUnspents)
@@ -682,6 +684,9 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 			InIndex:        uint32(inIndex),
 			DerivationPath: selectedInfo[i].DerivationPath,
 		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign input %d tx: %s", inIndex, err)
+		}
 	}
 
 	// get blinding private keys for selected inputs
