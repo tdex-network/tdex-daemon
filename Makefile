@@ -1,4 +1,4 @@
-.PHONY: build run clean cov fmt help vet test
+.PHONY: build build-cli clean create-cert cov fmt help run vet test integrationtest
 
 
 
@@ -73,12 +73,6 @@ shorttest:
 	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
 	go test -v -count=1 -race -short ./...
 
-## integrationtest: runs e2e tests by
+## integrationtest: runs e2e test
 integrationtest:
-	@echo "E2E Testing..."
-	export TDEX_NETWORK=regtest; \
-	export TDEX_EXPLORER_ENDPOINT=http://127.0.0.1:3001; \
-	export TDEX_LOG_LEVEL=5; \
-	export TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225; \
-	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
-	go test -v -count=1 ./cmd/tdexd
+	go run test/e2e/main.go
