@@ -161,11 +161,14 @@ func (w *Wallet) BlindSwapTransactionWithKeys(opts BlindSwapTransactionWithKeysO
 
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
-	inKeysLen := len(opts.InputBlindingKeys)
-	inBlindingKeys := make([]pset.BlindingDataLike, inKeysLen, inKeysLen)
-	for i, in := range ptx.Inputs {
+	inKeysLen := len(ptx.Inputs)
+	inBlindingKeys := make([]pset.BlindingDataLike, 0, inKeysLen)
+	for _, in := range ptx.Inputs {
 		script := hex.EncodeToString(in.WitnessUtxo.Script)
-		inBlindingKeys[i] = pset.PrivateBlindingKey(opts.InputBlindingKeys[script])
+		inBlindingKeys = append(
+			inBlindingKeys,
+			pset.PrivateBlindingKey(opts.InputBlindingKeys[script]),
+		)
 	}
 
 	outBlindingKeys := make(map[int][]byte)
@@ -366,11 +369,14 @@ func (w *Wallet) BlindSwapTransactionWithData(opts BlindSwapTransactionWithDataO
 
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
-	dataLen := len(opts.InputBlindingData)
-	inBlindingData := make([]pset.BlindingDataLike, dataLen, dataLen)
-	for i, in := range ptx.Inputs {
+	dataLen := len(ptx.Inputs)
+	inBlindingData := make([]pset.BlindingDataLike, 0, dataLen)
+	for _, in := range ptx.Inputs {
 		script := hex.EncodeToString(in.WitnessUtxo.Script)
-		inBlindingData[i] = opts.InputBlindingData[script].ToBlindingData()
+		inBlindingData = append(
+			inBlindingData,
+			opts.InputBlindingData[script].ToBlindingData(),
+		)
 	}
 
 	outBlindingKeys := make(map[int][]byte)
