@@ -217,8 +217,6 @@ func main() {
 		return
 	}
 
-	fmt.Println("finish")
-
 	return
 }
 
@@ -229,7 +227,6 @@ func tradeOnMarket(
 	w *trade.Wallet,
 	asset string,
 ) {
-	fmt.Println("TRADE ON MARKET", asset)
 	defer wg.Done()
 
 	if asset == usdtAsset {
