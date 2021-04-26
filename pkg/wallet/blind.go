@@ -310,7 +310,7 @@ func (w *Wallet) BlindTransactionWithData(opts BlindTransactionWithDataOpts) (st
 // BlindSwapTransactionWithDataOpts is the struct given to BlindSwapTransactionWithKeys method
 type BlindSwapTransactionWithDataOpts struct {
 	PsetBase64         string
-	InputBlindingData  map[string]BlindingData
+	InputBlindingData  map[int]BlindingData
 	OutputBlindingKeys map[string][]byte
 	Attempts           int
 }
@@ -325,8 +325,8 @@ func (o BlindSwapTransactionWithDataOpts) validate() error {
 	}
 
 	for i, in := range ptx.Inputs {
-		script := hex.EncodeToString(in.WitnessUtxo.Script)
-		if _, ok := o.InputBlindingData[script]; !ok {
+		if _, ok := o.InputBlindingData[i]; !ok {
+			script := hex.EncodeToString(in.WitnessUtxo.Script)
 			return fmt.Errorf(
 				"missing blinding data for input %d with script '%s'", i, script,
 			)
@@ -371,11 +371,10 @@ func (w *Wallet) BlindSwapTransactionWithData(opts BlindSwapTransactionWithDataO
 
 	dataLen := len(ptx.Inputs)
 	inBlindingData := make([]pset.BlindingDataLike, 0, dataLen)
-	for _, in := range ptx.Inputs {
-		script := hex.EncodeToString(in.WitnessUtxo.Script)
+	for i := range ptx.Inputs {
 		inBlindingData = append(
 			inBlindingData,
-			opts.InputBlindingData[script].ToBlindingData(),
+			opts.InputBlindingData[i].ToBlindingData(),
 		)
 	}
 
@@ -438,13 +437,13 @@ func (w *Wallet) blindTransaction(
 func ExtractBlindingDataFromTx(
 	psetBase64 string,
 	inBlindingKeys map[string][]byte,
-) (map[string]BlindingData, error) {
+) (map[int]BlindingData, error) {
 	ptx, err := pset.NewPsetFromBase64(psetBase64)
 	if err != nil {
 		return nil, err
 	}
 
-	blindingData := make(map[string]BlindingData)
+	blindingData := make(map[int]BlindingData)
 	for i, in := range ptx.Inputs {
 		prevout := in.WitnessUtxo
 		if in.WitnessUtxo == nil {
@@ -466,7 +465,7 @@ func ExtractBlindingDataFromTx(
 			return nil, ErrInvalidInBlindingKey
 		}
 
-		blindingData[script] = BlindingData{
+		blindingData[i] = BlindingData{
 			Asset:         res.AssetHash,
 			Amount:        res.Value,
 			AssetBlinder:  res.AssetBlinder,
