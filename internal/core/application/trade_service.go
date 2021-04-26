@@ -584,8 +584,9 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 		SigningMnemonic: opts.Mnemonic,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create wallet: %s", err)
 	}
+
 	network := opts.Network
 	// fill swap request transaction with daemon's inputs and outputs
 	psetBase64, selectedUnspentsForSwap, err := w.UpdateSwapTx(wallet.UpdateSwapTxOpts{
@@ -600,7 +601,7 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 		Network:              network,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to update swap: %s", err)
 	}
 
 	// top-up fees using fee account. Note that the fee output is added after
@@ -617,7 +618,7 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 		WantChangeForFees:    true,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to topup for paying fees: %s", err)
 	}
 
 	// concat the selected unspents for paying fees with those for completing the
@@ -653,7 +654,7 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 		OutputBlindingKeys: outputBlindingKeys,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to blind: %s", err)
 	}
 
 	// add the explicit fee output to the tx
@@ -663,7 +664,7 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 		Network:    network,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to add explicit fees: %s", err)
 	}
 
 	// get the indexes of the inputs of the tx to sign
