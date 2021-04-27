@@ -3,7 +3,6 @@ package db_test
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,8 +14,7 @@ import (
 )
 
 func TestTradeRepositoryImplementations(t *testing.T) {
-	repositories, cancel := createTradeRepositories(t)
-	t.Cleanup(cancel)
+	repositories := createTradeRepositories(t)
 
 	for i := range repositories {
 		repo := repositories[i]
@@ -273,29 +271,23 @@ func testUpdateTradeRollback(t *testing.T, repo tradeRepository) {
 	require.Nil(t, trade)
 }
 
-func createTradeRepositories(t *testing.T) ([]tradeRepository, func()) {
-	datadir := "tradedb"
-	err := os.Mkdir(datadir, os.ModePerm)
-	require.NoError(t, err)
-
+func createTradeRepositories(t *testing.T) []tradeRepository {
 	inmemoryDBManager := inmemory.NewRepoManager()
-	badgerDBManager, err := dbbadger.NewRepoManager(datadir, nil)
+	badgerDBManager, err := dbbadger.NewRepoManager("", nil)
 	require.NoError(t, err)
 
 	return []tradeRepository{
-			{
-				Name:       "badger",
-				DBManager:  badgerDBManager,
-				Repository: badgerDBManager.TradeRepository(),
-			},
-			{
-				Name:       "inmemory",
-				DBManager:  inmemoryDBManager,
-				Repository: inmemoryDBManager.TradeRepository(),
-			},
-		}, func() {
-			os.RemoveAll(datadir)
-		}
+		{
+			Name:       "badger",
+			DBManager:  badgerDBManager,
+			Repository: badgerDBManager.TradeRepository(),
+		},
+		{
+			Name:       "inmemory",
+			DBManager:  inmemoryDBManager,
+			Repository: inmemoryDBManager.TradeRepository(),
+		},
+	}
 }
 
 type tradeRepository struct {

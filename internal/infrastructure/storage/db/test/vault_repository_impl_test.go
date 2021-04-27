@@ -3,7 +3,6 @@ package db_test
 import (
 	"context"
 	"errors"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -28,8 +27,7 @@ var (
 )
 
 func TestVaultRepositoryImplementations(t *testing.T) {
-	repositories, cancel := createVaultRepositories(t)
-	t.Cleanup(cancel)
+	repositories := createVaultRepositories(t)
 
 	domain.MnemonicStoreManager = newSimpleMnemonicStore(nil)
 	mockedEncrypter := newMockedEncrypter(mnemonic, encryptedMnemonic)
@@ -128,29 +126,23 @@ func testUpdateVaultRollback(t *testing.T, repo vaultRepository) {
 	require.Nil(t, vault)
 }
 
-func createVaultRepositories(t *testing.T) ([]vaultRepository, func()) {
-	datadir := "vaultdb"
-	err := os.Mkdir(datadir, os.ModePerm)
-	require.NoError(t, err)
-
+func createVaultRepositories(t *testing.T) []vaultRepository {
 	inmemoryDBManager := inmemory.NewRepoManager()
-	badgerDBManager, err := dbbadger.NewRepoManager(datadir, nil)
+	badgerDBManager, err := dbbadger.NewRepoManager("", nil)
 	require.NoError(t, err)
 
 	return []vaultRepository{
-			{
-				Name:       "badger",
-				DBManager:  badgerDBManager,
-				Repository: badgerDBManager.VaultRepository(),
-			},
-			{
-				Name:       "inmemory",
-				DBManager:  inmemoryDBManager,
-				Repository: inmemoryDBManager.VaultRepository(),
-			},
-		}, func() {
-			os.RemoveAll(datadir)
-		}
+		{
+			Name:       "badger",
+			DBManager:  badgerDBManager,
+			Repository: badgerDBManager.VaultRepository(),
+		},
+		{
+			Name:       "inmemory",
+			DBManager:  inmemoryDBManager,
+			Repository: inmemoryDBManager.VaultRepository(),
+		},
+	}
 }
 
 type vaultRepository struct {

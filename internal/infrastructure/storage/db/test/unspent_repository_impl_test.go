@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"math/big"
-	"os"
 	"testing"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -20,8 +19,7 @@ import (
 )
 
 func TestUnspentRepositoryImplementations(t *testing.T) {
-	repositories, cancel := createUnspentRepositories(t)
-	t.Cleanup(cancel)
+	repositories := createUnspentRepositories(t)
 
 	for i := range repositories {
 		repo := repositories[i]
@@ -392,29 +390,23 @@ func testLockUnlockUnspents(t *testing.T, repo unspentRepository) {
 	}
 }
 
-func createUnspentRepositories(t *testing.T) ([]unspentRepository, func()) {
-	datadir := "unspentdb"
-	err := os.Mkdir(datadir, os.ModePerm)
-	require.NoError(t, err)
-
+func createUnspentRepositories(t *testing.T) []unspentRepository {
 	inmemoryDBManager := inmemory.NewRepoManager()
-	badgerDBManager, err := dbbadger.NewRepoManager(datadir, nil)
+	badgerDBManager, err := dbbadger.NewRepoManager("", nil)
 	require.NoError(t, err)
 
 	return []unspentRepository{
-			{
-				Name:       "badger",
-				DBManager:  badgerDBManager,
-				Repository: badgerDBManager.UnspentRepository(),
-			},
-			{
-				Name:       "inmemory",
-				DBManager:  inmemoryDBManager,
-				Repository: inmemoryDBManager.UnspentRepository(),
-			},
-		}, func() {
-			os.RemoveAll(datadir)
-		}
+		{
+			Name:       "badger",
+			DBManager:  badgerDBManager,
+			Repository: badgerDBManager.UnspentRepository(),
+		},
+		{
+			Name:       "inmemory",
+			DBManager:  inmemoryDBManager,
+			Repository: inmemoryDBManager.UnspentRepository(),
+		},
+	}
 }
 
 type unspentRepository struct {
