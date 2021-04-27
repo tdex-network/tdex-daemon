@@ -3,6 +3,7 @@ package elements
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
@@ -157,11 +158,12 @@ func (e *elements) BroadcastTransaction(txhex string) (string, error) {
 
 /**** Regtest only ****/
 
-// Faucet sends 1 LBTC to the given address using the sendtoaddress RPC.
-// Also, 1 block is mined with generatetoaddress to get the faucet tx
+// Faucet sends the requested sats to the given address using the sendtoaddress
+// RPC. Also, 1 block is mined with generatetoaddress to get the faucet tx
 // confirmed.
-func (e *elements) Faucet(address string) (string, error) {
-	r, err := e.client.call("sendtoaddress", []interface{}{address, 1})
+func (e *elements) Faucet(address string, amount int) (string, error) {
+	btcAmount := float64(amount) / math.Pow10(8)
+	r, err := e.client.call("sendtoaddress", []interface{}{address, btcAmount})
 	if err = handleError(err, &r); err != nil {
 		return "", fmt.Errorf("send: %w", err)
 	}

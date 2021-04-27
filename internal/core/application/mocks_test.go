@@ -183,7 +183,7 @@ func (m *mockExplorer) BroadcastTransaction(txhex string) (string, error) {
 	return res, args.Error(1)
 }
 
-func (m *mockExplorer) Faucet(addr string) (string, error) {
+func (m *mockExplorer) Faucet(addr string, amount int) (string, error) {
 	args := m.Called(addr)
 
 	var res string

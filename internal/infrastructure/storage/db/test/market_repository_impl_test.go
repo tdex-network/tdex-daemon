@@ -3,7 +3,6 @@ package db_test
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -20,8 +19,7 @@ var (
 )
 
 func TestMarketRepositoryImplementations(t *testing.T) {
-	repositories, cancel := createMarketRepositories(t)
-	t.Cleanup(cancel)
+	repositories := createMarketRepositories(t)
 
 	for i := range repositories {
 		repo := repositories[i]
@@ -351,29 +349,23 @@ func testWriteRollback(t *testing.T, repo marketRepository) {
 	require.Nil(t, market)
 }
 
-func createMarketRepositories(t *testing.T) ([]marketRepository, func()) {
-	datadir := "marketdb"
-	err := os.Mkdir(datadir, os.ModePerm)
-	require.NoError(t, err)
-
+func createMarketRepositories(t *testing.T) []marketRepository {
 	inmemoryDBManager := inmemory.NewRepoManager()
-	badgerDBManager, err := dbbadger.NewRepoManager(datadir, nil)
+	badgerDBManager, err := dbbadger.NewRepoManager("", nil)
 	require.NoError(t, err)
 
 	return []marketRepository{
-			{
-				Name:       "badger",
-				DBManager:  badgerDBManager,
-				Repository: badgerDBManager.MarketRepository(),
-			},
-			{
-				Name:       "inmemory",
-				DBManager:  inmemoryDBManager,
-				Repository: inmemoryDBManager.MarketRepository(),
-			},
-		}, func() {
-			os.RemoveAll(datadir)
-		}
+		{
+			Name:       "badger",
+			DBManager:  badgerDBManager,
+			Repository: badgerDBManager.MarketRepository(),
+		},
+		{
+			Name:       "inmemory",
+			DBManager:  inmemoryDBManager,
+			Repository: inmemoryDBManager.MarketRepository(),
+		},
+	}
 }
 
 type marketRepository struct {

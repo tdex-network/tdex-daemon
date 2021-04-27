@@ -3,6 +3,7 @@ package esplora
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -68,9 +69,10 @@ func (e *esplora) BroadcastTransaction(txHex string) (string, error) {
 	return resp, nil
 }
 
-func (e *esplora) Faucet(address string) (string, error) {
+func (e *esplora) Faucet(address string, amount int) (string, error) {
+	btcAmount := float64(amount) / math.Pow10(8)
 	url := fmt.Sprintf("%s/faucet", e.apiURL)
-	payload := map[string]string{"address": address}
+	payload := map[string]interface{}{"address": address, "amount": btcAmount}
 	body, _ := json.Marshal(payload)
 	bodyString := string(body)
 	headers := map[string]string{
