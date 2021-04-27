@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
@@ -23,15 +22,21 @@ import (
 )
 
 var (
-	daemonDatadir            = btcutil.AppDataDir("tdex-daemon", false)
-	cliDatadir               = btcutil.AppDataDir("tdex-operator", false)
-	daemon                   = fmt.Sprintf("./build/tdexd-%s-%s", runtime.GOOS, runtime.GOARCH)
-	cli                      = fmt.Sprintf("./build/tdex-%s-%s", runtime.GOOS, runtime.GOARCH)
-	feeder                   = fmt.Sprintf("./build/feederd-%s-%s", runtime.GOOS, runtime.GOARCH)
-	feederConfigJSON         = "test/e2e/config.json"
+	daemonDatadir = "test/e2e/.tdex-daemon"
+	daemonEnv     = []string{fmt.Sprintf("TDEX_DATA_DIR_PATH=%s", daemonDatadir)}
+	daemon        = fmt.Sprintf("./build/tdexd-%s-%s", runtime.GOOS, runtime.GOARCH)
+
+	cliDatadir = "test/e2e/.tdex-operator"
+	cliEnv     = []string{fmt.Sprintf("TDEX_OPERATOR_DATADIR=%s", cliDatadir)}
+	cli        = fmt.Sprintf("./build/tdex-%s-%s", runtime.GOOS, runtime.GOARCH)
+
+	feeder           = fmt.Sprintf("./build/feederd-%s-%s", runtime.GOOS, runtime.GOARCH)
+	feederConfigJSON = "test/e2e/config.json"
+
+	explorerUrl    = "http://localhost:3001"
+	explorerSvc, _ = esplora.NewService(explorerUrl, 15000)
+
 	password                 = "password"
-	explorerUrl              = "http://localhost:3001"
-	explorerSvc, _           = esplora.NewService(explorerUrl, 15000)
 	feeDepositAmount         = 5000
 	marketBaseDepositAmount  = 20000000
 	marketQuoteDepositAmount = 2000
@@ -57,13 +62,13 @@ func main() {
 	// build and start the daemon
 	runCommand("make", "build")
 
-	daemonEnv := []string{
+	daemonEnv = append(daemonEnv, []string{
 		"TDEX_NETWORK=regtest",
 		"TDEX_EXPLORER_ENDPOINT=http://127.0.0.1:3001",
 		"TDEX_LOG_LEVEL=5",
 		"TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
 		"TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000",
-	}
+	}...)
 	stopDaemon, err := runCommandDetached(os.Stdout, os.Stderr, daemon, daemonEnv)
 	if err != nil {
 		fmt.Println(err)
@@ -75,68 +80,68 @@ func main() {
 	runCommand("make", "build-cli")
 
 	// generate a new seed
-	if _, err := runCommand(cli, "config", "init", "--network", "regtest", "--explorer_url", explorerUrl); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "config", "init", "--network", "regtest", "--explorer_url", explorerUrl); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	seed, err := runCommand(cli, "genseed")
+	seed, err := runCommandWithEnv(cliEnv, cli, "genseed")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	// init daemon with generated seed
-	if _, err := runCommand(cli, "init", "--seed", seed, "--password", password); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "init", "--seed", seed, "--password", password); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	// unlock with password
-	if _, err := runCommand(cli, "unlock", "--password", password); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "unlock", "--password", password); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	// deposit some funds to pay for future trades' network fees
-	out, err := runCommand(cli, "depositfee", "--num_of_addresses", "10")
+	out, err := runCommandWithEnv(cliEnv, cli, "depositfee", "--num_of_addresses", "10")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	feeAddresses := feeAddressesFromStdout(out)
 	feeOutpoints := fundFeeAccount(feeAddresses)
-	if _, err := runCommand(cli, "claimfee", "--outpoints", feeOutpoints); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "claimfee", "--outpoints", feeOutpoints); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	// create a LBTC/USDT market on regtest and deposit funds
-	out, err = runCommand(cli, "depositmarket", "--num_of_addresses", "10")
+	out, err = runCommandWithEnv(cliEnv, cli, "depositmarket", "--num_of_addresses", "10")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	marketAddresses := marketAddressesFromStdout(out)
 
-	if _, err := runCommand(cli, "config", "set", "base_asset", lbtcAsset); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "config", "set", "base_asset", lbtcAsset); err != nil {
 		fmt.Println(err)
 		return
 	}
-	if _, err := runCommand(cli, "config", "set", "quote_asset", usdtAsset); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "config", "set", "quote_asset", usdtAsset); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	outpoints := fundMarketAccount(marketAddresses)
-	if _, err := runCommand(cli, "claimmarket", "--outpoints", outpoints); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "claimmarket", "--outpoints", outpoints); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	// before opening the market, let's set the strategy to pluggable)
 	// and start the feeder
-	if _, err := runCommand(cli, "strategy", "--pluggable"); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "strategy", "--pluggable"); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -158,7 +163,7 @@ func main() {
 
 	time.Sleep(5 * time.Second)
 
-	if _, err := runCommand(cli, "open"); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "open"); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -279,6 +284,21 @@ func runCommand(name string, arg ...string) (string, error) {
 	outb := new(strings.Builder)
 	errb := new(strings.Builder)
 	cmd := newCommand(outb, errb, name, arg...)
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	if errMsg := errb.String(); len(errMsg) > 0 {
+		return "", fmt.Errorf(errMsg)
+	}
+
+	return strings.Trim(outb.String(), "\n"), nil
+}
+
+func runCommandWithEnv(env []string, name string, arg ...string) (string, error) {
+	outb := new(strings.Builder)
+	errb := new(strings.Builder)
+	cmd := newCommand(outb, errb, name, arg...)
+	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		return "", err
 	}

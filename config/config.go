@@ -182,17 +182,14 @@ func GetMnemonic() []string {
 
 // Validate method of config will panic
 func validate() {
+	if err := validatePath(vip.GetString(DataDirPathKey)); err != nil {
+		log.WithError(err).Panic("datadir is not valid")
+	}
 	if err := validateDefaultFee(vip.GetFloat64(DefaultFeeKey)); err != nil {
 		log.WithError(err).Panic("default fee is not valid")
 	}
 	if err := validateDefaultNetwork(vip.GetString(NetworkKey)); err != nil {
 		log.WithError(err).Panic("default network is not valid")
-	}
-	path := vip.GetString(DataDirPathKey)
-	if path != defaultDataDir {
-		if err := validatePath(path); err != nil {
-			log.WithError(err).Panic("datadir is not valid")
-		}
 	}
 	certPath, keyPath := vip.GetString(SSLCertPathKey), vip.GetString(SSLKeyPathKey)
 	if (certPath != "" && keyPath == "") || (certPath == "" && keyPath != "") {
@@ -239,19 +236,13 @@ func validateDefaultNetwork(net string) error {
 	return nil
 }
 
+// validatePath empirically checks if the given path is correct by creating
+// the folder if not existing. If path is null or invalid, an error is returned
 func validatePath(path string) error {
-	if path != "" {
-		stat, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-
-		if !stat.IsDir() {
-			return errors.New("not a directory")
-		}
+	if path == "" {
+		return fmt.Errorf("datadir path must not be null")
 	}
-
-	return nil
+	return makeDirectoryIfNotExists(path)
 }
 
 func validateEndpoint(endpoint string) error {
@@ -261,11 +252,6 @@ func validateEndpoint(endpoint string) error {
 
 func initDataDir() error {
 	dataDir := GetString(DataDirPathKey)
-	if err := makeDirectoryIfNotExists(dataDir); err != nil {
-		log.WithError(err).Panic(
-			fmt.Sprintf("error while creating %v folder", dataDir),
-		)
-	}
 	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "db")); err != nil {
 		log.WithError(err).Panic("error while creating db folder")
 	}
