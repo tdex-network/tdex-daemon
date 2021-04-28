@@ -62,7 +62,7 @@ func main() {
 		&fragmentfee,
 		&fragmentmarket,
 		&listmarket,
-		&listswaps,
+		&listtrades,
 		&openmarket,
 		&closemarket,
 		&dropmarket,

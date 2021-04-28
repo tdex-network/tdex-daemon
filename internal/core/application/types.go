@@ -16,17 +16,32 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
-// SwapInfo is the data struct returned by ListSwap RPC.
+// SwapInfo contains info about a swap
 type SwapInfo struct {
-	Status           int32
-	AmountP          uint64
-	AssetP           string
-	AmountR          uint64
-	AssetR           string
-	MarketFee        Fee
+	AmountP uint64
+	AssetP  string
+	AmountR uint64
+	AssetR  string
+}
+
+type SwapFailInfo struct {
+	Code    int
+	Message string
+}
+
+// TradeInfo contains info about a trade.
+type TradeInfo struct {
+	ID               string
+	Status           domain.Status
+	SwapInfo         SwapInfo
+	SwapFailInfo     SwapFailInfo
+	MarketWithFee    MarketWithFee
+	Price            Price
+	TxURL            string
 	RequestTimeUnix  uint64
 	AcceptTimeUnix   uint64
 	CompleteTimeUnix uint64
+	SettleTimeUnix   uint64
 	ExpiryTimeUnix   uint64
 }
 
@@ -185,6 +200,10 @@ type TransactionHandler interface {
 		infoByScript map[string]domain.AddressInfo,
 		network *network.Network,
 	) ([]domain.Unspent, []domain.UnspentKey, error)
+	ExtractBlindingData(
+		psetBase64 string,
+		inBlindingKeys, outBlidningKeys map[string][]byte,
+	) (map[int]BlindingData, map[int]BlindingData, error)
 }
 
 var (
@@ -265,6 +284,30 @@ func (t transactionManager) ExtractUnspents(
 		}
 	}
 	return unspentsToAdd, unspentsToSpend, nil
+}
+
+func (t transactionManager) ExtractBlindingData(
+	psetBase64 string,
+	inBlindingKeys, outBlindingKeys map[string][]byte,
+) (inBlindingData, outBlindingData map[int]BlindingData, err error) {
+	in, out, err := wallet.ExtractBlindingDataFromTx(psetBase64, inBlindingKeys, outBlindingKeys)
+	if err != nil {
+		return
+	}
+
+	if in != nil {
+		inBlindingData = make(map[int]BlindingData)
+		for i, d := range in {
+			inBlindingData[i] = BlindingData(d)
+		}
+	}
+	if out != nil {
+		outBlindingData = make(map[int]BlindingData)
+		for i, d := range out {
+			outBlindingData[i] = BlindingData(d)
+		}
+	}
+	return
 }
 
 func init() {

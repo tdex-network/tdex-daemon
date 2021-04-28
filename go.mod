@@ -23,7 +23,7 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210322164638-77a31ea9e66d
-	github.com/tdex-network/tdex-protobuf v0.0.0-20210324125236-78f6c6c0618b
+	github.com/tdex-network/tdex-protobuf v0.0.0-20210428014219-21ec2e69e8ad
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/urfave/cli/v2 v2.3.0

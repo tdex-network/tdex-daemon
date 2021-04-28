@@ -3,6 +3,7 @@ package grpchandler
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/config"
@@ -85,11 +86,11 @@ func (o operatorHandler) UpdateMarketStrategy(
 	return o.updateMarketStrategy(ctx, req)
 }
 
-func (o operatorHandler) ListSwaps(
+func (o operatorHandler) ListTrades(
 	ctx context.Context,
-	req *pb.ListSwapsRequest,
-) (*pb.ListSwapsReply, error) {
-	return o.listSwaps(ctx, req)
+	req *pb.ListTradesRequest,
+) (*pb.ListTradesReply, error) {
+	return o.listTrades(ctx, req)
 }
 
 func (o operatorHandler) WithdrawMarket(
@@ -426,35 +427,85 @@ func (o operatorHandler) updateMarketStrategy(
 	return &pb.UpdateMarketStrategyReply{}, nil
 }
 
-func (o operatorHandler) listSwaps(
+func (o operatorHandler) listTrades(
 	ctx context.Context,
-	req *pb.ListSwapsRequest,
-) (*pb.ListSwapsReply, error) {
-	swapInfos, err := o.operatorSvc.ListSwaps(ctx)
+	req *pb.ListTradesRequest,
+) (*pb.ListTradesReply, error) {
+	tradeInfo, err := o.operatorSvc.ListTrades(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	pbSwapInfos := make([]*pb.SwapInfo, len(swapInfos), len(swapInfos))
+	pbTradeInfo := make([]*pb.TradeInfo, 0, len(tradeInfo))
+	for _, info := range tradeInfo {
+		basePrice, _ := info.Price.BasePrice.Float64()
+		quotePrice, _ := info.Price.QuotePrice.Float64()
 
-	for index, swapInfo := range swapInfos {
-		pbSwapInfos[index] = &pb.SwapInfo{
-			Status:  pb.SwapStatus(swapInfo.Status),
-			AmountP: swapInfo.AmountP,
-			AssetP:  swapInfo.AssetP,
-			AmountR: swapInfo.AmountR,
-			AssetR:  swapInfo.AssetR,
-			MarketFee: &pbtypes.Fee{
-				BasisPoint: swapInfo.MarketFee.BasisPoint,
+		pbInfo := &pb.TradeInfo{
+			TradeId: info.ID,
+			Status: &pb.TradeStatusInfo{
+				Status: pb.TradeStatus(info.Status.Code),
+				Failed: info.Status.Failed,
 			},
-			RequestTimeUnix:  swapInfo.RequestTimeUnix,
-			AcceptTimeUnix:   swapInfo.AcceptTimeUnix,
-			CompleteTimeUnix: swapInfo.CompleteTimeUnix,
-			ExpiryTimeUnix:   swapInfo.ExpiryTimeUnix,
+			MarketWithFee: &pbtypes.MarketWithFee{
+				Market: &pbtypes.Market{
+					BaseAsset:  info.MarketWithFee.BaseAsset,
+					QuoteAsset: info.MarketWithFee.QuoteAsset,
+				},
+				Fee: &pbtypes.Fee{
+					BasisPoint: info.MarketWithFee.BasisPoint,
+				},
+			},
+			Price: &pb.TradePrice{
+				BasePrice:  basePrice,
+				QuotePrice: quotePrice,
+			},
+			TxUrl:            info.TxURL,
+			RequestTimeUnix:  info.RequestTimeUnix,
+			AcceptTimeUnix:   info.AcceptTimeUnix,
+			CompleteTimeUnix: info.CompleteTimeUnix,
+			SettleTimeUnix:   info.SettleTimeUnix,
+			ExpiryTimeUnix:   info.ExpiryTimeUnix,
 		}
+
+		swapInfoEmpty := info.SwapInfo == application.SwapInfo{}
+		if !swapInfoEmpty {
+			pbInfo.SwapInfo = &pb.SwapInfo{
+				AssetP:  info.SwapInfo.AssetP,
+				AmountP: info.SwapInfo.AmountP,
+				AssetR:  info.SwapInfo.AssetR,
+				AmountR: info.SwapInfo.AmountR,
+			}
+		}
+
+		failInfoEmpty := info.SwapFailInfo == application.SwapFailInfo{}
+		if !failInfoEmpty {
+			pbInfo.FailInfo = &pb.SwapFailInfo{
+				FailureCode:    uint32(info.SwapFailInfo.Code),
+				FailureMessage: info.SwapFailInfo.Message,
+			}
+		}
+
+		if tt := info.RequestTimeUnix; tt > 0 {
+			pbInfo.RequestTimeUtc = time.Unix(int64(tt), 0).UTC().String()
+		}
+		if tt := info.AcceptTimeUnix; tt > 0 {
+			pbInfo.AcceptTimeUtc = time.Unix(int64(tt), 0).UTC().String()
+		}
+		if tt := info.CompleteTimeUnix; tt > 0 {
+			pbInfo.CompleteTimeUtc = time.Unix(int64(tt), 0).UTC().String()
+		}
+		if tt := info.SettleTimeUnix; tt > 0 {
+			pbInfo.SettleTimeUtc = time.Unix(int64(tt), 0).UTC().String()
+		}
+		if tt := info.ExpiryTimeUnix; tt > 0 {
+			pbInfo.ExpiryTimeUtc = time.Unix(int64(tt), 0).UTC().String()
+		}
+
+		pbTradeInfo = append(pbTradeInfo, pbInfo)
 	}
 
-	return &pb.ListSwapsReply{Swaps: pbSwapInfos}, nil
+	return &pb.ListTradesReply{Trades: pbTradeInfo}, nil
 }
 
 func (o operatorHandler) withdrawMarket(
