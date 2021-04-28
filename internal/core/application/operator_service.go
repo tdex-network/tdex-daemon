@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -1149,6 +1150,11 @@ func tradesToTradeInfo(trades []*domain.Trade, marketBaseAsset, network string) 
 		}
 		tradeInfo = append(tradeInfo, info)
 	}
+
+	// sort by request timestamp
+	sort.SliceStable(tradeInfo, func(i, j int) bool {
+		return tradeInfo[i].RequestTimeUnix < tradeInfo[j].RequestTimeUnix
+	})
 
 	return tradeInfo
 }
