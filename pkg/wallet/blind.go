@@ -436,42 +436,79 @@ func (w *Wallet) blindTransaction(
 // The revealed data are returned mapped by output script.
 func ExtractBlindingDataFromTx(
 	psetBase64 string,
-	inBlindingKeys map[string][]byte,
-) (map[int]BlindingData, error) {
+	inBlindingKeys, outBlindingKeys map[string][]byte,
+) (inBlindingData, outBlindingData map[int]BlindingData, err error) {
 	ptx, err := pset.NewPsetFromBase64(psetBase64)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	blindingData := make(map[int]BlindingData)
-	for i, in := range ptx.Inputs {
-		prevout := in.WitnessUtxo
-		if in.WitnessUtxo == nil {
-			prevoutIndex := ptx.UnsignedTx.Inputs[i].Index
-			prevout = in.NonWitnessUtxo.Outputs[prevoutIndex]
-		}
-		script := hex.EncodeToString(prevout.Script)
-		var blindKey []byte
+	if len(inBlindingKeys) > 0 {
+		inBlindingData = make(map[int]BlindingData)
+		for i, in := range ptx.Inputs {
+			prevout := in.WitnessUtxo
+			if in.WitnessUtxo == nil {
+				prevoutIndex := ptx.UnsignedTx.Inputs[i].Index
+				prevout = in.NonWitnessUtxo.Outputs[prevoutIndex]
+			}
+			script := hex.EncodeToString(prevout.Script)
+			var blindKey []byte
 
-		if prevout.IsConfidential() {
-			var ok bool
-			blindKey, ok = inBlindingKeys[script]
+			if prevout.IsConfidential() {
+				var ok bool
+				blindKey, ok = inBlindingKeys[script]
+				if !ok {
+					err = ErrMissingInBlindingKey
+					return
+				}
+			}
+			res, ok := transactionutil.UnblindOutput(prevout, blindKey)
 			if !ok {
-				return nil, ErrMissingInBlindingKey
+				err = ErrInvalidInBlindingKey
+				return
+			}
+
+			inBlindingData[i] = BlindingData{
+				Asset:         res.AssetHash,
+				Amount:        res.Value,
+				AssetBlinder:  res.AssetBlinder,
+				AmountBlinder: res.ValueBlinder,
 			}
 		}
-		res, ok := transactionutil.UnblindOutput(prevout, blindKey)
-		if !ok {
-			return nil, ErrInvalidInBlindingKey
-		}
+	}
 
-		blindingData[i] = BlindingData{
-			Asset:         res.AssetHash,
-			Amount:        res.Value,
-			AssetBlinder:  res.AssetBlinder,
-			AmountBlinder: res.ValueBlinder,
+	if len(outBlindingKeys) > 0 {
+		outBlindingData = make(map[int]BlindingData)
+		for i, out := range ptx.UnsignedTx.Outputs {
+			if len(out.Script) <= 0 {
+				continue
+			}
+
+			script := hex.EncodeToString(out.Script)
+			var blindKey []byte
+
+			if out.IsConfidential() {
+				var ok bool
+				blindKey, ok = outBlindingKeys[script]
+				if !ok {
+					err = ErrMissingOutBlindingKey
+					return
+				}
+			}
+			res, ok := transactionutil.UnblindOutput(out, blindKey)
+			if !ok {
+				err = ErrInvalidOutBlindingKey
+				return
+			}
+
+			outBlindingData[i] = BlindingData{
+				Asset:         res.AssetHash,
+				Amount:        res.Value,
+				AssetBlinder:  res.AssetBlinder,
+				AmountBlinder: res.ValueBlinder,
+			}
 		}
 	}
 
-	return blindingData, nil
+	return
 }
