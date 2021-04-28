@@ -627,9 +627,10 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 	// swap in order to get the full list of selected inputs
 	selectedUnspents := append(selectedUnspentsForSwap, psetWithFeesResult.SelectedUnspents...)
 
-	inputBlindingData, _ := wallet.ExtractBlindingDataFromTx(
+	inputBlindingData, _, _ := wallet.ExtractBlindingDataFromTx(
 		opts.SwapRequest.GetTransaction(),
 		opts.SwapRequest.GetInputBlindingKey(),
+		nil,
 	)
 
 	// get the indexes of the inputs of the tx to sign

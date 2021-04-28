@@ -88,6 +88,22 @@ func (m *mockTransactionManager) ExtractUnspents(
 	return res, res1, args.Error(2)
 }
 
+func (m *mockTransactionManager) ExtractBlindingData(
+	psetBase64 string,
+	inBlindingKeys, outBlindingData map[string][]byte,
+) (map[int]application.BlindingData, map[int]application.BlindingData, error) {
+	args := m.Called(psetBase64, inBlindingKeys, outBlindingData)
+	var res map[int]application.BlindingData
+	if a := args.Get(0); a != nil {
+		res = a.(map[int]application.BlindingData)
+	}
+	var res1 map[int]application.BlindingData
+	if a := args.Get(1); a != nil {
+		res1 = a.(map[int]application.BlindingData)
+	}
+	return res, res1, args.Error(2)
+}
+
 // **** Explorer ****
 
 type mockExplorer struct {

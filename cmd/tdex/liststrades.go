@@ -8,21 +8,21 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var listswaps = cli.Command{
-	Name:   "listswaps",
-	Usage:  "list all completed swaps",
-	Action: listSwapsAction,
+var listtrades = cli.Command{
+	Name:   "listtrades",
+	Usage:  "list all processed trades",
+	Action: listTradesAction,
 }
 
-func listSwapsAction(ctx *cli.Context) error {
+func listTradesAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	resp, err := client.ListSwaps(
-		context.Background(), &pboperator.ListSwapsRequest{},
+	resp, err := client.ListTrades(
+		context.Background(), &pboperator.ListTradesRequest{},
 	)
 	if err != nil {
 		return err

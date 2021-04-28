@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"sort"
+	"strings"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -12,6 +16,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
+	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/network"
 )
 
@@ -54,9 +59,9 @@ type OperatorService interface {
 		ctx context.Context,
 		req MarketStrategy,
 	) error
-	ListSwaps(
+	ListTrades(
 		ctx context.Context,
-	) ([]SwapInfo, error)
+	) ([]TradeInfo, error)
 	ListMarketExternalAddresses(
 		ctx context.Context,
 		req Market,
@@ -499,22 +504,16 @@ func (o *operatorService) UpdateMarketStrategy(
 	)
 }
 
-// ListSwaps returns the list of all swaps processed by the daemon
-func (o *operatorService) ListSwaps(
+// ListTrades returns the list of all trads processed by the daemon
+func (o *operatorService) ListTrades(
 	ctx context.Context,
-) ([]SwapInfo, error) {
+) ([]TradeInfo, error) {
 	trades, err := o.repoManager.TradeRepository().GetAllTrades(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	markets, err := o.getMarketsForTrades(ctx, trades)
-	if err != nil {
-		return nil, err
-	}
-
-	swaps := tradesToSwapInfo(markets, trades)
-	return swaps, nil
+	return tradesToTradeInfo(trades, o.marketBaseAsset, o.network.Name), nil
 }
 
 func (o *operatorService) ListMarketExternalAddresses(
@@ -1131,35 +1130,112 @@ func (o *operatorService) getMarketsForTrades(
 	return markets, nil
 }
 
-func tradesToSwapInfo(
-	markets map[string]*domain.Market,
-	trades []*domain.Trade,
-) []SwapInfo {
-	swapInfos := make([]SwapInfo, 0, len(trades))
-	for _, trade := range trades {
-		requestMsg := trade.SwapRequestMessage()
-
-		fee := Fee{
-			BasisPoint: markets[trade.MarketQuoteAsset].Fee,
+func tradesToTradeInfo(trades []*domain.Trade, marketBaseAsset, network string) []TradeInfo {
+	tradeInfo := make([]TradeInfo, 0, len(trades))
+	chInfo := make(chan TradeInfo)
+	wg := &sync.WaitGroup{}
+	wg.Add(len(trades))
+	go func() {
+		for _, trade := range trades {
+			go tradeToTradeInfo(trade, marketBaseAsset, network, chInfo, wg)
 		}
+		wg.Wait()
+		close(chInfo)
+	}()
 
-		newSwapInfo := SwapInfo{
-			Status:           int32(trade.Status.Code),
-			AmountP:          requestMsg.GetAmountP(),
-			AssetP:           requestMsg.GetAssetP(),
-			AmountR:          requestMsg.GetAmountR(),
-			AssetR:           requestMsg.GetAssetR(),
-			MarketFee:        fee,
-			RequestTimeUnix:  trade.SwapRequest.Timestamp,
-			AcceptTimeUnix:   trade.SwapAccept.Timestamp,
-			CompleteTimeUnix: trade.SwapComplete.Timestamp,
-			ExpiryTimeUnix:   trade.ExpiryTime,
+	for {
+		info, ok := <-chInfo
+		if !ok {
+			break
 		}
-
-		swapInfos = append(swapInfos, newSwapInfo)
+		tradeInfo = append(tradeInfo, info)
 	}
 
-	return swapInfos
+	// sort by request timestamp
+	sort.SliceStable(tradeInfo, func(i, j int) bool {
+		return tradeInfo[i].RequestTimeUnix < tradeInfo[j].RequestTimeUnix
+	})
+
+	return tradeInfo
+}
+
+func tradeToTradeInfo(
+	trade *domain.Trade,
+	marketBaseAsset, net string,
+	chInfo chan TradeInfo,
+	wg *sync.WaitGroup,
+) {
+	if wg != nil {
+		defer wg.Done()
+	}
+
+	if trade.IsEmpty() {
+		return
+	}
+
+	info := TradeInfo{
+		ID:     trade.ID.String(),
+		Status: trade.Status,
+		MarketWithFee: MarketWithFee{
+			Market{
+				BaseAsset:  marketBaseAsset,
+				QuoteAsset: trade.MarketQuoteAsset,
+			},
+			Fee{
+				BasisPoint: trade.MarketFee,
+			},
+		},
+		Price:            Price(trade.MarketPrice),
+		RequestTimeUnix:  trade.SwapRequest.Timestamp,
+		AcceptTimeUnix:   trade.SwapAccept.Timestamp,
+		CompleteTimeUnix: trade.SwapComplete.Timestamp,
+		SettleTimeUnix:   trade.SettlementTime,
+		ExpiryTimeUnix:   trade.ExpiryTime,
+	}
+
+	if req := trade.SwapRequestMessage(); req != nil {
+		info.SwapInfo = SwapInfo{
+			AssetP:  req.GetAssetP(),
+			AmountP: req.GetAmountP(),
+			AssetR:  req.GetAssetR(),
+			AmountR: req.GetAmountR(),
+		}
+	}
+
+	if fail := trade.SwapFailMessage(); fail != nil {
+		info.SwapFailInfo = SwapFailInfo{
+			Code:    int(fail.GetFailureCode()),
+			Message: fail.GetFailureMessage(),
+		}
+	}
+
+	if trade.IsSettled() {
+		_, outBlindingData, _ := TransactionManager.ExtractBlindingData(
+			trade.PsetBase64,
+			nil, trade.SwapAcceptMessage().GetOutputBlindingKey(),
+		)
+
+		var blinded string
+		for _, data := range outBlindingData {
+			blinded += fmt.Sprintf(
+				"%d,%s,%s,%s,",
+				data.Amount, data.Asset,
+				hex.EncodeToString(elementsutil.ReverseBytes(data.AmountBlinder)),
+				hex.EncodeToString(elementsutil.ReverseBytes(data.AssetBlinder)),
+			)
+		}
+		// remove trailing comma
+		blinded = strings.Trim(blinded, ",")
+
+		baseURL := "https://blockstream.info/liquid/tx"
+		if net == network.Regtest.Name {
+			baseURL = "http://localhost:3001/tx"
+		}
+		info.TxURL = fmt.Sprintf("%s/%s#blinded=%s", baseURL, trade.TxID, blinded)
+	}
+
+	chInfo <- info
+	return
 }
 
 func validateMarketRequest(marketReq Market, baseAsset string) error {

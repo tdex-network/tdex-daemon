@@ -139,8 +139,10 @@ func (t *Trade) Complete(tx string) (*CompleteResult, error) {
 		txHex, _ = PsetParserManager.GetTxHex(tx)
 	}
 
+	now := uint64(time.Now().Unix())
 	t.SwapComplete.ID = swapCompleteID
 	t.SwapComplete.Message = swapCompleteMsg
+	t.SwapComplete.Timestamp = now
 	t.Status = CompletedStatus
 	t.TxHex = txHex
 	if len(psetBase64) > 0 {
