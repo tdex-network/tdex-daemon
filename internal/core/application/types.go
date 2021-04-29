@@ -84,10 +84,11 @@ type Price struct {
 }
 
 type PriceWithFee struct {
-	Price  Price
-	Fee    Fee
-	Amount uint64
-	Asset  string
+	Price   Price
+	Fee     Fee
+	Amount  uint64
+	Asset   string
+	Balance Balance
 }
 
 type MarketStrategy struct {
