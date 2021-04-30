@@ -98,14 +98,24 @@ func newTradeService(
 	}
 }
 
-// Markets is the domain controller for the Markets RPC
 func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 	[]MarketWithFee,
 	error,
 ) {
+	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		log.Debugf("error while retrieving vault: %s", err)
+		return nil, ErrServiceUnavailable
+	}
+	if vault.IsLocked() {
+		log.Debug("vault is locked")
+		return nil, ErrServiceUnavailable
+	}
+
 	tradableMarkets, err := t.repoManager.MarketRepository().GetTradableMarkets(ctx)
 	if err != nil {
-		return nil, err
+		log.Debugf("error while retrieving markets: %s", err)
+		return nil, ErrServiceUnavailable
 	}
 
 	marketsWithFee := make([]MarketWithFee, 0, len(tradableMarkets))
@@ -124,7 +134,6 @@ func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 	return marketsWithFee, nil
 }
 
-// MarketPrice is the domain controller for the MarketPrice RPC.
 func (t *tradeService) GetMarketPrice(
 	ctx context.Context,
 	market Market,
@@ -156,7 +165,8 @@ func (t *tradeService) GetMarketPrice(
 		market.QuoteAsset,
 	)
 	if err != nil {
-		return nil, err
+		log.Debugf("error while retrieving market: %s", err)
+		return nil, ErrServiceUnavailable
 	}
 	if mktAccountIndex < 0 {
 		return nil, ErrMarketNotExist
@@ -168,30 +178,102 @@ func (t *tradeService) GetMarketPrice(
 
 	_, unspents, err := t.getInfoAndUnspentsForAccount(ctx, mktAccountIndex)
 	if err != nil {
-		return nil, err
+		log.Debugf("error while retrieving unspents: %s", err)
+		return nil, ErrServiceUnavailable
 	}
 
-	price, previewAmount, err := getPriceAndPreviewForMarket(unspents, mkt, tradeType, amount, asset)
+	previewWithPrice, err := getPriceAndPreviewForMarket(unspents, mkt, tradeType, amount, asset)
 	if err != nil {
-		return nil, err
-	}
-
-	previewAsset := market.BaseAsset
-	if asset == market.BaseAsset {
-		previewAsset = market.QuoteAsset
+		log.Debugf("error while making preview: %s", err)
+		return nil, ErrServiceUnavailable
 	}
 
 	return &PriceWithFee{
-		Price: price,
+		Price: previewWithPrice.price,
 		Fee: Fee{
 			BasisPoint: mkt.Fee,
 		},
-		Amount: previewAmount,
-		Asset:  previewAsset,
+		Amount:  previewWithPrice.amount,
+		Asset:   previewWithPrice.asset,
+		Balance: previewWithPrice.balances,
 	}, nil
 }
 
-// TradePropose is the domain controller for the TradePropose RPC
+func (t *tradeService) GetMarketBalance(
+	ctx context.Context,
+	market Market,
+) (*BalanceWithFee, error) {
+	// check the asset strings
+	err := validateAssetString(market.BaseAsset)
+	if err != nil {
+		return nil, domain.ErrMarketInvalidBaseAsset
+	}
+
+	err = validateAssetString(market.QuoteAsset)
+	if err != nil {
+		return nil, domain.ErrMarketInvalidQuoteAsset
+	}
+
+	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		log.Debugf("error while retrieving vault: %s", err)
+		return nil, ErrServiceUnavailable
+	}
+	if vault.IsLocked() {
+		log.Debug("vault is locked")
+		return nil, ErrServiceUnavailable
+	}
+
+	m, accountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
+		ctx,
+		market.QuoteAsset,
+	)
+	if err != nil {
+		log.Debugf("error while retrieving market: %s", err)
+		return nil, ErrServiceUnavailable
+	}
+	if accountIndex < 0 {
+		return nil, ErrMarketNotExist
+	}
+
+	info, err := vault.AllDerivedAddressesInfoForAccount(m.AccountIndex)
+	if err != nil {
+		log.Debugf("error while retrieving addresses: %s", err)
+		return nil, ErrServiceUnavailable
+	}
+	marketAddresses := info.Addresses()
+
+	baseAssetBalance, err := t.repoManager.UnspentRepository().GetBalance(
+		ctx,
+		marketAddresses,
+		m.BaseAsset,
+	)
+	if err != nil {
+		log.Debugf("error while retrieving base asset balance: %s", err)
+		return nil, ErrServiceUnavailable
+	}
+
+	quoteAssetBalance, err := t.repoManager.UnspentRepository().GetBalance(
+		ctx,
+		marketAddresses,
+		m.QuoteAsset,
+	)
+	if err != nil {
+		log.Debugf("error while retrieving quote asset balance: %s", err)
+		return nil, ErrServiceUnavailable
+	}
+
+	return &BalanceWithFee{
+		Balance: Balance{
+			BaseAmount:  int64(baseAssetBalance),
+			QuoteAmount: int64(quoteAssetBalance),
+		},
+		Fee: Fee{
+			BasisPoint: m.Fee,
+		},
+	}, nil
+}
+
 func (t *tradeService) TradePropose(
 	ctx context.Context,
 	market Market,
@@ -206,12 +288,23 @@ func (t *tradeService) TradePropose(
 		return nil, nil, 0, domain.ErrMarketInvalidQuoteAsset
 	}
 
+	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		log.Debugf("error while retrieving vault: %s", err)
+		return nil, nil, 0, ErrServiceUnavailable
+	}
+	if vault.IsLocked() {
+		log.Debug("vault is locked")
+		return nil, nil, 0, ErrServiceUnavailable
+	}
+
 	mkt, marketAccountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
 	)
 	if err != nil {
-		return nil, nil, 0, err
+		log.Debugf("error while retrieving market: %s", err)
+		return nil, nil, 0, ErrServiceUnavailable
 	}
 	if marketAccountIndex < 0 {
 		return nil, nil, 0, ErrMarketNotExist
@@ -223,7 +316,8 @@ func (t *tradeService) TradePropose(
 	marketInfo, marketUnspents, err :=
 		t.getInfoAndUnspentsForAccount(ctx, marketAccountIndex)
 	if err != nil {
-		return nil, nil, 0, err
+		log.Debugf("error while retrieving market account addresses and unspents: %s", err)
+		return nil, nil, 0, ErrServiceUnavailable
 	}
 
 	// Check we got at least one
@@ -235,16 +329,12 @@ func (t *tradeService) TradePropose(
 	feeInfo, feeUnspents, err :=
 		t.getInfoAndUnspentsForAccount(ctx, domain.FeeAccount)
 	if err != nil {
-		return nil, nil, 0, err
+		log.Debugf("error while retrieving fee account addresses and unspents: %s", err)
+		return nil, nil, 0, ErrServiceUnavailable
 	}
 	// Check we got at least one
 	if len(feeUnspents) <= 0 {
 		return nil, nil, 0, ErrFeeAccountNotFunded
-	}
-
-	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
-	if err != nil {
-		return nil, nil, 0, err
 	}
 
 	// parse swap proposal and possibly accept
@@ -321,9 +411,11 @@ func (t *tradeService) TradePropose(
 
 end:
 	var selectedUnspentKeys []domain.UnspentKey
+
 	if swapAccept != nil {
 		log.Infof("trade with id %s accepted", trade.ID)
 		selectedUnspentKeys = getUnspentKeys(fillProposalResult.SelectedUnspents)
+		// set timer for trade expiration
 		go func() {
 			// admit a tollerance of 1 minute past the expiration time.
 			time.Sleep(t.expiryDuration + time.Minute)
@@ -385,7 +477,11 @@ func (t *tradeService) TradeComplete(
 ) (string, domain.SwapFail, error) {
 	if swapFail != nil {
 		swapFailMsg, err := t.tradeFail(ctx, *swapFail)
-		return "", swapFailMsg, err
+		if err != nil {
+			log.Debugf("error while aborting trade: %s", err)
+			return "", nil, ErrServiceUnavailable
+		}
+		return "", swapFailMsg, nil
 	}
 
 	return t.tradeComplete(ctx, *swapComplete)
@@ -745,6 +841,13 @@ func mergeDerivationPaths(maps ...map[string]string) map[string]string {
 	return merge
 }
 
+type preview struct {
+	price    Price
+	amount   uint64
+	asset    string
+	balances Balance
+}
+
 // getPriceAndPreviewForMarket returns the current price of a market, along
 // with a amount preview for a BUY or SELL trade.
 // Depending on the strategy set for the market, an input amount might be
@@ -762,69 +865,49 @@ func getPriceAndPreviewForMarket(
 	tradeType int,
 	amount uint64,
 	asset string,
-) (Price, uint64, error) {
+) (*preview, error) {
 	balances := getBalanceByAsset(unspents)
-	baseAssetBalance := balances[market.BaseAsset]
-	quoteAssetBalance := balances[market.QuoteAsset]
+	marketBalance := Balance{
+		BaseAmount:  balances[market.BaseAsset],
+		QuoteAmount: balances[market.QuoteAsset],
+	}
+	previewAsset := market.BaseAsset
+	if asset == market.BaseAsset {
+		previewAsset = market.QuoteAsset
+	}
 	if tradeType == TradeBuy {
-		if asset == market.BaseAsset && amount >= baseAssetBalance {
-			return Price{}, 0, errors.New("provided amount is too big")
+		if asset == market.BaseAsset && amount >= uint64(marketBalance.BaseAmount) {
+			return nil, errors.New("provided amount is too big")
 		}
 	} else {
-		if asset == market.QuoteAsset && amount >= quoteAssetBalance {
-			return Price{}, 0, errors.New("provided amount is too big")
+		if asset == market.QuoteAsset && amount >= uint64(marketBalance.QuoteAmount) {
+			return nil, errors.New("provided amount is too big")
 		}
 	}
 
 	if market.IsStrategyPluggable() {
-		previewAmount := calcPreviewAmount(
-			market,
-			baseAssetBalance,
-			quoteAssetBalance,
-			tradeType,
-			amount,
-			asset,
-		)
+		previewAmount := calcPreviewAmount(market, tradeType, amount, asset)
 
 		price := Price{
 			BasePrice:  market.BaseAssetPrice(),
 			QuotePrice: market.QuoteAssetPrice(),
 		}
-		return price, previewAmount, nil
+
+		return &preview{price, previewAmount, previewAsset, marketBalance}, nil
 	}
 
-	price, previewAmount, err := previewFromFormula(
-		market,
-		baseAssetBalance,
-		quoteAssetBalance,
-		tradeType,
-		amount,
-		asset,
+	return previewFromFormula(
+		market, marketBalance, tradeType, amount, asset,
 	)
-	if err != nil {
-		return Price{}, 0, err
-	}
-
-	if tradeType == TradeBuy {
-		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
-			return Price{}, 0, errors.New("provided amount is too big")
-		}
-	} else {
-		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
-			return Price{}, 0, errors.New("provided amount is too big")
-		}
-	}
-
-	return *price, previewAmount, nil
 }
 
-func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
-	balances := map[string]uint64{}
+func getBalanceByAsset(unspents []domain.Unspent) map[string]int64 {
+	balances := map[string]int64{}
 	for _, unspent := range unspents {
 		if _, ok := balances[unspent.AssetHash]; !ok {
 			balances[unspent.AssetHash] = 0
 		}
-		balances[unspent.AssetHash] += unspent.Value
+		balances[unspent.AssetHash] += int64(unspent.Value)
 	}
 	return balances
 }
@@ -835,7 +918,6 @@ func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
 // basing on the trade type.
 func calcPreviewAmount(
 	market *domain.Market,
-	baseAssetBalance, quoteAssetBalance uint64,
 	tradeType int,
 	amount uint64,
 	asset string,
@@ -913,13 +995,17 @@ func calcExpectedAmount(
 
 func previewFromFormula(
 	market *domain.Market,
-	baseAssetBalance, quoteAssetBalance uint64,
+	marketBalance Balance,
 	tradeType int,
 	amount uint64,
 	asset string,
-) (price *Price, previewAmount uint64, err error) {
+) (*preview, error) {
 	formula := market.Strategy.Formula()
+	baseAssetBalance := uint64(marketBalance.BaseAmount)
+	quoteAssetBalance := uint64(marketBalance.QuoteAmount)
 
+	var previewAmount uint64
+	var err error
 	if tradeType == TradeBuy {
 		if asset == market.BaseAsset {
 			previewAmount, err = formula.InGivenOut(
@@ -966,15 +1052,29 @@ func previewFromFormula(
 		}
 	}
 	if err != nil {
-		return
+		return nil, err
 	}
 
+	if tradeType == TradeBuy {
+		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
+			return nil, errors.New("provided amount is too big")
+		}
+	} else {
+		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
+			return nil, errors.New("provided amount is too big")
+		}
+	}
+
+	previewAsset := market.BaseAsset
+	if asset == market.BaseAsset {
+		previewAsset = market.QuoteAsset
+	}
 	// we can ignore errors because if the above function calls do not return
 	// any, we can assume the following do the same because they all perform the
 	// same checks.
-	price, _ = priceFromBalances(formula, baseAssetBalance, quoteAssetBalance)
+	price, _ := priceFromBalances(formula, baseAssetBalance, quoteAssetBalance)
 
-	return price, previewAmount, nil
+	return &preview{*price, previewAmount, previewAsset, marketBalance}, nil
 }
 
 func priceFromBalances(
@@ -989,7 +1089,7 @@ func priceFromBalances(
 	if err != nil {
 		return nil, err
 	}
-	quotePrice, _ := formula.SpotPrice(&mm.FormulaOpts{
+	quotePrice, err := formula.SpotPrice(&mm.FormulaOpts{
 		BalanceIn:  baseAssetBalance,
 		BalanceOut: quoteAssetBalance,
 	})
@@ -1023,7 +1123,7 @@ func isValidTradePrice(
 		amount = swapRequest.GetAmountP()
 	}
 
-	_, previewAmount, _ := getPriceAndPreviewForMarket(
+	preview, _ := getPriceAndPreviewForMarket(
 		unspents,
 		market,
 		tradeType,
@@ -1031,7 +1131,7 @@ func isValidTradePrice(
 		market.BaseAsset,
 	)
 
-	if isPriceInRange(swapRequest, tradeType, previewAmount, true, slippage) {
+	if isPriceInRange(swapRequest, tradeType, preview.amount, true, slippage) {
 		return true
 	}
 
@@ -1040,7 +1140,7 @@ func isValidTradePrice(
 		amount = swapRequest.GetAmountR()
 	}
 
-	_, previewAmount, _ = getPriceAndPreviewForMarket(
+	preview, _ = getPriceAndPreviewForMarket(
 		unspents,
 		market,
 		tradeType,
@@ -1048,7 +1148,7 @@ func isValidTradePrice(
 		market.QuoteAsset,
 	)
 
-	return isPriceInRange(swapRequest, tradeType, previewAmount, false, slippage)
+	return isPriceInRange(swapRequest, tradeType, preview.amount, false, slippage)
 }
 
 func isPriceInRange(
@@ -1074,65 +1174,4 @@ func isPriceInRange(
 	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
 
 	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
-}
-
-func (t *tradeService) GetMarketBalance(
-	ctx context.Context,
-	market Market,
-) (*BalanceWithFee, error) {
-	// check the asset strings
-	err := validateAssetString(market.BaseAsset)
-	if err != nil {
-		return nil, domain.ErrMarketInvalidBaseAsset
-	}
-
-	err = validateAssetString(market.QuoteAsset)
-	if err != nil {
-		return nil, domain.ErrMarketInvalidQuoteAsset
-	}
-
-	m, accountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
-		ctx,
-		market.QuoteAsset,
-	)
-	if err != nil {
-		return nil, err
-	}
-	if accountIndex < 0 {
-		return nil, ErrMarketNotExist
-	}
-
-	info, err := t.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(ctx, m.AccountIndex)
-	if err != nil {
-		return nil, err
-	}
-	marketAddresses := info.Addresses()
-
-	baseAssetBalance, err := t.repoManager.UnspentRepository().GetBalance(
-		ctx,
-		marketAddresses,
-		m.BaseAsset,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	quoteAssetBalance, err := t.repoManager.UnspentRepository().GetBalance(
-		ctx,
-		marketAddresses,
-		m.QuoteAsset,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BalanceWithFee{
-		Balance: Balance{
-			BaseAmount:  int64(baseAssetBalance),
-			QuoteAmount: int64(quoteAssetBalance),
-		},
-		Fee: Fee{
-			BasisPoint: m.Fee,
-		},
-	}, nil
 }

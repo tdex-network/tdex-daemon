@@ -19,4 +19,7 @@ var (
 	ErrInvalidOutpoint = errors.New("outpoint refers to inexistent tx output")
 	// ErrInvalidOutpoints ...
 	ErrInvalidOutpoints = errors.New("all outpoints must be funded for the same account")
+	// ErrServiceUnavailable is the error returned by the trade service in case of
+	// internal errors
+	ErrServiceUnavailable = errors.New("service is unavailable, try again later")
 )
