@@ -214,6 +214,16 @@ func (t *tradeService) GetMarketBalance(
 		return nil, domain.ErrMarketInvalidQuoteAsset
 	}
 
+	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		log.Debugf("error while retrieving vault: %s", err)
+		return nil, ErrServiceUnavailable
+	}
+	if vault.IsLocked() {
+		log.Debug("vault is locked")
+		return nil, ErrServiceUnavailable
+	}
+
 	m, accountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
@@ -226,17 +236,7 @@ func (t *tradeService) GetMarketBalance(
 		return nil, ErrMarketNotExist
 	}
 
-	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
-	if err != nil {
-		log.Debugf("error while retrieving vault: %s", err)
-		return nil, ErrServiceUnavailable
-	}
-	if vault.IsLocked() {
-		log.Debug("vault is locked")
-		return nil, ErrServiceUnavailable
-	}
-
-	info, err := t.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(ctx, m.AccountIndex)
+	info, err := vault.AllDerivedAddressesInfoForAccount(m.AccountIndex)
 	if err != nil {
 		log.Debugf("error while retrieving addresses: %s", err)
 		return nil, ErrServiceUnavailable
@@ -288,6 +288,16 @@ func (t *tradeService) TradePropose(
 		return nil, nil, 0, domain.ErrMarketInvalidQuoteAsset
 	}
 
+	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		log.Debugf("error while retrieving vault: %s", err)
+		return nil, nil, 0, ErrServiceUnavailable
+	}
+	if vault.IsLocked() {
+		log.Debug("vault is locked")
+		return nil, nil, 0, ErrServiceUnavailable
+	}
+
 	mkt, marketAccountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
@@ -298,16 +308,6 @@ func (t *tradeService) TradePropose(
 	}
 	if marketAccountIndex < 0 {
 		return nil, nil, 0, ErrMarketNotExist
-	}
-
-	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
-	if err != nil {
-		log.Debugf("error while retrieving vault: %s", err)
-		return nil, nil, 0, ErrServiceUnavailable
-	}
-	if vault.IsLocked() {
-		log.Debugf("vault is locked")
-		return nil, nil, 0, ErrServiceUnavailable
 	}
 
 	// get all unspents for market account (both as []domain.Unspents and as
