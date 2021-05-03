@@ -468,12 +468,9 @@ func setupTraderClient() (*trade.Trade, error) {
 
 func checkTradeErr(chErr chan error) error {
 	for {
-		select {
-		case err := <-chErr:
-			if err != nil {
-				return err
-			}
-			break
+		err := <-chErr
+		if err != nil {
+			return err
 		}
 	}
 }

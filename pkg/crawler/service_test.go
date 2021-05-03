@@ -37,19 +37,17 @@ func TestCrawler(t *testing.T) {
 func listen(t *testing.T, crawlSvc Service) {
 	eventChan := crawlSvc.GetEventChannel()
 	for {
-		select {
-		case event := <-eventChan:
-			switch e := event.(type) {
-			case CloseEvent:
-				return
-			case AddressEvent:
-				for _, u := range e.Utxos {
-					t.Log(fmt.Sprintf("%v %v %v", "ADR", e.EventType, u.Value()))
-				}
-			case TransactionEvent:
-				if e.EventType == TransactionConfirmed {
-					t.Log(fmt.Sprintf("%v %v %v", "TX", e.EventType, e.TxID))
-				}
+		event := <-eventChan
+		switch e := event.(type) {
+		case CloseEvent:
+			return
+		case AddressEvent:
+			for _, u := range e.Utxos {
+				t.Log(fmt.Sprintf("%v %v %v", "ADR", e.EventType, u.Value()))
+			}
+		case TransactionEvent:
+			if e.EventType == TransactionConfirmed {
+				t.Log(fmt.Sprintf("%v %v %v", "TX", e.EventType, e.TxID))
 			}
 		}
 	}

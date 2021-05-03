@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
@@ -164,14 +165,16 @@ func (w *walletService) InitWallet(
 	chRes chan *InitWalletReply,
 	chErr chan error,
 ) {
+	defer func() {
+		close(chErr)
+		close(chRes)
+	}()
 	if w.isInitialized() {
-		chRes <- nil
 		return
 	}
 	// this prevents strange behaviors by making consecutive calls to InitWallet
 	// while it's still syncing
 	if w.isSyncing() {
-		chRes <- nil
 		return
 	}
 
@@ -264,9 +267,6 @@ func (w *walletService) InitWallet(
 		return
 	}
 
-	// notify the interface that no more replies will be sent and the channel
-	// can be closed.
-	chRes <- nil
 	go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
 	w.setInitialized(true)
 	if w.isSyncing() {
@@ -752,6 +752,7 @@ func (w *walletService) getAllUnspentsForAccount(
 type unspentInfo struct {
 	info     domain.AddressInfo
 	unspents []domain.Unspent
+	err      error
 }
 
 func (w *walletService) restoreUnspents(
@@ -759,11 +760,18 @@ func (w *walletService) restoreUnspents(
 	chRes chan *InitWalletReply,
 ) ([]domain.Unspent, error) {
 	chUnspentsInfo := make(chan unspentInfo)
-	chErr := make(chan error, 1)
 	unspents := make([]domain.Unspent, 0)
 	cb := newCircuitBreaker()
+	wg := &sync.WaitGroup{}
+	wg.Add(len(info))
 
-	for _, in := range info {
+	go func() {
+		wg.Wait()
+		close(chUnspentsInfo)
+	}()
+
+	for i := range info {
+		in := info[i]
 		path := strings.Split(in.DerivationPath, "/")
 		addressIndex, _ := strconv.Atoi(path[len(path)-1])
 		chRes <- &InitWalletReply{
@@ -774,29 +782,27 @@ func (w *walletService) restoreUnspents(
 				"account %d index %d", in.AccountIndex, addressIndex,
 			),
 		}
-		go w.restoreUnspentsForAddress(cb, in, chUnspentsInfo, chErr)
+		go w.restoreUnspentsForAddress(cb, in, chUnspentsInfo, wg)
+	}
 
-		select {
-		case err := <-chErr:
-			close(chErr)
-			close(chUnspentsInfo)
-			return nil, err
-		case unspentsInfo := <-chUnspentsInfo:
-			unspents = append(unspents, unspentsInfo.unspents...)
+	for r := range chUnspentsInfo {
+		if r.err != nil {
+			return nil, r.err
+		}
 
-			info := unspentsInfo.info
-			path := strings.Split(info.DerivationPath, "/")
-			addressIndex, _ := strconv.Atoi(path[len(path)-1])
-			chRes <- &InitWalletReply{
-				AccountIndex: info.AccountIndex,
-				AddressIndex: addressIndex,
-				Status:       Done,
-				Data: fmt.Sprintf(
-					"account %d index %d",
-					info.AccountIndex,
-					addressIndex,
-				),
-			}
+		unspents = append(unspents, r.unspents...)
+
+		path := strings.Split(r.info.DerivationPath, "/")
+		addressIndex, _ := strconv.Atoi(path[len(path)-1])
+		chRes <- &InitWalletReply{
+			AccountIndex: r.info.AccountIndex,
+			AddressIndex: addressIndex,
+			Status:       Done,
+			Data: fmt.Sprintf(
+				"account %d index %d",
+				r.info.AccountIndex,
+				addressIndex,
+			),
 		}
 	}
 
@@ -806,9 +812,11 @@ func (w *walletService) restoreUnspents(
 func (w *walletService) restoreUnspentsForAddress(
 	cb *gobreaker.CircuitBreaker,
 	info domain.AddressInfo,
-	chUnspentsInfo chan unspentInfo,
-	chErr chan error,
+	chUnspent chan unspentInfo,
+	wg *sync.WaitGroup,
 ) {
+	defer wg.Done()
+
 	addr := info.Address
 	blindingKeys := [][]byte{info.BlindingKey}
 
@@ -816,7 +824,7 @@ func (w *walletService) restoreUnspentsForAddress(
 		return w.explorerService.GetUnspents(addr, blindingKeys)
 	})
 	if err != nil {
-		chErr <- err
+		chUnspent <- unspentInfo{err: err}
 		return
 	}
 	utxos := iUtxos.([]explorer.Utxo)
@@ -840,7 +848,7 @@ func (w *walletService) restoreUnspentsForAddress(
 			Address:         addr,
 		}
 	}
-	chUnspentsInfo <- unspentInfo{info, unspents}
+	chUnspent <- unspentInfo{info: info, unspents: unspents}
 }
 
 func parseRequestOutputs(reqOutputs []TxOut) (
@@ -1112,12 +1120,12 @@ func fetchUnspents(explorerSvc explorer.Service, info domain.AddressesInfo) ([]d
 	utxos := iUtxos.([]explorer.Utxo)
 
 	unspentsLen := len(utxos)
-	unspents := make([]domain.Unspent, unspentsLen, unspentsLen)
+	unspents := make([]domain.Unspent, 0, unspentsLen)
 	infoByScript := groupAddressesInfoByScript(info)
 
-	for i, u := range utxos {
+	for _, u := range utxos {
 		addr := infoByScript[hex.EncodeToString(u.Script())].Address
-		unspents[i] = domain.Unspent{
+		unspents = append(unspents, domain.Unspent{
 			TxID:            u.Hash(),
 			VOut:            u.Index(),
 			Value:           u.Value(),
@@ -1132,7 +1140,7 @@ func fetchUnspents(explorerSvc explorer.Service, info domain.AddressesInfo) ([]d
 			SurjectionProof: make([]byte, 1),
 			Confirmed:       u.IsConfirmed(),
 			Address:         addr,
-		}
+		})
 	}
 
 	return unspents, nil
@@ -1148,7 +1156,17 @@ func fetchAndAddUnspents(
 	bcListener BlockchainListener,
 	info domain.AddressesInfo,
 ) error {
-	unspents, err := fetchUnspents(explorerSvc, info)
+	var unspents []domain.Unspent
+	var err error
+
+	start := time.Now()
+	defer func() {
+		elapsed := time.Since(start)
+		log.Debugf("Restored uspents: %d", len(unspents))
+		log.Debugf("Restore took: %.2fs", elapsed.Seconds())
+	}()
+
+	unspents, err = fetchUnspents(explorerSvc, info)
 	if err != nil {
 		return err
 	}

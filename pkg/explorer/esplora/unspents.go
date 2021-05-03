@@ -2,9 +2,9 @@ package esplora
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -13,34 +13,50 @@ import (
 )
 
 func (e *esplora) GetUnspents(addr string, blindingKeys [][]byte) (coins []explorer.Utxo, err error) {
-	return e.getUnspents(addr, blindingKeys)
+	return e.getUtxos(addr, blindingKeys)
+}
+
+type utxosResult struct {
+	utxos []explorer.Utxo
+	err   error
 }
 
 func (e *esplora) GetUnspentsForAddresses(
 	addresses []string,
 	blindingKeys [][]byte,
 ) ([]explorer.Utxo, error) {
-	chUnspents := make(chan []explorer.Utxo)
-	chErr := make(chan error, 1)
-	unspents := make([]explorer.Utxo, 0)
+	chRes := make(chan utxosResult)
+	utxos := make([]explorer.Utxo, 0)
+	wg := &sync.WaitGroup{}
+	wg.Add(len(addresses))
 
-	for _, addr := range addresses {
-		go e.getUnspentsForAddress(addr, blindingKeys, chUnspents, chErr)
+	go func() {
+		wg.Wait()
+		close(chRes)
+	}()
 
-		select {
-		case err := <-chErr:
-			close(chErr)
-			close(chUnspents)
-			return nil, err
-		case unspentsForAddress := <-chUnspents:
-			unspents = append(unspents, unspentsForAddress...)
-		}
+	for i := range addresses {
+		addr := addresses[i]
+		go e.getUnspentsForAddress(addr, blindingKeys, chRes, wg)
 	}
 
-	return unspents, nil
+	for r := range chRes {
+		if r.err != nil {
+			return nil, r.err
+		}
+
+		utxos = append(utxos, r.utxos...)
+	}
+
+	return utxos, nil
 }
 
-func (e *esplora) getUnspents(addr string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
+type utxoResult struct {
+	utxo explorer.Utxo
+	err  error
+}
+
+func (e *esplora) getUtxos(addr string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
 	url := fmt.Sprintf(
 		"%s/address/%s/utxo",
 		e.apiURL,
@@ -59,120 +75,141 @@ func (e *esplora) getUnspents(addr string, blindingKeys [][]byte) ([]explorer.Ut
 		return nil, fmt.Errorf("error on retrieving utxos: %s", err)
 	}
 
-	unspents := make([]explorer.Utxo, len(witnessOuts))
-	chUnspents := make(chan explorer.Utxo)
-	chErr := make(chan error, 1)
+	utxos := make([]explorer.Utxo, 0, len(witnessOuts))
+	chRes := make(chan utxoResult)
+	wg := &sync.WaitGroup{}
+	wg.Add(len(witnessOuts))
+
+	go func() {
+		wg.Wait()
+		close(chRes)
+	}()
 
 	for i := range witnessOuts {
 		out := witnessOuts[i]
-		go e.getUtxoDetails(out, chUnspents, chErr)
+		go e.getUtxoDetails(out, chRes, wg)
+	}
 
-		select {
-		case err := <-chErr:
-			if err != nil {
-				close(chErr)
-				close(chUnspents)
-				return nil, fmt.Errorf("error on retrieving utxos: %s", err)
-			}
+	utxosToUnblind := make([]explorer.Utxo, 0)
+	for r := range chRes {
+		if r.err != nil {
+			return nil, fmt.Errorf("error on retrieving utxos: %s", r.err)
+		}
 
-		case unspent := <-chUnspents:
-			if out.IsConfidential() && len(blindingKeys) > 0 {
-				go unblindUtxo(unspent, blindingKeys, chUnspents, chErr)
-				select {
-
-				case err := <-chErr:
-					close(chErr)
-					close(chUnspents)
-					return nil, fmt.Errorf("error on unblinding utxos: %s", err)
-
-				case u := <-chUnspents:
-					unspents[i] = u
-				}
-
-			} else {
-				unspents[i] = unspent
-			}
+		if len(blindingKeys) > 0 && r.utxo.IsConfidential() {
+			utxosToUnblind = append(utxosToUnblind, r.utxo)
+		} else {
+			utxos = append(utxos, r.utxo)
 		}
 	}
 
-	return unspents, nil
+	if len(utxosToUnblind) > 0 {
+		chRes := make(chan utxoResult)
+		wg.Add(len(utxosToUnblind))
+
+		go func() {
+			wg.Wait()
+			close(chRes)
+		}()
+
+		for i := range utxosToUnblind {
+			utxo := utxosToUnblind[i]
+			go unblindUtxo(utxo, blindingKeys, chRes, wg)
+		}
+
+		for r := range chRes {
+			if r.err != nil {
+				return nil, fmt.Errorf("error on unblinding utxos: %s", r.err)
+			}
+
+			utxos = append(utxos, r.utxo)
+		}
+	}
+
+	return utxos, nil
 }
 
 func (e *esplora) getUnspentsForAddress(
 	addr string,
 	blindingKeys [][]byte,
-	chUnspents chan []explorer.Utxo,
-	chErr chan error,
+	chRes chan utxosResult,
+	wg *sync.WaitGroup,
 ) {
-	unspents, err := e.getUnspents(addr, blindingKeys)
+	defer wg.Done()
+	utxos, err := e.getUtxos(addr, blindingKeys)
 	if err != nil {
-		chErr <- err
+		chRes <- utxosResult{err: err}
 		return
 	}
-	chUnspents <- unspents
+	chRes <- utxosResult{utxos: utxos}
 }
 
 func (e *esplora) getUtxoDetails(
-	unspent witnessUtxo,
-	chUnspents chan explorer.Utxo,
-	chErr chan error,
+	utxo witnessUtxo,
+	chRes chan utxoResult,
+	wg *sync.WaitGroup,
 ) {
-	// in case of error the status is defaulted to unconfirmed
-	confirmed, _ := e.IsTransactionConfirmed(unspent.Hash())
+	defer wg.Done()
 
-	prevoutTxHex, err := e.GetTransactionHex(unspent.Hash())
+	// in case of error the status is defaulted to unconfirmed
+	confirmed, _ := e.IsTransactionConfirmed(utxo.Hash())
+
+	prevoutTxHex, err := e.GetTransactionHex(utxo.Hash())
 	if err != nil {
-		chErr <- err
+		chRes <- utxoResult{err: err}
 		return
 	}
 	trx, _ := transaction.NewTxFromHex(prevoutTxHex)
-	prevout := trx.Outputs[unspent.Index()]
+	prevout := trx.Outputs[utxo.Index()]
 
-	if unspent.IsConfidential() {
-		unspent.UNonce = prevout.Nonce
-		unspent.URangeProof = prevout.RangeProof
-		unspent.USurjectionProof = prevout.SurjectionProof
+	if utxo.IsConfidential() {
+		utxo.UNonce = prevout.Nonce
+		utxo.URangeProof = prevout.RangeProof
+		utxo.USurjectionProof = prevout.SurjectionProof
 	}
-	unspent.UScript = prevout.Script
-	unspent.UStatus = status{Confirmed: confirmed}
+	utxo.UScript = prevout.Script
+	utxo.UStatus = status{Confirmed: confirmed}
 
-	chUnspents <- unspent
+	chRes <- utxoResult{utxo: utxo}
 }
 
 func unblindUtxo(
-	utxo explorer.Utxo,
+	u explorer.Utxo,
 	blindKeys [][]byte,
-	chUnspents chan explorer.Utxo,
-	chErr chan error,
+	chRes chan utxoResult,
+	wg *sync.WaitGroup,
 ) {
-	unspent := utxo.(witnessUtxo)
+	defer wg.Done()
+
+	utxo := u.(witnessUtxo)
+	// ignore the following errors because this function is called only if
+	// asset and value commitments are defined. However, if a bad (nil) nonce
+	// is passed to the UnblindOutput function, this will not be able to reveal
+	// secrets of the output.
+	assetCommitment, _ := bufferutil.CommitmentToBytes(utxo.AssetCommitment())
+	valueCommitment, _ := bufferutil.CommitmentToBytes(utxo.ValueCommitment())
+
+	txOut := &transaction.TxOutput{
+		Nonce:           utxo.Nonce(),
+		Asset:           assetCommitment,
+		Value:           valueCommitment,
+		Script:          utxo.Script(),
+		RangeProof:      utxo.RangeProof(),
+		SurjectionProof: utxo.SurjectionProof(),
+	}
+
 	for i := range blindKeys {
 		blindKey := blindKeys[i]
-		// ignore the following errors because this function is called only if
-		// asset and value commitments are defined. However, if a bad (nil) nonce
-		// is passed to the UnblindOutput function, this will not be able to reveal
-		// secrets of the output.
-		assetCommitment, _ := bufferutil.CommitmentToBytes(utxo.AssetCommitment())
-		valueCommitment, _ := bufferutil.CommitmentToBytes(utxo.ValueCommitment())
-
-		txOut := &transaction.TxOutput{
-			Nonce:           utxo.Nonce(),
-			Asset:           assetCommitment,
-			Value:           valueCommitment,
-			Script:          utxo.Script(),
-			RangeProof:      utxo.RangeProof(),
-			SurjectionProof: utxo.SurjectionProof(),
-		}
 		unblinded, ok := transactionutil.UnblindOutput(txOut, blindKey)
 		if ok {
-			unspent.UAsset = unblinded.AssetHash
-			unspent.UValue = unblinded.Value
-			unspent.UValueBlinder = unblinded.ValueBlinder
-			unspent.UAssetBlinder = unblinded.AssetBlinder
-			chUnspents <- unspent
+			utxo.UAsset = unblinded.AssetHash
+			utxo.UValue = unblinded.Value
+			utxo.UValueBlinder = unblinded.ValueBlinder
+			utxo.UAssetBlinder = unblinded.AssetBlinder
+			chRes <- utxoResult{utxo: utxo}
 			return
 		}
 	}
 
-	chErr <- errors.New("unable to unblind utxo with provided keys")
+	chRes <- utxoResult{err: fmt.Errorf("unable to unblind utxo with provided keys")}
 }

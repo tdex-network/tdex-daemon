@@ -142,38 +142,37 @@ func (b *blockchainListener) StopObserveTx(txid string) {
 
 func (b *blockchainListener) listenToEventChannel() {
 	for {
-		select {
-		case event := <-b.crawlerSvc.GetEventChannel():
-			switch event.Type() {
-			default:
-				// unnoticeable sleep to prevent high cpu usage
-				// https://github.com/golang/go/issues/27707#issuecomment-698487427
-				time.Sleep(time.Microsecond)
-			case crawler.CloseSignal:
-				log.Debug("CloseEvent detected")
-				log.Debug("stop listening on event channel")
-				return
-			case crawler.TransactionConfirmed:
-				e := event.(crawler.TransactionEvent)
-				ctx := context.Background()
+		event := <-b.crawlerSvc.GetEventChannel()
 
-				trade, err := b.repoManager.TradeRepository().GetTradeByTxID(ctx, e.TxID)
-				if err != nil {
-					log.Warnf("unable to find trade with id %s: %v", e.TxID, err)
-					break
-				}
+		switch event.Type() {
+		default:
+			// unnoticeable sleep to prevent high cpu usage
+			// https://github.com/golang/go/issues/27707#issuecomment-698487427
+			time.Sleep(time.Microsecond)
+		case crawler.CloseSignal:
+			log.Debug("CloseEvent detected")
+			log.Debug("stop listening on event channel")
+			return
+		case crawler.TransactionConfirmed:
+			e := event.(crawler.TransactionEvent)
+			ctx := context.Background()
 
-				if err := b.settleTrade(&trade.ID, e); err != nil {
-					log.Warnf("trying to settle trade with id %s: %v", trade.ID, err)
-					break
-				}
-				if err := b.confirmOrAddUnspents(e.TxHex, e.TxID, trade.MarketQuoteAsset); err != nil {
-					log.Warnf("trying to confirm or add unspents: %v", err)
-					break
-				}
-				// stop watching for a tx after it's confirmed
-				b.StopObserveTx(e.TxID)
+			trade, err := b.repoManager.TradeRepository().GetTradeByTxID(ctx, e.TxID)
+			if err != nil {
+				log.Warnf("unable to find trade with id %s: %v", e.TxID, err)
+				break
 			}
+
+			if err := b.settleTrade(&trade.ID, e); err != nil {
+				log.Warnf("trying to settle trade with id %s: %v", trade.ID, err)
+				break
+			}
+			if err := b.confirmOrAddUnspents(e.TxHex, e.TxID, trade.MarketQuoteAsset); err != nil {
+				log.Warnf("trying to confirm or add unspents: %v", err)
+				break
+			}
+			// stop watching for a tx after it's confirmed
+			b.StopObserveTx(e.TxID)
 		}
 	}
 }

@@ -271,11 +271,9 @@ func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
 
 		go func() {
 			for {
-				select {
-				case <-ticker.C:
-					if err := db.Badger().RunValueLogGC(0.5); err != nil && err != badger.ErrNoRewrite {
-						log.Error(err)
-					}
+				<-ticker.C
+				if err := db.Badger().RunValueLogGC(0.5); err != nil && err != badger.ErrNoRewrite {
+					log.Error(err)
 				}
 			}
 		}()

@@ -1,11 +1,11 @@
 package crawler
 
 import (
-	"golang.org/x/time/rate"
 	"sync"
 	"time"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -61,13 +61,11 @@ func NewService(opts Opts) Service {
 // events/Observable object
 func (bc *blockchainCrawler) Start() {
 	for {
-		select {
-		case err, more := <-bc.errChan:
-			if !more {
-				return
-			}
-			go bc.errorHandler(err)
+		err, more := <-bc.errChan
+		if !more {
+			return
 		}
+		go bc.errorHandler(err)
 	}
 }
 
