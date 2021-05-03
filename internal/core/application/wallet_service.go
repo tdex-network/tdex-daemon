@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -189,6 +190,11 @@ func (w *walletService) InitWallet(
 	if restore {
 		w.setSyncing(true)
 		log.Debug("restoring wallet")
+		start := time.Now()
+		defer func() {
+			elapsed := time.Since(start)
+			log.Debugf("Restoration took: %.2fs", elapsed.Seconds())
+		}()
 	} else {
 		log.Debug("creating wallet")
 	}
@@ -783,6 +789,7 @@ func (w *walletService) restoreUnspents(
 			),
 		}
 		go w.restoreUnspentsForAddress(cb, in, chUnspentsInfo, wg)
+		time.Sleep(1 * time.Millisecond)
 	}
 
 	for r := range chUnspentsInfo {
@@ -1074,6 +1081,11 @@ func initVaultAccount(
 		}
 		addresses = append(addresses, *info)
 	}
+
+	sort.SliceStable(addresses, func(i, j int) bool {
+		return addresses[i].DerivationPath > addresses[j].DerivationPath
+	})
+
 	return addresses, nil
 }
 

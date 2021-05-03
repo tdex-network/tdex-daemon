@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -38,6 +39,7 @@ func (e *esplora) GetUnspentsForAddresses(
 	for i := range addresses {
 		addr := addresses[i]
 		go e.getUnspentsForAddress(addr, blindingKeys, chRes, wg)
+		time.Sleep(1 * time.Millisecond)
 	}
 
 	for r := range chRes {
