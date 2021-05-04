@@ -286,13 +286,9 @@ func listenToReplies(
 	for {
 		select {
 		case err := <-chErr:
-			close(chErr)
-			close(chReplies)
 			return nil, err
-		case reply := <-chReplies:
-			if reply == nil {
-				close(chErr)
-				close(chReplies)
+		case reply, ok := <-chReplies:
+			if !ok {
 				return replies, nil
 			}
 			replies = append(replies, reply)
