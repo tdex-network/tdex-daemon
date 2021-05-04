@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1081,10 +1080,6 @@ func initVaultAccount(
 		}
 		addresses = append(addresses, *info)
 	}
-
-	sort.SliceStable(addresses, func(i, j int) bool {
-		return addresses[i].DerivationPath > addresses[j].DerivationPath
-	})
 
 	return addresses, nil
 }
