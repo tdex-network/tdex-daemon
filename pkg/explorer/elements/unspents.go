@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -91,46 +92,66 @@ func (e *elements) GetUnspentsForAddresses(
 	return e.toUtxos(unspents)
 }
 
-func (e *elements) toUtxos(unspents []elementsUnspent) ([]explorer.Utxo, error) {
-	utxos := make([]explorer.Utxo, 0, len(unspents))
-	chUnspents := make(chan explorer.Utxo)
-	chErr := make(chan error, 1)
-	for _, unspent := range unspents {
-		go e.getUtxoDetails(unspent, chUnspents, chErr)
-		select {
-		case err := <-chErr:
-			close(chUnspents)
-			close(chErr)
-			return nil, err
+type utxoResult struct {
+	utxo explorer.Utxo
+	err  error
+}
 
-		case utxo := <-chUnspents:
-			if utxo != nil {
-				utxos = append(utxos, utxo)
-			}
-		}
+func (e *elements) toUtxos(unspents []elementsUnspent) ([]explorer.Utxo, error) {
+	if len(unspents) <= 0 {
+		return nil, nil
 	}
+
+	utxos := make([]explorer.Utxo, 0, len(unspents))
+	chRes := make(chan utxoResult)
+	wg := &sync.WaitGroup{}
+	wg.Add(len(unspents))
+
+	go func() {
+		wg.Wait()
+		close(chRes)
+	}()
+
+	for i := range unspents {
+		unspent := unspents[i]
+		go e.getUtxoDetails(unspent, chRes, wg)
+	}
+
+	for r := range chRes {
+		if r.err != nil {
+			return nil, r.err
+		}
+		utxos = append(utxos, r.utxo)
+	}
+
 	return utxos, nil
 }
 
 // TODO: this won't be required as soon as the wallet pkg handles blinding txs
 // also with blinders instead of unblinding ALL the owned inputs with blinding
 // private keys.
-func (e *elements) getUtxoDetails(unspent elementsUnspent, chUnspents chan explorer.Utxo, chErr chan error) {
-	txhex, err := e.GetTransactionHex(unspent.Hash())
+func (e *elements) getUtxoDetails(
+	utxo elementsUnspent,
+	chRes chan utxoResult,
+	wg *sync.WaitGroup,
+) {
+	defer wg.Done()
+
+	txhex, err := e.GetTransactionHex(utxo.Hash())
 	if err != nil {
-		chErr <- err
+		chRes <- utxoResult{err: err}
 		return
 	}
 	tx, err := transaction.NewTxFromHex(txhex)
 	if err != nil {
-		chErr <- err
+		chRes <- utxoResult{err: err}
 		return
 	}
-	unspent.UNonce = tx.Outputs[unspent.Index()].Nonce
-	unspent.URangeProof = tx.Outputs[unspent.Index()].RangeProof
-	unspent.USurjectionProof = tx.Outputs[unspent.Index()].SurjectionProof
+	utxo.UNonce = tx.Outputs[utxo.Index()].Nonce
+	utxo.URangeProof = tx.Outputs[utxo.Index()].RangeProof
+	utxo.USurjectionProof = tx.Outputs[utxo.Index()].SurjectionProof
 
-	chUnspents <- unspent
+	chRes <- utxoResult{utxo: utxo}
 }
 
 // addressLabel returns the output script in hex format relative to the

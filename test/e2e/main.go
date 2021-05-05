@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	"github.com/vulpemventures/go-elements/network"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -192,13 +192,14 @@ func main() {
 	time.Sleep(10 * time.Second)
 
 	// start trading against the market
-	chErr := make(chan error, numOfConcurrentTrades)
-	var wg sync.WaitGroup
-	wg.Add(numOfConcurrentTrades)
+	var eg errgroup.Group
+
 	for i := 0; i < numOfConcurrentTrades; i++ {
 		wallet := wallets[i]
 		asset := assets[i]
-		go tradeOnMarket(client, &wg, chErr, wallet, asset)
+		eg.Go(func() error {
+			return tradeOnMarket(client, wallet, asset)
+		})
 
 		// TODO: our goal is to decrese this wating time. At the moment, decreasing
 		// it would result in making trades that double spend some inputs. This is
@@ -208,34 +209,19 @@ func main() {
 		time.Sleep(2 * time.Second)
 	}
 
-	wg.Wait()
-	close(chErr)
-
-	// check for errors
-	errors := make([]string, 0)
-	for err := range chErr {
-		errors = append(errors, err.Error())
-	}
-
-	if len(errors) > 0 {
-		fmt.Printf("error(s) occoured while trading against LBTC/USDT market: \n%s\n", strings.Join(errors, "\n"))
+	if err := eg.Wait(); err != nil {
+		fmt.Printf("error occoured while trading against LBTC/USDT market: \n%s\n", err)
 		return
 	}
 
 	return
 }
 
-func tradeOnMarket(
-	client *trade.Trade,
-	wg *sync.WaitGroup,
-	chErr chan error,
-	w *trade.Wallet,
-	asset string,
-) {
-	defer wg.Done()
+func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
+	defer time.Sleep(200 * time.Millisecond)
 
 	if asset == usdtAsset {
-		if _, err := client.BuyAndComplete(trade.BuyOrSellAndCompleteOpts{
+		_, err := client.BuyAndComplete(trade.BuyOrSellAndCompleteOpts{
 			Market: trademarket.Market{
 				BaseAsset:  lbtcAsset,
 				QuoteAsset: usdtAsset,
@@ -244,16 +230,11 @@ func tradeOnMarket(
 			Amount:      1000000000, // 10 USDT
 			PrivateKey:  w.PrivateKey(),
 			BlindingKey: w.BlindingKey(),
-		}); err != nil {
-			chErr <- err
-			return
-		}
-
-		time.Sleep(200 * time.Millisecond)
-		return
+		})
+		return err
 	}
 
-	if _, err := client.SellAndComplete(trade.BuyOrSellAndCompleteOpts{
+	_, err := client.SellAndComplete(trade.BuyOrSellAndCompleteOpts{
 		Market: trademarket.Market{
 			BaseAsset:  lbtcAsset,
 			QuoteAsset: usdtAsset,
@@ -262,12 +243,8 @@ func tradeOnMarket(
 		Amount:      20000, // 0.0002 LBTC
 		PrivateKey:  w.PrivateKey(),
 		BlindingKey: w.BlindingKey(),
-	}); err != nil {
-		chErr <- err
-		return
-	}
-
-	time.Sleep(200 * time.Millisecond)
+	})
+	return err
 }
 
 func clear() {
@@ -464,16 +441,4 @@ func setupTraderClient() (*trade.Trade, error) {
 		ExplorerService: explorerSvc,
 		Client:          client,
 	})
-}
-
-func checkTradeErr(chErr chan error) error {
-	for {
-		select {
-		case err := <-chErr:
-			if err != nil {
-				return err
-			}
-			break
-		}
-	}
 }

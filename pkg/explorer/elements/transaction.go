@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
@@ -82,6 +83,11 @@ func (e *elements) GetTransactionStatus(txid string) (map[string]interface{}, er
 	}, nil
 }
 
+type txResult struct {
+	tx  explorer.Transaction
+	err error
+}
+
 // GetTransactionsForAddress returns all the transactions for the provided
 // address. It makes use of importaddress to add the address to those
 // tracked by the Elements node. A label, (ie. the resulting output script) is
@@ -117,25 +123,27 @@ func (e *elements) GetTransactionsForAddress(addr string, blindingKey []byte) ([
 		txids := info["txids"].([]interface{})
 
 		txs := make([]explorer.Transaction, 0, len(txids))
-		chTxs := make(chan explorer.Transaction)
-		chErr := make(chan error, 1)
+		chRes := make(chan txResult)
+		wg := &sync.WaitGroup{}
+		wg.Add(len(txids))
 
-		// TODO: this can be skipped as soon as the wallet pkg supports using
-		// blinders for blinding instead of forcing to unblind inputs with
-		// blinding private keys.
-		for _, txid := range txids {
-			go e.getTxDetails(txid.(string), chTxs, chErr)
-			select {
-			case tx := <-chTxs:
-				if tx != nil {
-					txs = append(txs, tx)
-				}
-			case err := <-chErr:
-				close(chTxs)
-				close(chErr)
-				return nil, fmt.Errorf("tx details: %w", err)
-			}
+		go func() {
+			wg.Wait()
+			close(chRes)
+		}()
+
+		for i := range txids {
+			txid := txids[i]
+			go e.getTxDetails(txid.(string), chRes, wg)
 		}
+
+		for r := range chRes {
+			if r.err != nil {
+				return nil, r.err
+			}
+			txs = append(txs, r.tx)
+		}
+
 		return txs, nil
 	}
 	return nil, nil
@@ -224,13 +232,15 @@ func (e *elements) getTransaction(txid string) (map[string]interface{}, error) {
 
 func (e *elements) getTxDetails(
 	txid string,
-	chTxs chan explorer.Transaction,
-	chErr chan error,
+	chRes chan txResult,
+	wg *sync.WaitGroup,
 ) {
+	defer wg.Done()
+
 	tx, err := e.GetTransaction(txid)
 	if err != nil {
-		chErr <- err
+		chRes <- txResult{err: err}
 		return
 	}
-	chTxs <- tx
+	chRes <- txResult{tx: tx}
 }

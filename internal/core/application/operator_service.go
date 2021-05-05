@@ -1135,19 +1135,17 @@ func tradesToTradeInfo(trades []*domain.Trade, marketBaseAsset, network string) 
 	chInfo := make(chan TradeInfo)
 	wg := &sync.WaitGroup{}
 	wg.Add(len(trades))
+
 	go func() {
-		for _, trade := range trades {
-			go tradeToTradeInfo(trade, marketBaseAsset, network, chInfo, wg)
-		}
 		wg.Wait()
 		close(chInfo)
 	}()
 
-	for {
-		info, ok := <-chInfo
-		if !ok {
-			break
-		}
+	for _, trade := range trades {
+		go tradeToTradeInfo(trade, marketBaseAsset, network, chInfo, wg)
+	}
+
+	for info := range chInfo {
 		tradeInfo = append(tradeInfo, info)
 	}
 

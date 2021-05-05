@@ -117,13 +117,9 @@ func (w walletHandler) initWallet(
 	for {
 		select {
 		case err := <-chErr:
-			close(chErr)
-			close(chReplies)
 			return err
-		case reply := <-chReplies:
-			if reply == nil {
-				close(chErr)
-				close(chReplies)
+		case reply, ok := <-chReplies:
+			if !ok {
 				return nil
 			}
 			if err := stream.Send(&pb.InitWalletReply{

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"sync"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
@@ -174,24 +175,56 @@ func (e *esplora) getTransactionStatus(hash string) (map[string]interface{}, err
 	return trxStatus, nil
 }
 
+type txResult struct {
+	tx  explorer.Transaction
+	err error
+}
+
 func parseTransactions(txList string) ([]explorer.Transaction, error) {
 	txInterfaces := make([]interface{}, 0)
 	if err := json.Unmarshal([]byte(txList), &txInterfaces); err != nil {
 		return nil, err
 	}
 
-	txs := make([]explorer.Transaction, len(txInterfaces), len(txInterfaces))
-	for i, txi := range txInterfaces {
-		t, err := json.Marshal(txi)
-		if err != nil {
-			return nil, err
+	txs := make([]explorer.Transaction, 0, len(txInterfaces))
+	chRes := make(chan txResult)
+	wg := &sync.WaitGroup{}
+	wg.Add(len(txInterfaces))
+
+	go func() {
+		wg.Wait()
+		close(chRes)
+	}()
+
+	for i := range txInterfaces {
+		txi := txInterfaces[i]
+
+		go parseTransaction(txi, chRes, wg)
+	}
+
+	for r := range chRes {
+		if r.err != nil {
+			return nil, r.err
 		}
-		trx, err := NewTxFromJSON(string(t))
-		if err != nil {
-			return nil, err
-		}
-		txs[i] = trx
+		txs = append(txs, r.tx)
 	}
 
 	return txs, nil
+}
+
+func parseTransaction(txi interface{}, chRes chan txResult, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	trx, err := json.Marshal(txi)
+	if err != nil {
+		chRes <- txResult{err: err}
+		return
+	}
+	tx, err := NewTxFromJSON(string(trx))
+	if err != nil {
+		chRes <- txResult{err: err}
+		return
+	}
+
+	chRes <- txResult{tx: tx}
 }
