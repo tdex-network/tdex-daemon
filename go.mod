@@ -31,6 +31,7 @@ require (
 	github.com/vulpemventures/go-elements v0.2.1-0.20210409173614-5b1acc1d1e95
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/grpc v1.32.0
 	google.golang.org/protobuf v1.25.0
