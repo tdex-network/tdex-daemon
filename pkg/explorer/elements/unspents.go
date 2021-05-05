@@ -98,6 +98,10 @@ type utxoResult struct {
 }
 
 func (e *elements) toUtxos(unspents []elementsUnspent) ([]explorer.Utxo, error) {
+	if len(unspents) <= 0 {
+		return nil, nil
+	}
+
 	utxos := make([]explorer.Utxo, 0, len(unspents))
 	chRes := make(chan utxoResult)
 	wg := &sync.WaitGroup{}

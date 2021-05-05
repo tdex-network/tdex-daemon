@@ -221,7 +221,7 @@ func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
 	defer time.Sleep(200 * time.Millisecond)
 
 	if asset == usdtAsset {
-		if _, err := client.BuyAndComplete(trade.BuyOrSellAndCompleteOpts{
+		_, err := client.BuyAndComplete(trade.BuyOrSellAndCompleteOpts{
 			Market: trademarket.Market{
 				BaseAsset:  lbtcAsset,
 				QuoteAsset: usdtAsset,
@@ -230,14 +230,11 @@ func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
 			Amount:      1000000000, // 10 USDT
 			PrivateKey:  w.PrivateKey(),
 			BlindingKey: w.BlindingKey(),
-		}); err != nil {
-			return err
-		}
-
-		return nil
+		})
+		return err
 	}
 
-	if _, err := client.SellAndComplete(trade.BuyOrSellAndCompleteOpts{
+	_, err := client.SellAndComplete(trade.BuyOrSellAndCompleteOpts{
 		Market: trademarket.Market{
 			BaseAsset:  lbtcAsset,
 			QuoteAsset: usdtAsset,
@@ -246,11 +243,8 @@ func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
 		Amount:      20000, // 0.0002 LBTC
 		PrivateKey:  w.PrivateKey(),
 		BlindingKey: w.BlindingKey(),
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
+	return err
 }
 
 func clear() {
@@ -447,13 +441,4 @@ func setupTraderClient() (*trade.Trade, error) {
 		ExplorerService: explorerSvc,
 		Client:          client,
 	})
-}
-
-func checkTradeErr(chErr chan error) error {
-	for {
-		err := <-chErr
-		if err != nil {
-			return err
-		}
-	}
 }
