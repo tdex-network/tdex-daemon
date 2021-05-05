@@ -150,8 +150,8 @@ func (b *blockchainListener) listenToEventChannel() {
 			// https://github.com/golang/go/issues/27707#issuecomment-698487427
 			time.Sleep(time.Microsecond)
 		case crawler.CloseSignal:
-			log.Debug("CloseEvent detected")
-			log.Debug("stop listening on event channel")
+			log.Trace("CloseEvent detected")
+			log.Trace("stop listening on event channel")
 			return
 		case crawler.TransactionConfirmed:
 			e := event.(crawler.TransactionEvent)
