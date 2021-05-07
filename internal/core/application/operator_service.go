@@ -47,7 +47,11 @@ type OperatorService interface {
 		baseAsset string,
 		quoteAsset string,
 	) error
-	UpdateMarketFee(
+	UpdateMarketPercentageFee(
+		ctx context.Context,
+		req MarketWithFee,
+	) (*MarketWithFee, error)
+	UpdateMarketFixedFee(
 		ctx context.Context,
 		req MarketWithFee,
 	) (*MarketWithFee, error)
@@ -202,7 +206,10 @@ func (o *operatorService) DepositMarket(
 			// this does not commit any change to the marekt repo.
 			if _, err := o.repoManager.MarketRepository().GetOrCreateMarket(
 				ctx,
-				&domain.Market{AccountIndex: accountIndex, Fee: o.marketFee},
+				&domain.Market{
+					AccountIndex: accountIndex,
+					Fee:          domain.Fee{BasisPoint: o.marketFee},
+				},
 			); err != nil {
 				return nil, err
 			}
@@ -346,11 +353,11 @@ func (o *operatorService) CloseMarket(
 	return nil
 }
 
-// UpdateMarketFee changes the Liquidity Provider fee for the given market.
+// UpdateMarketPercentageFee changes the Liquidity Provider fee for the given market.
 // MUST be expressed as basis point.
 // Eg. To change the fee on each swap from 0.25% to 1% you need to pass down 100
 // The Market MUST be closed before doing this change.
-func (o *operatorService) UpdateMarketFee(
+func (o *operatorService) UpdateMarketPercentageFee(
 	ctx context.Context,
 	req MarketWithFee,
 ) (*MarketWithFee, error) {
@@ -377,14 +384,15 @@ func (o *operatorService) UpdateMarketFee(
 		return nil, ErrMarketNotExist
 	}
 
+	if err := mkt.ChangeFeeBasisPoint(req.BasisPoint); err != nil {
+		return nil, err
+	}
+
 	if err := o.repoManager.MarketRepository().UpdateMarket(
 		ctx,
 		accountIndex,
-		func(m *domain.Market) (*domain.Market, error) {
-			if err := m.ChangeFee(req.BasisPoint); err != nil {
-				return nil, err
-			}
-			return m, nil
+		func(_ *domain.Market) (*domain.Market, error) {
+			return mkt, nil
 		},
 	); err != nil {
 		return nil, err
@@ -395,9 +403,59 @@ func (o *operatorService) UpdateMarketFee(
 			BaseAsset:  mkt.BaseAsset,
 			QuoteAsset: mkt.QuoteAsset,
 		},
-		Fee: Fee{
-			BasisPoint: mkt.Fee,
+		Fee: Fee(mkt.Fee),
+	}, nil
+}
+
+// UpdateMarketFixedFee changes the Liquidity Provider fee for the given market.
+// Values for both assets MUST be expressed as satoshis.
+func (o *operatorService) UpdateMarketFixedFee(
+	ctx context.Context,
+	req MarketWithFee,
+) (*MarketWithFee, error) {
+	if err := validateAssetString(req.BaseAsset); err != nil {
+		return nil, domain.ErrMarketInvalidBaseAsset
+	}
+
+	if err := validateAssetString(req.QuoteAsset); err != nil {
+		return nil, domain.ErrMarketInvalidQuoteAsset
+	}
+
+	if req.BaseAsset != o.marketBaseAsset {
+		return nil, ErrMarketNotExist
+	}
+
+	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
+		ctx,
+		req.QuoteAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if accountIndex < 0 {
+		return nil, ErrMarketNotExist
+	}
+
+	if err := mkt.ChangeFixedFee(req.FixedBaseFee, req.FixedQuoteFee); err != nil {
+		return nil, err
+	}
+
+	if err := o.repoManager.MarketRepository().UpdateMarket(
+		ctx,
+		accountIndex,
+		func(_ *domain.Market) (*domain.Market, error) {
+			return mkt, nil
 		},
+	); err != nil {
+		return nil, err
+	}
+
+	return &MarketWithFee{
+		Market: Market{
+			BaseAsset:  mkt.BaseAsset,
+			QuoteAsset: mkt.QuoteAsset,
+		},
+		Fee: Fee(mkt.Fee),
 	}, nil
 }
 
@@ -569,9 +627,7 @@ func (o *operatorService) ListMarket(
 				BaseAsset:  market.BaseAsset,
 				QuoteAsset: market.QuoteAsset,
 			},
-			Fee: Fee{
-				BasisPoint: market.Fee,
-			},
+			Fee:          Fee(market.Fee),
 			Tradable:     market.Tradable,
 			StrategyType: market.Strategy.Type,
 			Price:        market.Price,
@@ -660,14 +716,14 @@ func (o *operatorService) WithdrawMarketFunds(
 	if req.BalanceToWithdraw.BaseAmount > 0 {
 		outs = append(outs, TxOut{
 			Asset:   req.BaseAsset,
-			Value:   req.BalanceToWithdraw.BaseAmount,
+			Value:   int64(req.BalanceToWithdraw.BaseAmount),
 			Address: req.Address,
 		})
 	}
 	if req.BalanceToWithdraw.QuoteAmount > 0 {
 		outs = append(outs, TxOut{
 			Asset:   req.QuoteAsset,
-			Value:   req.BalanceToWithdraw.QuoteAmount,
+			Value:   int64(req.BalanceToWithdraw.QuoteAmount),
 			Address: req.Address,
 		})
 	}
