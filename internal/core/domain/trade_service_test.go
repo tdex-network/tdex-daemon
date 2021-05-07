@@ -22,7 +22,7 @@ var mockedErr = &domain.SwapError{
 func TestTradePropose(t *testing.T) {
 	swapRequest := newMockedSwapRequest()
 	marketAsset := swapRequest.GetAssetR()
-	marketFee := int64(25)
+	marketFee := domain.Fee{BasisPoint: int64(25)}
 	traderPubkey := []byte{}
 	mockedSwapParser := mockSwapParser{}
 	mockedSwapParser.On("SerializeRequest", swapRequest).Return(randomBytes(100), nil)
@@ -75,7 +75,7 @@ func TestTradePropose(t *testing.T) {
 func TestFailingTradePropose(t *testing.T) {
 	swapRequest := newMockedSwapRequest()
 	marketAsset := swapRequest.GetAssetR()
-	marketFee := int64(25)
+	marketFee := domain.Fee{BasisPoint: int64(25)}
 	traderPubkey := []byte{}
 	mockedSwapParser := mockSwapParser{}
 	mockedSwapParser.On("SerializeRequest", swapRequest).Return(nil, mockedErr)

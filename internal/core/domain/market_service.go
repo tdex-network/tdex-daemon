@@ -20,6 +20,26 @@ func (p Prices) AreZero() bool {
 	return decimal.Decimal(p.BasePrice).Equal(decimal.NewFromInt(0)) && decimal.Decimal(p.QuotePrice).Equal(decimal.NewFromInt(0))
 }
 
+func (f Fee) validate() error {
+	if f.BasisPoint < 0 {
+		return ErrMarketFeeTooLow
+	}
+
+	if f.BasisPoint > 9999 {
+		return ErrMarketFeeTooHigh
+	}
+
+	if f.FixedBaseFee < 0 || f.FixedQuoteFee < 0 {
+		return ErrInvalidFixedFee
+	}
+
+	if (f.FixedBaseFee > 0 && f.FixedQuoteFee == 0) || (f.FixedQuoteFee > 0 && f.FixedBaseFee == 0) {
+		return ErrMissingFixedFee
+	}
+
+	return nil
+}
+
 // IsTradable returns true if the market is available for trading
 func (m *Market) IsTradable() bool {
 	return m.Tradable
@@ -144,8 +164,8 @@ func (m *Market) MakeStrategyBalanced() error {
 	return nil
 }
 
-// ChangeFee ...
-func (m *Market) ChangeFee(fee int64) error {
+// ChangeFeeBasisPoint ...
+func (m *Market) ChangeFeeBasisPoint(fee int64) error {
 	if !m.IsFunded() {
 		return ErrMarketNotFunded
 	}
@@ -158,7 +178,26 @@ func (m *Market) ChangeFee(fee int64) error {
 		return err
 	}
 
-	m.Fee = fee
+	m.Fee.BasisPoint = fee
+	return nil
+}
+
+// ChangeFixedFee ...
+func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
+	if !m.IsFunded() {
+		return ErrMarketNotFunded
+	}
+
+	if m.IsTradable() {
+		return ErrMarketMustBeClosed
+	}
+
+	if err := validateFixedFee(baseFee, quoteFee); err != nil {
+		return err
+	}
+
+	m.Fee.FixedBaseFee = baseFee
+	m.Fee.FixedQuoteFee = quoteFee
 	return nil
 }
 
@@ -187,11 +226,22 @@ func (m *Market) ChangeQuotePrice(price decimal.Decimal) error {
 }
 
 func validateFee(basisPoint int64) error {
-	if basisPoint < 1 {
+	if basisPoint < 0 {
 		return ErrMarketFeeTooLow
 	}
 	if basisPoint > 9999 {
 		return ErrMarketFeeTooHigh
+	}
+
+	return nil
+}
+
+func validateFixedFee(baseFee, quoteFee int64) error {
+	if baseFee < 0 || quoteFee < 0 {
+		return ErrInvalidFixedFee
+	}
+	if (baseFee > 0 && quoteFee == 0) || (quoteFee > 0 && baseFee == 0) {
+		return ErrMissingFixedFee
 	}
 
 	return nil

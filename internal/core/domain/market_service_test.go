@@ -199,18 +199,18 @@ func TestFailingMakeStrategyBalanced(t *testing.T) {
 	require.EqualError(t, err, domain.ErrMarketMustBeClosed.Error())
 }
 
-func TestChangeFee(t *testing.T) {
+func TestChangeFeeBasisPoint(t *testing.T) {
 	t.Parallel()
 
 	m := newTestMarketFunded()
 	newFee := int64(50)
 
-	err := m.ChangeFee(newFee)
+	err := m.ChangeFeeBasisPoint(newFee)
 	require.NoError(t, err)
-	require.Equal(t, newFee, m.Fee)
+	require.Equal(t, newFee, m.Fee.BasisPoint)
 }
 
-func TestFailingChangeFee(t *testing.T) {
+func TestFailingChangeFeeBasisPoint(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -234,7 +234,7 @@ func TestFailingChangeFee(t *testing.T) {
 		{
 			name:          "fee_too_low",
 			market:        newTestMarketFunded(),
-			marketFee:     0,
+			marketFee:     -1,
 			expectedError: domain.ErrMarketFeeTooLow,
 		},
 		{
@@ -247,7 +247,75 @@ func TestFailingChangeFee(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.market.ChangeFee(tt.marketFee)
+			err := tt.market.ChangeFeeBasisPoint(tt.marketFee)
+			require.EqualError(t, err, tt.expectedError.Error())
+		})
+	}
+}
+
+func TestChangeFixedFee(t *testing.T) {
+	t.Parallel()
+
+	m := newTestMarketFunded()
+	baseFee := int64(100)
+	quoteFee := int64(200000)
+
+	err := m.ChangeFixedFee(baseFee, quoteFee)
+	require.NoError(t, err)
+	require.Equal(t, baseFee, m.Fee.FixedBaseFee)
+	require.Equal(t, quoteFee, m.Fee.FixedQuoteFee)
+}
+
+func TestFailingChangeFixedFee(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		market            *domain.Market
+		baseFee, quoteFee int64
+		expectedError     error
+	}{
+		{
+			name:          "not_funded",
+			market:        newTestMarket(),
+			expectedError: domain.ErrMarketNotFunded,
+		},
+		{
+			name:          "must_be_closed",
+			market:        newTestMarketTradable(),
+			expectedError: domain.ErrMarketMustBeClosed,
+		},
+		{
+			name:          "invalid_fixed_base_fee",
+			market:        newTestMarketFunded(),
+			baseFee:       -1,
+			quoteFee:      1000,
+			expectedError: domain.ErrInvalidFixedFee,
+		},
+		{
+			name:          "invalid_fixed_quote_fee",
+			market:        newTestMarketFunded(),
+			baseFee:       100,
+			quoteFee:      -1,
+			expectedError: domain.ErrInvalidFixedFee,
+		},
+		{
+			name:          "missing_fixed_base_fee",
+			market:        newTestMarketFunded(),
+			quoteFee:      1000,
+			expectedError: domain.ErrMissingFixedFee,
+		},
+		{
+			name:          "missing_fixed_quote_fee",
+			market:        newTestMarketFunded(),
+			baseFee:       1000,
+			expectedError: domain.ErrMissingFixedFee,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.market.ChangeFixedFee(tt.baseFee, tt.quoteFee)
 			require.EqualError(t, err, tt.expectedError.Error())
 		})
 	}

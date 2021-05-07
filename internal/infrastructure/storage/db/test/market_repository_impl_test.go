@@ -16,6 +16,8 @@ import (
 var (
 	readOnly = true
 	ctx      = context.Background()
+
+	fee = domain.Fee{BasisPoint: int64(25)}
 )
 
 func TestMarketRepositoryImplementations(t *testing.T) {
@@ -73,7 +75,6 @@ func TestMarketRepositoryImplementations(t *testing.T) {
 func testGetOrCreateMarket(t *testing.T, repo marketRepository) {
 	// to create a market is mandatory to specify the AccountIndex and Fee
 	accountIndex := domain.MarketAccountStart
-	fee := int64(25)
 
 	iNewMarket, err := repo.write(
 		func(ctx context.Context) (interface{}, error) {
@@ -123,7 +124,7 @@ func testGetMarketByAccount(t *testing.T, repo marketRepository) {
 		func(ctx context.Context) (interface{}, error) {
 			return repo.Repository.GetOrCreateMarket(
 				ctx,
-				&domain.Market{AccountIndex: accountIndex, Fee: 25},
+				&domain.Market{AccountIndex: accountIndex, Fee: fee},
 			)
 		},
 	)
@@ -165,7 +166,7 @@ func testGetMarketByAsset(t *testing.T, repo marketRepository) {
 		func(ctx context.Context) (interface{}, error) {
 			_, err := repo.Repository.GetOrCreateMarket(
 				ctx,
-				&domain.Market{AccountIndex: accountIndex, Fee: 25},
+				&domain.Market{AccountIndex: accountIndex, Fee: fee},
 			)
 			if err != nil {
 				return nil, err
@@ -230,7 +231,7 @@ func testOpenCloseMarket(t *testing.T, repo marketRepository) {
 	iOpenMarkets, err := repo.write(func(ctx context.Context) (interface{}, error) {
 		if _, err := repo.Repository.GetOrCreateMarket(
 			ctx,
-			&domain.Market{AccountIndex: accountIndex, Fee: 25},
+			&domain.Market{AccountIndex: accountIndex, Fee: fee},
 		); err != nil {
 			return nil, err
 		}
@@ -276,7 +277,7 @@ func testUpdatePrices(t *testing.T, repo marketRepository) {
 	iNewMarket, err := repo.write(func(ctx context.Context) (interface{}, error) {
 		return repo.Repository.GetOrCreateMarket(
 			ctx,
-			&domain.Market{AccountIndex: accountIndex, Fee: 25},
+			&domain.Market{AccountIndex: accountIndex, Fee: fee},
 		)
 	})
 	require.NoError(t, err)
@@ -323,7 +324,7 @@ func testWriteRollback(t *testing.T, repo marketRepository) {
 	_, err = repo.write(func(ctx context.Context) (interface{}, error) {
 		if _, err := repo.Repository.GetOrCreateMarket(
 			ctx,
-			&domain.Market{AccountIndex: accountIndex, Fee: 25},
+			&domain.Market{AccountIndex: accountIndex, Fee: fee},
 		); err != nil {
 			return nil, err
 		}

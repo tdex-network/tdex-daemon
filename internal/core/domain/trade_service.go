@@ -12,7 +12,7 @@ import (
 func (t *Trade) Propose(
 	swapRequest SwapRequest,
 	marketQuoteAsset string,
-	marketFeeBasisPoint int64,
+	marketFee Fee,
 	traderPubkey []byte,
 ) (bool, error) {
 	if t.Status.Code >= Proposal {
@@ -41,7 +41,9 @@ func (t *Trade) Propose(
 
 	t.SwapRequest.Message = msg
 	t.MarketPrice = price
-	t.MarketFee = marketFeeBasisPoint
+	t.MarketFee = marketFee.BasisPoint
+	t.MarketFixedBaseFee = marketFee.FixedBaseFee
+	t.MarketFixedQuoteFee = marketFee.FixedQuoteFee
 	return true, nil
 }
 

@@ -35,6 +35,10 @@ var (
 	ErrMarketInvalidBaseAsset = errors.New("invalid base asset")
 	// ErrMarketInvalidQuoteAsset is thrown when non valid quote asset is given
 	ErrMarketInvalidQuoteAsset = errors.New("invalid quote asset")
+	// ErrInvalidFixedFee ...
+	ErrInvalidFixedFee = errors.New("fixed fee must be a positive value")
+	// ErrMissingFixedFee ...
+	ErrMissingFixedFee = errors.New("fixed fee requires both base and quote amounts to be defined")
 )
 
 // Unspent errors

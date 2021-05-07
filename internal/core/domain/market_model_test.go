@@ -17,7 +17,9 @@ func TestNewMarket(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, m)
 	require.Equal(t, accountIndex, m.AccountIndex)
-	require.Equal(t, fee, m.Fee)
+	require.Equal(t, fee, m.Fee.BasisPoint)
+	require.Zero(t, m.Fee.FixedBaseFee)
+	require.Zero(t, m.Fee.FixedQuoteFee)
 	require.False(t, m.IsStrategyPluggable())
 }
 
@@ -31,7 +33,7 @@ func TestFailingNewMarket(t *testing.T) {
 		expectedError error
 	}{
 		{"invalid_account", -1, 25, domain.ErrInvalidAccount},
-		{"fee_too_low", 0, 0, domain.ErrMarketFeeTooLow},
+		{"fee_too_low", 0, -1, domain.ErrMarketFeeTooLow},
 		{"fee_too_high", 0, 10000, domain.ErrMarketFeeTooHigh},
 	}
 
