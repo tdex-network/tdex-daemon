@@ -125,9 +125,7 @@ func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 				BaseAsset:  mkt.BaseAsset,
 				QuoteAsset: mkt.QuoteAsset,
 			},
-			Fee: Fee{
-				BasisPoint: mkt.Fee,
-			},
+			Fee: Fee(mkt.Fee),
 		})
 	}
 
@@ -189,10 +187,8 @@ func (t *tradeService) GetMarketPrice(
 	}
 
 	return &PriceWithFee{
-		Price: previewWithPrice.price,
-		Fee: Fee{
-			BasisPoint: mkt.Fee,
-		},
+		Price:   previewWithPrice.price,
+		Fee:     Fee(mkt.Fee),
 		Amount:  previewWithPrice.amount,
 		Asset:   previewWithPrice.asset,
 		Balance: previewWithPrice.balances,
@@ -265,12 +261,10 @@ func (t *tradeService) GetMarketBalance(
 
 	return &BalanceWithFee{
 		Balance: Balance{
-			BaseAmount:  int64(baseAssetBalance),
-			QuoteAmount: int64(quoteAssetBalance),
+			BaseAmount:  baseAssetBalance,
+			QuoteAmount: quoteAssetBalance,
 		},
-		Fee: Fee{
-			BasisPoint: m.Fee,
-		},
+		Fee: Fee(m.Fee),
 	}, nil
 }
 
@@ -901,13 +895,13 @@ func getPriceAndPreviewForMarket(
 	)
 }
 
-func getBalanceByAsset(unspents []domain.Unspent) map[string]int64 {
-	balances := map[string]int64{}
+func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
+	balances := map[string]uint64{}
 	for _, unspent := range unspents {
 		if _, ok := balances[unspent.AssetHash]; !ok {
 			balances[unspent.AssetHash] = 0
 		}
-		balances[unspent.AssetHash] += int64(unspent.Value)
+		balances[unspent.AssetHash] += unspent.Value
 	}
 	return balances
 }
@@ -930,9 +924,9 @@ func calcPreviewAmount(
 	chargeFeesOnTheWayIn := asset == market.BaseAsset
 	var previewAmount uint64
 	if tradeType == TradeBuy {
-		previewAmount = calcProposeAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+		previewAmount = calcProposeAmount(amount, Fee(market.Fee), price, chargeFeesOnTheWayIn)
 	} else {
-		previewAmount = calcExpectedAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+		previewAmount = calcExpectedAmount(amount, Fee(market.Fee), price, chargeFeesOnTheWayIn)
 	}
 
 	return previewAmount
@@ -962,35 +956,35 @@ func calcPreviewAmount(
 // 			= lbtcAmount * price * (1 + feePercentage) = 0.1  * 6500 * 1,25 = 812,5 USDT
 func calcProposeAmount(
 	amount uint64,
-	feeAmount int64,
+	fee Fee,
 	price decimal.Decimal,
 	chargeFeesOnTheWayIn bool,
 ) uint64 {
 	netAmountR := decimal.NewFromInt(int64(amount)).Mul(price).BigInt().Uint64()
 	if !chargeFeesOnTheWayIn {
-		amountP, _ := mathutil.LessFee(netAmountR, uint64(feeAmount))
-		return amountP
+		amountP, _ := mathutil.LessFee(netAmountR, uint64(fee.BasisPoint))
+		return amountP - uint64(fee.FixedQuoteFee)
 	}
 
-	amountP, _ := mathutil.PlusFee(netAmountR, uint64(feeAmount))
-	return amountP
+	amountP, _ := mathutil.PlusFee(netAmountR, uint64(fee.BasisPoint))
+	return amountP + uint64(fee.FixedBaseFee)
 }
 
 func calcExpectedAmount(
 	amount uint64,
-	feeAmount int64,
+	fee Fee,
 	price decimal.Decimal,
 	chargeFeesOnTheWayIn bool,
 ) uint64 {
 	netAmountP := decimal.NewFromInt(int64(amount)).Mul(price).BigInt().Uint64()
 
 	if !chargeFeesOnTheWayIn {
-		amountR, _ := mathutil.PlusFee(netAmountP, uint64(feeAmount))
-		return amountR
+		amountR, _ := mathutil.PlusFee(netAmountP, uint64(fee.BasisPoint))
+		return amountR + uint64(fee.FixedBaseFee)
 	}
 
-	amountR, _ := mathutil.LessFee(netAmountP, uint64(feeAmount))
-	return amountR
+	amountR, _ := mathutil.LessFee(netAmountP, uint64(fee.BasisPoint))
+	return amountR - uint64(fee.FixedQuoteFee)
 }
 
 func previewFromFormula(
@@ -1003,7 +997,7 @@ func previewFromFormula(
 	formula := market.Strategy.Formula()
 	baseAssetBalance := uint64(marketBalance.BaseAmount)
 	quoteAssetBalance := uint64(marketBalance.QuoteAmount)
-
+	fee := uint64(market.Fee.BasisPoint)
 	var previewAmount uint64
 	var err error
 	if tradeType == TradeBuy {
@@ -1012,7 +1006,7 @@ func previewFromFormula(
 				&mm.FormulaOpts{
 					BalanceIn:           quoteAssetBalance,
 					BalanceOut:          baseAssetBalance,
-					Fee:                 uint64(market.Fee),
+					Fee:                 fee,
 					ChargeFeeOnTheWayIn: true,
 				},
 				amount,
@@ -1022,7 +1016,7 @@ func previewFromFormula(
 				&mm.FormulaOpts{
 					BalanceIn:           quoteAssetBalance,
 					BalanceOut:          baseAssetBalance,
-					Fee:                 uint64(market.Fee),
+					Fee:                 fee,
 					ChargeFeeOnTheWayIn: true,
 				},
 				amount,
@@ -1034,7 +1028,7 @@ func previewFromFormula(
 				&mm.FormulaOpts{
 					BalanceIn:           baseAssetBalance,
 					BalanceOut:          quoteAssetBalance,
-					Fee:                 uint64(market.Fee),
+					Fee:                 fee,
 					ChargeFeeOnTheWayIn: true,
 				},
 				amount,
@@ -1044,7 +1038,7 @@ func previewFromFormula(
 				&mm.FormulaOpts{
 					BalanceIn:           baseAssetBalance,
 					BalanceOut:          quoteAssetBalance,
-					Fee:                 uint64(market.Fee),
+					Fee:                 fee,
 					ChargeFeeOnTheWayIn: true,
 				},
 				amount,
@@ -1053,6 +1047,20 @@ func previewFromFormula(
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if tradeType == TradeBuy {
+		if asset == market.BaseAsset {
+			previewAmount += uint64(market.Fee.FixedQuoteFee)
+		} else {
+			previewAmount -= uint64(market.Fee.FixedBaseFee)
+		}
+	} else {
+		if asset == market.BaseAsset {
+			previewAmount -= uint64(market.Fee.FixedQuoteFee)
+		} else {
+			previewAmount += uint64(market.Fee.FixedBaseFee)
+		}
 	}
 
 	if tradeType == TradeBuy {
