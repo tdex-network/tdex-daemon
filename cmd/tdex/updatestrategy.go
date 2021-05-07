@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
+	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 
 	"github.com/urfave/cli/v2"

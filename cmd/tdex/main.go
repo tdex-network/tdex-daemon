@@ -17,8 +17,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 
-	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
-	pbwallet "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
+	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
 )
 
 var (
@@ -68,6 +68,8 @@ func main() {
 		&dropmarket,
 		&updatestrategy,
 		&updateprice,
+		&updatePercentagefee,
+		&updateFixedfee,
 		&listutxos,
 		&reloadtxos,
 	)
