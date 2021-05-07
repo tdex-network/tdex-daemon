@@ -658,7 +658,7 @@ func (w *walletService) restoreMarket(
 ) (*domain.Market, error) {
 	market, err := w.repoManager.MarketRepository().GetOrCreateMarket(ctx, &domain.Market{
 		AccountIndex: accountIndex,
-		Fee:          w.marketFee,
+		Fee:          domain.Fee{BasisPoint: w.marketFee},
 	})
 	if err != nil {
 		return nil, err
@@ -788,7 +788,7 @@ func (w *walletService) restoreUnspents(
 			),
 		}
 		go w.restoreUnspentsForAddress(cb, in, chUnspentsInfo, wg)
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 	}
 
 	for r := range chUnspentsInfo {

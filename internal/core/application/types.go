@@ -60,17 +60,11 @@ type Market struct {
 	QuoteAsset string
 }
 
+type Fee domain.Fee
+
 type MarketWithFee struct {
 	Market
 	Fee
-}
-
-// Fee is the market fee percentage in basis point:
-// 	- 0,01% -> 1 bp
-//	- 1,00% -> 100 bp
-//	- 99,99% -> 9999 bp
-type Fee struct {
-	BasisPoint int64
 }
 
 type MarketWithPrice struct {
@@ -97,8 +91,8 @@ type MarketStrategy struct {
 }
 
 type Balance struct {
-	BaseAmount  int64
-	QuoteAmount int64
+	BaseAmount  uint64
+	QuoteAmount uint64
 }
 
 type BalanceWithFee struct {

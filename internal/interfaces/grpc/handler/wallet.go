@@ -6,9 +6,10 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
 )
 
 type walletHandler struct {

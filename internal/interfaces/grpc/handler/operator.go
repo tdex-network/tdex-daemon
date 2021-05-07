@@ -9,10 +9,11 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 )
 
 const readOnlyTx = true
@@ -65,11 +66,18 @@ func (o operatorHandler) CloseMarket(
 	return o.closeMarket(ctx, req)
 }
 
-func (o operatorHandler) UpdateMarketFee(
+func (o operatorHandler) UpdateMarketPercentageFee(
 	ctx context.Context,
-	req *pb.UpdateMarketFeeRequest,
+	req *pb.UpdateMarketPercentageFeeRequest,
 ) (*pb.UpdateMarketFeeReply, error) {
-	return o.updateMarketFee(ctx, req)
+	return o.updateMarketPercentageFee(ctx, req)
+}
+
+func (o operatorHandler) UpdateMarketFixedFee(
+	ctx context.Context,
+	req *pb.UpdateMarketFixedFeeRequest,
+) (*pb.UpdateMarketFeeReply, error) {
+	return o.updateMarketFixedFee(ctx, req)
 }
 
 func (o operatorHandler) UpdateMarketPrice(
@@ -332,26 +340,26 @@ func (o operatorHandler) closeMarket(
 	return &pb.CloseMarketReply{}, nil
 }
 
-func (o operatorHandler) updateMarketFee(
+func (o operatorHandler) updateMarketPercentageFee(
 	ctx context.Context,
-	req *pb.UpdateMarketFeeRequest,
+	req *pb.UpdateMarketPercentageFeeRequest,
 ) (*pb.UpdateMarketFeeReply, error) {
-	marketWithFee := req.GetMarketWithFee()
-	if err := validateMarketWithFee(marketWithFee); err != nil {
+	market := req.GetMarket()
+	if err := validateMarket(market); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	fee := req.GetBasisPoint()
 
 	mwf := application.MarketWithFee{
 		Market: application.Market{
-			BaseAsset:  marketWithFee.GetMarket().GetBaseAsset(),
-			QuoteAsset: marketWithFee.GetMarket().GetQuoteAsset(),
+			BaseAsset:  market.GetBaseAsset(),
+			QuoteAsset: market.GetQuoteAsset(),
 		},
 		Fee: application.Fee{
-			BasisPoint: marketWithFee.GetFee().GetBasisPoint(),
+			BasisPoint: fee,
 		},
 	}
-
-	result, err := o.operatorSvc.UpdateMarketFee(ctx, mwf)
+	result, err := o.operatorSvc.UpdateMarketPercentageFee(ctx, mwf)
 	if err != nil {
 		return nil, err
 	}
@@ -364,6 +372,55 @@ func (o operatorHandler) updateMarketFee(
 			},
 			Fee: &pbtypes.Fee{
 				BasisPoint: result.BasisPoint,
+				Fixed: &pbtypes.Fixed{
+					BaseFee:  result.FixedBaseFee,
+					QuoteFee: result.FixedQuoteFee,
+				},
+			},
+		},
+	}, nil
+}
+
+func (o operatorHandler) updateMarketFixedFee(
+	ctx context.Context,
+	req *pb.UpdateMarketFixedFeeRequest,
+) (*pb.UpdateMarketFeeReply, error) {
+	market := req.GetMarket()
+	if err := validateMarket(market); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	fee := req.GetFixed()
+	if err := validateFixedFee(fee); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	mwf := application.MarketWithFee{
+		Market: application.Market{
+			BaseAsset:  market.GetBaseAsset(),
+			QuoteAsset: market.GetQuoteAsset(),
+		},
+		Fee: application.Fee{
+			FixedBaseFee:  fee.GetBaseFee(),
+			FixedQuoteFee: fee.GetQuoteFee(),
+		},
+	}
+	result, err := o.operatorSvc.UpdateMarketFixedFee(ctx, mwf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.UpdateMarketFeeReply{
+		MarketWithFee: &pbtypes.MarketWithFee{
+			Market: &pbtypes.Market{
+				BaseAsset:  result.BaseAsset,
+				QuoteAsset: result.QuoteAsset,
+			},
+			Fee: &pbtypes.Fee{
+				BasisPoint: result.BasisPoint,
+				Fixed: &pbtypes.Fixed{
+					BaseFee:  result.FixedBaseFee,
+					QuoteFee: result.FixedQuoteFee,
+				},
 			},
 		},
 	}, nil
@@ -641,6 +698,10 @@ func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketReque
 			},
 			Fee: &pbtypes.Fee{
 				BasisPoint: marketInfo.Fee.BasisPoint,
+				Fixed: &pbtypes.Fixed{
+					BaseFee:  marketInfo.Fee.FixedBaseFee,
+					QuoteFee: marketInfo.Fee.FixedQuoteFee,
+				},
 			},
 			Tradable:     marketInfo.Tradable,
 			StrategyType: pb.StrategyType(marketInfo.StrategyType),
@@ -692,22 +753,6 @@ func (o operatorHandler) reportMarketFee(
 	}, nil
 }
 
-func validateMarketWithFee(marketWithFee *pbtypes.MarketWithFee) error {
-	if marketWithFee == nil {
-		return errors.New("market with fee is null")
-	}
-
-	if err := validateMarket(marketWithFee.GetMarket()); err != nil {
-		return err
-	}
-
-	if err := validateFee(marketWithFee.GetFee()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func validateMarket(market *pbtypes.Market) error {
 	if market == nil {
 		return errors.New("market is null")
@@ -722,12 +767,9 @@ func validateMarket(market *pbtypes.Market) error {
 	return nil
 }
 
-func validateFee(fee *pbtypes.Fee) error {
+func validateFixedFee(fee *pbtypes.Fixed) error {
 	if fee == nil {
-		return errors.New("fee is null")
-	}
-	if fee.GetBasisPoint() <= 0 {
-		return errors.New("fee basis point is too low")
+		return errors.New("fixed fee is null")
 	}
 	return nil
 }

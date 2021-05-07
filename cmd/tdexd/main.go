@@ -33,9 +33,9 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"google.golang.org/grpc"
 
-	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
+	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
 	pbtrader "github.com/tdex-network/tdex-protobuf/generated/go/trade"
-	pbwallet "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
 
 	_ "net/http/pprof"
 )
