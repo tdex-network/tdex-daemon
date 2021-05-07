@@ -1,0 +1,322 @@
+syntax = "proto3";
+option go_package = "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator";
+
+import "types.proto";
+
+/**
+ * Service for operators to configure and manage a TDEX daemon
+ */
+service Operator {
+  // Returns a new derived address for the given market.
+  // If market field is empty, a new Market is created and MUST be initialized.
+  rpc DepositMarket(DepositMarketRequest) returns (DepositMarketReply) {}
+
+  // Returns the list of previously generated addresses for the given market.
+  rpc ListDepositMarket(ListDepositMarketRequest)
+      returns (ListDepositMarketReply) {}
+
+  // Returns a new derived address from the fee account.
+  // This is only used to deposit some LBTC to subsidize blockchain fees.
+  rpc DepositFeeAccount(DepositFeeAccountRequest)
+      returns (DepositFeeAccountReply) {}
+
+  // Returns the aggregated balance of LBTC held in the fee account.
+  rpc BalanceFeeAccount(BalanceFeeAccountRequest)
+      returns (BalanceFeeAccountReply) {}
+
+    // Operator can provide transaction(s) outpoints of deposits made to fund a new market.
+  // The transaction must be visible and confirmed, otherwise an error will be returned,
+  // inviting the operator to retry again
+  rpc ClaimMarketDeposit(ClaimMarketDepositRequest) returns (ClaimMarketDepositReply) {}
+
+  
+  // Operator can provide transaction(s) outpoints of deposits made to fund the fee account.
+  // The transaction must be visible and confirmed, otherwise an error will be returned,
+  // inviting the operator to retry again
+  rpc ClaimFeeDeposit(ClaimFeeDepositRequest) returns (ClaimFeeDepositReply) {}
+
+  // Makes the given market tradable
+  rpc OpenMarket(OpenMarketRequest) returns (OpenMarketReply) {}
+  // Makes the given market NOT tradabale
+  rpc CloseMarket(CloseMarketRequest) returns (CloseMarketReply) {}
+
+  // Get extended details for each markets either open, closed or to be funded.
+  rpc ListMarket(ListMarketRequest) returns (ListMarketReply) {}
+
+  // Changes the Liquidity Provider percentage fee for the given market. It 
+  // should be express in basis point. To change the fee on each swap from 
+  // (current) 0.25% to 1% you need to pass down 100 The Market MUST be closed 
+  // before doing this change. It's also possible to remove the percentage fee
+  // by setting it to 0.
+  rpc UpdateMarketPercentageFee(UpdateMarketPercentageFeeRequest) returns (UpdateMarketFeeReply) {}
+  
+  // Changes the Liquidity provider fixed fees for the given market.
+  // They should be expressed in satoshis for both assets of the market.
+  // To remove a non-null fixed fee, it's enough to set the fields of the 
+  // request to 0.
+  rpc UpdateMarketFixedFee(UpdateMarketFixedFeeRequest) returns (UpdateMarketFeeReply) {}
+
+  // Manually updates the price for the given market
+  rpc UpdateMarketPrice(UpdateMarketPriceRequest)
+      returns (UpdateMarketPriceReply) {}
+
+  // Updates the current market making strategy, either using an automated
+  // market making formula or a pluggable price feed
+  rpc UpdateMarketStrategy(UpdateMarketStrategyRequest)
+      returns (UpdateMarketStrategyReply) {}
+
+  // WithdrawMarket allows the operator to withdraw to external wallet funds
+  // from a specific market. The Market MUST be closed before doing this change.
+  rpc WithdrawMarket(WithdrawMarketRequest) returns (WithdrawMarketReply) {}
+
+  // Returs all the trades processed by the daemon (during process, compelted and rejected)
+  rpc ListTrades(ListTradesRequest) returns (ListTradesReply) {}
+
+  // Displays a report on how much the given market is collecting in Liquidity
+  // Provider fees
+  rpc ReportMarketFee(ReportMarketFeeRequest) returns (ReportMarketFeeReply) {}
+
+  // Triggers reloading of unspents for stored addresses from blockchain
+  rpc ReloadUtxos(ReloadUtxosRequest) returns(ReloadUtxosReply) {}
+
+  // Returns all the unspents and locks
+  rpc ListUtxos(ListUtxosRequest) returns(ListUtxosReply){}
+
+  // Deletes Market based on account_index
+  rpc DropMarket(DropMarketRequest) returns(DropMarketReply){}
+}
+
+message DropMarketRequest {
+    uint64 account_index = 1;
+}
+message DropMarketReply{}
+
+message ListUtxosRequest {}
+message ListUtxosReply{
+  map<uint64, UtxoInfoList> info_per_account = 1;
+}
+
+message UtxoInfoList {
+  repeated UtxoInfo unspents = 1;
+  repeated UtxoInfo spents = 2;
+  repeated UtxoInfo locks = 3;
+}
+
+message UtxoInfo {
+  TxOutpoint outpoint = 1;
+  uint64 value = 2;
+  string asset = 3;
+}
+
+message ReloadUtxosRequest {}
+message ReloadUtxosReply {}
+
+message DepositMarketRequest {
+  Market market = 1; // Market to get an address from. Could be empty.
+  int64 num_of_addresses = 2; // Number of addresses to be derived for market.
+}
+message DepositMarketReply { repeated string addresses = 1; }
+
+message ListDepositMarketRequest {
+  Market market = 1; // Market to get an address from. Could be empty.
+}
+message ListDepositMarketReply { repeated string address = 1; }
+
+message DepositFeeAccountRequest {
+  int64 num_of_addresses = 1; // Number of addresses to be derived for Fee Account.
+}
+message DepositFeeAccountReply {
+  repeated AddressWithBlindingKey address_with_blinding_key = 1; // AddressInfo contains address and blinding key
+}
+
+message BalanceFeeAccountRequest {}
+message BalanceFeeAccountReply { int64 balance = 1; }
+
+message ListMarketRequest {}
+message ListMarketReply { repeated MarketInfo markets = 1; }
+
+message ClaimMarketDepositRequest {
+  Market market = 1;
+  repeated TxOutpoint outpoints = 2;
+}
+
+message ClaimMarketDepositReply {}
+
+message ClaimFeeDepositRequest {
+  repeated TxOutpoint outpoints = 1;
+}
+
+message ClaimFeeDepositReply {}
+
+message OpenMarketRequest {
+  Market market = 1; // Market to be made tradable
+}
+message OpenMarketReply {}
+
+message CloseMarketRequest {
+  Market market = 1; // Market to be made NOT tradable
+}
+message CloseMarketReply {}
+
+message UpdateMarketStrategyRequest {
+  // Market to change the strategy of
+  Market market = 1;
+  // Market making strategy to use
+  StrategyType strategy_type = 2;
+  /*
+  JSON string representing additional metadata relative to the chosen strategy.
+  */
+  string metadata = 3;
+}
+message UpdateMarketStrategyReply {}
+
+message UpdateMarketPercentageFeeRequest {
+  Market market = 1;
+  int64 basis_point = 2;
+}
+message UpdateMarketFixedFeeRequest {
+  Market market = 1;
+  Fixed fixed = 2;
+}
+message UpdateMarketFeeReply { MarketWithFee market_with_fee = 1; }
+
+message UpdateMarketPriceRequest {
+  // Market to update the price of
+  Market market = 1;
+  // Price to be updated
+  Price price = 2;
+}
+message UpdateMarketPriceReply {}
+
+message WithdrawMarketRequest {
+  // Market from which funds need to be withdrawn
+  Market market = 1;
+  // Amount for base and quote asset to be withdrawn
+  Balance balance_to_withdraw = 2;
+  // The number of millisatoshis per byte that should be
+  // used when crafting this transaction.
+  int64 millisat_per_byte = 3;
+  // The address to send to the funds
+  string address = 4;
+  // Optional: if true the transaction will be pushed to the network
+  bool push = 5;
+}
+message WithdrawMarketReply {
+  /* The serialized transaction */
+  bytes raw_tx = 1;
+}
+
+message ListTradesRequest {}
+message ListTradesReply { repeated TradeInfo trades = 1; }
+
+message ReportMarketFeeRequest {
+  Market market = 1; // Market to be updated
+}
+message ReportMarketFeeReply {
+  // List of the all unique fee being collected on each swap.
+  repeated FeeInfo collected_fees = 1;
+  // Map of aggreagated fee count grouped by asset. There should be one unique
+  // entry for each asset and the amount should be the aggregated total.
+  map<string, int64> total_collected_fees_per_asset = 2;
+}
+
+// Custom types
+enum StrategyType {
+  PLUGGABLE = 0;
+  BALANCED = 1;
+  UNBALANCED = 2;
+}
+
+enum TradeStatus {
+  UNDEFINED = 0;
+  REQUEST = 1;
+  ACCEPT = 2;
+  COMPLETE = 3;
+  SETTLED = 4;
+  EXPIRED = 5;
+}
+
+message MarketInfo {
+  Market market = 1;
+  Fee fee = 2;
+  bool tradable = 3;
+  StrategyType strategy_type = 4;
+  uint64 account_index = 5;
+  Price price = 6;
+}
+
+message TradeStatusInfo {
+  TradeStatus status = 1;
+  bool failed = 2;
+}
+
+message SwapInfo {
+  // The proposer's quantity
+  uint64 amount_p = 1;
+  // The proposer's asset hash
+  string asset_p = 2;
+  // The responder's quantity
+  uint64 amount_r = 3;
+  // The responder's asset hash
+  string asset_r = 4;
+}
+
+message SwapFailInfo {
+  uint32 failure_code = 1;
+  string failure_message = 2;
+}
+
+message TradePrice {
+  double base_price = 1;
+  double quote_price = 2;
+}
+
+message TradeInfo {
+  // The id of the trade
+  string trade_id = 1;
+  // The info about the status of the trade
+  TradeStatusInfo status = 2;
+  // The info about the swap
+  SwapInfo swap_info = 3;
+  // The info of an eventually failed swap
+  SwapFailInfo fail_info = 4;
+  // The collected fee on the current swap
+  MarketWithFee market_with_fee = 5;
+  // The prices of the trade at request time 
+  TradePrice price = 6;
+  // The eventual tx url with blinders in case the trade is settled
+  string tx_url = 7; 
+  // SwapRequest unix timestamp
+  uint64 request_time_unix = 8;
+  // SwapAccpet unix timestamp
+  uint64 accept_time_unix = 9;
+  // SwapComplete unix timestamp
+  uint64 complete_time_unix = 10;
+  // Settlement unix timestamp
+  uint64 settle_time_unix = 11;
+  // Expiration unix timestamp
+  uint64 expiry_time_unix = 12;
+  // SwapRequest UTC timestamp
+  string request_time_utc = 13;
+  // SwapAccept UTC timestamp
+  string accept_time_utc = 14;
+  // SwapComplete UTC timestamp
+  string complete_time_utc = 15;
+  // Settlement UTC timestamp
+  string settle_time_utc = 16;
+  // Expiration UTC timestamp
+  string expiry_time_utc = 17;
+}
+
+message FeeInfo {
+  string trade_id = 1;
+  int64 basis_point = 2;
+  string asset = 3;
+  uint64 amount = 4;
+  float market_price = 5;
+}
+
+message TxOutpoint {
+  string hash = 1;
+  int32 index = 2;
+}

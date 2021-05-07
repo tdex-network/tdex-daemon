@@ -1,4 +1,4 @@
-.PHONY: build build-cli clean create-cert cov fmt help run vet test integrationtest
+.PHONY: build build-cli proto clean create-cert cov fmt help run vet test integrationtest
 
 
 
@@ -12,6 +12,10 @@ build-cli:
 	chmod u+x ./scripts/build-cli
 	./scripts/build-cli
 
+## proto: compile proto files
+proto:
+	chmod u+x ./scripts/compile_proto
+	./scripts/compile_proto
 
 ## clean: cleans the binary
 clean:
