@@ -183,6 +183,10 @@ func (t traderHandler) marketPrice(
 				},
 				Amount: preview.Amount,
 				Asset:  preview.Asset,
+				Balance: &pbtypes.Balance{
+					BaseAmount:  preview.Balance.BaseAmount,
+					QuoteAmount: preview.Balance.QuoteAmount,
+				},
 			},
 		},
 	}, nil
