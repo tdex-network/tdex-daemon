@@ -788,7 +788,7 @@ func (w *walletService) restoreUnspents(
 			),
 		}
 		go w.restoreUnspentsForAddress(cb, in, chUnspentsInfo, wg)
-		time.Sleep(2 * time.Millisecond)
+		time.Sleep(1 * time.Millisecond)
 	}
 
 	for r := range chUnspentsInfo {
