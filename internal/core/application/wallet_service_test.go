@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"os"
 	"strings"
@@ -143,7 +142,6 @@ func TestInitWallet(t *testing.T) {
 		)
 
 		replies, err := listenToReplies(chReplies, chErr)
-		fmt.Println("RESTORE REPLIES", len(replies))
 		require.NoError(t, err)
 		require.Greater(t, len(replies), 0)
 	})
@@ -285,22 +283,19 @@ func listenToReplies(
 	chErr chan error,
 ) ([]*application.InitWalletReply, error) {
 	replies := make([]*application.InitWalletReply, 0)
-loop:
 	for {
 		select {
-		case err := <-chErr:
-			return nil, err
+		case err, ok := <-chErr:
+			if ok {
+				return nil, err
+			}
 		case reply, ok := <-chReplies:
-			fmt.Println(reply, ok)
 			if !ok {
-				break loop
+				return replies, nil
 			}
 			replies = append(replies, reply)
-			fmt.Println(len(replies))
 		}
 	}
-	fmt.Println("REPLIES", len(replies))
-	return replies, nil
 }
 
 func randomUtxos(addresses []string) []explorer.Utxo {
