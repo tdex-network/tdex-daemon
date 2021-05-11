@@ -1,6 +1,7 @@
-.PHONY: build build-cli proto clean create-cert cov fmt help run vet test integrationtest
+.PHONY: build build-cli proto clean create-cert cov fmt help install integrationtest run test vet
 
-
+install:
+	go mod download
 
 ## build: build for all platforms
 build: 
@@ -13,7 +14,7 @@ build-cli:
 	./scripts/build-cli
 
 ## proto: compile proto files
-proto:
+proto: install
 	chmod u+x ./scripts/compile_proto
 	./scripts/compile_proto
 
