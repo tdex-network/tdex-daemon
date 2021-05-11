@@ -2,6 +2,7 @@
 
 install:
 	go mod download
+	go mod tidy
 
 ## build: build for all platforms
 build: 
