@@ -180,6 +180,10 @@ func (t traderHandler) marketPrice(
 				},
 				Fee: &pbtypes.Fee{
 					BasisPoint: preview.Fee.BasisPoint,
+					Fixed: &pbtypes.Fixed{
+						BaseFee:  preview.Fee.FixedBaseFee,
+						QuoteFee: preview.Fee.FixedQuoteFee,
+					},
 				},
 				Amount: preview.Amount,
 				Asset:  preview.Asset,

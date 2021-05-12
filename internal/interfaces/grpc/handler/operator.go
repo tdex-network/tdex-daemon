@@ -511,6 +511,10 @@ func (o operatorHandler) listTrades(
 				},
 				Fee: &pbtypes.Fee{
 					BasisPoint: info.MarketWithFee.BasisPoint,
+					Fixed: &pbtypes.Fixed{
+						BaseFee:  info.MarketWithFee.FixedBaseFee,
+						QuoteFee: info.MarketWithFee.FixedQuoteFee,
+					},
 				},
 			},
 			Price: &pb.TradePrice{
