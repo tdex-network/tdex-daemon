@@ -73,39 +73,74 @@ var (
 )
 
 func TestMarketTrading(t *testing.T) {
-	tradeSvc, err := newTradeService()
-	require.NoError(t, err)
+	t.Run("without fixed fees", func(t *testing.T) {
+		tradeSvc, err := newTradeService(false)
+		require.NoError(t, err)
 
-	markets, err := tradeSvc.GetTradableMarkets(ctx)
-	require.NoError(t, err)
-	require.NotEmpty(t, markets)
+		markets, err := tradeSvc.GetTradableMarkets(ctx)
+		require.NoError(t, err)
+		require.NotEmpty(t, markets)
 
-	market := markets[0].Market
-	balances, err := tradeSvc.GetMarketBalance(ctx, market)
-	require.NoError(t, err)
-	require.NotNil(t, balances)
-	require.True(t, balances.Balance.BaseAmount > 0)
-	require.True(t, balances.Balance.QuoteAmount > 0)
+		market := markets[0].Market
+		balances, err := tradeSvc.GetMarketBalance(ctx, market)
+		require.NoError(t, err)
+		require.NotNil(t, balances)
+		require.True(t, balances.Balance.BaseAmount > 0)
+		require.True(t, balances.Balance.QuoteAmount > 0)
 
-	t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
-		t.Parallel()
-		marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
+		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
+			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
+		})
+		t.Run("buy LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
+			marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
+		})
+		t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
+			marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
+		})
+		t.Run("sell LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
+			marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
+		})
 	})
-	t.Run("buy LBTC fixed USDT", func(t *testing.T) {
-		t.Parallel()
-		marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
-	})
-	t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
-		t.Parallel()
-		marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
-	})
-	t.Run("sell LBTC fixed USDT", func(t *testing.T) {
-		t.Parallel()
-		marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
+
+	t.Run("with fixed fees", func(t *testing.T) {
+		tradeSvc, err := newTradeService(true)
+		require.NoError(t, err)
+
+		markets, err := tradeSvc.GetTradableMarkets(ctx)
+		require.NoError(t, err)
+		require.NotEmpty(t, markets)
+
+		market := markets[0].Market
+		balances, err := tradeSvc.GetMarketBalance(ctx, market)
+		require.NoError(t, err)
+		require.NotNil(t, balances)
+		require.True(t, balances.Balance.BaseAmount > 0)
+		require.True(t, balances.Balance.QuoteAmount > 0)
+
+		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
+			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
+		})
+		t.Run("buy LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
+			marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
+		})
+		t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
+			marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
+		})
+		t.Run("sell LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
+			marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
+		})
 	})
 }
 
-func newTradeService() (application.TradeService, error) {
+func newTradeService(withFixedFee bool) (application.TradeService, error) {
 	repoManager, explorerSvc, bcListener := newServices()
 
 	v, err := repoManager.VaultRepository().GetOrCreateVault(
@@ -187,6 +222,9 @@ func newTradeService() (application.TradeService, error) {
 
 	if err := repoManager.MarketRepository().UpdateMarket(ctx, mkt.AccountIndex, func(m *domain.Market) (*domain.Market, error) {
 		m.FundMarket(mktOutpointsWithAsset, marketBaseAsset)
+		if withFixedFee {
+			m.ChangeFixedFee(600, 5000)
+		}
 		m.MakeTradable()
 		return m, nil
 	}); err != nil {
