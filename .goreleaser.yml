@@ -126,6 +126,7 @@ dockers:
       - config
       - pkg
       - cmd
+      - api-spec
   # push only release with both a docker tag latest and one with the semver
   - skip_push: auto
     dockerfile: Dockerfile
