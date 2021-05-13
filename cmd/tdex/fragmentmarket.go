@@ -7,21 +7,19 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/tdex-network/tdex-protobuf/generated/go/types"
-	"github.com/vulpemventures/go-elements/elementsutil"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
-	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
+	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
 
-	"github.com/urfave/cli/v2"
+	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 )
 
 const (
@@ -205,7 +203,7 @@ func fragmentMarketAction(ctx *cli.Context) error {
 	outpoints := createOutpoints(txID, numFragments)
 	if _, err := client.ClaimMarketDeposit(
 		context.Background(), &pboperator.ClaimMarketDepositRequest{
-			Market: &types.Market{
+			Market: &pbtypes.Market{
 				BaseAsset:  assetValuePair.BaseAsset,
 				QuoteAsset: assetValuePair.QuoteAsset,
 			},

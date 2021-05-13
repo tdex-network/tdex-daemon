@@ -125,9 +125,7 @@ func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 				BaseAsset:  mkt.BaseAsset,
 				QuoteAsset: mkt.QuoteAsset,
 			},
-			Fee: Fee{
-				BasisPoint: mkt.Fee,
-			},
+			Fee: Fee(mkt.Fee),
 		})
 	}
 
@@ -182,20 +180,18 @@ func (t *tradeService) GetMarketPrice(
 		return nil, ErrServiceUnavailable
 	}
 
-	previewWithPrice, err := getPriceAndPreviewForMarket(unspents, mkt, tradeType, amount, asset)
+	preview, err := previewForMarket(unspents, mkt, tradeType, amount, asset)
 	if err != nil {
 		log.Debugf("error while making preview: %s", err)
 		return nil, ErrServiceUnavailable
 	}
 
 	return &PriceWithFee{
-		Price: previewWithPrice.price,
-		Fee: Fee{
-			BasisPoint: mkt.Fee,
-		},
-		Amount:  previewWithPrice.amount,
-		Asset:   previewWithPrice.asset,
-		Balance: previewWithPrice.balances,
+		Price:   preview.price,
+		Fee:     Fee(mkt.Fee),
+		Amount:  preview.amount,
+		Asset:   preview.asset,
+		Balance: preview.balances,
 	}, nil
 }
 
@@ -265,12 +261,10 @@ func (t *tradeService) GetMarketBalance(
 
 	return &BalanceWithFee{
 		Balance: Balance{
-			BaseAmount:  int64(baseAssetBalance),
-			QuoteAmount: int64(quoteAssetBalance),
+			BaseAmount:  baseAssetBalance,
+			QuoteAmount: quoteAssetBalance,
 		},
-		Fee: Fee{
-			BasisPoint: m.Fee,
-		},
+		Fee: Fee(m.Fee),
 	}, nil
 }
 
@@ -848,18 +842,9 @@ type preview struct {
 	balances Balance
 }
 
-// getPriceAndPreviewForMarket returns the current price of a market, along
-// with a amount preview for a BUY or SELL trade.
-// Depending on the strategy set for the market, an input amount might be
-// required to calculate the preview amount.
-// In the specific, if the market strategy is not pluggable, the preview amount
-// is calculated with either InGivenOut or OutGivenIn methods of the
-// MakingFormula interface. Otherwise, the price is simply retrieved from the
-// domain.Market instance and the preview amount is calculated by applying the
-// market fees within the conversion.
-// The incoming amount always represents an amount of the market's base asset,
-// therefore a preview amount for the correspoing quote asset is returned.
-func getPriceAndPreviewForMarket(
+// previewForMarket returns the current price and balances of a market, along
+// with a preview amount for a BUY or SELL trade based on the strategy type.
+func previewForMarket(
 	unspents []domain.Unspent,
 	market *domain.Market,
 	tradeType int,
@@ -871,10 +856,7 @@ func getPriceAndPreviewForMarket(
 		BaseAmount:  balances[market.BaseAsset],
 		QuoteAmount: balances[market.QuoteAsset],
 	}
-	previewAsset := market.BaseAsset
-	if asset == market.BaseAsset {
-		previewAsset = market.QuoteAsset
-	}
+
 	if tradeType == TradeBuy {
 		if asset == market.BaseAsset && amount >= uint64(marketBalance.BaseAmount) {
 			return nil, errors.New("provided amount is too big")
@@ -886,14 +868,7 @@ func getPriceAndPreviewForMarket(
 	}
 
 	if market.IsStrategyPluggable() {
-		previewAmount := calcPreviewAmount(market, tradeType, amount, asset)
-
-		price := Price{
-			BasePrice:  market.BaseAssetPrice(),
-			QuotePrice: market.QuoteAssetPrice(),
-		}
-
-		return &preview{price, previewAmount, previewAsset, marketBalance}, nil
+		return previewFromPrice(market, marketBalance, tradeType, amount, asset), nil
 	}
 
 	return previewFromFormula(
@@ -901,22 +876,39 @@ func getPriceAndPreviewForMarket(
 	)
 }
 
-func getBalanceByAsset(unspents []domain.Unspent) map[string]int64 {
-	balances := map[string]int64{}
+func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
+	balances := map[string]uint64{}
 	for _, unspent := range unspents {
 		if _, ok := balances[unspent.AssetHash]; !ok {
 			balances[unspent.AssetHash] = 0
 		}
-		balances[unspent.AssetHash] += int64(unspent.Value)
+		balances[unspent.AssetHash] += unspent.Value
 	}
 	return balances
 }
 
-// calcPreviewAmount calculates the amount of a market's quote asset due,
-// depending on the trade type and the base asset amount provided.
-// The market fees are either added or subtracted to the converted amount
-// basing on the trade type.
-func calcPreviewAmount(
+func previewFromPrice(
+	market *domain.Market,
+	marketBalance Balance,
+	tradeType int,
+	amount uint64,
+	asset string,
+) *preview {
+	previewAsset := market.BaseAsset
+	if asset == market.BaseAsset {
+		previewAsset = market.QuoteAsset
+	}
+	previewAmount := previewAmountFromPrice(market, tradeType, amount, asset)
+
+	price := Price{
+		BasePrice:  market.BaseAssetPrice(),
+		QuotePrice: market.QuoteAssetPrice(),
+	}
+
+	return &preview{price, previewAmount, previewAsset, marketBalance}
+}
+
+func previewAmountFromPrice(
 	market *domain.Market,
 	tradeType int,
 	amount uint64,
@@ -927,70 +919,41 @@ func calcPreviewAmount(
 		price = market.BaseAssetPrice()
 	}
 
-	chargeFeesOnTheWayIn := asset == market.BaseAsset
+	isBaseAsset := asset == market.BaseAsset
+	feePercentage := uint64(market.Fee.BasisPoint)
 	var previewAmount uint64
+
 	if tradeType == TradeBuy {
-		previewAmount = calcProposeAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+		if isBaseAsset {
+			previewAmount = previewAmountP(amount, price, feePercentage, uint64(market.Fee.FixedQuoteFee))
+		} else {
+			previewAmount = previewAmountR(amount, price, feePercentage, uint64(market.Fee.FixedBaseFee))
+		}
 	} else {
-		previewAmount = calcExpectedAmount(amount, market.Fee, price, chargeFeesOnTheWayIn)
+		if isBaseAsset {
+			previewAmount = previewAmountR(amount, price, feePercentage, uint64(market.Fee.FixedQuoteFee))
+		} else {
+			previewAmount = previewAmountP(amount, price, feePercentage, uint64(market.Fee.FixedBaseFee))
+		}
 	}
 
 	return previewAmount
 }
 
-// calcProposeAmount returns the quote asset amount due for a BUY trade, that,
-// remind, expresses a willing of buying a certain amount of the market's base
-// asset.
-// The market fees can be collected in either base or quote asset, but this is
-// not relevant when calculating the preview amount. The reason is explained
-// with the following example:
-//
-// Alice wants to BUY 0.1 LBTC in exchange for USDT (hence LBTC/USDT market).
-// Lets assume the provider holds 10 LBTC and 65000 USDT in his reserves, so
-// the USDT/LBTC price is 6500.
-// Depending on how the fees are collected we have:
-// - fee_asset = LBTC
-//		feeAmount = lbtcAmount * feePercentage
-// 		usdtAmount = (lbtcAmount + feeAmount) * price =
-//			= (lbtcAmount + lbtcAmount * feeAmount) * price =
-//			= (1 + feeAmount) * lbtcAmount * price = 1.25 * 0.1 * 6500 = 812,5 USDT
-// - fee_asset = USDT
-//		cAmount = lbtcAmount * price
-// 		feeAmount = cAmount * feePercentage
-// 		usdtAmount = cAmount + feeAmount =
-//			= (lbtcAmount * price) + (lbtcAmount * price * feePercentage)
-// 			= lbtcAmount * price * (1 + feePercentage) = 0.1  * 6500 * 1,25 = 812,5 USDT
-func calcProposeAmount(
-	amount uint64,
-	feeAmount int64,
-	price decimal.Decimal,
-	chargeFeesOnTheWayIn bool,
-) uint64 {
-	netAmountR := decimal.NewFromInt(int64(amount)).Mul(price).BigInt().Uint64()
-	if !chargeFeesOnTheWayIn {
-		amountP, _ := mathutil.LessFee(netAmountR, uint64(feeAmount))
-		return amountP
-	}
-
-	amountP, _ := mathutil.PlusFee(netAmountR, uint64(feeAmount))
-	return amountP
+// previewAmountP calculate the amountP due for the given amountR and charges
+// (adds) the fees.
+func previewAmountP(amountR uint64, price decimal.Decimal, feePercentage, fixedFee uint64) uint64 {
+	amountP := decimal.NewFromInt(int64(amountR)).Mul(price).BigInt().Uint64()
+	amountP, _ = mathutil.PlusFee(amountP, feePercentage)
+	return amountP + fixedFee
 }
 
-func calcExpectedAmount(
-	amount uint64,
-	feeAmount int64,
-	price decimal.Decimal,
-	chargeFeesOnTheWayIn bool,
-) uint64 {
-	netAmountP := decimal.NewFromInt(int64(amount)).Mul(price).BigInt().Uint64()
-
-	if !chargeFeesOnTheWayIn {
-		amountR, _ := mathutil.PlusFee(netAmountP, uint64(feeAmount))
-		return amountR
-	}
-
-	amountR, _ := mathutil.LessFee(netAmountP, uint64(feeAmount))
-	return amountR
+// previewAmountR calculate the amountR due for the given amountP and charges
+// (subtracts) the fees.
+func previewAmountR(amountP uint64, price decimal.Decimal, feePercentage, fixedFee uint64) uint64 {
+	amountR := decimal.NewFromInt(int64(amountP)).Mul(price).BigInt().Uint64()
+	amountR, _ = mathutil.LessFee(amountR, feePercentage)
+	return amountR - fixedFee
 }
 
 func previewFromFormula(
@@ -1003,7 +966,7 @@ func previewFromFormula(
 	formula := market.Strategy.Formula()
 	baseAssetBalance := uint64(marketBalance.BaseAmount)
 	quoteAssetBalance := uint64(marketBalance.QuoteAmount)
-
+	fee := uint64(market.Fee.BasisPoint)
 	var previewAmount uint64
 	var err error
 	if tradeType == TradeBuy {
@@ -1012,7 +975,7 @@ func previewFromFormula(
 				&mm.FormulaOpts{
 					BalanceIn:           quoteAssetBalance,
 					BalanceOut:          baseAssetBalance,
-					Fee:                 uint64(market.Fee),
+					Fee:                 fee,
 					ChargeFeeOnTheWayIn: true,
 				},
 				amount,
@@ -1022,7 +985,7 @@ func previewFromFormula(
 				&mm.FormulaOpts{
 					BalanceIn:           quoteAssetBalance,
 					BalanceOut:          baseAssetBalance,
-					Fee:                 uint64(market.Fee),
+					Fee:                 fee,
 					ChargeFeeOnTheWayIn: true,
 				},
 				amount,
@@ -1034,7 +997,7 @@ func previewFromFormula(
 				&mm.FormulaOpts{
 					BalanceIn:           baseAssetBalance,
 					BalanceOut:          quoteAssetBalance,
-					Fee:                 uint64(market.Fee),
+					Fee:                 fee,
 					ChargeFeeOnTheWayIn: true,
 				},
 				amount,
@@ -1044,7 +1007,7 @@ func previewFromFormula(
 				&mm.FormulaOpts{
 					BalanceIn:           baseAssetBalance,
 					BalanceOut:          quoteAssetBalance,
-					Fee:                 uint64(market.Fee),
+					Fee:                 fee,
 					ChargeFeeOnTheWayIn: true,
 				},
 				amount,
@@ -1053,6 +1016,20 @@ func previewFromFormula(
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if tradeType == TradeBuy {
+		if asset == market.BaseAsset {
+			previewAmount += uint64(market.Fee.FixedQuoteFee)
+		} else {
+			previewAmount -= uint64(market.Fee.FixedBaseFee)
+		}
+	} else {
+		if asset == market.BaseAsset {
+			previewAmount -= uint64(market.Fee.FixedQuoteFee)
+		} else {
+			previewAmount += uint64(market.Fee.FixedBaseFee)
+		}
 	}
 
 	if tradeType == TradeBuy {
@@ -1123,7 +1100,7 @@ func isValidTradePrice(
 		amount = swapRequest.GetAmountP()
 	}
 
-	preview, _ := getPriceAndPreviewForMarket(
+	preview, _ := previewForMarket(
 		unspents,
 		market,
 		tradeType,
@@ -1140,7 +1117,7 @@ func isValidTradePrice(
 		amount = swapRequest.GetAmountR()
 	}
 
-	preview, _ = getPriceAndPreviewForMarket(
+	preview, _ = previewForMarket(
 		unspents,
 		market,
 		tradeType,

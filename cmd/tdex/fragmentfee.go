@@ -17,7 +17,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 
-	pboperator "github.com/tdex-network/tdex-protobuf/generated/go/operator"
+	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 
 	"github.com/urfave/cli/v2"
 )

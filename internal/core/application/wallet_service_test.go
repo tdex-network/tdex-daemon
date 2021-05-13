@@ -285,8 +285,10 @@ func listenToReplies(
 	replies := make([]*application.InitWalletReply, 0)
 	for {
 		select {
-		case err := <-chErr:
-			return nil, err
+		case err, ok := <-chErr:
+			if ok {
+				return nil, err
+			}
 		case reply, ok := <-chReplies:
 			if !ok {
 				return replies, nil

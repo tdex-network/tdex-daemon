@@ -6,14 +6,23 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 )
 
+type Fee struct {
+	BasisPoint    int64
+	FixedBaseFee  int64
+	FixedQuoteFee int64
+}
+
 // Market defines the Market entity data structure for holding an asset pair state
 type Market struct {
 	// AccountIndex links a market to a HD wallet account derivation.
 	AccountIndex int
 	BaseAsset    string
 	QuoteAsset   string
-	// Each Market has a different fee expressed in basis point of each swap
-	Fee int64
+	// Each Market has a different fee expressed in basis point of each swap.
+	// A fixed fee amount for both assets might be defined to discourage
+	// low-amount trades on the market and to be reimbursed for paying network
+	// fees.
+	Fee Fee
 	// if curretly open for trades
 	Tradable bool
 	// Market Making strategy
@@ -53,7 +62,7 @@ func NewMarket(positiveAccountIndex int, feeInBasisPoint int64) (*Market, error)
 
 	return &Market{
 		AccountIndex: positiveAccountIndex,
-		Fee:          feeInBasisPoint,
+		Fee:          Fee{BasisPoint: feeInBasisPoint},
 		Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
 	}, nil
 }

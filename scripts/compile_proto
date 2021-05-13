@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -e
+
+SRC_DIR=./api-spec/protobuf
+DST_DIR=./api-spec/protobuf/gen
+PARENT_PATH=$(dirname $(
+  cd $(dirname $0)
+  pwd -P
+))
+
+pushd $PARENT_PATH
+
+rm -rf $DST_DIR
+
+mkdir -p $DST_DIR/operator
+mkdir -p $DST_DIR/wallet
+mkdir -p $DST_DIR/types
+
+tdex_proto_path=$(go list -f '{{ .Dir }}' -m github.com/tdex-network/tdex-protobuf)
+echo $tdex_proto_path/generated/go/types
+
+for file in $SRC_DIR/*.proto; do
+  proto=${file##*/}
+  proto_gen_path=$DST_DIR/${proto%%.*}
+  protoc \
+  -I=$SRC_DIR \
+  -I=$tdex_proto_path \
+  --go_out=$proto_gen_path --go_opt=paths=source_relative \
+  --go-grpc_out=$proto_gen_path --go-grpc_opt=paths=source_relative \
+  $proto
+done
+
+popd

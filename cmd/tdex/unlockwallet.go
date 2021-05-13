@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pbwallet "github.com/tdex-network/tdex-protobuf/generated/go/wallet"
+	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
 
 	"github.com/urfave/cli/v2"
 )

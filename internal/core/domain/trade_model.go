@@ -279,21 +279,23 @@ type Status struct {
 
 // Trade is the data structure representing a trade entity.
 type Trade struct {
-	ID               uuid.UUID
-	MarketQuoteAsset string
-	MarketPrice      Prices
-	MarketFee        int64
-	TraderPubkey     []byte
-	Status           Status
-	PsetBase64       string
-	TxID             string
-	TxHex            string
-	ExpiryTime       uint64
-	SettlementTime   uint64
-	SwapRequest      Swap
-	SwapAccept       Swap
-	SwapComplete     Swap
-	SwapFail         Swap
+	ID                  uuid.UUID
+	MarketQuoteAsset    string
+	MarketPrice         Prices
+	MarketFee           int64
+	MarketFixedBaseFee  int64
+	MarketFixedQuoteFee int64
+	TraderPubkey        []byte
+	Status              Status
+	PsetBase64          string
+	TxID                string
+	TxHex               string
+	ExpiryTime          uint64
+	SettlementTime      uint64
+	SwapRequest         Swap
+	SwapAccept          Swap
+	SwapComplete        Swap
+	SwapFail            Swap
 }
 
 // NewTrade returns a trade with a new id and Empty status.
