@@ -153,3 +153,4 @@ dockers:
       - config
       - pkg
       - cmd
+      - api-spec
