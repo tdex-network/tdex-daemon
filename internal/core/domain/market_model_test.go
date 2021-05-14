@@ -17,9 +17,9 @@ func TestNewMarket(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, m)
 	require.Equal(t, accountIndex, m.AccountIndex)
-	require.Equal(t, fee, m.Fee.BasisPoint)
-	require.Zero(t, m.Fee.FixedBaseFee)
-	require.Zero(t, m.Fee.FixedQuoteFee)
+	require.Equal(t, fee, m.Fee)
+	require.Zero(t, m.FixedFee.BaseFee)
+	require.Zero(t, m.FixedFee.QuoteFee)
 	require.False(t, m.IsStrategyPluggable())
 }
 

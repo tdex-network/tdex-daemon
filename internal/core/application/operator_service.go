@@ -208,7 +208,7 @@ func (o *operatorService) DepositMarket(
 				ctx,
 				&domain.Market{
 					AccountIndex: accountIndex,
-					Fee:          domain.Fee{BasisPoint: o.marketFee},
+					Fee:          o.marketFee,
 				},
 			); err != nil {
 				return nil, err
@@ -403,7 +403,11 @@ func (o *operatorService) UpdateMarketPercentageFee(
 			BaseAsset:  mkt.BaseAsset,
 			QuoteAsset: mkt.QuoteAsset,
 		},
-		Fee: Fee(mkt.Fee),
+		Fee: Fee{
+			BasisPoint:    mkt.Fee,
+			FixedBaseFee:  mkt.FixedFee.BaseFee,
+			FixedQuoteFee: mkt.FixedFee.QuoteFee,
+		},
 	}, nil
 }
 
@@ -455,7 +459,11 @@ func (o *operatorService) UpdateMarketFixedFee(
 			BaseAsset:  mkt.BaseAsset,
 			QuoteAsset: mkt.QuoteAsset,
 		},
-		Fee: Fee(mkt.Fee),
+		Fee: Fee{
+			BasisPoint:    mkt.Fee,
+			FixedBaseFee:  mkt.FixedFee.BaseFee,
+			FixedQuoteFee: mkt.FixedFee.QuoteFee,
+		},
 	}, nil
 }
 
@@ -627,10 +635,14 @@ func (o *operatorService) ListMarket(
 				BaseAsset:  market.BaseAsset,
 				QuoteAsset: market.QuoteAsset,
 			},
-			Fee:          Fee(market.Fee),
 			Tradable:     market.Tradable,
 			StrategyType: market.Strategy.Type,
 			Price:        market.Price,
+			Fee: Fee{
+				BasisPoint:    market.Fee,
+				FixedBaseFee:  market.FixedFee.BaseFee,
+				FixedQuoteFee: market.FixedFee.QuoteFee,
+			},
 		})
 	}
 

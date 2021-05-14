@@ -371,7 +371,7 @@ func (o operatorHandler) updateMarketPercentageFee(
 				QuoteAsset: result.QuoteAsset,
 			},
 			Fee: &pbtypes.Fee{
-				BasisPoint: result.BasisPoint,
+				BasisPoint: result.Fee.BasisPoint,
 				Fixed: &pbtypes.Fixed{
 					BaseFee:  result.FixedBaseFee,
 					QuoteFee: result.FixedQuoteFee,

@@ -20,20 +20,12 @@ func (p Prices) AreZero() bool {
 	return decimal.Decimal(p.BasePrice).Equal(decimal.NewFromInt(0)) && decimal.Decimal(p.QuotePrice).Equal(decimal.NewFromInt(0))
 }
 
-func (f Fee) validate() error {
-	if f.BasisPoint < 0 {
-		return ErrMarketFeeTooLow
-	}
-
-	if f.BasisPoint > 9999 {
-		return ErrMarketFeeTooHigh
-	}
-
-	if f.FixedBaseFee < 0 || f.FixedQuoteFee < 0 {
+func (f FixedFee) validate() error {
+	if f.BaseFee < 0 || f.QuoteFee < 0 {
 		return ErrInvalidFixedFee
 	}
 
-	if (f.FixedBaseFee > 0 && f.FixedQuoteFee == 0) || (f.FixedQuoteFee > 0 && f.FixedBaseFee == 0) {
+	if (f.BaseFee > 0 && f.QuoteFee == 0) || (f.QuoteFee > 0 && f.BaseFee == 0) {
 		return ErrMissingFixedFee
 	}
 
@@ -178,7 +170,7 @@ func (m *Market) ChangeFeeBasisPoint(fee int64) error {
 		return err
 	}
 
-	m.Fee.BasisPoint = fee
+	m.Fee = fee
 	return nil
 }
 
@@ -196,8 +188,8 @@ func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
 		return err
 	}
 
-	m.Fee.FixedBaseFee = baseFee
-	m.Fee.FixedQuoteFee = quoteFee
+	m.FixedFee.BaseFee = baseFee
+	m.FixedFee.QuoteFee = quoteFee
 	return nil
 }
 

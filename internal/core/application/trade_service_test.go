@@ -213,7 +213,7 @@ func newTradeService(withFixedFee bool) (application.TradeService, error) {
 		ctx,
 		&domain.Market{
 			AccountIndex: domain.MarketAccountStart,
-			Fee:          domain.Fee{BasisPoint: marketFee},
+			Fee:          marketFee,
 		},
 	)
 	if err != nil {
