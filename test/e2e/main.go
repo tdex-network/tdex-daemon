@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -37,9 +37,9 @@ var (
 	explorerSvc, _ = esplora.NewService(explorerUrl, 15000)
 
 	password                 = "password"
-	feeDepositAmount         = 5000
-	marketBaseDepositAmount  = 20000000
-	marketQuoteDepositAmount = 2000
+	feeDepositAmount         = 0.00005
+	marketBaseDepositAmount  = 0.2
+	marketQuoteDepositAmount = float64(10000)
 	numOfConcurrentTrades    = 4
 
 	lbtcAsset = network.Regtest.AssetID
@@ -174,13 +174,11 @@ func main() {
 	assets := make([]string, 0, numOfConcurrentTrades)
 	for i := 0; i < numOfConcurrentTrades; i++ {
 		w, _ := trade.NewRandomWallet(&network.Regtest)
-		faucetAmount, asset := "0.0004", lbtcAsset // 0.0004 LBTC
+		faucetAmount, asset := 0.0004, lbtcAsset // 0.0004 LBTC
 		if i%2 != 0 {
-			faucetAmount, asset = "20", usdtAsset // 20 USDT
+			faucetAmount, asset = 20, usdtAsset // 20 USDT
 		}
-		if _, err := runCommand(
-			"nigiri", "faucet", "--liquid", w.Address(), faucetAmount, asset,
-		); err != nil {
+		if _, err := explorerSvc.Faucet(w.Address(), faucetAmount, asset); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -324,7 +322,7 @@ func feeAddressesFromStdout(out string) []string {
 func fundFeeAccount(addresses []string) string {
 	// fund every address with 5000 sats
 	for _, addr := range addresses {
-		explorerSvc.Faucet(addr, feeDepositAmount)
+		explorerSvc.Faucet(addr, feeDepositAmount, "")
 	}
 	time.Sleep(10 * time.Second)
 
@@ -357,11 +355,11 @@ func fundMarketAccount(addresses []string) string {
 	numAddr := len(addresses)
 
 	for _, addr := range addresses[:numAddr/2] {
-		explorerSvc.Faucet(addr, marketBaseDepositAmount)
+		explorerSvc.Faucet(addr, marketBaseDepositAmount, "")
 	}
 
 	for _, addr := range addresses[numAddr/2:] {
-		runCommand("nigiri", "faucet", "--liquid", addr, strconv.Itoa(marketQuoteDepositAmount), usdtAsset)
+		explorerSvc.Faucet(addr, marketQuoteDepositAmount, usdtAsset)
 	}
 
 	time.Sleep(10 * time.Second)
@@ -381,12 +379,12 @@ func fundMarketAccount(addresses []string) string {
 
 func setupUSDTAsset() error {
 	// little trick to let nigiri fauceting an issued asset
-	addr, err := runCommand("nigiri", "rpc", "--liquid", "getnewaddress", "", "bech32")
+	addr, err := getNodeAddress()
 	if err != nil {
 		return err
 	}
 
-	_, asset, err := explorerSvc.Mint(addr, 20000)
+	_, asset, err := explorerSvc.Mint(addr, 100000)
 	if err != nil {
 		return err
 	}
@@ -441,4 +439,20 @@ func setupTraderClient() (*trade.Trade, error) {
 		ExplorerService: explorerSvc,
 		Client:          client,
 	})
+}
+
+func getNodeAddress() (string, error) {
+	client := esplora.NewHTTPClient(15 * time.Second)
+	url := fmt.Sprintf("%s/getnewaddress", explorerUrl)
+	status, resp, err := client.NewHTTPRequest("GET", url, "", nil)
+	if err != nil {
+		return "", err
+	}
+	if status != http.StatusOK {
+		return "", fmt.Errorf(resp)
+	}
+
+	res := map[string]string{}
+	json.Unmarshal([]byte(resp), &res)
+	return res["address"], nil
 }
