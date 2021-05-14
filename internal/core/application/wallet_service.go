@@ -658,7 +658,7 @@ func (w *walletService) restoreMarket(
 ) (*domain.Market, error) {
 	market, err := w.repoManager.MarketRepository().GetOrCreateMarket(ctx, &domain.Market{
 		AccountIndex: accountIndex,
-		Fee:          domain.Fee{BasisPoint: w.marketFee},
+		Fee:          w.marketFee,
 	})
 	if err != nil {
 		return nil, err

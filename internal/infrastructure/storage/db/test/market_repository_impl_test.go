@@ -17,7 +17,7 @@ var (
 	readOnly = true
 	ctx      = context.Background()
 
-	fee = domain.Fee{BasisPoint: int64(25)}
+	fee = int64(25)
 )
 
 func TestMarketRepositoryImplementations(t *testing.T) {

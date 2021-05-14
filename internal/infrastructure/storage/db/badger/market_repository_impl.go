@@ -199,7 +199,7 @@ func (m marketRepositoryImpl) getOrCreateMarket(
 
 	if mkt == nil {
 		accountIndex := market.AccountIndex
-		fee := market.Fee.BasisPoint
+		fee := market.Fee
 
 		mkt, err = domain.NewMarket(accountIndex, fee)
 		if err != nil {

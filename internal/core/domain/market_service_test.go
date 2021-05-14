@@ -207,7 +207,7 @@ func TestChangeFeeBasisPoint(t *testing.T) {
 
 	err := m.ChangeFeeBasisPoint(newFee)
 	require.NoError(t, err)
-	require.Equal(t, newFee, m.Fee.BasisPoint)
+	require.Equal(t, newFee, m.Fee)
 }
 
 func TestFailingChangeFeeBasisPoint(t *testing.T) {
@@ -262,8 +262,8 @@ func TestChangeFixedFee(t *testing.T) {
 
 	err := m.ChangeFixedFee(baseFee, quoteFee)
 	require.NoError(t, err)
-	require.Equal(t, baseFee, m.Fee.FixedBaseFee)
-	require.Equal(t, quoteFee, m.Fee.FixedQuoteFee)
+	require.Equal(t, baseFee, m.FixedFee.BaseFee)
+	require.Equal(t, quoteFee, m.FixedFee.QuoteFee)
 }
 
 func TestFailingChangeFixedFee(t *testing.T) {

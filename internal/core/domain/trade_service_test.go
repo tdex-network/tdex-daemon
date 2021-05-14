@@ -22,7 +22,7 @@ var mockedErr = &domain.SwapError{
 func TestTradePropose(t *testing.T) {
 	swapRequest := newMockedSwapRequest()
 	marketAsset := swapRequest.GetAssetR()
-	marketFee := domain.Fee{BasisPoint: int64(25)}
+	marketFee := int64(25)
 	traderPubkey := []byte{}
 	mockedSwapParser := mockSwapParser{}
 	mockedSwapParser.On("SerializeRequest", swapRequest).Return(randomBytes(100), nil)
@@ -60,7 +60,7 @@ func TestTradePropose(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ok, err := tt.trade.Propose(swapRequest, marketAsset, marketFee, traderPubkey)
+			ok, err := tt.trade.Propose(swapRequest, marketAsset, marketFee, 0, 0, traderPubkey)
 			require.NoError(t, err)
 			require.True(t, ok)
 
@@ -75,7 +75,7 @@ func TestTradePropose(t *testing.T) {
 func TestFailingTradePropose(t *testing.T) {
 	swapRequest := newMockedSwapRequest()
 	marketAsset := swapRequest.GetAssetR()
-	marketFee := domain.Fee{BasisPoint: int64(25)}
+	marketFee := int64(25)
 	traderPubkey := []byte{}
 	mockedSwapParser := mockSwapParser{}
 	mockedSwapParser.On("SerializeRequest", swapRequest).Return(nil, mockedErr)
@@ -90,7 +90,7 @@ func TestFailingTradePropose(t *testing.T) {
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeEmpty()
 
-		ok, err := trade.Propose(swapRequest, marketAsset, marketFee, traderPubkey)
+		ok, err := trade.Propose(swapRequest, marketAsset, marketFee, 0, 0, traderPubkey)
 		require.NoError(t, err)
 		require.False(t, ok)
 		require.True(t, trade.IsProposal())

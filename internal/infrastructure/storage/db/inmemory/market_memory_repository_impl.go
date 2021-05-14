@@ -198,7 +198,7 @@ func (r MarketRepositoryImpl) getOrCreateMarket(market *domain.Market) (*domain.
 	// override mkt into the if statement.
 	mkt, err := r.getMarketByAccount(market.AccountIndex)
 	if mkt == nil {
-		mkt, err = domain.NewMarket(market.AccountIndex, market.Fee.BasisPoint)
+		mkt, err = domain.NewMarket(market.AccountIndex, market.Fee)
 		if err != nil {
 			return nil, err
 		}

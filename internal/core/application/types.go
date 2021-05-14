@@ -60,7 +60,11 @@ type Market struct {
 	QuoteAsset string
 }
 
-type Fee domain.Fee
+type Fee struct {
+	BasisPoint    int64
+	FixedBaseFee  int64
+	FixedQuoteFee int64
+}
 
 type MarketWithFee struct {
 	Market
