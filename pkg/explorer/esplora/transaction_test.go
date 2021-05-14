@@ -19,7 +19,8 @@ func TestGetTransaction(t *testing.T) {
 	}
 
 	// Fund sender address.
-	txID, err := explorerSvc.Faucet(addr, oneLbtc)
+	// Empty asset hash defaults to LBTC.
+	txID, err := explorerSvc.Faucet(addr, oneLbtc, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,7 @@ func TestGetTransactionStatus(t *testing.T) {
 	}
 
 	// Fund sender address.
-	txID, err := explorerSvc.Faucet(addr, oneLbtc)
+	txID, err := explorerSvc.Faucet(addr, oneLbtc, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +80,7 @@ func TestGetTransactionsForAddress(t *testing.T) {
 	}
 
 	// Fund sender address.
-	if _, err := explorerSvc.Faucet(addr, oneLbtc); err != nil {
+	if _, err := explorerSvc.Faucet(addr, oneLbtc, ""); err != nil {
 		t.Fatal(err)
 	}
 

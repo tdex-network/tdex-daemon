@@ -3,7 +3,6 @@ package esplora
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"sync"
 
@@ -70,10 +69,9 @@ func (e *esplora) BroadcastTransaction(txHex string) (string, error) {
 	return resp, nil
 }
 
-func (e *esplora) Faucet(address string, amount int) (string, error) {
-	btcAmount := float64(amount) / math.Pow10(8)
+func (e *esplora) Faucet(address string, amount float64, asset string) (string, error) {
 	url := fmt.Sprintf("%s/faucet", e.apiURL)
-	payload := map[string]interface{}{"address": address, "amount": btcAmount}
+	payload := map[string]interface{}{"address": address, "amount": amount, "asset": asset}
 	body, _ := json.Marshal(payload)
 	bodyString := string(body)
 	headers := map[string]string{
@@ -96,7 +94,7 @@ func (e *esplora) Faucet(address string, amount int) (string, error) {
 	return rr["txId"], nil
 }
 
-func (e *esplora) Mint(address string, amount int) (string, string, error) {
+func (e *esplora) Mint(address string, amount float64) (string, string, error) {
 	url := fmt.Sprintf("%s/mint", e.apiURL)
 	payload := map[string]interface{}{"address": address, "quantity": amount}
 	body, _ := json.Marshal(payload)

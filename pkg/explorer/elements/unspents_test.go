@@ -1,7 +1,6 @@
 package elements
 
 import (
-	"math"
 	"os"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 	"github.com/vulpemventures/go-elements/payment"
 )
 
-var oneLbtc = int(math.Pow10(8))
+var oneLbtc = float64(1)
 
 func TestGetUnspents(t *testing.T) {
 	elementsSvc, err := newService()
@@ -25,7 +24,7 @@ func TestGetUnspents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := elementsSvc.Faucet(address, oneLbtc); err != nil {
+	if _, err := elementsSvc.Faucet(address, oneLbtc, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -59,7 +58,7 @@ func TestGetUnspentsForAddresses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := elementsSvc.Faucet(addr1, oneLbtc); err != nil {
+	if _, err := elementsSvc.Faucet(addr1, oneLbtc, ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := elementsSvc.Mint(addr2, 100); err != nil {

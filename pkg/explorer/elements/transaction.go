@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/vulpemventures/go-elements/address"
 )
 
 // GetTransaction returns the transaction indentified by its hash
@@ -169,9 +170,20 @@ func (e *elements) BroadcastTransaction(txhex string) (string, error) {
 // Faucet sends the requested sats to the given address using the sendtoaddress
 // RPC. Also, 1 block is mined with generatetoaddress to get the faucet tx
 // confirmed.
-func (e *elements) Faucet(address string, amount int) (string, error) {
+func (e *elements) Faucet(addr string, amount float64, asset string) (string, error) {
+	net, err := address.NetworkForAddress(addr)
+	if err != nil {
+		return "", fmt.Errorf("args: %w", err)
+	}
+
+	if len(asset) <= 0 {
+		asset = net.AssetID
+	}
+
 	btcAmount := float64(amount) / math.Pow10(8)
-	r, err := e.client.call("sendtoaddress", []interface{}{address, btcAmount})
+	r, err := e.client.call("sendtoaddress", []interface{}{
+		addr, btcAmount, "", "", false, false, 1, "UNSET", asset,
+	})
 	if err = handleError(err, &r); err != nil {
 		return "", fmt.Errorf("send: %w", err)
 	}
@@ -191,7 +203,7 @@ func (e *elements) Faucet(address string, amount int) (string, error) {
 // provided address. It uses issueasset RPC for minting a new asset, and
 // sendtoaddress for funding the provided address. Simalrly to Faucet, also
 // this mines 1 block to confirm the mint tx.
-func (e *elements) Mint(address string, amount int) (string, string, error) {
+func (e *elements) Mint(address string, amount float64) (string, string, error) {
 	r, err := e.client.call("issueasset", []interface{}{amount, 0})
 	if err = handleError(err, &r); err != nil {
 		return "", "", fmt.Errorf("asset: %w", err)
