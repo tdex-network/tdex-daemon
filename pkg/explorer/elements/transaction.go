@@ -3,7 +3,6 @@ package elements
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"sync"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
@@ -180,9 +179,8 @@ func (e *elements) Faucet(addr string, amount float64, asset string) (string, er
 		asset = net.AssetID
 	}
 
-	btcAmount := float64(amount) / math.Pow10(8)
 	r, err := e.client.call("sendtoaddress", []interface{}{
-		addr, btcAmount, "", "", false, false, 1, "UNSET", asset,
+		addr, amount, "", "", false, false, 1, "UNSET", asset,
 	})
 	if err = handleError(err, &r); err != nil {
 		return "", fmt.Errorf("send: %w", err)
