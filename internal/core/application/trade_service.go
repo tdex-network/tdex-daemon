@@ -125,7 +125,11 @@ func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 				BaseAsset:  mkt.BaseAsset,
 				QuoteAsset: mkt.QuoteAsset,
 			},
-			Fee: Fee(mkt.Fee),
+			Fee: Fee{
+				BasisPoint:    mkt.Fee,
+				FixedBaseFee:  mkt.FixedFee.BaseFee,
+				FixedQuoteFee: mkt.FixedFee.QuoteFee,
+			},
 		})
 	}
 
@@ -188,10 +192,14 @@ func (t *tradeService) GetMarketPrice(
 
 	return &PriceWithFee{
 		Price:   preview.price,
-		Fee:     Fee(mkt.Fee),
 		Amount:  preview.amount,
 		Asset:   preview.asset,
 		Balance: preview.balances,
+		Fee: Fee{
+			BasisPoint:    mkt.Fee,
+			FixedBaseFee:  mkt.FixedFee.BaseFee,
+			FixedQuoteFee: mkt.FixedFee.QuoteFee,
+		},
 	}, nil
 }
 
@@ -264,7 +272,11 @@ func (t *tradeService) GetMarketBalance(
 			BaseAmount:  baseAssetBalance,
 			QuoteAmount: quoteAssetBalance,
 		},
-		Fee: Fee(m.Fee),
+		Fee: Fee{
+			BasisPoint:    m.Fee,
+			FixedBaseFee:  m.FixedFee.BaseFee,
+			FixedQuoteFee: m.FixedFee.QuoteFee,
+		},
 	}, nil
 }
 
@@ -345,7 +357,10 @@ func (t *tradeService) TradePropose(
 	trade := domain.NewTrade()
 	if ok, _ := trade.Propose(
 		swapRequest,
-		market.QuoteAsset, mkt.Fee,
+		market.QuoteAsset,
+		mkt.Fee,
+		mkt.FixedFee.BaseFee,
+		mkt.FixedFee.QuoteFee,
 		nil,
 	); !ok {
 		swapFail = trade.SwapFailMessage()
@@ -408,7 +423,15 @@ end:
 
 	if swapAccept != nil {
 		log.Infof("trade with id %s accepted", trade.ID)
+
 		selectedUnspentKeys = getUnspentKeys(fillProposalResult.SelectedUnspents)
+		lockedUnspents, _ := t.repoManager.UnspentRepository().LockUnspents(
+			ctx,
+			selectedUnspentKeys,
+			trade.ID,
+		)
+		log.Debugf("locked %d unspents", lockedUnspents)
+
 		// set timer for trade expiration
 		go func() {
 			// admit a tollerance of 1 minute past the expiration time.
@@ -439,15 +462,6 @@ end:
 					}); err != nil {
 						return nil, err
 					}
-					lockedUnspents, err := t.repoManager.UnspentRepository().LockUnspents(
-						ctx,
-						selectedUnspentKeys,
-						trade.ID,
-					)
-					if err != nil {
-						return nil, err
-					}
-					log.Debugf("locked %d unspents", lockedUnspents)
 				}
 				return nil, nil
 			},
@@ -920,20 +934,20 @@ func previewAmountFromPrice(
 	}
 
 	isBaseAsset := asset == market.BaseAsset
-	feePercentage := uint64(market.Fee.BasisPoint)
+	feePercentage := uint64(market.Fee)
 	var previewAmount uint64
 
 	if tradeType == TradeBuy {
 		if isBaseAsset {
-			previewAmount = previewAmountP(amount, price, feePercentage, uint64(market.Fee.FixedQuoteFee))
+			previewAmount = previewAmountP(amount, price, feePercentage, uint64(market.FixedFee.QuoteFee))
 		} else {
-			previewAmount = previewAmountR(amount, price, feePercentage, uint64(market.Fee.FixedBaseFee))
+			previewAmount = previewAmountR(amount, price, feePercentage, uint64(market.FixedFee.BaseFee))
 		}
 	} else {
 		if isBaseAsset {
-			previewAmount = previewAmountR(amount, price, feePercentage, uint64(market.Fee.FixedQuoteFee))
+			previewAmount = previewAmountR(amount, price, feePercentage, uint64(market.FixedFee.QuoteFee))
 		} else {
-			previewAmount = previewAmountP(amount, price, feePercentage, uint64(market.Fee.FixedBaseFee))
+			previewAmount = previewAmountP(amount, price, feePercentage, uint64(market.FixedFee.BaseFee))
 		}
 	}
 
@@ -966,7 +980,7 @@ func previewFromFormula(
 	formula := market.Strategy.Formula()
 	baseAssetBalance := uint64(marketBalance.BaseAmount)
 	quoteAssetBalance := uint64(marketBalance.QuoteAmount)
-	fee := uint64(market.Fee.BasisPoint)
+	fee := uint64(market.Fee)
 	var previewAmount uint64
 	var err error
 	if tradeType == TradeBuy {
@@ -1020,15 +1034,15 @@ func previewFromFormula(
 
 	if tradeType == TradeBuy {
 		if asset == market.BaseAsset {
-			previewAmount += uint64(market.Fee.FixedQuoteFee)
+			previewAmount += uint64(market.FixedFee.QuoteFee)
 		} else {
-			previewAmount -= uint64(market.Fee.FixedBaseFee)
+			previewAmount -= uint64(market.FixedFee.BaseFee)
 		}
 	} else {
 		if asset == market.BaseAsset {
-			previewAmount -= uint64(market.Fee.FixedQuoteFee)
+			previewAmount -= uint64(market.FixedFee.QuoteFee)
 		} else {
-			previewAmount += uint64(market.Fee.FixedBaseFee)
+			previewAmount += uint64(market.FixedFee.BaseFee)
 		}
 	}
 
