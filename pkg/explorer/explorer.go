@@ -63,11 +63,11 @@ type Service interface {
 	// BroadcastTransaction attempts to add the given tx in hex format to the
 	// mempool and returns its tx hash.
 	BroadcastTransaction(txhex string) (txid string, err error)
-	/**** REGTEST ONLY ****/
-	// Faucet funds the given address with 1 LBTC
-	Faucet(address string, amount int) (txid string, err error)
-	// Mint funds the given address with a certain amount of a new issued asset.
-	Mint(address string, amount int) (txid string, asset string, err error)
 	// GetBlockHeight returns the the number of block of the blockchain.
 	GetBlockHeight() (int, error)
+	/**** REGTEST ONLY ****/
+	// Faucet funds the given address with the amount (in BTC) of provided asset
+	Faucet(address string, amount float64, asset string) (txid string, err error)
+	// Mint funds the given address with a certain amount (in BTC) of a new issued asset.
+	Mint(address string, amount float64) (txid string, asset string, err error)
 }

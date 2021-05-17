@@ -13,7 +13,7 @@ import (
 	"github.com/vulpemventures/go-elements/payment"
 )
 
-var oneLbtc = 100000000
+var oneLbtc = float64(1)
 
 func TestGetUnspents(t *testing.T) {
 	address, blindKey, err := newTestData()
@@ -25,7 +25,7 @@ func TestGetUnspents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = explorerSvc.Faucet(address, oneLbtc)
+	_, err = explorerSvc.Faucet(address, oneLbtc, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestSelectUnspents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := explorerSvc.Faucet(addr, oneLbtc); err != nil {
+	if _, err := explorerSvc.Faucet(addr, oneLbtc, ""); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Second)

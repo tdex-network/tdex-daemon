@@ -140,10 +140,10 @@ func (m mockExplorer) GetTransactionsForAddress(addr string, blindingKey []byte)
 func (m mockExplorer) BroadcastTransaction(txHex string) (string, error) {
 	return "", errors.New("implement me")
 }
-func (m mockExplorer) Faucet(addr string, amount int) (string, error) {
+func (m mockExplorer) Faucet(addr string, amount float64, asset string) (string, error) {
 	return "", errors.New("implement me")
 }
-func (m mockExplorer) Mint(addr string, amount int) (string, string, error) {
+func (m mockExplorer) Mint(addr string, amount float64) (string, string, error) {
 	return "", "", errors.New("implement me")
 }
 

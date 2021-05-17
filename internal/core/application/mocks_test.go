@@ -199,8 +199,8 @@ func (m *mockExplorer) BroadcastTransaction(txhex string) (string, error) {
 	return res, args.Error(1)
 }
 
-func (m *mockExplorer) Faucet(addr string, amount int) (string, error) {
-	args := m.Called(addr)
+func (m *mockExplorer) Faucet(addr string, amount float64, asset string) (string, error) {
+	args := m.Called(addr, amount, asset)
 
 	var res string
 	if a := args.Get(0); a != nil {
@@ -209,7 +209,7 @@ func (m *mockExplorer) Faucet(addr string, amount int) (string, error) {
 	return res, args.Error(1)
 }
 
-func (m *mockExplorer) Mint(addr string, amount int) (string, string, error) {
+func (m *mockExplorer) Mint(addr string, amount float64) (string, string, error) {
 	args := m.Called(addr, amount)
 
 	var res string
