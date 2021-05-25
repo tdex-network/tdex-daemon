@@ -2,11 +2,11 @@ package boltsecurestore_test
 
 import (
 	"os"
-	"securestore"
-	boltsecurestore "securestore/bolt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tdex-network/tdex-daemon/pkg/securestore"
+	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
 )
 
 var (

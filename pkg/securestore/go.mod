@@ -1,8 +1,8 @@
-module securestore
+module github.com/tdex-network/tdex-daemon/pkg/securestore
 
-go 1.16
+go 1.14
 
-replace go.etcd.io/etcd => go.etcd.io/etcd v0.0.0-20200520232829-54ba9589114f
+replace go.etcd.io/etcd => go.etcd.io/etcd v0.5.0-alpha.5.0.20201125193152-8a03d2e9614b
 
 require (
 	github.com/btcsuite/btcwallet v0.12.0

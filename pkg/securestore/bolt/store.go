@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"securestore"
 	"strings"
 	"sync"
 
 	"github.com/btcsuite/btcwallet/snacl"
 	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/lightningnetwork/lnd/kvdb"
+	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 )
 
 const (
