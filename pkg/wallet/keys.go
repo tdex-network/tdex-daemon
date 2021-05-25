@@ -39,7 +39,7 @@ func (w *Wallet) ExtendedPrivateKey(opts ExtendedKeyOpts) (string, error) {
 		return "", err
 	}
 
-	xprv, err := masterKey.Child(opts.Account)
+	xprv, err := masterKey.Derive(opts.Account)
 	if err != nil {
 		return "", err
 	}
@@ -64,7 +64,7 @@ func (w *Wallet) ExtendedPublicKey(opts ExtendedKeyOpts) (string, error) {
 		return "", err
 	}
 
-	xprv, err := masterKey.Child(opts.Account)
+	xprv, err := masterKey.Derive(opts.Account)
 	if err != nil {
 		return "", err
 	}
@@ -117,7 +117,7 @@ func (w *Wallet) DeriveSigningKeyPair(opts DeriveSigningKeyPairOpts) (
 
 	derivationPath, _ := ParseDerivationPath(opts.DerivationPath)
 	for _, step := range derivationPath {
-		hdNode, err = hdNode.Child(step)
+		hdNode, err = hdNode.Derive(step)
 		if err != nil {
 			return nil, nil, err
 		}
