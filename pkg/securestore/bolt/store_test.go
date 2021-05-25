@@ -2,12 +2,10 @@ package boltsecurestore_test
 
 import (
 	"os"
-	"path"
 	"securestore"
 	boltsecurestore "securestore/bolt"
 	"testing"
 
-	"github.com/lightningnetwork/lnd/kvdb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -117,9 +115,16 @@ func TestAddToGetFromBucket(t *testing.T) {
 	err = store.AddToBucket(nil, key, value)
 	require.NoError(t, err)
 
-	val, err := store.GetFromBucket(nil, key)
-	require.NoError(t, err)
-	require.Equal(t, value, val)
+	t.Run("data found", func(t *testing.T) {
+		val, err := store.GetFromBucket(nil, key)
+		require.NoError(t, err)
+		require.Equal(t, value, val)
+	})
+	t.Run("data not found", func(t *testing.T) {
+		val, err := store.GetFromBucket(nil, []byte("notfound"))
+		require.NoError(t, err)
+		require.Nil(t, val)
+	})
 }
 
 func TestFailingAddToBucket(t *testing.T) {
@@ -211,12 +216,6 @@ func TestFailingGetFromBucket(t *testing.T) {
 			bucketKey:   nil,
 			key:         []byte("enckey"),
 			expectedErr: boltsecurestore.ErrForbiddenDataKey,
-		},
-		{
-			name:        "missing data",
-			bucketKey:   nil,
-			key:         []byte("test"),
-			expectedErr: boltsecurestore.ErrDataNotFound,
 		},
 	}
 
@@ -530,36 +529,14 @@ func newTestStoreUnlocked() (securestore.SecureStorage, func(), error) {
 }
 
 func newTestStore() (securestore.SecureStorage, func(), error) {
-	dir := "test"
-	if err := os.MkdirAll(dir, 0777); err != nil {
-		return nil, nil, err
-	}
-	store, cancel, err := openTestStore(dir)
+	dir, filename := "test", "test.db"
+	store, err := boltsecurestore.NewSecureStorage(dir, filename)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() {
-		cancel()
+		store.Close()
 		os.RemoveAll(dir)
 	}
-	return store, cleanup, nil
-}
-
-func openTestStore(dir string) (securestore.SecureStorage, func(), error) {
-	db, err := kvdb.Create(
-		kvdb.BoltBackendName, path.Join(dir, "test.db"), true,
-		kvdb.DefaultDBTimeout,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	store, err := boltsecurestore.NewSecureStorage(db)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	cleanup := func() { store.Close() }
-
 	return store, cleanup, nil
 }

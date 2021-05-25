@@ -3,6 +3,8 @@ package boltsecurestore
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path"
 	"securestore"
 	"strings"
 	"sync"
@@ -35,7 +37,21 @@ type boltSecureStorage struct {
 }
 
 // NewSecureStorage creates a bolt instance of the SecureStorage interface.
-func NewSecureStorage(db kvdb.Backend) (securestore.SecureStorage, error) {
+func NewSecureStorage(datadir, filename string) (securestore.SecureStorage, error) {
+	if _, err := os.Stat(datadir); os.IsNotExist(err) {
+		os.Mkdir(datadir, os.ModeDir|0755)
+	}
+
+	db, err := kvdb.Create(
+		kvdb.BoltBackendName,
+		path.Join(datadir, filename),
+		true,
+		kvdb.DefaultDBTimeout,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// If the store's bucket doesn't exist, create it.
 	if err := kvdb.Update(db, func(tx kvdb.RwTx) error {
 		_, err := tx.CreateTopLevelBucket(RootKeyBucketName)
@@ -276,7 +292,7 @@ func (s *boltSecureStorage) GetFromBucket(bucketKey, key []byte) ([]byte, error)
 
 		encryptedValue := bucket.Get(key)
 		if len(encryptedValue) <= 0 {
-			return ErrDataNotFound
+			return nil
 		}
 
 		v, err := s.encKey.Decrypt(encryptedValue)
