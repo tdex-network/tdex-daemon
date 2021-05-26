@@ -326,10 +326,12 @@ func TestRemoveFromBucket(t *testing.T) {
 	err = store.RemoveFromBucket(bucketKey, dataKey)
 	require.NoError(t, err)
 
-	_, err = store.GetFromBucket(nil, dataKey)
-	require.EqualError(t, err, boltsecurestore.ErrDataNotFound.Error())
-	_, err = store.GetFromBucket(bucketKey, dataKey)
-	require.EqualError(t, err, boltsecurestore.ErrDataNotFound.Error())
+	data, err := store.GetFromBucket(nil, dataKey)
+	require.NoError(t, err)
+	require.Nil(t, data)
+	data, err = store.GetFromBucket(bucketKey, dataKey)
+	require.NoError(t, err)
+	require.Nil(t, data)
 }
 
 func TestFailingRemoveFromBucket(t *testing.T) {

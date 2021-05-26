@@ -10,8 +10,8 @@ import (
 
 	"github.com/btcsuite/btcwallet/snacl"
 	"github.com/btcsuite/btcwallet/walletdb"
-	"github.com/lightningnetwork/lnd/kvdb"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
+	"github.com/tdex-network/tdex-daemon/pkg/securestore/kvdb"
 )
 
 const (
