@@ -61,7 +61,9 @@ func TestWebhookHandler(t *testing.T) {
 	require.Len(t, hooks, len(testHooks))
 	require.ElementsMatch(t, hooks, testHooks)
 
-	handler.InvokeWebhooksByAction(application.TradeSettled, payloadForAction)
+	// Should invoke all hooks.
+	err = handler.InvokeWebhooksByAction(application.TradeSettled, payloadForAction)
+	require.NoError(t, err)
 
 	for i, hook := range testHooks {
 		err := handler.RemoveWebhook(hook.Id)
@@ -74,6 +76,10 @@ func TestWebhookHandler(t *testing.T) {
 		hooks := handler.ListWebhooksForAction(hook.ActionType)
 		require.Len(t, hooks, len(testHooks)-1-i)
 	}
+
+	// Checks that it's all ok if there are no hooks to invoke.
+	err = handler.InvokeWebhooksByAction(application.AccountLowBalance, payloadForAction)
+	require.NoError(t, err)
 }
 
 func newTestWebhookHandler() (application.WebhookHandler, func(), error) {
