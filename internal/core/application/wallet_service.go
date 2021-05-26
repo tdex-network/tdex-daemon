@@ -272,14 +272,16 @@ func (w *walletService) InitWallet(
 		return
 	}
 
-	go func() {
-		if err := webhookManager.Init(passphrase); err != nil {
-			log.WithError(err).Warn(
-				"an error occured while initializing webhook manager. " +
-					"Webhook management disabled for this session.",
-			)
-		}
-	}()
+	if webhookManager != nil {
+		go func() {
+			if err := webhookManager.Init(passphrase); err != nil {
+				log.WithError(err).Warn(
+					"an error occured while initializing webhook manager. " +
+						"Webhook management disabled for this session.",
+				)
+			}
+		}()
+	}
 
 	go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
 	w.setInitialized(true)

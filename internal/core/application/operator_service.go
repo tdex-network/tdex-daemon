@@ -1025,6 +1025,9 @@ func (o *operatorService) DropMarket(
 func (o *operatorService) AddWebhook(
 	_ context.Context, actionType int, endpoint, secret string,
 ) (string, error) {
+	if webhookManager == nil {
+		return "", ErrWebhookManagerNotInitialized
+	}
 	hook, err := NewWebhook(actionType, endpoint, secret)
 	if err != nil {
 		return "", err
@@ -1036,6 +1039,9 @@ func (o *operatorService) AddWebhook(
 }
 
 func (o *operatorService) RemoveWebhook(_ context.Context, hookID string) error {
+	if webhookManager == nil {
+		return ErrWebhookManagerNotInitialized
+	}
 	return webhookManager.RemoveWebhook(hookID)
 }
 

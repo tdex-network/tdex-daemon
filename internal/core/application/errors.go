@@ -22,4 +22,7 @@ var (
 	// ErrServiceUnavailable is the error returned by the trade service in case of
 	// internal errors
 	ErrServiceUnavailable = errors.New("service is unavailable, try again later")
+	// ErrWebhookManagerNotInitialized is returned when attempting to use
+	// AddWebhook or RemoveWebhook RPCs without having initialized the manager.
+	ErrWebhookManagerNotInitialized = errors.New("webhook manager is not initialized")
 )
