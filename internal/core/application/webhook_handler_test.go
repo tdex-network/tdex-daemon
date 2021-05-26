@@ -21,7 +21,7 @@ var (
 	password         = []byte("password")
 	serverPort       = "8888"
 	serverURL        = fmt.Sprintf("http://localhost:%s", serverPort)
-	payloadForAction = `{"txid":"0000000000000000","swap":{"amount_p":10000,"asset_p":"LBTC","amount_r":450000000,"asset_r":"USDT"},"price":{"base_price":"0.000025","quote_price":"40000"}}`
+	payloadForAction = `{"txid":"0000000000000000000000000000000000000000000000000000000000000000","swap":{"amount_p":10000,"asset_p":"LBTC","amount_r":450000000,"asset_r":"USDT"},"price":{"base_price":"0.000025","quote_price":"40000"}}`
 
 	tradesettleEndpoint = fmt.Sprintf("%s/tradesettle", serverURL)
 	allactionsEndpoint  = fmt.Sprintf("%s/allactions", serverURL)
@@ -114,7 +114,7 @@ func newTestHooks() []*application.Hook {
 		{application.TradeSettled, tradesettleEndpoint, randomSecret()},
 		{application.TradeSettled, tradesettleEndpoint, randomSecret()},
 		{application.TradeSettled, tradesettleEndpoint, randomSecret()},
-		{application.AllActions, allactionsEndpoint, randomSecret()},
+		{application.AllActions, allactionsEndpoint, ""},
 	}
 	hooks := make([]*application.Hook, 0, len(hooksDetails))
 	for _, d := range hooksDetails {
@@ -135,21 +135,13 @@ func newTestWebServer(t *testing.T) *http.Server {
 			http.Error(w, "Missing Content-Type header", http.StatusUnsupportedMediaType)
 			return
 		}
-		if r.Header.Get("Authorization") == "" {
-			http.Error(w, "Missing bearer token", http.StatusUnauthorized)
-			return
-		}
 		// Return response
 		fmt.Fprintf(w, "Done")
 
 		// Log request
 		defer r.Body.Close()
 		payload, _ := ioutil.ReadAll(r.Body)
-		h := map[string]string{
-			"Authorization": r.Header.Get("Authorization"),
-			"Content-Type":  r.Header.Get("Content-Type"),
-		}
-		headers, _ := json.Marshal(h)
+		headers, _ := json.Marshal(r.Header)
 		info := struct {
 			method   string
 			endpoint string
