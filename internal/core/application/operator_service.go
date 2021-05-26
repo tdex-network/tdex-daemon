@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -73,14 +74,8 @@ type OperatorService interface {
 	WithdrawMarketFunds(
 		ctx context.Context,
 		req WithdrawMarketReq,
-	) (
-		[]byte,
-		error,
-	)
-	FeeAccountBalance(ctx context.Context) (
-		int64,
-		error,
-	)
+	) ([]byte, error)
+	FeeAccountBalance(ctx context.Context) (int64, error)
 	ClaimMarketDeposit(
 		ctx context.Context,
 		market Market,
@@ -100,6 +95,12 @@ type OperatorService interface {
 	ListUtxos(ctx context.Context) (map[uint64]UtxoInfoList, error)
 	ReloadUtxos(ctx context.Context) error
 	DropMarket(ctx context.Context, accountIndex int) error
+	AddWebhook(
+		ctx context.Context,
+		actionType int,
+		endpoint, secret string,
+	) (string, error)
+	RemoveWebhook(ctx context.Context, id string) error
 }
 
 type operatorService struct {
@@ -760,7 +761,7 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, ErrWalletNotFunded
 	}
 
-	var txHex string
+	var txHex, txid string
 
 	if err := o.repoManager.VaultRepository().UpdateVault(
 		ctx,
@@ -815,9 +816,11 @@ func (o *operatorService) WithdrawMarketFunds(
 			}
 
 			if req.Push {
-				if _, err := o.explorerSvc.BroadcastTransaction(_txHex); err != nil {
+				_txid, err := o.explorerSvc.BroadcastTransaction(_txHex)
+				if err != nil {
 					return nil, err
 				}
+				txid = _txid
 			}
 
 			txHex = _txHex
@@ -835,6 +838,26 @@ func (o *operatorService) WithdrawMarketFunds(
 		txHex,
 		market.AccountIndex,
 	)
+
+	// Invoke webhooks registered for action AccountWithdraw
+	go func() {
+		payload := map[string]interface{}{
+			"market": map[string]string{
+				"base_asset":  req.BaseAsset,
+				"quote_asset": req.QuoteAsset,
+			},
+			"balance_withdrew": map[string]interface{}{
+				"base_amount":  req.BalanceToWithdraw.BaseAmount,
+				"quote_amount": req.BalanceToWithdraw.QuoteAmount,
+			},
+			"receiving_address": req.Address,
+			"txid":              txid,
+		}
+		payloadStr, _ := json.Marshal(payload)
+		if err := webhookManager.InvokeWebhooksByAction(AccountWithdraw, string(payloadStr)); err != nil {
+			log.WithError(err).Warn("an error occured while invoking all hooks for action AccountWithdraw")
+		}
+	}()
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
@@ -988,6 +1011,30 @@ func (o *operatorService) ClaimFeeDeposit(
 	infoPerAccount[domain.FeeAccount] = info
 
 	return o.claimDeposit(ctx, infoPerAccount, outpoints, feeDeposit)
+}
+
+func (o *operatorService) DropMarket(
+	ctx context.Context,
+	accountIndex int,
+) error {
+	return o.repoManager.MarketRepository().DeleteMarket(ctx, accountIndex)
+}
+
+func (o *operatorService) AddWebhook(
+	_ context.Context, actionType int, endpoint, secret string,
+) (string, error) {
+	hook, err := NewWebhook(actionType, endpoint, secret)
+	if err != nil {
+		return "", err
+	}
+	if err := webhookManager.AddWebhook(hook); err != nil {
+		return "", err
+	}
+	return hook.Id, nil
+}
+
+func (o *operatorService) RemoveWebhook(_ context.Context, hookID string) error {
+	return webhookManager.RemoveWebhook(hookID)
 }
 
 func (o *operatorService) getNonFundedMarkets(ctx context.Context) ([]domain.Market, error) {
@@ -1338,11 +1385,4 @@ func appendUtxoInfo(list []UtxoInfo, unspent domain.Unspent) []UtxoInfo {
 		Value: unspent.Value,
 		Asset: unspent.AssetHash,
 	})
-}
-
-func (o *operatorService) DropMarket(
-	ctx context.Context,
-	accountIndex int,
-) error {
-	return o.repoManager.MarketRepository().DeleteMarket(ctx, accountIndex)
 }

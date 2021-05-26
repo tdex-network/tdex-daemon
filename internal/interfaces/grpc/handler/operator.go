@@ -174,6 +174,20 @@ func (o operatorHandler) DropMarket(
 	return o.dropMarket(ctx, req)
 }
 
+func (o operatorHandler) AddWebhook(
+	ctx context.Context,
+	req *pb.AddWebhookRequest,
+) (*pb.AddWebhookReply, error) {
+	return o.addWebhhok(ctx, req)
+}
+
+func (o operatorHandler) RemoveWebhook(
+	ctx context.Context,
+	req *pb.RemoveWebhookRequest,
+) (*pb.RemoveWebhookReply, error) {
+	return o.removeWebhhok(ctx, req)
+}
+
 func (o operatorHandler) dropMarket(
 	ctx context.Context,
 	req *pb.DropMarketRequest,
@@ -755,6 +769,27 @@ func (o operatorHandler) reportMarketFee(
 		CollectedFees:              collectedFees,
 		TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
 	}, nil
+}
+
+func (o operatorHandler) addWebhhok(
+	ctx context.Context, req *pb.AddWebhookRequest,
+) (*pb.AddWebhookReply, error) {
+	hookID, err := o.operatorSvc.AddWebhook(
+		ctx, int(req.GetAction()), req.GetEndpoint(), req.GetSecret(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.AddWebhookReply{Id: hookID}, nil
+}
+
+func (o operatorHandler) removeWebhhok(
+	ctx context.Context, req *pb.RemoveWebhookRequest,
+) (*pb.RemoveWebhookReply, error) {
+	if err := o.operatorSvc.RemoveWebhook(ctx, req.GetId()); err != nil {
+		return nil, err
+	}
+	return &pb.RemoveWebhookReply{}, nil
 }
 
 func validateMarket(market *pbtypes.Market) error {
