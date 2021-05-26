@@ -174,25 +174,27 @@ func (b *blockchainListener) listenToEventChannel() {
 			}
 
 			// Invoke webhooks registered for action TradeSettled
-			go func() {
-				payload := map[string]interface{}{
-					"txid": trade.TxID,
-					"swap": map[string]interface{}{
-						"amount_p": trade.SwapRequestMessage().GetAmountP(),
-						"asset_p":  trade.SwapRequestMessage().GetAssetP(),
-						"amount_r": trade.SwapRequestMessage().GetAmountR(),
-						"asset_r":  trade.SwapRequestMessage().GetAssetR(),
-					},
-					"price": map[string]string{
-						"base_price":  trade.MarketPrice.BasePrice.String(),
-						"quote_price": trade.MarketPrice.QuotePrice.String(),
-					},
-				}
-				payloadStr, _ := json.Marshal(payload)
-				if err := webhookManager.InvokeWebhooksByAction(TradeSettled, string(payloadStr)); err != nil {
-					log.WithError(err).Warn("an error occured while invoking all hooks for action TradeSettled")
-				}
-			}()
+			if webhookManager != nil {
+				go func() {
+					payload := map[string]interface{}{
+						"txid": trade.TxID,
+						"swap": map[string]interface{}{
+							"amount_p": trade.SwapRequestMessage().GetAmountP(),
+							"asset_p":  trade.SwapRequestMessage().GetAssetP(),
+							"amount_r": trade.SwapRequestMessage().GetAmountR(),
+							"asset_r":  trade.SwapRequestMessage().GetAssetR(),
+						},
+						"price": map[string]string{
+							"base_price":  trade.MarketPrice.BasePrice.String(),
+							"quote_price": trade.MarketPrice.QuotePrice.String(),
+						},
+					}
+					payloadStr, _ := json.Marshal(payload)
+					if err := webhookManager.InvokeWebhooksByAction(TradeSettled, string(payloadStr)); err != nil {
+						log.WithError(err).Warn("an error occured while invoking all hooks for action TradeSettled")
+					}
+				}()
+			}
 			// stop watching for a tx after it's confirmed
 			b.StopObserveTx(e.TxID)
 		}

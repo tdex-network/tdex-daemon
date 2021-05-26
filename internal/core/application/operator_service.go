@@ -840,24 +840,26 @@ func (o *operatorService) WithdrawMarketFunds(
 	)
 
 	// Invoke webhooks registered for action AccountWithdraw
-	go func() {
-		payload := map[string]interface{}{
-			"market": map[string]string{
-				"base_asset":  req.BaseAsset,
-				"quote_asset": req.QuoteAsset,
-			},
-			"balance_withdrew": map[string]interface{}{
-				"base_amount":  req.BalanceToWithdraw.BaseAmount,
-				"quote_amount": req.BalanceToWithdraw.QuoteAmount,
-			},
-			"receiving_address": req.Address,
-			"txid":              txid,
-		}
-		payloadStr, _ := json.Marshal(payload)
-		if err := webhookManager.InvokeWebhooksByAction(AccountWithdraw, string(payloadStr)); err != nil {
-			log.WithError(err).Warn("an error occured while invoking all hooks for action AccountWithdraw")
-		}
-	}()
+	if webhookManager != nil {
+		go func() {
+			payload := map[string]interface{}{
+				"market": map[string]string{
+					"base_asset":  req.BaseAsset,
+					"quote_asset": req.QuoteAsset,
+				},
+				"balance_withdrew": map[string]interface{}{
+					"base_amount":  req.BalanceToWithdraw.BaseAmount,
+					"quote_amount": req.BalanceToWithdraw.QuoteAmount,
+				},
+				"receiving_address": req.Address,
+				"txid":              txid,
+			}
+			payloadStr, _ := json.Marshal(payload)
+			if err := webhookManager.InvokeWebhooksByAction(AccountWithdraw, string(payloadStr)); err != nil {
+				log.WithError(err).Warn("an error occured while invoking all hooks for action AccountWithdraw")
+			}
+		}()
+	}
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
