@@ -63,12 +63,15 @@ func (h *Hook) Serialize() []byte {
 }
 
 type WebhookHandler interface {
+	// Init initialize the internal store
+	Init(password string) error
 	// LockStore locks the internal store.
 	LockStore()
 	// CloseStore closes the connections with the internal store.
 	CloseStore() error
 	// UnlockStore unlocks the internal store.
 	UnlockStore(password string) error
+	ChangePassword(oldPwd, newPwd string) error
 
 	// AddWebhook adds the provided webhook to the interal store.
 	AddWebhook(hook *Hook) error
@@ -91,18 +94,26 @@ type webhookHandler struct {
 }
 
 func NewWebhookHandler(store securestore.SecureStorage) (WebhookHandler, error) {
-	if err := store.CreateBucket(hooksBucket); err != nil {
-		return nil, err
-	}
-	if err := store.CreateBucket(hooksByActionBucket); err != nil {
-		return nil, err
-	}
-
 	return &webhookHandler{
 		store:      store,
 		httpClient: esplora.NewHTTPClient(15 * time.Second),
 		cb:         newCircuitBreaker(),
 	}, nil
+}
+
+func (h *webhookHandler) Init(password string) error {
+	if err := h.UnlockStore(password); err != nil {
+		return err
+	}
+	defer h.LockStore()
+
+	if err := h.store.CreateBucket(hooksBucket); err != nil {
+		return err
+	}
+	if err := h.store.CreateBucket(hooksByActionBucket); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (h *webhookHandler) LockStore() {
@@ -116,6 +127,12 @@ func (h *webhookHandler) UnlockStore(password string) error {
 
 func (h *webhookHandler) CloseStore() error {
 	return h.store.Close()
+}
+
+func (h *webhookHandler) ChangePassword(oldPwd, newPwd string) error {
+	old := []byte(oldPwd)
+	new := []byte(newPwd)
+	return h.store.ChangePassword(old, new)
 }
 
 // AddWebhook adds the provided hook to those managed by the handler.
@@ -268,7 +285,13 @@ func (h *webhookHandler) doRequest(hook *Hook, payload string) error {
 
 var webhookManager WebhookHandler
 
-func InitWebhookManager(store securestore.SecureStorage) (err error) {
+func InitWebhookManager(store securestore.SecureStorage) (clean func(), err error) {
 	webhookManager, err = NewWebhookHandler(store)
-	return err
+	if err != nil {
+		return
+	}
+	clean = func() {
+		webhookManager.CloseStore()
+	}
+	return
 }

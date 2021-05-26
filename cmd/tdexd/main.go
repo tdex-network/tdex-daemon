@@ -15,22 +15,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/shopspring/decimal"
-	"github.com/tdex-network/tdex-daemon/pkg/stats"
-
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	"golang.org/x/net/http2"
-
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/shopspring/decimal"
+	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
+	"github.com/tdex-network/tdex-daemon/pkg/stats"
+	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 
 	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
@@ -117,6 +115,14 @@ func main() {
 	if err != nil {
 		log.WithError(err).Panic("error while setting up wallet service")
 	}
+	secureStore, err := boltsecurestore.NewSecureStorage(dbDir, "webhook.db")
+	if err != nil {
+		log.WithError(err).Panic("error while setting up webhook secure storage")
+	}
+	closeWebhook, err := application.InitWebhookManager(secureStore)
+	if err != nil {
+		log.WithError(err).Panic("error while initializing webhook manager")
+	}
 
 	// Ports
 	traderAddress := fmt.Sprintf(":%+v", config.GetInt(config.TraderListeningPortKey))
@@ -161,6 +167,7 @@ func main() {
 		traderGrpcServer,
 		operatorGrpcServer,
 		cancelStats,
+		closeWebhook,
 	)
 
 	// Serve grpc and grpc-web multiplexed on the same port
@@ -187,6 +194,7 @@ func stop(
 	traderServer *grpc.Server,
 	operatorServer *grpc.Server,
 	cancelStats context.CancelFunc,
+	closeWebhook func(),
 ) {
 	if log.GetLevel() >= log.DebugLevel {
 		cancelStats()
@@ -200,7 +208,11 @@ func stop(
 	traderServer.Stop()
 	log.Debug("disabled trader interface")
 
+	closeWebhook()
+	log.Debug("stopped webhook manager")
+
 	blockchainListener.StopObservation()
+
 	// give the crawler the time to terminate
 	time.Sleep(
 		time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond,

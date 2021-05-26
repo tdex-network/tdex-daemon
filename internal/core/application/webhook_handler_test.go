@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	password         = []byte("password")
+	password         = "password"
 	serverPort       = "8888"
 	serverURL        = fmt.Sprintf("http://localhost:%s", serverPort)
 	payloadForAction = `{"txid":"0000000000000000000000000000000000000000000000000000000000000000","swap":{"amount_p":10000,"asset_p":"LBTC","amount_r":450000000,"asset_r":"USDT"},"price":{"base_price":"0.000025","quote_price":"40000"}}`
@@ -50,6 +50,12 @@ func TestWebhookHandler(t *testing.T) {
 			t.Error(err)
 		}
 	}()
+
+	err = handler.Init(password)
+	require.NoError(t, err)
+
+	err = handler.UnlockStore(password)
+	require.NoError(t, err)
 
 	testHooks := newTestHooks()
 	for _, hook := range testHooks {
@@ -103,9 +109,6 @@ func newTestWebhookHandler() (application.WebhookHandler, func(), error) {
 func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, error) {
 	store, err := boltsecurestore.NewSecureStorage(datadir, filename)
 	if err != nil {
-		return nil, err
-	}
-	if err := store.CreateUnlock(&password); err != nil {
 		return nil, err
 	}
 	return store, nil

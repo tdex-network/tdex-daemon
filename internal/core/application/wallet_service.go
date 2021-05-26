@@ -272,6 +272,15 @@ func (w *walletService) InitWallet(
 		return
 	}
 
+	go func() {
+		if err := webhookManager.Init(passphrase); err != nil {
+			log.WithError(err).Warn(
+				"an error occured while initializing webhook manager. " +
+					"Webhook management disabled for this session.",
+			)
+		}
+	}()
+
 	go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
 	w.setInitialized(true)
 	if w.isSyncing() {
@@ -303,6 +312,16 @@ func (w *walletService) UnlockWallet(
 		return err
 	}
 
+	if webhookManager != nil {
+		go func() {
+			if err := webhookManager.UnlockStore(passphrase); err != nil {
+				log.WithError(err).Warn(
+					"an error occured while unlocking webhook manager internal store",
+				)
+			}
+		}()
+	}
+
 	w.blockchainListener.StartObservation()
 	return nil
 }
@@ -319,7 +338,7 @@ func (w *walletService) ChangePassword(
 		return ErrWalletNotInitialized
 	}
 
-	return w.repoManager.VaultRepository().UpdateVault(
+	if err := w.repoManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			err := v.ChangePassphrase(currentPassphrase, newPassphrase)
@@ -328,7 +347,23 @@ func (w *walletService) ChangePassword(
 			}
 			return v, nil
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	if webhookManager != nil {
+		go func() {
+			if err := webhookManager.ChangePassword(
+				currentPassphrase, newPassphrase,
+			); err != nil {
+				log.WithError(err).Warn(
+					"an error occured while updating webhook manager password",
+				)
+			}
+		}()
+	}
+
+	return nil
 }
 
 func (w *walletService) GenerateAddressAndBlindingKey(
