@@ -64,7 +64,8 @@ func TestWebhookPubSubService(t *testing.T) {
 	require.NoError(t, err)
 
 	testHooks := newTestHooks()
-	for _, hook := range testHooks {
+	for _, h := range testHooks {
+		hook := h.(*webhookpubsub.Webhook)
 		hookID, err := pubsubSvc.Subscribe(hook.ActionType.String(), hook.Endpoint, hook.Secret)
 		require.NoError(t, err)
 		require.NotNil(t, hookID)
@@ -72,13 +73,28 @@ func TestWebhookPubSubService(t *testing.T) {
 
 	hooks := pubsubSvc.ListSubscriptionsForTopic(webhookpubsub.TradeSettled.String())
 	require.Len(t, hooks, len(testHooks))
-	require.ElementsMatch(t, hooks, testHooks)
+	require.Condition(t, func() bool {
+		for i, h := range testHooks {
+			expectedHook := h.(*webhookpubsub.Webhook)
+			hook := hooks[i].(*webhookpubsub.Webhook)
+			if hook.Id == "" {
+				return false
+			}
+			if hook.ActionType != expectedHook.ActionType ||
+				hook.Endpoint != expectedHook.Endpoint ||
+				hook.Secret != expectedHook.Secret {
+				return false
+			}
+		}
+		return true
+	})
 
 	// Should invoke all hooks.
 	err = pubsubSvc.Publish(webhookpubsub.TradeSettled.String(), testMessage)
 	require.NoError(t, err)
 
-	for i, hook := range testHooks {
+	for i, h := range hooks {
+		hook := h.(*webhookpubsub.Webhook)
 		err := pubsubSvc.Unsubscribe(hook.ActionType.String(), hook.Id)
 		require.NoError(t, err)
 
@@ -113,7 +129,7 @@ func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, 
 	return store, nil
 }
 
-func newTestHooks() []*webhookpubsub.Webhook {
+func newTestHooks() []interface{} {
 	hooksDetails := []struct {
 		actionType webhookpubsub.WebhookAction
 		endpoint   string
@@ -124,9 +140,10 @@ func newTestHooks() []*webhookpubsub.Webhook {
 		{webhookpubsub.TradeSettled, tradesettleEndpoint, randomSecret()},
 		{webhookpubsub.AllActions, allactionsEndpoint, ""},
 	}
-	hooks := make([]*webhookpubsub.Webhook, 0, len(hooksDetails))
+	hooks := make([]interface{}, 0, len(hooksDetails))
 	for _, d := range hooksDetails {
 		hook, _ := webhookpubsub.NewWebhook(d.actionType, d.endpoint, d.secret)
+		hook.Id = ""
 		hooks = append(hooks, hook)
 	}
 	return hooks
