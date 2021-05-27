@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -95,11 +94,7 @@ type OperatorService interface {
 	ListUtxos(ctx context.Context) (map[uint64]UtxoInfoList, error)
 	ReloadUtxos(ctx context.Context) error
 	DropMarket(ctx context.Context, accountIndex int) error
-	AddWebhook(
-		ctx context.Context,
-		actionType int,
-		endpoint, secret string,
-	) (string, error)
+	AddWebhook(ctx context.Context, hook WebhookInfo) (string, error)
 	RemoveWebhook(ctx context.Context, id string) error
 }
 
@@ -839,27 +834,28 @@ func (o *operatorService) WithdrawMarketFunds(
 		market.AccountIndex,
 	)
 
+	fmt.Println(txid)
 	// Invoke webhooks registered for action AccountWithdraw
-	if webhookManager != nil {
-		go func() {
-			payload := map[string]interface{}{
-				"market": map[string]string{
-					"base_asset":  req.BaseAsset,
-					"quote_asset": req.QuoteAsset,
-				},
-				"balance_withdrew": map[string]interface{}{
-					"base_amount":  req.BalanceToWithdraw.BaseAmount,
-					"quote_amount": req.BalanceToWithdraw.QuoteAmount,
-				},
-				"receiving_address": req.Address,
-				"txid":              txid,
-			}
-			payloadStr, _ := json.Marshal(payload)
-			if err := webhookManager.InvokeWebhooksByAction(AccountWithdraw, string(payloadStr)); err != nil {
-				log.WithError(err).Warn("an error occured while invoking all hooks for action AccountWithdraw")
-			}
-		}()
-	}
+	// if webhookManager != nil {
+	// 	go func() {
+	// 		payload := map[string]interface{}{
+	// 			"market": map[string]string{
+	// 				"base_asset":  req.BaseAsset,
+	// 				"quote_asset": req.QuoteAsset,
+	// 			},
+	// 			"balance_withdrew": map[string]interface{}{
+	// 				"base_amount":  req.BalanceToWithdraw.BaseAmount,
+	// 				"quote_amount": req.BalanceToWithdraw.QuoteAmount,
+	// 			},
+	// 			"receiving_address": req.Address,
+	// 			"txid":              txid,
+	// 		}
+	// 		payloadStr, _ := json.Marshal(payload)
+	// 		if err := webhookManager.InvokeWebhooksByAction(AccountWithdraw, string(payloadStr)); err != nil {
+	// 			log.WithError(err).Warn("an error occured while invoking all hooks for action AccountWithdraw")
+	// 		}
+	// 	}()
+	// }
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
@@ -1022,27 +1018,27 @@ func (o *operatorService) DropMarket(
 	return o.repoManager.MarketRepository().DeleteMarket(ctx, accountIndex)
 }
 
-func (o *operatorService) AddWebhook(
-	_ context.Context, actionType int, endpoint, secret string,
-) (string, error) {
-	if webhookManager == nil {
-		return "", ErrWebhookManagerNotInitialized
+func (o *operatorService) AddWebhook(_ context.Context, hook WebhookInfo) (string, error) {
+	if o.blockchainListener.PubSubService() == nil {
+		return "", ErrPubSubServiceNotInitialized
 	}
-	hook, err := NewWebhook(actionType, endpoint, secret)
-	if err != nil {
-		return "", err
+
+	topics := o.blockchainListener.PubSubService().TopicsByCode()
+	topic, ok := topics[hook.ActionType]
+	if !ok {
+		return "", ErrInvalidActionType
 	}
-	if err := webhookManager.AddWebhook(hook); err != nil {
-		return "", err
-	}
-	return hook.Id, nil
+
+	return o.blockchainListener.PubSubService().Subscribe(
+		topic.Label(), hook.Endpoint, hook.Secret,
+	)
 }
 
 func (o *operatorService) RemoveWebhook(_ context.Context, hookID string) error {
-	if webhookManager == nil {
-		return ErrWebhookManagerNotInitialized
+	if o.blockchainListener.PubSubService() == nil {
+		return ErrPubSubServiceNotInitialized
 	}
-	return webhookManager.RemoveWebhook(hookID)
+	return o.blockchainListener.PubSubService().Unsubscribe("", hookID)
 }
 
 func (o *operatorService) getNonFundedMarkets(ctx context.Context) ([]domain.Market, error) {

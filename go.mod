@@ -21,6 +21,7 @@ require (
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/magiconair/properties v1.8.4
 	github.com/prometheus/client_golang v1.0.0
+	github.com/prometheus/common v0.4.1
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/shopspring/decimal v1.2.0
 	github.com/sirupsen/logrus v1.7.0

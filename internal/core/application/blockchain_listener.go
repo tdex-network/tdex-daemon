@@ -27,12 +27,15 @@ type BlockchainListener interface {
 
 	StartObserveTx(txid string)
 	StopObserveTx(txid string)
+
+	PubSubService() SecurePubSub
 }
 
 type blockchainListener struct {
 	crawlerSvc         crawler.Service
 	explorerSvc        explorer.Service
 	repoManager        ports.RepoManager
+	pubsubSvc          SecurePubSub
 	started            bool
 	pendingObservables []crawler.Observable
 	marketBaseAsset    string
@@ -45,12 +48,14 @@ type blockchainListener struct {
 func NewBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
+	pubsubSvc SecurePubSub,
 	marketBaseAsset string,
 	net *network.Network,
 ) BlockchainListener {
 	return newBlockchainListener(
 		crawlerSvc,
 		repoManager,
+		pubsubSvc,
 		marketBaseAsset,
 		net,
 	)
@@ -59,12 +64,14 @@ func NewBlockchainListener(
 func newBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
+	pubsubSvc SecurePubSub,
 	marketBaseAsset string,
 	net *network.Network,
 ) *blockchainListener {
 	return &blockchainListener{
 		crawlerSvc:         crawlerSvc,
 		repoManager:        repoManager,
+		pubsubSvc:          pubsubSvc,
 		mutex:              &sync.RWMutex{},
 		pendingObservables: make([]crawler.Observable, 0),
 		marketBaseAsset:    marketBaseAsset,
@@ -141,6 +148,10 @@ func (b *blockchainListener) StopObserveTx(txid string) {
 	b.crawlerSvc.RemoveObservable(&crawler.TransactionObservable{TxID: txid})
 }
 
+func (b *blockchainListener) PubSubService() SecurePubSub {
+	return b.pubsubSvc
+}
+
 func (b *blockchainListener) listenToEventChannel() {
 	for {
 		event := <-b.crawlerSvc.GetEventChannel()
@@ -174,7 +185,7 @@ func (b *blockchainListener) listenToEventChannel() {
 			}
 
 			// Invoke webhooks registered for action TradeSettled
-			if webhookManager != nil {
+			if b.pubsubSvc != nil {
 				go func() {
 					payload := map[string]interface{}{
 						"txid": trade.TxID,
@@ -189,8 +200,15 @@ func (b *blockchainListener) listenToEventChannel() {
 							"quote_price": trade.MarketPrice.QuotePrice.String(),
 						},
 					}
-					payloadStr, _ := json.Marshal(payload)
-					if err := webhookManager.InvokeWebhooksByAction(TradeSettled, string(payloadStr)); err != nil {
+					message, _ := json.Marshal(payload)
+					topics := b.pubsubSvc.TopicsByCode()
+					topic, ok := topics[TradeSettled]
+					if !ok {
+						log.Warn("unable to retrieve topic for trade settled event")
+						return
+					}
+
+					if err := b.pubsubSvc.Publish(topic.Label(), string(message)); err != nil {
 						log.WithError(err).Warn("an error occured while invoking all hooks for action TradeSettled")
 					}
 				}()

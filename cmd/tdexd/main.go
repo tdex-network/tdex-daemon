@@ -22,10 +22,12 @@ import (
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
 	"github.com/tdex-network/tdex-daemon/pkg/stats"
 	"golang.org/x/net/http2"
@@ -78,9 +80,20 @@ func main() {
 		ExplorerLimit:      config.GetInt(config.CrawlLimitKey),
 		ExplorerTokenBurst: config.GetInt(config.CrawlTokenBurst),
 	})
+
+	webhookPubSub, err := newWebhookPubSubService(
+		dbDir, config.GetDuration(config.ExplorerRequestTimeoutKey),
+	)
+	if err != nil {
+		log.WithError(err).Panic(
+			"an error occured while setting up webhook pubsub service",
+		)
+	}
+
 	blockchainListener := application.NewBlockchainListener(
 		crawlerSvc,
 		repoManager,
+		webhookPubSub,
 		marketsBaseAsset,
 		network,
 	)
@@ -114,14 +127,6 @@ func main() {
 	)
 	if err != nil {
 		log.WithError(err).Panic("error while setting up wallet service")
-	}
-	secureStore, err := boltsecurestore.NewSecureStorage(dbDir, "webhook.db")
-	if err != nil {
-		log.WithError(err).Panic("error while setting up webhook secure storage")
-	}
-	closeWebhook, err := application.InitWebhookManager(secureStore)
-	if err != nil {
-		log.WithError(err).Panic("error while initializing webhook manager")
 	}
 
 	// Ports
@@ -163,11 +168,11 @@ func main() {
 
 	defer stop(
 		repoManager,
+		webhookPubSub,
 		blockchainListener,
 		traderGrpcServer,
 		operatorGrpcServer,
 		cancelStats,
-		closeWebhook,
 	)
 
 	// Serve grpc and grpc-web multiplexed on the same port
@@ -190,11 +195,11 @@ func main() {
 
 func stop(
 	repoManager ports.RepoManager,
+	pubsubSvc application.SecurePubSub,
 	blockchainListener application.BlockchainListener,
 	traderServer *grpc.Server,
 	operatorServer *grpc.Server,
 	cancelStats context.CancelFunc,
-	closeWebhook func(),
 ) {
 	if log.GetLevel() >= log.DebugLevel {
 		cancelStats()
@@ -208,10 +213,10 @@ func stop(
 	traderServer.Stop()
 	log.Debug("disabled trader interface")
 
-	closeWebhook()
-	log.Debug("stopped webhook manager")
-
 	blockchainListener.StopObservation()
+
+	pubsubSvc.Store().Close()
+	log.Debug("stopped pubsub service")
 
 	// give the crawler the time to terminate
 	time.Sleep(
@@ -286,4 +291,13 @@ func isValidGrpcWebOptionRequest(req *http.Request) bool {
 	return req.Method == http.MethodOptions &&
 		strings.Contains(accessControlHeader, "x-grpc-web") &&
 		strings.Contains(accessControlHeader, "content-type")
+}
+
+func newWebhookPubSubService(dbDir string, reqTimeout time.Duration) (application.SecurePubSub, error) {
+	secureStore, err := boltsecurestore.NewSecureStorage(dbDir, "webhook.db")
+	if err != nil {
+		log.WithError(err).Panic("error while setting up webhook secure storage")
+	}
+	httpClient := esplora.NewHTTPClient(time.Duration(reqTimeout) * time.Second)
+	return webhookpubsub.NewWebhookPubSubService(secureStore, httpClient)
 }

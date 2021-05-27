@@ -272,6 +272,7 @@ func newServices() (
 	bcListener := application.NewBlockchainListener(
 		crawlerSvc,
 		repoManager,
+		nil,
 		marketBaseAsset,
 		regtest,
 	)

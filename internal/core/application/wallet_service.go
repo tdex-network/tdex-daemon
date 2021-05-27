@@ -272,9 +272,11 @@ func (w *walletService) InitWallet(
 		return
 	}
 
-	if webhookManager != nil {
+	if w.blockchainListener.PubSubService() != nil {
 		go func() {
-			if err := webhookManager.Init(passphrase); err != nil {
+			if err := w.blockchainListener.PubSubService().Store().Init(
+				passphrase,
+			); err != nil {
 				log.WithError(err).Warn(
 					"an error occured while initializing webhook manager. " +
 						"Webhook management disabled for this session.",
@@ -314,9 +316,11 @@ func (w *walletService) UnlockWallet(
 		return err
 	}
 
-	if webhookManager != nil {
+	if w.blockchainListener.PubSubService() != nil {
 		go func() {
-			if err := webhookManager.UnlockStore(passphrase); err != nil {
+			if err := w.blockchainListener.PubSubService().Store().Unlock(
+				passphrase,
+			); err != nil {
 				log.WithError(err).Warn(
 					"an error occured while unlocking webhook manager internal store",
 				)
@@ -353,9 +357,9 @@ func (w *walletService) ChangePassword(
 		return err
 	}
 
-	if webhookManager != nil {
+	if w.blockchainListener.PubSubService() != nil {
 		go func() {
-			if err := webhookManager.ChangePassword(
+			if err := w.blockchainListener.PubSubService().Store().ChangePassword(
 				currentPassphrase, newPassphrase,
 			); err != nil {
 				log.WithError(err).Warn(
