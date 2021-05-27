@@ -1,4 +1,4 @@
-package application_test
+package webhookpubsub_test
 
 import (
 	"context"
@@ -10,35 +10,41 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
 )
 
 var (
-	password         = "password"
-	serverPort       = "8888"
-	serverURL        = fmt.Sprintf("http://localhost:%s", serverPort)
-	payloadForAction = `{"txid":"0000000000000000000000000000000000000000000000000000000000000000","swap":{"amount_p":10000,"asset_p":"LBTC","amount_r":450000000,"asset_r":"USDT"},"price":{"base_price":"0.000025","quote_price":"40000"}}`
+	datadir     = "webhooktest"
+	filename    = "test.db"
+	password    = "password"
+	serverPort  = "8888"
+	serverURL   = fmt.Sprintf("http://localhost:%s", serverPort)
+	testMessage = `{"txid":"0000000000000000000000000000000000000000000000000000000000000000","swap":{"amount_p":10000,"asset_p":"LBTC","amount_r":450000000,"asset_r":"USDT"},"price":{"base_price":"0.000025","quote_price":"40000"}}`
 
 	tradesettleEndpoint = fmt.Sprintf("%s/tradesettle", serverURL)
 	allactionsEndpoint  = fmt.Sprintf("%s/allactions", serverURL)
 )
 
-func TestWebhookHandler(t *testing.T) {
-	handler, clean, err := newTestWebhookHandler()
+func TestWebhookPubSubService(t *testing.T) {
+	pubsubSvc, err := newTestService()
 	require.NoError(t, err)
 
 	server := newTestWebServer(t)
 
 	t.Cleanup(func() {
 		server.Shutdown(context.TODO())
-		clean()
+		pubsubSvc.Store().Close()
+		os.RemoveAll(datadir)
 	})
 
-	// Start the webserver whose endpoints will be invoked by the handler.
+	// Start the webserver whose endpoints will be invoked by the pubsubSvc.
 	go func() {
 		t.Logf("starting web server on port %s", serverPort)
 		err := server.ListenAndServe()
@@ -51,59 +57,52 @@ func TestWebhookHandler(t *testing.T) {
 		}
 	}()
 
-	err = handler.Init(password)
+	err = pubsubSvc.Store().Init(password)
 	require.NoError(t, err)
 
-	err = handler.UnlockStore(password)
+	err = pubsubSvc.Store().Unlock(password)
 	require.NoError(t, err)
 
 	testHooks := newTestHooks()
 	for _, hook := range testHooks {
-		err := handler.AddWebhook(hook)
+		hookID, err := pubsubSvc.Subscribe(hook.ActionType.String(), hook.Endpoint, hook.Secret)
 		require.NoError(t, err)
+		require.NotNil(t, hookID)
 	}
 
-	hooks := handler.ListWebhooksForAction(application.TradeSettled)
+	hooks := pubsubSvc.ListSubscriptionsForTopic(webhookpubsub.TradeSettled.String())
 	require.Len(t, hooks, len(testHooks))
 	require.ElementsMatch(t, hooks, testHooks)
 
 	// Should invoke all hooks.
-	err = handler.InvokeWebhooksByAction(application.TradeSettled, payloadForAction)
+	err = pubsubSvc.Publish(webhookpubsub.TradeSettled.String(), testMessage)
 	require.NoError(t, err)
 
 	for i, hook := range testHooks {
-		err := handler.RemoveWebhook(hook.Id)
+		err := pubsubSvc.Unsubscribe(hook.ActionType.String(), hook.Id)
 		require.NoError(t, err)
 
-		if hook.ActionType == application.AllActions {
-			hooks := handler.ListWebhooksForAction(application.AllActions)
+		if hook.ActionType == webhookpubsub.AllActions {
+			hooks := pubsubSvc.ListSubscriptionsForTopic(webhookpubsub.AllActions.String())
 			require.Len(t, hooks, 0)
 		}
-		hooks := handler.ListWebhooksForAction(hook.ActionType)
+		hooks := pubsubSvc.ListSubscriptionsForTopic(hook.ActionType.String())
 		require.Len(t, hooks, len(testHooks)-1-i)
 	}
 
 	// Checks that it's all ok if there are no hooks to invoke.
-	err = handler.InvokeWebhooksByAction(application.AccountLowBalance, payloadForAction)
+	err = pubsubSvc.Publish(webhookpubsub.AccountLowBalance.String(), testMessage)
 	require.NoError(t, err)
 }
 
-func newTestWebhookHandler() (application.WebhookHandler, func(), error) {
-	datadir, filename := "webhooktest", "test.db"
+func newTestService() (application.SecurePubSub, error) {
 	store, err := newTestSecureStorage(datadir, filename)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+	httpClient := esplora.NewHTTPClient(15 * time.Second)
 
-	webhookHandler, err := application.NewWebhookHandler(store)
-	if err != nil {
-		return nil, nil, err
-	}
-	clean := func() {
-		webhookHandler.CloseStore()
-		os.RemoveAll(datadir)
-	}
-	return webhookHandler, clean, nil
+	return webhookpubsub.NewWebhookPubSubService(store, httpClient)
 }
 
 func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, error) {
@@ -114,20 +113,20 @@ func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, 
 	return store, nil
 }
 
-func newTestHooks() []*application.Hook {
+func newTestHooks() []*webhookpubsub.Webhook {
 	hooksDetails := []struct {
-		actionType int
+		actionType webhookpubsub.WebhookAction
 		endpoint   string
 		secret     string
 	}{
-		{application.TradeSettled, tradesettleEndpoint, randomSecret()},
-		{application.TradeSettled, tradesettleEndpoint, randomSecret()},
-		{application.TradeSettled, tradesettleEndpoint, randomSecret()},
-		{application.AllActions, allactionsEndpoint, ""},
+		{webhookpubsub.TradeSettled, tradesettleEndpoint, randomSecret()},
+		{webhookpubsub.TradeSettled, tradesettleEndpoint, randomSecret()},
+		{webhookpubsub.TradeSettled, tradesettleEndpoint, randomSecret()},
+		{webhookpubsub.AllActions, allactionsEndpoint, ""},
 	}
-	hooks := make([]*application.Hook, 0, len(hooksDetails))
+	hooks := make([]*webhookpubsub.Webhook, 0, len(hooksDetails))
 	for _, d := range hooksDetails {
-		hook, _ := application.NewWebhook(d.actionType, d.endpoint, d.secret)
+		hook, _ := webhookpubsub.NewWebhook(d.actionType, d.endpoint, d.secret)
 		hooks = append(hooks, hook)
 	}
 	return hooks

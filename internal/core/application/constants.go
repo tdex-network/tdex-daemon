@@ -12,10 +12,9 @@ const (
 	Done
 )
 
-// webhook action types
+// Topics to be published
 const (
-	TradeSettled      = iota
-	AccountLowBalance = iota
-	AccountWithdraw   = iota
-	AllActions        = iota
+	TradeSettled = iota
+	AccountLowBalance
+	AccountWithdraw
 )
