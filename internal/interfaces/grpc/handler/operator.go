@@ -178,7 +178,7 @@ func (o operatorHandler) AddWebhook(
 	ctx context.Context,
 	req *pb.AddWebhookRequest,
 ) (*pb.AddWebhookReply, error) {
-	return o.addWebhhok(ctx, req)
+	return o.addWebhook(ctx, req)
 }
 
 func (o operatorHandler) RemoveWebhook(
@@ -771,12 +771,15 @@ func (o operatorHandler) reportMarketFee(
 	}, nil
 }
 
-func (o operatorHandler) addWebhhok(
+func (o operatorHandler) addWebhook(
 	ctx context.Context, req *pb.AddWebhookRequest,
 ) (*pb.AddWebhookReply, error) {
-	hookID, err := o.operatorSvc.AddWebhook(
-		ctx, int(req.GetAction()), req.GetEndpoint(), req.GetSecret(),
-	)
+	hook := application.WebhookInfo{
+		ActionType: int(req.GetAction()),
+		Endpoint:   req.GetEndpoint(),
+		Secret:     req.GetSecret(),
+	}
+	hookID, err := o.operatorSvc.AddWebhook(ctx, hook)
 	if err != nil {
 		return nil, err
 	}
