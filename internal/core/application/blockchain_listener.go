@@ -199,6 +199,10 @@ func (b *blockchainListener) listenToEventChannel() {
 							"base_price":  trade.MarketPrice.BasePrice.String(),
 							"quote_price": trade.MarketPrice.QuotePrice.String(),
 						},
+						"market": map[string]string{
+							"base_asset":  b.marketBaseAsset,
+							"quote_asset": trade.MarketQuoteAsset,
+						},
 					}
 					message, _ := json.Marshal(payload)
 					topics := b.pubsubSvc.TopicsByCode()
