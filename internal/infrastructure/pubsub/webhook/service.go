@@ -2,7 +2,6 @@ package webhookpubsub
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 
@@ -240,7 +239,7 @@ func (ws *webhookService) doRequest(hook *Webhook, payload string) error {
 		}
 		if hook.IsSecured() {
 			token := jwt.New(jwt.SigningMethodHS256)
-			secret, _ := hex.DecodeString(hook.Secret)
+			secret := []byte(hook.Secret)
 			tokenString, _ := token.SignedString(secret)
 			headers["Authorization"] = fmt.Sprintf("Bearer %s", tokenString)
 		}
