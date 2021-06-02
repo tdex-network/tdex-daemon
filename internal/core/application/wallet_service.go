@@ -278,8 +278,8 @@ func (w *walletService) InitWallet(
 				passphrase,
 			); err != nil {
 				log.WithError(err).Warn(
-					"an error occured while initializing webhook manager. " +
-						"Webhook management disabled for this session.",
+					"an error occured while initializing pubsub service. " +
+						"Pubsub not available for the current session.",
 				)
 			}
 		}()
@@ -322,7 +322,7 @@ func (w *walletService) UnlockWallet(
 				passphrase,
 			); err != nil {
 				log.WithError(err).Warn(
-					"an error occured while unlocking webhook manager internal store",
+					"an error occured while unlocking pubsub internal store",
 				)
 			}
 		}()
@@ -363,7 +363,7 @@ func (w *walletService) ChangePassword(
 				currentPassphrase, newPassphrase,
 			); err != nil {
 				log.WithError(err).Warn(
-					"an error occured while updating webhook manager password",
+					"an error occured while updating pubsub service password",
 				)
 			}
 		}()

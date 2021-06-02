@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -834,28 +835,32 @@ func (o *operatorService) WithdrawMarketFunds(
 		market.AccountIndex,
 	)
 
-	fmt.Println(txid)
-	// Invoke webhooks registered for action AccountWithdraw
-	// if webhookManager != nil {
-	// 	go func() {
-	// 		payload := map[string]interface{}{
-	// 			"market": map[string]string{
-	// 				"base_asset":  req.BaseAsset,
-	// 				"quote_asset": req.QuoteAsset,
-	// 			},
-	// 			"balance_withdrew": map[string]interface{}{
-	// 				"base_amount":  req.BalanceToWithdraw.BaseAmount,
-	// 				"quote_amount": req.BalanceToWithdraw.QuoteAmount,
-	// 			},
-	// 			"receiving_address": req.Address,
-	// 			"txid":              txid,
-	// 		}
-	// 		payloadStr, _ := json.Marshal(payload)
-	// 		if err := webhookManager.InvokeWebhooksByAction(AccountWithdraw, string(payloadStr)); err != nil {
-	// 			log.WithError(err).Warn("an error occured while invoking all hooks for action AccountWithdraw")
-	// 		}
-	// 	}()
-	// }
+	// Publish message for topic AccountWithdraw to pubsub service.
+	if svc := o.blockchainListener.PubSubService(); svc != nil {
+		go func() {
+			payload := map[string]interface{}{
+				"market": map[string]string{
+					"base_asset":  req.BaseAsset,
+					"quote_asset": req.QuoteAsset,
+				},
+				"balance_withdraw": map[string]interface{}{
+					"base_amount":  req.BalanceToWithdraw.BaseAmount,
+					"quote_amount": req.BalanceToWithdraw.QuoteAmount,
+				},
+				"receiving_address": req.Address,
+				"txid":              txid,
+			}
+			message, _ := json.Marshal(payload)
+			topics := svc.TopicsByCode()
+			topic := topics[AccountWithdraw]
+			if err := svc.Publish(topic.Label(), string(message)); err != nil {
+				log.WithError(err).Warnf(
+					"an error occured while publishing message for topic %s",
+					topic.Label(),
+				)
+			}
+		}()
+	}
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil

@@ -184,7 +184,7 @@ func (b *blockchainListener) listenToEventChannel() {
 				break
 			}
 
-			// Invoke webhooks registered for action TradeSettled
+			// Publish message for topic TradeSettled to pubsub service.
 			if b.pubsubSvc != nil {
 				go func() {
 					payload := map[string]interface{}{
@@ -206,14 +206,13 @@ func (b *blockchainListener) listenToEventChannel() {
 					}
 					message, _ := json.Marshal(payload)
 					topics := b.pubsubSvc.TopicsByCode()
-					topic, ok := topics[TradeSettled]
-					if !ok {
-						log.Warn("unable to retrieve topic for trade settled event")
-						return
-					}
+					topic := topics[TradeSettled]
 
 					if err := b.pubsubSvc.Publish(topic.Label(), string(message)); err != nil {
-						log.WithError(err).Warn("an error occured while invoking all hooks for action TradeSettled")
+						log.WithError(err).Warnf(
+							"an error occured while publishing message for topic %s",
+							topic.Label(),
+						)
 					}
 				}()
 			}
