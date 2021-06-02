@@ -57,11 +57,19 @@ func TestWebhookPubSubService(t *testing.T) {
 		}
 	}()
 
+	// Ensures precondition: if not initialized, the store is also locked.
+	require.True(t, pubsubSvc.Store().IsLocked())
+
 	err = pubsubSvc.Store().Init(password)
 	require.NoError(t, err)
 
+	// Ensures Init() initializes and locks the store
+	require.True(t, pubsubSvc.Store().IsLocked())
+
 	err = pubsubSvc.Store().Unlock(password)
 	require.NoError(t, err)
+
+	require.False(t, pubsubSvc.Store().IsLocked())
 
 	testHooks := newTestHooks()
 	for _, h := range testHooks {

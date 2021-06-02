@@ -27,11 +27,15 @@ func TestCreateUnlock(t *testing.T) {
 
 	t.Cleanup(clean)
 
+	require.True(t, store.IsLocked())
+
 	_, err = store.GetAllFromBucket(nil)
 	require.EqualError(t, err, boltsecurestore.ErrStoreLocked.Error())
 
 	err = store.CreateUnlock(&password)
 	require.NoError(t, err)
+
+	require.False(t, store.IsLocked())
 
 	// ensures that the securestore does nothing if already unlocked.
 	err = store.CreateUnlock(&password)

@@ -18,6 +18,10 @@ type webhookStore struct {
 	store securestore.SecureStorage
 }
 
+func (ws webhookStore) IsLocked() bool {
+	return ws.store.IsLocked()
+}
+
 func (ws webhookStore) Init(password string) error {
 	if err := ws.Unlock(password); err != nil {
 		return err

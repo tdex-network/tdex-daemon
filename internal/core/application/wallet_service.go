@@ -318,6 +318,20 @@ func (w *walletService) UnlockWallet(
 
 	if w.blockchainListener.PubSubService() != nil {
 		go func() {
+			// For backward compatibility, check if the pubsub store has been
+			// initialized by wallet.Init, otherwise it is initialized before being
+			// unlocked here.
+			if w.blockchainListener.PubSubService().Store().IsLocked() {
+				if err := w.blockchainListener.PubSubService().Store().Init(
+					passphrase,
+				); err != nil {
+					log.WithError(err).Warn(
+						"an error occured while initializing pubsub service. " +
+							"Pubsub not available for the current session.",
+					)
+					return
+				}
+			}
 			if err := w.blockchainListener.PubSubService().Store().Unlock(
 				passphrase,
 			); err != nil {

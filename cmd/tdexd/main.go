@@ -294,7 +294,7 @@ func isValidGrpcWebOptionRequest(req *http.Request) bool {
 }
 
 func newWebhookPubSubService(dbDir string, reqTimeout time.Duration) (application.SecurePubSub, error) {
-	secureStore, err := boltsecurestore.NewSecureStorage(dbDir, "webhook.db")
+	secureStore, err := boltsecurestore.NewSecureStorage(dbDir, "pubsub.db")
 	if err != nil {
 		log.WithError(err).Panic("error while setting up webhook secure storage")
 	}
