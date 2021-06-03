@@ -90,6 +90,8 @@ service Operator {
   
   // Removes some previously added webhook.
   rpc RemoveWebhook(RemoveWebhookRequest) returns(RemoveWebhookReply){}
+
+  rpc ListWebhooks(ListWebhooksRequest) returns(ListWebhooksReply){}
 }
 
 message DropMarketRequest {
@@ -240,6 +242,13 @@ message RemoveWebhookRequest {
 }
 message RemoveWebhookReply {}
 
+message ListWebhooksRequest {
+  ActionType action = 1;
+}
+message ListWebhooksReply {
+  repeated WebhookInfo webhook_info = 1;
+}
+
 // Custom types
 enum StrategyType {
   PLUGGABLE = 0;
@@ -346,4 +355,10 @@ message FeeInfo {
 message TxOutpoint {
   string hash = 1;
   int32 index = 2;
+}
+
+message WebhookInfo {
+  string id = 1;
+  string endpoint = 2;
+  bool is_secured = 3;
 }

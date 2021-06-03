@@ -95,8 +95,9 @@ type OperatorService interface {
 	ListUtxos(ctx context.Context) (map[uint64]UtxoInfoList, error)
 	ReloadUtxos(ctx context.Context) error
 	DropMarket(ctx context.Context, accountIndex int) error
-	AddWebhook(ctx context.Context, hook WebhookInfo) (string, error)
+	AddWebhook(ctx context.Context, hook Webhook) (string, error)
 	RemoveWebhook(ctx context.Context, id string) error
+	ListWebhooks(ctx context.Context, actionType int) ([]WebhookInfo, error)
 }
 
 type operatorService struct {
@@ -1023,7 +1024,7 @@ func (o *operatorService) DropMarket(
 	return o.repoManager.MarketRepository().DeleteMarket(ctx, accountIndex)
 }
 
-func (o *operatorService) AddWebhook(_ context.Context, hook WebhookInfo) (string, error) {
+func (o *operatorService) AddWebhook(_ context.Context, hook Webhook) (string, error) {
 	if o.blockchainListener.PubSubService() == nil {
 		return "", ErrPubSubServiceNotInitialized
 	}
@@ -1044,6 +1045,31 @@ func (o *operatorService) RemoveWebhook(_ context.Context, hookID string) error 
 		return ErrPubSubServiceNotInitialized
 	}
 	return o.blockchainListener.PubSubService().Unsubscribe("", hookID)
+}
+
+func (o *operatorService) ListWebhooks(_ context.Context, actionType int) ([]WebhookInfo, error) {
+	pubsubSvc := o.blockchainListener.PubSubService()
+	if pubsubSvc == nil {
+		return nil, ErrPubSubServiceNotInitialized
+	}
+
+	topics := pubsubSvc.TopicsByCode()
+	topic, ok := topics[actionType]
+	if !ok {
+		return nil, ErrInvalidActionType
+	}
+
+	subs := pubsubSvc.ListSubscriptionsForTopic(topic.Label())
+	hooks := make([]WebhookInfo, 0, len(subs))
+	for _, s := range subs {
+		hooks = append(hooks, WebhookInfo{
+			Id:         s.Id(),
+			ActionType: s.Topic().Code(),
+			Endpoint:   s.NotifyAt(),
+			IsSecured:  s.IsSecured(),
+		})
+	}
+	return hooks, nil
 }
 
 func (o *operatorService) getNonFundedMarkets(ctx context.Context) ([]domain.Market, error) {

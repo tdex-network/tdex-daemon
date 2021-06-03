@@ -71,18 +71,12 @@ func (ws *webhookService) Unsubscribe(_, id string) error {
 	return ws.removeWebhook(id)
 }
 
-func (ws *webhookService) ListSubscriptionsForTopic(topic string) []interface{} {
+func (ws *webhookService) ListSubscriptionsForTopic(topic string) []application.Subscription {
 	actionType, ok := WebhookActionFromString(topic)
 	if !ok {
 		return nil
 	}
-	hooks := ws.listWebhooksForAction(actionType)
-
-	iHooks := make([]interface{}, 0, len(hooks))
-	for _, h := range hooks {
-		iHooks = append(iHooks, h)
-	}
-	return iHooks
+	return ws.listWebhooksForAction(actionType)
 }
 
 func (ws *webhookService) Publish(topic string, message string) error {
@@ -115,21 +109,21 @@ func (ws *webhookService) TopicsByLabel() map[string]application.Topic {
 // NOTE: The generation of the hook ID can be assumed enough random to infer
 // that if 2 hooks have the same id, then they are the same.
 func (ws *webhookService) addWebhook(hook *Webhook) (string, error) {
-	hookID := []byte(hook.Id)
+	hookID := []byte(hook.ID)
 	hh, err := ws.store.db().GetFromBucket(hooksBucket, hookID)
 	if err != nil {
 		return "", err
 	}
 	// there's already a webhook with the same id, so let's avoid duplicates.
 	if hh != nil {
-		return hook.Id, nil
+		return hook.ID, nil
 	}
 
 	if err := ws.store.db().AddToBucket(hooksBucket, hookID, hook.Serialize()); err != nil {
 		return "", err
 	}
 	ws.addHookByAction(hook)
-	return hook.Id, nil
+	return hook.ID, nil
 }
 
 // RemoveWebhhìook attempts to remove the hook identified by an ID from those
@@ -153,13 +147,17 @@ func (ws *webhookService) removeWebhook(hookID string) error {
 	return nil
 }
 
-func (ws *webhookService) listWebhooksForAction(actionType WebhookAction) []*Webhook {
+func (ws *webhookService) listWebhooksForAction(actionType WebhookAction) []application.Subscription {
 	hooks := ws.getHooksByAction(actionType)
 	if actionType != AllActions {
 		hooksForAllActions := ws.getHooksByAction(AllActions)
 		hooks = append(hooks, hooksForAllActions...)
 	}
-	return hooks
+	subs := make([]application.Subscription, len(hooks))
+	for i, h := range hooks {
+		subs[i] = h
+	}
+	return subs
 }
 
 // InvokeWebhooksByAction makes a POST request to every webhook endpoint
@@ -195,7 +193,7 @@ func (ws *webhookService) removeHookByAction(hook *Webhook) {
 	var index int
 	for i, buf := range rawHooks {
 		hh, _ := NewWebhookFromBytes(buf)
-		if hh.Id == hook.Id {
+		if hh.ID == hook.ID {
 			index = i
 			break
 		}

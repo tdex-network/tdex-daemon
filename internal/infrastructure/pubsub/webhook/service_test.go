@@ -72,25 +72,24 @@ func TestWebhookPubSubService(t *testing.T) {
 	require.False(t, pubsubSvc.Store().IsLocked())
 
 	testHooks := newTestHooks()
-	for _, h := range testHooks {
-		hook := h.(*webhookpubsub.Webhook)
+	for _, hook := range testHooks {
 		hookID, err := pubsubSvc.Subscribe(hook.ActionType.String(), hook.Endpoint, hook.Secret)
 		require.NoError(t, err)
 		require.NotNil(t, hookID)
 	}
 
-	hooks := pubsubSvc.ListSubscriptionsForTopic(webhookpubsub.TradeSettled.String())
-	require.Len(t, hooks, len(testHooks))
+	subs := pubsubSvc.ListSubscriptionsForTopic(webhookpubsub.TradeSettled.String())
+	require.Len(t, subs, len(testHooks))
 	require.Condition(t, func() bool {
-		for i, h := range testHooks {
-			expectedHook := h.(*webhookpubsub.Webhook)
-			hook := hooks[i].(*webhookpubsub.Webhook)
-			if hook.Id == "" {
+		for i, expectedHook := range testHooks {
+			sub := subs[i]
+			if sub.Id() == "" {
 				return false
 			}
-			if hook.ActionType != expectedHook.ActionType ||
-				hook.Endpoint != expectedHook.Endpoint ||
-				hook.Secret != expectedHook.Secret {
+			if sub.NotifyAt() != expectedHook.Endpoint {
+				return false
+			}
+			if len(expectedHook.Secret) > 0 && !sub.IsSecured() {
 				return false
 			}
 		}
@@ -101,17 +100,16 @@ func TestWebhookPubSubService(t *testing.T) {
 	err = pubsubSvc.Publish(webhookpubsub.TradeSettled.String(), testMessage)
 	require.NoError(t, err)
 
-	for i, h := range hooks {
-		hook := h.(*webhookpubsub.Webhook)
-		err := pubsubSvc.Unsubscribe(hook.ActionType.String(), hook.Id)
+	for i, s := range subs {
+		err := pubsubSvc.Unsubscribe(s.Topic().Label(), s.Id())
 		require.NoError(t, err)
 
-		if hook.ActionType == webhookpubsub.AllActions {
-			hooks := pubsubSvc.ListSubscriptionsForTopic(webhookpubsub.AllActions.String())
-			require.Len(t, hooks, 0)
+		if s.Topic().Code() == webhookpubsub.AllActions.Code() {
+			subs := pubsubSvc.ListSubscriptionsForTopic(webhookpubsub.AllActions.String())
+			require.Len(t, subs, 0)
 		}
-		hooks := pubsubSvc.ListSubscriptionsForTopic(hook.ActionType.String())
-		require.Len(t, hooks, len(testHooks)-1-i)
+		subs := pubsubSvc.ListSubscriptionsForTopic(s.Topic().Label())
+		require.Len(t, subs, len(testHooks)-1-i)
 	}
 
 	// Checks that it's all ok if there are no hooks to invoke.
@@ -137,7 +135,7 @@ func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, 
 	return store, nil
 }
 
-func newTestHooks() []interface{} {
+func newTestHooks() []*webhookpubsub.Webhook {
 	hooksDetails := []struct {
 		actionType webhookpubsub.WebhookAction
 		endpoint   string
@@ -148,10 +146,10 @@ func newTestHooks() []interface{} {
 		{webhookpubsub.TradeSettled, tradesettleEndpoint, randomSecret()},
 		{webhookpubsub.AllActions, allactionsEndpoint, ""},
 	}
-	hooks := make([]interface{}, 0, len(hooksDetails))
+	hooks := make([]*webhookpubsub.Webhook, 0, len(hooksDetails))
 	for _, d := range hooksDetails {
 		hook, _ := webhookpubsub.NewWebhook(d.actionType, d.endpoint, d.secret)
-		hook.Id = ""
+		hook.ID = ""
 		hooks = append(hooks, hook)
 	}
 	return hooks

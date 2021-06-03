@@ -75,6 +75,7 @@ type OperatorClient interface {
 	AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookReply, error)
 	// Removes some previously added webhook.
 	RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookReply, error)
+	ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksReply, error)
 }
 
 type operatorClient struct {
@@ -274,6 +275,15 @@ func (c *operatorClient) RemoveWebhook(ctx context.Context, in *RemoveWebhookReq
 	return out, nil
 }
 
+func (c *operatorClient) ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksReply, error) {
+	out := new(ListWebhooksReply)
+	err := c.cc.Invoke(ctx, "/Operator/ListWebhooks", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OperatorServer is the server API for Operator service.
 // All implementations must embed UnimplementedOperatorServer
 // for forward compatibility
@@ -336,6 +346,7 @@ type OperatorServer interface {
 	AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookReply, error)
 	// Removes some previously added webhook.
 	RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookReply, error)
+	ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksReply, error)
 	mustEmbedUnimplementedOperatorServer()
 }
 
@@ -405,6 +416,9 @@ func (UnimplementedOperatorServer) AddWebhook(context.Context, *AddWebhookReques
 }
 func (UnimplementedOperatorServer) RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveWebhook not implemented")
+}
+func (UnimplementedOperatorServer) ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWebhooks not implemented")
 }
 func (UnimplementedOperatorServer) mustEmbedUnimplementedOperatorServer() {}
 
@@ -797,6 +811,24 @@ func _Operator_RemoveWebhook_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Operator_ListWebhooks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWebhooksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).ListWebhooks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/ListWebhooks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).ListWebhooks(ctx, req.(*ListWebhooksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Operator_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "Operator",
 	HandlerType: (*OperatorServer)(nil),
@@ -884,6 +916,10 @@ var _Operator_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveWebhook",
 			Handler:    _Operator_RemoveWebhook_Handler,
+		},
+		{
+			MethodName: "ListWebhooks",
+			Handler:    _Operator_ListWebhooks_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

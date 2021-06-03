@@ -153,10 +153,16 @@ type UtxoInfo struct {
 	Asset    string
 }
 
-type WebhookInfo struct {
+type Webhook struct {
 	ActionType int
 	Endpoint   string
 	Secret     string
+}
+type WebhookInfo struct {
+	Id         string
+	ActionType int
+	Endpoint   string
+	IsSecured  bool
 }
 
 type Unspents []domain.Unspent

@@ -6,10 +6,11 @@ import (
 	"net/url"
 
 	"github.com/google/uuid"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
 )
 
 type Webhook struct {
-	Id         string        `json:"id"`
+	ID         string        `json:"id"`
 	ActionType WebhookAction `json:"action_type"`
 	Endpoint   string        `json:"endpoint"`
 	Secret     string        `json:"secret"`
@@ -32,6 +33,18 @@ func NewWebhookFromBytes(buf []byte) (*Webhook, error) {
 		return nil, err
 	}
 	return h, nil
+}
+
+func (h *Webhook) Topic() application.Topic {
+	return h.ActionType
+}
+
+func (h *Webhook) Id() string {
+	return h.ID
+}
+
+func (h *Webhook) NotifyAt() string {
+	return h.Endpoint
 }
 
 func (h *Webhook) IsSecured() bool {

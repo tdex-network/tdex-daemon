@@ -5,6 +5,13 @@ type Topic interface {
 	Label() string
 }
 
+type Subscription interface {
+	Topic() Topic
+	Id() string
+	IsSecured() bool
+	NotifyAt() string
+}
+
 // PubSubStore defines the methods to manage the internal store of a
 // SecurePubSub service.
 type PubSubStore interface {
@@ -35,7 +42,7 @@ type SecurePubSub interface {
 	Unsubscribe(topic, id string) error
 	// ListSubscriptionsForTopic returns the info of all clients subscribed for
 	// a certain topic.
-	ListSubscriptionsForTopic(topic string) []interface{}
+	ListSubscriptionsForTopic(topic string) []Subscription
 	// Publish publishes a message for a certain topic. All clients subscribed
 	// for such topic will receive the message.
 	Publish(topic string, message string) error
