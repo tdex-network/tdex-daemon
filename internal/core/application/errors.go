@@ -22,4 +22,11 @@ var (
 	// ErrServiceUnavailable is the error returned by the trade service in case of
 	// internal errors
 	ErrServiceUnavailable = errors.New("service is unavailable, try again later")
+	// ErrPubSubServiceNotInitialized is returned when attempting to use
+	// AddWebhook or RemoveWebhook RPCs without having initialized the pubsub
+	// service at the start up.
+	ErrPubSubServiceNotInitialized = errors.New("pubsub service is not initialized")
+	// ErrInvalidActionType is returns if the attempting to register a webhook
+	// for an invalid action type.
+	ErrInvalidActionType = errors.New("action type is unknown")
 )

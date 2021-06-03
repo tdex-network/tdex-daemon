@@ -55,7 +55,7 @@ func generateSigningMasterKey(
 		return nil, err
 	}
 	for _, step := range path {
-		hdNode, err = hdNode.Child(step)
+		hdNode, err = hdNode.Derive(step)
 		if err != nil {
 			return nil, err
 		}

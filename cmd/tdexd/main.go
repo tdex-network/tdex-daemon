@@ -15,22 +15,22 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/shopspring/decimal"
-	"github.com/tdex-network/tdex-daemon/pkg/stats"
-
-	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	"golang.org/x/net/http2"
-
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/shopspring/decimal"
+	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
+	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
+	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
+	"github.com/tdex-network/tdex-daemon/pkg/stats"
+	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 
 	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
@@ -80,9 +80,20 @@ func main() {
 		ExplorerLimit:      config.GetInt(config.CrawlLimitKey),
 		ExplorerTokenBurst: config.GetInt(config.CrawlTokenBurst),
 	})
+
+	webhookPubSub, err := newWebhookPubSubService(
+		dbDir, config.GetDuration(config.ExplorerRequestTimeoutKey),
+	)
+	if err != nil {
+		log.WithError(err).Panic(
+			"an error occured while setting up webhook pubsub service",
+		)
+	}
+
 	blockchainListener := application.NewBlockchainListener(
 		crawlerSvc,
 		repoManager,
+		webhookPubSub,
 		marketsBaseAsset,
 		network,
 	)
@@ -157,6 +168,7 @@ func main() {
 
 	defer stop(
 		repoManager,
+		webhookPubSub,
 		blockchainListener,
 		traderGrpcServer,
 		operatorGrpcServer,
@@ -183,6 +195,7 @@ func main() {
 
 func stop(
 	repoManager ports.RepoManager,
+	pubsubSvc application.SecurePubSub,
 	blockchainListener application.BlockchainListener,
 	traderServer *grpc.Server,
 	operatorServer *grpc.Server,
@@ -201,6 +214,10 @@ func stop(
 	log.Debug("disabled trader interface")
 
 	blockchainListener.StopObservation()
+
+	pubsubSvc.Store().Close()
+	log.Debug("stopped pubsub service")
+
 	// give the crawler the time to terminate
 	time.Sleep(
 		time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond,
@@ -274,4 +291,13 @@ func isValidGrpcWebOptionRequest(req *http.Request) bool {
 	return req.Method == http.MethodOptions &&
 		strings.Contains(accessControlHeader, "x-grpc-web") &&
 		strings.Contains(accessControlHeader, "content-type")
+}
+
+func newWebhookPubSubService(dbDir string, reqTimeout time.Duration) (application.SecurePubSub, error) {
+	secureStore, err := boltsecurestore.NewSecureStorage(dbDir, "pubsub.db")
+	if err != nil {
+		log.WithError(err).Panic("error while setting up webhook secure storage")
+	}
+	httpClient := esplora.NewHTTPClient(time.Duration(reqTimeout) * time.Second)
+	return webhookpubsub.NewWebhookPubSubService(secureStore, httpClient)
 }

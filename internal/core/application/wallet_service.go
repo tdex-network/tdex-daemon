@@ -272,6 +272,19 @@ func (w *walletService) InitWallet(
 		return
 	}
 
+	if w.blockchainListener.PubSubService() != nil {
+		go func() {
+			if err := w.blockchainListener.PubSubService().Store().Init(
+				passphrase,
+			); err != nil {
+				log.WithError(err).Warn(
+					"an error occured while initializing pubsub service. " +
+						"Pubsub not available for the current session.",
+				)
+			}
+		}()
+	}
+
 	go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
 	w.setInitialized(true)
 	if w.isSyncing() {
@@ -303,6 +316,32 @@ func (w *walletService) UnlockWallet(
 		return err
 	}
 
+	if w.blockchainListener.PubSubService() != nil {
+		go func() {
+			// For backward compatibility, check if the pubsub store has been
+			// initialized by wallet.Init, otherwise it is initialized before being
+			// unlocked here.
+			if w.blockchainListener.PubSubService().Store().IsLocked() {
+				if err := w.blockchainListener.PubSubService().Store().Init(
+					passphrase,
+				); err != nil {
+					log.WithError(err).Warn(
+						"an error occured while initializing pubsub service. " +
+							"Pubsub not available for the current session.",
+					)
+					return
+				}
+			}
+			if err := w.blockchainListener.PubSubService().Store().Unlock(
+				passphrase,
+			); err != nil {
+				log.WithError(err).Warn(
+					"an error occured while unlocking pubsub internal store",
+				)
+			}
+		}()
+	}
+
 	w.blockchainListener.StartObservation()
 	return nil
 }
@@ -319,7 +358,7 @@ func (w *walletService) ChangePassword(
 		return ErrWalletNotInitialized
 	}
 
-	return w.repoManager.VaultRepository().UpdateVault(
+	if err := w.repoManager.VaultRepository().UpdateVault(
 		ctx,
 		func(v *domain.Vault) (*domain.Vault, error) {
 			err := v.ChangePassphrase(currentPassphrase, newPassphrase)
@@ -328,7 +367,23 @@ func (w *walletService) ChangePassword(
 			}
 			return v, nil
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	if w.blockchainListener.PubSubService() != nil {
+		go func() {
+			if err := w.blockchainListener.PubSubService().Store().ChangePassword(
+				currentPassphrase, newPassphrase,
+			); err != nil {
+				log.WithError(err).Warn(
+					"an error occured while updating pubsub service password",
+				)
+			}
+		}()
+	}
+
+	return nil
 }
 
 func (w *walletService) GenerateAddressAndBlindingKey(

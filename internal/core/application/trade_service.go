@@ -657,11 +657,11 @@ func (t *tradeService) checkTradeExpiration(
 
 		count, err := t.repoManager.UnspentRepository().UnlockUnspents(ctx, selectedUnspentKeys)
 		if err != nil {
-			log.Warnf(
+			log.WithError(err).Warnf(
 				"trade with id %s has expired but an error occured while "+
 					"unlocking its unspents. You must run ReloadUtxo RPC as soon as "+
-					"possible to restore the utxo set of the internal wallet. Error: %v",
-				trade.ID, err,
+					"possible to restore the utxo set of the internal wallet",
+				trade.ID,
 			)
 			return
 		}

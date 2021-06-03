@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -73,14 +74,8 @@ type OperatorService interface {
 	WithdrawMarketFunds(
 		ctx context.Context,
 		req WithdrawMarketReq,
-	) (
-		[]byte,
-		error,
-	)
-	FeeAccountBalance(ctx context.Context) (
-		int64,
-		error,
-	)
+	) ([]byte, error)
+	FeeAccountBalance(ctx context.Context) (int64, error)
 	ClaimMarketDeposit(
 		ctx context.Context,
 		market Market,
@@ -100,6 +95,9 @@ type OperatorService interface {
 	ListUtxos(ctx context.Context) (map[uint64]UtxoInfoList, error)
 	ReloadUtxos(ctx context.Context) error
 	DropMarket(ctx context.Context, accountIndex int) error
+	AddWebhook(ctx context.Context, hook Webhook) (string, error)
+	RemoveWebhook(ctx context.Context, id string) error
+	ListWebhooks(ctx context.Context, actionType int) ([]WebhookInfo, error)
 }
 
 type operatorService struct {
@@ -760,7 +758,7 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, ErrWalletNotFunded
 	}
 
-	var txHex string
+	var txHex, txid string
 
 	if err := o.repoManager.VaultRepository().UpdateVault(
 		ctx,
@@ -815,9 +813,11 @@ func (o *operatorService) WithdrawMarketFunds(
 			}
 
 			if req.Push {
-				if _, err := o.explorerSvc.BroadcastTransaction(_txHex); err != nil {
+				_txid, err := o.explorerSvc.BroadcastTransaction(_txHex)
+				if err != nil {
 					return nil, err
 				}
+				txid = _txid
 			}
 
 			txHex = _txHex
@@ -835,6 +835,33 @@ func (o *operatorService) WithdrawMarketFunds(
 		txHex,
 		market.AccountIndex,
 	)
+
+	// Publish message for topic AccountWithdraw to pubsub service.
+	if svc := o.blockchainListener.PubSubService(); svc != nil {
+		go func() {
+			payload := map[string]interface{}{
+				"market": map[string]string{
+					"base_asset":  req.BaseAsset,
+					"quote_asset": req.QuoteAsset,
+				},
+				"balance_withdraw": map[string]interface{}{
+					"base_amount":  req.BalanceToWithdraw.BaseAmount,
+					"quote_amount": req.BalanceToWithdraw.QuoteAmount,
+				},
+				"receiving_address": req.Address,
+				"txid":              txid,
+			}
+			message, _ := json.Marshal(payload)
+			topics := svc.TopicsByCode()
+			topic := topics[AccountWithdraw]
+			if err := svc.Publish(topic.Label(), string(message)); err != nil {
+				log.WithError(err).Warnf(
+					"an error occured while publishing message for topic %s",
+					topic.Label(),
+				)
+			}
+		}()
+	}
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
@@ -988,6 +1015,61 @@ func (o *operatorService) ClaimFeeDeposit(
 	infoPerAccount[domain.FeeAccount] = info
 
 	return o.claimDeposit(ctx, infoPerAccount, outpoints, feeDeposit)
+}
+
+func (o *operatorService) DropMarket(
+	ctx context.Context,
+	accountIndex int,
+) error {
+	return o.repoManager.MarketRepository().DeleteMarket(ctx, accountIndex)
+}
+
+func (o *operatorService) AddWebhook(_ context.Context, hook Webhook) (string, error) {
+	if o.blockchainListener.PubSubService() == nil {
+		return "", ErrPubSubServiceNotInitialized
+	}
+
+	topics := o.blockchainListener.PubSubService().TopicsByCode()
+	topic, ok := topics[hook.ActionType]
+	if !ok {
+		return "", ErrInvalidActionType
+	}
+
+	return o.blockchainListener.PubSubService().Subscribe(
+		topic.Label(), hook.Endpoint, hook.Secret,
+	)
+}
+
+func (o *operatorService) RemoveWebhook(_ context.Context, hookID string) error {
+	if o.blockchainListener.PubSubService() == nil {
+		return ErrPubSubServiceNotInitialized
+	}
+	return o.blockchainListener.PubSubService().Unsubscribe("", hookID)
+}
+
+func (o *operatorService) ListWebhooks(_ context.Context, actionType int) ([]WebhookInfo, error) {
+	pubsubSvc := o.blockchainListener.PubSubService()
+	if pubsubSvc == nil {
+		return nil, ErrPubSubServiceNotInitialized
+	}
+
+	topics := pubsubSvc.TopicsByCode()
+	topic, ok := topics[actionType]
+	if !ok {
+		return nil, ErrInvalidActionType
+	}
+
+	subs := pubsubSvc.ListSubscriptionsForTopic(topic.Label())
+	hooks := make([]WebhookInfo, 0, len(subs))
+	for _, s := range subs {
+		hooks = append(hooks, WebhookInfo{
+			Id:         s.Id(),
+			ActionType: s.Topic().Code(),
+			Endpoint:   s.NotifyAt(),
+			IsSecured:  s.IsSecured(),
+		})
+	}
+	return hooks, nil
 }
 
 func (o *operatorService) getNonFundedMarkets(ctx context.Context) ([]domain.Market, error) {
@@ -1338,11 +1420,4 @@ func appendUtxoInfo(list []UtxoInfo, unspent domain.Unspent) []UtxoInfo {
 		Value: unspent.Value,
 		Asset: unspent.AssetHash,
 	})
-}
-
-func (o *operatorService) DropMarket(
-	ctx context.Context,
-	accountIndex int,
-) error {
-	return o.repoManager.MarketRepository().DeleteMarket(ctx, accountIndex)
 }

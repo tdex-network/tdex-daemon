@@ -72,6 +72,9 @@ func main() {
 		&updateFixedfee,
 		&listutxos,
 		&reloadtxos,
+		&addwebhook,
+		&removewebhook,
+		&listwebhooks,
 	)
 
 	err := app.Run(os.Args)

@@ -84,6 +84,14 @@ service Operator {
 
   // Deletes Market based on account_index
   rpc DropMarket(DropMarketRequest) returns(DropMarketReply){}
+
+  // Adds a webhook registered for some kind of event.
+  rpc AddWebhook(AddWebhookRequest) returns(AddWebhookReply){}
+  
+  // Removes some previously added webhook.
+  rpc RemoveWebhook(RemoveWebhookRequest) returns(RemoveWebhookReply){}
+
+  rpc ListWebhooks(ListWebhooksRequest) returns(ListWebhooksReply){}
 }
 
 message DropMarketRequest {
@@ -220,6 +228,27 @@ message ReportMarketFeeReply {
   map<string, int64> total_collected_fees_per_asset = 2;
 }
 
+message AddWebhookRequest {
+  string endpoint = 1;
+  ActionType action = 2;
+  string secret = 3;
+}
+message AddWebhookReply {
+  string id = 1;
+}
+
+message RemoveWebhookRequest {
+  string id = 1;
+}
+message RemoveWebhookReply {}
+
+message ListWebhooksRequest {
+  ActionType action = 1;
+}
+message ListWebhooksReply {
+  repeated WebhookInfo webhook_info = 1;
+}
+
 // Custom types
 enum StrategyType {
   PLUGGABLE = 0;
@@ -234,6 +263,13 @@ enum TradeStatus {
   COMPLETE = 3;
   SETTLED = 4;
   EXPIRED = 5;
+}
+
+enum ActionType {
+  TRADE_SETTLED = 0;
+  ACCOUNT_LOW_BALANCE = 1;
+  ACCOUNT_WITHDRAW = 2;
+  ALL_ACTIONS = 3;
 }
 
 message MarketInfo {
@@ -319,4 +355,10 @@ message FeeInfo {
 message TxOutpoint {
   string hash = 1;
   int32 index = 2;
+}
+
+message WebhookInfo {
+  string id = 1;
+  string endpoint = 2;
+  bool is_secured = 3;
 }

@@ -71,6 +71,11 @@ type OperatorClient interface {
 	ListUtxos(ctx context.Context, in *ListUtxosRequest, opts ...grpc.CallOption) (*ListUtxosReply, error)
 	// Deletes Market based on account_index
 	DropMarket(ctx context.Context, in *DropMarketRequest, opts ...grpc.CallOption) (*DropMarketReply, error)
+	// Adds a webhook registered for some kind of event.
+	AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookReply, error)
+	// Removes some previously added webhook.
+	RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookReply, error)
+	ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksReply, error)
 }
 
 type operatorClient struct {
@@ -252,6 +257,33 @@ func (c *operatorClient) DropMarket(ctx context.Context, in *DropMarketRequest, 
 	return out, nil
 }
 
+func (c *operatorClient) AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookReply, error) {
+	out := new(AddWebhookReply)
+	err := c.cc.Invoke(ctx, "/Operator/AddWebhook", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookReply, error) {
+	out := new(RemoveWebhookReply)
+	err := c.cc.Invoke(ctx, "/Operator/RemoveWebhook", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksReply, error) {
+	out := new(ListWebhooksReply)
+	err := c.cc.Invoke(ctx, "/Operator/ListWebhooks", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OperatorServer is the server API for Operator service.
 // All implementations must embed UnimplementedOperatorServer
 // for forward compatibility
@@ -310,6 +342,11 @@ type OperatorServer interface {
 	ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosReply, error)
 	// Deletes Market based on account_index
 	DropMarket(context.Context, *DropMarketRequest) (*DropMarketReply, error)
+	// Adds a webhook registered for some kind of event.
+	AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookReply, error)
+	// Removes some previously added webhook.
+	RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookReply, error)
+	ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksReply, error)
 	mustEmbedUnimplementedOperatorServer()
 }
 
@@ -373,6 +410,15 @@ func (UnimplementedOperatorServer) ListUtxos(context.Context, *ListUtxosRequest)
 }
 func (UnimplementedOperatorServer) DropMarket(context.Context, *DropMarketRequest) (*DropMarketReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropMarket not implemented")
+}
+func (UnimplementedOperatorServer) AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddWebhook not implemented")
+}
+func (UnimplementedOperatorServer) RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveWebhook not implemented")
+}
+func (UnimplementedOperatorServer) ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWebhooks not implemented")
 }
 func (UnimplementedOperatorServer) mustEmbedUnimplementedOperatorServer() {}
 
@@ -729,6 +775,60 @@ func _Operator_DropMarket_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Operator_AddWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddWebhookRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).AddWebhook(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/AddWebhook",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).AddWebhook(ctx, req.(*AddWebhookRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_RemoveWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveWebhookRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).RemoveWebhook(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/RemoveWebhook",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).RemoveWebhook(ctx, req.(*RemoveWebhookRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_ListWebhooks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWebhooksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).ListWebhooks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/ListWebhooks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).ListWebhooks(ctx, req.(*ListWebhooksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Operator_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "Operator",
 	HandlerType: (*OperatorServer)(nil),
@@ -808,6 +908,18 @@ var _Operator_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DropMarket",
 			Handler:    _Operator_DropMarket_Handler,
+		},
+		{
+			MethodName: "AddWebhook",
+			Handler:    _Operator_AddWebhook_Handler,
+		},
+		{
+			MethodName: "RemoveWebhook",
+			Handler:    _Operator_RemoveWebhook_Handler,
+		},
+		{
+			MethodName: "ListWebhooks",
+			Handler:    _Operator_ListWebhooks_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -26,12 +27,15 @@ type BlockchainListener interface {
 
 	StartObserveTx(txid string)
 	StopObserveTx(txid string)
+
+	PubSubService() SecurePubSub
 }
 
 type blockchainListener struct {
 	crawlerSvc         crawler.Service
 	explorerSvc        explorer.Service
 	repoManager        ports.RepoManager
+	pubsubSvc          SecurePubSub
 	started            bool
 	pendingObservables []crawler.Observable
 	marketBaseAsset    string
@@ -44,12 +48,14 @@ type blockchainListener struct {
 func NewBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
+	pubsubSvc SecurePubSub,
 	marketBaseAsset string,
 	net *network.Network,
 ) BlockchainListener {
 	return newBlockchainListener(
 		crawlerSvc,
 		repoManager,
+		pubsubSvc,
 		marketBaseAsset,
 		net,
 	)
@@ -58,12 +64,14 @@ func NewBlockchainListener(
 func newBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
+	pubsubSvc SecurePubSub,
 	marketBaseAsset string,
 	net *network.Network,
 ) *blockchainListener {
 	return &blockchainListener{
 		crawlerSvc:         crawlerSvc,
 		repoManager:        repoManager,
+		pubsubSvc:          pubsubSvc,
 		mutex:              &sync.RWMutex{},
 		pendingObservables: make([]crawler.Observable, 0),
 		marketBaseAsset:    marketBaseAsset,
@@ -140,6 +148,10 @@ func (b *blockchainListener) StopObserveTx(txid string) {
 	b.crawlerSvc.RemoveObservable(&crawler.TransactionObservable{TxID: txid})
 }
 
+func (b *blockchainListener) PubSubService() SecurePubSub {
+	return b.pubsubSvc
+}
+
 func (b *blockchainListener) listenToEventChannel() {
 	for {
 		event := <-b.crawlerSvc.GetEventChannel()
@@ -170,6 +182,39 @@ func (b *blockchainListener) listenToEventChannel() {
 			if err := b.confirmOrAddUnspents(e.TxHex, e.TxID, trade.MarketQuoteAsset); err != nil {
 				log.Warnf("trying to confirm or add unspents: %v", err)
 				break
+			}
+
+			// Publish message for topic TradeSettled to pubsub service.
+			if b.pubsubSvc != nil {
+				go func() {
+					payload := map[string]interface{}{
+						"txid": trade.TxID,
+						"swap": map[string]interface{}{
+							"amount_p": trade.SwapRequestMessage().GetAmountP(),
+							"asset_p":  trade.SwapRequestMessage().GetAssetP(),
+							"amount_r": trade.SwapRequestMessage().GetAmountR(),
+							"asset_r":  trade.SwapRequestMessage().GetAssetR(),
+						},
+						"price": map[string]string{
+							"base_price":  trade.MarketPrice.BasePrice.String(),
+							"quote_price": trade.MarketPrice.QuotePrice.String(),
+						},
+						"market": map[string]string{
+							"base_asset":  b.marketBaseAsset,
+							"quote_asset": trade.MarketQuoteAsset,
+						},
+					}
+					message, _ := json.Marshal(payload)
+					topics := b.pubsubSvc.TopicsByCode()
+					topic := topics[TradeSettled]
+
+					if err := b.pubsubSvc.Publish(topic.Label(), string(message)); err != nil {
+						log.WithError(err).Warnf(
+							"an error occured while publishing message for topic %s",
+							topic.Label(),
+						)
+					}
+				}()
 			}
 			// stop watching for a tx after it's confirmed
 			b.StopObserveTx(e.TxID)

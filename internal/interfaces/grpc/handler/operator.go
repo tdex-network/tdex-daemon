@@ -174,6 +174,26 @@ func (o operatorHandler) DropMarket(
 	return o.dropMarket(ctx, req)
 }
 
+func (o operatorHandler) AddWebhook(
+	ctx context.Context,
+	req *pb.AddWebhookRequest,
+) (*pb.AddWebhookReply, error) {
+	return o.addWebhook(ctx, req)
+}
+
+func (o operatorHandler) RemoveWebhook(
+	ctx context.Context,
+	req *pb.RemoveWebhookRequest,
+) (*pb.RemoveWebhookReply, error) {
+	return o.removeWebhook(ctx, req)
+}
+func (o operatorHandler) ListWebhooks(
+	ctx context.Context,
+	req *pb.ListWebhooksRequest,
+) (*pb.ListWebhooksReply, error) {
+	return o.listWebhooks(ctx, req)
+}
+
 func (o operatorHandler) dropMarket(
 	ctx context.Context,
 	req *pb.DropMarketRequest,
@@ -754,6 +774,51 @@ func (o operatorHandler) reportMarketFee(
 	return &pb.ReportMarketFeeReply{
 		CollectedFees:              collectedFees,
 		TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
+	}, nil
+}
+
+func (o operatorHandler) addWebhook(
+	ctx context.Context, req *pb.AddWebhookRequest,
+) (*pb.AddWebhookReply, error) {
+	hook := application.Webhook{
+		ActionType: int(req.GetAction()),
+		Endpoint:   req.GetEndpoint(),
+		Secret:     req.GetSecret(),
+	}
+	hookID, err := o.operatorSvc.AddWebhook(ctx, hook)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.AddWebhookReply{Id: hookID}, nil
+}
+
+func (o operatorHandler) removeWebhook(
+	ctx context.Context, req *pb.RemoveWebhookRequest,
+) (*pb.RemoveWebhookReply, error) {
+	if err := o.operatorSvc.RemoveWebhook(ctx, req.GetId()); err != nil {
+		return nil, err
+	}
+	return &pb.RemoveWebhookReply{}, nil
+}
+
+func (o operatorHandler) listWebhooks(
+	ctx context.Context,
+	req *pb.ListWebhooksRequest,
+) (*pb.ListWebhooksReply, error) {
+	hooks, err := o.operatorSvc.ListWebhooks(ctx, int(req.GetAction()))
+	if err != nil {
+		return nil, err
+	}
+	hooksInfo := make([]*pb.WebhookInfo, 0, len(hooks))
+	for _, h := range hooks {
+		hooksInfo = append(hooksInfo, &pb.WebhookInfo{
+			Id:        h.Id,
+			Endpoint:  h.Endpoint,
+			IsSecured: h.IsSecured,
+		})
+	}
+	return &pb.ListWebhooksReply{
+		WebhookInfo: hooksInfo,
 	}, nil
 }
 

@@ -153,6 +153,18 @@ type UtxoInfo struct {
 	Asset    string
 }
 
+type Webhook struct {
+	ActionType int
+	Endpoint   string
+	Secret     string
+}
+type WebhookInfo struct {
+	Id         string
+	ActionType int
+	Endpoint   string
+	IsSecured  bool
+}
+
 type Unspents []domain.Unspent
 
 func (u Unspents) ToUtxos() []explorer.Utxo {
