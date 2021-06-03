@@ -6,7 +6,7 @@ replace github.com/tdex-network/tdex-daemon/pkg/explorer => ./pkg/explorer
 
 replace github.com/tdex-network/tdex-daemon/pkg/securestore => ./pkg/securestore
 
-replace go.etcd.io/etcd => go.etcd.io/etcd v0.5.0-alpha.5.0.20201125193152-8a03d2e9614b
+replace github.com/tdex-network/tdex-daemon/pkg/macaroons => ./pkg/macaroons
 
 require (
 	github.com/btcsuite/btcd v0.21.0-beta.0.20210426180113-7eba688b65e5
