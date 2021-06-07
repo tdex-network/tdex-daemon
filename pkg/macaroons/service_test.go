@@ -69,8 +69,7 @@ func TestNewService(t *testing.T) {
 	// Second, create the new service instance, unlock it and pass in a
 	// checker that we expect it to add to the bakery.
 	service, err := macaroons.NewService(
-		tempDir, "tdexd", filename, false, kvdb.DefaultDBTimeout,
-		macaroons.IPLockChecker,
+		tempDir, "tdexd", filename, false, macaroons.IPLockChecker,
 	)
 	if err != nil {
 		t.Fatalf("Error creating new service: %v", err)
@@ -121,8 +120,7 @@ func TestValidateMacaroon(t *testing.T) {
 	tempDir := setupTestRootKeyStorage(t)
 	defer os.RemoveAll(tempDir)
 	service, err := macaroons.NewService(
-		tempDir, "lnd", filename, false, kvdb.DefaultDBTimeout,
-		macaroons.IPLockChecker,
+		tempDir, "lnd", filename, false, macaroons.IPLockChecker,
 	)
 	if err != nil {
 		t.Fatalf("Error creating new service: %v", err)
@@ -182,8 +180,7 @@ func TestListMacaroonIDs(t *testing.T) {
 	// Second, create the new service instance, unlock it and pass in a
 	// checker that we expect it to add to the bakery.
 	service, err := macaroons.NewService(
-		tempDir, "lnd", filename, false, kvdb.DefaultDBTimeout,
-		macaroons.IPLockChecker,
+		tempDir, "lnd", filename, false, macaroons.IPLockChecker,
 	)
 	require.NoError(t, err, "Error creating new service")
 	defer service.Close()
@@ -215,8 +212,7 @@ func TestDeleteMacaroonID(t *testing.T) {
 	// Second, create the new service instance, unlock it and pass in a
 	// checker that we expect it to add to the bakery.
 	service, err := macaroons.NewService(
-		tempDir, "lnd", filename, false, kvdb.DefaultDBTimeout,
-		macaroons.IPLockChecker,
+		tempDir, "lnd", filename, false, macaroons.IPLockChecker,
 	)
 	require.NoError(t, err, "Error creating new service")
 	defer service.Close()
