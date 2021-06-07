@@ -186,8 +186,7 @@ func (t *tradeService) GetMarketPrice(
 
 	preview, err := previewForMarket(unspents, mkt, tradeType, amount, asset)
 	if err != nil {
-		log.Debugf("error while making preview: %s", err)
-		return nil, ErrServiceUnavailable
+		return nil, err
 	}
 
 	return &PriceWithFee{
@@ -865,6 +864,17 @@ func previewForMarket(
 	amount uint64,
 	asset string,
 ) (*preview, error) {
+	isBaseAsset := asset == market.BaseAsset
+	if isBaseAsset {
+		if amount < uint64(market.FixedFee.BaseFee) {
+			return nil, errors.New("provided amount is too small")
+		}
+	} else {
+		if amount < uint64(market.FixedFee.QuoteFee) {
+			return nil, errors.New("provided amount is too small")
+		}
+	}
+
 	balances := getBalanceByAsset(unspents)
 	marketBalance := Balance{
 		BaseAmount:  balances[market.BaseAsset],
