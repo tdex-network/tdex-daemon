@@ -1,5 +1,12 @@
 package application
 
+// Passphrase msg type
+const (
+	InitWallet = iota
+	UnlockWallet
+	ChangePassphrase
+)
+
 // trade type
 const (
 	TradeBuy = iota
