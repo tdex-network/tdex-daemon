@@ -30,9 +30,27 @@ var (
 		Value: "localhost:9000",
 	}
 
-	macaroonFlag = cli.StringFlag{
-		Name:  "macaroon",
-		Usage: "hex encoded admin macaroon",
+	noTLSFlag = cli.BoolFlag{
+		Name:  "no_tls",
+		Usage: "used to start the daemon without tls encryption",
+		Value: false,
+	}
+
+	tlsCertFlag = cli.StringFlag{
+		Name:  "tls_cert_path",
+		Usage: fmt.Sprintf("the directory where to fing the %s file", tlsCertFile),
+		Value: "",
+	}
+
+	noMacaroonsFlag = cli.BoolFlag{
+		Name:  "no_macaroons",
+		Usage: "used to start the daemon without macaroon auth",
+		Value: false,
+	}
+
+	macaroonsFlag = cli.StringFlag{
+		Name:  "macaroons_datadir",
+		Usage: fmt.Sprintf("the directory where to find the %s file", adminMacaroonFile),
 		Value: "",
 	}
 )
@@ -55,7 +73,10 @@ var cliConfig = cli.Command{
 				&networkFlag,
 				&explorerUrlFlag,
 				&rpcFlag,
-				&macaroonFlag,
+				&noTLSFlag,
+				&tlsCertFlag,
+				&noMacaroonsFlag,
+				&macaroonsFlag,
 			},
 		},
 	},
@@ -76,10 +97,13 @@ func configAction(ctx *cli.Context) error {
 
 func configInitAction(c *cli.Context) error {
 	err := setState(map[string]string{
-		"network":      c.String("network"),
-		"explorer_url": c.String("explorer_url"),
-		"rpcserver":    c.String("rpcserver"),
-		"macaroon":     c.String("macaroon"),
+		"network":           c.String("network"),
+		"explorer_url":      c.String("explorer_url"),
+		"rpcserver":         c.String("rpcserver"),
+		"no_tls":            c.String("no_tls"),
+		"tls_cert_path":     cleanAndExpandPath(c.String("tls_cert_path")),
+		"no_macaroons":      c.String("no_macaroons"),
+		"macaroons_datadir": cleanAndExpandPath(c.String("macaroons_datadir")),
 	})
 
 	if err != nil {
