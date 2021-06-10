@@ -4,7 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
@@ -41,7 +41,7 @@ func openTestStore(t *testing.T, tempDir string) (func(),
 	*macaroons.RootKeyStorage) {
 
 	db, err := kvdb.Create(
-		kvdb.BoltBackendName, path.Join(tempDir, "weks.db"), true,
+		kvdb.BoltBackendName, filepath.Join(tempDir, "weks.db"), true,
 		kvdb.DefaultDBTimeout,
 	)
 	require.NoError(t, err)

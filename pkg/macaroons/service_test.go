@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,7 +40,7 @@ func setupTestRootKeyStorage(t *testing.T) string {
 		t.Fatalf("Error creating temp dir: %v", err)
 	}
 	db, err := kvdb.Create(
-		kvdb.BoltBackendName, path.Join(tempDir, "macaroons.db"), true,
+		kvdb.BoltBackendName, filepath.Join(tempDir, "macaroons.db"), true,
 		kvdb.DefaultDBTimeout,
 	)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/tdex-network/tdex-daemon/pkg/securestore/kvdb"
 	"google.golang.org/grpc/metadata"
@@ -84,7 +84,7 @@ func NewService(
 	// and all generated macaroons+caveats.
 	macaroonDB, err := kvdb.Create(
 		kvdb.BoltBackendName,
-		path.Join(datadir, filename),
+		filepath.Join(datadir, filename),
 		true,
 		kvdb.DefaultDBTimeout,
 	)

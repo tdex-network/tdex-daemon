@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -44,7 +44,7 @@ func NewSecureStorage(datadir, filename string) (securestore.SecureStorage, erro
 
 	db, err := kvdb.Create(
 		kvdb.BoltBackendName,
-		path.Join(datadir, filename),
+		filepath.Join(datadir, filename),
 		true,
 		kvdb.DefaultDBTimeout,
 	)
