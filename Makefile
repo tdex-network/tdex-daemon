@@ -24,11 +24,6 @@ clean:
 	@echo "Cleaning..."
 	@go clean
 
-## create-cert: creates localhost ssl certficate and key
-create-cert:
-	chmod u+x ./scripts/sslcert
-	bash ./scripts/sslcert
-
 ## cov: generates coverage report
 cov:
 	@echo "Coverage..."
@@ -52,6 +47,8 @@ run: clean
 	export TDEX_LOG_LEVEL=5; \
 	export TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225; \
 	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
+	export TDEX_NO_TLS=true; \
+	export TDEX_NO_MACAROONS=true; \
 	go run ./cmd/tdexd
 
 
