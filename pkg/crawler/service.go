@@ -14,7 +14,7 @@ const (
 )
 
 type blockchainCrawler struct {
-	interval     int
+	interval     time.Duration
 	explorerSvc  explorer.Service
 	errChan      chan error
 	eventChan    chan Event
@@ -29,7 +29,7 @@ type blockchainCrawler struct {
 type Opts struct {
 	ExplorerSvc explorer.Service
 	//crawler interval in milliseconds
-	CrawlerInterval int
+	CrawlerInterval time.Duration
 	//number of requests per second
 	ExplorerLimit int
 	//number of bursts tokens permitted

@@ -16,6 +16,12 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
+type PassphraseMsg struct {
+	Method     int
+	CurrentPwd string
+	NewPwd     string
+}
+
 // SwapInfo contains info about a swap
 type SwapInfo struct {
 	AmountP uint64

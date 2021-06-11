@@ -62,6 +62,7 @@ type WalletService interface {
 		ctx context.Context,
 		req SendToManyRequest,
 	) ([]byte, error)
+	PassphraseChan() chan PassphraseMsg
 }
 
 type walletService struct {
@@ -75,7 +76,8 @@ type walletService struct {
 	marketFee          int64
 	marketBaseAsset    string
 
-	lock *sync.RWMutex
+	lock   *sync.RWMutex
+	pwChan chan PassphraseMsg
 }
 
 func NewWalletService(
@@ -116,6 +118,7 @@ func newWalletService(
 		marketFee:          marketFee,
 		marketBaseAsset:    marketBaseAsset,
 		lock:               &sync.RWMutex{},
+		pwChan:             make(chan PassphraseMsg, 1),
 	}
 	// to understand if the service has an already initialized wallet we check
 	// if the inner vaultRepo is able to return a Vault without passing mnemonic
@@ -178,14 +181,6 @@ func (w *walletService) InitWallet(
 		return
 	}
 
-	if restore && w.withElements {
-		chErr <- fmt.Errorf(
-			"Restoring a wallet through the Elements explorer is not availble at the " +
-				"moment. Please restart the daemon using the Esplora block explorer.",
-		)
-		return
-	}
-
 	if restore {
 		w.setSyncing(true)
 		log.Debug("restoring wallet")
@@ -206,6 +201,14 @@ func (w *walletService) InitWallet(
 	defer vault.Lock()
 
 	if restore {
+		if w.withElements {
+			chErr <- fmt.Errorf(
+				"Restoring a wallet through the Elements explorer is not availble at the " +
+					"moment. Please restart the daemon using the Esplora block explorer.",
+			)
+			return
+		}
+
 		data := "addresses discovery"
 		if w.withElements {
 			data += ". With elements this may take a while"
@@ -214,33 +217,25 @@ func (w *walletService) InitWallet(
 			Status: Processing,
 			Data:   data,
 		}
-	}
 
-	allInfo := make(domain.AddressesInfo, 0)
-	feeInfo, marketInfoByAccount, err := w.restoreVault(ctx, mnemonic, vault, restore)
-	if err != nil {
-		chErr <- fmt.Errorf("unable to restore vault: %v", err)
-		return
-	}
-
-	if restore {
+		allInfo := make(domain.AddressesInfo, 0)
+		feeInfo, marketInfoByAccount, err := w.restoreVault(ctx, mnemonic, vault)
+		if err != nil {
+			chErr <- fmt.Errorf("unable to restore vault: %v", err)
+			return
+		}
 		chRes <- &InitWalletReply{
 			Status: Done,
 			Data:   "addresses discovery",
 		}
-	}
 
-	allInfo = append(allInfo, feeInfo...)
-	for _, marketInfo := range marketInfoByAccount {
-		allInfo = append(allInfo, marketInfo...)
-	}
+		allInfo = append(allInfo, feeInfo...)
+		for _, marketInfo := range marketInfoByAccount {
+			allInfo = append(allInfo, marketInfo...)
+		}
 
-	var unspents []domain.Unspent
-	var markets []*domain.Market
-
-	if restore {
 		// restore unspents
-		unspents, err = w.restoreUnspents(allInfo, chRes)
+		unspents, err := w.restoreUnspents(allInfo, chRes)
 		if err != nil {
 			chErr <- fmt.Errorf("unable to restore unspents: %v", err)
 			return
@@ -254,7 +249,7 @@ func (w *walletService) InitWallet(
 
 		// restore markets
 		mLen := len(marketInfoByAccount)
-		markets = make([]*domain.Market, mLen, mLen)
+		markets := make([]*domain.Market, mLen, mLen)
 		i := 0
 		for accountIndex, info := range marketInfoByAccount {
 			market, err := w.restoreMarket(ctx, accountIndex, info, unspentsByAddress)
@@ -265,11 +260,13 @@ func (w *walletService) InitWallet(
 			markets[i] = market
 			i++
 		}
-	}
 
-	if err := w.persistRestoredState(ctx, vault, unspents, markets); err != nil {
-		chErr <- fmt.Errorf("unable to persist restored state: %v", err)
-		return
+		if err := w.persistRestoredState(ctx, vault, unspents, markets); err != nil {
+			chErr <- fmt.Errorf("unable to persist restored state: %v", err)
+			return
+		}
+
+		go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
 	}
 
 	if w.blockchainListener.PubSubService() != nil {
@@ -285,7 +282,10 @@ func (w *walletService) InitWallet(
 		}()
 	}
 
-	go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
+	w.pwChan <- PassphraseMsg{
+		Method:     InitWallet,
+		CurrentPwd: passphrase,
+	}
 	w.setInitialized(true)
 	if w.isSyncing() {
 		w.setSyncing(false)
@@ -304,13 +304,23 @@ func (w *walletService) UnlockWallet(
 		return ErrWalletNotInitialized
 	}
 
+	vault, err := w.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		return err
+	}
+
+	if !vault.IsLocked() {
+		return nil
+	}
+
+	if err := vault.Unlock(passphrase); err != nil {
+		return err
+	}
+
 	if err := w.repoManager.VaultRepository().UpdateVault(
 		ctx,
-		func(v *domain.Vault) (*domain.Vault, error) {
-			if err := v.Unlock(passphrase); err != nil {
-				return nil, err
-			}
-			return v, nil
+		func(_ *domain.Vault) (*domain.Vault, error) {
+			return vault, nil
 		},
 	); err != nil {
 		return err
@@ -342,6 +352,10 @@ func (w *walletService) UnlockWallet(
 		}()
 	}
 
+	w.pwChan <- PassphraseMsg{
+		Method:     UnlockWallet,
+		CurrentPwd: passphrase,
+	}
 	w.blockchainListener.StartObservation()
 	return nil
 }
@@ -383,7 +397,17 @@ func (w *walletService) ChangePassword(
 		}()
 	}
 
+	w.pwChan <- PassphraseMsg{
+		Method:     ChangePassphrase,
+		CurrentPwd: currentPassphrase,
+		NewPwd:     newPassphrase,
+	}
+
 	return nil
+}
+
+func (w *walletService) PassphraseChan() chan PassphraseMsg {
+	return w.pwChan
 }
 
 func (w *walletService) GenerateAddressAndBlindingKey(
@@ -598,7 +622,6 @@ func (w *walletService) restoreVault(
 	ctx context.Context,
 	mnemonic []string,
 	vault *domain.Vault,
-	restore bool,
 ) (domain.AddressesInfo, map[int]domain.AddressesInfo, error) {
 	ww, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: mnemonic,
@@ -607,11 +630,9 @@ func (w *walletService) restoreVault(
 	var feeRestoreInfo, walletRestoreInfo *accountLastDerivedIndex
 	var marketsRestoreInfo []*accountLastDerivedIndex
 
-	if restore {
-		feeRestoreInfo = w.restoreAccount(ww, domain.FeeAccount)
-		walletRestoreInfo = w.restoreAccount(ww, domain.WalletAccount)
-		marketsRestoreInfo = w.restoreMarketAccounts(ww)
-	}
+	feeRestoreInfo = w.restoreAccount(ww, domain.FeeAccount)
+	walletRestoreInfo = w.restoreAccount(ww, domain.WalletAccount)
+	marketsRestoreInfo = w.restoreMarketAccounts(ww)
 
 	// restore vault accounts
 	feeInfo, err := initVaultAccount(vault, domain.FeeAccount, feeRestoreInfo)

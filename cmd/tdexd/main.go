@@ -2,85 +2,83 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/tls"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
-	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/config"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
-	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
-	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
+	"github.com/tdex-network/tdex-daemon/internal/interfaces"
+	grpcinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
 	"github.com/tdex-network/tdex-daemon/pkg/stats"
-	"golang.org/x/net/http2"
-	"google.golang.org/grpc"
-
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
-	pbtrader "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 
 	_ "net/http/pprof"
 )
 
-func main() {
-	log.SetLevel(log.Level(config.GetInt(config.LogLevelKey)))
+var (
+	// General config
+	logLevel               = config.GetInt(config.LogLevelKey)
+	network                = config.GetNetwork()
+	profilerEnabled        = config.GetBool(config.EnableProfilerKey)
+	datadir                = config.GetDatadir()
+	dbDir                  = filepath.Join(datadir, config.DbLocation)
+	profilerDir            = filepath.Join(datadir, config.ProfilerLocation)
+	noMacaroons            = config.GetBool(config.NoMacaroonsKey)
+	statsIntervalInSeconds = config.GetDuration(config.StatsIntervalKey) * time.Second
+	tradeTLSKey            = config.GetString(config.TradeTLSKeyKey)
+	tradeTLSCert           = config.GetString(config.TradeTLSCertKey)
+	// App services config
+	marketsFee                    = int64(config.GetFloat(config.DefaultFeeKey) * 100)
+	marketsBaseAsset              = config.GetString(config.BaseAssetKey)
+	tradesExpiryDurationInSeconds = config.GetDuration(config.TradeExpiryTimeKey) * time.Second
+	withElementsSvc               = config.IsSet(config.ElementsRPCEndpointKey)
+	pricesSlippagePercentage      = decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
+	feeThreshold                  = uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
+	tradeSvcPort                  = config.GetInt(config.TradeListeningPortKey)
+	operatorSvcPort               = config.GetInt(config.OperatorListeningPortKey)
+	crawlerIntervalInMilliseconds = time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond
+)
 
-	//http://localhost:8024/debug/pprof/
-	if config.GetBool(config.EnableProfilerKey) {
+func main() {
+	log.SetLevel(log.Level(logLevel))
+
+	// Profiler is enabled at url http://localhost:8024/debug/pprof/
+	if profilerEnabled {
 		runtime.SetBlockProfileRate(1)
 		go func() {
-			http.ListenAndServe(
-				":8024",
-				nil,
-			)
+			http.ListenAndServe(":8024", nil)
 		}()
 	}
 
-	dbDir := filepath.Join(config.GetString(config.DataDirPathKey), "db")
+	// Init services to be used by those of the application layer.
 	repoManager, err := dbbadger.NewRepoManager(dbDir, log.New())
 	if err != nil {
 		log.WithError(err).Panic("error while opening db")
 	}
-
-	marketsFee := int64(config.GetFloat(config.DefaultFeeKey) * 100)
-	marketsBaseAsset := config.GetString(config.BaseAssetKey)
-	tradesExpiryDurationInSeconds := config.GetDuration(config.TradeExpiryTimeKey) * time.Second
-	withElementsSvc := config.IsSet(config.ElementsRPCEndpointKey)
-	pricesSlippagePercentage := decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
-	network := config.GetNetwork()
-	feeThreshold := uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
-
 	explorerSvc, err := config.GetExplorer()
 	if err != nil {
 		log.WithError(err).Panic("error while setting up explorer service")
 	}
-
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:        explorerSvc,
 		ErrorHandler:       func(err error) { log.Warn(err) },
-		CrawlerInterval:    config.GetInt(config.CrawlIntervalKey),
+		CrawlerInterval:    crawlerIntervalInMilliseconds,
 		ExplorerLimit:      config.GetInt(config.CrawlLimitKey),
 		ExplorerTokenBurst: config.GetInt(config.CrawlTokenBurst),
 	})
-
 	webhookPubSub, err := newWebhookPubSubService(
 		dbDir, config.GetDuration(config.ExplorerRequestTimeoutKey),
 	)
@@ -89,7 +87,6 @@ func main() {
 			"an error occured while setting up webhook pubsub service",
 		)
 	}
-
 	blockchainListener := application.NewBlockchainListener(
 		crawlerSvc,
 		repoManager,
@@ -98,7 +95,8 @@ func main() {
 		network,
 	)
 
-	traderSvc := application.NewTradeService(
+	// Init application services
+	tradeSvc := application.NewTradeService(
 		repoManager,
 		explorerSvc,
 		blockchainListener,
@@ -129,61 +127,42 @@ func main() {
 		log.WithError(err).Panic("error while setting up wallet service")
 	}
 
-	// Ports
-	traderAddress := fmt.Sprintf(":%+v", config.GetInt(config.TraderListeningPortKey))
-	operatorAddress := fmt.Sprintf(":%+v", config.GetInt(config.OperatorListeningPortKey))
-	// Grpc Server
-	traderGrpcServer := grpc.NewServer(
-		interceptor.UnaryInterceptor(),
-		interceptor.StreamInterceptor(),
-	)
-	operatorGrpcServer := grpc.NewServer(
-		interceptor.UnaryInterceptor(),
-		interceptor.StreamInterceptor(),
-	)
-
-	traderHandler := grpchandler.NewTraderHandler(traderSvc)
-	walletHandler := grpchandler.NewWalletHandler(walletSvc)
-	operatorHandler := grpchandler.NewOperatorHandler(operatorSvc)
-
-	// Register proto implementations on Trader interface
-	pbtrader.RegisterTradeServer(traderGrpcServer, traderHandler)
-	// Register proto implementations on Operator interface
-	pboperator.RegisterOperatorServer(operatorGrpcServer, operatorHandler)
-	pbwallet.RegisterWalletServer(operatorGrpcServer, walletHandler)
+	// Init gRPC interfaces.
+	opts := grpcinterface.ServiceOpts{
+		NoMacaroons:       noMacaroons,
+		Datadir:           datadir,
+		DBLocation:        config.DbLocation,
+		TLSLocation:       config.TLSLocation,
+		MacaroonsLocation: config.MacaroonsLocation,
+		WalletSvc:         walletSvc,
+		OperatorSvc:       operatorSvc,
+		TradeSvc:          tradeSvc,
+	}
+	svc, err := grpcinterface.NewService(opts)
+	if err != nil {
+		log.WithError(err).Panic("an error occured while setting up gRPC service")
+	}
 
 	log.Info("starting daemon")
 
 	var cancelStats context.CancelFunc
 	if log.GetLevel() >= log.DebugLevel {
-		statsDir := filepath.Join(config.GetString(config.DataDirPathKey), "stats")
 		var ctx context.Context
 		ctx, cancelStats = context.WithCancel(context.Background())
-		stats.EnableMemoryStatistics(
-			ctx,
-			config.GetDuration(config.StatsIntervalKey)*time.Second,
-			statsDir,
-		)
+		stats.EnableMemoryStatistics(ctx, statsIntervalInSeconds, profilerDir)
 	}
 
-	defer stop(
-		repoManager,
-		webhookPubSub,
-		blockchainListener,
-		traderGrpcServer,
-		operatorGrpcServer,
-		cancelStats,
-	)
+	defer stop(repoManager, webhookPubSub, blockchainListener, svc, cancelStats)
 
-	// Serve grpc and grpc-web multiplexed on the same port
-	if err := serveMux(traderAddress, true, traderGrpcServer); err != nil {
-		log.WithError(err).Panic("error listening on trader interface")
-	}
-	if err := serveMux(operatorAddress, false, operatorGrpcServer); err != nil {
-		log.WithError(err).Panic("error listening on operator interface")
+	// Start gRPC service interfaces.
+	tradeAddress := fmt.Sprintf(":%+v", tradeSvcPort)
+	operatorAddress := fmt.Sprintf(":%+v", operatorSvcPort)
+
+	if err := svc.Start(operatorAddress, tradeAddress, tradeTLSKey, tradeTLSCert); err != nil {
+		log.WithError(err).Panic("an error occured while starting daemon")
 	}
 
-	log.Info("trader interface is listening on " + traderAddress)
+	log.Info("trade interface is listening on " + tradeAddress)
 	log.Info("operator interface is listening on " + operatorAddress)
 
 	sigChan := make(chan os.Signal, 1)
@@ -197,21 +176,16 @@ func stop(
 	repoManager ports.RepoManager,
 	pubsubSvc application.SecurePubSub,
 	blockchainListener application.BlockchainListener,
-	traderServer *grpc.Server,
-	operatorServer *grpc.Server,
+	svc interfaces.Service,
 	cancelStats context.CancelFunc,
 ) {
-	if log.GetLevel() >= log.DebugLevel {
+	if profilerEnabled && log.GetLevel() >= log.DebugLevel {
 		cancelStats()
 		time.Sleep(1 * time.Second)
-		log.Debug("cancel printing statistics")
+		log.Debug("stopped profiler")
 	}
 
-	operatorServer.Stop()
-	log.Debug("disabled operator interface")
-
-	traderServer.Stop()
-	log.Debug("disabled trader interface")
+	svc.Stop()
 
 	blockchainListener.StopObservation()
 
@@ -229,74 +203,12 @@ func stop(
 	log.Debug("exiting")
 }
 
-func serveMux(address string, withSsl bool, grpcServer *grpc.Server) error {
-	lis, err := net.Listen("tcp", address)
+func newWebhookPubSubService(
+	datadir string, reqTimeout time.Duration,
+) (application.SecurePubSub, error) {
+	secureStore, err := boltsecurestore.NewSecureStorage(datadir, "pubsub.db")
 	if err != nil {
-		return err
-	}
-
-	if sslKey := config.GetString(config.SSLKeyPathKey); sslKey != "" && withSsl {
-		certificate, err := tls.LoadX509KeyPair(config.GetString(config.SSLCertPathKey), sslKey)
-		if err != nil {
-			return err
-		}
-
-		const requiredCipher = tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-		config := &tls.Config{
-			CipherSuites: []uint16{requiredCipher},
-			NextProtos:   []string{"http/1.1", http2.NextProtoTLS, "h2-14"}, // h2-14 is just for compatibility. will be eventually removed.
-			Certificates: []tls.Certificate{certificate},
-		}
-		config.Rand = rand.Reader
-
-		lis = tls.NewListener(lis, config)
-	}
-
-	mux := cmux.New(lis)
-	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
-	httpL := mux.Match(cmux.HTTP1Fast())
-
-	grpcWebServer := grpcweb.WrapServer(
-		grpcServer,
-		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
-		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
-	)
-
-	go grpcServer.Serve(grpcL)
-	go http.Serve(httpL, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if isValidRequest(req) {
-			grpcWebServer.ServeHTTP(resp, req)
-		}
-	}))
-
-	go mux.Serve()
-	return nil
-}
-
-func isValidRequest(req *http.Request) bool {
-	return isValidGrpcWebOptionRequest(req) || isValidGrpcWebRequest(req)
-}
-
-func isValidGrpcWebRequest(req *http.Request) bool {
-	return req.Method == http.MethodPost && isValidGrpcContentTypeHeader(req.Header.Get("content-type"))
-}
-
-func isValidGrpcContentTypeHeader(contentType string) bool {
-	return strings.HasPrefix(contentType, "application/grpc-web-text") ||
-		strings.HasPrefix(contentType, "application/grpc-web")
-}
-
-func isValidGrpcWebOptionRequest(req *http.Request) bool {
-	accessControlHeader := req.Header.Get("Access-Control-Request-Headers")
-	return req.Method == http.MethodOptions &&
-		strings.Contains(accessControlHeader, "x-grpc-web") &&
-		strings.Contains(accessControlHeader, "content-type")
-}
-
-func newWebhookPubSubService(dbDir string, reqTimeout time.Duration) (application.SecurePubSub, error) {
-	secureStore, err := boltsecurestore.NewSecureStorage(dbDir, "pubsub.db")
-	if err != nil {
-		log.WithError(err).Panic("error while setting up webhook secure storage")
+		return nil, err
 	}
 	httpClient := esplora.NewHTTPClient(time.Duration(reqTimeout) * time.Second)
 	return webhookpubsub.NewWebhookPubSubService(secureStore, httpClient)

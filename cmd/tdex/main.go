@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/user"
-	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/btcsuite/btcutil"
@@ -16,9 +16,12 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"gopkg.in/macaroon.v2"
 
 	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
+	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 )
 
 var (
@@ -30,7 +33,10 @@ var (
 	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 200)
 
 	tdexDataDir = btcutil.AppDataDir("tdex-operator", false)
-	statePath   = path.Join(tdexDataDir, "state.json")
+	statePath   = filepath.Join(tdexDataDir, "state.json")
+
+	adminMacaroonFile = "admin.macaroon"
+	tlsCertFile       = "cert.pem"
 )
 
 func init() {
@@ -40,7 +46,7 @@ func init() {
 	}
 
 	tdexDataDir = dataDir
-	statePath = path.Join(tdexDataDir, "state.json")
+	statePath = filepath.Join(tdexDataDir, "state.json")
 }
 
 func main() {
@@ -167,7 +173,7 @@ func printRespJSON(resp interface{}) {
 }
 
 func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(), error) {
-	conn, err := getClientConn()
+	conn, err := getClientConn(false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,7 +183,7 @@ func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(), err
 }
 
 func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(), error) {
-	conn, err := getClientConn()
+	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,7 +192,7 @@ func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(), error) {
 	return pbwallet.NewWalletClient(conn), cleanup, nil
 }
 
-func getClientConn() (*grpc.ClientConn, error) {
+func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 	state, err := getState()
 	if err != nil {
 		return nil, err
@@ -195,9 +201,57 @@ func getClientConn() (*grpc.ClientConn, error) {
 	if !ok {
 		return nil, errors.New("set rpcserver with `config set rpcserver`")
 	}
-	//macaroon := state["macaroon"]
 
-	opts := []grpc.DialOption{grpc.WithDefaultCallOptions(maxMsgRecvSize), grpc.WithInsecure()}
+	opts := []grpc.DialOption{grpc.WithDefaultCallOptions(maxMsgRecvSize)}
+
+	noMacaroons, _ := strconv.ParseBool(state["no_macaroons"])
+	if noMacaroons {
+		opts = append(opts, grpc.WithInsecure())
+	} else {
+		// Load TLS cert for operator interface (enabled automatically when using
+		// macaroon auth)
+		certDatadir, ok := state["tls_cert_path"]
+		if !ok {
+			return nil, fmt.Errorf(
+				"TLS certificate path is missing. Try " +
+					"'tdex config set tls_cert_path /some/dir/including/certificate'",
+			)
+		}
+		certPath := filepath.Join(certDatadir, tlsCertFile)
+
+		tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
+		if err != nil {
+			return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
+		}
+		opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
+
+		// Load macaroons and add credentials to dialer
+		if !skipMacaroon {
+			macDatadir, ok := state["macaroons_path"]
+			if !ok {
+				return nil, fmt.Errorf(
+					"macaroons datadir is missing. Try " +
+						"'tdex config set macaroons_path ~/some/dir/including/macaroons",
+				)
+			}
+			macPath := filepath.Join(macDatadir, adminMacaroonFile)
+			macBytes, err := ioutil.ReadFile(macPath)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"could not read macaroon %s in path %s: %s",
+					adminMacaroonFile, macDatadir, err,
+				)
+			}
+			mac := &macaroon.Macaroon{}
+			if err := mac.UnmarshalBinary(macBytes); err != nil {
+				return nil, fmt.Errorf(
+					"could not parse macaroon %s: %s", adminMacaroonFile, err,
+				)
+			}
+			macCreds := macaroons.NewMacaroonCredential(mac)
+			opts = append(opts, grpc.WithPerRPCCredentials(macCreds))
+		}
+	}
 
 	conn, err := grpc.Dial(address, opts...)
 	if err != nil {

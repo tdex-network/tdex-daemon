@@ -188,12 +188,12 @@ func newObservableHandler(
 	observable Observable,
 	explorerSvc explorer.Service,
 	wg *sync.WaitGroup,
-	interval int,
+	interval time.Duration,
 	eventChan chan Event,
 	errChan chan error,
 	rateLimiter *rate.Limiter,
 ) *observableHandler {
-	ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
+	ticker := time.NewTicker(interval)
 	stopChan := make(chan int, 1)
 
 	return &observableHandler{

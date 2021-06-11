@@ -68,6 +68,7 @@ func main() {
 		"TDEX_LOG_LEVEL=5",
 		"TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
 		"TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000",
+		"TDEX_NO_MACAROONS=true",
 	}...)
 	stopDaemon, err := runCommandDetached(os.Stdout, os.Stderr, daemon, daemonEnv)
 	if err != nil {
@@ -80,8 +81,12 @@ func main() {
 	runCommand("make", "build-cli")
 
 	// generate a new seed
-	if _, err := runCommandWithEnv(cliEnv, cli, "config", "init", "--network", "regtest", "--explorer_url", explorerUrl); err != nil {
-		fmt.Println(err)
+	if _, err := runCommandWithEnv(
+		cliEnv, cli, "config", "init",
+		"--network", "regtest",
+		"--explorer_url", explorerUrl,
+		"--no_macaroons",
+	); err != nil {
 		return
 	}
 

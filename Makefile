@@ -1,4 +1,4 @@
-.PHONY: build build-cli proto clean create-cert cov fmt help install integrationtest run test vet
+.PHONY: build build-cli proto clean cov fmt help install integrationtest run test trade-cert vet
 
 install:
 	go mod download
@@ -24,10 +24,10 @@ clean:
 	@echo "Cleaning..."
 	@go clean
 
-## create-cert: creates localhost ssl certficate and key
-create-cert:
-	chmod u+x ./scripts/sslcert
-	bash ./scripts/sslcert
+## 
+trade-cert:
+	chmod u+x ./scripts/tlscert
+	bash ./scripts/tlscert
 
 ## cov: generates coverage report
 cov:
@@ -52,6 +52,7 @@ run: clean
 	export TDEX_LOG_LEVEL=5; \
 	export TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225; \
 	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
+	export TDEX_NO_MACAROONS=true; \
 	go run ./cmd/tdexd
 
 

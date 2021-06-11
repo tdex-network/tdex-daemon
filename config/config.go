@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -20,16 +19,16 @@ import (
 )
 
 const (
-	// TraderListeningPortKey is the port where the gRPC Trader interface will listen on
-	TraderListeningPortKey = "TRADER_LISTENING_PORT"
+	// TradeListeningPortKey is the port where the gRPC Trader interface will listen on
+	TradeListeningPortKey = "TRADE_LISTENING_PORT"
 	// OperatorListeningPortKey is the port where the gRPC Operator interface will listen on
 	OperatorListeningPortKey = "OPERATOR_LISTENING_PORT"
 	// ExplorerEndpointKey is the endpoint where the Electrs (for Liquid) REST API is listening
 	ExplorerEndpointKey = "EXPLORER_ENDPOINT"
 	// ExplorerRequestTimeoutKey are the milliseconds to wait for HTTP responses before timeouts
 	ExplorerRequestTimeoutKey = "EXPLORER_REQUEST_TIMEOUT"
-	// DataDirPathKey is the local data directory to store the internal state of daemon
-	DataDirPathKey = "DATA_DIR_PATH"
+	// DatadirKey is the local data directory to store the internal state of daemon
+	DatadirKey = "DATA_DIR_PATH"
 	// LogLevelKey are the different logging levels. For reference on the values https://godoc.org/github.com/sirupsen/logrus#Level
 	LogLevelKey = "LOG_LEVEL"
 	// DefaultFeeKey is the default swap fee when creating a market
@@ -46,10 +45,10 @@ const (
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey is the percentage of the slipage for accepting trades compared to current spot price
 	PriceSlippageKey = "PRICE_SLIPPAGE"
-	// SSLCertPathKey is the path to the SSL certificate
-	SSLCertPathKey = "SSL_CERT"
-	// SSLKeyPathKey is the path to the SSL private key
-	SSLKeyPathKey = "SSL_KEY"
+	// TradeTLSKeyKey is the path of the the TLS key for the Trade interface
+	TradeTLSKeyKey = "SSL_KEY"
+	// TradeTLSCertKey is the path of the the TLS certificate for the Trade interface
+	TradeTLSCertKey = "SSL_CERT"
 	// MnemonicKey is the mnemonic of the master private key of the daemon's wallet
 	MnemonicKey = "MNEMONIC"
 	// EnableProfilerKey nables profiler that can be used to investigate performance issues
@@ -68,17 +67,28 @@ const (
 	// CrawlTokenBurst represents number of bursts tokens permitted from
 	//crawler to explorer
 	CrawlTokenBurst = "CRAWL_TOKEN"
+	// NoMacaroonsKey is used to start the daemon without using macaroons auth
+	// service.
+	NoMacaroonsKey = "NO_MACAROONS"
+
+	DbLocation        = "db"
+	TLSLocation       = "tls"
+	MacaroonsLocation = "macaroons"
+	ProfilerLocation  = "stats"
+
+	MinDefaultPercentageFee = 0.01
+	MaxDefaultPercentageFee = float64(99)
 )
 
 var vip *viper.Viper
-var defaultDataDir = btcutil.AppDataDir("tdex-daemon", false)
+var defaultDatadir = btcutil.AppDataDir("tdex-daemon", false)
 
 func init() {
 	vip = viper.New()
 	vip.SetEnvPrefix("TDEX")
 	vip.AutomaticEnv()
 
-	vip.SetDefault(TraderListeningPortKey, 9945)
+	vip.SetDefault(TradeListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
 	vip.SetDefault(ExplorerEndpointKey, "https://blockstream.info/liquid/api")
 	vip.SetDefault(ExplorerRequestTimeoutKey, 15000)
@@ -89,27 +99,23 @@ func init() {
 	vip.SetDefault(NetworkKey, network.Liquid.Name)
 	vip.SetDefault(BaseAssetKey, network.Liquid.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
-	vip.SetDefault(DataDirPathKey, defaultDataDir)
+	vip.SetDefault(DatadirKey, defaultDatadir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
 	vip.SetDefault(StatsIntervalKey, 600)
 	vip.SetDefault(CrawlLimitKey, 10)
 	vip.SetDefault(CrawlTokenBurst, 1)
+	vip.SetDefault(NoMacaroonsKey, false)
 
-	validate()
+	if err := validate(); err != nil {
+		log.WithError(err).Panic("error while validating config")
+	}
 
-	if err := initDataDir(); err != nil {
-		log.WithError(err).Panic("error while init data dir")
+	if err := initDatadir(); err != nil {
+		log.WithError(err).Panic("error while creating datadir")
 	}
 
 	vip.Set(MnemonicKey, "")
-}
-
-func makeDirectoryIfNotExists(path string) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return os.Mkdir(path, os.ModeDir|0755)
-	}
-	return nil
 }
 
 //GetString ...
@@ -143,6 +149,11 @@ func GetNetwork() *network.Network {
 		return &network.Regtest
 	}
 	return &network.Liquid
+}
+
+// TODO: attach network name to datadir
+func GetDatadir() string {
+	return GetString(DatadirKey)
 }
 
 //GetExplorer ...
@@ -180,84 +191,90 @@ func GetMnemonic() []string {
 	return mnemonic
 }
 
-// Validate method of config will panic
-func validate() {
-	if err := validatePath(vip.GetString(DataDirPathKey)); err != nil {
-		log.WithError(err).Panic("datadir is not valid")
-	}
-	if err := validateDefaultFee(vip.GetFloat64(DefaultFeeKey)); err != nil {
-		log.WithError(err).Panic("default fee is not valid")
-	}
-	if err := validateDefaultNetwork(vip.GetString(NetworkKey)); err != nil {
-		log.WithError(err).Panic("default network is not valid")
-	}
-	certPath, keyPath := vip.GetString(SSLCertPathKey), vip.GetString(SSLKeyPathKey)
-	if (certPath != "" && keyPath == "") || (certPath == "" && keyPath != "") {
-		log.Fatalln("SSL requires both key and certificate when enabled")
+func validate() error {
+	datadir := GetString(DatadirKey)
+	if len(datadir) <= 0 {
+		return fmt.Errorf("datadir must not be null")
 	}
 
-	if rpcEndpoint := vip.GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
-		if err := validateEndpoint(rpcEndpoint); err != nil {
-			log.WithError(err).Panic("Elements RPC endpoint is not a valid url")
-		}
-		// ElementsStartRescanTimestamp can assume the 0 value that means scanning
-		// the entire blockchain. This wil be used only in regtest mode
-		if vip.IsSet(ElementsStartRescanTimestampKey) {
-			rescanTime := vip.GetInt(ElementsStartRescanTimestampKey)
-			if rescanTime < 0 {
-				log.WithError(
-					fmt.Errorf("timestamp must not be a negative number"),
-				).Panic("Elements rescan timestamp is not valid")
-			}
-		}
-	} else {
-		if err := validateEndpoint(vip.GetString(ExplorerEndpointKey)); err != nil {
-			log.WithError(err).Panic("explorer endpoint is not a valid url")
-		}
-	}
-}
-
-func validateDefaultFee(fee float64) error {
-	if fee < 0.01 || fee > 99 {
-		return errors.New("percentage of the fee on each swap must be > 0.01 and < 99")
+	percentageFee := GetFloat(DefaultFeeKey)
+	if percentageFee < MinDefaultPercentageFee ||
+		percentageFee > MaxDefaultPercentageFee {
+		return fmt.Errorf(
+			"percentage of the fee on each swap must be in range [%.2f, %.2f]",
+			MinDefaultPercentageFee, MaxDefaultPercentageFee,
+		)
 	}
 
-	return nil
-}
-
-func validateDefaultNetwork(net string) error {
-	if net != network.Liquid.Name && net != network.Regtest.Name {
+	networkName := GetString(NetworkKey)
+	if networkName != network.Liquid.Name &&
+		networkName != network.Regtest.Name {
 		return fmt.Errorf(
 			"network must be either '%s' or '%s'",
 			network.Liquid.Name,
 			network.Regtest.Name,
 		)
 	}
+
+	tlsKey, tlsCert := GetString(TradeTLSKeyKey), GetString(TradeTLSCertKey)
+	if (tlsKey == "" && tlsCert != "") || (tlsKey != "" && tlsCert == "") {
+		return fmt.Errorf(
+			"TLS over Trade interface requires both key and certificate when enabled",
+		)
+	}
+
+	elementsRpcEndpoint := GetString(ElementsRPCEndpointKey)
+	if elementsRpcEndpoint != "" {
+		if _, err := url.Parse(elementsRpcEndpoint); err != nil {
+			return fmt.Errorf("Elements RPC endpoint is not a valid url: %s", err)
+		}
+		// ElementsStartRescanTimestamp can assume the 0 value that means scanning
+		// the entire blockchain. This wil be used only in regtest mode
+		if vip.IsSet(ElementsStartRescanTimestampKey) {
+			rescanTime := vip.GetInt(ElementsStartRescanTimestampKey)
+			if rescanTime < 0 {
+				return fmt.Errorf("timestamp must not be a negative number")
+			}
+		}
+	} else {
+		exploreEndpoint := GetString(ExplorerEndpointKey)
+		if _, err := url.Parse(exploreEndpoint); err != nil {
+			return fmt.Errorf("explorer endpoint is not a valid url: %s", err)
+		}
+	}
 	return nil
 }
 
-// validatePath empirically checks if the given path is correct by creating
-// the folder if not existing. If path is null or invalid, an error is returned
-func validatePath(path string) error {
-	if path == "" {
-		return fmt.Errorf("datadir path must not be null")
+func initDatadir() error {
+	datadir := GetDatadir()
+	if err := makeDirectoryIfNotExists(filepath.Join(datadir, DbLocation)); err != nil {
+		return err
 	}
-	return makeDirectoryIfNotExists(path)
+
+	profilerEnabled := GetBool(EnableProfilerKey)
+	if profilerEnabled {
+		if err := makeDirectoryIfNotExists(filepath.Join(datadir, ProfilerLocation)); err != nil {
+			return err
+		}
+	}
+
+	// if macaroons is enabled, the daemon automatically enables TLS encryption
+	// on the operator interface
+	noMacaroons := GetBool(NoMacaroonsKey)
+	if !noMacaroons {
+		if err := makeDirectoryIfNotExists(filepath.Join(datadir, MacaroonsLocation)); err != nil {
+			return err
+		}
+		if err := makeDirectoryIfNotExists(filepath.Join(datadir, TLSLocation)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func validateEndpoint(endpoint string) error {
-	_, err := url.Parse(endpoint)
-	return err
-}
-
-func initDataDir() error {
-	dataDir := GetString(DataDirPathKey)
-	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "db")); err != nil {
-		log.WithError(err).Panic("error while creating db folder")
+func makeDirectoryIfNotExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return os.MkdirAll(path, os.ModeDir|0755)
 	}
-	if err := makeDirectoryIfNotExists(filepath.Join(dataDir, "stats")); err != nil {
-		log.WithError(err).Panic("error while creating stats folder")
-	}
-
 	return nil
 }
