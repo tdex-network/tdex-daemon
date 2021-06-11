@@ -45,6 +45,10 @@ const (
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// PriceSlippageKey is the percentage of the slipage for accepting trades compared to current spot price
 	PriceSlippageKey = "PRICE_SLIPPAGE"
+	// TradeTLSKeyKey is the path of the the TLS key for the Trade interface
+	TradeTLSKeyKey = "TRADE_TLS_KEY"
+	// TradeTLSCertKey is the path of the the TLS certificate for the Trade interface
+	TradeTLSCertKey = "TRADE_TLS_CERT"
 	// MnemonicKey is the mnemonic of the master private key of the daemon's wallet
 	MnemonicKey = "MNEMONIC"
 	// EnableProfilerKey nables profiler that can be used to investigate performance issues
@@ -63,8 +67,6 @@ const (
 	// CrawlTokenBurst represents number of bursts tokens permitted from
 	//crawler to explorer
 	CrawlTokenBurst = "CRAWL_TOKEN"
-	// NoTLSKey is used to start the daemon without using TLS encryption.
-	NoTLSKey = "NO_TLS"
 	// NoMacaroonsKey is used to start the daemon without using macaroons auth
 	// service.
 	NoMacaroonsKey = "NO_MACAROONS"
@@ -103,7 +105,6 @@ func init() {
 	vip.SetDefault(StatsIntervalKey, 600)
 	vip.SetDefault(CrawlLimitKey, 10)
 	vip.SetDefault(CrawlTokenBurst, 1)
-	vip.SetDefault(NoTLSKey, false)
 	vip.SetDefault(NoMacaroonsKey, false)
 
 	if err := validate(); err != nil {
@@ -216,6 +217,13 @@ func validate() error {
 		)
 	}
 
+	tlsKey, tlsCert := GetString(TradeTLSKeyKey), GetString(TradeTLSCertKey)
+	if (tlsKey == "" && tlsCert != "") || (tlsKey != "" && tlsCert == "") {
+		return fmt.Errorf(
+			"TLS over Trade interface requires both key and certificate when enabled",
+		)
+	}
+
 	elementsRpcEndpoint := GetString(ElementsRPCEndpointKey)
 	if elementsRpcEndpoint != "" {
 		if _, err := url.Parse(elementsRpcEndpoint); err != nil {
@@ -251,16 +259,14 @@ func initDatadir() error {
 		}
 	}
 
-	noTLS := GetBool(NoTLSKey)
-	if !noTLS {
-		if err := makeDirectoryIfNotExists(filepath.Join(datadir, TLSLocation)); err != nil {
-			return err
-		}
-	}
-
+	// if macaroons is enabled, the daemon automatically enables TLS encryption
+	// on the operator interface
 	noMacaroons := GetBool(NoMacaroonsKey)
 	if !noMacaroons {
 		if err := makeDirectoryIfNotExists(filepath.Join(datadir, MacaroonsLocation)); err != nil {
+			return err
+		}
+		if err := makeDirectoryIfNotExists(filepath.Join(datadir, TLSLocation)); err != nil {
 			return err
 		}
 	}

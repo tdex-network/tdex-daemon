@@ -35,7 +35,7 @@ var (
 	tdexDataDir = btcutil.AppDataDir("tdex-operator", false)
 	statePath   = filepath.Join(tdexDataDir, "state.json")
 
-	adminMacaroonFile = "price.macaroon"
+	adminMacaroonFile = "admin.macaroon"
 	tlsCertFile       = "cert.pem"
 )
 
@@ -173,7 +173,7 @@ func printRespJSON(resp interface{}) {
 }
 
 func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(), error) {
-	conn, err := getClientConn()
+	conn, err := getClientConn(false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -183,7 +183,7 @@ func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(), err
 }
 
 func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(), error) {
-	conn, err := getClientConn()
+	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -192,7 +192,7 @@ func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(), error) {
 	return pbwallet.NewWalletClient(conn), cleanup, nil
 }
 
-func getClientConn() (*grpc.ClientConn, error) {
+func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 	state, err := getState()
 	if err != nil {
 		return nil, err
@@ -204,10 +204,12 @@ func getClientConn() (*grpc.ClientConn, error) {
 
 	opts := []grpc.DialOption{grpc.WithDefaultCallOptions(maxMsgRecvSize)}
 
-	noTLS, _ := strconv.ParseBool(state["no_tls"])
-	if noTLS {
+	noMacaroons, _ := strconv.ParseBool(state["no_macaroons"])
+	if noMacaroons {
 		opts = append(opts, grpc.WithInsecure())
 	} else {
+		// Load TLS cert for operator interface (enabled automatically when using
+		// macaroon auth)
 		certDatadir, ok := state["tls_cert_path"]
 		if !ok {
 			return nil, fmt.Errorf(
@@ -217,38 +219,38 @@ func getClientConn() (*grpc.ClientConn, error) {
 		}
 		certPath := filepath.Join(certDatadir, tlsCertFile)
 
-		creds, err := credentials.NewClientTLSFromFile(certPath, "")
+		tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
 		if err != nil {
 			return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
 		}
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-	}
+		opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
 
-	noMacaroons, _ := strconv.ParseBool(state["no_macaroons"])
-	if !noMacaroons {
-		macDatadir, ok := state["macaroons_datadir"]
-		if !ok {
-			return nil, fmt.Errorf(
-				"macaroons datadir is missing. Try " +
-					"'tdex config set macaroons_datadir ~/some/dir/including/macaroons",
-			)
+		// Load macaroons and add credentials to dialer
+		if !skipMacaroon {
+			macDatadir, ok := state["macaroons_path"]
+			if !ok {
+				return nil, fmt.Errorf(
+					"macaroons datadir is missing. Try " +
+						"'tdex config set macaroons_path ~/some/dir/including/macaroons",
+				)
+			}
+			macPath := filepath.Join(macDatadir, adminMacaroonFile)
+			macBytes, err := ioutil.ReadFile(macPath)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"could not read macaroon %s in path %s: %s",
+					adminMacaroonFile, macDatadir, err,
+				)
+			}
+			mac := &macaroon.Macaroon{}
+			if err := mac.UnmarshalBinary(macBytes); err != nil {
+				return nil, fmt.Errorf(
+					"could not parse macaroon %s: %s", adminMacaroonFile, err,
+				)
+			}
+			macCreds := macaroons.NewMacaroonCredential(mac)
+			opts = append(opts, grpc.WithPerRPCCredentials(macCreds))
 		}
-		macPath := filepath.Join(macDatadir, adminMacaroonFile)
-		macBytes, err := ioutil.ReadFile(macPath)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"could not read macaroon %s in path %s: %s",
-				adminMacaroonFile, macDatadir, err,
-			)
-		}
-		mac := &macaroon.Macaroon{}
-		if err := mac.UnmarshalBinary(macBytes); err != nil {
-			return nil, fmt.Errorf(
-				"could not parse macaroon %s: %s", adminMacaroonFile, err,
-			)
-		}
-		creds := macaroons.NewMacaroonCredential(mac)
-		opts = append(opts, grpc.WithPerRPCCredentials(creds))
 	}
 
 	conn, err := grpc.Dial(address, opts...)

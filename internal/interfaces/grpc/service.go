@@ -38,9 +38,9 @@ import (
 
 const (
 	// TLSKeyFile is the name of the TLS key file.
-	TLSKeyFile = "key.pem"
+	OperatorTLSKeyFile = "key.pem"
 	// TLSCertFile is the name of the TLS certificate file.
-	TLSCertFile = "cert.pem"
+	OperatorTLSCertFile = "cert.pem"
 	// Location is used as the macaroon's location hint. This is not verified as
 	// part of the macaroons itself. Check the doc for more info:
 	// https://github.com/go-macaroon/macaroon#func-macaroon-location.
@@ -72,7 +72,6 @@ type service struct {
 }
 
 type ServiceOpts struct {
-	NoTLS       bool
 	NoMacaroons bool
 
 	Datadir           string
@@ -89,29 +88,31 @@ func (o ServiceOpts) validate() error {
 	if !pathExists(o.Datadir) {
 		return fmt.Errorf("%s: datadir must be an existing directory", o.Datadir)
 	}
-	if !o.NoTLS {
-		dir := o.tlsDatadir()
-		tlsKeyExists := pathExists(filepath.Join(dir, TLSKeyFile))
-		tlsCertExists := pathExists(filepath.Join(dir, TLSCertFile))
-		if tlsKeyExists != tlsCertExists {
-			return fmt.Errorf(
-				"%s and %s files must be both either existing or not in path %s",
-				TLSKeyFile, TLSCertFile, dir,
-			)
-		}
-	}
+
 	if !o.NoMacaroons {
-		dir := o.macaroonsDatadir()
-		adminMacExists := pathExists(filepath.Join(dir, AdminMacaroonFile))
-		roMacExists := pathExists(filepath.Join(dir, ReadOnlyMacaroonFile))
-		marketMacExists := pathExists(filepath.Join(dir, MarketMacaroonFile))
-		priceMacExists := pathExists(filepath.Join(dir, PriceMacaroonFile))
+		macDir := o.macaroonsDatadir()
+		adminMacExists := pathExists(filepath.Join(macDir, AdminMacaroonFile))
+		roMacExists := pathExists(filepath.Join(macDir, ReadOnlyMacaroonFile))
+		marketMacExists := pathExists(filepath.Join(macDir, MarketMacaroonFile))
+		priceMacExists := pathExists(filepath.Join(macDir, PriceMacaroonFile))
 
 		if adminMacExists != roMacExists ||
 			adminMacExists != marketMacExists ||
 			adminMacExists != priceMacExists {
 			return fmt.Errorf(
-				"all macaroons must be either existing or not in path %s", dir,
+				"all macaroons must be either existing or not in path %s", macDir,
+			)
+		}
+
+		// TLS over operator interface is automatically enabled if macaroons auth
+		// is active.
+		tlsDir := o.tlsDatadir()
+		tlsKeyExists := pathExists(filepath.Join(tlsDir, OperatorTLSKeyFile))
+		tlsCertExists := pathExists(filepath.Join(tlsDir, OperatorTLSCertFile))
+		if tlsKeyExists != tlsCertExists {
+			return fmt.Errorf(
+				"%s and %s files must be both either existing or not in path %s",
+				OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
 			)
 		}
 	}
@@ -143,18 +144,15 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 	if err := opts.validate(); err != nil {
 		return nil, fmt.Errorf("invalid opts: %s", err)
 	}
-	// TLS: if required, create or load the TLS key/cert
-	if !opts.NoTLS {
-		if err := generateTLSKeyCert(opts.tlsDatadir()); err != nil {
-			return nil, err
-		}
-	}
 
 	var macaroonSvc *macaroons.Service
 	if !opts.NoMacaroons {
 		macaroonSvc, _ = macaroons.NewService(
 			opts.dbDatadir(), Location, DBFile, false, macaroons.IPLockChecker,
 		)
+		if err := generateOperatorTLSKeyCert(opts.tlsDatadir()); err != nil {
+			return nil, err
+		}
 	}
 
 	return &service{
@@ -164,7 +162,10 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 	}, nil
 }
 
-func (s *service) Start(operatorAddress, tradeAddress string) error {
+func (s *service) Start(
+	operatorAddress, tradeAddress,
+	tradeTLSKey, tradeTLSCert string,
+) error {
 	unaryInterceptor := interceptor.UnaryInterceptor(s.macaroonSvc)
 	streamInterceptor := interceptor.StreamInterceptor(s.macaroonSvc)
 
@@ -189,12 +190,12 @@ func (s *service) Start(operatorAddress, tradeAddress string) error {
 
 	// Serve grpc and grpc-web multiplexed on the same port
 	if err := serveMux(
-		operatorAddress, s.tlsKey(), s.tlsCert(), operatorServer,
+		operatorAddress, s.operatorTLSKey(), s.operatorTLSCert(), operatorServer,
 	); err != nil {
 		return err
 	}
 	if err := serveMux(
-		tradeAddress, s.tlsKey(), s.tlsCert(), tradeServer,
+		tradeAddress, tradeTLSKey, tradeTLSCert, tradeServer,
 	); err != nil {
 		return err
 	}
@@ -220,18 +221,18 @@ func (s *service) Stop() {
 	log.Debug("disabled trader interface")
 }
 
-func (s *service) tlsKey() string {
-	if s.opts.NoTLS {
+func (s *service) operatorTLSKey() string {
+	if s.opts.NoMacaroons {
 		return ""
 	}
-	return filepath.Join(s.opts.tlsDatadir(), TLSKeyFile)
+	return filepath.Join(s.opts.tlsDatadir(), OperatorTLSKeyFile)
 }
 
-func (s *service) tlsCert() string {
-	if s.opts.NoTLS {
+func (s *service) operatorTLSCert() string {
+	if s.opts.NoMacaroons {
 		return ""
 	}
-	return filepath.Join(s.opts.tlsDatadir(), TLSCertFile)
+	return filepath.Join(s.opts.tlsDatadir(), OperatorTLSCertFile)
 }
 
 func (s *service) withMacaroons() bool {
@@ -285,12 +286,12 @@ func (s *service) startListeningToPassphraseChan() {
 	}
 }
 
-func generateTLSKeyCert(datadir string) error {
+func generateOperatorTLSKeyCert(datadir string) error {
 	if err := makeDirectoryIfNotExists(datadir); err != nil {
 		return err
 	}
-	keyPath := filepath.Join(datadir, TLSKeyFile)
-	certPath := filepath.Join(datadir, TLSCertFile)
+	keyPath := filepath.Join(datadir, OperatorTLSKeyFile)
+	certPath := filepath.Join(datadir, OperatorTLSCertFile)
 
 	// if key and cert files already exist nothing to do here.
 	if pathExists(keyPath) {

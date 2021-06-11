@@ -36,9 +36,10 @@ var (
 	datadir                = config.GetDatadir()
 	dbDir                  = filepath.Join(datadir, config.DbLocation)
 	profilerDir            = filepath.Join(datadir, config.ProfilerLocation)
-	noTLS                  = config.GetBool(config.NoTLSKey)
 	noMacaroons            = config.GetBool(config.NoMacaroonsKey)
 	statsIntervalInSeconds = config.GetDuration(config.StatsIntervalKey) * time.Second
+	tradeTLSKey            = config.GetString(config.TradeTLSKeyKey)
+	tradeTLSCert           = config.GetString(config.TradeTLSCertKey)
 	// App services config
 	marketsFee                    = int64(config.GetFloat(config.DefaultFeeKey) * 100)
 	marketsBaseAsset              = config.GetString(config.BaseAssetKey)
@@ -128,7 +129,6 @@ func main() {
 
 	// Init gRPC interfaces.
 	opts := grpcinterface.ServiceOpts{
-		NoTLS:             noTLS,
 		NoMacaroons:       noMacaroons,
 		Datadir:           datadir,
 		DBLocation:        config.DbLocation,
@@ -158,7 +158,7 @@ func main() {
 	tradeAddress := fmt.Sprintf(":%+v", tradeSvcPort)
 	operatorAddress := fmt.Sprintf(":%+v", operatorSvcPort)
 
-	if err := svc.Start(operatorAddress, tradeAddress); err != nil {
+	if err := svc.Start(operatorAddress, tradeAddress, tradeTLSKey, tradeTLSCert); err != nil {
 		log.WithError(err).Panic("an error occured while starting daemon")
 	}
 
