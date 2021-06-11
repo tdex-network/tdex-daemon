@@ -87,7 +87,6 @@ func main() {
 		"--explorer_url", explorerUrl,
 		"--no_macaroons",
 	); err != nil {
-		fmt.Println("PORCO", err)
 		return
 	}
 
