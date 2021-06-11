@@ -23,7 +23,7 @@ import (
 
 var (
 	daemonDatadir = "test/e2e/.tdex-daemon"
-	daemonEnv     = []string{fmt.Sprintf("TDEX_DATADIR=%s", daemonDatadir)}
+	daemonEnv     = []string{fmt.Sprintf("TDEX_DATA_DIR_PATH=%s", daemonDatadir)}
 	daemon        = fmt.Sprintf("./build/tdexd-%s-%s", runtime.GOOS, runtime.GOARCH)
 
 	cliDatadir = "test/e2e/.tdex-operator"

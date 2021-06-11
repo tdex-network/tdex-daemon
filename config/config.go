@@ -28,7 +28,7 @@ const (
 	// ExplorerRequestTimeoutKey are the milliseconds to wait for HTTP responses before timeouts
 	ExplorerRequestTimeoutKey = "EXPLORER_REQUEST_TIMEOUT"
 	// DatadirKey is the local data directory to store the internal state of daemon
-	DatadirKey = "DATADIR"
+	DatadirKey = "DATA_DIR_PATH"
 	// LogLevelKey are the different logging levels. For reference on the values https://godoc.org/github.com/sirupsen/logrus#Level
 	LogLevelKey = "LOG_LEVEL"
 	// DefaultFeeKey is the default swap fee when creating a market
@@ -46,9 +46,9 @@ const (
 	// PriceSlippageKey is the percentage of the slipage for accepting trades compared to current spot price
 	PriceSlippageKey = "PRICE_SLIPPAGE"
 	// TradeTLSKeyKey is the path of the the TLS key for the Trade interface
-	TradeTLSKeyKey = "TRADE_TLS_KEY"
+	TradeTLSKeyKey = "SSL_KEY"
 	// TradeTLSCertKey is the path of the the TLS certificate for the Trade interface
-	TradeTLSCertKey = "TRADE_TLS_CERT"
+	TradeTLSCertKey = "SSL_CERT"
 	// MnemonicKey is the mnemonic of the master private key of the daemon's wallet
 	MnemonicKey = "MNEMONIC"
 	// EnableProfilerKey nables profiler that can be used to investigate performance issues
@@ -151,10 +151,9 @@ func GetNetwork() *network.Network {
 	return &network.Liquid
 }
 
+// TODO: attach network name to datadir
 func GetDatadir() string {
-	datadir := GetString(DatadirKey)
-	net := GetNetwork().Name
-	return filepath.Join(datadir, net)
+	return GetString(DatadirKey)
 }
 
 //GetExplorer ...
