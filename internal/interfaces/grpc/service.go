@@ -37,9 +37,11 @@ import (
 )
 
 const (
-	// TLSKeyFile is the name of the TLS key file.
+	// OperatorTLSKeyFile is the name of the TLS key file for the Operator
+	// interface.
 	OperatorTLSKeyFile = "key.pem"
-	// TLSCertFile is the name of the TLS certificate file.
+	// OperatorTLSCertFile is the name of the TLS certificate file for the
+	// Operator interface.
 	OperatorTLSCertFile = "cert.pem"
 	// Location is used as the macaroon's location hint. This is not verified as
 	// part of the macaroons itself. Check the doc for more info:
@@ -49,7 +51,7 @@ const (
 	DBFile = "macaroons.db"
 	// AdminMacaroonFile is the name of the admin macaroon.
 	AdminMacaroonFile = "admin.macaroon"
-	// AdminMacaroonFile is the name of the read-only macaroon.
+	// ReadOnlyMacaroonFile is the name of the read-only macaroon.
 	ReadOnlyMacaroonFile = "readonly.macaroon"
 	// MarketMacaroonFile is the name of the macaroon allowing to open, close and
 	// update the strategy of a market.
