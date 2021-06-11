@@ -10,7 +10,6 @@ import (
 
 	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/elements"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 
 	log "github.com/sirupsen/logrus"
@@ -55,12 +54,6 @@ const (
 	EnableProfilerKey = "ENABLE_PROFILER"
 	// StatsIntervalKey defines interval for printing basic tdex statistics
 	StatsIntervalKey = "STATS_INTERVAL"
-	// ElementsRPCEndpointKey is the url for the RPC interface of the Elements
-	// node in the form protocol://user:password@host:port
-	ElementsRPCEndpointKey = "ELEMENTS_RPC_ENDPOINT"
-	// ElementsStartRescanTimestampKey is the date in Unix seconds of the block
-	// from where the node should start rescanning addresses
-	ElementsStartRescanTimestampKey = "ELEMENTS_START_RESCAN_TIMESTAMP"
 	// CrawlLimitKey represents number of requests per second that crawler
 	//makes to explorer
 	CrawlLimitKey = "CRAWL_LIMIT"
@@ -156,16 +149,8 @@ func GetDatadir() string {
 	return GetString(DatadirKey)
 }
 
-//GetExplorer ...
+// GetExplorer returns the explorer service to be used by the daemon.
 func GetExplorer() (explorer.Service, error) {
-	if rpcEndpoint := GetString(ElementsRPCEndpointKey); rpcEndpoint != "" {
-		var rescanTime interface{}
-		if vip.IsSet(ElementsStartRescanTimestampKey) {
-			rescanTime = vip.GetInt(ElementsStartRescanTimestampKey)
-		}
-		return elements.NewService(rpcEndpoint, rescanTime)
-	}
-
 	endpoint := GetString(ExplorerEndpointKey)
 	reqTimeout := GetInt(ExplorerRequestTimeoutKey)
 	return esplora.NewService(endpoint, reqTimeout)
@@ -223,25 +208,11 @@ func validate() error {
 		)
 	}
 
-	elementsRpcEndpoint := GetString(ElementsRPCEndpointKey)
-	if elementsRpcEndpoint != "" {
-		if _, err := url.Parse(elementsRpcEndpoint); err != nil {
-			return fmt.Errorf("Elements RPC endpoint is not a valid url: %s", err)
-		}
-		// ElementsStartRescanTimestamp can assume the 0 value that means scanning
-		// the entire blockchain. This wil be used only in regtest mode
-		if vip.IsSet(ElementsStartRescanTimestampKey) {
-			rescanTime := vip.GetInt(ElementsStartRescanTimestampKey)
-			if rescanTime < 0 {
-				return fmt.Errorf("timestamp must not be a negative number")
-			}
-		}
-	} else {
-		exploreEndpoint := GetString(ExplorerEndpointKey)
-		if _, err := url.Parse(exploreEndpoint); err != nil {
-			return fmt.Errorf("explorer endpoint is not a valid url: %s", err)
-		}
+	explorerEndpoint := GetString(ExplorerEndpointKey)
+	if _, err := url.Parse(explorerEndpoint); err != nil {
+		return fmt.Errorf("explorer endpoint is not a valid url: %s", err)
 	}
+
 	return nil
 }
 

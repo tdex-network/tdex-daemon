@@ -71,7 +71,6 @@ type walletService struct {
 	blockchainListener BlockchainListener
 	walletInitialized  bool
 	walletIsSyncing    bool
-	withElements       bool
 	network            *network.Network
 	marketFee          int64
 	marketBaseAsset    string
@@ -84,7 +83,6 @@ func NewWalletService(
 	repoManager ports.RepoManager,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
-	withElements bool,
 	net *network.Network,
 	marketFee int64,
 	marketBaseAsset string,
@@ -93,7 +91,6 @@ func NewWalletService(
 		repoManager,
 		explorerService,
 		blockchainListener,
-		withElements,
 		net,
 		marketFee,
 		marketBaseAsset,
@@ -104,7 +101,6 @@ func newWalletService(
 	repoManager ports.RepoManager,
 	explorerService explorer.Service,
 	blockchainListener BlockchainListener,
-	withElements bool,
 	net *network.Network,
 	marketFee int64,
 	marketBaseAsset string,
@@ -113,7 +109,6 @@ func newWalletService(
 		repoManager:        repoManager,
 		explorerService:    explorerService,
 		blockchainListener: blockchainListener,
-		withElements:       withElements,
 		network:            net,
 		marketFee:          marketFee,
 		marketBaseAsset:    marketBaseAsset,
@@ -201,18 +196,8 @@ func (w *walletService) InitWallet(
 	defer vault.Lock()
 
 	if restore {
-		if w.withElements {
-			chErr <- fmt.Errorf(
-				"Restoring a wallet through the Elements explorer is not availble at the " +
-					"moment. Please restart the daemon using the Esplora block explorer.",
-			)
-			return
-		}
-
 		data := "addresses discovery"
-		if w.withElements {
-			data += ". With elements this may take a while"
-		}
+
 		chRes <- &InitWalletReply{
 			Status: Processing,
 			Data:   data,
@@ -226,7 +211,7 @@ func (w *walletService) InitWallet(
 		}
 		chRes <- &InitWalletReply{
 			Status: Done,
-			Data:   "addresses discovery",
+			Data:   data,
 		}
 
 		allInfo = append(allInfo, feeInfo...)
