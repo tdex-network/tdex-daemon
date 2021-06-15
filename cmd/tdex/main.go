@@ -34,9 +34,6 @@ var (
 
 	tdexDataDir = btcutil.AppDataDir("tdex-operator", false)
 	statePath   = filepath.Join(tdexDataDir, "state.json")
-
-	adminMacaroonFile = "admin.macaroon"
-	tlsCertFile       = "cert.pem"
 )
 
 func init() {
@@ -210,14 +207,13 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 	} else {
 		// Load TLS cert for operator interface (enabled automatically when using
 		// macaroon auth)
-		certDatadir, ok := state["tls_cert_path"]
+		certPath, ok := state["tls_cert_path"]
 		if !ok {
 			return nil, fmt.Errorf(
-				"TLS certificate path is missing. Try " +
-					"'tdex config set tls_cert_path /some/dir/including/certificate'",
+				"TLS certificate filepath is missing. Try " +
+					"'tdex config set tls_cert_path path/to/tls/certificate'",
 			)
 		}
-		certPath := filepath.Join(certDatadir, tlsCertFile)
 
 		tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
 		if err != nil {
@@ -227,26 +223,20 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 
 		// Load macaroons and add credentials to dialer
 		if !skipMacaroon {
-			macDatadir, ok := state["macaroons_path"]
+			macPath, ok := state["macaroons_path"]
 			if !ok {
 				return nil, fmt.Errorf(
-					"macaroons datadir is missing. Try " +
-						"'tdex config set macaroons_path ~/some/dir/including/macaroons",
+					"macaroons filepath is missing. Try " +
+						"'tdex config set macaroons_path path/to/macaroon",
 				)
 			}
-			macPath := filepath.Join(macDatadir, adminMacaroonFile)
 			macBytes, err := ioutil.ReadFile(macPath)
 			if err != nil {
-				return nil, fmt.Errorf(
-					"could not read macaroon %s in path %s: %s",
-					adminMacaroonFile, macDatadir, err,
-				)
+				return nil, fmt.Errorf("could not read macaroon %s: %s", macPath, err)
 			}
 			mac := &macaroon.Macaroon{}
 			if err := mac.UnmarshalBinary(macBytes); err != nil {
-				return nil, fmt.Errorf(
-					"could not parse macaroon %s: %s", adminMacaroonFile, err,
-				)
+				return nil, fmt.Errorf("could not parse macaroon %s: %s", macPath, err)
 			}
 			macCreds := macaroons.NewMacaroonCredential(mac)
 			opts = append(opts, grpc.WithPerRPCCredentials(macCreds))
