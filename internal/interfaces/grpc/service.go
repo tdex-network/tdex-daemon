@@ -27,9 +27,11 @@ import (
 	interfaces "github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
+	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
+	"gopkg.in/macaroon-bakery.v2/bakery"
 
 	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
@@ -59,6 +61,9 @@ const (
 	// PriceMacaroonFile is the name of the macaroon allowing to update only the
 	// prices of markets.
 	PriceMacaroonFile = "price.macaroon"
+	// WalletMacaroonFile is the name of the macaroon allowing to manage the
+	// so called "Wallet" subaccount of the daemon's wallet.
+	WalletMacaroonFile = "wallet.macaroon"
 	// WebhookMacaroonFile is the name of the macaroon allowing to add, remove or
 	// list webhooks.
 	WebhookMacaroonFile = "webhook.macaroon"
@@ -66,6 +71,15 @@ const (
 
 var (
 	serialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
+
+	Macaroons = map[string][]bakery.Op{
+		AdminMacaroonFile:    permissions.AdminPermissions(),
+		ReadOnlyMacaroonFile: permissions.ReadOnlyPermissions(),
+		MarketMacaroonFile:   permissions.MarketPermissions(),
+		PriceMacaroonFile:    permissions.PricePermissions(),
+		WebhookMacaroonFile:  permissions.WebhookPermissions(),
+		WalletMacaroonFile:   permissions.WalletPermissions(),
+	}
 )
 
 type service struct {
