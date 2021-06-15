@@ -63,6 +63,14 @@ const (
 	// NoMacaroonsKey is used to start the daemon without using macaroons auth
 	// service.
 	NoMacaroonsKey = "NO_MACAROONS"
+	// OperatorExtraIP is used to add an extra ip address to the self-signed TLS
+	// certificate for the Operator gRPC interface.
+	OperatorExtraIP = "OPERATOR_EXTRA_IP"
+	// OperatorExtraDomain is used to add an extra domain to the self signed TLS
+	// certificate for the Operator gRPC interface. This is useful to add the
+	// onion endpoint in case the daemon is served as a TOR hidden service for
+	// example.
+	OperatorExtraDomain = "OPERATOR_EXTRA_DOMAIN"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
