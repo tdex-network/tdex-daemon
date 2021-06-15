@@ -187,6 +187,38 @@ func (b *blockchainListener) listenToEventChannel() {
 			// Publish message for topic TradeSettled to pubsub service.
 			if b.pubsubSvc != nil {
 				go func() {
+					ctx := context.Background()
+					mkt, mktAccount, err := b.repoManager.MarketRepository().GetMarketByAsset(
+						ctx, trade.MarketQuoteAsset,
+					)
+					if err != nil {
+						log.WithError(err).Warn("an error occured while retrieving market")
+						return
+					}
+
+					info, err := b.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(
+						ctx, mktAccount,
+					)
+					if err != nil {
+						log.WithError(err).Warn("an error occured while retrieving market addresses")
+						return
+					}
+					addresses := info.Addresses()
+					baseBalance, err := b.repoManager.UnspentRepository().GetBalance(
+						ctx, addresses, mkt.BaseAsset,
+					)
+					if err != nil {
+						log.WithError(err).Warn("an error occured while retrieving base balance")
+						return
+					}
+					quoteBalance, err := b.repoManager.UnspentRepository().GetBalance(
+						ctx, addresses, mkt.QuoteAsset,
+					)
+					if err != nil {
+						log.WithError(err).Warn("an error occured while retrieving quote balance")
+						return
+					}
+
 					payload := map[string]interface{}{
 						"txid": trade.TxID,
 						"swap": map[string]interface{}{
@@ -200,8 +232,12 @@ func (b *blockchainListener) listenToEventChannel() {
 							"quote_price": trade.MarketPrice.QuotePrice.String(),
 						},
 						"market": map[string]string{
-							"base_asset":  b.marketBaseAsset,
+							"base_asset":  mkt.BaseAsset,
 							"quote_asset": trade.MarketQuoteAsset,
+						},
+						"balance": map[string]uint64{
+							"base_balance":  baseBalance,
+							"quote_balance": quoteBalance,
 						},
 					}
 					message, _ := json.Marshal(payload)

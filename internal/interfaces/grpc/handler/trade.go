@@ -89,6 +89,10 @@ func (t traderHandler) markets(
 			},
 			Fee: &types.Fee{
 				BasisPoint: v.BasisPoint,
+				Fixed: &pbtypes.Fixed{
+					BaseFee:  v.FixedBaseFee,
+					QuoteFee: v.FixedQuoteFee,
+				},
 			},
 		}
 		marketsWithFee = append(marketsWithFee, m)

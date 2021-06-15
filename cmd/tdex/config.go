@@ -32,7 +32,7 @@ var (
 
 	tlsCertFlag = cli.StringFlag{
 		Name:  "tls_cert_path",
-		Usage: fmt.Sprintf("the directory where to fing the %s file", tlsCertFile),
+		Usage: "the path of the TLS certificate file to use",
 		Value: "",
 	}
 
@@ -44,7 +44,7 @@ var (
 
 	macaroonsFlag = cli.StringFlag{
 		Name:  "macaroons_path",
-		Usage: fmt.Sprintf("the directory where to find the %s file", adminMacaroonFile),
+		Usage: "the path of the macaroons file to use",
 		Value: "",
 	}
 )

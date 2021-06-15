@@ -40,6 +40,8 @@ var (
 	statsIntervalInSeconds = config.GetDuration(config.StatsIntervalKey) * time.Second
 	tradeTLSKey            = config.GetString(config.TradeTLSKeyKey)
 	tradeTLSCert           = config.GetString(config.TradeTLSCertKey)
+	operatorTLSExtraIP     = config.GetString(config.OperatorExtraIP)
+	operatorTLSExtraDomain = config.GetString(config.OperatorExtraDomain)
 	// App services config
 	marketsFee                    = int64(config.GetFloat(config.DefaultFeeKey) * 100)
 	marketsBaseAsset              = config.GetString(config.BaseAssetKey)
@@ -127,14 +129,16 @@ func main() {
 
 	// Init gRPC interfaces.
 	opts := grpcinterface.ServiceOpts{
-		NoMacaroons:       noMacaroons,
-		Datadir:           datadir,
-		DBLocation:        config.DbLocation,
-		TLSLocation:       config.TLSLocation,
-		MacaroonsLocation: config.MacaroonsLocation,
-		WalletSvc:         walletSvc,
-		OperatorSvc:       operatorSvc,
-		TradeSvc:          tradeSvc,
+		NoMacaroons:         noMacaroons,
+		Datadir:             datadir,
+		DBLocation:          config.DbLocation,
+		TLSLocation:         config.TLSLocation,
+		MacaroonsLocation:   config.MacaroonsLocation,
+		OperatorExtraIP:     operatorTLSExtraIP,
+		OperatorExtraDomain: operatorTLSExtraDomain,
+		WalletSvc:           walletSvc,
+		OperatorSvc:         operatorSvc,
+		TradeSvc:            tradeSvc,
 	}
 	svc, err := grpcinterface.NewService(opts)
 	if err != nil {

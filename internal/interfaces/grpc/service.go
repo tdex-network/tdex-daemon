@@ -27,9 +27,11 @@ import (
 	interfaces "github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
+	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
+	"gopkg.in/macaroon-bakery.v2/bakery"
 
 	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
@@ -59,10 +61,25 @@ const (
 	// PriceMacaroonFile is the name of the macaroon allowing to update only the
 	// prices of markets.
 	PriceMacaroonFile = "price.macaroon"
+	// WalletMacaroonFile is the name of the macaroon allowing to manage the
+	// so called "Wallet" subaccount of the daemon's wallet.
+	WalletMacaroonFile = "wallet.macaroon"
+	// WebhookMacaroonFile is the name of the macaroon allowing to add, remove or
+	// list webhooks.
+	WebhookMacaroonFile = "webhook.macaroon"
 )
 
 var (
 	serialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
+
+	Macaroons = map[string][]bakery.Op{
+		AdminMacaroonFile:    permissions.AdminPermissions(),
+		ReadOnlyMacaroonFile: permissions.ReadOnlyPermissions(),
+		MarketMacaroonFile:   permissions.MarketPermissions(),
+		PriceMacaroonFile:    permissions.PricePermissions(),
+		WebhookMacaroonFile:  permissions.WebhookPermissions(),
+		WalletMacaroonFile:   permissions.WalletPermissions(),
+	}
 )
 
 type service struct {
@@ -76,10 +93,12 @@ type service struct {
 type ServiceOpts struct {
 	NoMacaroons bool
 
-	Datadir           string
-	DBLocation        string
-	TLSLocation       string
-	MacaroonsLocation string
+	Datadir             string
+	DBLocation          string
+	TLSLocation         string
+	MacaroonsLocation   string
+	OperatorExtraIP     string
+	OperatorExtraDomain string
 
 	WalletSvc   application.WalletService
 	OperatorSvc application.OperatorService
@@ -117,6 +136,10 @@ func (o ServiceOpts) validate() error {
 				OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
 			)
 		}
+
+		if o.OperatorExtraIP != "" && net.ParseIP(o.OperatorExtraIP) == nil {
+			return fmt.Errorf("invalid operator extra ip %s", o.OperatorExtraIP)
+		}
 	}
 	if o.WalletSvc == nil {
 		return fmt.Errorf("wallet app service must not be null")
@@ -152,7 +175,9 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 		macaroonSvc, _ = macaroons.NewService(
 			opts.dbDatadir(), Location, DBFile, false, macaroons.IPLockChecker,
 		)
-		if err := generateOperatorTLSKeyCert(opts.tlsDatadir()); err != nil {
+		if err := generateOperatorTLSKeyCert(
+			opts.tlsDatadir(), opts.OperatorExtraIP, opts.OperatorExtraDomain,
+		); err != nil {
 			return nil, err
 		}
 	}
@@ -288,7 +313,7 @@ func (s *service) startListeningToPassphraseChan() {
 	}
 }
 
-func generateOperatorTLSKeyCert(datadir string) error {
+func generateOperatorTLSKeyCert(datadir, extraIP, extraDomain string) error {
 	if err := makeDirectoryIfNotExists(datadir); err != nil {
 		return err
 	}
@@ -312,6 +337,10 @@ func generateOperatorTLSKeyCert(datadir string) error {
 
 	// Collect the host's IP addresses, including loopback, in a slice.
 	ipAddresses := []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")}
+
+	if extraIP != "" {
+		ipAddresses = append(ipAddresses, net.ParseIP(extraIP))
+	}
 
 	// addIP appends an IP address only if it isn't already in the slice.
 	addIP := func(ipAddr net.IP) {
@@ -343,6 +372,10 @@ func generateOperatorTLSKeyCert(datadir string) error {
 	dnsNames := []string{host}
 	if host != "localhost" {
 		dnsNames = append(dnsNames, "localhost")
+	}
+
+	if extraDomain != "" {
+		dnsNames = append(dnsNames, extraDomain)
 	}
 
 	dnsNames = append(dnsNames, "unix", "unixpacket")
