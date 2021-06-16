@@ -1,16 +1,7 @@
 builds:
   # daemon
-  - id: "tdexd-linux"
-    main: ./cmd/tdexd
-    ldflags:
-      - -s -w
-    env:
-      - CGO_ENABLED=1
-    goos:
-      - linux
-    goarch:
-      - amd64
-    binary: tdexd-linux
+  
+  ### HERE I deleted tdexd-linux
 
   - id: "tdexd-darwin"
     main: ./cmd/tdexd
@@ -18,8 +9,8 @@ builds:
       - -s -w
     env:
       - CGO_ENABLED=1
-      - CC=/home/runner/work/osxcross/target/bin/o64-clang
-      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
+      #- CC=/home/runner/work/osxcross/target/bin/o64-clang
+      #- CXX=/home/runner/work/osxcross/target/bin/o64-clang++
     goos:
       - darwin
     goarch:
@@ -27,26 +18,18 @@ builds:
     binary: tdexd-darwin
 
   # CLI
-  - id: "tdex-linux"
-    main: ./cmd/tdex
-    ldflags:
-      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
-    env:
-      - CGO_ENABLED=1
-    goos:
-      - linux
-    goarch:
-      - amd64
-    binary: tdex-linux
 
+   ### HERE I deleted tdex-linux
+
+  
   - id: "tdex-darwin"
     main: ./cmd/tdex
     ldflags:
       - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
-      - CC=/home/runner/work/osxcross/target/bin/o64-clang
-      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
+      #- CC=/home/runner/work/osxcross/target/bin/o64-clang
+      #- CXX=/home/runner/work/osxcross/target/bin/o64-clang++
     goos:
       - darwin
     goarch:
@@ -60,18 +43,7 @@ release:
 checksum:
   name_template: "checksums.txt"
 
-signs:
-  - artifacts: checksum
-    args:
-      [
-        "--batch",
-        "-u",
-        "{{ .Env.GPG_FINGERPRINT }}",
-        "--output",
-        "${signature}",
-        "--detach-sign",
-        "${artifact}",
-      ]
+### HERE I deleted sign step
 
 snapshot:
   name_template: "{{ .Tag }}-next"
@@ -87,13 +59,13 @@ archives:
   - id: tdexd
     format: binary
     builds:
-      - tdexd-linux
+      #- tdexd-linux
       - tdexd-darwin
     name_template: "tdexd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
   - id: tdex
     format: binary
     builds:
-      - tdex-linux
+      #- tdex-linux
       - tdex-darwin
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
