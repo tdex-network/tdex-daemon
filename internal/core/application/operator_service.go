@@ -722,6 +722,39 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, ErrMarketNotExist
 	}
 
+	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := vault.AllDerivedAddressesInfoForAccount(accountIndex)
+	if err != nil {
+		return nil, err
+	}
+	addresses := info.Addresses()
+
+	baseBalance, err := o.repoManager.UnspentRepository().GetUnlockedBalance(ctx, addresses, req.BaseAsset)
+	if err != nil {
+		return nil, err
+	}
+	if baseBalance <= 0 {
+		return nil, ErrMarketBaseBalanceTooLow
+	}
+	if req.BalanceToWithdraw.BaseAmount > baseBalance {
+		return nil, ErrWithdrawBaseAmountTooBig
+	}
+
+	quoteBalance, err := o.repoManager.UnspentRepository().GetUnlockedBalance(ctx, addresses, req.QuoteAsset)
+	if err != nil {
+		return nil, err
+	}
+	if quoteBalance <= 0 {
+		return nil, ErrMarketQuoteBalanceTooLow
+	}
+	if req.BalanceToWithdraw.QuoteAmount > quoteBalance {
+		return nil, ErrWithdrawQuoteAmountTooBig
+	}
+
 	outs := make([]TxOut, 0)
 	if req.BalanceToWithdraw.BaseAmount > 0 {
 		outs = append(outs, TxOut{
@@ -737,6 +770,7 @@ func (o *operatorService) WithdrawMarketFunds(
 			Address: req.Address,
 		})
 	}
+
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs)
 	if err != nil {
 		return nil, err
@@ -746,83 +780,74 @@ func (o *operatorService) WithdrawMarketFunds(
 	if err != nil {
 		return nil, err
 	}
-	if len(marketUnspents) <= 0 {
-		return nil, ErrWalletNotFunded
-	}
 
 	feeUnspents, err := o.getAllUnspentsForAccount(ctx, domain.FeeAccount)
 	if err != nil {
 		return nil, err
 	}
-	if len(feeUnspents) <= 0 {
-		return nil, ErrWalletNotFunded
+
+	mnemonic, err := vault.GetMnemonicSafe()
+	if err != nil {
+		return nil, err
 	}
 
-	var txHex, txid string
+	marketAccount, err := vault.AccountByIndex(market.AccountIndex)
+	if err != nil {
+		return nil, err
+	}
+	feeAccount, err := vault.AccountByIndex(domain.FeeAccount)
+	if err != nil {
+		return nil, err
+	}
+
+	changePathsByAsset := map[string]string{}
+	feeChangePathByAsset := map[string]string{}
+	for _, asset := range getAssetsOfOutputs(outputs) {
+		info, err := vault.DeriveNextInternalAddressForAccount(accountIndex)
+		if err != nil {
+			return nil, err
+		}
+
+		derivationPath := marketAccount.DerivationPathByScript[info.Script]
+		changePathsByAsset[asset] = derivationPath
+	}
+
+	feeInfo, err := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+	if err != nil {
+		return nil, err
+	}
+	feeChangePathByAsset[o.network.AssetID] =
+		feeAccount.DerivationPathByScript[feeInfo.Script]
+
+	txHex, err := sendToMany(sendToManyOpts{
+		mnemonic:              mnemonic,
+		unspents:              marketUnspents,
+		feeUnspents:           feeUnspents,
+		outputs:               outputs,
+		outputsBlindingKeys:   outputsBlindingKeys,
+		changePathsByAsset:    changePathsByAsset,
+		feeChangePathByAsset:  feeChangePathByAsset,
+		inputPathsByScript:    marketAccount.DerivationPathByScript,
+		feeInputPathsByScript: feeAccount.DerivationPathByScript,
+		milliSatPerByte:       int(req.MillisatPerByte),
+		network:               o.network,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var txid string
+	if req.Push {
+		txid, err = o.explorerSvc.BroadcastTransaction(txHex)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if err := o.repoManager.VaultRepository().UpdateVault(
 		ctx,
-		func(v *domain.Vault) (*domain.Vault, error) {
-			mnemonic, err := v.GetMnemonicSafe()
-			if err != nil {
-				return nil, err
-			}
-			marketAccount, err := v.AccountByIndex(market.AccountIndex)
-			if err != nil {
-				return nil, err
-			}
-			feeAccount, err := v.AccountByIndex(domain.FeeAccount)
-			if err != nil {
-				return nil, err
-			}
-
-			changePathsByAsset := map[string]string{}
-			feeChangePathByAsset := map[string]string{}
-			for _, asset := range getAssetsOfOutputs(outputs) {
-				info, err := v.DeriveNextInternalAddressForAccount(market.AccountIndex)
-				if err != nil {
-					return nil, err
-				}
-
-				derivationPath := marketAccount.DerivationPathByScript[info.Script]
-				changePathsByAsset[asset] = derivationPath
-			}
-
-			feeInfo, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
-			if err != nil {
-				return nil, err
-			}
-			feeChangePathByAsset[o.network.AssetID] =
-				feeAccount.DerivationPathByScript[feeInfo.Script]
-
-			_txHex, err := sendToMany(sendToManyOpts{
-				mnemonic:              mnemonic,
-				unspents:              marketUnspents,
-				feeUnspents:           feeUnspents,
-				outputs:               outputs,
-				outputsBlindingKeys:   outputsBlindingKeys,
-				changePathsByAsset:    changePathsByAsset,
-				feeChangePathByAsset:  feeChangePathByAsset,
-				inputPathsByScript:    marketAccount.DerivationPathByScript,
-				feeInputPathsByScript: feeAccount.DerivationPathByScript,
-				milliSatPerByte:       int(req.MillisatPerByte),
-				network:               o.network,
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			if req.Push {
-				_txid, err := o.explorerSvc.BroadcastTransaction(_txHex)
-				if err != nil {
-					return nil, err
-				}
-				txid = _txid
-			}
-
-			txHex = _txHex
-
-			return v, nil
+		func(_ *domain.Vault) (*domain.Vault, error) {
+			return vault, nil
 		},
 	); err != nil {
 		return nil, err
@@ -839,17 +864,26 @@ func (o *operatorService) WithdrawMarketFunds(
 	// Publish message for topic AccountWithdraw to pubsub service.
 	if svc := o.blockchainListener.PubSubService(); svc != nil {
 		go func() {
+			if err != nil {
+				log.WithError(err).Warn("an error occured while retrieving quote balance")
+				return
+			}
+
 			payload := map[string]interface{}{
 				"market": map[string]string{
 					"base_asset":  req.BaseAsset,
 					"quote_asset": req.QuoteAsset,
 				},
-				"balance_withdraw": map[string]interface{}{
+				"amount_withdraw": map[string]interface{}{
 					"base_amount":  req.BalanceToWithdraw.BaseAmount,
 					"quote_amount": req.BalanceToWithdraw.QuoteAmount,
 				},
 				"receiving_address": req.Address,
 				"txid":              txid,
+				"balance": map[string]uint64{
+					"base_balance":  baseBalance - req.BalanceToWithdraw.BaseAmount,
+					"quote_balance": quoteBalance - req.BalanceToWithdraw.QuoteAmount,
+				},
 			}
 			message, _ := json.Marshal(payload)
 			topics := svc.TopicsByCode()
