@@ -26,7 +26,7 @@ Below is a list of commands you will probably find useful for development.
 
 ### Requirements
 
-* Go (^1.15.*)
+* Go (^1.16.*)
 
 ### Run daemon
 
