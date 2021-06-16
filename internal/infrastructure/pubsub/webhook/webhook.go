@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/google/uuid"
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 )
 
 type Webhook struct {
@@ -35,7 +35,7 @@ func NewWebhookFromBytes(buf []byte) (*Webhook, error) {
 	return h, nil
 }
 
-func (h *Webhook) Topic() application.Topic {
+func (h *Webhook) Topic() ports.Topic {
 	return h.ActionType
 }
 

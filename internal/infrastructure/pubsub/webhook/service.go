@@ -8,7 +8,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/prometheus/common/log"
 	"github.com/sony/gobreaker"
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 	"golang.org/x/sync/errgroup"
@@ -23,7 +23,7 @@ type webhookService struct {
 func NewWebhookPubSubService(
 	store securestore.SecureStorage,
 	httpClient *esplora.Client,
-) (application.SecurePubSub, error) {
+) (ports.SecurePubSub, error) {
 	if store == nil {
 		return nil, ErrNullSecureStore
 	}
@@ -38,7 +38,7 @@ func NewWebhookPubSubService(
 	}, nil
 }
 
-func (ws *webhookService) Store() application.PubSubStore {
+func (ws *webhookService) Store() ports.PubSubStore {
 	return ws.store
 }
 
@@ -71,7 +71,7 @@ func (ws *webhookService) Unsubscribe(_, id string) error {
 	return ws.removeWebhook(id)
 }
 
-func (ws *webhookService) ListSubscriptionsForTopic(topic string) []application.Subscription {
+func (ws *webhookService) ListSubscriptionsForTopic(topic string) []ports.Subscription {
 	actionType, ok := WebhookActionFromString(topic)
 	if !ok {
 		return nil
@@ -87,16 +87,16 @@ func (ws *webhookService) Publish(topic string, message string) error {
 	return ws.invokeWebhooksForAction(actionType, message)
 }
 
-func (ws *webhookService) TopicsByCode() map[int]application.Topic {
-	topics := make(map[int]application.Topic)
+func (ws *webhookService) TopicsByCode() map[int]ports.Topic {
+	topics := make(map[int]ports.Topic)
 	for action := range actionToString {
 		topics[int(action)] = action
 	}
 	return topics
 }
 
-func (ws *webhookService) TopicsByLabel() map[string]application.Topic {
-	topics := make(map[string]application.Topic)
+func (ws *webhookService) TopicsByLabel() map[string]ports.Topic {
+	topics := make(map[string]ports.Topic)
 	for label, action := range stringToAction {
 		topics[label] = action
 	}
@@ -147,13 +147,13 @@ func (ws *webhookService) removeWebhook(hookID string) error {
 	return nil
 }
 
-func (ws *webhookService) listWebhooksForAction(actionType WebhookAction) []application.Subscription {
+func (ws *webhookService) listWebhooksForAction(actionType WebhookAction) []ports.Subscription {
 	hooks := ws.getHooksByAction(actionType)
 	if actionType != AllActions {
 		hooksForAllActions := ws.getHooksByAction(AllActions)
 		hooks = append(hooks, hooksForAllActions...)
 	}
-	subs := make([]application.Subscription, len(hooks))
+	subs := make([]ports.Subscription, len(hooks))
 	for i, h := range hooks {
 		subs[i] = h
 	}

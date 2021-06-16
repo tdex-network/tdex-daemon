@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
@@ -117,7 +117,7 @@ func TestWebhookPubSubService(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func newTestService() (application.SecurePubSub, error) {
+func newTestService() (ports.SecurePubSub, error) {
 	store, err := newTestSecureStorage(datadir, filename)
 	if err != nil {
 		return nil, err

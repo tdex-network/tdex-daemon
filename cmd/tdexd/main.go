@@ -176,7 +176,7 @@ func main() {
 
 func stop(
 	repoManager ports.RepoManager,
-	pubsubSvc application.SecurePubSub,
+	pubsubSvc ports.SecurePubSub,
 	blockchainListener application.BlockchainListener,
 	svc interfaces.Service,
 	cancelStats context.CancelFunc,
@@ -207,7 +207,7 @@ func stop(
 
 func newWebhookPubSubService(
 	datadir string, reqTimeout time.Duration,
-) (application.SecurePubSub, error) {
+) (ports.SecurePubSub, error) {
 	secureStore, err := boltsecurestore.NewSecureStorage(datadir, "pubsub.db")
 	if err != nil {
 		return nil, err
