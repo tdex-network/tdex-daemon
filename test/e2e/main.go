@@ -75,7 +75,11 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	defer stopDaemon()
+	defer func() {
+		// Give the daemon the time to finish its pending tasks
+		time.Sleep(30 * time.Second)
+		stopDaemon()
+	}()
 
 	// build the CLI binary
 	runCommand("make", "build-cli")
