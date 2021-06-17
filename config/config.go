@@ -109,11 +109,11 @@ func init() {
 	vip.SetDefault(NoMacaroonsKey, false)
 
 	if err := validate(); err != nil {
-		log.WithError(err).Panic("error while validating config")
+		log.Fatalf("error while validating config: %s", err)
 	}
 
 	if err := initDatadir(); err != nil {
-		log.WithError(err).Panic("error while creating datadir")
+		log.Fatalf("error while creating datadir: %s", err)
 	}
 
 	vip.Set(MnemonicKey, "")
