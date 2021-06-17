@@ -28,14 +28,14 @@ type BlockchainListener interface {
 	StartObserveTx(txid string)
 	StopObserveTx(txid string)
 
-	PubSubService() SecurePubSub
+	PubSubService() ports.SecurePubSub
 }
 
 type blockchainListener struct {
 	crawlerSvc         crawler.Service
 	explorerSvc        explorer.Service
 	repoManager        ports.RepoManager
-	pubsubSvc          SecurePubSub
+	pubsubSvc          ports.SecurePubSub
 	started            bool
 	pendingObservables []crawler.Observable
 	marketBaseAsset    string
@@ -48,7 +48,7 @@ type blockchainListener struct {
 func NewBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
-	pubsubSvc SecurePubSub,
+	pubsubSvc ports.SecurePubSub,
 	marketBaseAsset string,
 	net *network.Network,
 ) BlockchainListener {
@@ -64,7 +64,7 @@ func NewBlockchainListener(
 func newBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
-	pubsubSvc SecurePubSub,
+	pubsubSvc ports.SecurePubSub,
 	marketBaseAsset string,
 	net *network.Network,
 ) *blockchainListener {
@@ -148,7 +148,7 @@ func (b *blockchainListener) StopObserveTx(txid string) {
 	b.crawlerSvc.RemoveObservable(&crawler.TransactionObservable{TxID: txid})
 }
 
-func (b *blockchainListener) PubSubService() SecurePubSub {
+func (b *blockchainListener) PubSubService() ports.SecurePubSub {
 	return b.pubsubSvc
 }
 

@@ -3,9 +3,12 @@ package grpcinterface
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -130,10 +133,10 @@ func (o ServiceOpts) validate() error {
 		tlsDir := o.tlsDatadir()
 		tlsKeyExists := pathExists(filepath.Join(tlsDir, OperatorTLSKeyFile))
 		tlsCertExists := pathExists(filepath.Join(tlsDir, OperatorTLSCertFile))
-		if tlsKeyExists != tlsCertExists {
+		if !tlsKeyExists && tlsCertExists {
 			return fmt.Errorf(
-				"%s and %s files must be both either existing or not in path %s",
-				OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
+				"found %s file but %s is missing. Please delete %s to have the daemon recreate both in path %s",
+				OperatorTLSCertFile, OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
 			)
 		}
 
@@ -321,7 +324,7 @@ func generateOperatorTLSKeyCert(datadir, extraIP, extraDomain string) error {
 	certPath := filepath.Join(datadir, OperatorTLSCertFile)
 
 	// if key and cert files already exist nothing to do here.
-	if pathExists(keyPath) {
+	if pathExists(keyPath) && pathExists(certPath) {
 		return nil
 	}
 
@@ -380,7 +383,12 @@ func generateOperatorTLSKeyCert(datadir, extraIP, extraDomain string) error {
 
 	dnsNames = append(dnsNames, "unix", "unixpacket")
 
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	priv, err := createOrLoadTLSKey(keyPath)
+	if err != nil {
+		return err
+	}
+
+	keybytes, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
 		return err
 	}
@@ -404,8 +412,9 @@ func generateOperatorTLSKeyCert(datadir, extraIP, extraDomain string) error {
 		IPAddresses: ipAddresses,
 	}
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template,
-		&template, &priv.PublicKey, priv)
+	derBytes, err := x509.CreateCertificate(
+		rand.Reader, &template, &template, &priv.PublicKey, priv,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create certificate: %v", err)
 	}
@@ -417,10 +426,6 @@ func generateOperatorTLSKeyCert(datadir, extraIP, extraDomain string) error {
 		return fmt.Errorf("failed to encode certificate: %v", err)
 	}
 
-	keybytes, err := x509.MarshalECPrivateKey(priv)
-	if err != nil {
-		return fmt.Errorf("unable to encode privkey: %v", err)
-	}
 	keyBuf := &bytes.Buffer{}
 	if err := pem.Encode(
 		keyBuf, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keybytes},
@@ -501,4 +506,54 @@ func isValidGrpcWebOptionRequest(req *http.Request) bool {
 	return req.Method == http.MethodOptions &&
 		strings.Contains(accessControlHeader, "x-grpc-web") &&
 		strings.Contains(accessControlHeader, "content-type")
+}
+
+func createOrLoadTLSKey(keyPath string) (*ecdsa.PrivateKey, error) {
+	if !pathExists(keyPath) {
+		return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	}
+
+	b, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := privateKeyFromPEM(b)
+	if err != nil {
+		return nil, err
+	}
+	return key.(*ecdsa.PrivateKey), nil
+}
+
+func privateKeyFromPEM(pemBlock []byte) (crypto.PrivateKey, error) {
+	var derBlock *pem.Block
+	for {
+		derBlock, pemBlock = pem.Decode(pemBlock)
+		if derBlock == nil {
+			return nil, fmt.Errorf("tls: failed to find any PEM data in key input")
+		}
+		if derBlock.Type == "PRIVATE KEY" || strings.HasSuffix(derBlock.Type, " PRIVATE KEY") {
+			break
+		}
+	}
+	return parsePrivateKey(derBlock.Bytes)
+}
+
+func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
+	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
+		return key, nil
+	}
+	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
+		switch key := key.(type) {
+		case *rsa.PrivateKey, *ecdsa.PrivateKey, ed25519.PrivateKey:
+			return key, nil
+		default:
+			return nil, fmt.Errorf("tls: found unknown private key type in PKCS#8 wrapping")
+		}
+	}
+	if key, err := x509.ParseECPrivateKey(der); err == nil {
+		return key, nil
+	}
+
+	return nil, fmt.Errorf("tls: failed to parse private key")
 }

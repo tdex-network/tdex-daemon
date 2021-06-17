@@ -1,4 +1,4 @@
-package application
+package ports
 
 type Topic interface {
 	Code() int

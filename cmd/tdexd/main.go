@@ -67,11 +67,16 @@ func main() {
 	// Init services to be used by those of the application layer.
 	repoManager, err := dbbadger.NewRepoManager(dbDir, log.New())
 	if err != nil {
-		log.WithError(err).Panic("error while opening db")
+		log.Errorf("error while opening db: %s", err)
+		return
 	}
+
 	explorerSvc, err := config.GetExplorer()
 	if err != nil {
-		log.WithError(err).Panic("error while setting up explorer service")
+		repoManager.Close()
+
+		log.Errorf("error while setting up explorer service: %s", err)
+		return
 	}
 	crawlerSvc := crawler.NewService(crawler.Opts{
 		ExplorerSvc:        explorerSvc,
@@ -84,9 +89,11 @@ func main() {
 		dbDir, config.GetDuration(config.ExplorerRequestTimeoutKey),
 	)
 	if err != nil {
-		log.WithError(err).Panic(
-			"an error occured while setting up webhook pubsub service",
-		)
+		crawlerSvc.Stop()
+		repoManager.Close()
+
+		log.Errorf("error while setting up webhook pubsub service: %s", err)
+		return
 	}
 	blockchainListener := application.NewBlockchainListener(
 		crawlerSvc,
@@ -124,7 +131,11 @@ func main() {
 		marketsBaseAsset,
 	)
 	if err != nil {
-		log.WithError(err).Panic("error while setting up wallet service")
+		crawlerSvc.Stop()
+		repoManager.Close()
+
+		log.Errorf("error while setting up wallet service: %s", err)
+		return
 	}
 
 	// Init gRPC interfaces.
@@ -142,7 +153,11 @@ func main() {
 	}
 	svc, err := grpcinterface.NewService(opts)
 	if err != nil {
-		log.WithError(err).Panic("an error occured while setting up gRPC service")
+		crawlerSvc.Stop()
+		repoManager.Close()
+
+		log.Errorf("error while setting up gRPC service: %s", err)
+		return
 	}
 
 	log.Info("starting daemon")
@@ -161,7 +176,8 @@ func main() {
 	operatorAddress := fmt.Sprintf(":%+v", operatorSvcPort)
 
 	if err := svc.Start(operatorAddress, tradeAddress, tradeTLSKey, tradeTLSCert); err != nil {
-		log.WithError(err).Panic("an error occured while starting daemon")
+		log.Errorf("error while starting daemon: %s", err)
+		return
 	}
 
 	log.Info("trade interface is listening on " + tradeAddress)
@@ -176,7 +192,7 @@ func main() {
 
 func stop(
 	repoManager ports.RepoManager,
-	pubsubSvc application.SecurePubSub,
+	pubsubSvc ports.SecurePubSub,
 	blockchainListener application.BlockchainListener,
 	svc interfaces.Service,
 	cancelStats context.CancelFunc,
@@ -207,7 +223,7 @@ func stop(
 
 func newWebhookPubSubService(
 	datadir string, reqTimeout time.Duration,
-) (application.SecurePubSub, error) {
+) (ports.SecurePubSub, error) {
 	secureStore, err := boltsecurestore.NewSecureStorage(datadir, "pubsub.db")
 	if err != nil {
 		return nil, err
