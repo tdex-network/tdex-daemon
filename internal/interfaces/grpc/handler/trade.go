@@ -129,6 +129,10 @@ func (t traderHandler) balances(
 		},
 		Fee: &types.Fee{
 			BasisPoint: balance.Fee.BasisPoint,
+			Fixed: &types.Fixed{
+				BaseFee:  balance.Fee.FixedBaseFee,
+				QuoteFee: balance.Fee.FixedQuoteFee,
+			},
 		},
 	})
 
