@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/hex"
 	"reflect"
 
 	"github.com/google/uuid"
@@ -137,10 +138,14 @@ func (p swapParser) SerializeComplete(accMsg []byte, tx string) (string, []byte,
 		return "", nil, &SwapError{err, int(pkgswap.ErrCodeFailedToComplete)}
 	}
 
-	if _, _, err := wallet.FinalizeAndExtractTransaction(wallet.FinalizeAndExtractTransactionOpts{
-		PsetBase64: tx,
-	}); err != nil {
-		return "", nil, &SwapError{err, int(pkgswap.ErrCodeFailedToComplete)}
+	// If the tx is not in hex format, let's make sure that the pset can be
+	// finalized  and the final raw transaction extracted.
+	if _, err := hex.DecodeString(tx); err != nil {
+		if _, _, err := wallet.FinalizeAndExtractTransaction(wallet.FinalizeAndExtractTransactionOpts{
+			PsetBase64: tx,
+		}); err != nil {
+			return "", nil, &SwapError{err, int(pkgswap.ErrCodeFailedToComplete)}
+		}
 	}
 
 	return id, msg, nil
