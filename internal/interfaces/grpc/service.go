@@ -96,12 +96,12 @@ type service struct {
 type ServiceOpts struct {
 	NoMacaroons bool
 
-	Datadir             string
-	DBLocation          string
-	TLSLocation         string
-	MacaroonsLocation   string
-	OperatorExtraIP     string
-	OperatorExtraDomain string
+	Datadir              string
+	DBLocation           string
+	TLSLocation          string
+	MacaroonsLocation    string
+	OperatorExtraIPs     []string
+	OperatorExtraDomains []string
 
 	WalletSvc   application.WalletService
 	OperatorSvc application.OperatorService
@@ -140,8 +140,12 @@ func (o ServiceOpts) validate() error {
 			)
 		}
 
-		if o.OperatorExtraIP != "" && net.ParseIP(o.OperatorExtraIP) == nil {
-			return fmt.Errorf("invalid operator extra ip %s", o.OperatorExtraIP)
+		if len(o.OperatorExtraIPs) > 0 {
+			for _, ip := range o.OperatorExtraIPs {
+				if net.ParseIP(ip) == nil {
+					return fmt.Errorf("invalid operator extra ip %s", ip)
+				}
+			}
 		}
 	}
 	if o.WalletSvc == nil {
@@ -179,7 +183,7 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 			opts.dbDatadir(), Location, DBFile, false, macaroons.IPLockChecker,
 		)
 		if err := generateOperatorTLSKeyCert(
-			opts.tlsDatadir(), opts.OperatorExtraIP, opts.OperatorExtraDomain,
+			opts.tlsDatadir(), opts.OperatorExtraIPs, opts.OperatorExtraDomains,
 		); err != nil {
 			return nil, err
 		}
@@ -316,7 +320,9 @@ func (s *service) startListeningToPassphraseChan() {
 	}
 }
 
-func generateOperatorTLSKeyCert(datadir, extraIP, extraDomain string) error {
+func generateOperatorTLSKeyCert(
+	datadir string, extraIPs, extraDomains []string,
+) error {
 	if err := makeDirectoryIfNotExists(datadir); err != nil {
 		return err
 	}
@@ -341,8 +347,10 @@ func generateOperatorTLSKeyCert(datadir, extraIP, extraDomain string) error {
 	// Collect the host's IP addresses, including loopback, in a slice.
 	ipAddresses := []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")}
 
-	if extraIP != "" {
-		ipAddresses = append(ipAddresses, net.ParseIP(extraIP))
+	if len(extraIPs) > 0 {
+		for _, ip := range extraIPs {
+			ipAddresses = append(ipAddresses, net.ParseIP(ip))
+		}
 	}
 
 	// addIP appends an IP address only if it isn't already in the slice.
@@ -377,8 +385,10 @@ func generateOperatorTLSKeyCert(datadir, extraIP, extraDomain string) error {
 		dnsNames = append(dnsNames, "localhost")
 	}
 
-	if extraDomain != "" {
-		dnsNames = append(dnsNames, extraDomain)
+	if len(extraDomains) > 0 {
+		for _, domain := range extraDomains {
+			dnsNames = append(dnsNames, domain)
+		}
 	}
 
 	dnsNames = append(dnsNames, "unix", "unixpacket")
