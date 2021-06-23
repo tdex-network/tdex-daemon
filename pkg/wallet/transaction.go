@@ -11,6 +11,21 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
+var (
+	// DummyFeeAmount is used as the fee amount to cover when coin-selecting the
+	// inputs to use to cover the true fee amount, which, instead, is calculated
+	// with more precision from the tx size.
+	// The real fee amount strictly depends on the number of tx inputs and
+	// outputs, and even input types.
+	// This value is thought for transactions on TDEX network, whose are composed
+	// by at least 3 inputs and 6 outputs.
+	// If all inputs are wrapped or native segwit, is shouls be unlikely for the
+	// tx virtual size to be higher than 700 vB/sat, taking into account that
+	// this pkg supports ONLY native segwit scripts/addresses.
+	// For any other case this value can be tweaked at will.
+	DummyFeeAmount uint64 = 700
+)
+
 // CreateTx crafts a new empty partial transaction
 func (w *Wallet) CreateTx() (string, error) {
 	ptx, err := pset.New([]*transaction.TxInput{}, []*transaction.TxOutput{}, 2, 0)
@@ -365,27 +380,6 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				},
 			)
 
-			inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
-				outScriptTypes, outAuxiliaryRedeemScriptSize := extractScriptTypesFromPset(ptx)
-			// expect to add 1 input more to pay for network fees
-			for i := 0; i < len(inputsToAdd)+1; i++ {
-				inScriptTypes = append(inScriptTypes, P2WPKH)
-			}
-			for range outputsToAdd {
-				outScriptTypes = append(outScriptTypes, P2WPKH)
-			}
-			// in case there's no LBTC change, let's expect to add 1 output more.
-			if !anyOutputWithScript(outputsToAdd, lbtcChangeScript) {
-				outScriptTypes = append(outScriptTypes, P2WPKH)
-			}
-			txSize := EstimateTxSize(
-				inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
-				outScriptTypes, outAuxiliaryRedeemScriptSize,
-			)
-
-			millisatsPerByte := float64(opts.MilliSatsPerBytes) / 1000
-			feeAmount = uint64(float64(txSize) * millisatsPerByte)
-
 			// if a LBTC change output already exists and its value covers the
 			// estimated fee amount, it's enough to add the fee output and updating
 			// the change output's value by subtracting the fee amount.
@@ -396,13 +390,15 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 			if anyOutputWithScript(outputsToAdd, lbtcChangeScript) {
 				changeOutputIndex := outputIndexByScript(outputsToAdd, lbtcChangeScript)
 				changeAmount := bufferutil.ValueFromBytes(outputsToAdd[changeOutputIndex].Value)
-				if feeAmount < changeAmount {
+				feeAmount = calcFeeAmount(ptx, len(inputsToAdd), len(outputsToAdd), opts.MilliSatsPerBytes)
+
+				if changeAmount > feeAmount {
 					outputsToAdd[changeOutputIndex].Value, _ = bufferutil.ValueToBytes(changeAmount - feeAmount)
 				} else {
 					unspents := getRemainingUnspents(opts.Unspents, inputsToAdd)
 					selectedUnspents, change, err := explorer.SelectUnspents(
 						unspents,
-						feeAmount,
+						DummyFeeAmount,
 						opts.Network.AssetID,
 					)
 					if err != nil {
@@ -410,9 +406,10 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					}
 					inputsToAdd = append(inputsToAdd, selectedUnspents...)
 
-					if change > 0 {
-						outputsToAdd[changeOutputIndex].Value, _ = bufferutil.ValueToBytes(changeAmount + change)
-					}
+					feeAmount = calcFeeAmount(ptx, len(inputsToAdd), len(outputsToAdd), opts.MilliSatsPerBytes)
+					change += DummyFeeAmount - feeAmount
+					outputsToAdd[changeOutputIndex].Value, _ = bufferutil.ValueToBytes(changeAmount + change)
+
 				}
 			} else {
 				// In case there's no LBTC change, it's necessary to choose some other
@@ -422,7 +419,7 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				unspents := getRemainingUnspents(opts.Unspents, inputsToAdd)
 				selectedUnspents, change, err := explorer.SelectUnspents(
 					unspents,
-					feeAmount,
+					DummyFeeAmount,
 					opts.Network.AssetID,
 				)
 				if err != nil {
@@ -430,27 +427,28 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 				}
 				inputsToAdd = append(inputsToAdd, selectedUnspents...)
 
-				if change > 0 {
-					lbtcChangeOutput, _ := newTxOutput(
-						opts.Network.AssetID,
-						change,
-						lbtcChangeScript,
-					)
-					outputsToAdd = append(outputsToAdd, lbtcChangeOutput)
+				feeAmount = calcFeeAmount(ptx, len(inputsToAdd), len(outputsToAdd)+1, opts.MilliSatsPerBytes)
+				change += DummyFeeAmount - feeAmount
 
-					lbtcChangePrvBlindingKey, lbtcChangePubBlindingKey, _ := w.DeriveBlindingKeyPair(
-						DeriveBlindingKeyPairOpts{
-							Script: lbtcChangeScript,
-						},
-					)
+				lbtcChangeOutput, _ := newTxOutput(
+					opts.Network.AssetID,
+					change,
+					lbtcChangeScript,
+				)
+				outputsToAdd = append(outputsToAdd, lbtcChangeOutput)
 
-					if opts.WantPrivateBlindKeys {
-						changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] =
-							lbtcChangePrvBlindingKey.Serialize()
-					} else {
-						changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] =
-							lbtcChangePubBlindingKey.SerializeCompressed()
-					}
+				lbtcChangePrvBlindingKey, lbtcChangePubBlindingKey, _ := w.DeriveBlindingKeyPair(
+					DeriveBlindingKeyPairOpts{
+						Script: lbtcChangeScript,
+					},
+				)
+
+				if opts.WantPrivateBlindKeys {
+					changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] =
+						lbtcChangePrvBlindingKey.Serialize()
+				} else {
+					changeOutputsBlindingKeys[hex.EncodeToString(lbtcChangeScript)] =
+						lbtcChangePubBlindingKey.SerializeCompressed()
 				}
 			}
 		}
@@ -485,6 +483,10 @@ func (o FinalizeAndExtractTransactionOpts) validate() error {
 // transaction and eventually extracts the final transaction and returns
 // it in hex string format, along with its transaction id
 func FinalizeAndExtractTransaction(opts FinalizeAndExtractTransactionOpts) (string, string, error) {
+	if err := opts.validate(); err != nil {
+		return "", "", err
+	}
+
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
 	ok, err := ptx.ValidateAllSignatures()
