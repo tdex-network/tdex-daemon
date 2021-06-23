@@ -134,6 +134,10 @@ func GetFloat(key string) float64 {
 	return vip.GetFloat64(key)
 }
 
+func GetStringSlice(key string) []string {
+	return vip.GetStringSlice(key)
+}
+
 //GetDuration ...
 func GetDuration(key string) time.Duration {
 	return vip.GetDuration(key)

@@ -245,3 +245,23 @@ func calcWitnessSizeFromRedeemScript(script []byte) int {
 	scriptSize := 1 + (1+72)*m + 1 + varIntSerializeSize(uint64(scriptLen)) + scriptLen
 	return scriptSize
 }
+
+func calcFeeAmount(ptx *pset.Pset, nInputs, nOutputs, mSatsPerByte int) uint64 {
+	inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+		outScriptTypes, outAuxiliaryRedeemScriptSize := extractScriptTypesFromPset(ptx)
+	// expect to add 1 input more to pay for network fees
+	for i := 0; i < nInputs; i++ {
+		inScriptTypes = append(inScriptTypes, P2WPKH)
+	}
+	for i := 0; i < nOutputs; i++ {
+		outScriptTypes = append(outScriptTypes, P2WPKH)
+	}
+
+	txSize := EstimateTxSize(
+		inScriptTypes, inAuxiliaryRedeemScriptSize, inAuxiliaryWitnessSize,
+		outScriptTypes, outAuxiliaryRedeemScriptSize,
+	)
+
+	millisatsPerByte := float64(mSatsPerByte) / 1000
+	return uint64(float64(txSize) * millisatsPerByte)
+}

@@ -30,18 +30,18 @@ import (
 
 var (
 	// General config
-	logLevel               = config.GetInt(config.LogLevelKey)
-	network                = config.GetNetwork()
-	profilerEnabled        = config.GetBool(config.EnableProfilerKey)
-	datadir                = config.GetDatadir()
-	dbDir                  = filepath.Join(datadir, config.DbLocation)
-	profilerDir            = filepath.Join(datadir, config.ProfilerLocation)
-	noMacaroons            = config.GetBool(config.NoMacaroonsKey)
-	statsIntervalInSeconds = config.GetDuration(config.StatsIntervalKey) * time.Second
-	tradeTLSKey            = config.GetString(config.TradeTLSKeyKey)
-	tradeTLSCert           = config.GetString(config.TradeTLSCertKey)
-	operatorTLSExtraIP     = config.GetString(config.OperatorExtraIP)
-	operatorTLSExtraDomain = config.GetString(config.OperatorExtraDomain)
+	logLevel                = config.GetInt(config.LogLevelKey)
+	network                 = config.GetNetwork()
+	profilerEnabled         = config.GetBool(config.EnableProfilerKey)
+	datadir                 = config.GetDatadir()
+	dbDir                   = filepath.Join(datadir, config.DbLocation)
+	profilerDir             = filepath.Join(datadir, config.ProfilerLocation)
+	noMacaroons             = config.GetBool(config.NoMacaroonsKey)
+	statsIntervalInSeconds  = config.GetDuration(config.StatsIntervalKey) * time.Second
+	tradeTLSKey             = config.GetString(config.TradeTLSKeyKey)
+	tradeTLSCert            = config.GetString(config.TradeTLSCertKey)
+	operatorTLSExtraIPs     = config.GetStringSlice(config.OperatorExtraIP)
+	operatorTLSExtraDomains = config.GetStringSlice(config.OperatorExtraDomain)
 	// App services config
 	marketsFee                    = int64(config.GetFloat(config.DefaultFeeKey) * 100)
 	marketsBaseAsset              = config.GetString(config.BaseAssetKey)
@@ -140,16 +140,16 @@ func main() {
 
 	// Init gRPC interfaces.
 	opts := grpcinterface.ServiceOpts{
-		NoMacaroons:         noMacaroons,
-		Datadir:             datadir,
-		DBLocation:          config.DbLocation,
-		TLSLocation:         config.TLSLocation,
-		MacaroonsLocation:   config.MacaroonsLocation,
-		OperatorExtraIP:     operatorTLSExtraIP,
-		OperatorExtraDomain: operatorTLSExtraDomain,
-		WalletSvc:           walletSvc,
-		OperatorSvc:         operatorSvc,
-		TradeSvc:            tradeSvc,
+		NoMacaroons:          noMacaroons,
+		Datadir:              datadir,
+		DBLocation:           config.DbLocation,
+		TLSLocation:          config.TLSLocation,
+		MacaroonsLocation:    config.MacaroonsLocation,
+		OperatorExtraIPs:     operatorTLSExtraIPs,
+		OperatorExtraDomains: operatorTLSExtraDomains,
+		WalletSvc:            walletSvc,
+		OperatorSvc:          operatorSvc,
+		TradeSvc:             tradeSvc,
 	}
 	svc, err := grpcinterface.NewService(opts)
 	if err != nil {
