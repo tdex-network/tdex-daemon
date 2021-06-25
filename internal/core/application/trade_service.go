@@ -1117,22 +1117,21 @@ func isValidTradePrice(
 	unspents []domain.Unspent,
 	slippage decimal.Decimal,
 ) bool {
-	// TODO: parallelize the 2 ways of calculating and validating the preview
-	// amount to speed up the process.
 	amount := swapRequest.GetAmountR()
 	if tradeType == TradeSell {
 		amount = swapRequest.GetAmountP()
 	}
 
-	preview, _ := previewForMarket(
+	preview, err := previewForMarket(
 		unspents,
 		market,
 		tradeType,
 		amount,
 		market.BaseAsset,
 	)
-
-	if preview != nil {
+	if err != nil {
+		log.Debugf("preview failed for reason: %s", err)
+	} else {
 		if isPriceInRange(swapRequest, tradeType, preview.amount, true, slippage) {
 			return true
 		}
@@ -1143,7 +1142,7 @@ func isValidTradePrice(
 		amount = swapRequest.GetAmountR()
 	}
 
-	preview, _ = previewForMarket(
+	preview, err = previewForMarket(
 		unspents,
 		market,
 		tradeType,
@@ -1151,7 +1150,8 @@ func isValidTradePrice(
 		market.QuoteAsset,
 	)
 
-	if preview == nil {
+	if err != nil {
+		log.Debugf("preview failed for reason: %s", err)
 		return false
 	}
 
