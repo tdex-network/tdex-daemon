@@ -1132,8 +1132,10 @@ func isValidTradePrice(
 		market.BaseAsset,
 	)
 
-	if isPriceInRange(swapRequest, tradeType, preview.amount, true, slippage) {
-		return true
+	if preview != nil {
+		if isPriceInRange(swapRequest, tradeType, preview.amount, true, slippage) {
+			return true
+		}
 	}
 
 	amount = swapRequest.GetAmountP()
@@ -1148,6 +1150,10 @@ func isValidTradePrice(
 		amount,
 		market.QuoteAsset,
 	)
+
+	if preview == nil {
+		return false
+	}
 
 	return isPriceInRange(swapRequest, tradeType, preview.amount, false, slippage)
 }
