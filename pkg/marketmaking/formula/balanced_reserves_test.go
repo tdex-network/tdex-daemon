@@ -108,35 +108,9 @@ func TestBalancedReserves_OutGivenIn(t *testing.T) {
 					Fee:                 25,
 					ChargeFeeOnTheWayIn: true,
 				}),
-				amountIn: 1,
-			},
-			formula.ErrAmountTooLow,
-		},
-		{
-			"calculated amount too low",
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           650000000000,
-					BalanceOut:          100000000,
-					Fee:                 25,
-					ChargeFeeOnTheWayIn: true,
-				}),
 				amountIn: 3259,
 			},
 			formula.ErrAmountTooLow,
-		},
-		{
-			"provided amount too big",
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           650000000000,
-					BalanceOut:          100000000,
-					Fee:                 25,
-					ChargeFeeOnTheWayIn: true,
-				}),
-				amountIn: 650000000000,
-			},
-			formula.ErrAmountTooBig,
 		},
 	}
 
@@ -228,19 +202,6 @@ func TestBalancedReserves_InGivenOut(t *testing.T) {
 					ChargeFeeOnTheWayIn: true,
 				}),
 				amountOut: 100000000,
-			},
-			formula.ErrAmountTooBig,
-		},
-		{
-			"calculated amount too big",
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           650000000000,
-					BalanceOut:          100000000,
-					Fee:                 5000,
-					ChargeFeeOnTheWayIn: true,
-				}),
-				amountOut: 50000000,
 			},
 			formula.ErrAmountTooBig,
 		},

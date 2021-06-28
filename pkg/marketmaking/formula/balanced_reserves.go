@@ -74,9 +74,6 @@ func (BalancedReserves) OutGivenIn(_opts interface{}, amountIn uint64) (uint64, 
 	if amountIn == 0 {
 		return 0, ErrAmountTooLow
 	}
-	if amountIn >= opts.BalanceIn {
-		return 0, ErrAmountTooBig
-	}
 
 	amount := amountIn
 	if opts.ChargeFeeOnTheWayIn {
