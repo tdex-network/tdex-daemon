@@ -33,6 +33,9 @@ func (s PluggableStrategy) OutGivenIn(_opts interface{}, amountIn uint64) (uint6
 
 	amountR := decimal.NewFromInt(int64(amountIn)).Mul(opts.Price).BigInt().Uint64()
 	amountR, _ = mathutil.LessFee(amountR, opts.Fee)
+	if amountR == 0 {
+		return 0, ErrMarketPreviewAmountTooLow
+	}
 	return amountR, nil
 }
 
@@ -50,6 +53,9 @@ func (s PluggableStrategy) InGivenOut(_opts interface{}, amountOut uint64) (uint
 
 	amountP := decimal.NewFromInt(int64(amountOut)).Mul(opts.Price).BigInt().Uint64()
 	amountP, _ = mathutil.PlusFee(amountP, opts.Fee)
+	if amountP == 0 {
+		return 0, ErrMarketPreviewAmountTooLow
+	}
 	return amountP, nil
 }
 
