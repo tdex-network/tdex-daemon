@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/shopspring/decimal"
-	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
@@ -16,6 +15,8 @@ const (
 )
 
 var (
+	// ErrInvalidOptsType ...
+	ErrInvalidOptsType = errors.New("opts must be of type BalancedReservesOpts")
 	// ErrAmountTooLow ...
 	ErrAmountTooLow = errors.New("provided amount is too low")
 	// ErrAmountTooBig ...
@@ -24,11 +25,29 @@ var (
 	ErrBalanceTooLow = errors.New("reserve balance amount is too low")
 )
 
+//BalancedReservesOpts defines the parameters needed to calculate the spot price
+type BalancedReservesOpts struct {
+	BalanceIn  uint64
+	BalanceOut uint64
+	WeightIn   uint64
+	WeightOut  uint64
+	// The fee should be in satoshis and represents the calculated fee to take out from the swap.
+	Fee uint64
+	// Defines if the fee should be charged on the way in (ie. on )
+	ChargeFeeOnTheWayIn bool
+}
+
 //BalancedReserves defines an AMM strategy with fixed 50/50 reserves
 type BalancedReserves struct{}
 
 // SpotPrice calculates the spot price (without fees) given the balances fo the two reserves. The weight reserve ratio is fixed at 50/50
-func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice decimal.Decimal, err error) {
+func (BalancedReserves) SpotPrice(_opts interface{}) (spotPrice decimal.Decimal, err error) {
+	opts, ok := _opts.(BalancedReservesOpts)
+	if !ok {
+		err = ErrInvalidOptsType
+		return
+	}
+
 	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
 		err = ErrBalanceTooLow
 		return
@@ -41,21 +60,30 @@ func (BalancedReserves) SpotPrice(opts *marketmaking.FormulaOpts) (spotPrice dec
 	return
 }
 
-// OutGivenIn returns the amountOut of asset that will be exchanged for the given amountIn
-func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn uint64) (amountOut uint64, err error) {
+// OutGivenIn returns the amountOut of asset that will be exchanged for the given amountIn.
+func (BalancedReserves) OutGivenIn(_opts interface{}, amountIn uint64) (uint64, error) {
+	opts, ok := _opts.(BalancedReservesOpts)
+	if !ok {
+		return 0, ErrInvalidOptsType
+	}
+
 	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
-		err = ErrBalanceTooLow
-		return
+		return 0, ErrBalanceTooLow
 	}
 
 	if amountIn == 0 {
-		err = ErrAmountTooLow
-		return
+		return 0, ErrAmountTooLow
+	}
+	if amountIn >= opts.BalanceIn {
+		return 0, ErrAmountTooBig
 	}
 
-	amountInWithFees, _ := mathutil.LessFee(amountIn, opts.Fee)
-	if !opts.ChargeFeeOnTheWayIn {
-		amountInWithFees, _ = mathutil.PlusFee(amountIn, opts.Fee)
+	amount := amountIn
+	if opts.ChargeFeeOnTheWayIn {
+		amount, _ = mathutil.LessFee(amountIn, opts.Fee)
+	}
+	if amount == 0 {
+		return 0, ErrAmountTooLow
 	}
 
 	balanceIn := decimal.NewFromInt(int64(opts.BalanceIn))
@@ -63,49 +91,69 @@ func (BalancedReserves) OutGivenIn(opts *marketmaking.FormulaOpts, amountIn uint
 	amountOutDecimal := balanceOut.Mul(
 		decimal.NewFromInt(1).Sub(
 			balanceIn.Div(
-				balanceIn.Add(decimal.NewFromInt(int64(amountInWithFees))),
+				balanceIn.Add(decimal.NewFromInt(int64(amount))),
 			),
 		),
 	)
-	amountOut = amountOutDecimal.BigInt().Uint64()
 
-	return
+	amountOut := amountOutDecimal.BigInt().Uint64()
+	if !opts.ChargeFeeOnTheWayIn {
+		amountOut, _ = mathutil.LessFee(amountOut, opts.Fee)
+	}
+	if amountOut == 0 {
+		return 0, ErrAmountTooLow
+	}
+
+	return amountOut, nil
 }
 
-// InGivenOut returns the amountIn of assets that will be needed for having the desired amountOut in return
-func (BalancedReserves) InGivenOut(opts *marketmaking.FormulaOpts, amountOut uint64) (amountIn uint64, err error) {
+// InGivenOut returns the amountIn of assets that will be needed for having the desired amountOut in return.
+func (BalancedReserves) InGivenOut(_opts interface{}, amountOut uint64) (uint64, error) {
+	opts, ok := _opts.(BalancedReservesOpts)
+	if !ok {
+		return 0, ErrInvalidOptsType
+	}
+
 	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
-		err = ErrBalanceTooLow
-		return
+		return 0, ErrBalanceTooLow
 	}
 
 	if amountOut == 0 {
-		err = ErrAmountTooLow
-		return
+		return 0, ErrAmountTooLow
 	}
 	if amountOut >= opts.BalanceOut {
-		err = ErrAmountTooBig
-		return
+		return 0, ErrAmountTooBig
 	}
 
-	one := decimal.NewFromInt(1)
-	feeDecimal := decimal.NewFromInt(int64(opts.Fee)).Div(decimal.NewFromInt(mathutil.TenThousands))
-	amountPercentage := one.Add(feeDecimal)
+	amount := amountOut
 	if !opts.ChargeFeeOnTheWayIn {
-		amountPercentage = one.Sub(feeDecimal)
+		amount, _ = mathutil.PlusFee(amountOut, opts.Fee)
 	}
+
+	if amount == 0 {
+		return 0, ErrAmountTooLow
+	}
+	if amount >= opts.BalanceOut {
+		return 0, ErrAmountTooBig
+	}
+
 	balanceIn := decimal.NewFromInt(int64(opts.BalanceIn))
 	balanceOut := decimal.NewFromInt(int64(opts.BalanceOut))
-
 	amountInDecimal := balanceIn.Mul(
 		balanceOut.Div(
-			balanceOut.Sub(decimal.NewFromInt(int64(amountOut))),
-		).Sub(one),
-	).Mul(one.Div(amountPercentage))
+			balanceOut.Sub(decimal.NewFromInt(int64(amount))),
+		).Sub(decimal.NewFromInt(1)),
+	)
 
-	amountIn = amountInDecimal.BigInt().Uint64()
+	amountIn := amountInDecimal.BigInt().Uint64()
+	if opts.ChargeFeeOnTheWayIn {
+		amountIn, _ = mathutil.PlusFee(amountIn, opts.Fee)
+	}
+	if amountIn == 0 {
+		return 0, ErrAmountTooLow
+	}
 
-	return
+	return amountIn, nil
 }
 
 func (BalancedReserves) FormulaType() int {
