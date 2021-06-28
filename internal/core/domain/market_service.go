@@ -238,7 +238,12 @@ func (m *Market) Preview(
 	}
 
 	formula := m.formula(isBaseAsset, isBuy)
-	args := m.formulaOpts(baseBalance, quoteBalance, isBaseAsset, isBuy)
+	var args interface{}
+	if m.IsStrategyPluggable() {
+		args = m.formulaOptsForPluggable(baseBalance, quoteBalance, isBaseAsset, isBuy)
+	} else {
+		args = m.formulaOptsForBalanced(baseBalance, quoteBalance, isBaseAsset, isBuy)
+	}
 
 	price, err := m.priceForStrategy(baseBalance, quoteBalance)
 	if err != nil {
@@ -286,7 +291,7 @@ func (m *Market) formula(
 	return formula.InGivenOut
 }
 
-func (m *Market) formulaOpts(
+func (m *Market) formulaOptsForPluggable(
 	baseBalance, quoteBalance uint64, isBaseAsset, isBuy bool,
 ) interface{} {
 	balanceIn := baseBalance
@@ -296,18 +301,27 @@ func (m *Market) formulaOpts(
 		balanceOut = baseBalance
 	}
 
-	if m.IsStrategyPluggable() {
-		price := m.BaseAssetPrice()
-		if isBaseAsset {
-			price = m.QuoteAssetPrice()
-		}
+	price := m.BaseAssetPrice()
+	if isBaseAsset {
+		price = m.QuoteAssetPrice()
+	}
 
-		return PluggableStrategyOpts{
-			BalanceIn:  balanceIn,
-			BalanceOut: balanceOut,
-			Price:      price,
-			Fee:        uint64(m.Fee),
-		}
+	return PluggableStrategyOpts{
+		BalanceIn:  balanceIn,
+		BalanceOut: balanceOut,
+		Price:      price,
+		Fee:        uint64(m.Fee),
+	}
+}
+
+func (m *Market) formulaOptsForBalanced(
+	baseBalance, quoteBalance uint64, isBaseAsset, isBuy bool,
+) interface{} {
+	balanceIn := baseBalance
+	balanceOut := quoteBalance
+	if isBuy {
+		balanceIn = quoteBalance
+		balanceOut = baseBalance
 	}
 
 	return formula.BalancedReservesOpts{
