@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -8,12 +9,15 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
+const (
+	baseAsset  = "0000000000000000000000000000000000000000000000000000000000000000"
+	quoteAsset = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+)
+
 func TestFundMarket(t *testing.T) {
 	t.Parallel()
 
 	market := newTestMarket()
-	baseAsset := "0000000000000000000000000000000000000000000000000000000000000000"
-	quoteAsset := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	outpoints := []domain.OutpointWithAsset{
 		{
 			Asset: baseAsset,
@@ -376,14 +380,696 @@ func TestFailingChangeQuotePrice(t *testing.T) {
 	require.EqualError(t, err, domain.ErrMarketNotFunded.Error())
 }
 
+func TestPreview(t *testing.T) {
+	t.Parallel()
+
+	t.Run("market with balanced strategy", func(t *testing.T) {
+		market := newTestMarketFunded()
+		market.ChangeFeeBasisPoint(100)
+		market.ChangeFixedFee(650, 20000000)
+		market.MakeTradable()
+
+		tests := []struct {
+			baseBalance  uint64
+			quoteBalance uint64
+			amount       uint64
+			isBaseAsset  bool
+			isBuy        bool
+			expected     *domain.PreviewInfo
+		}{
+			{
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       2000,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expected: &domain.PreviewInfo{
+					Price: domain.Prices{
+						BasePrice:  decimal.NewFromFloat(0.000025),
+						QuotePrice: decimal.NewFromFloat(40000),
+					},
+					Amount: 102448966,
+					Asset:  quoteAsset,
+				},
+			},
+			{
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       100000000,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expected: &domain.PreviewInfo{
+					Price: domain.Prices{
+						BasePrice:  decimal.NewFromFloat(0.000025),
+						QuotePrice: decimal.NewFromFloat(40000),
+					},
+					Amount: 1765,
+					Asset:  baseAsset,
+				},
+			},
+			{
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       2000,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expected: &domain.PreviewInfo{
+					Price: domain.Prices{
+						BasePrice:  decimal.NewFromFloat(0.000025),
+						QuotePrice: decimal.NewFromFloat(40000),
+					},
+					Amount: 57662280,
+					Asset:  quoteAsset,
+				},
+			},
+			{
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       100000000,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expected: &domain.PreviewInfo{
+					Price: domain.Prices{
+						BasePrice:  decimal.NewFromFloat(0.000025),
+						QuotePrice: decimal.NewFromFloat(40000),
+					},
+					Amount: 3239,
+					Asset:  baseAsset,
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			preview, err := market.Preview(tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy)
+			require.NoError(t, err)
+			require.NotNil(t, preview)
+			require.Equal(t, tt.expected.Price.BasePrice.String(), preview.Price.BasePrice.String())
+			require.Equal(t, tt.expected.Price.QuotePrice.String(), preview.Price.QuotePrice.String())
+			require.Equal(t, int(tt.expected.Amount), int(preview.Amount))
+			require.Equal(t, tt.expected.Asset, preview.Asset)
+		}
+	})
+
+	t.Run("market with pluggable strategy", func(t *testing.T) {
+		market := newTestMarketFundedWithPluggableStrategy()
+		market.MakeNotTradable()
+		market.ChangeFeeBasisPoint(100)
+		market.ChangeFixedFee(650, 20000000)
+		market.ChangeBasePrice(decimal.NewFromFloat(0.000028571429))
+		market.ChangeQuotePrice(decimal.NewFromFloat(35000))
+		market.MakeTradable()
+
+		tests := []struct {
+			baseBalance  uint64
+			quoteBalance uint64
+			amount       uint64
+			isBaseAsset  bool
+			isBuy        bool
+			expected     *domain.PreviewInfo
+		}{
+			{
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       2000,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expected: &domain.PreviewInfo{
+					Price: domain.Prices{
+						BasePrice:  decimal.NewFromFloat(0.000028571429),
+						QuotePrice: decimal.NewFromFloat(35000),
+					},
+					Amount: 90700000,
+					Asset:  quoteAsset,
+				},
+			},
+			{
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       100000000,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expected: &domain.PreviewInfo{
+					Price: domain.Prices{
+						BasePrice:  decimal.NewFromFloat(0.000028571429),
+						QuotePrice: decimal.NewFromFloat(35000),
+					},
+					Amount: 2178,
+					Asset:  baseAsset,
+				},
+			},
+			{
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       2000,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expected: &domain.PreviewInfo{
+					Price: domain.Prices{
+						BasePrice:  decimal.NewFromFloat(0.000028571429),
+						QuotePrice: decimal.NewFromFloat(35000),
+					},
+					Amount: 49300000,
+					Asset:  quoteAsset,
+				},
+			},
+			{
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       100000000,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expected: &domain.PreviewInfo{
+					Price: domain.Prices{
+						BasePrice:  decimal.NewFromFloat(0.000028571429),
+						QuotePrice: decimal.NewFromFloat(35000),
+					},
+					Amount: 3535,
+					Asset:  baseAsset,
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			preview, err := market.Preview(tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy)
+			require.NoError(t, err)
+			require.NotNil(t, preview)
+			require.Equal(t, tt.expected.Price.BasePrice.String(), preview.Price.BasePrice.String())
+			require.Equal(t, tt.expected.Price.QuotePrice.String(), preview.Price.QuotePrice.String())
+			require.Equal(t, tt.expected.Asset, preview.Asset)
+			require.Equal(t, int(tt.expected.Amount), int(preview.Amount))
+		}
+	})
+}
+
+func TestFailingPreview(t *testing.T) {
+	t.Parallel()
+
+	t.Run("market with balanced strategy", func(t *testing.T) {
+		market := newTestMarketFunded()
+		market.ChangeFeeBasisPoint(100)
+		market.MakeTradable()
+
+		tests := []struct {
+			name         string
+			baseBalance  uint64
+			quoteBalance uint64
+			amount       uint64
+			isBaseAsset  bool
+			isBuy        bool
+			expectedErr  error
+		}{
+			{
+				name:         "buy with base asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with quote asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with quote asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       40384,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with base asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       100000,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+			{
+				name:         "sell with base asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with base asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       1,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       39979,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       4000000000,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				preview, err := market.Preview(
+					tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy,
+				)
+				if preview != nil {
+					fmt.Println(preview)
+				}
+				require.EqualError(t, err, tt.expectedErr.Error())
+				require.Nil(t, preview)
+			})
+		}
+	})
+
+	t.Run("market with pluggable strategy", func(t *testing.T) {
+		market := newTestMarketFundedWithPluggableStrategy()
+		market.MakeNotTradable()
+		market.ChangeFeeBasisPoint(100)
+		market.ChangeBasePrice(decimal.NewFromFloat(0.000028571429))
+		market.ChangeQuotePrice(decimal.NewFromFloat(35000))
+		market.MakeTradable()
+
+		tests := []struct {
+			name         string
+			baseBalance  uint64
+			quoteBalance uint64
+			amount       uint64
+			isBaseAsset  bool
+			isBuy        bool
+			expectedErr  error
+		}{
+			{
+				name:         "buy with base asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with quote asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with quote asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       69999,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with base asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       100000,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+			{
+				name:         "buy with quote asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       3535384947,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+			{
+				name:         "sell with base asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       0,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       0,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       34999,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with base asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       115441,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+			{
+				name:         "sell with quote asset big amount",
+				baseBalance:  10000,
+				quoteBalance: 40000000,
+				amount:       40000000,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				preview, err := market.Preview(
+					tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy,
+				)
+				if preview != nil {
+					fmt.Println(preview)
+				}
+				require.EqualError(t, err, tt.expectedErr.Error())
+				require.Nil(t, preview)
+			})
+		}
+	})
+
+	t.Run("market with balanced strategy and fixed fees", func(t *testing.T) {
+		market := newTestMarketFunded()
+		market.ChangeFeeBasisPoint(100)
+		market.ChangeFixedFee(650, 20000000)
+		market.MakeTradable()
+
+		tests := []struct {
+			name         string
+			baseBalance  uint64
+			quoteBalance uint64
+			amount       uint64
+			isBaseAsset  bool
+			isBuy        bool
+			expectedErr  error
+		}{
+			{
+				name:         "buy with base asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with quote asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with base asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       649,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with quote asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       26475364,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with base asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       100000,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+			{
+				name:         "sell with base asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with base asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       649,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       19999999,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       4000000000,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				preview, err := market.Preview(
+					tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy,
+				)
+				if preview != nil {
+					fmt.Println(preview)
+				}
+				require.EqualError(t, err, tt.expectedErr.Error())
+				require.Nil(t, preview)
+			})
+		}
+	})
+
+	t.Run("market with pluggable strategy and fixed fees", func(t *testing.T) {
+		t.Parallel()
+
+		market := newTestMarketFundedWithPluggableStrategy()
+		market.MakeNotTradable()
+		market.ChangeFeeBasisPoint(100)
+		market.ChangeFixedFee(650, 20000000)
+		market.ChangeBasePrice(decimal.NewFromFloat(0.000028571429))
+		market.ChangeQuotePrice(decimal.NewFromFloat(35000))
+		market.MakeTradable()
+
+		tests := []struct {
+			name         string
+			baseBalance  uint64
+			quoteBalance uint64
+			amount       uint64
+			isBaseAsset  bool
+			isBuy        bool
+			expectedErr  error
+		}{
+			{
+				name:         "buy with base asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with quote asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       0,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with base asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       649,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with quote asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       23029999,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "buy with base asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       100000,
+				isBaseAsset:  true,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+			{
+				name:         "buy with quote asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       3558344947,
+				isBaseAsset:  false,
+				isBuy:        true,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+			{
+				name:         "sell with base asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       0,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset zero amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       0,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with base asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       649,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with quote asset low amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       19999999,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooLow,
+			},
+			{
+				name:         "sell with base asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 4000000000,
+				amount:       116018,
+				isBaseAsset:  true,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+			{
+				name:         "sell with quote asset big amount",
+				baseBalance:  100000,
+				quoteBalance: 400000000,
+				amount:       400000000,
+				isBaseAsset:  false,
+				isBuy:        false,
+				expectedErr:  domain.ErrMarketPreviewAmountTooBig,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				preview, err := market.Preview(
+					tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy,
+				)
+				if preview != nil {
+					fmt.Println(preview)
+				}
+				require.EqualError(t, err, tt.expectedErr.Error())
+				require.Nil(t, preview)
+			})
+		}
+	})
+}
+
 func newTestMarket() *domain.Market {
 	m, _ := domain.NewMarket(0, 25)
 	return m
 }
 
 func newTestMarketFunded() *domain.Market {
-	baseAsset := "0000000000000000000000000000000000000000000000000000000000000000"
-	quoteAsset := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	outpoints := []domain.OutpointWithAsset{
 		{
 			Asset: baseAsset,

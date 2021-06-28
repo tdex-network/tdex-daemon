@@ -46,6 +46,14 @@ type Prices struct {
 // StrategyType is the Market making strategy type
 type StrategyType int32
 
+// PreviewInfo contains info about a price preview based on the market's current
+// strategy.
+type PreviewInfo struct {
+	Price  Prices
+	Amount uint64
+	Asset  string
+}
+
 // NewMarket returns an empty market with a reference to an account index.
 // It is also mandatory to define a fee (in BP) for the market.
 func NewMarket(positiveAccountIndex int, feeInBasisPoint int64) (*Market, error) {
