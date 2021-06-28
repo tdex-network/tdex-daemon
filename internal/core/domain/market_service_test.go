@@ -1,7 +1,6 @@
 package domain_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -666,9 +665,6 @@ func TestFailingPreview(t *testing.T) {
 				preview, err := market.Preview(
 					tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy,
 				)
-				if preview != nil {
-					fmt.Println(preview)
-				}
 				require.EqualError(t, err, tt.expectedErr.Error())
 				require.Nil(t, preview)
 			})
@@ -789,9 +785,6 @@ func TestFailingPreview(t *testing.T) {
 				preview, err := market.Preview(
 					tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy,
 				)
-				if preview != nil {
-					fmt.Println(preview)
-				}
 				require.EqualError(t, err, tt.expectedErr.Error())
 				require.Nil(t, preview)
 			})
@@ -910,9 +903,6 @@ func TestFailingPreview(t *testing.T) {
 				preview, err := market.Preview(
 					tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy,
 				)
-				if preview != nil {
-					fmt.Println(preview)
-				}
 				require.EqualError(t, err, tt.expectedErr.Error())
 				require.Nil(t, preview)
 			})
@@ -1054,9 +1044,6 @@ func TestFailingPreview(t *testing.T) {
 				preview, err := market.Preview(
 					tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy,
 				)
-				if preview != nil {
-					fmt.Println(preview)
-				}
 				require.EqualError(t, err, tt.expectedErr.Error())
 				require.Nil(t, preview)
 			})

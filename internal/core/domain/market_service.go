@@ -275,18 +275,14 @@ func (m *Market) formula(
 	formula := m.getStrategySafe().Formula()
 	if isBuy {
 		if isBaseAsset {
-			// fmt.Println("InGivenOut")
 			return formula.InGivenOut
 		}
-		// fmt.Println("OutGivenIn")
 		return formula.OutGivenIn
 	}
 
 	if isBaseAsset {
-		// fmt.Println("OutGivenIn")
 		return formula.OutGivenIn
 	}
-	// fmt.Println("InGivenOut")
 	return formula.InGivenOut
 }
 
