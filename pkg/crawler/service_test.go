@@ -63,9 +63,7 @@ func removeObservableAfterTimeout(crawler Service) {
 		Address:      "101",
 	})
 	time.Sleep(400 * time.Millisecond)
-	crawler.RemoveObservable(&TransactionObservable{
-		TxID: "102",
-	})
+	crawler.RemoveObservable(NewTransactionObservable("102"))
 }
 
 func addObservableAfterTimeout(crawler Service) {
@@ -75,9 +73,7 @@ func addObservableAfterTimeout(crawler Service) {
 		Address:      "101",
 	})
 	time.Sleep(300 * time.Millisecond)
-	crawler.AddObservable(&TransactionObservable{
-		TxID: "102",
-	})
+	crawler.AddObservable(NewTransactionObservable("102"))
 }
 
 // MOCK //

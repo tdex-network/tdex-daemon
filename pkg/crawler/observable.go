@@ -8,6 +8,7 @@ import (
 	"golang.org/x/time/rate"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/sony/gobreaker"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
@@ -18,38 +19,25 @@ const (
 	Processed Status = "PROCESSED"
 )
 
-type Status string
-
-type observableStatus struct {
-	sync.RWMutex
-	status Status
-}
-
-func NewObservableStatus() *observableStatus {
-	return &observableStatus{
-		status: New,
-	}
-}
-
-func (o *observableStatus) Get() Status {
-	o.RLock()
-	defer o.RUnlock()
-	return o.status
-}
-
-func (o *observableStatus) Set(status Status) {
-	o.Lock()
-	defer o.Unlock()
-	o.status = status
-}
-
 type AddressObservable struct {
 	AccountIndex int
 	Address      string
 	BlindingKey  []byte
+	cb           *gobreaker.CircuitBreaker
 }
 
-func (a *AddressObservable) observe(
+func NewAddressObservable(
+	accountIndex int, address string, blindKey []byte,
+) Observable {
+	return &AddressObservable{
+		AccountIndex: accountIndex,
+		Address:      address,
+		BlindingKey:  blindKey,
+		cb:           newCircuitBreaker(),
+	}
+}
+
+func (a *AddressObservable) Observe(
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
@@ -66,11 +54,14 @@ func (a *AddressObservable) observe(
 		return
 	}
 
-	unspents, err := explorerSvc.GetUnspents(a.Address, [][]byte{a.BlindingKey})
+	iUnspents, err := a.cb.Execute(func() (interface{}, error) {
+		return explorerSvc.GetUnspents(a.Address, [][]byte{a.BlindingKey})
+	})
 	if err != nil {
 		errChan <- err
 		return
 	}
+	unspents := iUnspents.([]explorer.Utxo)
 
 	observableStatus.Set(Processed)
 
@@ -90,16 +81,24 @@ func (a *AddressObservable) observe(
 	eventChan <- event
 }
 
-func (a *AddressObservable) key() string {
+func (a *AddressObservable) Key() string {
 	return a.Address
 }
 
 type TransactionObservable struct {
 	TxID  string
 	TxHex string
+	cb    *gobreaker.CircuitBreaker
 }
 
-func (t *TransactionObservable) observe(
+func NewTransactionObservable(txid string) Observable {
+	return &TransactionObservable{
+		TxID: txid,
+		cb:   newCircuitBreaker(),
+	}
+}
+
+func (t *TransactionObservable) Observe(
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
@@ -116,15 +115,22 @@ func (t *TransactionObservable) observe(
 		return
 	}
 
-	txStatus, err := explorerSvc.GetTransactionStatus(t.TxID)
+	iTxStatus, err := t.cb.Execute(func() (interface{}, error) {
+		return explorerSvc.GetTransactionStatus(t.TxID)
+	})
 	if err != nil {
 		errChan <- err
 		return
 	}
+	txStatus := iTxStatus.(map[string]interface{})
+
 	if len(t.TxHex) <= 0 {
-		txHex, err := explorerSvc.GetTransactionHex(t.TxID)
+
+		iTxHex, err := t.cb.Execute(func() (interface{}, error) {
+			return explorerSvc.GetTransactionHex(t.TxID)
+		})
 		if err == nil {
-			t.TxHex = txHex
+			t.TxHex = iTxHex.(string)
 		}
 	}
 
@@ -168,8 +174,33 @@ func (t *TransactionObservable) observe(
 	eventChan <- event
 }
 
-func (t *TransactionObservable) key() string {
+func (t *TransactionObservable) Key() string {
 	return t.TxID
+}
+
+type Status string
+
+type observableStatus struct {
+	sync.RWMutex
+	status Status
+}
+
+func newObservableStatus() *observableStatus {
+	return &observableStatus{
+		status: New,
+	}
+}
+
+func (o *observableStatus) Get() Status {
+	o.RLock()
+	defer o.RUnlock()
+	return o.status
+}
+
+func (o *observableStatus) Set(status Status) {
+	o.Lock()
+	defer o.Unlock()
+	o.status = status
 }
 
 type observableHandler struct {
@@ -204,7 +235,7 @@ func newObservableHandler(
 		eventChan,
 		errChan,
 		stopChan,
-		NewObservableStatus(),
+		newObservableStatus(),
 		rateLimiter,
 	}
 }
@@ -216,7 +247,7 @@ func (oh *observableHandler) start() {
 		select {
 		case <-oh.ticker.C:
 			if oh.observableStatus.Get() != Waiting {
-				oh.observable.observe(
+				oh.observable.Observe(
 					oh.explorerSvc,
 					oh.errChan,
 					oh.eventChan,
@@ -242,8 +273,29 @@ func (oh *observableHandler) logAction(action string) {
 	obs := oh.observable
 	switch obs.(type) {
 	case *AddressObservable:
-		log.Debugf("%s observing address: %v", action, obs.key())
+		log.Debugf("%s observing address: %v", action, obs.Key())
 	case *TransactionObservable:
-		log.Debugf("%s observing tx: %v", action, obs.key())
+		log.Debugf("%s observing tx: %v", action, obs.Key())
 	}
+}
+
+func newCircuitBreaker() *gobreaker.CircuitBreaker {
+	return gobreaker.NewCircuitBreaker(gobreaker.Settings{
+		Name: "observable",
+		ReadyToTrip: func(counts gobreaker.Counts) bool {
+			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
+			return counts.Requests > 20 && failureRatio >= 0.7
+		},
+		OnStateChange: func(name string, from, to gobreaker.State) {
+			if to == gobreaker.StateOpen {
+				log.Debug("cannot complete observation, will retry later")
+			}
+			if from == gobreaker.StateOpen && to == gobreaker.StateHalfOpen {
+				log.Debug("check observation status")
+			}
+			if from == gobreaker.StateHalfOpen && to == gobreaker.StateClosed {
+				log.Debug("restart observation")
+			}
+		},
+	})
 }

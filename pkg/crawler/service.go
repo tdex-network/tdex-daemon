@@ -96,7 +96,7 @@ func (bc *blockchainCrawler) AddObservable(observable Observable) {
 	bc.mutex.Lock()
 	defer bc.mutex.Unlock()
 
-	if _, ok := bc.observables[observable.key()]; !ok {
+	if _, ok := bc.observables[observable.Key()]; !ok {
 		obsHandler := newObservableHandler(
 			observable,
 			bc.explorerSvc,
@@ -107,7 +107,7 @@ func (bc *blockchainCrawler) AddObservable(observable Observable) {
 			bc.rateLimiter,
 		)
 
-		bc.observables[observable.key()] = obsHandler
+		bc.observables[observable.Key()] = obsHandler
 		go obsHandler.start()
 	}
 }
@@ -117,10 +117,9 @@ func (bc *blockchainCrawler) RemoveObservable(observable Observable) {
 	bc.mutex.Lock()
 	defer bc.mutex.Unlock()
 
-	if obsHandler, ok := bc.observables[observable.key()]; ok {
-
+	if obsHandler, ok := bc.observables[observable.Key()]; ok {
 		obsHandler.stop()
-		delete(bc.observables, observable.key())
+		delete(bc.observables, observable.Key())
 	}
 }
 

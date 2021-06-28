@@ -12,14 +12,14 @@ type Event interface {
 
 // Observable represent object that can be observe on the blockchain.
 type Observable interface {
-	observe(
+	Observe(
 		explorerSvc explorer.Service,
 		errChan chan error,
 		eventChan chan Event,
 		observableStatus *observableStatus,
 		rateLimiter *rate.Limiter,
 	)
-	key() string
+	Key() string
 }
 
 // Service is the interface for Crawler
