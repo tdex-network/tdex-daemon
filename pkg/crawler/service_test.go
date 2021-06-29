@@ -68,10 +68,7 @@ func removeObservableAfterTimeout(crawler Service) {
 
 func addObservableAfterTimeout(crawler Service) {
 	time.Sleep(2 * time.Second)
-	crawler.AddObservable(&AddressObservable{
-		AccountIndex: 0,
-		Address:      "101",
-	})
+	crawler.AddObservable(NewAddressObservable(0, "101", nil))
 	time.Sleep(300 * time.Millisecond)
 	crawler.AddObservable(NewTransactionObservable("102"))
 }
