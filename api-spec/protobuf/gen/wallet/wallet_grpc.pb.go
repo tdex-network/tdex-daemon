@@ -18,29 +18,6 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WalletClient interface {
 	//
-	//GenSeed is the first method that should be used to instantiate a new tdexd
-	//instance. This method allows a caller to generate a new HD Wallet.
-	//Once the seed is obtained and verified by the user, the InitWallet
-	//method should be used to commit the newly generated seed, and create the
-	//wallet.
-	GenSeed(ctx context.Context, in *GenSeedRequest, opts ...grpc.CallOption) (*GenSeedReply, error)
-	//
-	//InitWallet is used when tdexd is starting up for the first time to fully
-	//initialize the daemon and its internal wallet. At the very least a mnemonic
-	//and a wallet password must be provided. This will be used to encrypt sensitive
-	//material on disk. Alternatively, this can be used along with the GenSeed RPC
-	//to obtain a seed, then present it to the user. Once it has been verified by
-	//the user, the seed can be fed into this RPC in order to commit the new wallet.
-	InitWallet(ctx context.Context, in *InitWalletRequest, opts ...grpc.CallOption) (Wallet_InitWalletClient, error)
-	//
-	//UnlockWallet is used at startup of tdexd to provide a password to unlock
-	//the wallet database.
-	UnlockWallet(ctx context.Context, in *UnlockWalletRequest, opts ...grpc.CallOption) (*UnlockWalletReply, error)
-	//
-	//ChangePassword changes the password of the encrypted wallet. This will
-	//automatically unlock the wallet database if successful.
-	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordReply, error)
-	//
 	//WalletAddress returns a Liquid confidential p2wpkh address (BLECH32)
 	WalletAddress(ctx context.Context, in *WalletAddressRequest, opts ...grpc.CallOption) (*WalletAddressReply, error)
 	//
@@ -58,65 +35,6 @@ type walletClient struct {
 
 func NewWalletClient(cc grpc.ClientConnInterface) WalletClient {
 	return &walletClient{cc}
-}
-
-func (c *walletClient) GenSeed(ctx context.Context, in *GenSeedRequest, opts ...grpc.CallOption) (*GenSeedReply, error) {
-	out := new(GenSeedReply)
-	err := c.cc.Invoke(ctx, "/Wallet/GenSeed", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *walletClient) InitWallet(ctx context.Context, in *InitWalletRequest, opts ...grpc.CallOption) (Wallet_InitWalletClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Wallet_serviceDesc.Streams[0], "/Wallet/InitWallet", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &walletInitWalletClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Wallet_InitWalletClient interface {
-	Recv() (*InitWalletReply, error)
-	grpc.ClientStream
-}
-
-type walletInitWalletClient struct {
-	grpc.ClientStream
-}
-
-func (x *walletInitWalletClient) Recv() (*InitWalletReply, error) {
-	m := new(InitWalletReply)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *walletClient) UnlockWallet(ctx context.Context, in *UnlockWalletRequest, opts ...grpc.CallOption) (*UnlockWalletReply, error) {
-	out := new(UnlockWalletReply)
-	err := c.cc.Invoke(ctx, "/Wallet/UnlockWallet", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *walletClient) ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordReply, error) {
-	out := new(ChangePasswordReply)
-	err := c.cc.Invoke(ctx, "/Wallet/ChangePassword", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *walletClient) WalletAddress(ctx context.Context, in *WalletAddressRequest, opts ...grpc.CallOption) (*WalletAddressReply, error) {
@@ -151,29 +69,6 @@ func (c *walletClient) SendToMany(ctx context.Context, in *SendToManyRequest, op
 // for forward compatibility
 type WalletServer interface {
 	//
-	//GenSeed is the first method that should be used to instantiate a new tdexd
-	//instance. This method allows a caller to generate a new HD Wallet.
-	//Once the seed is obtained and verified by the user, the InitWallet
-	//method should be used to commit the newly generated seed, and create the
-	//wallet.
-	GenSeed(context.Context, *GenSeedRequest) (*GenSeedReply, error)
-	//
-	//InitWallet is used when tdexd is starting up for the first time to fully
-	//initialize the daemon and its internal wallet. At the very least a mnemonic
-	//and a wallet password must be provided. This will be used to encrypt sensitive
-	//material on disk. Alternatively, this can be used along with the GenSeed RPC
-	//to obtain a seed, then present it to the user. Once it has been verified by
-	//the user, the seed can be fed into this RPC in order to commit the new wallet.
-	InitWallet(*InitWalletRequest, Wallet_InitWalletServer) error
-	//
-	//UnlockWallet is used at startup of tdexd to provide a password to unlock
-	//the wallet database.
-	UnlockWallet(context.Context, *UnlockWalletRequest) (*UnlockWalletReply, error)
-	//
-	//ChangePassword changes the password of the encrypted wallet. This will
-	//automatically unlock the wallet database if successful.
-	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordReply, error)
-	//
 	//WalletAddress returns a Liquid confidential p2wpkh address (BLECH32)
 	WalletAddress(context.Context, *WalletAddressRequest) (*WalletAddressReply, error)
 	//
@@ -190,18 +85,6 @@ type WalletServer interface {
 type UnimplementedWalletServer struct {
 }
 
-func (UnimplementedWalletServer) GenSeed(context.Context, *GenSeedRequest) (*GenSeedReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GenSeed not implemented")
-}
-func (UnimplementedWalletServer) InitWallet(*InitWalletRequest, Wallet_InitWalletServer) error {
-	return status.Errorf(codes.Unimplemented, "method InitWallet not implemented")
-}
-func (UnimplementedWalletServer) UnlockWallet(context.Context, *UnlockWalletRequest) (*UnlockWalletReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UnlockWallet not implemented")
-}
-func (UnimplementedWalletServer) ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ChangePassword not implemented")
-}
 func (UnimplementedWalletServer) WalletAddress(context.Context, *WalletAddressRequest) (*WalletAddressReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WalletAddress not implemented")
 }
@@ -222,81 +105,6 @@ type UnsafeWalletServer interface {
 
 func RegisterWalletServer(s grpc.ServiceRegistrar, srv WalletServer) {
 	s.RegisterService(&_Wallet_serviceDesc, srv)
-}
-
-func _Wallet_GenSeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GenSeedRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WalletServer).GenSeed(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Wallet/GenSeed",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletServer).GenSeed(ctx, req.(*GenSeedRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Wallet_InitWallet_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(InitWalletRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(WalletServer).InitWallet(m, &walletInitWalletServer{stream})
-}
-
-type Wallet_InitWalletServer interface {
-	Send(*InitWalletReply) error
-	grpc.ServerStream
-}
-
-type walletInitWalletServer struct {
-	grpc.ServerStream
-}
-
-func (x *walletInitWalletServer) Send(m *InitWalletReply) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _Wallet_UnlockWallet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UnlockWalletRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WalletServer).UnlockWallet(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Wallet/UnlockWallet",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletServer).UnlockWallet(ctx, req.(*UnlockWalletRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Wallet_ChangePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChangePasswordRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WalletServer).ChangePassword(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Wallet/ChangePassword",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletServer).ChangePassword(ctx, req.(*ChangePasswordRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Wallet_WalletAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -358,18 +166,6 @@ var _Wallet_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*WalletServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GenSeed",
-			Handler:    _Wallet_GenSeed_Handler,
-		},
-		{
-			MethodName: "UnlockWallet",
-			Handler:    _Wallet_UnlockWallet_Handler,
-		},
-		{
-			MethodName: "ChangePassword",
-			Handler:    _Wallet_ChangePassword_Handler,
-		},
-		{
 			MethodName: "WalletAddress",
 			Handler:    _Wallet_WalletAddress_Handler,
 		},
@@ -382,12 +178,6 @@ var _Wallet_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Wallet_SendToMany_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "InitWallet",
-			Handler:       _Wallet_InitWallet_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "wallet.proto",
 }
