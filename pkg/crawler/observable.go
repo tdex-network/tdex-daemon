@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
 
@@ -33,7 +34,7 @@ func NewAddressObservable(
 		AccountIndex: accountIndex,
 		Address:      address,
 		BlindingKey:  blindKey,
-		cb:           newCircuitBreaker(),
+		cb:           circuitbreaker.NewCircuitBreaker(),
 	}
 }
 
@@ -94,7 +95,7 @@ type TransactionObservable struct {
 func NewTransactionObservable(txid string) Observable {
 	return &TransactionObservable{
 		TxID: txid,
-		cb:   newCircuitBreaker(),
+		cb:   circuitbreaker.NewCircuitBreaker(),
 	}
 }
 
@@ -277,25 +278,4 @@ func (oh *observableHandler) logAction(action string) {
 	case *TransactionObservable:
 		log.Debugf("%s observing tx: %v", action, obs.Key())
 	}
-}
-
-func newCircuitBreaker() *gobreaker.CircuitBreaker {
-	return gobreaker.NewCircuitBreaker(gobreaker.Settings{
-		Name: "observable",
-		ReadyToTrip: func(counts gobreaker.Counts) bool {
-			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-			return counts.Requests > 20 && failureRatio >= 0.7
-		},
-		OnStateChange: func(name string, from, to gobreaker.State) {
-			if to == gobreaker.StateOpen {
-				log.Debug("cannot complete observation, will retry later")
-			}
-			if from == gobreaker.StateOpen && to == gobreaker.StateHalfOpen {
-				log.Debug("check observation status")
-			}
-			if from == gobreaker.StateHalfOpen && to == gobreaker.StateClosed {
-				log.Debug("restart observation")
-			}
-		},
-	})
 }

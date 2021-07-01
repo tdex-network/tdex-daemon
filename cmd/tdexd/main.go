@@ -20,6 +20,7 @@ import (
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpcinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc"
+	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
@@ -40,8 +41,8 @@ var (
 	statsIntervalInSeconds  = config.GetDuration(config.StatsIntervalKey) * time.Second
 	tradeTLSKey             = config.GetString(config.TradeTLSKeyKey)
 	tradeTLSCert            = config.GetString(config.TradeTLSCertKey)
-	operatorTLSExtraIPs     = config.GetStringSlice(config.OperatorExtraIP)
-	operatorTLSExtraDomains = config.GetStringSlice(config.OperatorExtraDomain)
+	operatorTLSExtraIPs     = config.GetStringSlice(config.OperatorExtraIPKey)
+	operatorTLSExtraDomains = config.GetStringSlice(config.OperatorExtraDomainKey)
 	// App services config
 	marketsFee                    = int64(config.GetFloat(config.DefaultFeeKey) * 100)
 	marketsBaseAsset              = config.GetString(config.BaseAssetKey)
@@ -51,6 +52,11 @@ var (
 	tradeSvcPort                  = config.GetInt(config.TradeListeningPortKey)
 	operatorSvcPort               = config.GetInt(config.OperatorListeningPortKey)
 	crawlerIntervalInMilliseconds = time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond
+	crawlerLimit                  = config.GetInt(config.CrawlLimitKey)
+	crawlerTokenBurst             = config.GetInt(config.CrawlTokenBurstKey)
+	explorerTimoutRequest         = config.GetDuration(config.ExplorerRequestTimeoutKey)
+	cbMaxFailingRequest           = config.GetInt(config.CBMaxFailingRequestsKey)
+	cbFailingRatio                = config.GetFloat(config.CBFailingRatioKey)
 )
 
 func main() {
@@ -63,6 +69,10 @@ func main() {
 			http.ListenAndServe(":8024", nil)
 		}()
 	}
+
+	// Set default params for circuitbreaker pkg
+	circuitbreaker.MaxNumOfFailingRequests = cbMaxFailingRequest
+	circuitbreaker.FailingRatio = cbFailingRatio
 
 	// Init services to be used by those of the application layer.
 	repoManager, err := dbbadger.NewRepoManager(dbDir, log.New())
@@ -82,12 +92,10 @@ func main() {
 		ExplorerSvc:        explorerSvc,
 		ErrorHandler:       func(err error) { log.Warn(err) },
 		CrawlerInterval:    crawlerIntervalInMilliseconds,
-		ExplorerLimit:      config.GetInt(config.CrawlLimitKey),
-		ExplorerTokenBurst: config.GetInt(config.CrawlTokenBurst),
+		ExplorerLimit:      crawlerLimit,
+		ExplorerTokenBurst: crawlerTokenBurst,
 	})
-	webhookPubSub, err := newWebhookPubSubService(
-		dbDir, config.GetDuration(config.ExplorerRequestTimeoutKey),
-	)
+	webhookPubSub, err := newWebhookPubSubService(dbDir, explorerTimoutRequest)
 	if err != nil {
 		crawlerSvc.Stop()
 		repoManager.Close()
@@ -211,9 +219,7 @@ func stop(
 	log.Debug("stopped pubsub service")
 
 	// give the crawler the time to terminate
-	time.Sleep(
-		time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond,
-	)
+	time.Sleep(crawlerIntervalInMilliseconds)
 
 	repoManager.Close()
 	log.Debug("closed connection with database")
