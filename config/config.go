@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,18 +60,26 @@ const (
 	CrawlLimitKey = "CRAWL_LIMIT"
 	// CrawlTokenBurst represents number of bursts tokens permitted from
 	//crawler to explorer
-	CrawlTokenBurst = "CRAWL_TOKEN"
+	CrawlTokenBurstKey = "CRAWL_TOKEN"
 	// NoMacaroonsKey is used to start the daemon without using macaroons auth
 	// service.
 	NoMacaroonsKey = "NO_MACAROONS"
 	// OperatorExtraIP is used to add an extra ip address to the self-signed TLS
 	// certificate for the Operator gRPC interface.
-	OperatorExtraIP = "OPERATOR_EXTRA_IP"
+	OperatorExtraIPKey = "OPERATOR_EXTRA_IP"
 	// OperatorExtraDomain is used to add an extra domain to the self signed TLS
 	// certificate for the Operator gRPC interface. This is useful to add the
 	// onion endpoint in case the daemon is served as a TOR hidden service for
 	// example.
-	OperatorExtraDomain = "OPERATOR_EXTRA_DOMAIN"
+	OperatorExtraDomainKey = "OPERATOR_EXTRA_DOMAIN"
+	// CBMaxFailingRequestsKey is used in combo with FailingRatio to set the max
+	// number of failing request for the circuit breaker service to change its
+	// internal state and stop making network calls.
+	CBMaxFailingRequestsKey = "MAX_FAILING_REQUESTS"
+	// CBFailingRatioKey is used in combo with MaxFailingRequests to set the
+	// failing ratio over which the circuit breaker service to change its
+	// internal state and stop making network calls.
+	CBFailingRatioKey = "FAILING_RATIO"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
@@ -105,8 +114,10 @@ func init() {
 	vip.SetDefault(EnableProfilerKey, false)
 	vip.SetDefault(StatsIntervalKey, 600)
 	vip.SetDefault(CrawlLimitKey, 10)
-	vip.SetDefault(CrawlTokenBurst, 1)
+	vip.SetDefault(CrawlTokenBurstKey, 1)
 	vip.SetDefault(NoMacaroonsKey, false)
+	vip.SetDefault(CBMaxFailingRequestsKey, 20)
+	vip.SetDefault(CBFailingRatioKey, 0.7)
 
 	if err := validate(); err != nil {
 		log.Fatalf("error while validating config: %s", err)
@@ -223,6 +234,15 @@ func validate() error {
 	explorerEndpoint := GetString(ExplorerEndpointKey)
 	if _, err := url.Parse(explorerEndpoint); err != nil {
 		return fmt.Errorf("explorer endpoint is not a valid url: %s", err)
+	}
+
+	maxFailingReq := GetString(CBMaxFailingRequestsKey)
+	if _, err := strconv.Atoi(maxFailingReq); err != nil {
+		return fmt.Errorf("%s must be a valid number", CBMaxFailingRequestsKey)
+	}
+	failingRatio := GetString(CBFailingRatioKey)
+	if _, err := strconv.ParseFloat(failingRatio, 64); err != nil {
+		return fmt.Errorf("%s must be a value in range (0, 1)", CBFailingRatioKey)
 	}
 
 	return nil

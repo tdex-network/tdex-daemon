@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/prometheus/common/log"
 	"github.com/sony/gobreaker"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 	"golang.org/x/sync/errgroup"
@@ -34,7 +34,7 @@ func NewWebhookPubSubService(
 	return &webhookService{
 		store:      webhookStore{store},
 		httpClient: httpClient,
-		cb:         newCircuitBreaker(),
+		cb:         circuitbreaker.NewCircuitBreaker(),
 	}, nil
 }
 
@@ -253,25 +253,4 @@ func (ws *webhookService) doRequest(hook *Webhook, payload string) error {
 	})
 
 	return err
-}
-
-func newCircuitBreaker() *gobreaker.CircuitBreaker {
-	return gobreaker.NewCircuitBreaker(gobreaker.Settings{
-		Name: "explorer",
-		ReadyToTrip: func(counts gobreaker.Counts) bool {
-			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-			return counts.Requests > 20 && failureRatio >= 0.7
-		},
-		OnStateChange: func(name string, from, to gobreaker.State) {
-			if to == gobreaker.StateOpen {
-				log.Warn("explorer seems down, stop allowing requests")
-			}
-			if from == gobreaker.StateOpen && to == gobreaker.StateHalfOpen {
-				log.Info("checking explorer status")
-			}
-			if from == gobreaker.StateHalfOpen && to == gobreaker.StateClosed {
-				log.Info("explorer seems ok, restart allowing requests")
-			}
-		},
-	})
 }

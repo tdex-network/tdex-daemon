@@ -112,11 +112,7 @@ func (b *blockchainListener) StartObserveAddress(
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	observable := &crawler.AddressObservable{
-		AccountIndex: accountIndex,
-		Address:      addr,
-		BlindingKey:  blindKey,
-	}
+	observable := crawler.NewAddressObservable(accountIndex, addr, blindKey)
 
 	if !b.started {
 		b.pendingObservables = append(b.pendingObservables, observable)
@@ -129,7 +125,7 @@ func (b *blockchainListener) StartObserveTx(txid string) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	observable := &crawler.TransactionObservable{TxID: txid}
+	observable := crawler.NewTransactionObservable(txid)
 
 	if !b.started {
 		b.pendingObservables = append(b.pendingObservables, observable)
