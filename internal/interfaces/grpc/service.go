@@ -251,30 +251,8 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
-	if s.withMacaroons() {
-		s.macaroonSvc.Close()
-		log.Debug("stopped macaroon service")
-	}
-
-	log.Debug("stop grpc-web Operator server")
-	s.httpOperatorServer.Shutdown(context.Background())
-
-	log.Debug("stop grpc Operator server")
-	s.grpcOperatorServer.GracefulStop()
-
-	log.Debug("stop mux Operator")
-	s.muxOperator.Close()
-
-	if s.grpcTradeServer != nil {
-		log.Debug("stop grpc-web Trade server")
-		s.httpTradeServer.Shutdown(context.Background())
-
-		log.Debug("stop grpc Trade server")
-		s.grpcTradeServer.GracefulStop()
-
-		log.Debug("stop mux Trade")
-		s.muxTrade.Close()
-	}
+	stopMacaroonSvc := true
+	s.stop(stopMacaroonSvc)
 }
 
 func (s *service) withMacaroons() bool {
@@ -360,6 +338,33 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	}, nil
 }
 
+func (s *service) stop(stopMacaroonSvc bool) {
+	if s.withMacaroons() && stopMacaroonSvc {
+		s.macaroonSvc.Close()
+		log.Debug("stopped macaroon service")
+	}
+
+	log.Debug("stop grpc-web Operator server")
+	s.httpOperatorServer.Shutdown(context.Background())
+
+	log.Debug("stop grpc Operator server")
+	s.grpcOperatorServer.GracefulStop()
+
+	log.Debug("stop mux Operator")
+	s.muxOperator.Close()
+
+	if s.grpcTradeServer != nil {
+		log.Debug("stop grpc-web Trade server")
+		s.httpTradeServer.Shutdown(context.Background())
+
+		log.Debug("stop grpc Trade server")
+		s.grpcTradeServer.GracefulStop()
+
+		log.Debug("stop mux Trade")
+		s.muxTrade.Close()
+	}
+}
+
 func (s *service) startListeningToPassphraseChan() {
 	for msg := range s.passphraseChan {
 		if s.withMacaroons() {
@@ -410,7 +415,8 @@ func (s *service) startListeningToPassphraseChan() {
 func (s *service) startListeningToReadyChan() {
 	isReady := <-s.readyChan
 
-	s.Stop()
+	dontStopMacaroonSvc := false
+	s.stop(dontStopMacaroonSvc)
 
 	if !isReady {
 		panic("failed to initialize wallet")
