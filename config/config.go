@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -233,6 +234,15 @@ func validate() error {
 	explorerEndpoint := GetString(ExplorerEndpointKey)
 	if _, err := url.Parse(explorerEndpoint); err != nil {
 		return fmt.Errorf("explorer endpoint is not a valid url: %s", err)
+	}
+
+	maxFailingReq := GetString(CBMaxFailingRequestsKey)
+	if _, err := strconv.Atoi(maxFailingReq); err != nil {
+		return fmt.Errorf("%s must be a valid number", CBMaxFailingRequestsKey)
+	}
+	failingRatio := GetString(CBFailingRatioKey)
+	if _, err := strconv.ParseFloat(failingRatio, 64); err != nil {
+		return fmt.Errorf("%s must be a value in range (0, 1)", CBFailingRatioKey)
 	}
 
 	return nil
