@@ -13,8 +13,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
-	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
@@ -184,22 +182,7 @@ func (t *tradeService) GetMarketPrice(
 		return nil, ErrServiceUnavailable
 	}
 
-	preview, err := previewForMarket(unspents, mkt, tradeType, amount, asset)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PriceWithFee{
-		Price:   preview.price,
-		Amount:  preview.amount,
-		Asset:   preview.asset,
-		Balance: preview.balances,
-		Fee: Fee{
-			BasisPoint:    mkt.Fee,
-			FixedBaseFee:  mkt.FixedFee.BaseFee,
-			FixedQuoteFee: mkt.FixedFee.QuoteFee,
-		},
-	}, nil
+	return previewForMarket(unspents, mkt, tradeType, amount, asset)
 }
 
 func (t *tradeService) GetMarketBalance(
@@ -848,13 +831,6 @@ func mergeDerivationPaths(maps ...map[string]string) map[string]string {
 	return merge
 }
 
-type preview struct {
-	price    Price
-	amount   uint64
-	asset    string
-	balances Balance
-}
-
 // previewForMarket returns the current price and balances of a market, along
 // with a preview amount for a BUY or SELL trade based on the strategy type.
 func previewForMarket(
@@ -863,17 +839,9 @@ func previewForMarket(
 	tradeType int,
 	amount uint64,
 	asset string,
-) (*preview, error) {
+) (*PriceWithFee, error) {
+	isBuy := tradeType == TradeBuy
 	isBaseAsset := asset == market.BaseAsset
-	if isBaseAsset {
-		if amount < uint64(market.FixedFee.BaseFee) {
-			return nil, errors.New("provided amount is too small")
-		}
-	} else {
-		if amount < uint64(market.FixedFee.QuoteFee) {
-			return nil, errors.New("provided amount is too small")
-		}
-	}
 
 	balances := getBalanceByAsset(unspents)
 	marketBalance := Balance{
@@ -881,23 +849,25 @@ func previewForMarket(
 		QuoteAmount: balances[market.QuoteAsset],
 	}
 
-	if tradeType == TradeBuy {
-		if asset == market.BaseAsset && amount >= uint64(marketBalance.BaseAmount) {
-			return nil, errors.New("provided amount is too big")
-		}
-	} else {
-		if asset == market.QuoteAsset && amount >= uint64(marketBalance.QuoteAmount) {
-			return nil, errors.New("provided amount is too big")
-		}
-	}
-
-	if market.IsStrategyPluggable() {
-		return previewFromPrice(market, marketBalance, tradeType, amount, asset), nil
-	}
-
-	return previewFromFormula(
-		market, marketBalance, tradeType, amount, asset,
+	preview, err := market.Preview(
+		marketBalance.BaseAmount, marketBalance.QuoteAmount, amount,
+		isBaseAsset, isBuy,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PriceWithFee{
+		Price: Price(preview.Price),
+		Fee: Fee{
+			BasisPoint:    market.Fee,
+			FixedBaseFee:  market.FixedFee.BaseFee,
+			FixedQuoteFee: market.FixedFee.QuoteFee,
+		},
+		Amount:  preview.Amount,
+		Asset:   preview.Asset,
+		Balance: marketBalance,
+	}, nil
 }
 
 func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
@@ -909,199 +879,6 @@ func getBalanceByAsset(unspents []domain.Unspent) map[string]uint64 {
 		balances[unspent.AssetHash] += unspent.Value
 	}
 	return balances
-}
-
-func previewFromPrice(
-	market *domain.Market,
-	marketBalance Balance,
-	tradeType int,
-	amount uint64,
-	asset string,
-) *preview {
-	previewAsset := market.BaseAsset
-	if asset == market.BaseAsset {
-		previewAsset = market.QuoteAsset
-	}
-	previewAmount := previewAmountFromPrice(market, tradeType, amount, asset)
-
-	price := Price{
-		BasePrice:  market.BaseAssetPrice(),
-		QuotePrice: market.QuoteAssetPrice(),
-	}
-
-	return &preview{price, previewAmount, previewAsset, marketBalance}
-}
-
-func previewAmountFromPrice(
-	market *domain.Market,
-	tradeType int,
-	amount uint64,
-	asset string,
-) uint64 {
-	price := market.QuoteAssetPrice()
-	if asset != market.BaseAsset {
-		price = market.BaseAssetPrice()
-	}
-
-	isBaseAsset := asset == market.BaseAsset
-	feePercentage := uint64(market.Fee)
-	var previewAmount uint64
-
-	if tradeType == TradeBuy {
-		if isBaseAsset {
-			previewAmount = previewAmountP(amount, price, feePercentage, uint64(market.FixedFee.QuoteFee))
-		} else {
-			previewAmount = previewAmountR(amount, price, feePercentage, uint64(market.FixedFee.BaseFee))
-		}
-	} else {
-		if isBaseAsset {
-			previewAmount = previewAmountR(amount, price, feePercentage, uint64(market.FixedFee.QuoteFee))
-		} else {
-			previewAmount = previewAmountP(amount, price, feePercentage, uint64(market.FixedFee.BaseFee))
-		}
-	}
-
-	return previewAmount
-}
-
-// previewAmountP calculate the amountP due for the given amountR and charges
-// (adds) the fees.
-func previewAmountP(amountR uint64, price decimal.Decimal, feePercentage, fixedFee uint64) uint64 {
-	amountP := decimal.NewFromInt(int64(amountR)).Mul(price).BigInt().Uint64()
-	amountP, _ = mathutil.PlusFee(amountP, feePercentage)
-	return amountP + fixedFee
-}
-
-// previewAmountR calculate the amountR due for the given amountP and charges
-// (subtracts) the fees.
-func previewAmountR(amountP uint64, price decimal.Decimal, feePercentage, fixedFee uint64) uint64 {
-	amountR := decimal.NewFromInt(int64(amountP)).Mul(price).BigInt().Uint64()
-	amountR, _ = mathutil.LessFee(amountR, feePercentage)
-	return amountR - fixedFee
-}
-
-func previewFromFormula(
-	market *domain.Market,
-	marketBalance Balance,
-	tradeType int,
-	amount uint64,
-	asset string,
-) (*preview, error) {
-	formula := market.Strategy.Formula()
-	baseAssetBalance := uint64(marketBalance.BaseAmount)
-	quoteAssetBalance := uint64(marketBalance.QuoteAmount)
-	fee := uint64(market.Fee)
-	var previewAmount uint64
-	var err error
-	if tradeType == TradeBuy {
-		if asset == market.BaseAsset {
-			previewAmount, err = formula.InGivenOut(
-				&mm.FormulaOpts{
-					BalanceIn:           quoteAssetBalance,
-					BalanceOut:          baseAssetBalance,
-					Fee:                 fee,
-					ChargeFeeOnTheWayIn: true,
-				},
-				amount,
-			)
-		} else {
-			previewAmount, err = formula.OutGivenIn(
-				&mm.FormulaOpts{
-					BalanceIn:           quoteAssetBalance,
-					BalanceOut:          baseAssetBalance,
-					Fee:                 fee,
-					ChargeFeeOnTheWayIn: true,
-				},
-				amount,
-			)
-		}
-	} else {
-		if asset == market.BaseAsset {
-			previewAmount, err = formula.OutGivenIn(
-				&mm.FormulaOpts{
-					BalanceIn:           baseAssetBalance,
-					BalanceOut:          quoteAssetBalance,
-					Fee:                 fee,
-					ChargeFeeOnTheWayIn: true,
-				},
-				amount,
-			)
-		} else {
-			previewAmount, err = formula.InGivenOut(
-				&mm.FormulaOpts{
-					BalanceIn:           baseAssetBalance,
-					BalanceOut:          quoteAssetBalance,
-					Fee:                 fee,
-					ChargeFeeOnTheWayIn: true,
-				},
-				amount,
-			)
-		}
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	if tradeType == TradeBuy {
-		if asset == market.BaseAsset {
-			previewAmount += uint64(market.FixedFee.QuoteFee)
-		} else {
-			previewAmount -= uint64(market.FixedFee.BaseFee)
-		}
-	} else {
-		if asset == market.BaseAsset {
-			previewAmount -= uint64(market.FixedFee.QuoteFee)
-		} else {
-			previewAmount += uint64(market.FixedFee.BaseFee)
-		}
-	}
-
-	if tradeType == TradeBuy {
-		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
-			return nil, errors.New("provided amount is too big")
-		}
-	} else {
-		if asset == market.QuoteAsset && previewAmount >= baseAssetBalance {
-			return nil, errors.New("provided amount is too big")
-		}
-	}
-
-	previewAsset := market.BaseAsset
-	if asset == market.BaseAsset {
-		previewAsset = market.QuoteAsset
-	}
-	// we can ignore errors because if the above function calls do not return
-	// any, we can assume the following do the same because they all perform the
-	// same checks.
-	price, _ := priceFromBalances(formula, baseAssetBalance, quoteAssetBalance)
-
-	return &preview{*price, previewAmount, previewAsset, marketBalance}, nil
-}
-
-func priceFromBalances(
-	formula mm.MakingFormula,
-	baseAssetBalance,
-	quoteAssetBalance uint64,
-) (*Price, error) {
-	basePrice, err := formula.SpotPrice(&mm.FormulaOpts{
-		BalanceIn:  quoteAssetBalance,
-		BalanceOut: baseAssetBalance,
-	})
-	if err != nil {
-		return nil, err
-	}
-	quotePrice, err := formula.SpotPrice(&mm.FormulaOpts{
-		BalanceIn:  baseAssetBalance,
-		BalanceOut: quoteAssetBalance,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &Price{
-		BasePrice:  basePrice,
-		QuotePrice: quotePrice,
-	}, nil
 }
 
 // isValidPrice checks that the amounts of the trade are valid by
@@ -1133,7 +910,7 @@ func isValidTradePrice(
 	)
 
 	if preview != nil {
-		if isPriceInRange(swapRequest, tradeType, preview.amount, true, slippage) {
+		if isPriceInRange(swapRequest, tradeType, preview.Amount, true, slippage) {
 			return true
 		}
 	}
@@ -1155,7 +932,7 @@ func isValidTradePrice(
 		return false
 	}
 
-	return isPriceInRange(swapRequest, tradeType, preview.amount, false, slippage)
+	return isPriceInRange(swapRequest, tradeType, preview.Amount, false, slippage)
 }
 
 func isPriceInRange(
