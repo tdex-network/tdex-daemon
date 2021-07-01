@@ -19,12 +19,8 @@ import (
 )
 
 var (
-	// ErrWalletIsSyncing ...
-	ErrWalletIsSyncing = fmt.Errorf(
-		"wallet is syncing data from blockchain. All functionalities are " +
-			"disabled until this operation is completed",
-	)
-	// ErrWalletNotInitialized ...
+	// ErrWalletNotInitialized is returned when attempting to unlock or change
+	// the password of a not initialized wallet.
 	ErrWalletNotInitialized = fmt.Errorf("wallet not initialized")
 )
 
@@ -58,6 +54,7 @@ type walletUnlockerService struct {
 	blockchainListener BlockchainListener
 	walletInitialized  bool
 	walletIsSyncing    bool
+	walletRestored     bool
 	network            *network.Network
 	marketFee          int64
 	marketBaseAsset    string
@@ -123,12 +120,14 @@ func newWalletUnlockerService(
 				info,
 			); err != nil {
 				log.Infof("Failed for reason: %s", err)
-				w.setInitialized(false)
+				w.setRestored(false)
 				return
 			}
 			log.Info("Done")
-			w.setInitialized(true)
+			w.setRestored(true)
 		}()
+		w.setInitialized(true)
+
 	}
 	return w
 }
@@ -142,7 +141,7 @@ func (w *walletUnlockerService) GenSeed(ctx context.Context) ([]string, error) {
 }
 
 func (w *walletUnlockerService) IsReady(_ context.Context) bool {
-	return w.isInitialized()
+	return w.isInitialized() && w.isRestored()
 }
 
 type InitWalletReply struct {
@@ -269,6 +268,7 @@ func (w *walletUnlockerService) InitWallet(
 		CurrentPwd: passphrase,
 	}
 	w.setInitialized(true)
+	w.setRestored(true)
 	if w.isSyncing() {
 		w.setSyncing(false)
 	}
@@ -279,6 +279,10 @@ func (w *walletUnlockerService) UnlockWallet(
 	ctx context.Context,
 	passphrase string,
 ) error {
+	if !w.isInitialized() {
+		return ErrWalletNotInitialized
+	}
+
 	vault, err := w.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
 	if err != nil {
 		return err
@@ -340,9 +344,6 @@ func (w *walletUnlockerService) ChangePassword(
 	currentPassphrase string,
 	newPassphrase string,
 ) error {
-	if w.isSyncing() {
-		return ErrWalletIsSyncing
-	}
 	if !w.isInitialized() {
 		return ErrWalletNotInitialized
 	}
@@ -415,6 +416,21 @@ func (w *walletUnlockerService) setInitialized(val bool) {
 	defer w.lock.Unlock()
 
 	w.walletInitialized = val
+}
+
+func (w *walletUnlockerService) isRestored() bool {
+	w.lock.RLock()
+	defer w.lock.RUnlock()
+
+	return w.walletRestored
+}
+
+func (w *walletUnlockerService) setRestored(val bool) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	w.walletRestored = val
+
 	w.readyChan <- val
 }
 
