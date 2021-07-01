@@ -78,7 +78,7 @@ const (
 	// CBFailingRatioKey is used in combo with MaxFailingRequests to set the
 	// failing ratio over which the circuit breaker service to change its
 	// internal state and stop making network calls.
-	CBFailingRatioKey = "CB_FAILING_RATIO"
+	CBFailingRatioKey = "FAILING_RATIO"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
