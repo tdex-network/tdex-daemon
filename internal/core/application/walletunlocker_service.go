@@ -283,17 +283,14 @@ func (w *walletUnlockerService) UnlockWallet(
 	if err != nil {
 		return err
 	}
-	fmt.Println("retrieved vault")
 
 	if !vault.IsLocked() {
 		return nil
 	}
-	fmt.Println("checked locked")
 
 	if err := vault.Unlock(passphrase); err != nil {
 		return err
 	}
-	fmt.Println("unlocked")
 
 	if err := w.repoManager.VaultRepository().UpdateVault(
 		ctx,
@@ -303,7 +300,6 @@ func (w *walletUnlockerService) UnlockWallet(
 	); err != nil {
 		return err
 	}
-	fmt.Println("updated repo")
 
 	if w.blockchainListener.PubSubService() != nil {
 		go func() {
