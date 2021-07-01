@@ -14,6 +14,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
+	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
@@ -827,7 +828,7 @@ func (w *walletService) restoreUnspents(
 ) ([]domain.Unspent, error) {
 	chUnspentsInfo := make(chan unspentInfo)
 	unspents := make([]domain.Unspent, 0)
-	cb := newCircuitBreaker()
+	cb := circuitbreaker.NewCircuitBreaker()
 	wg := &sync.WaitGroup{}
 	wg.Add(len(info))
 
@@ -1177,7 +1178,7 @@ func fetchUnspents(explorerSvc explorer.Service, info domain.AddressesInfo) ([]d
 	if len(info) <= 0 {
 		return nil, nil
 	}
-	cb := newCircuitBreaker()
+	cb := circuitbreaker.NewCircuitBreaker()
 
 	iUtxos, err := cb.Execute(func() (interface{}, error) {
 		return explorerSvc.GetUnspentsForAddresses(info.AddressesAndKeys())
@@ -1345,25 +1346,4 @@ func extractUnspentsFromTxAndUpdateUtxoSet(
 	}
 	addUnspentsAsync(unspentRepo, unspentsToAdd)
 	spendUnspentsAsync(unspentRepo, unspentsToSpend)
-}
-
-func newCircuitBreaker() *gobreaker.CircuitBreaker {
-	return gobreaker.NewCircuitBreaker(gobreaker.Settings{
-		Name: "explorer",
-		ReadyToTrip: func(counts gobreaker.Counts) bool {
-			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-			return counts.Requests > 20 && failureRatio >= 0.7
-		},
-		OnStateChange: func(name string, from, to gobreaker.State) {
-			if to == gobreaker.StateOpen {
-				log.Warn("explorer seems down, stop allowing requests")
-			}
-			if from == gobreaker.StateOpen && to == gobreaker.StateHalfOpen {
-				log.Info("checking explorer status")
-			}
-			if from == gobreaker.StateHalfOpen && to == gobreaker.StateClosed {
-				log.Info("explorer seems ok, restart allowing requests")
-			}
-		},
-	})
 }
