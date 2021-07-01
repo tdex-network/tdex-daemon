@@ -13,65 +13,65 @@ import (
 
 type walletUnlockerHandler struct {
 	pb.UnimplementedWalletUnlockerServer
-	walletSvc application.WalletService
+	walletUnlockerSvc application.WalletUnlockerService
 }
 
 func NewWalletUnlockerHandler(
-	walletSvc application.WalletService,
+	walletUnlockerSvc application.WalletUnlockerService,
 ) pb.WalletUnlockerServer {
-	return newWalletUnlockerHandler(walletSvc)
+	return newWalletUnlockerHandler(walletUnlockerSvc)
 }
 
 func newWalletUnlockerHandler(
-	walletSvc application.WalletService,
+	walletUnlockerSvc application.WalletUnlockerService,
 ) *walletUnlockerHandler {
 	return &walletUnlockerHandler{
-		walletSvc: walletSvc,
+		walletUnlockerSvc: walletUnlockerSvc,
 	}
 }
 
-func (w walletUnlockerHandler) GenSeed(
-	ctx context.Context,
-	req *pb.GenSeedRequest,
+func (w *walletUnlockerHandler) GenSeed(
+	ctx context.Context, req *pb.GenSeedRequest,
 ) (*pb.GenSeedReply, error) {
 	return w.genSeed(ctx, req)
 }
 
-func (w walletUnlockerHandler) InitWallet(
-	req *pb.InitWalletRequest,
-	stream pb.WalletUnlocker_InitWalletServer,
+func (w *walletUnlockerHandler) InitWallet(
+	req *pb.InitWalletRequest, stream pb.WalletUnlocker_InitWalletServer,
 ) error {
 	return w.initWallet(req, stream)
 }
 
-func (w walletUnlockerHandler) UnlockWallet(
-	ctx context.Context,
-	req *pb.UnlockWalletRequest,
+func (w *walletUnlockerHandler) UnlockWallet(
+	ctx context.Context, req *pb.UnlockWalletRequest,
 ) (*pb.UnlockWalletReply, error) {
 	return w.unlockWallet(ctx, req)
 }
 
-func (w walletUnlockerHandler) ChangePassword(
-	ctx context.Context,
-	req *pb.ChangePasswordRequest,
+func (w *walletUnlockerHandler) ChangePassword(
+	ctx context.Context, req *pb.ChangePasswordRequest,
 ) (*pb.ChangePasswordReply, error) {
 	return w.changePassword(ctx, req)
 }
 
-func (w walletUnlockerHandler) genSeed(
-	ctx context.Context,
-	req *pb.GenSeedRequest,
+func (w *walletUnlockerHandler) IsReady(
+	ctx context.Context, req *pb.IsReadyRequest,
+) (*pb.IsReadyReply, error) {
+	return w.isReady(ctx, req)
+}
+
+func (w *walletUnlockerHandler) genSeed(
+	ctx context.Context, req *pb.GenSeedRequest,
 ) (*pb.GenSeedReply, error) {
-	mnemonic, err := w.walletSvc.GenSeed(ctx)
+	mnemonic, err := w.walletUnlockerSvc.GenSeed(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &pb.GenSeedReply{SeedMnemonic: mnemonic}, nil
 }
 
-func (w walletUnlockerHandler) initWallet(
-	req *pb.InitWalletRequest,
-	stream pb.WalletUnlocker_InitWalletServer,
+func (w *walletUnlockerHandler) initWallet(
+	req *pb.InitWalletRequest, stream pb.WalletUnlocker_InitWalletServer,
 ) error {
 	mnemonic := req.GetSeedMnemonic()
 	if err := validateMnemonic(mnemonic); err != nil {
@@ -84,7 +84,7 @@ func (w walletUnlockerHandler) initWallet(
 
 	chReplies := make(chan *application.InitWalletReply)
 	chErr := make(chan error, 1)
-	go w.walletSvc.InitWallet(
+	go w.walletUnlockerSvc.InitWallet(
 		stream.Context(),
 		mnemonic,
 		string(password),
@@ -113,25 +113,23 @@ func (w walletUnlockerHandler) initWallet(
 	}
 }
 
-func (w walletUnlockerHandler) unlockWallet(
-	ctx context.Context,
-	req *pb.UnlockWalletRequest,
+func (w *walletUnlockerHandler) unlockWallet(
+	ctx context.Context, req *pb.UnlockWalletRequest,
 ) (*pb.UnlockWalletReply, error) {
 	password := req.GetWalletPassword()
 	if err := validatePassword(password); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := w.walletSvc.UnlockWallet(ctx, string(password)); err != nil {
+	if err := w.walletUnlockerSvc.UnlockWallet(ctx, string(password)); err != nil {
 		return nil, err
 	}
 
 	return &pb.UnlockWalletReply{}, nil
 }
 
-func (w walletUnlockerHandler) changePassword(
-	ctx context.Context,
-	req *pb.ChangePasswordRequest,
+func (w *walletUnlockerHandler) changePassword(
+	ctx context.Context, req *pb.ChangePasswordRequest,
 ) (*pb.ChangePasswordReply, error) {
 	currentPwd := req.GetCurrentPassword()
 	if err := validatePassword(currentPwd); err != nil {
@@ -142,7 +140,7 @@ func (w walletUnlockerHandler) changePassword(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := w.walletSvc.ChangePassword(
+	if err := w.walletUnlockerSvc.ChangePassword(
 		ctx,
 		string(currentPwd),
 		string(newPwd),
@@ -151,7 +149,14 @@ func (w walletUnlockerHandler) changePassword(
 	}
 
 	return &pb.ChangePasswordReply{}, nil
+}
 
+func (w *walletUnlockerHandler) isReady(
+	ctx context.Context, _ *pb.IsReadyRequest,
+) (*pb.IsReadyReply, error) {
+	return &pb.IsReadyReply{
+		IsReady: w.walletUnlockerSvc.IsReady(ctx),
+	}, nil
 }
 
 func validateMnemonic(mnemonic []string) error {

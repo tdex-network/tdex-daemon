@@ -122,7 +122,7 @@ func main() {
 		network,
 		feeThreshold,
 	)
-	walletSvc, err := application.NewWalletService(
+	walletSvc := application.NewWalletService(
 		repoManager,
 		explorerSvc,
 		blockchainListener,
@@ -130,13 +130,14 @@ func main() {
 		marketsFee,
 		marketsBaseAsset,
 	)
-	if err != nil {
-		crawlerSvc.Stop()
-		repoManager.Close()
-
-		log.Errorf("error while setting up wallet service: %s", err)
-		return
-	}
+	walletUnlockerSvc := application.NewWalletUnlockerService(
+		repoManager,
+		explorerSvc,
+		blockchainListener,
+		network,
+		marketsFee,
+		marketsBaseAsset,
+	)
 
 	// Init gRPC interfaces.
 	opts := grpcinterface.ServiceOpts{
@@ -147,7 +148,12 @@ func main() {
 		MacaroonsLocation:    config.MacaroonsLocation,
 		OperatorExtraIPs:     operatorTLSExtraIPs,
 		OperatorExtraDomains: operatorTLSExtraDomains,
+		OperatorAddress:      fmt.Sprintf(":%d", operatorSvcPort),
+		TradeAddress:         fmt.Sprintf(":%d", tradeSvcPort),
+		TradeTLSKey:          tradeTLSKey,
+		TradeTLSCert:         tradeTLSCert,
 		WalletSvc:            walletSvc,
+		WalletUnlockerSvc:    walletUnlockerSvc,
 		OperatorSvc:          operatorSvc,
 		TradeSvc:             tradeSvc,
 	}
@@ -172,16 +178,10 @@ func main() {
 	defer stop(repoManager, webhookPubSub, blockchainListener, svc, cancelStats)
 
 	// Start gRPC service interfaces.
-	tradeAddress := fmt.Sprintf(":%+v", tradeSvcPort)
-	operatorAddress := fmt.Sprintf(":%+v", operatorSvcPort)
-
-	if err := svc.Start(operatorAddress, tradeAddress, tradeTLSKey, tradeTLSCert); err != nil {
+	if err := svc.Start(); err != nil {
 		log.Errorf("error while starting daemon: %s", err)
 		return
 	}
-
-	log.Info("trade interface is listening on " + tradeAddress)
-	log.Info("operator interface is listening on " + operatorAddress)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
@@ -218,7 +218,7 @@ func stop(
 	repoManager.Close()
 	log.Debug("closed connection with database")
 
-	log.Debug("exiting")
+	log.Info("disabled all active interfaces. Exiting")
 }
 
 func newWebhookPubSubService(
