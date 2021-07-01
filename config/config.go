@@ -74,7 +74,7 @@ const (
 	// CBMaxFailingRequestsKey is used in combo with FailingRatio to set the max
 	// number of failing request for the circuit breaker service to change its
 	// internal state and stop making network calls.
-	CBMaxFailingRequestsKey = "CB_MAX_FAILING_REQUESTS"
+	CBMaxFailingRequestsKey = "MAX_FAILING_REQUESTS"
 	// CBFailingRatioKey is used in combo with MaxFailingRequests to set the
 	// failing ratio over which the circuit breaker service to change its
 	// internal state and stop making network calls.
