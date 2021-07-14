@@ -91,8 +91,7 @@ func TestMain(m *testing.M) {
 
 func TestInitWallet(t *testing.T) {
 	t.Run("wallet_from_scratch", func(t *testing.T) {
-		walletSvc, err := newWalletService()
-		require.NoError(t, err)
+		walletSvc := newWalletUnlockerService()
 		require.NotNil(t, walletSvc)
 
 		chReplies := make(chan *application.InitWalletReply)
@@ -113,7 +112,7 @@ func TestInitWallet(t *testing.T) {
 	})
 
 	t.Run("wallet_from_restart", func(t *testing.T) {
-		walletSvc, err := newWalletServiceRestart()
+		walletSvc, err := newWalletUnlockerServiceRestart()
 		require.NoError(t, err)
 		require.NotNil(t, walletSvc)
 
@@ -125,8 +124,7 @@ func TestInitWallet(t *testing.T) {
 	})
 
 	t.Run("wallet_from_restore", func(t *testing.T) {
-		walletSvc, err := newWalletServiceRestore()
-		require.NoError(t, err)
+		walletSvc := newWalletUnlockerServiceRestore()
 		require.NotNil(t, walletSvc)
 
 		chReplies := make(chan *application.InitWalletReply)
@@ -147,10 +145,10 @@ func TestInitWallet(t *testing.T) {
 	})
 }
 
-func newWalletService() (application.WalletService, error) {
+func newWalletUnlockerService() application.WalletUnlockerService {
 	repoManager, explorerSvc, bcListener := newServices()
 
-	return application.NewWalletService(
+	return application.NewWalletUnlockerService(
 		repoManager,
 		explorerSvc,
 		bcListener,
@@ -164,7 +162,7 @@ func newWalletService() (application.WalletService, error) {
 // restoring the utxo set if it finds a vault in the Vault repository.
 // This function creates a new vault in the repo before passing the db manager
 // down to the wallet service to simulate the described situation.
-func newWalletServiceRestart() (application.WalletService, error) {
+func newWalletUnlockerServiceRestart() (application.WalletUnlockerService, error) {
 	repoManager, explorerSvc, bcListener := newServices()
 	v, err := repoManager.VaultRepository().GetOrCreateVault(
 		ctx, mnemonic, passphrase, regtest,
@@ -179,20 +177,20 @@ func newWalletServiceRestart() (application.WalletService, error) {
 		On("GetUnspentsForAddresses", addresses, keys).
 		Return(randomUtxos(addresses), nil)
 
-	return application.NewWalletService(
+	return application.NewWalletUnlockerService(
 		repoManager,
 		explorerSvc,
 		bcListener,
 		regtest,
 		marketFee,
 		marketBaseAsset,
-	)
+	), nil
 }
 
 // Restoring a wallet is an operation that depends almost entirely on the
 // explorer service. This function mocks explorer's responses in order to
 // emulate an already used wallet with some used Fee account's addresses.
-func newWalletServiceRestore() (application.WalletService, error) {
+func newWalletUnlockerServiceRestore() application.WalletUnlockerService {
 	repoManager, explorerSvc, bcListener := newServices()
 
 	v, _ := domain.NewVault(mnemonic, passphrase, regtest)
@@ -243,7 +241,7 @@ func newWalletServiceRestore() (application.WalletService, error) {
 			Return(nil, nil)
 	}
 
-	return application.NewWalletService(
+	return application.NewWalletUnlockerService(
 		repoManager,
 		explorerSvc,
 		bcListener,

@@ -1,29 +1,13 @@
 package grpcinterface
 
 import (
-	"bytes"
 	"context"
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/ed25519"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
-	"strings"
-	"time"
 
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -32,12 +16,12 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
-	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
 	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
+	pbwalletunlocker "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
 	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 )
 
@@ -86,11 +70,18 @@ var (
 )
 
 type service struct {
-	opts           ServiceOpts
-	macaroonSvc    *macaroons.Service
-	operatorServer *grpc.Server
-	tradeServer    *grpc.Server
+	opts        ServiceOpts
+	macaroonSvc *macaroons.Service
+
+	grpcOperatorServer *grpc.Server
+	grpcTradeServer    *grpc.Server
+	httpOperatorServer *http.Server
+	httpTradeServer    *http.Server
+	muxOperator        cmux.CMux
+	muxTrade           cmux.CMux
+
 	passphraseChan chan application.PassphraseMsg
+	readyChan      chan bool
 }
 
 type ServiceOpts struct {
@@ -103,9 +94,15 @@ type ServiceOpts struct {
 	OperatorExtraIPs     []string
 	OperatorExtraDomains []string
 
-	WalletSvc   application.WalletService
-	OperatorSvc application.OperatorService
-	TradeSvc    application.TradeService
+	OperatorAddress string
+	TradeAddress    string
+	TradeTLSKey     string
+	TradeTLSCert    string
+
+	WalletUnlockerSvc application.WalletUnlockerService
+	WalletSvc         application.WalletService
+	OperatorSvc       application.OperatorService
+	TradeSvc          application.TradeService
 }
 
 func (o ServiceOpts) validate() error {
@@ -148,6 +145,26 @@ func (o ServiceOpts) validate() error {
 			}
 		}
 	}
+
+	if ok := isValidAddress(o.OperatorAddress); !ok {
+		return fmt.Errorf("operator address is not valid: %s", o.OperatorAddress)
+	}
+	if ok := isValidAddress(o.TradeAddress); !ok {
+		return fmt.Errorf("trade address is not valid: %s", o.OperatorAddress)
+	}
+
+	tradeTLSKeyExist := pathExists(o.TradeTLSKey)
+	tradeTLSCertExist := pathExists(o.TradeTLSCert)
+	if tradeTLSKeyExist != tradeTLSCertExist {
+		return fmt.Errorf(
+			"TLS key and certificate for Trade interface must be either existing " +
+				"or not",
+		)
+	}
+
+	if o.WalletUnlockerSvc == nil {
+		return fmt.Errorf("wallet unlocker app service must not be null")
+	}
 	if o.WalletSvc == nil {
 		return fmt.Errorf("wallet app service must not be null")
 	}
@@ -172,6 +189,20 @@ func (o ServiceOpts) tlsDatadir() string {
 	return filepath.Join(o.Datadir, o.TLSLocation)
 }
 
+func (o ServiceOpts) operatorTLSKey() string {
+	if o.NoMacaroons {
+		return ""
+	}
+	return filepath.Join(o.tlsDatadir(), OperatorTLSKeyFile)
+}
+
+func (o ServiceOpts) operatorTLSCert() string {
+	if o.NoMacaroons {
+		return ""
+	}
+	return filepath.Join(o.tlsDatadir(), OperatorTLSCertFile)
+}
+
 func NewService(opts ServiceOpts) (interfaces.Service, error) {
 	if err := opts.validate(); err != nil {
 		return nil, fmt.Errorf("invalid opts: %s", err)
@@ -192,85 +223,146 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 	return &service{
 		opts:           opts,
 		macaroonSvc:    macaroonSvc,
-		passphraseChan: opts.WalletSvc.PassphraseChan(),
+		passphraseChan: opts.WalletUnlockerSvc.PassphraseChan(),
+		readyChan:      opts.WalletUnlockerSvc.ReadyChan(),
 	}, nil
 }
 
-func (s *service) Start(
-	operatorAddress, tradeAddress,
-	tradeTLSKey, tradeTLSCert string,
-) error {
-	unaryInterceptor := interceptor.UnaryInterceptor(s.macaroonSvc)
-	streamInterceptor := interceptor.StreamInterceptor(s.macaroonSvc)
-
-	walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
-	operatorHandler := grpchandler.NewOperatorHandler(s.opts.OperatorSvc)
-	tradeHandler := grpchandler.NewTraderHandler(s.opts.TradeSvc)
-
-	// Server
-	operatorServer := grpc.NewServer(
-		unaryInterceptor,
-		streamInterceptor,
-	)
-	tradeServer := grpc.NewServer(
-		unaryInterceptor,
-		streamInterceptor,
-	)
-	// Register proto implementations on Trade interface
-	pbtrade.RegisterTradeServer(tradeServer, tradeHandler)
-	// Register proto implementations on Operator interface
-	pboperator.RegisterOperatorServer(operatorServer, operatorHandler)
-	pbwallet.RegisterWalletServer(operatorServer, walletHandler)
-
-	// Serve grpc and grpc-web multiplexed on the same port
-	if err := serveMux(
-		operatorAddress, s.operatorTLSKey(), s.operatorTLSCert(), operatorServer,
-	); err != nil {
+func (s *service) Start() error {
+	walletUnlockerOnly := true
+	services, err := s.start(walletUnlockerOnly)
+	if err != nil {
 		return err
 	}
-	if err := serveMux(
-		tradeAddress, tradeTLSKey, tradeTLSCert, tradeServer,
-	); err != nil {
-		return err
-	}
+
+	log.Infof("wallet unlocker interface is listening on %s", s.opts.OperatorAddress)
 
 	go s.startListeningToPassphraseChan()
+	go s.startListeningToReadyChan()
 
-	s.operatorServer = operatorServer
-	s.tradeServer = tradeServer
+	s.grpcOperatorServer = services.grpcOperator
+	s.grpcTradeServer = services.grpcTrade
+	s.httpOperatorServer = services.httpOperator
+	s.httpTradeServer = services.httpTrade
+	s.muxOperator = services.muxOperator
+	s.muxTrade = services.muxTrade
 
 	return nil
 }
 
 func (s *service) Stop() {
-	if s.withMacaroons() {
-		s.macaroonSvc.Close()
-		log.Debug("stopped macaroon service")
-	}
-
-	s.operatorServer.GracefulStop()
-	log.Debug("disabled operator interface")
-
-	s.tradeServer.GracefulStop()
-	log.Debug("disabled trader interface")
-}
-
-func (s *service) operatorTLSKey() string {
-	if s.opts.NoMacaroons {
-		return ""
-	}
-	return filepath.Join(s.opts.tlsDatadir(), OperatorTLSKeyFile)
-}
-
-func (s *service) operatorTLSCert() string {
-	if s.opts.NoMacaroons {
-		return ""
-	}
-	return filepath.Join(s.opts.tlsDatadir(), OperatorTLSCertFile)
+	stopMacaroonSvc := true
+	s.stop(stopMacaroonSvc)
 }
 
 func (s *service) withMacaroons() bool {
 	return s.macaroonSvc != nil
+}
+
+type services struct {
+	grpcOperator *grpc.Server
+	grpcTrade    *grpc.Server
+	httpOperator *http.Server
+	httpTrade    *http.Server
+	muxOperator  cmux.CMux
+	muxTrade     cmux.CMux
+}
+
+func (s *service) start(withUnlockerOnly bool) (*services, error) {
+	unaryInterceptor := interceptor.UnaryInterceptor(s.macaroonSvc)
+	streamInterceptor := interceptor.StreamInterceptor(s.macaroonSvc)
+
+	// gRPC Operator server
+	operatorAddr := s.opts.OperatorAddress
+	grpcOperatorServer := grpc.NewServer(
+		unaryInterceptor,
+		streamInterceptor,
+	)
+	walletUnlockerHandler := grpchandler.NewWalletUnlockerHandler(
+		s.opts.WalletUnlockerSvc,
+	)
+	pbwalletunlocker.RegisterWalletUnlockerServer(
+		grpcOperatorServer, walletUnlockerHandler,
+	)
+
+	if !withUnlockerOnly {
+		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
+		operatorHandler := grpchandler.NewOperatorHandler(s.opts.OperatorSvc)
+		pboperator.RegisterOperatorServer(grpcOperatorServer, operatorHandler)
+		pbwallet.RegisterWalletServer(grpcOperatorServer, walletHandler)
+	}
+
+	// http Operator server for grpc-web
+	httpOperatorServer := newGRPCWrappedServer(operatorAddr, grpcOperatorServer)
+
+	// Serve grpc and grpc-web multiplexed on the same port
+	muxOperator, err := serveMux(
+		operatorAddr, s.opts.operatorTLSKey(), s.opts.operatorTLSCert(),
+		grpcOperatorServer, httpOperatorServer,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var muxTrade cmux.CMux
+	var grpcTradeServer *grpc.Server
+	var httpTradeServer *http.Server
+	if !withUnlockerOnly {
+		// gRPC Trade server
+		tradeAddr := s.opts.TradeAddress
+		tradeTLSKey := s.opts.TradeTLSKey
+		tradeTLSCert := s.opts.TradeTLSCert
+		grpcTradeServer = grpc.NewServer(
+			unaryInterceptor,
+			streamInterceptor,
+		)
+		tradeHandler := grpchandler.NewTraderHandler(s.opts.TradeSvc)
+		pbtrade.RegisterTradeServer(grpcTradeServer, tradeHandler)
+		httpTradeServer = newGRPCWrappedServer(tradeAddr, grpcTradeServer)
+		muxTrade, err = serveMux(
+			tradeAddr, tradeTLSKey, tradeTLSCert,
+			grpcTradeServer, httpTradeServer,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &services{
+		grpcOperator: grpcOperatorServer,
+		grpcTrade:    grpcTradeServer,
+		httpOperator: httpOperatorServer,
+		httpTrade:    httpTradeServer,
+		muxOperator:  muxOperator,
+		muxTrade:     muxTrade,
+	}, nil
+}
+
+func (s *service) stop(stopMacaroonSvc bool) {
+	if s.withMacaroons() && stopMacaroonSvc {
+		s.macaroonSvc.Close()
+		log.Debug("stopped macaroon service")
+	}
+
+	log.Debug("stop grpc-web Operator server")
+	s.httpOperatorServer.Shutdown(context.Background())
+
+	log.Debug("stop grpc Operator server")
+	s.grpcOperatorServer.GracefulStop()
+
+	log.Debug("stop mux Operator")
+	s.muxOperator.Close()
+
+	if s.grpcTradeServer != nil {
+		log.Debug("stop grpc-web Trade server")
+		s.httpTradeServer.Shutdown(context.Background())
+
+		log.Debug("stop grpc Trade server")
+		s.grpcTradeServer.GracefulStop()
+
+		log.Debug("stop mux Trade")
+		s.muxTrade.Close()
+	}
 }
 
 func (s *service) startListeningToPassphraseChan() {
@@ -320,250 +412,32 @@ func (s *service) startListeningToPassphraseChan() {
 	}
 }
 
-func generateOperatorTLSKeyCert(
-	datadir string, extraIPs, extraDomains []string,
-) error {
-	if err := makeDirectoryIfNotExists(datadir); err != nil {
-		return err
-	}
-	keyPath := filepath.Join(datadir, OperatorTLSKeyFile)
-	certPath := filepath.Join(datadir, OperatorTLSCertFile)
+func (s *service) startListeningToReadyChan() {
+	isReady := <-s.readyChan
 
-	// if key and cert files already exist nothing to do here.
-	if pathExists(keyPath) && pathExists(certPath) {
-		return nil
+	dontStopMacaroonSvc := false
+	s.stop(dontStopMacaroonSvc)
+
+	if !isReady {
+		panic("failed to initialize wallet")
 	}
 
-	organization := "tdex"
-	now := time.Now()
-	validUntil := now.AddDate(1, 0, 0)
-
-	// Generate a serial number that's below the serialNumberLimit.
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	withoutUnlockerOnly := false
+	services, err := s.start(withoutUnlockerOnly)
 	if err != nil {
-		return fmt.Errorf("failed to generate serial number: %s", err)
+		log.WithError(err).Warn(
+			"an error occured while enabling operator and trade interfaces. Shutting down",
+		)
+		panic(nil)
 	}
 
-	// Collect the host's IP addresses, including loopback, in a slice.
-	ipAddresses := []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")}
+	log.Infof("operator interface is listening on %s", s.opts.OperatorAddress)
+	log.Infof("trade interface is listening on %s", s.opts.TradeAddress)
 
-	if len(extraIPs) > 0 {
-		for _, ip := range extraIPs {
-			ipAddresses = append(ipAddresses, net.ParseIP(ip))
-		}
-	}
-
-	// addIP appends an IP address only if it isn't already in the slice.
-	addIP := func(ipAddr net.IP) {
-		for _, ip := range ipAddresses {
-			if bytes.Equal(ip, ipAddr) {
-				return
-			}
-		}
-		ipAddresses = append(ipAddresses, ipAddr)
-	}
-
-	// Add all the interface IPs that aren't already in the slice.
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return err
-	}
-	for _, a := range addrs {
-		ipAddr, _, err := net.ParseCIDR(a.String())
-		if err == nil {
-			addIP(ipAddr)
-		}
-	}
-
-	host, err := os.Hostname()
-	if err != nil {
-		return err
-	}
-
-	dnsNames := []string{host}
-	if host != "localhost" {
-		dnsNames = append(dnsNames, "localhost")
-	}
-
-	if len(extraDomains) > 0 {
-		for _, domain := range extraDomains {
-			dnsNames = append(dnsNames, domain)
-		}
-	}
-
-	dnsNames = append(dnsNames, "unix", "unixpacket")
-
-	priv, err := createOrLoadTLSKey(keyPath)
-	if err != nil {
-		return err
-	}
-
-	keybytes, err := x509.MarshalECPrivateKey(priv)
-	if err != nil {
-		return err
-	}
-
-	// construct certificate template
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{organization},
-			CommonName:   host,
-		},
-		NotBefore: now.Add(-time.Hour * 24),
-		NotAfter:  validUntil,
-
-		KeyUsage: x509.KeyUsageKeyEncipherment |
-			x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		IsCA:                  true,
-		BasicConstraintsValid: true,
-
-		DNSNames:    dnsNames,
-		IPAddresses: ipAddresses,
-	}
-
-	derBytes, err := x509.CreateCertificate(
-		rand.Reader, &template, &template, &priv.PublicKey, priv,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create certificate: %v", err)
-	}
-
-	certBuf := &bytes.Buffer{}
-	if err := pem.Encode(
-		certBuf, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes},
-	); err != nil {
-		return fmt.Errorf("failed to encode certificate: %v", err)
-	}
-
-	keyBuf := &bytes.Buffer{}
-	if err := pem.Encode(
-		keyBuf, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keybytes},
-	); err != nil {
-		return fmt.Errorf("failed to encode private key: %v", err)
-	}
-
-	if err := ioutil.WriteFile(certPath, certBuf.Bytes(), 0644); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(keyPath, keyBuf.Bytes(), 0600); err != nil {
-		os.Remove(certPath)
-		return err
-	}
-
-	return nil
-}
-
-func serveMux(address, tlsKey, tlsCert string, grpcServer *grpc.Server) error {
-	lis, err := net.Listen("tcp", address)
-	if err != nil {
-		return err
-	}
-
-	if tlsKey != "" {
-		certificate, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
-		if err != nil {
-			return err
-		}
-
-		const requiredCipher = tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-		config := &tls.Config{
-			CipherSuites: []uint16{requiredCipher},
-			NextProtos:   []string{"http/1.1", http2.NextProtoTLS, "h2-14"}, // h2-14 is just for compatibility. will be eventually removed.
-			Certificates: []tls.Certificate{certificate},
-		}
-		config.Rand = rand.Reader
-
-		lis = tls.NewListener(lis, config)
-	}
-
-	mux := cmux.New(lis)
-	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
-	httpL := mux.Match(cmux.HTTP1Fast())
-
-	grpcWebServer := grpcweb.WrapServer(
-		grpcServer,
-		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
-		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
-	)
-
-	go grpcServer.Serve(grpcL)
-	go http.Serve(httpL, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if isValidRequest(req) {
-			grpcWebServer.ServeHTTP(resp, req)
-		}
-	}))
-
-	go mux.Serve()
-	return nil
-}
-
-func isValidRequest(req *http.Request) bool {
-	return isValidGrpcWebOptionRequest(req) || isValidGrpcWebRequest(req)
-}
-
-func isValidGrpcWebRequest(req *http.Request) bool {
-	return req.Method == http.MethodPost && isValidGrpcContentTypeHeader(req.Header.Get("content-type"))
-}
-
-func isValidGrpcContentTypeHeader(contentType string) bool {
-	return strings.HasPrefix(contentType, "application/grpc-web-text") ||
-		strings.HasPrefix(contentType, "application/grpc-web")
-}
-
-func isValidGrpcWebOptionRequest(req *http.Request) bool {
-	accessControlHeader := req.Header.Get("Access-Control-Request-Headers")
-	return req.Method == http.MethodOptions &&
-		strings.Contains(accessControlHeader, "x-grpc-web") &&
-		strings.Contains(accessControlHeader, "content-type")
-}
-
-func createOrLoadTLSKey(keyPath string) (*ecdsa.PrivateKey, error) {
-	if !pathExists(keyPath) {
-		return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	}
-
-	b, err := ioutil.ReadFile(keyPath)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := privateKeyFromPEM(b)
-	if err != nil {
-		return nil, err
-	}
-	return key.(*ecdsa.PrivateKey), nil
-}
-
-func privateKeyFromPEM(pemBlock []byte) (crypto.PrivateKey, error) {
-	var derBlock *pem.Block
-	for {
-		derBlock, pemBlock = pem.Decode(pemBlock)
-		if derBlock == nil {
-			return nil, fmt.Errorf("tls: failed to find any PEM data in key input")
-		}
-		if derBlock.Type == "PRIVATE KEY" || strings.HasSuffix(derBlock.Type, " PRIVATE KEY") {
-			break
-		}
-	}
-	return parsePrivateKey(derBlock.Bytes)
-}
-
-func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
-	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
-		return key, nil
-	}
-	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
-		switch key := key.(type) {
-		case *rsa.PrivateKey, *ecdsa.PrivateKey, ed25519.PrivateKey:
-			return key, nil
-		default:
-			return nil, fmt.Errorf("tls: found unknown private key type in PKCS#8 wrapping")
-		}
-	}
-	if key, err := x509.ParseECPrivateKey(der); err == nil {
-		return key, nil
-	}
-
-	return nil, fmt.Errorf("tls: failed to parse private key")
+	s.grpcOperatorServer = services.grpcOperator
+	s.grpcTradeServer = services.grpcTrade
+	s.httpOperatorServer = services.httpOperator
+	s.httpTradeServer = services.httpTrade
+	s.muxOperator = services.muxOperator
+	s.muxTrade = services.muxTrade
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
+	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
 
 	"github.com/urfave/cli/v2"
 )

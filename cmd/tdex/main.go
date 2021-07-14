@@ -20,7 +20,7 @@ import (
 	"gopkg.in/macaroon.v2"
 
 	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
+	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 )
 
@@ -179,14 +179,14 @@ func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(), err
 	return pboperator.NewOperatorClient(conn), cleanup, nil
 }
 
-func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(), error) {
+func getWalletClient(ctx *cli.Context) (pbwallet.WalletUnlockerClient, func(), error) {
 	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { _ = conn.Close() }
 
-	return pbwallet.NewWalletClient(conn), cleanup, nil
+	return pbwallet.NewWalletUnlockerClient(conn), cleanup, nil
 }
 
 func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {

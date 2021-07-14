@@ -144,19 +144,23 @@ func AdminPermissions() []bakery.Op {
 // entity and action.
 func Whitelist() map[string][]bakery.Op {
 	return map[string][]bakery.Op{
-		"/Wallet/GenSeed": {{
+		"/WalletUnlocker/IsReady": {{
 			Entity: EntityUnlocker,
 			Action: "read",
 		}},
-		"/Wallet/InitWallet": {{
+		"/WalletUnlocker/GenSeed": {{
+			Entity: EntityUnlocker,
+			Action: "read",
+		}},
+		"/WalletUnlocker/InitWallet": {{
 			Entity: EntityUnlocker,
 			Action: "write",
 		}},
-		"/Wallet/UnlockWallet": {{
+		"/WalletUnlocker/UnlockWallet": {{
 			Entity: EntityUnlocker,
 			Action: "write",
 		}},
-		"/Wallet/ChangePassword": {{
+		"/WalletUnlocker/ChangePassword": {{
 			Entity: EntityUnlocker,
 			Action: "write",
 		}},
