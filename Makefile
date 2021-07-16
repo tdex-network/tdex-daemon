@@ -1,4 +1,4 @@
-.PHONY: build build-cli proto clean cov fmt help install integrationtest run test trade-cert vet
+.PHONY: build build-cli build-unlocker proto clean cov fmt help install integrationtest run test trade-cert vet
 
 install:
 	go mod download
@@ -13,6 +13,11 @@ build:
 build-cli: 
 	chmod u+x ./scripts/build-cli
 	./scripts/build-cli
+
+## build-unlocker: build unlockerd for all platforms
+build-unlocker: 
+	chmod u+x ./scripts/build-unlocker
+	./scripts/build-unlocker
 
 ## proto: compile proto files
 proto: install
