@@ -115,5 +115,7 @@ message ChangePasswordReply {}
 
 message IsReadyRequest {}
 message IsReadyReply {
-  bool is_ready = 1;
+  bool initialized = 1;
+  bool unlocked = 2;
+  bool synced = 3;
 }
