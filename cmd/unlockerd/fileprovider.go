@@ -11,17 +11,18 @@ import (
 )
 
 const (
-	datadirKey  = "datadir"
-	passwordKey = "password-filepath"
+	tlsCertKey  = "tls-cert-path"
+	passwordKey = "password-path"
 )
 
 var (
-	defaultDatadir = btcutil.AppDataDir("tdex-daemon", false)
+	defaultDatadir     = btcutil.AppDataDir("tdex-daemon", false)
+	defaultTLSCertPath = filepath.Join(defaultDatadir, "tls", "cert.pem")
 
-	datadirFlag = pflag.String(
-		datadirKey,
-		defaultDatadir,
-		"specify a daemon's datadir different from the default one",
+	tlsCertFlag = pflag.String(
+		tlsCertKey,
+		defaultTLSCertPath,
+		"the path of the TLS certificate file",
 	)
 	passwordFlag = pflag.String(
 		passwordKey,
@@ -44,14 +45,10 @@ func NewFileProvider() (provider, error) {
 		return nil, fmt.Errorf("invalid flag: %s must be an existing path", passwordKey)
 	}
 
-	datadir := viper.GetString(datadirKey)
-	if datadir == "" {
-		return nil, fmt.Errorf("invalid flag: %s must not be null", datadirKey)
+	tlsCertPath := viper.GetString(tlsCertKey)
+	if tlsCertPath == "" {
+		return nil, fmt.Errorf("invalid flag: %s must not be null", tlsCertKey)
 	}
-	if !pathExists(datadir) {
-		return nil, fmt.Errorf("invalid flag: %s must be an existing path", datadirKey)
-	}
-	tlsCertPath := filepath.Join(datadir, "tls", "cert.pem")
 
 	return &fileProvider{pwdPath, tlsCertPath}, nil
 }
