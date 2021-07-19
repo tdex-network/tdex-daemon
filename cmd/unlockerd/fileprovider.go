@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	tlsCertKey  = "tls-cert-path"
-	passwordKey = "password-path"
+	tlsCertKey  = "tls_cert_path"
+	passwordKey = "password_path"
 )
 
 var (
