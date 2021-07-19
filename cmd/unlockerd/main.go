@@ -39,9 +39,9 @@ type provider interface {
 }
 
 const (
-	rpcAddressKey = "rpc-address"
-	providerKey   = "provider"
-	intervalKey   = "interval"
+	rpcServerKey = "rpcserver"
+	providerKey  = "provider"
+	intervalKey  = "interval"
 )
 
 var (
@@ -61,8 +61,8 @@ var (
 	defaultInterval   = 5
 
 	// flags
-	rpcAddressFlag = pflag.String(
-		rpcAddressKey,
+	rpcServerFlag = pflag.String(
+		rpcServerKey,
 		defaultRPCAddress,
 		"specify a daemon's RPC address different from the default one",
 	)
@@ -88,22 +88,22 @@ func init() {
 }
 
 func validate() error {
-	rpcAddress := viper.GetString(rpcAddressKey)
+	rpcAddress := viper.GetString(rpcServerKey)
 	if rpcAddress == "" {
-		return fmt.Errorf("%s must not be null", rpcAddressKey)
+		return fmt.Errorf("%s must not be null", rpcServerKey)
 	}
 	parts := strings.Split(rpcAddress, ":")
 	if len(parts) != 2 {
-		return fmt.Errorf("%s must be a valid address in the form host:port", rpcAddressKey)
+		return fmt.Errorf("%s must be a valid address in the form host:port", rpcServerKey)
 	}
 	if parts[0] != "" && parts[0] != "localhost" {
 		if net.ParseIP(parts[0]) == nil {
-			return fmt.Errorf("%s host is invalid", rpcAddressKey)
+			return fmt.Errorf("%s host is invalid", rpcServerKey)
 		}
 	}
 	port, err := strconv.Atoi(parts[1])
 	if err != nil || port <= 1024 {
-		return fmt.Errorf("%s port is invalid", rpcAddressKey)
+		return fmt.Errorf("%s port is invalid", rpcServerKey)
 	}
 
 	provider := viper.GetString(providerKey)
@@ -126,7 +126,7 @@ func validate() error {
 }
 
 func main() {
-	rpcAddress := viper.GetString(rpcAddressKey)
+	rpcAddress := viper.GetString(rpcServerKey)
 	providerType := viper.GetString(providerKey)
 	interval := time.Duration(viper.GetInt(intervalKey)) * time.Second
 
