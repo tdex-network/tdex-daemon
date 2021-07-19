@@ -53,6 +53,31 @@ builds:
       - amd64
     binary: tdex-darwin
 
+  # unlocker
+  - id: "unlockerd-linux"
+    main: ./cmd/unlockerd
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    binary: unlockerd-linux
+
+  - id: "unlockerd-darwin"
+    main: ./cmd/unlockerd
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    binary: unlockerd-darwin
+
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
   prerelease: auto
@@ -96,6 +121,12 @@ archives:
       - tdex-linux
       - tdex-darwin
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+  - id: unlockerd
+    format: binary
+    builds:
+      - unlockerd-linux
+      - unlockerd-darwin
+    name_template: "unlockerd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
 dockers:
   # push always either release or prerelease with a docker tag with the semver only
