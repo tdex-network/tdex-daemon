@@ -43,7 +43,7 @@ type WalletUnlockerService interface {
 		currentPassphrase string,
 		newPassphrase string,
 	) error
-	IsReady(ctx context.Context) bool
+	IsReady(ctx context.Context) WalletStatus
 	PassphraseChan() chan PassphraseMsg
 	ReadyChan() chan bool
 }
@@ -53,6 +53,7 @@ type walletUnlockerService struct {
 	explorerService    explorer.Service
 	blockchainListener BlockchainListener
 	walletInitialized  bool
+	walletUnlocked     bool
 	walletIsSyncing    bool
 	walletRestored     bool
 	network            *network.Network
@@ -140,8 +141,12 @@ func (w *walletUnlockerService) GenSeed(ctx context.Context) ([]string, error) {
 	return mnemonic, nil
 }
 
-func (w *walletUnlockerService) IsReady(_ context.Context) bool {
-	return w.isInitialized() && w.isRestored()
+func (w *walletUnlockerService) IsReady(_ context.Context) WalletStatus {
+	return WalletStatus{
+		Initialized: w.isInitialized(),
+		Unlocked:    w.isUnlocked(),
+		Synced:      w.isRestored(),
+	}
 }
 
 type InitWalletReply struct {
@@ -336,6 +341,7 @@ func (w *walletUnlockerService) UnlockWallet(
 		CurrentPwd: passphrase,
 	}
 	w.blockchainListener.StartObservation()
+	w.setUnlocked()
 	return nil
 }
 
@@ -416,6 +422,20 @@ func (w *walletUnlockerService) setInitialized(val bool) {
 	defer w.lock.Unlock()
 
 	w.walletInitialized = val
+}
+
+func (w *walletUnlockerService) isUnlocked() bool {
+	w.lock.RLock()
+	defer w.lock.RUnlock()
+
+	return w.walletUnlocked
+}
+
+func (w *walletUnlockerService) setUnlocked() {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	w.walletUnlocked = true
 }
 
 func (w *walletUnlockerService) isRestored() bool {

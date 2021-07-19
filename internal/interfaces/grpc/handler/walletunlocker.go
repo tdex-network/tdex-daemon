@@ -154,8 +154,12 @@ func (w *walletUnlockerHandler) changePassword(
 func (w *walletUnlockerHandler) isReady(
 	ctx context.Context, _ *pb.IsReadyRequest,
 ) (*pb.IsReadyReply, error) {
+	status := w.walletUnlockerSvc.IsReady(ctx)
+
 	return &pb.IsReadyReply{
-		IsReady: w.walletUnlockerSvc.IsReady(ctx),
+		Initialized: status.Initialized,
+		Unlocked:    status.Unlocked,
+		Synced:      status.Synced,
 	}, nil
 }
 

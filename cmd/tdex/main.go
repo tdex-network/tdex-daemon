@@ -107,15 +107,25 @@ func setState(data map[string]string) error {
 	if err != nil {
 		return err
 	}
-	err = file.Close()
-	if err != nil {
+	if err := file.Close(); err != nil {
 		return err
 	}
 
 	currentData, err := getState()
 	if err != nil {
-		fmt.Println(err)
 		return err
+	}
+
+	noMacaroons, ok := data[noMacaroonsKey]
+	if ok {
+		noMac, err := strconv.ParseBool(noMacaroons)
+		if err != nil {
+			return fmt.Errorf("invalid bool value for %s: %s", noMacaroonsKey, err)
+		}
+		if noMac {
+			data[macaroonsPathKey] = ""
+			data[tlsCertPathKey] = ""
+		}
 	}
 
 	mergedData := merge(currentData, data)

@@ -2,16 +2,27 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"path/filepath"
 
+	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/network"
 )
 
+const (
+	noMacaroonsKey   = "no_macaroons"
+	macaroonsPathKey = "macaroons_path"
+	tlsCertPathKey   = "tls_cert_path"
+)
+
 var (
+	daemonDatadir        = btcutil.AppDataDir("tdex-daemon", false)
+	defaultTLSCertPath   = filepath.Join(daemonDatadir, "tls", "cert.pem")
+	defaultMacaroonsPath = filepath.Join(daemonDatadir, "macaroons", "admin.macaroon")
+
 	networkFlag = cli.StringFlag{
 		Name:  "network, n",
 		Usage: "the network tdexd is running on: liquid or regtest",
@@ -31,21 +42,21 @@ var (
 	}
 
 	tlsCertFlag = cli.StringFlag{
-		Name:  "tls_cert_path",
+		Name:  tlsCertPathKey,
 		Usage: "the path of the TLS certificate file to use",
-		Value: "",
+		Value: defaultTLSCertPath,
 	}
 
 	noMacaroonsFlag = cli.BoolFlag{
-		Name:  "no_macaroons",
+		Name:  noMacaroonsKey,
 		Usage: "used to start the daemon without macaroon auth",
 		Value: false,
 	}
 
 	macaroonsFlag = cli.StringFlag{
-		Name:  "macaroons_path",
+		Name:  macaroonsPathKey,
 		Usage: "the path of the macaroons file to use",
-		Value: "",
+		Value: defaultMacaroonsPath,
 	}
 )
 
@@ -89,32 +100,29 @@ func configAction(ctx *cli.Context) error {
 }
 
 func configInitAction(c *cli.Context) error {
-	err := setState(map[string]string{
+	return setState(map[string]string{
 		"network":        c.String("network"),
 		"explorer_url":   c.String("explorer_url"),
 		"rpcserver":      c.String("rpcserver"),
-		"tls_cert_path":  cleanAndExpandPath(c.String("tls_cert_path")),
-		"no_macaroons":   c.String("no_macaroons"),
-		"macaroons_path": cleanAndExpandPath(c.String("macaroons_path")),
+		"no_macaroons":   c.String(noMacaroonsKey),
+		"tls_cert_path":  cleanAndExpandPath(c.String(tlsCertPathKey)),
+		"macaroons_path": cleanAndExpandPath(c.String(macaroonsPathKey)),
 	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func configSetAction(c *cli.Context) error {
 	if c.NArg() < 2 {
-		return errors.New("key and value are missing")
+		return fmt.Errorf("key and value are missing")
 	}
 
 	key := c.Args().Get(0)
 	value := c.Args().Get(1)
 
-	err := setState(map[string]string{key: value})
-	if err != nil {
+	if value == "" {
+		return fmt.Errorf("value must not be an empty string")
+	}
+
+	if err := setState(map[string]string{key: value}); err != nil {
 		return err
 	}
 
@@ -146,11 +154,11 @@ func getMarketFromState() (string, string, error) {
 	}
 	baseAsset, ok := state["base_asset"]
 	if !ok {
-		return "", "", errors.New("set base asset with `config set base_asset`")
+		return "", "", fmt.Errorf("set base asset with `config set base_asset`")
 	}
 	quoteAsset, ok := state["quote_asset"]
 	if !ok {
-		return "", "", errors.New("set quote asset with `config set quote_asset`")
+		return "", "", fmt.Errorf("set quote asset with `config set quote_asset`")
 	}
 
 	return baseAsset, quoteAsset, nil

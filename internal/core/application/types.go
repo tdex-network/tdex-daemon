@@ -16,6 +16,12 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
+type WalletStatus struct {
+	Initialized bool
+	Unlocked    bool
+	Synced      bool
+}
+
 type PassphraseMsg struct {
 	Method     int
 	CurrentPwd string
