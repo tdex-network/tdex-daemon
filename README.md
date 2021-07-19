@@ -8,7 +8,7 @@ Go implementation of the TDex Daemon
 
 ## 📄 Usage
 
-In-depth documentation for installing and using the tdex-daemon is available at [docs.tdex.network](https://docs.tdex.network/tdex-daemon.html)
+In-depth documentation for installing and using the tdex-daemon is available at [docs.tdex.network](https://dev.tdex.network/docs/provider/intro)
 
 
 ## 🛣 Roadmap
