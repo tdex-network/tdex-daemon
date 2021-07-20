@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -54,7 +55,13 @@ func NewFileProvider() (provider, error) {
 }
 
 func (fp *fileProvider) Password() ([]byte, error) {
-	return ioutil.ReadFile(fp.pwdPath)
+	pwd, err := ioutil.ReadFile(fp.pwdPath)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.TrimFunc(pwd, func(r rune) bool {
+		return r == 10 || r == 32
+	}), nil
 }
 
 func (fp *fileProvider) TLSCertificate() ([]byte, error) {

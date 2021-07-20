@@ -54,30 +54,18 @@ builds:
     binary: tdex-darwin
 
   # unlocker
-  - id: "unlockerd-linux"
+  - id: "unlockerd"
     main: ./cmd/unlockerd
     ldflags:
       - -s -w
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     goos:
       - linux
-    goarch:
-      - amd64
-    binary: unlockerd-linux
-
-  - id: "unlockerd-darwin"
-    main: ./cmd/unlockerd
-    ldflags:
-      - -s -w
-    env:
-      - CGO_ENABLED=1
-    goos:
       - darwin
     goarch:
       - amd64
-    binary: unlockerd-darwin
-
+    binary: unlockerd
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
   prerelease: auto
