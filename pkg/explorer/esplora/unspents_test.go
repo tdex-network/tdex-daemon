@@ -8,6 +8,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
@@ -36,13 +37,18 @@ func TestGetUnspents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 1, len(utxos))
+	require.Equal(t, 1, len(utxos))
 
-	if len(utxos) > 0 {
-		assert.Equal(t, true, len(utxos[0].Nonce()) > 1)
-		assert.Equal(t, true, len(utxos[0].RangeProof()) > 0)
-		assert.Equal(t, true, len(utxos[0].SurjectionProof()) > 0)
-	}
+	utxo := utxos[0]
+	require.Equal(t, true, len(utxo.Nonce()) > 1)
+	require.Equal(t, true, len(utxo.RangeProof()) > 0)
+	require.Equal(t, true, len(utxo.SurjectionProof()) > 0)
+
+	status, err := explorerSvc.GetUnspentStatus(utxo.Hash(), utxo.Index())
+	require.NoError(t, err)
+	require.False(t, status.Spent)
+	require.Empty(t, status.TxHash)
+	require.Equal(t, -1, status.TxInputIndex)
 }
 
 func TestSelectUnspents(t *testing.T) {

@@ -121,6 +121,10 @@ func (m mockExplorer) GetUnspents(addr string, blindKeys [][]byte) (
 	return nil, nil
 }
 
+func (m mockExplorer) GetUnspentStatus(txID string, vout uint32) (*explorer.UtxoStatus, error) {
+	return nil, errors.New("implement me")
+}
+
 func (m mockExplorer) GetTransaction(txID string) (explorer.Transaction, error) {
 	return nil, errors.New("implement me")
 }

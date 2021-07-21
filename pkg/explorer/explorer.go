@@ -24,6 +24,14 @@ type Utxo interface {
 	Parse() (*transaction.TxInput, *transaction.TxOutput, error)
 }
 
+// UtxoStatus represents the status of an Utxo whether it is spent, and if true
+// the hash of the spending transaction and the input index.
+type UtxoStatus struct {
+	Spent        bool
+	TxHash       string
+	TxInputIndex int
+}
+
 // Transaction represents a transaction in the elements chain.
 type Transaction interface {
 	Hash() string
@@ -48,6 +56,9 @@ type Service interface {
 		addresses []string,
 		blindingKeys [][]byte,
 	) (unspents []Utxo, err error)
+	// GetUnspentStatus returns the status of the given utxo identified by its
+	// hash and index.
+	GetUnspentStatus(hash string, index uint32) (*UtxoStatus, error)
 	// GetTransaction fetches the transaction given its hash.
 	GetTransaction(txid string) (tx Transaction, err error)
 	// GetTransactionHex fetches the transaction in hex format given its hash.

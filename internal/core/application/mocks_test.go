@@ -136,6 +136,18 @@ func (m *mockExplorer) GetUnspentsForAddresses(
 	return res, args.Error(1)
 }
 
+func (m *mockExplorer) GetUnspentStatus(
+	hash string, index uint32,
+) (*explorer.UtxoStatus, error) {
+	args := m.Called(hash, index)
+
+	var res *explorer.UtxoStatus
+	if a := args.Get(0); a != nil {
+		res = a.(*explorer.UtxoStatus)
+	}
+	return res, args.Error(1)
+}
+
 func (m *mockExplorer) GetTransaction(txid string) (explorer.Transaction, error) {
 	args := m.Called(txid)
 

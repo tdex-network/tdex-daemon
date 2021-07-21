@@ -53,17 +53,47 @@ func (e *esplora) GetUnspentsForAddresses(
 	return utxos, nil
 }
 
+func (e *esplora) GetUnspentStatus(
+	hash string, index uint32,
+) (*explorer.UtxoStatus, error) {
+	url := fmt.Sprintf("%s/tx/%s/outspend/%d", e.apiURL, hash, index)
+	status, resp, err := e.client.NewHTTPRequest("GET", url, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, fmt.Errorf(resp)
+	}
+
+	var utxoStatus map[string]interface{}
+	if err := json.Unmarshal([]byte(resp), &utxoStatus); err != nil {
+		return nil, fmt.Errorf("error on retrieving utxo status: %s", err)
+	}
+
+	spent := utxoStatus["spent"].(bool)
+	txHash := ""
+	if hash, ok := utxoStatus["txid"]; ok {
+		txHash = hash.(string)
+	}
+	txInIndex := -1
+	if index, ok := utxoStatus["vin"]; ok {
+		txInIndex = int(index.(float64))
+	}
+
+	return &explorer.UtxoStatus{
+		Spent:        spent,
+		TxHash:       txHash,
+		TxInputIndex: txInIndex,
+	}, nil
+}
+
 type utxoResult struct {
 	utxo explorer.Utxo
 	err  error
 }
 
 func (e *esplora) getUtxos(addr string, blindingKeys [][]byte) ([]explorer.Utxo, error) {
-	url := fmt.Sprintf(
-		"%s/address/%s/utxo",
-		e.apiURL,
-		addr,
-	)
+	url := fmt.Sprintf("%s/address/%s/utxo", e.apiURL, addr)
 	status, resp, err := e.client.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error on retrieving utxos: %s", err)
