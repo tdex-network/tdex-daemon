@@ -19,26 +19,31 @@ const (
 )
 
 var (
-	daemonDatadir        = btcutil.AppDataDir("tdex-daemon", false)
+	daemonDatadir = btcutil.AppDataDir("tdex-daemon", false)
+
+	defaultNetwork       = network.Liquid.Name
+	defaultExplorer      = "https://blockstream.info/liquid/api"
+	defaultRPCServer     = "localhost:9000"
+	defaultMacaroonsAuth = false
 	defaultTLSCertPath   = filepath.Join(daemonDatadir, "tls", "cert.pem")
 	defaultMacaroonsPath = filepath.Join(daemonDatadir, "macaroons", "admin.macaroon")
 
 	networkFlag = cli.StringFlag{
 		Name:  "network, n",
 		Usage: "the network tdexd is running on: liquid or regtest",
-		Value: network.Liquid.Name,
+		Value: defaultNetwork,
 	}
 
 	explorerUrlFlag = cli.StringFlag{
 		Name:  "explorer_url",
 		Usage: "explorer url for the current network",
-		Value: "https://blockstream.info/liquid/api",
+		Value: defaultExplorer,
 	}
 
 	rpcFlag = cli.StringFlag{
 		Name:  "rpcserver",
 		Usage: "tdexd daemon address host:port",
-		Value: "localhost:9000",
+		Value: defaultRPCServer,
 	}
 
 	tlsCertFlag = cli.StringFlag{
@@ -50,7 +55,7 @@ var (
 	noMacaroonsFlag = cli.BoolFlag{
 		Name:  noMacaroonsKey,
 		Usage: "used to start the daemon without macaroon auth",
-		Value: false,
+		Value: defaultMacaroonsAuth,
 	}
 
 	macaroonsFlag = cli.StringFlag{
