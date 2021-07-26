@@ -30,9 +30,8 @@ RUN cp /tdex-daemon/unlockerd .
 FROM debian:buster
 
 # TDEX environment variables 
-# default data directory path is overwrite
 # others ENV variables are initialized to empty values: viper will initialize them.
-ENV TDEX_DATA_DIR_PATH="/.tdex-daemon" \
+ENV TDEX_DATA_DIR_PATH= \
     TDEX_EXPLORER_ENDPOINT= \
     TDEX_LOG_LEVEL= \
     TDEX_DEFAULT_FEE= \
@@ -55,6 +54,10 @@ COPY --from=builder /build/unlockerd /
 
 RUN install /tdex /bin
 RUN install /unlockerd /bin
+# Prevents `VOLUME $HOME/.tdex-daemon/` being created as owned by `root`
+RUN useradd -ms /bin/bash user
+USER user
+RUN mkdir -p "$HOME/.tdex-daemon/"
 
 # expose trader and operator interface ports
 EXPOSE 9945
