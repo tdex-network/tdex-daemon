@@ -90,6 +90,48 @@ func (t *tx) Confirmed() bool {
 	return t.TxConfirmed
 }
 
+type txStatus struct {
+	confirmed   bool
+	blockHash   string
+	blockHeight int
+	blockTime   int
+}
+
+func newUnconfirmedTxStatus() explorer.TransactionStatus {
+	return &txStatus{
+		confirmed:   false,
+		blockHeight: -1,
+		blockTime:   -1,
+	}
+}
+
+func newConfirmedTxStatus(
+	blockHash string, blockHeight, blockTime int,
+) explorer.TransactionStatus {
+	return &txStatus{
+		confirmed:   true,
+		blockHash:   blockHash,
+		blockHeight: blockHeight,
+		blockTime:   blockTime,
+	}
+}
+
+func (s txStatus) Confirmed() bool {
+	return s.confirmed
+}
+
+func (s txStatus) BlockHash() string {
+	return s.blockHash
+}
+
+func (s txStatus) BlockHeight() int {
+	return s.blockHeight
+}
+
+func (s txStatus) BlockTime() int {
+	return s.blockTime
+}
+
 type elementsUnspent struct {
 	UAddress          string  `json:"address,omitempty"`
 	ULabel            string  `json:"label,omitempty"`

@@ -84,6 +84,57 @@ func (t *tx) Confirmed() bool {
 	return t.TxConfirmed
 }
 
+// txStatus implements explorer.TransactionStatus interface
+type txStatus map[string]interface{}
+
+func (s txStatus) Confirmed() bool {
+	iConfirmed := s["confirmed"]
+	if iConfirmed == nil {
+		return false
+	}
+	confirmed, ok := iConfirmed.(bool)
+	if !ok {
+		return false
+	}
+	return confirmed
+}
+
+func (s txStatus) BlockHash() string {
+	iBlockHash := s["block_hash"]
+	if iBlockHash == nil {
+		return ""
+	}
+	blockHash, ok := iBlockHash.(string)
+	if !ok {
+		return ""
+	}
+	return blockHash
+}
+
+func (s txStatus) BlockHeight() int {
+	iBlockHeight := s["block_height"]
+	if iBlockHeight == nil {
+		return -1
+	}
+	blockHeight, ok := iBlockHeight.(float64)
+	if !ok {
+		return -1
+	}
+	return int(blockHeight)
+}
+
+func (s txStatus) BlockTime() int {
+	iBlockTime := s["block_time"]
+	if iBlockTime == nil {
+		return -1
+	}
+	blockTime, ok := iBlockTime.(float64)
+	if !ok {
+		return -1
+	}
+	return int(blockTime)
+}
+
 func parseInput(i interface{}) *transaction.TxInput {
 	m := i.(map[string]interface{})
 
@@ -327,4 +378,43 @@ func (wu witnessUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, erro
 	}
 
 	return input, witnessUtxo, nil
+}
+
+// utxoStatus implements explorer.UtxoStatus interface
+type utxoStatus map[string]interface{}
+
+func (s utxoStatus) Spent() bool {
+	iSpent := s["spent"]
+	if iSpent == nil {
+		return false
+	}
+	spent, ok := iSpent.(bool)
+	if !ok {
+		return false
+	}
+	return spent
+}
+
+func (s utxoStatus) Hash() string {
+	iHash := s["txid"]
+	if iHash == nil {
+		return ""
+	}
+	hash, ok := iHash.(string)
+	if !ok {
+		return ""
+	}
+	return hash
+}
+
+func (s utxoStatus) Index() int {
+	iIndex := s["vin"]
+	if iIndex == nil {
+		return -1
+	}
+	index, ok := iIndex.(float64)
+	if !ok {
+		return -1
+	}
+	return int(index)
 }

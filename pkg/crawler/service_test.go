@@ -89,11 +89,37 @@ func (m mockExplorer) IsTransactionConfirmed(txID string) (bool, error) {
 	return false, nil
 }
 
+type txStatus map[string]interface{}
+
+func (s txStatus) Confirmed() bool {
+	return s["confirmed"].(bool)
+}
+
+func (s txStatus) BlockHash() string {
+	str := s["block_hash"]
+	if str == nil {
+		return ""
+	}
+	return str.(string)
+}
+
+func (s txStatus) BlockTime() int {
+	i := s["block_time"]
+	if i == nil {
+		return -1
+	}
+	return i.(int)
+}
+
+func (s txStatus) BlockHeight() int {
+	return -1
+}
+
 func (m mockExplorer) GetTransactionStatus(txID string) (
-	map[string]interface{},
+	explorer.TransactionStatus,
 	error,
 ) {
-	status := make(map[string]interface{}, 0)
+	status := make(txStatus, 0)
 	status["confirmed"] = false
 
 	if txID == "4" || txID == "5" || txID == "6" || txID == "102" {
@@ -121,7 +147,9 @@ func (m mockExplorer) GetUnspents(addr string, blindKeys [][]byte) (
 	return nil, nil
 }
 
-func (m mockExplorer) GetUnspentStatus(txID string, vout uint32) (*explorer.UtxoStatus, error) {
+func (m mockExplorer) GetUnspentStatus(
+	hash string, index uint32,
+) (explorer.UtxoStatus, error) {
 	return nil, errors.New("implement me")
 }
 

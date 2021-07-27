@@ -138,12 +138,12 @@ func (m *mockExplorer) GetUnspentsForAddresses(
 
 func (m *mockExplorer) GetUnspentStatus(
 	hash string, index uint32,
-) (*explorer.UtxoStatus, error) {
+) (explorer.UtxoStatus, error) {
 	args := m.Called(hash, index)
 
-	var res *explorer.UtxoStatus
+	var res explorer.UtxoStatus
 	if a := args.Get(0); a != nil {
-		res = a.(*explorer.UtxoStatus)
+		res = a.(explorer.UtxoStatus)
 	}
 	return res, args.Error(1)
 }
@@ -178,14 +178,13 @@ func (m *mockExplorer) IsTransactionConfirmed(txid string) (bool, error) {
 	return res, args.Error(1)
 }
 
-func (m *mockExplorer) GetTransactionStatus(txid string) (map[string]interface{}, error) {
+func (m *mockExplorer) GetTransactionStatus(txid string) (explorer.TransactionStatus, error) {
 	args := m.Called(txid)
 
-	var res map[string]interface{}
 	if a := args.Get(0); a != nil {
-		res = a.(map[string]interface{})
+		return a.(explorer.TransactionStatus), nil
 	}
-	return res, args.Error(1)
+	return nil, args.Error(1)
 }
 
 func (m *mockExplorer) GetTransactionsForAddress(
@@ -495,6 +494,23 @@ func (m *mockSwapParser) DeserializeFail(msg []byte) (domain.SwapFail, error) {
 		res = a.(domain.SwapFail)
 	}
 	return res, args.Error(1)
+}
+
+// trandaction status
+
+type mockTxStatus map[string]interface{}
+
+func (m mockTxStatus) Confirmed() bool {
+	return m["confirmed"].(bool)
+}
+func (m mockTxStatus) BlockHash() string {
+	return m["block_hash"].(string)
+}
+func (m mockTxStatus) BlockTime() int {
+	return int(m["block_time"].(float64))
+}
+func (m mockTxStatus) BlockHeight() int {
+	return int(m["block_height"].(float64))
 }
 
 // **** SwapRequest ****

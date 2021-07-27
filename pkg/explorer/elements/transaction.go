@@ -53,7 +53,9 @@ func (e *elements) IsTransactionConfirmed(txid string) (bool, error) {
 // Otherwise some other info about the block that includes the tx are returned
 // along with its confirmation status. This method makes use of gettransaction
 // and getblock RPCs.
-func (e *elements) GetTransactionStatus(txid string) (map[string]interface{}, error) {
+func (e *elements) GetTransactionStatus(
+	txid string,
+) (explorer.TransactionStatus, error) {
 	data, err := e.getTransaction(txid)
 	if err != nil {
 		return nil, err
@@ -71,16 +73,13 @@ func (e *elements) GetTransactionStatus(txid string) (map[string]interface{}, er
 			return nil, fmt.Errorf("unmarshal: %w", err)
 		}
 
-		return map[string]interface{}{
-			"confirmed":    true,
-			"block_hash":   data["hash"],
-			"block_height": data["height"],
-			"block_time":   data["time"],
-		}, nil
+		return newConfirmedTxStatus(
+			data["hash"].(string),
+			int(data["height"].(float64)),
+			int(data["time"].(float64)),
+		), nil
 	}
-	return map[string]interface{}{
-		"confirmed": false,
-	}, nil
+	return newUnconfirmedTxStatus(), nil
 }
 
 type txResult struct {

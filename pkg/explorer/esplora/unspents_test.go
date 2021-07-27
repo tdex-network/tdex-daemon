@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
@@ -46,9 +47,9 @@ func TestGetUnspents(t *testing.T) {
 
 	status, err := explorerSvc.GetUnspentStatus(utxo.Hash(), utxo.Index())
 	require.NoError(t, err)
-	require.False(t, status.Spent)
-	require.Empty(t, status.TxHash)
-	require.Equal(t, -1, status.TxInputIndex)
+	require.False(t, status.Spent())
+	require.Empty(t, status.Hash())
+	require.Equal(t, -1, status.Index())
 }
 
 func TestSelectUnspents(t *testing.T) {
@@ -85,6 +86,53 @@ func TestSelectUnspents(t *testing.T) {
 	expectedChange := uint64(0.3 * math.Pow10(8))
 	assert.Equal(t, 1, len(selectedUtxos))
 	assert.Equal(t, expectedChange, change)
+}
+
+func TestGetUnspentStatus(t *testing.T) {
+	addr, blindKey, err := newTestData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	explorerSvc, err := newService()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := explorerSvc.Faucet(addr, oneLbtc, ""); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Second)
+
+	utxos, err := explorerSvc.GetUnspents(addr, [][]byte{blindKey})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 1, len(utxos))
+
+	hash := utxos[0].Hash()
+	index := utxos[0].Index()
+	status, err := explorerSvc.GetUnspentStatus(hash, index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.False(t, status.Spent())
+	assert.Empty(t, status.Hash())
+	assert.Equal(t, -1, status.Index())
+
+	tx, err := explorerSvc.GetTransaction(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spentUtxo := tx.Inputs()[0]
+	spentUtxoHash := bufferutil.TxIDFromBytes(spentUtxo.Hash)
+	spentUtxoIndex := spentUtxo.Index
+	spentUtxoStatus, err := explorerSvc.GetUnspentStatus(spentUtxoHash, spentUtxoIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, spentUtxoStatus.Spent())
+	assert.Equal(t, hash, spentUtxoStatus.Hash())
+	assert.Equal(t, 0, spentUtxoStatus.Index())
 }
 
 func newService() (explorer.Service, error) {

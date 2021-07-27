@@ -92,10 +92,8 @@ func (e *elements) GetUnspentsForAddresses(
 	return e.toUtxos(unspents)
 }
 
-func (e *elements) GetUnspentStatus(
-	hash string, index uint32,
-) (*explorer.UtxoStatus, error) {
-	return nil, fmt.Errorf("not implemeneted")
+func (e *elements) GetUnspentStatus(txid string, index uint32) (explorer.UtxoStatus, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 type utxoResult struct {
