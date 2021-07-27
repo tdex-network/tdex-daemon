@@ -452,7 +452,9 @@ end:
 		}
 
 		if swapAccept != nil {
-			t.blockchainListener.StartObserveTx(trade.TxID)
+			t.blockchainListener.StartObserveOutpoints(
+				fillProposalResult.SelectedUnspents, trade.ID.String(),
+			)
 		}
 	}()
 
