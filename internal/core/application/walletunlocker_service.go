@@ -251,8 +251,6 @@ func (w *walletUnlockerService) InitWallet(
 			chErr <- fmt.Errorf("unable to persist restored state: %v", err)
 			return
 		}
-
-		go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
 	}
 
 	if w.blockchainListener.PubSubService() != nil {
@@ -857,7 +855,6 @@ func fetchAndAddUnspents(
 	if unspents == nil {
 		return 0, nil
 	}
-	go startObserveUnconfirmedUnspents(bcListener, unspents)
 	return addUnspents(unspentRepo, unspents)
 }
 
@@ -895,21 +892,6 @@ func spendUnspentsAsync(
 	}
 	if count > 0 {
 		log.Debugf("spent %d unspents", count)
-	}
-}
-
-func startObserveUnconfirmedUnspents(
-	bcListener BlockchainListener, unspents []domain.Unspent,
-) {
-	count := 0
-	for _, u := range unspents {
-		if !u.IsConfirmed() {
-			bcListener.StartObserveTx(u.TxID)
-			count++
-		}
-	}
-	if count > 0 {
-		log.Debugf("num of unconfirmed unspents to watch: %d", count)
 	}
 }
 
