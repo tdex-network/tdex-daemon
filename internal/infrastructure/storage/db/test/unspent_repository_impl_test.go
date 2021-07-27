@@ -90,7 +90,7 @@ func testAddUnspents(t *testing.T, repo unspentRepository) {
 	mockedUnspents := mockedData.unspents
 
 	iNewUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -108,7 +108,7 @@ func testGetAvailableUnspents(t *testing.T, repo unspentRepository) {
 	mockedUnspents := mockedData.unspents
 
 	iAvailableUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -127,7 +127,7 @@ func testGetAllUnspentsForAddresses(t *testing.T, repo unspentRepository) {
 	mockedUnspents := mockedData.unspents
 
 	iAllUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -147,7 +147,7 @@ func testGetUnspentsForAddresses(t *testing.T, repo unspentRepository) {
 	expectedUnspents := mockedData.expectedUnspents
 
 	iUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -166,7 +166,7 @@ func testGetAvailableUnspentsForAddresses(t *testing.T, repo unspentRepository) 
 	mockedUnspents := mockedData.unspents
 
 	iAvailableUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -191,7 +191,7 @@ func testGetUnspentWithKey(t *testing.T, repo unspentRepository) {
 	require.Nil(t, unspent)
 
 	unspent, err = repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -208,7 +208,7 @@ func testGetBalance(t *testing.T, repo unspentRepository) {
 	asset := mockedData.asset
 
 	iBalance, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -228,7 +228,7 @@ func testGetUnlockedBalance(t *testing.T, repo unspentRepository) {
 	asset := mockedData.asset
 
 	iBalance, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -247,7 +247,7 @@ func testSpendUnspents(t *testing.T, repo unspentRepository) {
 	unspentKeys := mockedData.unspentKeys
 
 	iUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -295,7 +295,7 @@ func testConfirmUnspents(t *testing.T, repo unspentRepository) {
 	unspentKeys := mockedData.unspentKeys
 
 	iUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 
@@ -344,7 +344,7 @@ func testLockUnlockUnspents(t *testing.T, repo unspentRepository) {
 	mockedTradeID := uuid.New()
 
 	iLockedUnspents, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
+		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
 			return nil, err
 		}
 

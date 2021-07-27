@@ -29,7 +29,7 @@ func NewUnspentRepositoryImpl(store, lockStore *badgerhold.Store) domain.Unspent
 func (u unspentRepositoryImpl) AddUnspents(
 	ctx context.Context,
 	unspents []domain.Unspent,
-) error {
+) (int, error) {
 	return u.addUnspents(ctx, unspents)
 }
 
@@ -154,14 +154,19 @@ func (u unspentRepositoryImpl) UnlockUnspents(
 func (u unspentRepositoryImpl) addUnspents(
 	ctx context.Context,
 	unspents []domain.Unspent,
-) error {
+) (int, error) {
+	count := 0
 	for _, v := range unspents {
-		if err := u.insertUnspent(ctx, v); err != nil {
-			return err
+		done, err := u.insertUnspent(ctx, v)
+		if err != nil {
+			return -1, err
+		}
+		if done {
+			count++
 		}
 	}
 
-	return nil
+	return count, nil
 }
 
 func (u unspentRepositoryImpl) getAllUnspents(ctx context.Context) []domain.Unspent {
@@ -225,6 +230,10 @@ func (u unspentRepositoryImpl) spendUnspent(
 	}
 
 	if unspent == nil {
+		return false, nil
+	}
+
+	if unspent.Spent {
 		return false, nil
 	}
 
@@ -448,7 +457,7 @@ func (u unspentRepositoryImpl) updateUnspent(
 func (u unspentRepositoryImpl) insertUnspent(
 	ctx context.Context,
 	unspent domain.Unspent,
-) error {
+) (bool, error) {
 	var err error
 	if ctx.Value("utx") != nil {
 		tx := ctx.Value("utx").(*badger.Txn)
@@ -458,11 +467,12 @@ func (u unspentRepositoryImpl) insertUnspent(
 	}
 
 	if err != nil {
-		if err != badgerhold.ErrKeyExists {
-			return err
+		if err == badgerhold.ErrKeyExists {
+			return false, nil
 		}
+		return false, err
 	}
-	return nil
+	return true, nil
 }
 
 type LockedUnspent struct {

@@ -236,7 +236,7 @@ func newTradeService(withFixedFee bool) (application.TradeService, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := repoManager.UnspentRepository().AddUnspents(ctx, unspents); err != nil {
+	if _, err := repoManager.UnspentRepository().AddUnspents(ctx, unspents); err != nil {
 		return nil, err
 	}
 
@@ -254,10 +254,11 @@ func newTradeService(withFixedFee bool) (application.TradeService, error) {
 
 	explorerSvc.(*mockExplorer).
 		On("GetTransactionStatus", mock.AnythingOfType("string")).
-		Return(map[string]interface{}{
-			"confirmed":  true,
-			"block_time": randomIntInRange(100000, 1000000),
-			"block_hash": randomHex(32),
+		Return(mockTxStatus{
+			"confirmed":    true,
+			"block_time":   randomIntInRange(100000, 1000000),
+			"block_height": randomIntInRange(100000, 1000000),
+			"block_hash":   randomHex(32),
 		}, nil)
 	explorerSvc.(*mockExplorer).
 		On("GetTransactionHex", mock.AnythingOfType("string")).

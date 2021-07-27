@@ -24,7 +24,9 @@ func NewUnspentRepositoryImpl(store *unspentInmemoryStore) domain.UnspentReposit
 //it adds non exiting unspent's to the memory
 //in case that unspent's, passed to the function, are not already in memory
 //it will mark unspent in memory, as spent
-func (r UnspentRepositoryImpl) AddUnspents(_ context.Context, unspents []domain.Unspent) error {
+func (r UnspentRepositoryImpl) AddUnspents(
+	_ context.Context, unspents []domain.Unspent,
+) (int, error) {
 	r.store.locker.Lock()
 	defer r.store.locker.Unlock()
 
@@ -212,31 +214,18 @@ func (r UnspentRepositoryImpl) UnlockUnspents(
 	return r.unlockUnspents(unspentKeys)
 }
 
-func (r UnspentRepositoryImpl) addUnspents(unspents []domain.Unspent) error {
-	//add new unspent
+func (r UnspentRepositoryImpl) addUnspents(unspents []domain.Unspent) (int, error) {
+	count := 0
 	for _, newUnspent := range unspents {
 		if _, ok := r.store.unspents[newUnspent.Key()]; !ok {
 			r.store.unspents[domain.UnspentKey{
 				TxID: newUnspent.TxID,
 				VOut: newUnspent.VOut,
 			}] = newUnspent
+			count++
 		}
 	}
-
-	//update spent
-	for key, oldUnspent := range r.store.unspents {
-		exist := false
-		for _, newUnspent := range unspents {
-			if newUnspent.IsKeyEqual(oldUnspent.Key()) {
-				exist = true
-			}
-		}
-		if !exist {
-			r.store.unspents[key] = oldUnspent
-		}
-	}
-
-	return nil
+	return count, nil
 }
 
 func (r UnspentRepositoryImpl) getAllUnspents(includeSpent bool) []domain.Unspent {
