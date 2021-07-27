@@ -8,6 +8,9 @@ const (
 	MarketAccountDeposit
 	TransactionConfirmed
 	TransactionUnConfirmed
+	OutpointsUnspent
+	OutpointsSpentAndUnconfirmed
+	OutpointsSpentAndConfirmed
 )
 
 type EventType int
@@ -24,6 +27,12 @@ func (et EventType) String() string {
 		return "TransactionConfirmed"
 	case TransactionUnConfirmed:
 		return "TransactionUnConfirmed"
+	case OutpointsUnspent:
+		return "OutpointsUnspent"
+	case OutpointsSpentAndUnconfirmed:
+		return "OutpointsSpentAndUnconfirmed"
+	case OutpointsSpentAndConfirmed:
+		return "OutpointsSpentAndConfirmed"
 	default:
 		return "Unknown"
 	}
@@ -51,9 +60,23 @@ type TransactionEvent struct {
 	TxHex     string
 	EventType EventType
 	BlockHash string
-	BlockTime float64
+	BlockTime int
 }
 
 func (t TransactionEvent) Type() EventType {
 	return t.EventType
+}
+
+type OutpointsEvent struct {
+	EventType EventType
+	Outpoints []Outpoint
+	ExtraData interface{}
+	TxID      string
+	TxHex     string
+	BlockHash string
+	BlockTime int
+}
+
+func (o OutpointsEvent) Type() EventType {
+	return o.EventType
 }

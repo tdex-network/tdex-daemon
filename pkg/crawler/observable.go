@@ -2,6 +2,9 @@ package crawler
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"sync"
 	"time"
 
@@ -111,6 +114,7 @@ func (t *TransactionObservable) Observe(
 	}
 
 	observableStatus.Set(Waiting)
+	defer observableStatus.Set(Processed)
 	if err := rateLimiter.Wait(context.Background()); err != nil {
 		errChan <- err
 		return
@@ -123,10 +127,9 @@ func (t *TransactionObservable) Observe(
 		errChan <- err
 		return
 	}
-	txStatus := iTxStatus.(map[string]interface{})
+	txStatus := iTxStatus.(explorer.TransactionStatus)
 
 	if len(t.TxHex) <= 0 {
-
 		iTxHex, err := t.cb.Execute(func() (interface{}, error) {
 			return explorerSvc.GetTransactionHex(t.TxID)
 		})
@@ -135,32 +138,8 @@ func (t *TransactionObservable) Observe(
 		}
 	}
 
-	observableStatus.Set(Processed)
-
-	var confirmed bool
-	var blockHash string
-	var blockTime float64
-
-	for k, v := range txStatus {
-		switch value := v.(type) {
-		case bool:
-			if k == "confirmed" {
-				confirmed = value
-			}
-		case string:
-			if k == "block_hash" {
-				blockHash = value
-			}
-		case float64:
-			if k == "block_time" {
-				blockTime = value
-			}
-		}
-
-	}
-
 	trxStatus := TransactionUnConfirmed
-	if confirmed {
+	if txStatus.Confirmed() {
 		trxStatus = TransactionConfirmed
 	}
 
@@ -168,8 +147,8 @@ func (t *TransactionObservable) Observe(
 		TxID:      t.TxID,
 		TxHex:     t.TxHex,
 		EventType: trxStatus,
-		BlockHash: blockHash,
-		BlockTime: blockTime,
+		BlockHash: txStatus.BlockHash(),
+		BlockTime: txStatus.BlockTime(),
 	}
 
 	eventChan <- event
@@ -177,6 +156,119 @@ func (t *TransactionObservable) Observe(
 
 func (t *TransactionObservable) Key() string {
 	return t.TxID
+}
+
+type Outpoint interface {
+	Hash() string
+	Index() uint32
+}
+type OutpointsObservable struct {
+	Outpoints []Outpoint
+	ExtraData interface{}
+	cb        *gobreaker.CircuitBreaker
+}
+
+func NewOutpointsObservable(
+	outpoints []Outpoint, extraData interface{},
+) Observable {
+	return &OutpointsObservable{
+		Outpoints: outpoints,
+		ExtraData: extraData,
+		cb:        circuitbreaker.NewCircuitBreaker(),
+	}
+}
+
+func (o *OutpointsObservable) Observe(
+	explorerSvc explorer.Service,
+	errChan chan error,
+	eventChan chan Event,
+	observableStatus *observableStatus,
+	rateLimiter *rate.Limiter,
+) {
+	if o == nil {
+		return
+	}
+
+	observableStatus.Set(Waiting)
+	defer observableStatus.Set(Processed)
+	if err := rateLimiter.Wait(context.Background()); err != nil {
+		errChan <- err
+		return
+	}
+
+	numOuts := len(o.Outpoints)
+	statuses := make([]bool, 0)
+	var txHash string
+
+	for _, outpoint := range o.Outpoints {
+		iRes, err := o.cb.Execute(func() (interface{}, error) {
+			return explorerSvc.GetUnspentStatus(
+				outpoint.Hash(), outpoint.Index(),
+			)
+		})
+		if err != nil {
+			errChan <- err
+			return
+		}
+		unspentStatus := iRes.(explorer.UtxoStatus)
+
+		if unspentStatus.Spent() {
+			statuses = append(statuses, true)
+			if txHash == "" {
+				txHash = unspentStatus.Hash()
+			}
+		}
+	}
+	if len(statuses) != numOuts {
+		eventChan <- OutpointsEvent{
+			EventType: OutpointsUnspent,
+			Outpoints: o.Outpoints,
+			ExtraData: o.ExtraData,
+		}
+		return
+	}
+
+	iRes, err := o.cb.Execute(func() (interface{}, error) {
+		return explorerSvc.GetTransactionHex(txHash)
+	})
+	if err != nil {
+		errChan <- err
+		return
+	}
+	txHex := iRes.(string)
+
+	iTxStatus, err := o.cb.Execute(func() (interface{}, error) {
+		return explorerSvc.GetTransactionStatus(txHash)
+	})
+	if err != nil {
+		errChan <- err
+		return
+	}
+	txStatus := iTxStatus.(explorer.TransactionStatus)
+	eventType := OutpointsSpentAndUnconfirmed
+	if txStatus.Confirmed() {
+		eventType = OutpointsSpentAndConfirmed
+	}
+
+	eventChan <- OutpointsEvent{
+		EventType: eventType,
+		Outpoints: o.Outpoints,
+		ExtraData: o.ExtraData,
+		TxID:      txHash,
+		TxHex:     txHex,
+		BlockHash: txStatus.BlockHash(),
+		BlockTime: txStatus.BlockTime(),
+	}
+}
+
+func (o *OutpointsObservable) Key() string {
+	str := ""
+	for _, out := range o.Outpoints {
+		str += fmt.Sprintf("%s:%d", out.Hash(), out.Index())
+	}
+	buf := sha256.Sum256([]byte(str))
+
+	return hex.EncodeToString(buf[:])
 }
 
 type Status string
