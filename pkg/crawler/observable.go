@@ -12,7 +12,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
-	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
@@ -24,20 +23,20 @@ const (
 )
 
 type AddressObservable struct {
-	AccountIndex int
-	Address      string
-	BlindingKey  []byte
-	cb           *gobreaker.CircuitBreaker
+	Address     string
+	BlindingKey []byte
+	ExtraData   interface{}
+	cb          *gobreaker.CircuitBreaker
 }
 
 func NewAddressObservable(
-	accountIndex int, address string, blindKey []byte,
+	address string, blindKey []byte, extraData interface{},
 ) Observable {
 	return &AddressObservable{
-		AccountIndex: accountIndex,
-		Address:      address,
-		BlindingKey:  blindKey,
-		cb:           circuitbreaker.NewCircuitBreaker(),
+		Address:     address,
+		BlindingKey: blindKey,
+		ExtraData:   extraData,
+		cb:          circuitbreaker.NewCircuitBreaker(),
 	}
 }
 
@@ -53,6 +52,7 @@ func (a *AddressObservable) Observe(
 	}
 
 	observableStatus.Set(Waiting)
+	defer observableStatus.Set(Processed)
 	if err := rateLimiter.Wait(context.Background()); err != nil {
 		errChan <- err
 		return
@@ -67,20 +67,11 @@ func (a *AddressObservable) Observe(
 	}
 	unspents := iUnspents.([]explorer.Utxo)
 
-	observableStatus.Set(Processed)
-
-	var eventType EventType
-	switch a.AccountIndex {
-	case domain.FeeAccount:
-		eventType = FeeAccountDeposit
-	default:
-		eventType = MarketAccountDeposit
-	}
 	event := AddressEvent{
-		EventType:    eventType,
-		AccountIndex: a.AccountIndex,
-		Address:      a.Address,
-		Utxos:        unspents,
+		EventType: AddressUnspents,
+		ExtraData: a.ExtraData,
+		Address:   a.Address,
+		Utxos:     unspents,
 	}
 	eventChan <- event
 }
@@ -138,7 +129,7 @@ func (t *TransactionObservable) Observe(
 		}
 	}
 
-	trxStatus := TransactionUnConfirmed
+	trxStatus := TransactionUnconfirmed
 	if txStatus.Confirmed() {
 		trxStatus = TransactionConfirmed
 	}
@@ -296,7 +287,7 @@ func (o *observableStatus) Set(status Status) {
 	o.status = status
 }
 
-type observableHandler struct {
+type ObservableHandler struct {
 	observable       Observable
 	explorerSvc      explorer.Service
 	wg               *sync.WaitGroup
@@ -308,7 +299,7 @@ type observableHandler struct {
 	rateLimiter      *rate.Limiter
 }
 
-func newObservableHandler(
+func NewObservableHandler(
 	observable Observable,
 	explorerSvc explorer.Service,
 	wg *sync.WaitGroup,
@@ -316,11 +307,11 @@ func newObservableHandler(
 	eventChan chan Event,
 	errChan chan error,
 	rateLimiter *rate.Limiter,
-) *observableHandler {
+) *ObservableHandler {
 	ticker := time.NewTicker(interval)
 	stopChan := make(chan int, 1)
 
-	return &observableHandler{
+	return &ObservableHandler{
 		observable,
 		explorerSvc,
 		wg,
@@ -333,7 +324,7 @@ func newObservableHandler(
 	}
 }
 
-func (oh *observableHandler) start() {
+func (oh *ObservableHandler) Start() {
 	oh.logAction("start")
 	oh.wg.Add(1)
 	for {
@@ -356,13 +347,13 @@ func (oh *observableHandler) start() {
 	}
 }
 
-func (oh *observableHandler) stop() {
+func (oh ObservableHandler) Stop() {
 	oh.logAction("stop")
 	oh.stopChan <- 1
 	oh.wg.Done()
 }
 
-func (oh *observableHandler) logAction(action string) {
+func (oh *ObservableHandler) logAction(action string) {
 	obs := oh.observable
 	switch obs.(type) {
 	case *AddressObservable:

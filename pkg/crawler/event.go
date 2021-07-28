@@ -4,10 +4,9 @@ import "github.com/tdex-network/tdex-daemon/pkg/explorer"
 
 const (
 	CloseSignal EventType = iota
-	FeeAccountDeposit
-	MarketAccountDeposit
+	AddressUnspents
 	TransactionConfirmed
-	TransactionUnConfirmed
+	TransactionUnconfirmed
 	OutpointsUnspent
 	OutpointsSpentAndUnconfirmed
 	OutpointsSpentAndConfirmed
@@ -19,14 +18,12 @@ func (et EventType) String() string {
 	switch et {
 	case CloseSignal:
 		return "CloseSignal"
-	case FeeAccountDeposit:
-		return "FeeAccountDeposit"
-	case MarketAccountDeposit:
-		return "MarketAccountDeposit"
+	case AddressUnspents:
+		return "AddressUnspents"
 	case TransactionConfirmed:
 		return "TransactionConfirmed"
-	case TransactionUnConfirmed:
-		return "TransactionUnConfirmed"
+	case TransactionUnconfirmed:
+		return "TransactionUnconfirmed"
 	case OutpointsUnspent:
 		return "OutpointsUnspent"
 	case OutpointsSpentAndUnconfirmed:
@@ -45,10 +42,10 @@ func (q CloseEvent) Type() EventType {
 }
 
 type AddressEvent struct {
-	EventType    EventType
-	AccountIndex int
-	Address      string
-	Utxos        []explorer.Utxo
+	EventType EventType
+	Address   string
+	ExtraData interface{}
+	Utxos     []explorer.Utxo
 }
 
 func (a AddressEvent) Type() EventType {

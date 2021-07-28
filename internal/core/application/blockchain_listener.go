@@ -116,7 +116,7 @@ func (b *blockchainListener) StartObserveAddress(
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	observable := crawler.NewAddressObservable(accountIndex, addr, blindKey)
+	observable := crawler.NewAddressObservable(addr, blindKey, accountIndex)
 
 	b.addOrQueueObservable(observable)
 }
