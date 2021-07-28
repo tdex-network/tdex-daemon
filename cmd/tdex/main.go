@@ -34,6 +34,15 @@ var (
 
 	tdexDataDir = btcutil.AppDataDir("tdex-operator", false)
 	statePath   = filepath.Join(tdexDataDir, "state.json")
+
+	initialState = map[string]string{
+		"network":        defaultNetwork,
+		"explorer_url":   defaultExplorer,
+		"rpcserver":      defaultRPCServer,
+		"no_macaroons":   strconv.FormatBool(defaultNoMacaroonsAuth),
+		"tls_cert_path":  defaultTLSCertPath,
+		"macaroons_path": defaultMacaroonsPath,
+	}
 )
 
 func init() {
@@ -87,12 +96,18 @@ func main() {
 }
 
 func getState() (map[string]string, error) {
-	data := map[string]string{}
-
 	file, err := ioutil.ReadFile(statePath)
 	if err != nil {
-		return nil, errors.New("get config state error: try 'config init'")
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		if err := setState(initialState); err != nil {
+			return nil, err
+		}
+		return initialState, nil
 	}
+
+	data := map[string]string{}
 	json.Unmarshal(file, &data)
 
 	return data, nil
