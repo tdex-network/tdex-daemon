@@ -39,7 +39,7 @@ var (
 		"network":        defaultNetwork,
 		"explorer_url":   defaultExplorer,
 		"rpcserver":      defaultRPCServer,
-		"no_macaroons":   strconv.FormatBool(defaultMacaroonsAuth),
+		"no_macaroons":   strconv.FormatBool(defaultNoMacaroonsAuth),
 		"tls_cert_path":  defaultTLSCertPath,
 		"macaroons_path": defaultMacaroonsPath,
 	}
