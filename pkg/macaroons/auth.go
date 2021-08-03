@@ -11,11 +11,12 @@ import (
 // credentials.PerRPCCredentials interface.
 type MacaroonCredential struct {
 	*macaroon.Macaroon
+	withTLS bool
 }
 
 // RequireTransportSecurity implements the PerRPCCredentials interface.
 func (m MacaroonCredential) RequireTransportSecurity() bool {
-	return true
+	return m.withTLS
 }
 
 // GetRequestMetadata implements the PerRPCCredentials interface. This method
@@ -38,8 +39,9 @@ func (m MacaroonCredential) GetRequestMetadata(
 
 // NewMacaroonCredential returns a copy of the passed macaroon wrapped in a
 // MacaroonCredential struct which implements PerRPCCredentials.
-func NewMacaroonCredential(m *macaroon.Macaroon) MacaroonCredential {
+func NewMacaroonCredential(m *macaroon.Macaroon, withTLS bool) MacaroonCredential {
 	ms := MacaroonCredential{}
 	ms.Macaroon = m.Clone()
+	ms.withTLS = withTLS
 	return ms
 }
