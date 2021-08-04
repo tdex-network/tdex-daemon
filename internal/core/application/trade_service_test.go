@@ -274,6 +274,7 @@ func newTradeService(withFixedFee bool) (application.TradeService, error) {
 		tradeExpiryDuration,
 		tradePriceSlippage,
 		regtest,
+		feeBalanceThreshold,
 	), nil
 }
 
