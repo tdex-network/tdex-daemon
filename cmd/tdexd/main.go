@@ -120,6 +120,7 @@ func main() {
 		tradesExpiryDurationInSeconds,
 		pricesSlippagePercentage,
 		network,
+		feeThreshold,
 	)
 	operatorSvc := application.NewOperatorService(
 		repoManager,

@@ -29,12 +29,9 @@ var (
 	// ErrInvalidActionType is returned if the attempting to register a webhook
 	// for an invalid action type.
 	ErrInvalidActionType = errors.New("action type is unknown")
-	// ErrMarketBaseBalanceTooLow is returned when the balance of the base asset
-	// of a market is below 0.
-	ErrMarketBaseBalanceTooLow = errors.New("market base balance is too low")
-	// ErrMarketQuoteBalanceTooLow is returned when the balance of the quote asset
-	// of a market is below 0.
-	ErrMarketQuoteBalanceTooLow = errors.New("market quote balance is too low")
+	// ErrMarketBalanceTooLow is returned when the balance of the base or quote
+	// asset of a market is below its fixed fee.
+	ErrMarketBalanceTooLow = errors.New("market base or quote balance too low")
 	// ErrWithdrawBaseAmountTooBig is returned when attempting to withdraw more
 	// than the total amount of base asset of a market.
 	ErrWithdrawBaseAmountTooBig = errors.New(
