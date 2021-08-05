@@ -30,7 +30,7 @@ type BlockchainListener interface {
 	StopObserveTx(txid string)
 
 	StartObserveOutpoints(outpoints []explorer.Utxo, tradeID string)
-	StopObserveOutpoints(outpoints []crawler.Outpoint)
+	StopObserveOutpoints(outpoints interface{})
 
 	PubSubService() ports.SecurePubSub
 }
@@ -158,7 +158,19 @@ func (b *blockchainListener) StopObserveTx(txid string) {
 	b.crawlerSvc.RemoveObservable(&crawler.TransactionObservable{TxID: txid})
 }
 
-func (b *blockchainListener) StopObserveOutpoints(outs []crawler.Outpoint) {
+func (b *blockchainListener) StopObserveOutpoints(utxos interface{}) {
+	var outs []crawler.Outpoint
+
+	if list, ok := utxos.([]crawler.Outpoint); ok {
+		outs = list
+	} else {
+		list := utxos.([]explorer.Utxo)
+		outs = make([]crawler.Outpoint, 0, len(list))
+		for _, u := range list {
+			outs = append(outs, u)
+		}
+	}
+
 	b.crawlerSvc.RemoveObservable(&crawler.OutpointsObservable{
 		Outpoints: outs,
 	})
@@ -191,7 +203,7 @@ func (b *blockchainListener) listenToEventChannel() {
 				break
 			}
 
-			if err := b.settleTrade(&trade.ID, e.BlockTime, e.TxHex); err != nil {
+			if err := b.settleTrade(&trade.ID, e.BlockTime, e.TxHex, e.TxID); err != nil {
 				log.Warnf("trying to settle trade with id %s: %v", trade.ID, err)
 				break
 			}
@@ -228,7 +240,7 @@ func (b *blockchainListener) listenToEventChannel() {
 			}
 
 			if txIsConfirmed {
-				if err := b.settleTrade(tradeID, e.BlockTime, e.TxHex); err != nil {
+				if err := b.settleTrade(tradeID, e.BlockTime, e.TxHex, e.TxID); err != nil {
 					log.WithError(err).Warnf(
 						"an error occured while settling trade with id %s", tradeID,
 					)
@@ -269,7 +281,7 @@ func (b *blockchainListener) startPendingObservables() {
 }
 
 func (b *blockchainListener) settleTrade(
-	tradeID *uuid.UUID, blockTime int, txHex string,
+	tradeID *uuid.UUID, blockTime int, txHex, txID string,
 ) error {
 	if err := b.repoManager.TradeRepository().UpdateTrade(
 		context.Background(),
@@ -281,6 +293,9 @@ func (b *blockchainListener) settleTrade(
 			}
 			if mustAddTxHex {
 				t.TxHex = txHex
+			}
+			if t.TxID == "" {
+				t.TxID = txID
 			}
 
 			return t, nil
@@ -330,7 +345,6 @@ func (b *blockchainListener) updateUtxoSet(
 		if count > 0 {
 			log.Debugf("confirmed %d unspents", count)
 		}
-		return nil
 	}
 
 	count, err := b.repoManager.UnspentRepository().AddUnspents(

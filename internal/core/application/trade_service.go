@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -401,12 +402,10 @@ func (t *tradeService) TradePropose(
 	swapExpiryTime = trade.ExpiryTime
 
 end:
-	var selectedUnspentKeys []domain.UnspentKey
-
 	if swapAccept != nil {
 		log.Infof("trade with id %s accepted", trade.ID)
+		selectedUnspentKeys := getUnspentKeys(fillProposalResult.SelectedUnspents)
 
-		selectedUnspentKeys = getUnspentKeys(fillProposalResult.SelectedUnspents)
 		lockedUnspents, _ := t.repoManager.UnspentRepository().LockUnspents(
 			ctx,
 			selectedUnspentKeys,
@@ -418,7 +417,7 @@ end:
 		go func() {
 			// admit a tollerance of 1 minute past the expiration time.
 			time.Sleep(t.expiryDuration + time.Minute)
-			t.checkTradeExpiration(trade.TxID, selectedUnspentKeys)
+			t.checkTradeExpiration(trade.ID, fillProposalResult.SelectedUnspents)
 		}()
 	} else {
 		log.WithField("reason", swapFail.GetFailureMessage()).Infof("trade with id %s rejected", trade.ID)
@@ -509,12 +508,13 @@ func (t *tradeService) tradeComplete(
 
 	// we are going to broadcast the transaction, this will actually tell if the
 	// transaction is a valid one to be included in blockcchain
-	if _, err = t.explorerSvc.BroadcastTransaction(res.TxHex); err != nil {
+	txID, err = t.explorerSvc.BroadcastTransaction(res.TxHex)
+	if err != nil {
 		log.WithError(err).WithField("hex", res.TxHex).Warn("unable to broadcast trade tx")
 		return
 	}
+	trade.TxID = txID
 
-	txID = res.TxID
 	log.Infof("trade with id %s broadcasted: %s", trade.ID, txID)
 
 	// we make sure that any problem happening at this point
@@ -525,7 +525,7 @@ func (t *tradeService) tradeComplete(
 		if err := t.repoManager.TradeRepository().UpdateTrade(
 			ctx,
 			&trade.ID,
-			func(previousTrade *domain.Trade) (*domain.Trade, error) { return trade, nil },
+			func(_ *domain.Trade) (*domain.Trade, error) { return trade, nil },
 		); err != nil {
 			log.Error("unable to persist completed trade with id ", trade.ID, " : ", err.Error())
 		}
@@ -627,19 +627,20 @@ func (t *tradeService) unlockUnspentsForTrade(trade *domain.Trade) {
 }
 
 func (t *tradeService) checkTradeExpiration(
-	tradeTxID string,
-	selectedUnspentKeys []domain.UnspentKey,
+	tradeID uuid.UUID,
+	unspents []explorer.Utxo,
 ) {
 	ctx := context.Background()
 
 	// if the trade is expired it's required to unlock the unspents used as input
 	// and to bring the trade to failed status
-	trade, _ := t.repoManager.TradeRepository().GetTradeByTxID(ctx, tradeTxID)
+	trade, _ := t.repoManager.TradeRepository().GetOrCreateTrade(ctx, &tradeID)
 
 	if trade.IsExpired() {
-		t.blockchainListener.StopObserveTx(trade.TxID)
+		t.blockchainListener.StopObserveOutpoints(unspents)
+		unspentKeys := getUnspentKeys(unspents)
 
-		count, err := t.repoManager.UnspentRepository().UnlockUnspents(ctx, selectedUnspentKeys)
+		count, err := t.repoManager.UnspentRepository().UnlockUnspents(ctx, unspentKeys)
 		if err != nil {
 			log.WithError(err).Warnf(
 				"trade with id %s has expired but an error occured while "+
