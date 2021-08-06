@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -717,40 +716,40 @@ func (o *operatorService) WithdrawMarketFunds(
 	if err != nil {
 		return nil, err
 	}
-
 	if accountIndex < 0 {
 		return nil, ErrMarketNotExist
 	}
+
+	// Eventually, check fee and market account to notify for low balances.
+	defer func() {
+		go checkFeeAndMarketBalances(
+			o.repoManager, o.blockchainListener.PubSubService(),
+			ctx, market, o.network.AssetID, o.feeAccountBalanceThreshold,
+		)
+	}()
 
 	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	info, err := vault.AllDerivedAddressesInfoForAccount(accountIndex)
+	balance, err := getUnlockedBalanceForMarket(
+		o.repoManager, ctx, market,
+	)
 	if err != nil {
 		return nil, err
 	}
-	addresses := info.Addresses()
+	if balance.BaseAmount <= uint64(market.FixedFee.BaseFee) ||
+		balance.QuoteAmount <= uint64(market.FixedFee.QuoteFee) {
+		return nil, ErrMarketBalanceTooLow
+	}
 
-	baseBalance, err := o.repoManager.UnspentRepository().GetUnlockedBalance(ctx, addresses, req.BaseAsset)
-	if err != nil {
-		return nil, err
-	}
-	if baseBalance <= 0 {
-		return nil, ErrMarketBaseBalanceTooLow
-	}
+	baseBalance, quoteBalance := balance.BaseAmount, balance.QuoteAmount
+
 	if req.BalanceToWithdraw.BaseAmount > baseBalance {
 		return nil, ErrWithdrawBaseAmountTooBig
 	}
 
-	quoteBalance, err := o.repoManager.UnspentRepository().GetUnlockedBalance(ctx, addresses, req.QuoteAsset)
-	if err != nil {
-		return nil, err
-	}
-	if quoteBalance <= 0 {
-		return nil, ErrMarketQuoteBalanceTooLow
-	}
 	if req.BalanceToWithdraw.QuoteAmount > quoteBalance {
 		return nil, ErrWithdrawQuoteAmountTooBig
 	}
@@ -862,66 +861,25 @@ func (o *operatorService) WithdrawMarketFunds(
 	)
 
 	// Publish message for topic AccountWithdraw to pubsub service.
-	if svc := o.blockchainListener.PubSubService(); svc != nil {
-		go func() {
-			if err != nil {
-				log.WithError(err).Warn("an error occured while retrieving quote balance")
-				return
-			}
-
-			payload := map[string]interface{}{
-				"market": map[string]string{
-					"base_asset":  req.BaseAsset,
-					"quote_asset": req.QuoteAsset,
-				},
-				"amount_withdraw": map[string]interface{}{
-					"base_amount":  req.BalanceToWithdraw.BaseAmount,
-					"quote_amount": req.BalanceToWithdraw.QuoteAmount,
-				},
-				"receiving_address": req.Address,
-				"txid":              txid,
-				"balance": map[string]uint64{
-					"base_balance":  baseBalance - req.BalanceToWithdraw.BaseAmount,
-					"quote_balance": quoteBalance - req.BalanceToWithdraw.QuoteAmount,
-				},
-			}
-			message, _ := json.Marshal(payload)
-			topics := svc.TopicsByCode()
-			topic := topics[AccountWithdraw]
-			if err := svc.Publish(topic.Label(), string(message)); err != nil {
-				log.WithError(err).Warnf(
-					"an error occured while publishing message for topic %s",
-					topic.Label(),
-				)
-			}
-		}()
+	if err := publishAccountWithdrawTopic(
+		o.blockchainListener.PubSubService(),
+		req.Market, *balance, req.BalanceToWithdraw, req.Address, txid,
+	); err != nil {
+		log.Warn(err)
 	}
 
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
 }
 
-func (o *operatorService) FeeAccountBalance(ctx context.Context) (
-	int64,
-	error,
-) {
-	info, err := o.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(
-		ctx,
-		domain.FeeAccount,
-	)
-	if err != nil {
-		return 0, err
-	}
-
-	baseAssetAmount, err := o.repoManager.UnspentRepository().GetBalance(
-		ctx,
-		info.Addresses(),
-		o.marketBaseAsset,
+func (o *operatorService) FeeAccountBalance(ctx context.Context) (int64, error) {
+	balance, err := getUnlockedBalanceForFee(
+		o.repoManager, ctx, o.network.AssetID,
 	)
 	if err != nil {
 		return -1, err
 	}
-	return int64(baseAssetAmount), nil
+	return int64(balance), nil
 }
 
 func (o *operatorService) ListUtxos(

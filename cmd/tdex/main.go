@@ -263,7 +263,7 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 			if err := mac.UnmarshalBinary(macBytes); err != nil {
 				return nil, fmt.Errorf("could not parse macaroon %s: %s", macPath, err)
 			}
-			macCreds := macaroons.NewMacaroonCredential(mac)
+			macCreds := macaroons.NewMacaroonCredential(mac, true)
 			opts = append(opts, grpc.WithPerRPCCredentials(macCreds))
 		}
 	}

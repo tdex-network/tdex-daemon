@@ -48,13 +48,14 @@ type TradeService interface {
 }
 
 type tradeService struct {
-	repoManager        ports.RepoManager
-	explorerSvc        explorer.Service
-	blockchainListener BlockchainListener
-	marketBaseAsset    string
-	expiryDuration     time.Duration
-	priceSlippage      decimal.Decimal
-	network            *network.Network
+	repoManager                ports.RepoManager
+	explorerSvc                explorer.Service
+	blockchainListener         BlockchainListener
+	marketBaseAsset            string
+	expiryDuration             time.Duration
+	priceSlippage              decimal.Decimal
+	network                    *network.Network
+	feeAccountBalanceThreshold uint64
 }
 
 func NewTradeService(
@@ -65,6 +66,7 @@ func NewTradeService(
 	expiryDuration time.Duration,
 	priceSlippage decimal.Decimal,
 	net *network.Network,
+	feeAccountBalanceThreshold uint64,
 ) TradeService {
 	return newTradeService(
 		repoManager,
@@ -74,6 +76,7 @@ func NewTradeService(
 		expiryDuration,
 		priceSlippage,
 		net,
+		feeAccountBalanceThreshold,
 	)
 }
 
@@ -85,15 +88,17 @@ func newTradeService(
 	expiryDuration time.Duration,
 	priceSlippage decimal.Decimal,
 	net *network.Network,
+	feeAccountBalanceThreshold uint64,
 ) *tradeService {
 	return &tradeService{
-		repoManager:        repoManager,
-		explorerSvc:        explorerSvc,
-		blockchainListener: bcListener,
-		marketBaseAsset:    marketBaseAsset,
-		expiryDuration:     expiryDuration,
-		priceSlippage:      priceSlippage,
-		network:            net,
+		repoManager:                repoManager,
+		explorerSvc:                explorerSvc,
+		blockchainListener:         bcListener,
+		marketBaseAsset:            marketBaseAsset,
+		expiryDuration:             expiryDuration,
+		priceSlippage:              priceSlippage,
+		network:                    net,
+		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
 	}
 }
 
@@ -191,24 +196,12 @@ func (t *tradeService) GetMarketBalance(
 	market Market,
 ) (*BalanceWithFee, error) {
 	// check the asset strings
-	err := validateAssetString(market.BaseAsset)
-	if err != nil {
+	if err := validateAssetString(market.BaseAsset); err != nil {
 		return nil, domain.ErrMarketInvalidBaseAsset
 	}
 
-	err = validateAssetString(market.QuoteAsset)
-	if err != nil {
+	if err := validateAssetString(market.QuoteAsset); err != nil {
 		return nil, domain.ErrMarketInvalidQuoteAsset
-	}
-
-	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
-	if err != nil {
-		log.Debugf("error while retrieving vault: %s", err)
-		return nil, ErrServiceUnavailable
-	}
-	if vault.IsLocked() {
-		log.Debug("vault is locked")
-		return nil, ErrServiceUnavailable
 	}
 
 	m, accountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
@@ -216,45 +209,21 @@ func (t *tradeService) GetMarketBalance(
 		market.QuoteAsset,
 	)
 	if err != nil {
-		log.Debugf("error while retrieving market: %s", err)
+		log.WithError(err).Debug("error while retrieving market")
 		return nil, ErrServiceUnavailable
 	}
 	if accountIndex < 0 {
 		return nil, ErrMarketNotExist
 	}
 
-	info, err := vault.AllDerivedAddressesInfoForAccount(m.AccountIndex)
+	balance, err := getUnlockedBalanceForMarket(t.repoManager, ctx, m)
 	if err != nil {
-		log.Debugf("error while retrieving addresses: %s", err)
-		return nil, ErrServiceUnavailable
-	}
-	marketAddresses := info.Addresses()
-
-	baseAssetBalance, err := t.repoManager.UnspentRepository().GetBalance(
-		ctx,
-		marketAddresses,
-		m.BaseAsset,
-	)
-	if err != nil {
-		log.Debugf("error while retrieving base asset balance: %s", err)
-		return nil, ErrServiceUnavailable
-	}
-
-	quoteAssetBalance, err := t.repoManager.UnspentRepository().GetBalance(
-		ctx,
-		marketAddresses,
-		m.QuoteAsset,
-	)
-	if err != nil {
-		log.Debugf("error while retrieving quote asset balance: %s", err)
+		log.WithError(err).Debug("error while retrieving balance")
 		return nil, ErrServiceUnavailable
 	}
 
 	return &BalanceWithFee{
-		Balance: Balance{
-			BaseAmount:  baseAssetBalance,
-			QuoteAmount: quoteAssetBalance,
-		},
+		Balance: *balance,
 		Fee: Fee{
 			BasisPoint:    m.Fee,
 			FixedBaseFee:  m.FixedFee.BaseFee,
@@ -298,6 +267,14 @@ func (t *tradeService) TradePropose(
 	if marketAccountIndex < 0 {
 		return nil, nil, 0, ErrMarketNotExist
 	}
+
+	// Eventually, check fee and market accounts to notify for low balances.
+	defer func() {
+		go checkFeeAndMarketBalances(
+			t.repoManager, t.blockchainListener.PubSubService(),
+			ctx, mkt, t.network.AssetID, t.feeAccountBalanceThreshold,
+		)
+	}()
 
 	// get all unspents for market account (both as []domain.Unspents and as
 	// []explorer.Utxo)along with private blinding keys and signing derivation
@@ -382,8 +359,9 @@ func (t *tradeService) TradePropose(
 		trade.Fail(
 			swapRequest.GetId(),
 			int(pkgswap.ErrCodeRejectedSwapRequest),
-			err.Error(),
+			"internal error",
 		)
+		log.WithError(err).Infof("trade with id %s rejected", trade.ID)
 		swapFail = trade.SwapFailMessage()
 		goto end
 	}
@@ -395,6 +373,7 @@ func (t *tradeService) TradePropose(
 		uint64(t.expiryDuration.Seconds()),
 	); !ok {
 		swapFail = trade.SwapFailMessage()
+		log.Infof("trade with id %s rejected", trade.ID)
 		goto end
 	}
 
@@ -419,8 +398,10 @@ end:
 			time.Sleep(t.expiryDuration + time.Minute)
 			t.checkTradeExpiration(trade.ID, fillProposalResult.SelectedUnspents)
 		}()
-	} else {
-		log.WithField("reason", swapFail.GetFailureMessage()).Infof("trade with id %s rejected", trade.ID)
+
+		t.blockchainListener.StartObserveOutpoints(
+			fillProposalResult.SelectedUnspents, trade.ID.String(),
+		)
 	}
 
 	go func() {
@@ -448,12 +429,6 @@ end:
 			},
 		); err != nil {
 			log.WithError(err).Warn("unable to persist changes after trade is accepted")
-		}
-
-		if swapAccept != nil {
-			t.blockchainListener.StartObserveOutpoints(
-				fillProposalResult.SelectedUnspents, trade.ID.String(),
-			)
 		}
 	}()
 
