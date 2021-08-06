@@ -115,7 +115,7 @@ func newWalletUnlockerService(
 			log.Info("Restoring internal wallet's utxo set. This could take a while...")
 
 			info := vault.AllDerivedAddressesInfo()
-			if err := fetchAndAddUnspents(
+			if _, err := fetchAndAddUnspents(
 				w.explorerService,
 				w.repoManager.UnspentRepository(),
 				w.blockchainListener,
@@ -252,8 +252,6 @@ func (w *walletUnlockerService) InitWallet(
 			chErr <- fmt.Errorf("unable to persist restored state: %v", err)
 			return
 		}
-
-		go startObserveUnconfirmedUnspents(w.blockchainListener, unspents)
 	}
 
 	if w.blockchainListener.PubSubService() != nil {
@@ -625,7 +623,7 @@ func (w *walletUnlockerService) persistRestoredState(
 			}
 
 			// update utxo set
-			if err := w.repoManager.UnspentRepository().AddUnspents(ctx, unspents); err != nil {
+			if _, err := w.repoManager.UnspentRepository().AddUnspents(ctx, unspents); err != nil {
 				return nil, fmt.Errorf("unable to persist changes to the unspent repo: %s", err)
 			}
 
@@ -831,7 +829,7 @@ func fetchUnspents(
 
 func addUnspents(
 	unspentRepo domain.UnspentRepository, unspents []domain.Unspent,
-) error {
+) (int, error) {
 	return unspentRepo.AddUnspents(context.Background(), unspents)
 }
 
@@ -840,7 +838,7 @@ func fetchAndAddUnspents(
 	unspentRepo domain.UnspentRepository,
 	bcListener BlockchainListener,
 	info domain.AddressesInfo,
-) error {
+) (int, error) {
 	var unspents []domain.Unspent
 	var err error
 
@@ -853,12 +851,11 @@ func fetchAndAddUnspents(
 
 	unspents, err = fetchUnspents(explorerSvc, info)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	if unspents == nil {
-		return nil
+		return 0, nil
 	}
-	go startObserveUnconfirmedUnspents(bcListener, unspents)
 	return addUnspents(unspentRepo, unspents)
 }
 
@@ -869,14 +866,17 @@ func spendUnspents(
 }
 
 func addUnspentsAsync(unspentRepo domain.UnspentRepository, unspents []domain.Unspent) {
-	if err := addUnspents(unspentRepo, unspents); err != nil {
+	count, err := addUnspents(unspentRepo, unspents)
+	if err != nil {
 		log.Warnf(
 			"unexpected error occured while adding unspents to the utxo set. "+
 				"You must manually run ReloadUtxo RPC as soon as possible to restore "+
 				"the utxo set of the internal wallet. Error: %v", err,
 		)
 	}
-	log.Debugf("added %d unspents", len(unspents))
+	if count > 0 {
+		log.Debugf("added %d unspents", count)
+	}
 }
 
 func spendUnspentsAsync(
@@ -891,21 +891,8 @@ func spendUnspentsAsync(
 				"Error: %v", err,
 		)
 	}
-	log.Debugf("spent %d unspents", count)
-}
-
-func startObserveUnconfirmedUnspents(
-	bcListener BlockchainListener, unspents []domain.Unspent,
-) {
-	count := 0
-	for _, u := range unspents {
-		if !u.IsConfirmed() {
-			bcListener.StartObserveTx(u.TxID)
-			count++
-		}
-	}
 	if count > 0 {
-		log.Debugf("num of unconfirmed unspents to watch: %d", count)
+		log.Debugf("spent %d unspents", count)
 	}
 }
 

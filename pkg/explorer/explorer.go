@@ -24,6 +24,14 @@ type Utxo interface {
 	Parse() (*transaction.TxInput, *transaction.TxOutput, error)
 }
 
+// UtxoStatus represents whether a UTXO is spent. If it's actually spent,
+// it provides methods to know the hash and input index of the tx that spent it.
+type UtxoStatus interface {
+	Spent() bool
+	Hash() string
+	Index() int
+}
+
 // Transaction represents a transaction in the elements chain.
 type Transaction interface {
 	Hash() string
@@ -34,6 +42,13 @@ type Transaction interface {
 	Size() int
 	Weight() int
 	Confirmed() bool
+}
+
+type TransactionStatus interface {
+	Confirmed() bool
+	BlockHash() string
+	BlockHeight() int
+	BlockTime() int
 }
 
 // Service is representation of an explorer that allows to fetch data from the
@@ -48,6 +63,8 @@ type Service interface {
 		addresses []string,
 		blindingKeys [][]byte,
 	) (unspents []Utxo, err error)
+	// GetUnspentStatus returns the status of the provided unspent txid:index.
+	GetUnspentStatus(txid string, index uint32) (status UtxoStatus, err error)
 	// GetTransaction fetches the transaction given its hash.
 	GetTransaction(txid string) (tx Transaction, err error)
 	// GetTransactionHex fetches the transaction in hex format given its hash.
@@ -56,7 +73,7 @@ type Service interface {
 	// been included in the blockchain.
 	IsTransactionConfirmed(txid string) (confirmed bool, err error)
 	// GetTransactionStatus returns the status of the tx identified by its hash.
-	GetTransactionStatus(txid string) (status map[string]interface{}, err error)
+	GetTransactionStatus(txid string) (status TransactionStatus, err error)
 	// GetTransactionsForAddress returns the list of all txs relative to the
 	// given address.
 	GetTransactionsForAddress(address string, blindingKey []byte) (txs []Transaction, err error)

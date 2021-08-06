@@ -28,6 +28,5 @@ type Service interface {
 	Stop()
 	AddObservable(observable Observable)
 	RemoveObservable(observable Observable)
-	IsObservingAddresses(addresses []string) bool
 	GetEventChannel() chan Event
 }

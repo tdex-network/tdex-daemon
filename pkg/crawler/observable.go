@@ -2,6 +2,9 @@ package crawler
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"sync"
 	"time"
 
@@ -9,7 +12,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
-	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
@@ -21,20 +23,20 @@ const (
 )
 
 type AddressObservable struct {
-	AccountIndex int
-	Address      string
-	BlindingKey  []byte
-	cb           *gobreaker.CircuitBreaker
+	Address     string
+	BlindingKey []byte
+	ExtraData   interface{}
+	cb          *gobreaker.CircuitBreaker
 }
 
 func NewAddressObservable(
-	accountIndex int, address string, blindKey []byte,
+	address string, blindKey []byte, extraData interface{},
 ) Observable {
 	return &AddressObservable{
-		AccountIndex: accountIndex,
-		Address:      address,
-		BlindingKey:  blindKey,
-		cb:           circuitbreaker.NewCircuitBreaker(),
+		Address:     address,
+		BlindingKey: blindKey,
+		ExtraData:   extraData,
+		cb:          circuitbreaker.NewCircuitBreaker(),
 	}
 }
 
@@ -50,6 +52,7 @@ func (a *AddressObservable) Observe(
 	}
 
 	observableStatus.Set(Waiting)
+	defer observableStatus.Set(Processed)
 	if err := rateLimiter.Wait(context.Background()); err != nil {
 		errChan <- err
 		return
@@ -64,20 +67,11 @@ func (a *AddressObservable) Observe(
 	}
 	unspents := iUnspents.([]explorer.Utxo)
 
-	observableStatus.Set(Processed)
-
-	var eventType EventType
-	switch a.AccountIndex {
-	case domain.FeeAccount:
-		eventType = FeeAccountDeposit
-	default:
-		eventType = MarketAccountDeposit
-	}
 	event := AddressEvent{
-		EventType:    eventType,
-		AccountIndex: a.AccountIndex,
-		Address:      a.Address,
-		Utxos:        unspents,
+		EventType: AddressUnspents,
+		ExtraData: a.ExtraData,
+		Address:   a.Address,
+		Utxos:     unspents,
 	}
 	eventChan <- event
 }
@@ -111,6 +105,7 @@ func (t *TransactionObservable) Observe(
 	}
 
 	observableStatus.Set(Waiting)
+	defer observableStatus.Set(Processed)
 	if err := rateLimiter.Wait(context.Background()); err != nil {
 		errChan <- err
 		return
@@ -123,10 +118,9 @@ func (t *TransactionObservable) Observe(
 		errChan <- err
 		return
 	}
-	txStatus := iTxStatus.(map[string]interface{})
+	txStatus := iTxStatus.(explorer.TransactionStatus)
 
 	if len(t.TxHex) <= 0 {
-
 		iTxHex, err := t.cb.Execute(func() (interface{}, error) {
 			return explorerSvc.GetTransactionHex(t.TxID)
 		})
@@ -135,32 +129,8 @@ func (t *TransactionObservable) Observe(
 		}
 	}
 
-	observableStatus.Set(Processed)
-
-	var confirmed bool
-	var blockHash string
-	var blockTime float64
-
-	for k, v := range txStatus {
-		switch value := v.(type) {
-		case bool:
-			if k == "confirmed" {
-				confirmed = value
-			}
-		case string:
-			if k == "block_hash" {
-				blockHash = value
-			}
-		case float64:
-			if k == "block_time" {
-				blockTime = value
-			}
-		}
-
-	}
-
-	trxStatus := TransactionUnConfirmed
-	if confirmed {
+	trxStatus := TransactionUnconfirmed
+	if txStatus.Confirmed() {
 		trxStatus = TransactionConfirmed
 	}
 
@@ -168,8 +138,8 @@ func (t *TransactionObservable) Observe(
 		TxID:      t.TxID,
 		TxHex:     t.TxHex,
 		EventType: trxStatus,
-		BlockHash: blockHash,
-		BlockTime: blockTime,
+		BlockHash: txStatus.BlockHash(),
+		BlockTime: txStatus.BlockTime(),
 	}
 
 	eventChan <- event
@@ -177,6 +147,119 @@ func (t *TransactionObservable) Observe(
 
 func (t *TransactionObservable) Key() string {
 	return t.TxID
+}
+
+type Outpoint interface {
+	Hash() string
+	Index() uint32
+}
+type OutpointsObservable struct {
+	Outpoints []Outpoint
+	ExtraData interface{}
+	cb        *gobreaker.CircuitBreaker
+}
+
+func NewOutpointsObservable(
+	outpoints []Outpoint, extraData interface{},
+) Observable {
+	return &OutpointsObservable{
+		Outpoints: outpoints,
+		ExtraData: extraData,
+		cb:        circuitbreaker.NewCircuitBreaker(),
+	}
+}
+
+func (o *OutpointsObservable) Observe(
+	explorerSvc explorer.Service,
+	errChan chan error,
+	eventChan chan Event,
+	observableStatus *observableStatus,
+	rateLimiter *rate.Limiter,
+) {
+	if o == nil {
+		return
+	}
+
+	observableStatus.Set(Waiting)
+	defer observableStatus.Set(Processed)
+	if err := rateLimiter.Wait(context.Background()); err != nil {
+		errChan <- err
+		return
+	}
+
+	numOuts := len(o.Outpoints)
+	statuses := make([]bool, 0)
+	var txHash string
+
+	for _, outpoint := range o.Outpoints {
+		iRes, err := o.cb.Execute(func() (interface{}, error) {
+			return explorerSvc.GetUnspentStatus(
+				outpoint.Hash(), outpoint.Index(),
+			)
+		})
+		if err != nil {
+			errChan <- err
+			return
+		}
+		unspentStatus := iRes.(explorer.UtxoStatus)
+
+		if unspentStatus.Spent() {
+			statuses = append(statuses, true)
+			if txHash == "" {
+				txHash = unspentStatus.Hash()
+			}
+		}
+	}
+	if len(statuses) != numOuts {
+		eventChan <- OutpointsEvent{
+			EventType: OutpointsUnspent,
+			Outpoints: o.Outpoints,
+			ExtraData: o.ExtraData,
+		}
+		return
+	}
+
+	iRes, err := o.cb.Execute(func() (interface{}, error) {
+		return explorerSvc.GetTransactionHex(txHash)
+	})
+	if err != nil {
+		errChan <- err
+		return
+	}
+	txHex := iRes.(string)
+
+	iTxStatus, err := o.cb.Execute(func() (interface{}, error) {
+		return explorerSvc.GetTransactionStatus(txHash)
+	})
+	if err != nil {
+		errChan <- err
+		return
+	}
+	txStatus := iTxStatus.(explorer.TransactionStatus)
+	eventType := OutpointsSpentAndUnconfirmed
+	if txStatus.Confirmed() {
+		eventType = OutpointsSpentAndConfirmed
+	}
+
+	eventChan <- OutpointsEvent{
+		EventType: eventType,
+		Outpoints: o.Outpoints,
+		ExtraData: o.ExtraData,
+		TxID:      txHash,
+		TxHex:     txHex,
+		BlockHash: txStatus.BlockHash(),
+		BlockTime: txStatus.BlockTime(),
+	}
+}
+
+func (o *OutpointsObservable) Key() string {
+	str := ""
+	for _, out := range o.Outpoints {
+		str += fmt.Sprintf("%s:%d", out.Hash(), out.Index())
+	}
+	buf := sha256.Sum256([]byte(str))
+
+	return hex.EncodeToString(buf[:])
 }
 
 type Status string
@@ -204,7 +287,7 @@ func (o *observableStatus) Set(status Status) {
 	o.status = status
 }
 
-type observableHandler struct {
+type ObservableHandler struct {
 	observable       Observable
 	explorerSvc      explorer.Service
 	wg               *sync.WaitGroup
@@ -216,7 +299,7 @@ type observableHandler struct {
 	rateLimiter      *rate.Limiter
 }
 
-func newObservableHandler(
+func NewObservableHandler(
 	observable Observable,
 	explorerSvc explorer.Service,
 	wg *sync.WaitGroup,
@@ -224,11 +307,11 @@ func newObservableHandler(
 	eventChan chan Event,
 	errChan chan error,
 	rateLimiter *rate.Limiter,
-) *observableHandler {
+) *ObservableHandler {
 	ticker := time.NewTicker(interval)
 	stopChan := make(chan int, 1)
 
-	return &observableHandler{
+	return &ObservableHandler{
 		observable,
 		explorerSvc,
 		wg,
@@ -241,7 +324,7 @@ func newObservableHandler(
 	}
 }
 
-func (oh *observableHandler) start() {
+func (oh *ObservableHandler) Start() {
 	oh.logAction("start")
 	oh.wg.Add(1)
 	for {
@@ -264,13 +347,13 @@ func (oh *observableHandler) start() {
 	}
 }
 
-func (oh *observableHandler) stop() {
+func (oh ObservableHandler) Stop() {
 	oh.logAction("stop")
 	oh.stopChan <- 1
 	oh.wg.Done()
 }
 
-func (oh *observableHandler) logAction(action string) {
+func (oh *ObservableHandler) logAction(action string) {
 	obs := oh.observable
 	switch obs.(type) {
 	case *AddressObservable:

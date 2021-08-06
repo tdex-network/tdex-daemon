@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -27,6 +28,9 @@ type BlockchainListener interface {
 
 	StartObserveTx(txid string)
 	StopObserveTx(txid string)
+
+	StartObserveOutpoints(outpoints []explorer.Utxo, tradeID string)
+	StopObserveOutpoints(outpoints interface{})
 
 	PubSubService() ports.SecurePubSub
 }
@@ -112,13 +116,9 @@ func (b *blockchainListener) StartObserveAddress(
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	observable := crawler.NewAddressObservable(accountIndex, addr, blindKey)
+	observable := crawler.NewAddressObservable(addr, blindKey, accountIndex)
 
-	if !b.started {
-		b.pendingObservables = append(b.pendingObservables, observable)
-		return
-	}
-	b.crawlerSvc.AddObservable(observable)
+	b.addOrQueueObservable(observable)
 }
 
 func (b *blockchainListener) StartObserveTx(txid string) {
@@ -127,11 +127,25 @@ func (b *blockchainListener) StartObserveTx(txid string) {
 
 	observable := crawler.NewTransactionObservable(txid)
 
-	if !b.started {
-		b.pendingObservables = append(b.pendingObservables, observable)
-		return
+	b.addOrQueueObservable(observable)
+}
+
+func (b *blockchainListener) StartObserveOutpoints(
+	utxos []explorer.Utxo, tradeID string,
+) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	outs := make([]crawler.Outpoint, 0, len(utxos))
+	for _, u := range utxos {
+		outs = append(outs, u)
 	}
-	b.crawlerSvc.AddObservable(observable)
+	extraData := map[string]interface{}{
+		"tradeid": tradeID,
+	}
+	observable := crawler.NewOutpointsObservable(outs, extraData)
+
+	b.addOrQueueObservable(observable)
 }
 
 func (b *blockchainListener) StopObserveAddress(addr string) {
@@ -142,6 +156,24 @@ func (b *blockchainListener) StopObserveAddress(addr string) {
 
 func (b *blockchainListener) StopObserveTx(txid string) {
 	b.crawlerSvc.RemoveObservable(&crawler.TransactionObservable{TxID: txid})
+}
+
+func (b *blockchainListener) StopObserveOutpoints(utxos interface{}) {
+	var outs []crawler.Outpoint
+
+	if list, ok := utxos.([]crawler.Outpoint); ok {
+		outs = list
+	} else {
+		list := utxos.([]explorer.Utxo)
+		outs = make([]crawler.Outpoint, 0, len(list))
+		for _, u := range list {
+			outs = append(outs, u)
+		}
+	}
+
+	b.crawlerSvc.RemoveObservable(&crawler.OutpointsObservable{
+		Outpoints: outs,
+	})
 }
 
 func (b *blockchainListener) PubSubService() ports.SecurePubSub {
@@ -171,85 +203,66 @@ func (b *blockchainListener) listenToEventChannel() {
 				break
 			}
 
-			if err := b.settleTrade(&trade.ID, e); err != nil {
+			if err := b.settleTrade(&trade.ID, e.BlockTime, e.TxHex, e.TxID); err != nil {
 				log.Warnf("trying to settle trade with id %s: %v", trade.ID, err)
 				break
 			}
-			if err := b.confirmOrAddUnspents(e.TxHex, e.TxID, trade.MarketQuoteAsset); err != nil {
+			if err := b.updateUtxoSet(
+				e.TxHex, e.TxID, trade.MarketQuoteAsset, true,
+			); err != nil {
 				log.Warnf("trying to confirm or add unspents: %v", err)
 				break
 			}
 
 			// Publish message for topic TradeSettled to pubsub service.
-			if b.pubsubSvc != nil {
-				go func() {
-					ctx := context.Background()
-					mkt, mktAccount, err := b.repoManager.MarketRepository().GetMarketByAsset(
-						ctx, trade.MarketQuoteAsset,
-					)
-					if err != nil {
-						log.WithError(err).Warn("an error occured while retrieving market")
-						return
-					}
-
-					info, err := b.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(
-						ctx, mktAccount,
-					)
-					if err != nil {
-						log.WithError(err).Warn("an error occured while retrieving market addresses")
-						return
-					}
-					addresses := info.Addresses()
-					baseBalance, err := b.repoManager.UnspentRepository().GetBalance(
-						ctx, addresses, mkt.BaseAsset,
-					)
-					if err != nil {
-						log.WithError(err).Warn("an error occured while retrieving base balance")
-						return
-					}
-					quoteBalance, err := b.repoManager.UnspentRepository().GetBalance(
-						ctx, addresses, mkt.QuoteAsset,
-					)
-					if err != nil {
-						log.WithError(err).Warn("an error occured while retrieving quote balance")
-						return
-					}
-
-					payload := map[string]interface{}{
-						"txid": trade.TxID,
-						"swap": map[string]interface{}{
-							"amount_p": trade.SwapRequestMessage().GetAmountP(),
-							"asset_p":  trade.SwapRequestMessage().GetAssetP(),
-							"amount_r": trade.SwapRequestMessage().GetAmountR(),
-							"asset_r":  trade.SwapRequestMessage().GetAssetR(),
-						},
-						"price": map[string]string{
-							"base_price":  trade.MarketPrice.BasePrice.String(),
-							"quote_price": trade.MarketPrice.QuotePrice.String(),
-						},
-						"market": map[string]string{
-							"base_asset":  mkt.BaseAsset,
-							"quote_asset": trade.MarketQuoteAsset,
-						},
-						"balance": map[string]uint64{
-							"base_balance":  baseBalance,
-							"quote_balance": quoteBalance,
-						},
-					}
-					message, _ := json.Marshal(payload)
-					topics := b.pubsubSvc.TopicsByCode()
-					topic := topics[TradeSettled]
-
-					if err := b.pubsubSvc.Publish(topic.Label(), string(message)); err != nil {
-						log.WithError(err).Warnf(
-							"an error occured while publishing message for topic %s",
-							topic.Label(),
-						)
-					}
-				}()
-			}
+			go b.publishTradeSettledEvent(trade)
 			// stop watching for a tx after it's confirmed
 			b.StopObserveTx(e.TxID)
+		case crawler.OutpointsSpentAndUnconfirmed, crawler.OutpointsSpentAndConfirmed:
+			e := event.(crawler.OutpointsEvent)
+
+			txIsConfirmed := event.Type() == crawler.OutpointsSpentAndConfirmed
+
+			tradeID, err := extractTradeID(e.ExtraData)
+			if err != nil {
+				log.WithError(err).Warn(
+					"an error occured while retrieving tradeID from event",
+				)
+				break
+			}
+
+			trade, err := b.repoManager.TradeRepository().GetOrCreateTrade(
+				context.Background(), tradeID,
+			)
+			if err != nil {
+				log.WithError(err).Warn("an error occured while retrieving trade")
+				break
+			}
+
+			if txIsConfirmed {
+				if err := b.settleTrade(tradeID, e.BlockTime, e.TxHex, e.TxID); err != nil {
+					log.WithError(err).Warnf(
+						"an error occured while settling trade with id %s", tradeID,
+					)
+					break
+				}
+			}
+
+			if err := b.updateUtxoSet(
+				e.TxHex, e.TxID, trade.MarketQuoteAsset, txIsConfirmed,
+			); err != nil {
+				log.WithError(err).Warnf(
+					"an error occured while confirming or addding unspents",
+				)
+				break
+			}
+
+			if txIsConfirmed {
+				// Publish message for topic TradeSettled to pubsub service.
+				go b.publishTradeSettledEvent(trade)
+				// Stop watching outpoints.
+				b.StopObserveOutpoints(e.Outpoints)
+			}
 		}
 	}
 }
@@ -267,17 +280,22 @@ func (b *blockchainListener) startPendingObservables() {
 	b.pendingObservables = nil
 }
 
-func (b *blockchainListener) settleTrade(tradeID *uuid.UUID, event crawler.TransactionEvent) error {
+func (b *blockchainListener) settleTrade(
+	tradeID *uuid.UUID, blockTime int, txHex, txID string,
+) error {
 	if err := b.repoManager.TradeRepository().UpdateTrade(
 		context.Background(),
 		tradeID,
 		func(t *domain.Trade) (*domain.Trade, error) {
 			mustAddTxHex := t.IsAccepted()
-			if _, err := t.Settle(uint64(event.BlockTime)); err != nil {
+			if _, err := t.Settle(uint64(blockTime)); err != nil {
 				return nil, err
 			}
 			if mustAddTxHex {
-				t.TxHex = event.TxHex
+				t.TxHex = txHex
+			}
+			if t.TxID == "" {
+				t.TxID = txID
 			}
 
 			return t, nil
@@ -290,10 +308,8 @@ func (b *blockchainListener) settleTrade(tradeID *uuid.UUID, event crawler.Trans
 	return nil
 }
 
-func (b *blockchainListener) confirmOrAddUnspents(
-	txHex string,
-	txID string,
-	mktAsset string,
+func (b *blockchainListener) updateUtxoSet(
+	txHex, txID, mktAsset string, isTxConfirmed bool,
 ) error {
 	ctx := context.Background()
 	_, accountIndex, err := b.repoManager.MarketRepository().GetMarketByAsset(ctx, mktAsset)
@@ -301,7 +317,7 @@ func (b *blockchainListener) confirmOrAddUnspents(
 		return err
 	}
 
-	unspentsToAdd, unspentsToSpend, err := extractUnspentsFromTx(
+	unspentsToAddOrConfirm, unspentsToSpend, err := extractUnspentsFromTx(
 		b.repoManager.VaultRepository(),
 		b.network,
 		txHex,
@@ -311,37 +327,145 @@ func (b *blockchainListener) confirmOrAddUnspents(
 		return err
 	}
 
-	uLen := len(unspentsToAdd)
-	unspentAddresses := make([]string, uLen, uLen)
-	for i, u := range unspentsToAdd {
-		unspentAddresses[i] = u.Address
-	}
-
-	u, err := b.repoManager.UnspentRepository().GetAllUnspentsForAddresses(ctx, unspentAddresses)
-	if err != nil {
-		return err
-	}
-	if len(u) > 0 {
-		unspentKeys := make([]domain.UnspentKey, uLen, uLen)
-		for i, u := range unspentsToAdd {
-			unspentKeys[i] = u.Key()
+	// If the spending tx is in mempool, its inputs can be marked as spent and
+	// the outs added to the utxo set. Otherwise, only its outputs need to be
+	// marked as confirmed.
+	if isTxConfirmed {
+		unspentKeys := make([]domain.UnspentKey, 0, len(unspentsToAddOrConfirm))
+		for _, u := range unspentsToAddOrConfirm {
+			unspentKeys = append(unspentKeys, u.Key())
 		}
-		count, err := b.repoManager.UnspentRepository().ConfirmUnspents(ctx, unspentKeys)
+
+		count, err := b.repoManager.UnspentRepository().ConfirmUnspents(
+			ctx, unspentKeys,
+		)
 		if err != nil {
 			return err
 		}
-		log.Debugf("confirmed %d unspents", count)
-		return nil
+		if count > 0 {
+			log.Debugf("confirmed %d unspents", count)
+		}
 	}
 
-	go func() {
-		// these unspents must be inserted already confirmed.
-		for i := range unspentsToAdd {
-			unspentsToAdd[i].Confirmed = true
-		}
-		addUnspentsAsync(b.repoManager.UnspentRepository(), unspentsToAdd)
-		spendUnspentsAsync(b.repoManager.UnspentRepository(), unspentsToSpend)
-	}()
+	count, err := b.repoManager.UnspentRepository().AddUnspents(
+		ctx, unspentsToAddOrConfirm,
+	)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		log.Debugf("added %d unspents", count)
+	}
+
+	count, err = b.repoManager.UnspentRepository().SpendUnspents(
+		ctx, unspentsToSpend,
+	)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		log.Debugf("spent %d unspents", count)
+	}
 
 	return nil
+}
+
+func (b *blockchainListener) addOrQueueObservable(obs crawler.Observable) {
+	if !b.started {
+		b.pendingObservables = append(b.pendingObservables, obs)
+		return
+	}
+	b.crawlerSvc.AddObservable(obs)
+}
+
+func (b *blockchainListener) publishTradeSettledEvent(trade *domain.Trade) {
+	if b.pubsubSvc == nil {
+		return
+	}
+
+	ctx := context.Background()
+	mkt, mktAccount, err := b.repoManager.MarketRepository().GetMarketByAsset(
+		ctx, trade.MarketQuoteAsset,
+	)
+	if err != nil {
+		log.WithError(err).Warn("an error occured while retrieving market")
+		return
+	}
+
+	info, err := b.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(
+		ctx, mktAccount,
+	)
+	if err != nil {
+		log.WithError(err).Warn("an error occured while retrieving market addresses")
+		return
+	}
+	addresses := info.Addresses()
+	baseBalance, err := b.repoManager.UnspentRepository().GetBalance(
+		ctx, addresses, mkt.BaseAsset,
+	)
+	if err != nil {
+		log.WithError(err).Warn("an error occured while retrieving base balance")
+		return
+	}
+	quoteBalance, err := b.repoManager.UnspentRepository().GetBalance(
+		ctx, addresses, mkt.QuoteAsset,
+	)
+	if err != nil {
+		log.WithError(err).Warn("an error occured while retrieving quote balance")
+		return
+	}
+
+	payload := map[string]interface{}{
+		"txid":                 trade.TxID,
+		"settlement_timestamp": trade.SettlementTime,
+		"settlement_date":      time.Unix(int64(trade.SettlementTime), 0).Format(time.UnixDate),
+		"swap": map[string]interface{}{
+			"amount_p": trade.SwapRequestMessage().GetAmountP(),
+			"asset_p":  trade.SwapRequestMessage().GetAssetP(),
+			"amount_r": trade.SwapRequestMessage().GetAmountR(),
+			"asset_r":  trade.SwapRequestMessage().GetAssetR(),
+		},
+		"price": map[string]string{
+			"base_price":  trade.MarketPrice.BasePrice.String(),
+			"quote_price": trade.MarketPrice.QuotePrice.String(),
+		},
+		"market": map[string]string{
+			"base_asset":  mkt.BaseAsset,
+			"quote_asset": trade.MarketQuoteAsset,
+		},
+		"balance": map[string]uint64{
+			"base_balance":  baseBalance,
+			"quote_balance": quoteBalance,
+		},
+	}
+	message, _ := json.Marshal(payload)
+	topics := b.pubsubSvc.TopicsByCode()
+	topic := topics[TradeSettled]
+
+	if err := b.pubsubSvc.Publish(topic.Label(), string(message)); err != nil {
+		log.WithError(err).Warnf(
+			"an error occured while publishing message for topic %s",
+			topic.Label(),
+		)
+	}
+}
+
+func extractTradeID(data interface{}) (*uuid.UUID, error) {
+	m, ok := data.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("extra data unknown type")
+	}
+	iTradeID, ok := m["tradeid"]
+	if !ok {
+		return nil, fmt.Errorf("extra data misses trade ID")
+	}
+	tradeID, ok := iTradeID.(string)
+	if !ok {
+		return nil, fmt.Errorf("extra data unknown trade ID type")
+	}
+	id, err := uuid.Parse(tradeID)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
 }

@@ -30,7 +30,9 @@ func (e *esplora) IsTransactionConfirmed(hash string) (bool, error) {
 	return e.isTransactionConfirmed(hash)
 }
 
-func (e *esplora) GetTransactionStatus(hash string) (map[string]interface{}, error) {
+func (e *esplora) GetTransactionStatus(
+	hash string,
+) (explorer.TransactionStatus, error) {
 	return e.getTransactionStatus(hash)
 }
 
@@ -136,21 +138,16 @@ func (e *esplora) getTransactionHex(hash string) (string, error) {
 }
 
 func (e *esplora) isTransactionConfirmed(hash string) (bool, error) {
-	trxStatus, err := e.getTransactionStatus(hash)
+	status, err := e.getTransactionStatus(hash)
 	if err != nil {
 		return false, err
 	}
-
-	var isConfirmed bool
-	switch confirmed := trxStatus["confirmed"].(type) {
-	case bool:
-		isConfirmed = confirmed
-	}
-
-	return isConfirmed, nil
+	return status.Confirmed(), nil
 }
 
-func (e *esplora) getTransactionStatus(hash string) (map[string]interface{}, error) {
+func (e *esplora) getTransactionStatus(
+	hash string,
+) (explorer.TransactionStatus, error) {
 	url := fmt.Sprintf(
 		"%s/tx/%s/status",
 		e.apiURL,
@@ -164,13 +161,12 @@ func (e *esplora) getTransactionStatus(hash string) (map[string]interface{}, err
 		return nil, fmt.Errorf(resp)
 	}
 
-	var trxStatus map[string]interface{}
-	err = json.Unmarshal([]byte(resp), &trxStatus)
-	if err != nil {
+	var txStatus txStatus
+	if err := json.Unmarshal([]byte(resp), &txStatus); err != nil {
 		return nil, err
 	}
 
-	return trxStatus, nil
+	return txStatus, nil
 }
 
 type txResult struct {

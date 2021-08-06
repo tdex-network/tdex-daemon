@@ -915,22 +915,20 @@ func (o *operatorService) ListUtxos(
 func (o *operatorService) ReloadUtxos(ctx context.Context) error {
 	//get all addresses
 	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(
-		ctx,
-		nil,
-		"",
-		nil,
+		ctx, nil, "", nil,
 	)
 	if err != nil {
 		return err
 	}
 
 	addressesInfo := vault.AllDerivedAddressesInfo()
-	return fetchAndAddUnspents(
+	_, err = fetchAndAddUnspents(
 		o.explorerSvc,
 		o.repoManager.UnspentRepository(),
 		o.blockchainListener,
 		addressesInfo,
 	)
+	return err
 }
 
 // ClaimMarketDeposit method add unspents to the market

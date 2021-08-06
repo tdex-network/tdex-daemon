@@ -102,10 +102,10 @@ func TestGetTransactionStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, true, status["confirmed"].(bool))
-	assert.Equal(t, true, len(status["block_hash"].(string)) > 0)
-	assert.Equal(t, true, status["block_height"].(float64) > 0)
-	assert.Equal(t, true, status["block_time"].(float64) > 0)
+	assert.Equal(t, true, status.Confirmed())
+	assert.Equal(t, true, len(status.BlockHash()) > 0)
+	assert.Equal(t, true, status.BlockHeight() > 0)
+	assert.Equal(t, true, status.BlockTime() > 0)
 }
 
 func TestGetTransactionsForAddress(t *testing.T) {

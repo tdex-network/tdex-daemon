@@ -11,7 +11,7 @@ import (
 type UnspentRepository interface {
 	// AddUnspents adds the provided unspents to the repository. Those already
 	// existing won't be re-added
-	AddUnspents(ctx context.Context, unspents []Unspent) error
+	AddUnspents(ctx context.Context, unspents []Unspent) (int, error)
 	// GetAllUnspents returns the entire UTXO set, included those locked or
 	// already spent.
 	GetAllUnspents(ctx context.Context) []Unspent

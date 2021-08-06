@@ -4,10 +4,12 @@ import "github.com/tdex-network/tdex-daemon/pkg/explorer"
 
 const (
 	CloseSignal EventType = iota
-	FeeAccountDeposit
-	MarketAccountDeposit
+	AddressUnspents
 	TransactionConfirmed
-	TransactionUnConfirmed
+	TransactionUnconfirmed
+	OutpointsUnspent
+	OutpointsSpentAndUnconfirmed
+	OutpointsSpentAndConfirmed
 )
 
 type EventType int
@@ -16,14 +18,18 @@ func (et EventType) String() string {
 	switch et {
 	case CloseSignal:
 		return "CloseSignal"
-	case FeeAccountDeposit:
-		return "FeeAccountDeposit"
-	case MarketAccountDeposit:
-		return "MarketAccountDeposit"
+	case AddressUnspents:
+		return "AddressUnspents"
 	case TransactionConfirmed:
 		return "TransactionConfirmed"
-	case TransactionUnConfirmed:
-		return "TransactionUnConfirmed"
+	case TransactionUnconfirmed:
+		return "TransactionUnconfirmed"
+	case OutpointsUnspent:
+		return "OutpointsUnspent"
+	case OutpointsSpentAndUnconfirmed:
+		return "OutpointsSpentAndUnconfirmed"
+	case OutpointsSpentAndConfirmed:
+		return "OutpointsSpentAndConfirmed"
 	default:
 		return "Unknown"
 	}
@@ -36,10 +42,10 @@ func (q CloseEvent) Type() EventType {
 }
 
 type AddressEvent struct {
-	EventType    EventType
-	AccountIndex int
-	Address      string
-	Utxos        []explorer.Utxo
+	EventType EventType
+	Address   string
+	ExtraData interface{}
+	Utxos     []explorer.Utxo
 }
 
 func (a AddressEvent) Type() EventType {
@@ -51,9 +57,23 @@ type TransactionEvent struct {
 	TxHex     string
 	EventType EventType
 	BlockHash string
-	BlockTime float64
+	BlockTime int
 }
 
 func (t TransactionEvent) Type() EventType {
 	return t.EventType
+}
+
+type OutpointsEvent struct {
+	EventType EventType
+	Outpoints []Outpoint
+	ExtraData interface{}
+	TxID      string
+	TxHex     string
+	BlockHash string
+	BlockTime int
+}
+
+func (o OutpointsEvent) Type() EventType {
+	return o.EventType
 }

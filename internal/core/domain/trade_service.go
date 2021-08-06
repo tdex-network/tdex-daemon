@@ -86,7 +86,6 @@ func (t *Trade) Accept(
 	t.SwapAccept.Message = swapAcceptMsg
 	t.SwapAccept.Timestamp = now
 	t.PsetBase64 = psetBase64
-	t.TxID, _ = PsetParserManager.GetTxID(psetBase64)
 
 	return true, nil
 }
@@ -99,7 +98,7 @@ type CompleteResult struct {
 }
 
 // Complete brings a trade from the Accepted to the Completed status by
-// checiking that the given PSET completes the one of the SwapAccept message
+// checking that the given PSET completes the one of the SwapAccept message
 // and by finalizing it and extracting the raw tx in hex format. Complete must
 // be called before the trade expires, otherwise it won't be possible to
 // actually complete an accepted trade.
@@ -236,7 +235,7 @@ func (t *Trade) IsRejected() bool {
 	return t.Status.Failed
 }
 
-// IsExpired returns whether the trade has is in Expired status, or if its
+// IsExpired returns whether the trade is in Expired status, or if its
 // expiration date has passed.
 func (t *Trade) IsExpired() bool {
 	now := uint64(time.Now().Unix())

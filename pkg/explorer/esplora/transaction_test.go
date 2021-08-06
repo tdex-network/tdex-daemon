@@ -58,7 +58,10 @@ func TestGetTransactionStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, trxStatus["confirmed"], true)
+	assert.Equal(t, trxStatus.Confirmed(), true)
+	assert.Equal(t, len(trxStatus.BlockHash()) > 0, true)
+	assert.Equal(t, trxStatus.BlockHeight(), true)
+	assert.Equal(t, trxStatus.BlockTime(), true)
 
 	isConfirmed, err := explorerSvc.IsTransactionConfirmed(txID)
 	if err != nil {

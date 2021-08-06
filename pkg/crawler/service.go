@@ -18,7 +18,7 @@ type blockchainCrawler struct {
 	explorerSvc  explorer.Service
 	errChan      chan error
 	eventChan    chan Event
-	observables  map[string]*observableHandler
+	observables  map[string]*ObservableHandler
 	errorHandler func(err error)
 	mutex        *sync.RWMutex
 	wg           *sync.WaitGroup
@@ -49,7 +49,7 @@ func NewService(opts Opts) Service {
 		explorerSvc:  opts.ExplorerSvc,
 		errChan:      make(chan error, errorQueueMaxSize),
 		eventChan:    make(chan Event, eventQueueMaxSize),
-		observables:  map[string]*observableHandler{},
+		observables:  map[string]*ObservableHandler{},
 		errorHandler: opts.ErrorHandler,
 		mutex:        &sync.RWMutex{},
 		wg:           &sync.WaitGroup{},
@@ -74,7 +74,7 @@ func (bc *blockchainCrawler) Stop() {
 	bc.mutex.Lock()
 	defer bc.mutex.Unlock()
 	for _, obsHandler := range bc.observables {
-		go obsHandler.stop()
+		go obsHandler.Stop()
 	}
 	bc.wg.Wait()
 	bc.eventChan <- CloseEvent{}
@@ -97,7 +97,7 @@ func (bc *blockchainCrawler) AddObservable(observable Observable) {
 	defer bc.mutex.Unlock()
 
 	if _, ok := bc.observables[observable.Key()]; !ok {
-		obsHandler := newObservableHandler(
+		obsHandler := NewObservableHandler(
 			observable,
 			bc.explorerSvc,
 			bc.wg,
@@ -108,7 +108,7 @@ func (bc *blockchainCrawler) AddObservable(observable Observable) {
 		)
 
 		bc.observables[observable.Key()] = obsHandler
-		go obsHandler.start()
+		go obsHandler.Start()
 	}
 }
 
@@ -118,25 +118,7 @@ func (bc *blockchainCrawler) RemoveObservable(observable Observable) {
 	defer bc.mutex.Unlock()
 
 	if obsHandler, ok := bc.observables[observable.Key()]; ok {
-		obsHandler.stop()
+		obsHandler.Stop()
 		delete(bc.observables, observable.Key())
 	}
-}
-
-//IsObservingAddresses returns true if the crawler is observing at least one address given as parameter.
-//false in the other case
-func (bc *blockchainCrawler) IsObservingAddresses(addresses []string) bool {
-	if len(addresses) == 0 {
-		return false
-	}
-
-	bc.mutex.RLock()
-	defer bc.mutex.RUnlock()
-
-	for _, addr := range addresses {
-		if _, ok := bc.observables[addr]; !ok {
-			return false
-		}
-	}
-	return true
 }
