@@ -103,17 +103,18 @@ archives:
       - tdexd-linux
       - tdexd-darwin
     name_template: "tdexd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    
   - id: tdex
     format: binary
     builds:
       - tdex-linux
       - tdex-darwin
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    
   - id: unlockerd
     format: binary
     builds:
-      - unlockerd-linux
-      - unlockerd-darwin
+      - unlockerd
     name_template: "unlockerd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
 dockers:
