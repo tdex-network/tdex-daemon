@@ -42,4 +42,6 @@ var (
 	ErrWithdrawQuoteAmountTooBig = errors.New(
 		"quote amount to withdraw is too big",
 	)
+	// ErrInvalidAccountIndex returned if provided account index is invalid
+	ErrInvalidAccountIndex = errors.New("invalid account index")
 )

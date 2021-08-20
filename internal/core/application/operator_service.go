@@ -1146,7 +1146,7 @@ func (o *operatorService) claimDeposit(
 	// outpoints.
 	counter := make(map[int]int)
 	unspents := make([]domain.Unspent, len(outpoints), len(outpoints))
-	deposits := make([]domain.Deposit, len(outpoints), len(outpoints))
+	deposits := make([]domain.Deposit, 0, len(outpoints))
 	for i, v := range outpoints {
 		confirmed, err := o.explorerSvc.IsTransactionConfirmed(v.Hash)
 		if err != nil {
@@ -1220,22 +1220,19 @@ func (o *operatorService) claimDeposit(
 						return
 					}
 					log.Info("fee account funded. Trades can be served")
+
+					for _, v := range deposits {
+						err := o.repoManager.StatsRepository().AddDeposit(ctx, v)
+						if err != nil {
+							log.Error(err)
+						}
+					}
 				}
 			}()
 
 			return nil
 		}
 	}
-
-	//insert deposits async
-	go func() {
-		for _, v := range deposits {
-			err := o.repoManager.StatsRepository().AddDeposit(ctx, v)
-			if err != nil {
-				log.Error(err)
-			}
-		}
-	}()
 
 	return ErrInvalidOutpoints
 }
