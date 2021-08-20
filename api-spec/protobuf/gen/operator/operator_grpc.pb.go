@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // OperatorClient is the client API for Operator service.
@@ -75,7 +76,12 @@ type OperatorClient interface {
 	AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookReply, error)
 	// Removes some previously added webhook.
 	RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookReply, error)
+	// Returns registered webhooks
 	ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksReply, error)
+	// Returns claimed deposits
+	ListDeposits(ctx context.Context, in *ListDepositsRequest, opts ...grpc.CallOption) (*ListDepositsReply, error)
+	// Returns withdrawal requests
+	ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsReply, error)
 }
 
 type operatorClient struct {
@@ -284,6 +290,24 @@ func (c *operatorClient) ListWebhooks(ctx context.Context, in *ListWebhooksReque
 	return out, nil
 }
 
+func (c *operatorClient) ListDeposits(ctx context.Context, in *ListDepositsRequest, opts ...grpc.CallOption) (*ListDepositsReply, error) {
+	out := new(ListDepositsReply)
+	err := c.cc.Invoke(ctx, "/Operator/ListDeposits", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsReply, error) {
+	out := new(ListWithdrawalsReply)
+	err := c.cc.Invoke(ctx, "/Operator/ListWithdrawals", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OperatorServer is the server API for Operator service.
 // All implementations must embed UnimplementedOperatorServer
 // for forward compatibility
@@ -346,7 +370,12 @@ type OperatorServer interface {
 	AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookReply, error)
 	// Removes some previously added webhook.
 	RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookReply, error)
+	// Returns registered webhooks
 	ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksReply, error)
+	// Returns claimed deposits
+	ListDeposits(context.Context, *ListDepositsRequest) (*ListDepositsReply, error)
+	// Returns withdrawal requests
+	ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsReply, error)
 	mustEmbedUnimplementedOperatorServer()
 }
 
@@ -420,6 +449,12 @@ func (UnimplementedOperatorServer) RemoveWebhook(context.Context, *RemoveWebhook
 func (UnimplementedOperatorServer) ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWebhooks not implemented")
 }
+func (UnimplementedOperatorServer) ListDeposits(context.Context, *ListDepositsRequest) (*ListDepositsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListDeposits not implemented")
+}
+func (UnimplementedOperatorServer) ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWithdrawals not implemented")
+}
 func (UnimplementedOperatorServer) mustEmbedUnimplementedOperatorServer() {}
 
 // UnsafeOperatorServer may be embedded to opt out of forward compatibility for this service.
@@ -430,7 +465,7 @@ type UnsafeOperatorServer interface {
 }
 
 func RegisterOperatorServer(s grpc.ServiceRegistrar, srv OperatorServer) {
-	s.RegisterService(&_Operator_serviceDesc, srv)
+	s.RegisterService(&Operator_ServiceDesc, srv)
 }
 
 func _Operator_DepositMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -829,7 +864,46 @@ func _Operator_ListWebhooks_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Operator_serviceDesc = grpc.ServiceDesc{
+func _Operator_ListDeposits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDepositsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).ListDeposits(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/ListDeposits",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).ListDeposits(ctx, req.(*ListDepositsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_ListWithdrawals_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWithdrawalsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).ListWithdrawals(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/ListWithdrawals",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).ListWithdrawals(ctx, req.(*ListWithdrawalsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// Operator_ServiceDesc is the grpc.ServiceDesc for Operator service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Operator_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "Operator",
 	HandlerType: (*OperatorServer)(nil),
 	Methods: []grpc.MethodDesc{
@@ -920,6 +994,14 @@ var _Operator_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListWebhooks",
 			Handler:    _Operator_ListWebhooks_Handler,
+		},
+		{
+			MethodName: "ListDeposits",
+			Handler:    _Operator_ListDeposits_Handler,
+		},
+		{
+			MethodName: "ListWithdrawals",
+			Handler:    _Operator_ListWithdrawals_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

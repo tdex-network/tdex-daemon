@@ -43,6 +43,7 @@ type RepoManager struct {
 	unspentRepository domain.UnspentRepository
 	tradeRepository   domain.TradeRepository
 	vaultRepository   domain.VaultRepository
+	statsRepository   domain.StatsRepository
 }
 
 type InmemoryTx struct {
@@ -114,6 +115,10 @@ func (d *RepoManager) TradeRepository() domain.TradeRepository {
 
 func (d *RepoManager) VaultRepository() domain.VaultRepository {
 	return d.vaultRepository
+}
+
+func (d *RepoManager) StatsRepository() domain.StatsRepository {
+	return d.statsRepository
 }
 
 func (d *RepoManager) Close() {}

@@ -91,7 +91,14 @@ service Operator {
   // Removes some previously added webhook.
   rpc RemoveWebhook(RemoveWebhookRequest) returns(RemoveWebhookReply){}
 
+  // Returns registered webhooks
   rpc ListWebhooks(ListWebhooksRequest) returns(ListWebhooksReply){}
+
+  // Returns claimed deposits
+  rpc ListDeposits(ListDepositsRequest) returns(ListDepositsReply){}
+
+  // Returns withdrawal requests
+  rpc ListWithdrawals(ListWithdrawalsRequest) returns(ListWithdrawalsReply){}
 }
 
 message DropMarketRequest {
@@ -361,4 +368,35 @@ message WebhookInfo {
   string id = 1;
   string endpoint = 2;
   bool is_secured = 3;
+}
+
+
+message ListDepositsRequest{
+  int64 account_index = 1;
+  Page page = 2;
+}
+message ListDepositsReply{
+  int64 account_index = 1;
+  repeated TxOutpoint deposits = 2;
+}
+
+message ListWithdrawalsRequest{
+  int64 account_index = 1;
+  Page page = 2;
+}
+message ListWithdrawalsReply{
+  int64 account_index = 1;
+  repeated Withdrawal withdrawals = 2;
+}
+
+message Withdrawal {
+  uint64 base_amount = 1;
+  uint64 quote_amount = 2;
+  int64 millisat_per_byte = 3;
+  string address = 4;
+}
+
+message Page {
+  int64 page_number = 1;
+  int64 page_size = 2;
 }

@@ -194,6 +194,76 @@ func (o operatorHandler) ListWebhooks(
 	return o.listWebhooks(ctx, req)
 }
 
+func (o operatorHandler) ListDeposits(
+	ctx context.Context,
+	req *pb.ListDepositsRequest,
+) (*pb.ListDepositsReply, error) {
+	return o.listDeposits(ctx, req)
+}
+
+func (o operatorHandler) ListWithdrawals(
+	ctx context.Context,
+	req *pb.ListWithdrawalsRequest,
+) (*pb.ListWithdrawalsReply, error) {
+	return o.listWithdrawals(ctx, req)
+}
+
+func (o operatorHandler) listDeposits(
+	ctx context.Context,
+	req *pb.ListDepositsRequest,
+) (*pb.ListDepositsReply, error) {
+	deposits, err := o.operatorSvc.ListDeposits(
+		ctx,
+		int(req.GetAccountIndex()),
+		domain.Page{
+			Number: int(req.GetPage().GetPageNumber()),
+			Size:   int(req.GetPage().GetPageSize()),
+		},
+	)
+
+	depositsProto := make([]*pb.TxOutpoint, 0, len(deposits))
+	for _, v := range deposits {
+		depositsProto = append(depositsProto, &pb.TxOutpoint{
+			Hash:  v.TxID,
+			Index: int32(v.VOut),
+		})
+	}
+
+	return &pb.ListDepositsReply{
+		AccountIndex: req.GetAccountIndex(),
+		Deposits:     depositsProto,
+	}, err
+}
+
+func (o operatorHandler) listWithdrawals(
+	ctx context.Context,
+	req *pb.ListWithdrawalsRequest,
+) (*pb.ListWithdrawalsReply, error) {
+	withdrawals, err := o.operatorSvc.ListWithdrawals(
+		ctx,
+		int(req.GetAccountIndex()),
+		domain.Page{
+			Number: int(req.GetPage().GetPageNumber()),
+			Size:   int(req.GetPage().GetPageSize()),
+		},
+	)
+
+	withdrawalsProto := make([]*pb.Withdrawal, 0, len(withdrawals))
+	for _, v := range withdrawals {
+		withdrawalsProto = append(withdrawalsProto, &pb.Withdrawal{
+			BaseAmount:      v.BaseAmount,
+			QuoteAmount:     v.QuoteAmount,
+			MillisatPerByte: v.MillisatPerByte,
+			Address:         v.Address,
+		})
+	}
+
+	return &pb.ListWithdrawalsReply{
+		AccountIndex: req.GetAccountIndex(),
+		Withdrawals:  withdrawalsProto,
+	}, err
+}
+
 func (o operatorHandler) dropMarket(
 	ctx context.Context,
 	req *pb.DropMarketRequest,

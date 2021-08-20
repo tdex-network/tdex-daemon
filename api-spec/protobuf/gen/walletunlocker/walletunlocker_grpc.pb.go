@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // WalletUnlockerClient is the client API for WalletUnlocker service.
@@ -74,7 +75,7 @@ func (c *walletUnlockerClient) GenSeed(ctx context.Context, in *GenSeedRequest, 
 }
 
 func (c *walletUnlockerClient) InitWallet(ctx context.Context, in *InitWalletRequest, opts ...grpc.CallOption) (WalletUnlocker_InitWalletClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_WalletUnlocker_serviceDesc.Streams[0], "/WalletUnlocker/InitWallet", opts...)
+	stream, err := c.cc.NewStream(ctx, &WalletUnlocker_ServiceDesc.Streams[0], "/WalletUnlocker/InitWallet", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +206,7 @@ type UnsafeWalletUnlockerServer interface {
 }
 
 func RegisterWalletUnlockerServer(s grpc.ServiceRegistrar, srv WalletUnlockerServer) {
-	s.RegisterService(&_WalletUnlocker_serviceDesc, srv)
+	s.RegisterService(&WalletUnlocker_ServiceDesc, srv)
 }
 
 func _WalletUnlocker_GenSeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -301,7 +302,10 @@ func _WalletUnlocker_IsReady_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-var _WalletUnlocker_serviceDesc = grpc.ServiceDesc{
+// WalletUnlocker_ServiceDesc is the grpc.ServiceDesc for WalletUnlocker service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var WalletUnlocker_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "WalletUnlocker",
 	HandlerType: (*WalletUnlockerServer)(nil),
 	Methods: []grpc.MethodDesc{

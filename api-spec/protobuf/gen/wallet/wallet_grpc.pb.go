@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // WalletClient is the client API for Wallet service.
@@ -104,7 +105,7 @@ type UnsafeWalletServer interface {
 }
 
 func RegisterWalletServer(s grpc.ServiceRegistrar, srv WalletServer) {
-	s.RegisterService(&_Wallet_serviceDesc, srv)
+	s.RegisterService(&Wallet_ServiceDesc, srv)
 }
 
 func _Wallet_WalletAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -161,7 +162,10 @@ func _Wallet_SendToMany_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Wallet_serviceDesc = grpc.ServiceDesc{
+// Wallet_ServiceDesc is the grpc.ServiceDesc for Wallet service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Wallet_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "Wallet",
 	HandlerType: (*WalletServer)(nil),
 	Methods: []grpc.MethodDesc{

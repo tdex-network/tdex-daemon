@@ -26,6 +26,7 @@ type repoManager struct {
 	unspentRepository domain.UnspentRepository
 	tradeRepository   domain.TradeRepository
 	vaultRepository   domain.VaultRepository
+	statsRepository   domain.StatsRepository
 }
 
 // NewRepoManager opens (or creates if not exists) the badger store on disk.
@@ -58,6 +59,7 @@ func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, 
 	unspentRepo := NewUnspentRepositoryImpl(unspentDb, mainDb)
 	tradeRepo := NewTradeRepositoryImpl(mainDb)
 	vaultRepo := NewVaultRepositoryImpl(mainDb)
+	statsRepository := NewStatsRepositoryImpl(mainDb)
 
 	return &repoManager{
 		store:             mainDb,
@@ -67,6 +69,7 @@ func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, 
 		unspentRepository: unspentRepo,
 		tradeRepository:   tradeRepo,
 		vaultRepository:   vaultRepo,
+		statsRepository:   statsRepository,
 	}, nil
 }
 
@@ -84,6 +87,10 @@ func (d *repoManager) TradeRepository() domain.TradeRepository {
 
 func (d *repoManager) VaultRepository() domain.VaultRepository {
 	return d.vaultRepository
+}
+
+func (d *repoManager) StatsRepository() domain.StatsRepository {
+	return d.statsRepository
 }
 
 func (d *repoManager) Close() {

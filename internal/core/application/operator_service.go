@@ -74,6 +74,11 @@ type OperatorService interface {
 		ctx context.Context,
 		req WithdrawMarketReq,
 	) ([]byte, error)
+	ListWithdrawals(
+		ctx context.Context,
+		accountIndex int,
+		page domain.Page,
+	) ([]domain.Withdrawal, error)
 	FeeAccountBalance(ctx context.Context) (int64, error)
 	ClaimMarketDeposit(
 		ctx context.Context,
@@ -84,6 +89,11 @@ type OperatorService interface {
 		ctx context.Context,
 		outpoints []TxOutpoint,
 	) error
+	ListDeposits(
+		ctx context.Context,
+		accountIndex int,
+		page domain.Page,
+	) ([]domain.Deposit, error)
 	ListMarket(
 		ctx context.Context,
 	) ([]MarketInfo, error)
@@ -868,8 +878,33 @@ func (o *operatorService) WithdrawMarketFunds(
 		log.Warn(err)
 	}
 
+	if err = o.repoManager.StatsRepository().AddWithdrawal(
+		ctx,
+		domain.Withdrawal{
+			AccountIndex:    accountIndex,
+			BaseAmount:      req.BalanceToWithdraw.BaseAmount,
+			QuoteAmount:     req.BalanceToWithdraw.QuoteAmount,
+			MillisatPerByte: req.MillisatPerByte,
+			Address:         req.Address,
+		},
+	); err != nil {
+		return nil, err
+	}
+
 	rawTx, _ := hex.DecodeString(txHex)
 	return rawTx, nil
+}
+
+func (o *operatorService) ListWithdrawals(
+	ctx context.Context,
+	accountIndex int,
+	page domain.Page,
+) ([]domain.Withdrawal, error) {
+	return o.repoManager.StatsRepository().ListWithdrawalsForAccountIdAndPage(
+		ctx,
+		accountIndex,
+		page,
+	)
 }
 
 func (o *operatorService) FeeAccountBalance(ctx context.Context) (int64, error) {
@@ -1007,6 +1042,18 @@ func (o *operatorService) ClaimFeeDeposit(
 	return o.claimDeposit(ctx, infoPerAccount, outpoints, feeDeposit)
 }
 
+func (o *operatorService) ListDeposits(
+	ctx context.Context,
+	accountIndex int,
+	page domain.Page,
+) ([]domain.Deposit, error) {
+	return o.repoManager.StatsRepository().ListDepositsForAccountIdAndPage(
+		ctx,
+		accountIndex,
+		page,
+	)
+}
+
 func (o *operatorService) DropMarket(
 	ctx context.Context,
 	accountIndex int,
@@ -1099,6 +1146,7 @@ func (o *operatorService) claimDeposit(
 	// outpoints.
 	counter := make(map[int]int)
 	unspents := make([]domain.Unspent, len(outpoints), len(outpoints))
+	deposits := make([]domain.Deposit, len(outpoints), len(outpoints))
 	for i, v := range outpoints {
 		confirmed, err := o.explorerSvc.IsTransactionConfirmed(v.Hash)
 		if err != nil {
@@ -1146,6 +1194,12 @@ func (o *operatorService) claimDeposit(
 				Address:         info.Address,
 				Confirmed:       true,
 			}
+
+			deposits = append(deposits, domain.Deposit{
+				AccountIndex: info.AccountIndex,
+				TxID:         v.Hash,
+				VOut:         v.Index,
+			})
 		}
 	}
 
@@ -1172,6 +1226,16 @@ func (o *operatorService) claimDeposit(
 			return nil
 		}
 	}
+
+	//insert deposits async
+	go func() {
+		for _, v := range deposits {
+			err := o.repoManager.StatsRepository().AddDeposit(ctx, v)
+			if err != nil {
+				log.Error(err)
+			}
+		}
+	}()
 
 	return ErrInvalidOutpoints
 }
