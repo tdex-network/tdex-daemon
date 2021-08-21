@@ -1058,6 +1058,10 @@ func (o *operatorService) DropMarket(
 	ctx context.Context,
 	accountIndex int,
 ) error {
+	if accountIndex < domain.MarketAccountStart {
+		return ErrInvalidAccountIndex
+	}
+
 	return o.repoManager.MarketRepository().DeleteMarket(ctx, accountIndex)
 }
 
