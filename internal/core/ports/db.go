@@ -12,7 +12,8 @@ type RepoManager interface {
 	MarketRepository() domain.MarketRepository
 	UnspentRepository() domain.UnspentRepository
 	TradeRepository() domain.TradeRepository
-	StatsRepository() domain.StatsRepository
+	DepositRepository() domain.DepositRepository
+	WithdrawalRepository() domain.WithdrawalRepository
 
 	Close()
 

@@ -370,14 +370,13 @@ message WebhookInfo {
   bool is_secured = 3;
 }
 
-
 message ListDepositsRequest{
   int64 account_index = 1;
   Page page = 2;
 }
 message ListDepositsReply{
   int64 account_index = 1;
-  repeated TxOutpoint deposits = 2;
+  repeated UtxoInfo deposits = 2;
 }
 
 message ListWithdrawalsRequest{
@@ -390,10 +389,11 @@ message ListWithdrawalsReply{
 }
 
 message Withdrawal {
-  uint64 base_amount = 1;
-  uint64 quote_amount = 2;
-  int64 millisat_per_byte = 3;
-  string address = 4;
+  string tx_id = 1;
+  uint64 base_amount = 2;
+  uint64 quote_amount = 3;
+  int64 millisat_per_byte = 4;
+  string address = 5;
 }
 
 message Page {

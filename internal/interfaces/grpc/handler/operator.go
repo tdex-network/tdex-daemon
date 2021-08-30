@@ -221,11 +221,15 @@ func (o operatorHandler) listDeposits(
 		},
 	)
 
-	depositsProto := make([]*pb.TxOutpoint, 0, len(deposits))
+	depositsProto := make([]*pb.UtxoInfo, 0, len(deposits))
 	for _, v := range deposits {
-		depositsProto = append(depositsProto, &pb.TxOutpoint{
-			Hash:  v.TxID,
-			Index: int32(v.VOut),
+		depositsProto = append(depositsProto, &pb.UtxoInfo{
+			Outpoint: &pb.TxOutpoint{
+				Hash:  v.TxID,
+				Index: int32(v.VOut),
+			},
+			Value: v.Value,
+			Asset: v.Asset,
 		})
 	}
 
@@ -251,6 +255,7 @@ func (o operatorHandler) listWithdrawals(
 	withdrawalsProto := make([]*pb.Withdrawal, 0, len(withdrawals))
 	for _, v := range withdrawals {
 		withdrawalsProto = append(withdrawalsProto, &pb.Withdrawal{
+			TxId:            v.TxID,
 			BaseAmount:      v.BaseAmount,
 			QuoteAmount:     v.QuoteAmount,
 			MillisatPerByte: v.MillisatPerByte,

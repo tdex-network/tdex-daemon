@@ -878,9 +878,10 @@ func (o *operatorService) WithdrawMarketFunds(
 		log.Warn(err)
 	}
 
-	if err = o.repoManager.StatsRepository().AddWithdrawal(
+	if err = o.repoManager.WithdrawalRepository().AddWithdrawal(
 		ctx,
 		domain.Withdrawal{
+			TxID:            txid,
 			AccountIndex:    accountIndex,
 			BaseAmount:      req.BalanceToWithdraw.BaseAmount,
 			QuoteAmount:     req.BalanceToWithdraw.QuoteAmount,
@@ -900,7 +901,7 @@ func (o *operatorService) ListWithdrawals(
 	accountIndex int,
 	page domain.Page,
 ) ([]domain.Withdrawal, error) {
-	return o.repoManager.StatsRepository().ListWithdrawalsForAccountIdAndPage(
+	return o.repoManager.WithdrawalRepository().ListWithdrawalsForAccountIdAndPage(
 		ctx,
 		accountIndex,
 		page,
@@ -1047,7 +1048,7 @@ func (o *operatorService) ListDeposits(
 	accountIndex int,
 	page domain.Page,
 ) ([]domain.Deposit, error) {
-	return o.repoManager.StatsRepository().ListDepositsForAccountIdAndPage(
+	return o.repoManager.DepositRepository().ListDepositsForAccountIdAndPage(
 		ctx,
 		accountIndex,
 		page,
@@ -1203,6 +1204,8 @@ func (o *operatorService) claimDeposit(
 				AccountIndex: info.AccountIndex,
 				TxID:         v.Hash,
 				VOut:         v.Index,
+				Asset:        unconfidential.AssetHash,
+				Value:        unconfidential.Value,
 			})
 		}
 	}
@@ -1226,7 +1229,7 @@ func (o *operatorService) claimDeposit(
 					log.Info("fee account funded. Trades can be served")
 
 					for _, v := range deposits {
-						err := o.repoManager.StatsRepository().AddDeposit(ctx, v)
+						err := o.repoManager.DepositRepository().AddDeposit(ctx, v)
 						if err != nil {
 							log.Error(err)
 						}

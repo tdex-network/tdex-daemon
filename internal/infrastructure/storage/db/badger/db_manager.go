@@ -22,11 +22,12 @@ type repoManager struct {
 	priceStore   *badgerhold.Store
 	unspentStore *badgerhold.Store
 
-	marketRepository  domain.MarketRepository
-	unspentRepository domain.UnspentRepository
-	tradeRepository   domain.TradeRepository
-	vaultRepository   domain.VaultRepository
-	statsRepository   domain.StatsRepository
+	marketRepository     domain.MarketRepository
+	unspentRepository    domain.UnspentRepository
+	tradeRepository      domain.TradeRepository
+	vaultRepository      domain.VaultRepository
+	depositRepository    domain.DepositRepository
+	withdrawalRepository domain.WithdrawalRepository
 }
 
 // NewRepoManager opens (or creates if not exists) the badger store on disk.
@@ -59,17 +60,19 @@ func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, 
 	unspentRepo := NewUnspentRepositoryImpl(unspentDb, mainDb)
 	tradeRepo := NewTradeRepositoryImpl(mainDb)
 	vaultRepo := NewVaultRepositoryImpl(mainDb)
-	statsRepository := NewStatsRepositoryImpl(mainDb)
+	depositRepository := NewDepositRepositoryImpl(mainDb)
+	withdrawalRepository := NewWithdrawalRepositoryImpl(mainDb)
 
 	return &repoManager{
-		store:             mainDb,
-		priceStore:        priceDb,
-		unspentStore:      unspentDb,
-		marketRepository:  marketRepo,
-		unspentRepository: unspentRepo,
-		tradeRepository:   tradeRepo,
-		vaultRepository:   vaultRepo,
-		statsRepository:   statsRepository,
+		store:                mainDb,
+		priceStore:           priceDb,
+		unspentStore:         unspentDb,
+		marketRepository:     marketRepo,
+		unspentRepository:    unspentRepo,
+		tradeRepository:      tradeRepo,
+		vaultRepository:      vaultRepo,
+		depositRepository:    depositRepository,
+		withdrawalRepository: withdrawalRepository,
 	}, nil
 }
 
@@ -89,8 +92,12 @@ func (d *repoManager) VaultRepository() domain.VaultRepository {
 	return d.vaultRepository
 }
 
-func (d *repoManager) StatsRepository() domain.StatsRepository {
-	return d.statsRepository
+func (d *repoManager) DepositRepository() domain.DepositRepository {
+	return d.depositRepository
+}
+
+func (d *repoManager) WithdrawalRepository() domain.WithdrawalRepository {
+	return d.withdrawalRepository
 }
 
 func (d *repoManager) Close() {
