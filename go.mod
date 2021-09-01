@@ -30,8 +30,8 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210322164638-77a31ea9e66d
-	github.com/tdex-network/tdex-daemon/pkg/macaroons v0.0.0-00010101000000-000000000000
-	github.com/tdex-network/tdex-daemon/pkg/securestore v0.0.0-20210603132950-1bfb0312f255
+	github.com/tdex-network/tdex-daemon/pkg/macaroons v0.0.0-20210813140257-70d50a8b72a4
+	github.com/tdex-network/tdex-daemon/pkg/securestore v0.0.0-20210813140257-70d50a8b72a4
 	github.com/tdex-network/tdex-protobuf v0.0.0-20210507104156-d509331cccdb
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
@@ -42,7 +42,7 @@ require (
 	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
-	google.golang.org/grpc v1.38.0
+	google.golang.org/grpc v1.40.0
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/macaroon-bakery.v2 v2.3.0
 	gopkg.in/macaroon.v2 v2.1.0
