@@ -22,7 +22,9 @@ func (d DepositRepositoryImpl) AddDeposit(
 	d.store.locker.Lock()
 	defer d.store.locker.Unlock()
 
-	d.store.deposits[deposit.Key()] = deposit
+	if _, ok := d.store.deposits[deposit.Key()]; !ok {
+		d.store.deposits[deposit.Key()] = deposit
+	}
 
 	return nil
 }
@@ -50,4 +52,16 @@ func (d DepositRepositoryImpl) ListDepositsForAccountIdAndPage(
 	}
 
 	return result, nil
+}
+
+func (d DepositRepositoryImpl) ListAllDeposits(
+	ctx context.Context,
+) ([]domain.Deposit, error) {
+	deposits := make([]domain.Deposit, 0, len(d.store.deposits))
+
+	for _, v := range d.store.deposits {
+		deposits = append(deposits, v)
+	}
+
+	return deposits, nil
 }

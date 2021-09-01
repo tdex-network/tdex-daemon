@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 
@@ -23,18 +23,18 @@ func TestWithdrawalRepositoryImplementations(t *testing.T) {
 		repo := repositories[i]
 
 		t.Run(repo.Name, func(t *testing.T) {
-			t.Parallel()
-
 			t.Run("testAddAndListWithdrawals", func(t *testing.T) {
-				t.Parallel()
 				testAddAndListWithdrawals(t, repo)
+			})
+
+			t.Run("testWithdrawalDuplicateKeyInsertion", func(t *testing.T) {
+				testWithdrawalDuplicateKeyInsertion(t, repo)
 			})
 		})
 	}
 }
 
 func testAddAndListWithdrawals(t *testing.T, repo withdrawalRepository) {
-
 	depositRepository := repo.Repository
 	for i := 0; i < 100; i++ {
 		err := depositRepository.AddWithdrawal(
@@ -80,6 +80,58 @@ func testAddAndListWithdrawals(t *testing.T, repo withdrawalRepository) {
 	}
 
 	assert.Equal(t, 10, len(withdrawals))
+
+	withdrawals, err = depositRepository.ListAllWithdrawals(
+		context.Background(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 100, len(withdrawals))
+}
+
+func testWithdrawalDuplicateKeyInsertion(t *testing.T, repo withdrawalRepository) {
+	withdrawalRepository := repo.Repository
+
+	err := withdrawalRepository.AddWithdrawal(
+		context.Background(),
+		domain.Withdrawal{
+			TxID:            "tx",
+			AccountIndex:    1,
+			BaseAmount:      20,
+			QuoteAmount:     20,
+			MillisatPerByte: 10,
+			Address:         "dwd",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = withdrawalRepository.AddWithdrawal(
+		context.Background(),
+		domain.Withdrawal{
+			TxID:            "tx",
+			AccountIndex:    1,
+			BaseAmount:      20,
+			QuoteAmount:     20,
+			MillisatPerByte: 10,
+			Address:         "dwd1",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	withdrwals, err := withdrawalRepository.ListAllWithdrawals(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//length increased by 1 and not two
+	assert.Equal(t, 101, len(withdrwals))
+	//first inserted is not updated
+	assert.Equal(t, "dwd", withdrwals[0].Address)
 }
 
 type withdrawalRepository struct {

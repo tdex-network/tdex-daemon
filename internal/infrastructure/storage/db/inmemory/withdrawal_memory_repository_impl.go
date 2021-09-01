@@ -22,8 +22,9 @@ func (w WithdrawalRepositoryImpl) AddWithdrawal(
 	w.store.locker.Lock()
 	defer w.store.locker.Unlock()
 
-	w.store.withdrawals[withdrawal.TxID] = withdrawal
-
+	if _, ok := w.store.withdrawals[withdrawal.TxID]; !ok {
+		w.store.withdrawals[withdrawal.TxID] = withdrawal
+	}
 	return nil
 }
 
@@ -50,4 +51,16 @@ func (w WithdrawalRepositoryImpl) ListWithdrawalsForAccountIdAndPage(
 	}
 
 	return result, nil
+}
+
+func (w WithdrawalRepositoryImpl) ListAllWithdrawals(
+	ctx context.Context,
+) ([]domain.Withdrawal, error) {
+	withdrawals := make([]domain.Withdrawal, 0, len(w.store.withdrawals))
+
+	for _, v := range w.store.withdrawals {
+		withdrawals = append(withdrawals, v)
+	}
+
+	return withdrawals, nil
 }

@@ -32,7 +32,7 @@ func (w withdrawalRepositoryImpl) ListWithdrawalsForAccountIdAndPage(
 	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
 	var withdrawals []domain.Withdrawal
 
-	from := page.Number*page.Size - page.Size + 1
+	from := page.Number*page.Size - page.Size
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
@@ -71,4 +71,34 @@ func (w withdrawalRepositoryImpl) insertWithdrawal(
 		}
 	}
 	return nil
+}
+
+func (w withdrawalRepositoryImpl) ListAllWithdrawals(
+	ctx context.Context,
+) ([]domain.Withdrawal, error) {
+	return w.listAll(ctx), nil
+}
+
+func (w withdrawalRepositoryImpl) listAll(ctx context.Context) []domain.Withdrawal {
+	withdrawals, _ := w.findWithdrawals(ctx, nil)
+	return withdrawals
+}
+
+func (w withdrawalRepositoryImpl) findWithdrawals(
+	ctx context.Context,
+	query *badgerhold.Query,
+) ([]domain.Withdrawal, error) {
+	var withdrawals []domain.Withdrawal
+	var err error
+	if ctx.Value("tx") != nil {
+		tx := ctx.Value("tx").(*badger.Txn)
+		err = w.store.TxFind(tx, &withdrawals, query)
+	} else {
+		err = w.store.Find(&withdrawals, query)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return withdrawals, nil
 }

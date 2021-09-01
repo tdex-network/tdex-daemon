@@ -32,7 +32,7 @@ func (d depositRepositoryImpl) ListDepositsForAccountIdAndPage(
 	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
 	var deposits []domain.Deposit
 
-	from := page.Number*page.Size - page.Size + 1
+	from := page.Number*page.Size - page.Size
 
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
@@ -71,4 +71,34 @@ func (d depositRepositoryImpl) insertDeposit(
 		}
 	}
 	return nil
+}
+
+func (d depositRepositoryImpl) ListAllDeposits(
+	ctx context.Context,
+) ([]domain.Deposit, error) {
+	return d.listAll(ctx), nil
+}
+
+func (d depositRepositoryImpl) listAll(ctx context.Context) []domain.Deposit {
+	deposits, _ := d.findDeposits(ctx, nil)
+	return deposits
+}
+
+func (d depositRepositoryImpl) findDeposits(
+	ctx context.Context,
+	query *badgerhold.Query,
+) ([]domain.Deposit, error) {
+	var deposits []domain.Deposit
+	var err error
+	if ctx.Value("tx") != nil {
+		tx := ctx.Value("tx").(*badger.Txn)
+		err = d.store.TxFind(tx, &deposits, query)
+	} else {
+		err = d.store.Find(&deposits, query)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return deposits, nil
 }

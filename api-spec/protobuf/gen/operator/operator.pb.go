@@ -4018,7 +4018,7 @@ var file_operator_proto_depIdxs = []int32{
 	44, // 66: Operator.RemoveWebhook:input_type -> RemoveWebhookRequest
 	46, // 67: Operator.ListWebhooks:input_type -> ListWebhooksRequest
 	57, // 68: Operator.ListDeposits:input_type -> ListDepositsRequest
-	59, // 69: Operator.ListWithdrawals:input_type -> ListWithdrawalsRequest
+	59, // 69: Operator.ListAllWithdrawals:input_type -> ListWithdrawalsRequest
 	12, // 70: Operator.DepositMarket:output_type -> DepositMarketReply
 	14, // 71: Operator.ListDepositMarket:output_type -> ListDepositMarketReply
 	16, // 72: Operator.DepositFeeAccount:output_type -> DepositFeeAccountReply
@@ -4042,7 +4042,7 @@ var file_operator_proto_depIdxs = []int32{
 	45, // 90: Operator.RemoveWebhook:output_type -> RemoveWebhookReply
 	47, // 91: Operator.ListWebhooks:output_type -> ListWebhooksReply
 	58, // 92: Operator.ListDeposits:output_type -> ListDepositsReply
-	60, // 93: Operator.ListWithdrawals:output_type -> ListWithdrawalsReply
+	60, // 93: Operator.ListAllWithdrawals:output_type -> ListWithdrawalsReply
 	70, // [70:94] is the sub-list for method output_type
 	46, // [46:70] is the sub-list for method input_type
 	46, // [46:46] is the sub-list for extension type_name

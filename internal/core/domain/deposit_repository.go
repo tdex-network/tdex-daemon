@@ -2,11 +2,6 @@ package domain
 
 import "context"
 
-type Page struct {
-	Number int
-	Size   int
-}
-
 type DepositRepository interface {
 	AddDeposit(ctx context.Context, deposit Deposit) error
 	ListDepositsForAccountIdAndPage(
@@ -14,4 +9,5 @@ type DepositRepository interface {
 		accountIndex int,
 		page Page,
 	) ([]Deposit, error)
+	ListAllDeposits(ctx context.Context) ([]Deposit, error)
 }

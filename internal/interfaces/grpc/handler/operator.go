@@ -215,10 +215,10 @@ func (o operatorHandler) listDeposits(
 	deposits, err := o.operatorSvc.ListDeposits(
 		ctx,
 		int(req.GetAccountIndex()),
-		domain.Page{
-			Number: int(req.GetPage().GetPageNumber()),
-			Size:   int(req.GetPage().GetPageSize()),
-		},
+		domain.NewPage(
+			int(req.GetPage().GetPageNumber()),
+			int(req.GetPage().GetPageSize()),
+		),
 	)
 
 	depositsProto := make([]*pb.UtxoInfo, 0, len(deposits))
@@ -243,13 +243,14 @@ func (o operatorHandler) listWithdrawals(
 	ctx context.Context,
 	req *pb.ListWithdrawalsRequest,
 ) (*pb.ListWithdrawalsReply, error) {
+
 	withdrawals, err := o.operatorSvc.ListWithdrawals(
 		ctx,
 		int(req.GetAccountIndex()),
-		domain.Page{
-			Number: int(req.GetPage().GetPageNumber()),
-			Size:   int(req.GetPage().GetPageSize()),
-		},
+		domain.NewPage(
+			int(req.GetPage().GetPageNumber()),
+			int(req.GetPage().GetPageSize()),
+		),
 	)
 
 	withdrawalsProto := make([]*pb.Withdrawal, 0, len(withdrawals))

@@ -20,11 +20,12 @@ func TestDepositRepositoryImplementations(t *testing.T) {
 		repo := repositories[i]
 
 		t.Run(repo.Name, func(t *testing.T) {
-			t.Parallel()
-
 			t.Run("testAddAndListDeposits", func(t *testing.T) {
-				t.Parallel()
 				testAddAndListDeposits(t, repo)
+			})
+
+			t.Run("testDepositDuplicateKeyInsertion", func(t *testing.T) {
+				testDepositDuplicateKeyInsertion(t, repo)
 			})
 		})
 	}
@@ -48,7 +49,7 @@ func testAddAndListDeposits(t *testing.T, repo depositRepository) {
 		}
 	}
 
-	withdrawals, err := depositRepository.ListDepositsForAccountIdAndPage(
+	deposits, err := depositRepository.ListDepositsForAccountIdAndPage(
 		context.Background(),
 		1,
 		domain.Page{
@@ -60,9 +61,9 @@ func testAddAndListDeposits(t *testing.T, repo depositRepository) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 10, len(withdrawals))
+	assert.Equal(t, 10, len(deposits))
 
-	withdrawals, err = depositRepository.ListDepositsForAccountIdAndPage(
+	deposits, err = depositRepository.ListDepositsForAccountIdAndPage(
 		context.Background(),
 		1,
 		domain.Page{
@@ -74,7 +75,57 @@ func testAddAndListDeposits(t *testing.T, repo depositRepository) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 10, len(withdrawals))
+	assert.Equal(t, 10, len(deposits))
+
+	deposits, err = depositRepository.ListAllDeposits(
+		context.Background(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 100, len(deposits))
+}
+
+func testDepositDuplicateKeyInsertion(t *testing.T, repo depositRepository) {
+	depositRepository := repo.Repository
+
+	err := depositRepository.AddDeposit(
+		context.Background(),
+		domain.Deposit{
+			TxID:         "tx",
+			AccountIndex: 1,
+			VOut:         1,
+			Asset:        "dummy",
+			Value:        400,
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = depositRepository.AddDeposit(
+		context.Background(),
+		domain.Deposit{
+			TxID:         "tx",
+			AccountIndex: 1,
+			VOut:         1,
+			Asset:        "dummy",
+			Value:        500,
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deposits, err := depositRepository.ListAllDeposits(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//length increased by 1 and not two
+	assert.Equal(t, 101, len(deposits))
+	//first inserted is not updated
+	assert.Equal(t, 400, int(deposits[0].Value))
 }
 
 type depositRepository struct {

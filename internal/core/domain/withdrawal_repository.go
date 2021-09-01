@@ -9,4 +9,5 @@ type WithdrawalRepository interface {
 		accountIndex int,
 		page Page,
 	) ([]Withdrawal, error)
+	ListAllWithdrawals(ctx context.Context) ([]Withdrawal, error)
 }
