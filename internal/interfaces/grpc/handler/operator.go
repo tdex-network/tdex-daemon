@@ -243,13 +243,12 @@ func (o operatorHandler) listWithdrawals(
 	ctx context.Context,
 	req *pb.ListWithdrawalsRequest,
 ) (*pb.ListWithdrawalsReply, error) {
-	page := domain.NewPage(
-		domain.DefaultPageNumber,
-		domain.DefaultPageSize,
-	)
+	page := domain.NewPage(0, 0)
 	if req.GetPage() != nil {
-		page.Number = int(req.GetPage().GetPageNumber())
-		page.Size = int(req.GetPage().GetPageSize())
+		page = domain.NewPage(
+			int(req.GetPage().GetPageNumber()),
+			int(req.GetPage().GetPageSize()),
+		)
 	}
 
 	withdrawals, err := o.operatorSvc.ListWithdrawals(
