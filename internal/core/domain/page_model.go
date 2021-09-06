@@ -1,17 +1,22 @@
 package domain
 
+const (
+	DefaultPageNumber = 1
+	DefaultPageSize   = 10
+)
+
 type Page struct {
 	Number int
 	Size   int
 }
 
 func NewPage(pageNumber, pageSize int) Page {
-	pNumber := 1
+	pNumber := DefaultPageNumber
 	if pageNumber > 0 {
 		pNumber = pageNumber
 	}
 
-	pSize := 10
+	pSize := DefaultPageSize
 	if pageSize > 0 {
 		pSize = pageSize
 	}
