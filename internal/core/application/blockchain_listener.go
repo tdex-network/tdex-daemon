@@ -42,7 +42,6 @@ type blockchainListener struct {
 	pubsubSvc          ports.SecurePubSub
 	started            bool
 	pendingObservables []crawler.Observable
-	marketBaseAsset    string
 	network            *network.Network
 
 	mutex *sync.RWMutex
@@ -53,14 +52,12 @@ func NewBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
 	pubsubSvc ports.SecurePubSub,
-	marketBaseAsset string,
 	net *network.Network,
 ) BlockchainListener {
 	return newBlockchainListener(
 		crawlerSvc,
 		repoManager,
 		pubsubSvc,
-		marketBaseAsset,
 		net,
 	)
 }
@@ -69,7 +66,6 @@ func newBlockchainListener(
 	crawlerSvc crawler.Service,
 	repoManager ports.RepoManager,
 	pubsubSvc ports.SecurePubSub,
-	marketBaseAsset string,
 	net *network.Network,
 ) *blockchainListener {
 	return &blockchainListener{
@@ -78,7 +74,6 @@ func newBlockchainListener(
 		pubsubSvc:          pubsubSvc,
 		mutex:              &sync.RWMutex{},
 		pendingObservables: make([]crawler.Observable, 0),
-		marketBaseAsset:    marketBaseAsset,
 		network:            net,
 	}
 }

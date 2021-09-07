@@ -1,10 +1,12 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +39,8 @@ const (
 	NetworkKey = "NETWORK"
 	// BaseAssetKey is the default asset hash to be used as base asset for all markets. Default is LBTC
 	BaseAssetKey = "BASE_ASSET"
+	//NativeAssetHash is used to set lbtc hash, used for fee outputs, in regtest network
+	NativeAssetHash = "NATIVE_ASSET_HASH"
 	// CrawlIntervalKey is the interval in milliseconds to be used when watching the blockchain via the explorer
 	CrawlIntervalKey = "CRAWL_INTERVAL"
 	// FeeAccountBalanceThresholdKey is the treshold of LBTC balance (in satoshis) for the fee account, after wich we alert the operator that it cannot subsidize anymore swaps
@@ -160,11 +164,22 @@ func GetBool(key string) bool {
 }
 
 //GetNetwork ...
-func GetNetwork() *network.Network {
+func GetNetwork() (*network.Network, error) {
 	if vip.GetString(NetworkKey) == network.Regtest.Name {
-		return &network.Regtest
+		net := network.Regtest
+		regtestNativeAssetHash := vip.GetString(NativeAssetHash)
+
+		if err := validateAssetString(regtestNativeAssetHash); err != nil {
+			return nil, err
+		}
+
+		if regtestNativeAssetHash != "" {
+			net.AssetID = regtestNativeAssetHash
+		}
+
+		return &net, nil
 	}
-	return &network.Liquid
+	return &network.Liquid, nil
 }
 
 // TODO: attach network name to datadir
@@ -279,5 +294,20 @@ func makeDirectoryIfNotExists(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return os.MkdirAll(path, os.ModeDir|0755)
 	}
+	return nil
+}
+
+func validateAssetString(asset string) error {
+	const regularExpression = `[0-9a-f]{64}`
+
+	matched, err := regexp.Match(regularExpression, []byte(asset))
+	if err != nil {
+		return err
+	}
+
+	if !matched {
+		return errors.New(asset + " is an invalid asset string.")
+	}
+
 	return nil
 }

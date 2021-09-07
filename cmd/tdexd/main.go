@@ -32,7 +32,6 @@ import (
 var (
 	// General config
 	logLevel                = config.GetInt(config.LogLevelKey)
-	network                 = config.GetNetwork()
 	profilerEnabled         = config.GetBool(config.EnableProfilerKey)
 	datadir                 = config.GetDatadir()
 	dbDir                   = filepath.Join(datadir, config.DbLocation)
@@ -103,11 +102,20 @@ func main() {
 		log.Errorf("error while setting up webhook pubsub service: %s", err)
 		return
 	}
+
+	network, err := config.GetNetwork()
+	if err != nil {
+		crawlerSvc.Stop()
+		repoManager.Close()
+
+		log.Errorf("error while setting up network: %s", err)
+		return
+	}
+
 	blockchainListener := application.NewBlockchainListener(
 		crawlerSvc,
 		repoManager,
 		webhookPubSub,
-		marketsBaseAsset,
 		network,
 	)
 
@@ -137,7 +145,6 @@ func main() {
 		blockchainListener,
 		network,
 		marketsFee,
-		marketsBaseAsset,
 	)
 	walletUnlockerSvc := application.NewWalletUnlockerService(
 		repoManager,
