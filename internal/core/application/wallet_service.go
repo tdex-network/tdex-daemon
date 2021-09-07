@@ -381,6 +381,18 @@ func sendToMany(opts sendToManyOpts) (string, error) {
 		return "", err
 	}
 
+	inputBlindingData := make(map[int]wallet.BlindingData)
+	index := 0
+	for _, v := range updateResult.SelectedUnspents {
+		inputBlindingData[index] = wallet.BlindingData{
+			Asset:         v.Asset(),
+			Amount:        v.Value(),
+			AssetBlinder:  v.AssetBlinder(),
+			AmountBlinder: v.ValueBlinder(),
+		}
+		index++
+	}
+
 	// update the list of output blinding keys with those of the eventual changes
 	outputsBlindingKeys := opts.outputsBlindingKeys
 	for _, v := range updateResult.ChangeOutputsBlindingKeys {
@@ -400,16 +412,28 @@ func sendToMany(opts sendToManyOpts) (string, error) {
 		return "", err
 	}
 
+	for _, v := range feeUpdateResult.SelectedUnspents {
+		inputBlindingData[index] = wallet.BlindingData{
+			Asset:         v.Asset(),
+			Amount:        v.Value(),
+			AssetBlinder:  v.AssetBlinder(),
+			AmountBlinder: v.ValueBlinder(),
+		}
+	}
+
 	// again, add changes' blinding keys to the list of those of the outputs
 	for _, v := range feeUpdateResult.ChangeOutputsBlindingKeys {
 		outputsBlindingKeys = append(outputsBlindingKeys, v)
 	}
 
 	// blind the transaction
-	blindedPset, err := w.BlindTransactionWithKeys(wallet.BlindTransactionWithKeysOpts{
-		PsetBase64:         feeUpdateResult.PsetBase64,
-		OutputBlindingKeys: outputsBlindingKeys,
-	})
+	blindedPset, err := w.BlindTransactionWithData(
+		wallet.BlindTransactionWithDataOpts{
+			PsetBase64:         feeUpdateResult.PsetBase64,
+			InputBlindingData:  inputBlindingData,
+			OutputBlindingKeys: outputsBlindingKeys,
+		},
+	)
 	if err != nil {
 		return "", err
 	}
