@@ -87,6 +87,8 @@ func main() {
 		&addwebhook,
 		&removewebhook,
 		&listwebhooks,
+		&listdeposits,
+		&listwithdrawals,
 	)
 
 	err := app.Run(os.Args)

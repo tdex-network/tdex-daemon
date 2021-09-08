@@ -194,6 +194,86 @@ func (o operatorHandler) ListWebhooks(
 	return o.listWebhooks(ctx, req)
 }
 
+func (o operatorHandler) ListDeposits(
+	ctx context.Context,
+	req *pb.ListDepositsRequest,
+) (*pb.ListDepositsReply, error) {
+	return o.listDeposits(ctx, req)
+}
+
+func (o operatorHandler) ListWithdrawals(
+	ctx context.Context,
+	req *pb.ListWithdrawalsRequest,
+) (*pb.ListWithdrawalsReply, error) {
+	return o.listWithdrawals(ctx, req)
+}
+
+func (o operatorHandler) listDeposits(
+	ctx context.Context,
+	req *pb.ListDepositsRequest,
+) (*pb.ListDepositsReply, error) {
+	deposits, err := o.operatorSvc.ListDeposits(
+		ctx,
+		int(req.GetAccountIndex()),
+		domain.NewPage(
+			int(req.GetPage().GetPageNumber()),
+			int(req.GetPage().GetPageSize()),
+		),
+	)
+
+	depositsProto := make([]*pb.UtxoInfo, 0, len(deposits))
+	for _, v := range deposits {
+		depositsProto = append(depositsProto, &pb.UtxoInfo{
+			Outpoint: &pb.TxOutpoint{
+				Hash:  v.TxID,
+				Index: int32(v.VOut),
+			},
+			Value: v.Value,
+			Asset: v.Asset,
+		})
+	}
+
+	return &pb.ListDepositsReply{
+		AccountIndex: req.GetAccountIndex(),
+		Deposits:     depositsProto,
+	}, err
+}
+
+func (o operatorHandler) listWithdrawals(
+	ctx context.Context,
+	req *pb.ListWithdrawalsRequest,
+) (*pb.ListWithdrawalsReply, error) {
+	page := domain.NewPage(0, 0)
+	if req.GetPage() != nil {
+		page = domain.NewPage(
+			int(req.GetPage().GetPageNumber()),
+			int(req.GetPage().GetPageSize()),
+		)
+	}
+
+	withdrawals, err := o.operatorSvc.ListWithdrawals(
+		ctx,
+		int(req.GetAccountIndex()),
+		page,
+	)
+
+	withdrawalsProto := make([]*pb.Withdrawal, 0, len(withdrawals))
+	for _, v := range withdrawals {
+		withdrawalsProto = append(withdrawalsProto, &pb.Withdrawal{
+			TxId:            v.TxID,
+			BaseAmount:      v.BaseAmount,
+			QuoteAmount:     v.QuoteAmount,
+			MillisatPerByte: v.MillisatPerByte,
+			Address:         v.Address,
+		})
+	}
+
+	return &pb.ListWithdrawalsReply{
+		AccountIndex: req.GetAccountIndex(),
+		Withdrawals:  withdrawalsProto,
+	}, err
+}
+
 func (o operatorHandler) dropMarket(
 	ctx context.Context,
 	req *pb.DropMarketRequest,
