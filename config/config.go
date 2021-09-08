@@ -165,21 +165,29 @@ func GetBool(key string) bool {
 
 //GetNetwork ...
 func GetNetwork() (*network.Network, error) {
-	if vip.GetString(NetworkKey) == network.Regtest.Name {
+	networkName := vip.GetString(NetworkKey)
+
+	if networkName == network.Liquid.Name {
+		return &network.Liquid, nil
+	}
+
+	if networkName == network.Regtest.Name {
 		net := network.Regtest
 		regtestNativeAssetHash := vip.GetString(NativeAssetHash)
+
+		if regtestNativeAssetHash == "" {
+			return &net, nil
+		}
 
 		if err := validateAssetString(regtestNativeAssetHash); err != nil {
 			return nil, err
 		}
 
-		if regtestNativeAssetHash != "" {
-			net.AssetID = regtestNativeAssetHash
-		}
-
+		net.AssetID = regtestNativeAssetHash
 		return &net, nil
 	}
-	return &network.Liquid, nil
+
+	return nil, fmt.Errorf("network is unknown")
 }
 
 // TODO: attach network name to datadir
