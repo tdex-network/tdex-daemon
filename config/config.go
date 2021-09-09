@@ -173,7 +173,7 @@ func GetNetwork() (*network.Network, error) {
 
 	if networkName == network.Regtest.Name {
 		net := network.Regtest
-		regtestNativeAssetHash := vip.GetString(NativeAssetHash)
+		regtestNativeAssetHash := vip.GetString(NativeAssetKey)
 
 		if regtestNativeAssetHash == "" {
 			return &net, nil
