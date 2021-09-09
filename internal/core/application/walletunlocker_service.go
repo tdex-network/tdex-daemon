@@ -119,7 +119,7 @@ func newWalletUnlockerService(
 			if len(unspents) > 0 {
 				w.setRestored(true)
 			} else {
-				log.Info("Restoring internal wallet's utxo set. This could take a while...")
+				log.Info("rescan internal wallet's utxo set. This could take a while...")
 
 				if _, err := fetchAndAddUnspents(
 					w.explorerService,
@@ -127,11 +127,11 @@ func newWalletUnlockerService(
 					w.blockchainListener,
 					vault.AllDerivedAddressesInfo(),
 				); err != nil {
-					log.Infof("Failed for reason: %s", err)
+					log.Infof("failed for reason: %s", err)
 					w.setRestored(false)
 					return
 				}
-				log.Info("Done")
+				log.Info("done")
 				w.setRestored(true)
 			}
 		}()
