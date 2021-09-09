@@ -73,12 +73,14 @@ type service struct {
 	opts        ServiceOpts
 	macaroonSvc *macaroons.Service
 
-	grpcOperatorServer *grpc.Server
-	grpcTradeServer    *grpc.Server
-	httpOperatorServer *http.Server
-	httpTradeServer    *http.Server
-	muxOperator        cmux.CMux
-	muxTrade           cmux.CMux
+	grpcOperatorServer  *grpc.Server
+	grpcTradeServer     *grpc.Server
+	http1OperatorServer *http.Server
+	http2OperatorServer *http.Server
+	http1TradeServer    *http.Server
+	http2TradeServer    *http.Server
+	muxOperator         cmux.CMux
+	muxTrade            cmux.CMux
 
 	passphraseChan chan application.PassphraseMsg
 	readyChan      chan bool
@@ -242,8 +244,10 @@ func (s *service) Start() error {
 
 	s.grpcOperatorServer = services.grpcOperator
 	s.grpcTradeServer = services.grpcTrade
-	s.httpOperatorServer = services.httpOperator
-	s.httpTradeServer = services.httpTrade
+	s.http1OperatorServer = services.http1Operator
+	s.http2OperatorServer = services.http2Operator
+	s.http1TradeServer = services.http1Trade
+	s.http2TradeServer = services.http2Trade
 	s.muxOperator = services.muxOperator
 	s.muxTrade = services.muxTrade
 
@@ -260,12 +264,14 @@ func (s *service) withMacaroons() bool {
 }
 
 type services struct {
-	grpcOperator *grpc.Server
-	grpcTrade    *grpc.Server
-	httpOperator *http.Server
-	httpTrade    *http.Server
-	muxOperator  cmux.CMux
-	muxTrade     cmux.CMux
+	grpcOperator  *grpc.Server
+	grpcTrade     *grpc.Server
+	http1Operator *http.Server
+	http2Operator *http.Server
+	http1Trade    *http.Server
+	http2Trade    *http.Server
+	muxOperator   cmux.CMux
+	muxTrade      cmux.CMux
 }
 
 func (s *service) start(withUnlockerOnly bool) (*services, error) {
@@ -293,12 +299,12 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	}
 
 	// http Operator server for grpc-web
-	httpOperatorServer := newGRPCWrappedServer(operatorAddr, grpcOperatorServer)
+	http1OperatorServer, http2OperatorServer := newGRPCWrappedServer(operatorAddr, grpcOperatorServer)
 
 	// Serve grpc and grpc-web multiplexed on the same port
 	muxOperator, err := serveMux(
 		operatorAddr, s.opts.operatorTLSKey(), s.opts.operatorTLSCert(),
-		grpcOperatorServer, httpOperatorServer,
+		grpcOperatorServer, http1OperatorServer, http2OperatorServer,
 	)
 	if err != nil {
 		return nil, err
@@ -306,7 +312,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 
 	var muxTrade cmux.CMux
 	var grpcTradeServer *grpc.Server
-	var httpTradeServer *http.Server
+	var http1TradeServer, http2TradeServer *http.Server
 	if !withUnlockerOnly {
 		// gRPC Trade server
 		tradeAddr := s.opts.TradeAddress
@@ -318,10 +324,10 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		)
 		tradeHandler := grpchandler.NewTraderHandler(s.opts.TradeSvc)
 		pbtrade.RegisterTradeServer(grpcTradeServer, tradeHandler)
-		httpTradeServer = newGRPCWrappedServer(tradeAddr, grpcTradeServer)
+		http1TradeServer, http2TradeServer = newGRPCWrappedServer(tradeAddr, grpcTradeServer)
 		muxTrade, err = serveMux(
 			tradeAddr, tradeTLSKey, tradeTLSCert,
-			grpcTradeServer, httpTradeServer,
+			grpcTradeServer, http1TradeServer, http2TradeServer,
 		)
 		if err != nil {
 			return nil, err
@@ -329,12 +335,14 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	}
 
 	return &services{
-		grpcOperator: grpcOperatorServer,
-		grpcTrade:    grpcTradeServer,
-		httpOperator: httpOperatorServer,
-		httpTrade:    httpTradeServer,
-		muxOperator:  muxOperator,
-		muxTrade:     muxTrade,
+		grpcOperator:  grpcOperatorServer,
+		grpcTrade:     grpcTradeServer,
+		http1Operator: http1OperatorServer,
+		http2Operator: http2OperatorServer,
+		http1Trade:    http1TradeServer,
+		http2Trade:    http2TradeServer,
+		muxOperator:   muxOperator,
+		muxTrade:      muxTrade,
 	}, nil
 }
 
@@ -345,7 +353,8 @@ func (s *service) stop(stopMacaroonSvc bool) {
 	}
 
 	log.Debug("stop grpc-web Operator server")
-	s.httpOperatorServer.Shutdown(context.Background())
+	s.http1OperatorServer.Shutdown(context.Background())
+	s.http2OperatorServer.Shutdown(context.Background())
 
 	log.Debug("stop grpc Operator server")
 	s.grpcOperatorServer.GracefulStop()
@@ -355,7 +364,8 @@ func (s *service) stop(stopMacaroonSvc bool) {
 
 	if s.grpcTradeServer != nil {
 		log.Debug("stop grpc-web Trade server")
-		s.httpTradeServer.Shutdown(context.Background())
+		s.http1TradeServer.Shutdown(context.Background())
+		s.http2TradeServer.Shutdown(context.Background())
 
 		log.Debug("stop grpc Trade server")
 		s.grpcTradeServer.GracefulStop()
@@ -384,7 +394,6 @@ func (s *service) startListeningToPassphraseChan() {
 				); err != nil {
 					log.WithError(err).Warn("an error occured while creating macaroons")
 				}
-				break
 			case application.ChangePassphrase:
 				currentPwd := []byte(msg.CurrentPwd)
 				newPwd := []byte(msg.NewPwd)
@@ -406,7 +415,6 @@ func (s *service) startListeningToPassphraseChan() {
 				); err != nil {
 					log.WithError(err).Warn("an error occured while creating macaroons")
 				}
-				break
 			}
 		}
 	}
@@ -436,8 +444,10 @@ func (s *service) startListeningToReadyChan() {
 
 	s.grpcOperatorServer = services.grpcOperator
 	s.grpcTradeServer = services.grpcTrade
-	s.httpOperatorServer = services.httpOperator
-	s.httpTradeServer = services.httpTrade
+	s.http1OperatorServer = services.http1Operator
+	s.http2OperatorServer = services.http2Operator
+	s.http1TradeServer = services.http1Trade
+	s.http2TradeServer = services.http2Trade
 	s.muxOperator = services.muxOperator
 	s.muxTrade = services.muxTrade
 }
