@@ -39,8 +39,8 @@ const (
 	NetworkKey = "NETWORK"
 	// BaseAssetKey is the default asset hash to be used as base asset for all markets. Default is LBTC
 	BaseAssetKey = "BASE_ASSET"
-	//NativeAssetHash is used to set lbtc hash, used for fee outputs, in regtest network
-	NativeAssetHash = "NATIVE_ASSET_HASH"
+	//NativeAssetKey is used to set lbtc hash, used for fee outputs, in regtest network
+	NativeAssetKey = "NATIVE_ASSET"
 	// CrawlIntervalKey is the interval in milliseconds to be used when watching the blockchain via the explorer
 	CrawlIntervalKey = "CRAWL_INTERVAL"
 	// FeeAccountBalanceThresholdKey is the treshold of LBTC balance (in satoshis) for the fee account, after wich we alert the operator that it cannot subsidize anymore swaps
