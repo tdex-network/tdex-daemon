@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"math"
+	"sync"
 	"testing"
 	"time"
 
@@ -141,6 +142,10 @@ func TestMarketTrading(t *testing.T) {
 }
 
 func newTradeService(withFixedFee bool) (application.TradeService, error) {
+	m := &sync.Mutex{}
+	m.Lock()
+	defer m.Unlock()
+
 	repoManager, explorerSvc, bcListener := newServices()
 
 	v, err := repoManager.VaultRepository().GetOrCreateVault(
