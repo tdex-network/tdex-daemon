@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"math"
-	"sync"
 	"testing"
 	"time"
 
@@ -90,19 +89,15 @@ func TestMarketTrading(t *testing.T) {
 		require.True(t, balances.Balance.QuoteAmount > 0)
 
 		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
-			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
 		})
 		t.Run("buy LBTC fixed USDT", func(t *testing.T) {
-			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
 		})
 		t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
-			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
 		})
 		t.Run("sell LBTC fixed USDT", func(t *testing.T) {
-			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
 		})
 	})
@@ -123,29 +118,21 @@ func TestMarketTrading(t *testing.T) {
 		require.True(t, balances.Balance.QuoteAmount > 0)
 
 		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
-			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
 		})
 		t.Run("buy LBTC fixed USDT", func(t *testing.T) {
-			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
 		})
 		t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
-			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
 		})
 		t.Run("sell LBTC fixed USDT", func(t *testing.T) {
-			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
 		})
 	})
 }
 
 func newTradeService(withFixedFee bool) (application.TradeService, error) {
-	m := &sync.Mutex{}
-	m.Lock()
-	defer m.Unlock()
-
 	repoManager, explorerSvc, bcListener := newServices()
 
 	v, err := repoManager.VaultRepository().GetOrCreateVault(
