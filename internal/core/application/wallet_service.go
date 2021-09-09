@@ -56,7 +56,6 @@ func NewWalletService(
 	blockchainListener BlockchainListener,
 	net *network.Network,
 	marketFee int64,
-	marketBaseAsset string,
 ) WalletService {
 	return newWalletService(
 		repoManager,
@@ -64,7 +63,6 @@ func NewWalletService(
 		blockchainListener,
 		net,
 		marketFee,
-		marketBaseAsset,
 	)
 }
 
@@ -74,7 +72,6 @@ func newWalletService(
 	blockchainListener BlockchainListener,
 	net *network.Network,
 	marketFee int64,
-	marketBaseAsset string,
 ) *walletService {
 	return &walletService{
 		repoManager:        repoManager,
@@ -82,7 +79,6 @@ func newWalletService(
 		blockchainListener: blockchainListener,
 		network:            net,
 		marketFee:          marketFee,
-		marketBaseAsset:    marketBaseAsset,
 		lock:               &sync.RWMutex{},
 		pwChan:             make(chan PassphraseMsg, 1),
 	}
