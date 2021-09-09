@@ -52,13 +52,13 @@ func (e *elements) GetUnspentsForAddresses(
 	addresses []string,
 	blindingKeys [][]byte,
 ) ([]explorer.Utxo, error) {
-	sortedBlindingKeys := make([][]byte, len(addresses), len(addresses))
-	for i, addr := range addresses {
+	sortedBlindingKeys := make([][]byte, 0, len(addresses))
+	for _, addr := range addresses {
 		blindKey, err := findBlindKeyForAddress(addr, blindingKeys)
 		if err != nil {
 			return nil, fmt.Errorf("find key: %w", err)
 		}
-		sortedBlindingKeys[i] = blindKey
+		sortedBlindingKeys = append(sortedBlindingKeys, blindKey)
 	}
 
 	for i, addr := range addresses {

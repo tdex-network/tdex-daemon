@@ -161,10 +161,9 @@ func (t tradeRepositoryImpl) findTrades(
 		return nil, err
 	}
 
-	trades := make([]*domain.Trade, len(tr), len(tr))
-	for i := range tr {
-		trade := tr[i]
-		trades[i] = &trade
+	trades := make([]*domain.Trade, 0, len(tr))
+	for _, trade := range tr {
+		trades = append(trades, &trade)
 	}
 
 	return trades, nil

@@ -725,9 +725,9 @@ func (w *walletUnlockerService) restoreUnspentsForAddress(
 	}
 	utxos := iUtxos.([]explorer.Utxo)
 
-	unspents := make([]domain.Unspent, len(utxos), len(utxos))
-	for i, u := range utxos {
-		unspents[i] = domain.Unspent{
+	unspents := make([]domain.Unspent, 0, len(utxos))
+	for _, u := range utxos {
+		unspents = append(unspents, domain.Unspent{
 			TxID:            u.Hash(),
 			VOut:            u.Index(),
 			Value:           u.Value(),
@@ -742,7 +742,7 @@ func (w *walletUnlockerService) restoreUnspentsForAddress(
 			SurjectionProof: make([]byte, 1),
 			Confirmed:       u.IsConfirmed(),
 			Address:         addr,
-		}
+		})
 	}
 	chUnspent <- unspentInfo{info: info, unspents: unspents}
 }
