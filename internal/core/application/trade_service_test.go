@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -73,8 +75,15 @@ var (
 )
 
 func TestMarketTrading(t *testing.T) {
+	repoManager, explorerSvc, bcListener := newServices()
+
 	t.Run("without fixed fees", func(t *testing.T) {
-		tradeSvc, err := newTradeService(false)
+		tradeSvc, err := newTradeService(
+			repoManager,
+			explorerSvc,
+			bcListener,
+			false,
+		)
 		require.NoError(t, err)
 
 		markets, err := tradeSvc.GetTradableMarkets(ctx)
@@ -89,21 +98,31 @@ func TestMarketTrading(t *testing.T) {
 		require.True(t, balances.Balance.QuoteAmount > 0)
 
 		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
 		})
 		t.Run("buy LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
 		})
 		t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
 		})
 		t.Run("sell LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
 		})
 	})
 
 	t.Run("with fixed fees", func(t *testing.T) {
-		tradeSvc, err := newTradeService(true)
+		tradeSvc, err := newTradeService(
+			repoManager,
+			explorerSvc,
+			bcListener,
+			false,
+		)
+
 		require.NoError(t, err)
 
 		markets, err := tradeSvc.GetTradableMarkets(ctx)
@@ -118,22 +137,30 @@ func TestMarketTrading(t *testing.T) {
 		require.True(t, balances.Balance.QuoteAmount > 0)
 
 		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
 		})
 		t.Run("buy LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
 		})
 		t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
 		})
 		t.Run("sell LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
 		})
 	})
 }
 
-func newTradeService(withFixedFee bool) (application.TradeService, error) {
-	repoManager, explorerSvc, bcListener := newServices()
+func newTradeService(
+	repoManager ports.RepoManager,
+	explorerSvc explorer.Service,
+	bcListener application.BlockchainListener,
+	withFixedFee bool,
+) (application.TradeService, error) {
 
 	v, err := repoManager.VaultRepository().GetOrCreateVault(
 		ctx, mnemonic, passphrase, regtest,

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
@@ -259,10 +258,6 @@ func EncodeKey(key interface{}, typeName string) ([]byte, error) {
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
-	m := &sync.Mutex{}
-	m.Lock()
-	defer m.Unlock()
-
 	isInMemory := len(dbDir) <= 0
 
 	opts := badger.DefaultOptions(dbDir)
