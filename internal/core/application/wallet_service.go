@@ -419,6 +419,7 @@ func sendToMany(opts sendToManyOpts) (string, error) {
 			AssetBlinder:  v.AssetBlinder(),
 			AmountBlinder: v.ValueBlinder(),
 		}
+		index++
 	}
 
 	// again, add changes' blinding keys to the list of those of the outputs
