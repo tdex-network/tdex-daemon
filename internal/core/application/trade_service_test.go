@@ -132,7 +132,6 @@ func TestMarketTrading(t *testing.T) {
 		require.True(t, balances.Balance.BaseAmount > 0)
 		require.True(t, balances.Balance.QuoteAmount > 0)
 
-		//dummy
 		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
 		})
