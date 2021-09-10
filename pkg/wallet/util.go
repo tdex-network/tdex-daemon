@@ -162,7 +162,7 @@ func addInsAndOutsToPset(
 }
 
 func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int, []int) {
-	inScriptTypes := make([]int, len(ptx.Inputs), len(ptx.Inputs))
+	inScriptTypes := make([]int, 0, len(ptx.Inputs))
 	inAuxiliaryRedeemScriptSize := make([]int, 0)
 	inAuxiliaryWitnessSize := make([]int, 0)
 	for i, in := range ptx.Inputs {
@@ -178,7 +178,7 @@ func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int, []i
 		switch sType {
 		case address.P2ShScript:
 			if in.WitnessScript != nil {
-				inScriptTypes[i] = P2SH_P2WSH
+				inScriptTypes = append(inScriptTypes, P2SH_P2WSH)
 				// redeem script is treated as a multisig one. In case it's something
 				// different, it is treated as a singlesig instead.
 				m, _, _ := txscript.CalcMultiSigStats(in.RedeemScript)
@@ -191,42 +191,37 @@ func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int, []i
 			} else if in.RedeemScript != nil {
 				inScriptTypes[i] = P2SH_P2WPKH
 			}
-			break
 		case address.P2WpkhScript:
-			inScriptTypes[i] = P2WPKH
-			break
+			inScriptTypes = append(inScriptTypes, P2WPKH)
 		case address.P2WshScript:
-			inScriptTypes[i] = P2WSH
+			inScriptTypes = append(inScriptTypes, P2WSH)
 			scriptSize := calcWitnessSizeFromRedeemScript(in.RedeemScript)
 			inAuxiliaryWitnessSize = append(inAuxiliaryWitnessSize, scriptSize)
-			break
 		case address.P2PkhScript:
-			inScriptTypes[i] = P2PKH
-			break
+			inScriptTypes = append(inScriptTypes, P2PKH)
 		case address.P2MultiSigScript:
-			inScriptTypes[i] = P2MS
+			inScriptTypes = append(inScriptTypes, P2MS)
 			scriptSize := calcWitnessSizeFromRedeemScript(in.RedeemScript)
 			inAuxiliaryRedeemScriptSize = append(inAuxiliaryRedeemScriptSize, scriptSize)
-			break
 		}
 	}
 
-	outScriptTypes := make([]int, len(ptx.Outputs), len(ptx.Outputs))
+	outScriptTypes := make([]int, 0, len(ptx.Outputs))
 	outAuxiliaryRedeemScriptSize := make([]int, 0)
-	for i, out := range ptx.UnsignedTx.Outputs {
+	for _, out := range ptx.UnsignedTx.Outputs {
 		sType := address.GetScriptType(out.Script)
 		switch sType {
 		case address.P2PkhScript:
-			outScriptTypes[i] = P2PKH
+			outScriptTypes = append(outScriptTypes, P2PKH)
 		case address.P2MultiSigScript:
-			outScriptTypes[i] = P2MS
+			outScriptTypes = append(outScriptTypes, P2MS)
 			scriptLen := len(out.Script)
 			scriptSize := varIntSerializeSize(uint64(scriptLen)) + scriptLen
 			outAuxiliaryRedeemScriptSize = append(outAuxiliaryRedeemScriptSize, scriptSize)
 		case address.P2WpkhScript:
-			outScriptTypes[i] = P2WPKH
+			outScriptTypes = append(outScriptTypes, P2WPKH)
 		case address.P2WshScript:
-			outScriptTypes[i] = P2WSH
+			outScriptTypes = append(outScriptTypes, P2WSH)
 		}
 	}
 

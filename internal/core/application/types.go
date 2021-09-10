@@ -180,9 +180,9 @@ type WebhookInfo struct {
 type Unspents []domain.Unspent
 
 func (u Unspents) ToUtxos() []explorer.Utxo {
-	l := make([]explorer.Utxo, len(u), len(u))
+	l := make([]explorer.Utxo, 0, len(u))
 	for i := range u {
-		l[i] = u[i].ToUtxo()
+		l = append(l, u[i].ToUtxo())
 	}
 	return l
 }

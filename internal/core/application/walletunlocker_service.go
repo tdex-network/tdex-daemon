@@ -103,30 +103,37 @@ func newWalletUnlockerService(
 		pwChan:             make(chan PassphraseMsg, 1),
 		readyChan:          make(chan bool, 1),
 	}
+
 	// to understand if the service has an already initialized wallet we check
 	// if the inner vaultRepo is able to return a Vault without passing mnemonic
 	// and passphrase. If it does, it means it's been retrieved from storage,
 	// therefore we let the crawler to start watch all derived addresses and mark
 	// the wallet as initialized
+	ctx := context.Background()
 	if vault, err := w.repoManager.VaultRepository().GetOrCreateVault(
-		context.Background(), nil, "", nil,
+		ctx, nil, "", nil,
 	); err == nil {
 		go func() {
-			log.Info("Restoring internal wallet's utxo set. This could take a while...")
+			// check whether the whole internal UTXO set needs to be restored
+			unspents := w.repoManager.UnspentRepository().GetAllUnspents(ctx)
+			if len(unspents) > 0 {
+				w.setRestored(true)
+			} else {
+				log.Info("rescan internal wallet's utxo set. This could take a while...")
 
-			info := vault.AllDerivedAddressesInfo()
-			if _, err := fetchAndAddUnspents(
-				w.explorerService,
-				w.repoManager.UnspentRepository(),
-				w.blockchainListener,
-				info,
-			); err != nil {
-				log.Infof("Failed for reason: %s", err)
-				w.setRestored(false)
-				return
+				if _, err := fetchAndAddUnspents(
+					w.explorerService,
+					w.repoManager.UnspentRepository(),
+					w.blockchainListener,
+					vault.AllDerivedAddressesInfo(),
+				); err != nil {
+					log.Infof("failed for reason: %s", err)
+					w.setRestored(false)
+					return
+				}
+				log.Info("done")
+				w.setRestored(true)
 			}
-			log.Info("Done")
-			w.setRestored(true)
 		}()
 		w.setInitialized(true)
 
@@ -179,13 +186,7 @@ func (w *walletUnlockerService) InitWallet(
 	}
 
 	if restore {
-		w.setSyncing(true)
 		log.Debug("restoring wallet")
-		start := time.Now()
-		defer func() {
-			elapsed := time.Since(start)
-			log.Debugf("Restoration took: %.2fs", elapsed.Seconds())
-		}()
 	} else {
 		log.Debug("creating wallet")
 	}
@@ -198,6 +199,15 @@ func (w *walletUnlockerService) InitWallet(
 	defer vault.Lock()
 
 	if restore {
+		w.setSyncing(true)
+		start := time.Now()
+		defer func() {
+			if w.isRestored() {
+				elapsed := time.Since(start)
+				log.Debugf("Restoration took: %.2fs", elapsed.Seconds())
+			}
+		}()
+
 		data := "addresses discovery"
 
 		chRes <- &InitWalletReply{
@@ -715,9 +725,9 @@ func (w *walletUnlockerService) restoreUnspentsForAddress(
 	}
 	utxos := iUtxos.([]explorer.Utxo)
 
-	unspents := make([]domain.Unspent, len(utxos), len(utxos))
-	for i, u := range utxos {
-		unspents[i] = domain.Unspent{
+	unspents := make([]domain.Unspent, 0, len(utxos))
+	for _, u := range utxos {
+		unspents = append(unspents, domain.Unspent{
 			TxID:            u.Hash(),
 			VOut:            u.Index(),
 			Value:           u.Value(),
@@ -732,7 +742,7 @@ func (w *walletUnlockerService) restoreUnspentsForAddress(
 			SurjectionProof: make([]byte, 1),
 			Confirmed:       u.IsConfirmed(),
 			Address:         addr,
-		}
+		})
 	}
 	chUnspent <- unspentInfo{info: info, unspents: unspents}
 }

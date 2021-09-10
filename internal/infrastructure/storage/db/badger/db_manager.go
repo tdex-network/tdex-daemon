@@ -35,10 +35,11 @@ type repoManager struct {
 // It creates a dedicated directory for main and prices stores, while the
 // unspent repository lives in memory.
 func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, error) {
-	var maindbDir, pricedbDir string
+	var maindbDir, pricedbDir, unspentDir string
 	if len(baseDbDir) > 0 {
 		maindbDir = filepath.Join(baseDbDir, "main")
 		pricedbDir = filepath.Join(baseDbDir, "prices")
+		unspentDir = filepath.Join(baseDbDir, "unspents")
 	}
 
 	mainDb, err := createDb(maindbDir, logger)
@@ -51,7 +52,7 @@ func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, 
 		return nil, fmt.Errorf("opening prices db: %w", err)
 	}
 
-	unspentDb, err := createDb("", logger)
+	unspentDb, err := createDb(unspentDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening unspents db: %w", err)
 	}

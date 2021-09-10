@@ -42,19 +42,19 @@ type AddressInfo struct {
 type AddressesInfo []AddressInfo
 
 func (info AddressesInfo) Addresses() []string {
-	addresses := make([]string, len(info), len(info))
-	for i, in := range info {
-		addresses[i] = in.Address
+	addresses := make([]string, 0, len(info))
+	for _, in := range info {
+		addresses = append(addresses, in.Address)
 	}
 	return addresses
 }
 
 func (info AddressesInfo) AddressesAndKeys() ([]string, [][]byte) {
-	addresses := make([]string, len(info), len(info))
-	keys := make([][]byte, len(info), len(info))
-	for i, in := range info {
-		addresses[i] = in.Address
-		keys[i] = in.BlindingKey
+	addresses := make([]string, 0, len(info))
+	keys := make([][]byte, 0, len(info))
+	for _, in := range info {
+		addresses = append(addresses, in.Address)
+		keys = append(keys, in.BlindingKey)
 	}
 	return addresses, keys
 }

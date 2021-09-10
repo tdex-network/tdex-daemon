@@ -1150,9 +1150,9 @@ func (o *operatorService) claimDeposit(
 	// loop there MUST be only one counter matching the length of the give
 	// outpoints.
 	counter := make(map[int]int)
-	unspents := make([]domain.Unspent, len(outpoints), len(outpoints))
+	unspents := make([]domain.Unspent, 0, len(outpoints))
 	deposits := make([]domain.Deposit, 0, len(outpoints))
-	for i, v := range outpoints {
+	for _, v := range outpoints {
 		confirmed, err := o.explorerSvc.IsTransactionConfirmed(v.Hash)
 		if err != nil {
 			return err
@@ -1183,7 +1183,7 @@ func (o *operatorService) claimDeposit(
 				return errors.New("unable to unblind output")
 			}
 
-			unspents[i] = domain.Unspent{
+			unspents = append(unspents, domain.Unspent{
 				TxID:            v.Hash,
 				VOut:            uint32(v.Index),
 				Value:           unconfidential.Value,
@@ -1198,7 +1198,7 @@ func (o *operatorService) claimDeposit(
 				SurjectionProof: make([]byte, 1),
 				Address:         info.Address,
 				Confirmed:       true,
-			}
+			})
 
 			deposits = append(deposits, domain.Deposit{
 				AccountIndex: info.AccountIndex,
