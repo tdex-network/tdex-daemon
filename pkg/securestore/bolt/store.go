@@ -135,12 +135,6 @@ func (s *boltSecureStorage) CreateUnlock(password *[]byte) error {
 // ChangePassword decrypts the store (included the root key) with the old
 // password and then encrypts it again with the new password.
 func (s *boltSecureStorage) ChangePassword(oldPw, newPw []byte) error {
-	// The store must be already unlocked. This ensures that there already is a
-	// key in the DB.
-	if s.IsLocked() {
-		return ErrStoreLocked
-	}
-
 	if oldPw == nil || newPw == nil {
 		return ErrPasswordRequired
 	}
@@ -350,10 +344,6 @@ func (s *boltSecureStorage) GetAllFromBucket(bucketKey []byte) (map[string][]byt
 }
 
 func (s *boltSecureStorage) ListBuckets() ([][]byte, error) {
-	if s.IsLocked() {
-		return nil, ErrStoreLocked
-	}
-
 	var bucketKeys [][]byte
 	if err := kvdb.View(s.db, func(tx walletdb.ReadTx) error {
 		bucket := tx.ReadBucket(RootKeyBucketName)
