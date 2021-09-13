@@ -33,18 +33,15 @@ type WalletService interface {
 	SendToMany(
 		ctx context.Context,
 		req SendToManyRequest,
-	) ([]byte, error)
+	) ([]byte, []byte, error)
 }
 
 type walletService struct {
 	repoManager        ports.RepoManager
 	explorerService    explorer.Service
 	blockchainListener BlockchainListener
-	walletInitialized  bool
-	walletIsSyncing    bool
 	network            *network.Network
 	marketFee          int64
-	marketBaseAsset    string
 
 	lock   *sync.RWMutex
 	pwChan chan PassphraseMsg
@@ -139,97 +136,98 @@ type TxOut struct {
 func (w *walletService) SendToMany(
 	ctx context.Context,
 	req SendToManyRequest,
-) ([]byte, error) {
+) ([]byte, []byte, error) {
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(req.Outputs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	vault, err := w.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	walletUnspents, err := w.getAllUnspentsForAccount(ctx, domain.WalletAccount, true)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(walletUnspents) <= 0 {
-		return nil, ErrWalletNotFunded
+		return nil, nil, ErrWalletNotFunded
 	}
 
 	feeUnspents, err := w.getAllUnspentsForAccount(ctx, domain.FeeAccount, false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(feeUnspents) <= 0 {
-		return nil, ErrFeeAccountNotFunded
+		return nil, nil, ErrFeeAccountNotFunded
 	}
 
-	var txHex string
+	mnemonic, err := vault.GetMnemonicSafe()
+	if err != nil {
+		return nil, nil, err
+	}
+	walletAccount, err := vault.AccountByIndex(domain.WalletAccount)
+	if err != nil {
+		return nil, nil, err
+	}
+	feeAccount, err := vault.AccountByIndex(domain.FeeAccount)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	changePathsByAsset := map[string]string{}
+	feeChangePathByAsset := map[string]string{}
+	for _, asset := range getAssetsOfOutputs(outputs) {
+		info, err := vault.DeriveNextInternalAddressForAccount(domain.WalletAccount)
+		if err != nil {
+			return nil, nil, err
+		}
+		changePathsByAsset[asset] = info.DerivationPath
+	}
+	feeInfo, err := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+	if err != nil {
+		return nil, nil, err
+	}
+	feeChangePathByAsset[w.network.AssetID] = feeInfo.DerivationPath
+
+	txHex, err := sendToMany(sendToManyOpts{
+		mnemonic:              mnemonic,
+		unspents:              walletUnspents,
+		feeUnspents:           feeUnspents,
+		outputs:               outputs,
+		outputsBlindingKeys:   outputsBlindingKeys,
+		changePathsByAsset:    changePathsByAsset,
+		feeChangePathByAsset:  feeChangePathByAsset,
+		inputPathsByScript:    walletAccount.DerivationPathByScript,
+		feeInputPathsByScript: feeAccount.DerivationPathByScript,
+		milliSatPerByte:       int(req.MillisatPerByte),
+		network:               w.network,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	rawTx, _ := hex.DecodeString(txHex)
 
 	if err := w.repoManager.VaultRepository().UpdateVault(
-		ctx,
-		func(v *domain.Vault) (*domain.Vault, error) {
-			mnemonic, err := v.GetMnemonicSafe()
-			if err != nil {
-				return nil, err
-			}
-			walletAccount, err := v.AccountByIndex(domain.WalletAccount)
-			if err != nil {
-				return nil, err
-			}
-			feeAccount, err := v.AccountByIndex(domain.FeeAccount)
-			if err != nil {
-				return nil, err
-			}
-
-			changePathsByAsset := map[string]string{}
-			feeChangePathByAsset := map[string]string{}
-			for _, asset := range getAssetsOfOutputs(outputs) {
-				info, err := v.DeriveNextInternalAddressForAccount(domain.WalletAccount)
-				if err != nil {
-					return nil, err
-				}
-				changePathsByAsset[asset] = info.DerivationPath
-			}
-			feeInfo, err := v.DeriveNextInternalAddressForAccount(domain.FeeAccount)
-			if err != nil {
-				return nil, err
-			}
-			feeChangePathByAsset[w.network.AssetID] = feeInfo.DerivationPath
-
-			_txHex, err := sendToMany(sendToManyOpts{
-				mnemonic:              mnemonic,
-				unspents:              walletUnspents,
-				feeUnspents:           feeUnspents,
-				outputs:               outputs,
-				outputsBlindingKeys:   outputsBlindingKeys,
-				changePathsByAsset:    changePathsByAsset,
-				feeChangePathByAsset:  feeChangePathByAsset,
-				inputPathsByScript:    walletAccount.DerivationPathByScript,
-				feeInputPathsByScript: feeAccount.DerivationPathByScript,
-				milliSatPerByte:       int(req.MillisatPerByte),
-				network:               w.network,
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			txHex = _txHex
-
-			if !req.Push {
-				return v, nil
-			}
-
-			txid, err := w.explorerService.BroadcastTransaction(txHex)
-			if err != nil {
-				return nil, err
-			}
-			log.Debugf("wallet account tx broadcasted with id: %s", txid)
-
-			return v, nil
+		ctx, func(_ *domain.Vault) (*domain.Vault, error) {
+			return vault, nil
 		},
 	); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	if !req.Push {
+		return rawTx, nil, nil
+	}
+
+	txid, err := w.explorerService.BroadcastTransaction(txHex)
+	if err != nil {
+		return nil, nil, err
+	}
+	log.Debugf("wallet account tx broadcasted with id: %s", txid)
 
 	go extractUnspentsFromTxAndUpdateUtxoSet(
 		w.repoManager.UnspentRepository(),
@@ -239,8 +237,8 @@ func (w *walletService) SendToMany(
 		domain.FeeAccount,
 	)
 
-	rawTx, _ := hex.DecodeString(txHex)
-	return rawTx, nil
+	rawTxid, _ := hex.DecodeString(txid)
+	return rawTx, rawTxid, nil
 }
 
 func (w *walletService) getAllUnspentsForAccount(

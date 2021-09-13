@@ -327,7 +327,6 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 		inAssets := opts.getInputAssets()
 		// calculate target amount of each asset for coin selection
 		totalAmountsByAsset := opts.getOutputsTotalAmountsByAsset()
-		// retrieve input prv blinding keys
 
 		// select unspents and update the list of inputs to add and eventually the
 		// list of outputs to add by adding the change output if necessary

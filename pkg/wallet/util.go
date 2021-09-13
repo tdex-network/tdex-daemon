@@ -213,6 +213,12 @@ func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int, []i
 		switch sType {
 		case address.P2PkhScript:
 			outScriptTypes = append(outScriptTypes, P2PKH)
+		case address.P2ShScript:
+			if len(out.Script) == 20 {
+				outScriptTypes = append(outScriptTypes, P2SH_P2WPKH)
+			} else {
+				outScriptTypes = append(outScriptTypes, P2SH_P2WSH)
+			}
 		case address.P2MultiSigScript:
 			outScriptTypes = append(outScriptTypes, P2MS)
 			scriptLen := len(out.Script)
