@@ -4,7 +4,6 @@ package operator
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -302,7 +301,7 @@ func (c *operatorClient) ListDeposits(ctx context.Context, in *ListDepositsReque
 
 func (c *operatorClient) ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsReply, error) {
 	out := new(ListWithdrawalsReply)
-	err := c.cc.Invoke(ctx, "/Operator/ListAllWithdrawals", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/Operator/ListWithdrawals", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -454,7 +453,7 @@ func (UnimplementedOperatorServer) ListDeposits(context.Context, *ListDepositsRe
 	return nil, status.Errorf(codes.Unimplemented, "method ListDeposits not implemented")
 }
 func (UnimplementedOperatorServer) ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListAllWithdrawals not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method ListWithdrawals not implemented")
 }
 func (UnimplementedOperatorServer) mustEmbedUnimplementedOperatorServer() {}
 
@@ -893,7 +892,7 @@ func _Operator_ListWithdrawals_Handler(srv interface{}, ctx context.Context, dec
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Operator/ListAllWithdrawals",
+		FullMethod: "/Operator/ListWithdrawals",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OperatorServer).ListWithdrawals(ctx, req.(*ListWithdrawalsRequest))
@@ -1001,7 +1000,7 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Operator_ListDeposits_Handler,
 		},
 		{
-			MethodName: "ListAllWithdrawals",
+			MethodName: "ListWithdrawals",
 			Handler:    _Operator_ListWithdrawals_Handler,
 		},
 	},
