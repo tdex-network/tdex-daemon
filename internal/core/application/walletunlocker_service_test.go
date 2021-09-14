@@ -90,6 +90,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestInitWallet(t *testing.T) {
+	// TODO: fix race condition of app services.
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	t.Run("wallet_from_scratch", func(t *testing.T) {
 		walletSvc := newWalletUnlockerService()
 		require.NotNil(t, walletSvc)
