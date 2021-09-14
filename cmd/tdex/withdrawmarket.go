@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
@@ -16,13 +15,13 @@ var withdrawmarket = cli.Command{
 	Name:  "withdrawmarket",
 	Usage: "withdraw funds from some market.",
 	Flags: []cli.Flag{
-		&cli.Float64Flag{
+		&cli.Uint64Flag{
 			Name:  "base_amount",
-			Usage: "the amount in BTC of base asset to withdraw from the market.",
+			Usage: "the amount in Satoshi of base asset to withdraw from the market.",
 		},
-		&cli.Float64Flag{
+		&cli.Uint64Flag{
 			Name:  "quote_amount",
-			Usage: "the amount in BTC of quote asset to withdraw from the market.",
+			Usage: "the amount in Satoshi of quote asset to withdraw from the market.",
 		},
 		&cli.StringFlag{
 			Name:  "address",
@@ -48,8 +47,8 @@ func withdrawMarketAction(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	baseAmount := uint64(ctx.Float64("base_amount") * math.Pow10(8))
-	quoteAmount := uint64(ctx.Float64("quote_amount") * math.Pow10(8))
+	baseAmount := ctx.Uint64("base_amount")
+	quoteAmount := ctx.Uint64("quote_amount")
 	addr := ctx.String("address")
 	mSatsPerByte := ctx.Int64("millisatsperbyte")
 

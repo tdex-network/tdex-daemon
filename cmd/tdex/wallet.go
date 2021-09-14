@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
 	"github.com/urfave/cli/v2"
@@ -34,9 +33,9 @@ var walletAccount = cli.Command{
 					Name:  "asset",
 					Usage: "the hash of the asset to send",
 				},
-				&cli.Float64Flag{
+				&cli.Uint64Flag{
 					Name:  "amount",
-					Usage: "the amount (in BTC) to send",
+					Usage: "the amount in Satoshi to send",
 				},
 				&cli.StringFlag{
 					Name:  "address",
@@ -101,7 +100,7 @@ func walletSendAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	asset := ctx.String("asset")
-	amount := int64((ctx.Float64("amount")) * math.Pow10(8))
+	amount := ctx.Int64("amount")
 	addr := ctx.String("address")
 	mSatsPerByte := ctx.Int64("millisatsperbyte")
 
