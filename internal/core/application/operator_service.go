@@ -73,7 +73,7 @@ type OperatorService interface {
 	WithdrawMarketFunds(
 		ctx context.Context,
 		req WithdrawMarketReq,
-	) ([]byte, error)
+	) ([]byte, []byte, error)
 	ListWithdrawals(
 		ctx context.Context,
 		accountIndex int,
@@ -714,9 +714,9 @@ func (o *operatorService) GetCollectedMarketFee(
 func (o *operatorService) WithdrawMarketFunds(
 	ctx context.Context,
 	req WithdrawMarketReq,
-) ([]byte, error) {
+) ([]byte, []byte, error) {
 	if req.BaseAsset != o.marketBaseAsset {
-		return nil, domain.ErrMarketInvalidBaseAsset
+		return nil, nil, domain.ErrMarketInvalidBaseAsset
 	}
 
 	market, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
@@ -724,10 +724,10 @@ func (o *operatorService) WithdrawMarketFunds(
 		req.QuoteAsset,
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if accountIndex < 0 {
-		return nil, ErrMarketNotExist
+		return nil, nil, ErrMarketNotExist
 	}
 
 	// Eventually, check fee and market account to notify for low balances.
@@ -740,28 +740,28 @@ func (o *operatorService) WithdrawMarketFunds(
 
 	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	balance, err := getUnlockedBalanceForMarket(
 		o.repoManager, ctx, market,
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if balance.BaseAmount <= uint64(market.FixedFee.BaseFee) ||
 		balance.QuoteAmount <= uint64(market.FixedFee.QuoteFee) {
-		return nil, ErrMarketBalanceTooLow
+		return nil, nil, ErrMarketBalanceTooLow
 	}
 
 	baseBalance, quoteBalance := balance.BaseAmount, balance.QuoteAmount
 
 	if req.BalanceToWithdraw.BaseAmount > baseBalance {
-		return nil, ErrWithdrawBaseAmountTooBig
+		return nil, nil, ErrWithdrawBaseAmountTooBig
 	}
 
 	if req.BalanceToWithdraw.QuoteAmount > quoteBalance {
-		return nil, ErrWithdrawQuoteAmountTooBig
+		return nil, nil, ErrWithdrawQuoteAmountTooBig
 	}
 
 	outs := make([]TxOut, 0)
@@ -782,31 +782,31 @@ func (o *operatorService) WithdrawMarketFunds(
 
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	marketUnspents, err := o.getAllUnspentsForAccount(ctx, market.AccountIndex)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	feeUnspents, err := o.getAllUnspentsForAccount(ctx, domain.FeeAccount)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	mnemonic, err := vault.GetMnemonicSafe()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	marketAccount, err := vault.AccountByIndex(market.AccountIndex)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	feeAccount, err := vault.AccountByIndex(domain.FeeAccount)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	changePathsByAsset := map[string]string{}
@@ -814,7 +814,7 @@ func (o *operatorService) WithdrawMarketFunds(
 	for _, asset := range getAssetsOfOutputs(outputs) {
 		info, err := vault.DeriveNextInternalAddressForAccount(accountIndex)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		derivationPath := marketAccount.DerivationPathByScript[info.Script]
@@ -823,7 +823,7 @@ func (o *operatorService) WithdrawMarketFunds(
 
 	feeInfo, err := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	feeChangePathByAsset[o.network.AssetID] =
 		feeAccount.DerivationPathByScript[feeInfo.Script]
@@ -842,15 +842,16 @@ func (o *operatorService) WithdrawMarketFunds(
 		network:               o.network,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var txid string
 	if req.Push {
 		txid, err = o.explorerSvc.BroadcastTransaction(txHex)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		log.Debugf("withdrawal tx broadcasted with id: %s", txid)
 	}
 
 	if err := o.repoManager.VaultRepository().UpdateVault(
@@ -859,7 +860,7 @@ func (o *operatorService) WithdrawMarketFunds(
 			return vault, nil
 		},
 	); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	go extractUnspentsFromTxAndUpdateUtxoSet(
@@ -870,30 +871,38 @@ func (o *operatorService) WithdrawMarketFunds(
 		market.AccountIndex,
 	)
 
-	// Publish message for topic AccountWithdraw to pubsub service.
-	if err := publishAccountWithdrawTopic(
-		o.blockchainListener.PubSubService(),
-		req.Market, *balance, req.BalanceToWithdraw, req.Address, txid,
-	); err != nil {
-		log.Warn(err)
-	}
+	// Start watching tx to confirm new unspents once the tx is in blockchain.
+	go o.blockchainListener.StartObserveTx(txid, market.QuoteAsset)
 
-	if err = o.repoManager.WithdrawalRepository().AddWithdrawal(
-		ctx,
-		domain.Withdrawal{
-			TxID:            txid,
-			AccountIndex:    accountIndex,
-			BaseAmount:      req.BalanceToWithdraw.BaseAmount,
-			QuoteAmount:     req.BalanceToWithdraw.QuoteAmount,
-			MillisatPerByte: req.MillisatPerByte,
-			Address:         req.Address,
-		},
-	); err != nil {
-		return nil, err
-	}
+	// Publish message for topic AccountWithdraw to pubsub service.
+	go func() {
+		if err := publishAccountWithdrawTopic(
+			o.blockchainListener.PubSubService(),
+			req.Market, *balance, req.BalanceToWithdraw, req.Address, txid,
+		); err != nil {
+			log.Warn(err)
+		}
+	}()
+
+	go func() {
+		if err := o.repoManager.WithdrawalRepository().AddWithdrawal(
+			ctx,
+			domain.Withdrawal{
+				TxID:            txid,
+				AccountIndex:    accountIndex,
+				BaseAmount:      req.BalanceToWithdraw.BaseAmount,
+				QuoteAmount:     req.BalanceToWithdraw.QuoteAmount,
+				MillisatPerByte: req.MillisatPerByte,
+				Address:         req.Address,
+			},
+		); err != nil {
+			log.WithError(err).Warn("an error occured while storing withdrawal info")
+		}
+	}()
 
 	rawTx, _ := hex.DecodeString(txHex)
-	return rawTx, nil
+	rawTxid, _ := hex.DecodeString(txid)
+	return rawTx, rawTxid, nil
 }
 
 func (o *operatorService) ListWithdrawals(

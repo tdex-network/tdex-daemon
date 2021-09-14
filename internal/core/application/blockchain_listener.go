@@ -16,8 +16,6 @@ import (
 	"github.com/vulpemventures/go-elements/network"
 )
 
-const readOnlyTx = true
-
 //BlockchainListener defines the needed method sto start and stop a blockchain listener
 type BlockchainListener interface {
 	StartObservation()
@@ -26,7 +24,7 @@ type BlockchainListener interface {
 	StartObserveAddress(accountIndex int, addr string, blindKey []byte)
 	StopObserveAddress(addr string)
 
-	StartObserveTx(txid string)
+	StartObserveTx(txid, marketQuoteAsset string)
 	StopObserveTx(txid string)
 
 	StartObserveOutpoints(outpoints []explorer.Utxo, tradeID string)
@@ -37,7 +35,6 @@ type BlockchainListener interface {
 
 type blockchainListener struct {
 	crawlerSvc         crawler.Service
-	explorerSvc        explorer.Service
 	repoManager        ports.RepoManager
 	pubsubSvc          ports.SecurePubSub
 	started            bool
@@ -116,11 +113,14 @@ func (b *blockchainListener) StartObserveAddress(
 	b.addOrQueueObservable(observable)
 }
 
-func (b *blockchainListener) StartObserveTx(txid string) {
+func (b *blockchainListener) StartObserveTx(txid string, mktQuoteAsset string) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	observable := crawler.NewTransactionObservable(txid)
+	extraData := map[string]interface{}{
+		"quoteasset": mktQuoteAsset,
+	}
+	observable := crawler.NewTransactionObservable(txid, extraData)
 
 	b.addOrQueueObservable(observable)
 }
@@ -188,31 +188,29 @@ func (b *blockchainListener) listenToEventChannel() {
 			log.Trace("CloseEvent detected")
 			log.Trace("stop listening on event channel")
 			return
-		case crawler.TransactionConfirmed:
+		case crawler.TransactionConfirmed, crawler.TransactionUnconfirmed:
 			e := event.(crawler.TransactionEvent)
-			ctx := context.Background()
+			isTxConfirmed := e.Type() == crawler.TransactionConfirmed
 
-			trade, err := b.repoManager.TradeRepository().GetTradeByTxID(ctx, e.TxID)
+			marketQuoteAsset, err := extractMarketQuoteAsset(e.ExtraData)
 			if err != nil {
-				log.Warnf("unable to find trade with id %s: %v", e.TxID, err)
+				log.WithError(err).Warn(
+					"an error occured while retrieving market quote asset from event",
+				)
 				break
 			}
 
-			if err := b.settleTrade(&trade.ID, e.BlockTime, e.TxHex, e.TxID); err != nil {
-				log.Warnf("trying to settle trade with id %s: %v", trade.ID, err)
-				break
-			}
 			if err := b.updateUtxoSet(
-				e.TxHex, e.TxID, trade.MarketQuoteAsset, true,
+				e.TxHex, e.TxID, marketQuoteAsset, isTxConfirmed,
 			); err != nil {
 				log.Warnf("trying to confirm or add unspents: %v", err)
 				break
 			}
 
-			// Publish message for topic TradeSettled to pubsub service.
-			go b.publishTradeSettledEvent(trade)
 			// stop watching for a tx after it's confirmed
-			b.StopObserveTx(e.TxID)
+			if isTxConfirmed {
+				b.StopObserveTx(e.TxID)
+			}
 		case crawler.OutpointsSpentAndUnconfirmed, crawler.OutpointsSpentAndConfirmed:
 			e := event.(crawler.OutpointsEvent)
 
@@ -307,9 +305,14 @@ func (b *blockchainListener) updateUtxoSet(
 	txHex, txID, mktAsset string, isTxConfirmed bool,
 ) error {
 	ctx := context.Background()
-	_, accountIndex, err := b.repoManager.MarketRepository().GetMarketByAsset(ctx, mktAsset)
-	if err != nil {
-		return err
+	accountIndex := domain.FeeAccount
+	var err error
+
+	if len(mktAsset) > 0 {
+		_, accountIndex, err = b.repoManager.MarketRepository().GetMarketByAsset(ctx, mktAsset)
+		if err != nil {
+			return err
+		}
 	}
 
 	unspentsToAddOrConfirm, unspentsToSpend, err := extractUnspentsFromTx(
@@ -320,26 +323,6 @@ func (b *blockchainListener) updateUtxoSet(
 	)
 	if err != nil {
 		return err
-	}
-
-	// If the spending tx is in mempool, its inputs can be marked as spent and
-	// the outs added to the utxo set. Otherwise, only its outputs need to be
-	// marked as confirmed.
-	if isTxConfirmed {
-		unspentKeys := make([]domain.UnspentKey, 0, len(unspentsToAddOrConfirm))
-		for _, u := range unspentsToAddOrConfirm {
-			unspentKeys = append(unspentKeys, u.Key())
-		}
-
-		count, err := b.repoManager.UnspentRepository().ConfirmUnspents(
-			ctx, unspentKeys,
-		)
-		if err != nil {
-			return err
-		}
-		if count > 0 {
-			log.Debugf("confirmed %d unspents", count)
-		}
 	}
 
 	count, err := b.repoManager.UnspentRepository().AddUnspents(
@@ -360,6 +343,26 @@ func (b *blockchainListener) updateUtxoSet(
 	}
 	if count > 0 {
 		log.Debugf("spent %d unspents", count)
+	}
+
+	// If the spending tx is in mempool, its inputs can be marked as spent and
+	// the outs added to the utxo set. Otherwise, only its outputs need to be
+	// marked as confirmed.
+	if isTxConfirmed {
+		unspentKeys := make([]domain.UnspentKey, 0, len(unspentsToAddOrConfirm))
+		for _, u := range unspentsToAddOrConfirm {
+			unspentKeys = append(unspentKeys, u.Key())
+		}
+
+		count, err := b.repoManager.UnspentRepository().ConfirmUnspents(
+			ctx, unspentKeys,
+		)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			log.Debugf("confirmed %d unspents", count)
+		}
 	}
 
 	return nil
@@ -463,4 +466,20 @@ func extractTradeID(data interface{}) (*uuid.UUID, error) {
 		return nil, err
 	}
 	return &id, nil
+}
+
+func extractMarketQuoteAsset(data interface{}) (string, error) {
+	m, ok := data.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("extra data unknown type")
+	}
+	iMktQuoteAsset, ok := m["quoteasset"]
+	if !ok {
+		return "", fmt.Errorf("extra data misses market quote asset")
+	}
+	mktQuoteAsset, ok := iMktQuoteAsset.(string)
+	if !ok {
+		return "", fmt.Errorf("extra data unknown market quote asset type")
+	}
+	return mktQuoteAsset, nil
 }

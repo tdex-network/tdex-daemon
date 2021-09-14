@@ -209,7 +209,15 @@ func (w *walletService) SendToMany(
 	if err != nil {
 		return nil, nil, err
 	}
-	rawTx, _ := hex.DecodeString(txHex)
+
+	txid, _ := transactionutil.GetTxIdFromHex(txHex)
+	if req.Push {
+		txid, err = w.explorerService.BroadcastTransaction(txHex)
+		if err != nil {
+			return nil, nil, err
+		}
+		log.Debugf("wallet account tx broadcasted with id: %s", txid)
+	}
 
 	if err := w.repoManager.VaultRepository().UpdateVault(
 		ctx, func(_ *domain.Vault) (*domain.Vault, error) {
@@ -219,16 +227,6 @@ func (w *walletService) SendToMany(
 		return nil, nil, err
 	}
 
-	if !req.Push {
-		return rawTx, nil, nil
-	}
-
-	txid, err := w.explorerService.BroadcastTransaction(txHex)
-	if err != nil {
-		return nil, nil, err
-	}
-	log.Debugf("wallet account tx broadcasted with id: %s", txid)
-
 	go extractUnspentsFromTxAndUpdateUtxoSet(
 		w.repoManager.UnspentRepository(),
 		w.repoManager.VaultRepository(),
@@ -237,6 +235,9 @@ func (w *walletService) SendToMany(
 		domain.FeeAccount,
 	)
 
+	go w.blockchainListener.StartObserveTx(txid, "")
+
+	rawTx, _ := hex.DecodeString(txHex)
 	rawTxid, _ := hex.DecodeString(txid)
 	return rawTx, rawTxid, nil
 }
