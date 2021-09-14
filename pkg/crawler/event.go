@@ -58,6 +58,7 @@ type TransactionEvent struct {
 	EventType EventType
 	BlockHash string
 	BlockTime int
+	ExtraData interface{}
 }
 
 func (t TransactionEvent) Type() EventType {

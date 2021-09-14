@@ -116,12 +116,12 @@ func (w walletHandler) sendToMany(
 		MillisatPerByte: msatPerByte,
 		Push:            true,
 	}
-	rawTx, err := w.walletSvc.SendToMany(ctx, walletReq)
+	rawTx, txid, err := w.walletSvc.SendToMany(ctx, walletReq)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.SendToManyReply{RawTx: rawTx}, nil
+	return &pb.SendToManyReply{RawTx: rawTx, Txid: txid}, nil
 }
 
 func validateOutputs(outputs []*pb.TxOut) error {

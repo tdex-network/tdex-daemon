@@ -20,7 +20,8 @@ import (
 	"gopkg.in/macaroon.v2"
 
 	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
+	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
+	pbunlocker "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 )
 
@@ -67,12 +68,16 @@ func main() {
 		&genseed,
 		&initwallet,
 		&unlockwallet,
+		&status,
+		&changepassword,
+		&walletAccount,
 		&depositfee,
 		&depositmarket,
 		&claimfee,
 		&claimmarket,
 		&fragmentfee,
 		&fragmentmarket,
+		&balancefee,
 		&listmarket,
 		&listtrades,
 		&openmarket,
@@ -82,6 +87,8 @@ func main() {
 		&updateprice,
 		&updatePercentagefee,
 		&updateFixedfee,
+		&withdrawmarket,
+		&reportmarketfee,
 		&listutxos,
 		&reloadtxos,
 		&addwebhook,
@@ -206,14 +213,24 @@ func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(), err
 	return pboperator.NewOperatorClient(conn), cleanup, nil
 }
 
-func getWalletClient(ctx *cli.Context) (pbwallet.WalletUnlockerClient, func(), error) {
+func getUnlockerClient(ctx *cli.Context) (pbunlocker.WalletUnlockerClient, func(), error) {
 	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { _ = conn.Close() }
 
-	return pbwallet.NewWalletUnlockerClient(conn), cleanup, nil
+	return pbunlocker.NewWalletUnlockerClient(conn), cleanup, nil
+}
+
+func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(), error) {
+	conn, err := getClientConn(true)
+	if err != nil {
+		return nil, nil, err
+	}
+	cleanup := func() { _ = conn.Close() }
+
+	return pbwallet.NewWalletClient(conn), cleanup, nil
 }
 
 func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {

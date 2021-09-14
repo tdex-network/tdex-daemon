@@ -692,12 +692,12 @@ func (o operatorHandler) withdrawMarket(
 		Push:            true,
 	}
 
-	rawTx, err := o.operatorSvc.WithdrawMarketFunds(ctx, wm)
+	rawTx, txid, err := o.operatorSvc.WithdrawMarketFunds(ctx, wm)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.WithdrawMarketReply{RawTx: rawTx}, nil
+	return &pb.WithdrawMarketReply{RawTx: rawTx, Txid: txid}, nil
 }
 
 func (o operatorHandler) balanceFeeAccount(
@@ -813,6 +813,10 @@ func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketReque
 			Price: &pbtypes.Price{
 				BasePrice:  basePrice,
 				QuotePrice: quotePrice,
+			},
+			Balance: &pbtypes.Balance{
+				BaseAmount:  marketInfo.Balance.BaseAmount,
+				QuoteAmount: marketInfo.Balance.QuoteAmount,
 			},
 		})
 	}

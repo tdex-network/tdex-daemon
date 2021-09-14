@@ -81,15 +81,18 @@ func (a *AddressObservable) Key() string {
 }
 
 type TransactionObservable struct {
-	TxID  string
-	TxHex string
-	cb    *gobreaker.CircuitBreaker
+	TxID                    string
+	TxHex                   string
+	ExtraData               interface{}
+	cb                      *gobreaker.CircuitBreaker
+	unconfirmedEventEmitted bool
 }
 
-func NewTransactionObservable(txid string) Observable {
+func NewTransactionObservable(txid string, extraData interface{}) Observable {
 	return &TransactionObservable{
-		TxID: txid,
-		cb:   circuitbreaker.NewCircuitBreaker(),
+		TxID:      txid,
+		ExtraData: extraData,
+		cb:        circuitbreaker.NewCircuitBreaker(),
 	}
 }
 
@@ -133,16 +136,22 @@ func (t *TransactionObservable) Observe(
 	if txStatus.Confirmed() {
 		trxStatus = TransactionConfirmed
 	}
-
 	event := TransactionEvent{
 		TxID:      t.TxID,
 		TxHex:     t.TxHex,
 		EventType: trxStatus,
 		BlockHash: txStatus.BlockHash(),
 		BlockTime: txStatus.BlockTime(),
+		ExtraData: t.ExtraData,
 	}
 
-	eventChan <- event
+	if trxStatus == TransactionConfirmed {
+		eventChan <- event
+	} else if !t.unconfirmedEventEmitted {
+		eventChan <- event
+		t.unconfirmedEventEmitted = true
+	}
+
 }
 
 func (t *TransactionObservable) Key() string {

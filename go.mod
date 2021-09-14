@@ -15,6 +15,7 @@ require (
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang-jwt/jwt v3.2.1+incompatible
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4
 	github.com/improbable-eng/grpc-web v0.13.0
@@ -43,7 +44,7 @@ require (
 	golang.org/x/sys v0.0.0-20210908233432-aa78b53d3365 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/grpc v1.40.0
-	google.golang.org/protobuf v1.25.0
+	google.golang.org/protobuf v1.26.0
 	gopkg.in/macaroon-bakery.v2 v2.3.0
 	gopkg.in/macaroon.v2 v2.1.0
 )

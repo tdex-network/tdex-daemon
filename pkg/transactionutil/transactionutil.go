@@ -61,3 +61,11 @@ func GetTxIdFromPset(psetBase64 string) (string, error) {
 
 	return p.UnsignedTx.TxHash().String(), nil
 }
+
+func GetTxIdFromHex(txHex string) (string, error) {
+	tx, err := transaction.NewTxFromHex(txHex)
+	if err != nil {
+		return "", err
+	}
+	return tx.TxHash().String(), nil
+}

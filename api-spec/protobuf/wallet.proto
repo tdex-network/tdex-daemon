@@ -41,6 +41,10 @@ message SendToManyReply {
     The serialized transaction sent out on the network.
     */
   bytes raw_tx = 1;
+  /*
+    The id of the broadcasted transaction.
+  */
+  bytes txid = 2;
 }
 
 message WalletAddressRequest {}

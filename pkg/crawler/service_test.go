@@ -55,12 +55,12 @@ func removeObservableAfterTimeout(crawlerSvc crawler.Service) {
 		Address: "101",
 	})
 	time.Sleep(400 * time.Millisecond)
-	crawlerSvc.RemoveObservable(crawler.NewTransactionObservable("102"))
+	crawlerSvc.RemoveObservable(crawler.NewTransactionObservable("102", nil))
 }
 
 func addObservableAfterTimeout(crawlerSvc crawler.Service) {
 	time.Sleep(2 * time.Second)
 	crawlerSvc.AddObservable(crawler.NewAddressObservable("101", nil, 0))
 	time.Sleep(300 * time.Millisecond)
-	crawlerSvc.AddObservable(crawler.NewTransactionObservable("102"))
+	crawlerSvc.AddObservable(crawler.NewTransactionObservable("102", nil))
 }

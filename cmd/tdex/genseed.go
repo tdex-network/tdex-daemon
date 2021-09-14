@@ -17,7 +17,7 @@ var genseed = cli.Command{
 }
 
 func genSeedAction(ctx *cli.Context) error {
-	client, cleanup, err := getWalletClient(ctx)
+	client, cleanup, err := getUnlockerClient(ctx)
 	if err != nil {
 		return err
 	}

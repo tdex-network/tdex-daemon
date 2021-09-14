@@ -219,6 +219,7 @@ message WithdrawMarketRequest {
 message WithdrawMarketReply {
   /* The serialized transaction */
   bytes raw_tx = 1;
+  bytes txid = 2;
 }
 
 message ListTradesRequest {}
@@ -286,6 +287,7 @@ message MarketInfo {
   StrategyType strategy_type = 4;
   uint64 account_index = 5;
   Price price = 6;
+  Balance balance = 7;
 }
 
 message TradeStatusInfo {
