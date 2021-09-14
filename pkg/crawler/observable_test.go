@@ -40,14 +40,14 @@ func TestObservables(t *testing.T) {
 		},
 		{
 			name:                  fmt.Sprintf("TransactionObservable emits %s", crawler.TransactionUnconfirmed),
-			observable:            crawler.NewTransactionObservable("560d912df33521da808dc1f7d43a894ba7221af352328cda3f3b2ec894510477"),
+			observable:            crawler.NewTransactionObservable("560d912df33521da808dc1f7d43a894ba7221af352328cda3f3b2ec894510477", nil),
 			mockedExplorer:        mockedExplorerForTransactionObs(!wantTxConfirmed),
 			expectedObservableKey: "560d912df33521da808dc1f7d43a894ba7221af352328cda3f3b2ec894510477",
 			expectedEventType:     crawler.TransactionConfirmed,
 		},
 		{
 			name:                  fmt.Sprintf("TransactionObservable emits %s", crawler.TransactionConfirmed),
-			observable:            crawler.NewTransactionObservable("69fe1192a74e9c9a874ac1a1f80c244ce801b359e86f3c8d08084f93844e3845"),
+			observable:            crawler.NewTransactionObservable("69fe1192a74e9c9a874ac1a1f80c244ce801b359e86f3c8d08084f93844e3845", nil),
 			mockedExplorer:        mockedExplorerForTransactionObs(wantTxConfirmed),
 			expectedObservableKey: "69fe1192a74e9c9a874ac1a1f80c244ce801b359e86f3c8d08084f93844e3845",
 			expectedEventType:     crawler.TransactionConfirmed,
