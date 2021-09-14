@@ -814,6 +814,10 @@ func (o operatorHandler) listMarket(ctx context.Context, req *pb.ListMarketReque
 				BasePrice:  basePrice,
 				QuotePrice: quotePrice,
 			},
+			Balance: &pbtypes.Balance{
+				BaseAmount:  marketInfo.Balance.BaseAmount,
+				QuoteAmount: marketInfo.Balance.QuoteAmount,
+			},
 		})
 	}
 

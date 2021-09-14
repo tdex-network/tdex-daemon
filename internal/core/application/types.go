@@ -65,6 +65,7 @@ type MarketInfo struct {
 	Tradable     bool
 	StrategyType int
 	Price        domain.Prices
+	Balance      Balance
 }
 
 type Market struct {

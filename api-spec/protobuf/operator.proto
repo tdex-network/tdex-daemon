@@ -287,6 +287,7 @@ message MarketInfo {
   StrategyType strategy_type = 4;
   uint64 account_index = 5;
   Price price = 6;
+  Balance balance = 7;
 }
 
 message TradeStatusInfo {

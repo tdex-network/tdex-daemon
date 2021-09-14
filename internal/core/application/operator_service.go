@@ -636,6 +636,10 @@ func (o *operatorService) ListMarket(
 
 	marketInfo := make([]MarketInfo, 0, len(markets))
 	for _, market := range markets {
+		balance, err := getUnlockedBalanceForMarket(o.repoManager, ctx, &market)
+		if err != nil {
+			return nil, err
+		}
 		marketInfo = append(marketInfo, MarketInfo{
 			AccountIndex: uint64(market.AccountIndex),
 			Market: Market{
@@ -650,6 +654,7 @@ func (o *operatorService) ListMarket(
 				FixedBaseFee:  market.FixedFee.BaseFee,
 				FixedQuoteFee: market.FixedFee.QuoteFee,
 			},
+			Balance: *balance,
 		})
 	}
 
