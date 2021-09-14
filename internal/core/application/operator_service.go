@@ -694,9 +694,9 @@ func (o *operatorService) GetCollectedMarketFee(
 		amountP := swapRequest.GetAmountP()
 		_, feeAmount := mathutil.LessFee(amountP, uint64(feeBasisPoint))
 
-		marketPrice := trade.MarketPrice.QuotePrice
+		marketPrice := trade.MarketPrice.BasePrice
 		if feeAsset == m.BaseAsset {
-			marketPrice = trade.MarketPrice.BasePrice
+			marketPrice = trade.MarketPrice.QuotePrice
 		}
 
 		fees = append(fees, FeeInfo{
