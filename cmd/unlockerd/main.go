@@ -42,6 +42,12 @@ const (
 	rpcServerKey = "rpcserver"
 	providerKey  = "provider"
 	intervalKey  = "interval"
+	insecureKey  = "insecure"
+
+	defaultRPCAddress = "localhost:9000"
+	defaultProvider   = "file"
+	defaultInterval   = 5
+	defaultInsecure   = false
 )
 
 var (
@@ -54,11 +60,6 @@ var (
 	supportedProviders = providerMap{
 		"file": NewFileProvider,
 	}
-
-	// flags' default values
-	defaultRPCAddress = "localhost:9000"
-	defaultProvider   = "file"
-	defaultInterval   = 5
 
 	// flags
 	rpcServerFlag = pflag.String(
@@ -75,6 +76,11 @@ var (
 		intervalKey,
 		defaultInterval,
 		"the interval in seconds to poll the daemon's IsReady RPC",
+	)
+	insecureFlag = pflag.Bool(
+		insecureKey,
+		defaultInsecure,
+		"specify to use an insecure connection and prevent provider sourcing TLS certificate",
 	)
 )
 
@@ -129,19 +135,23 @@ func main() {
 	rpcAddress := viper.GetString(rpcServerKey)
 	providerType := viper.GetString(providerKey)
 	interval := time.Duration(viper.GetInt(intervalKey)) * time.Second
+	insecure := viper.GetBool(insecureKey)
 
-	prov, err := supportedProviders[providerType]()
+	provider, err := supportedProviders[providerType]()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	password, err := prov.Password()
+	password, err := provider.Password()
 	if err != nil {
 		log.Fatalf("error while sourcing password: %s", err)
 	}
-	tlsCertificate, err := prov.TLSCertificate()
-	if err != nil {
-		log.Fatalf("error while sourcing TLS certificate: %s", err)
+	var tlsCertificate []byte
+	if !insecure {
+		tlsCertificate, err = provider.TLSCertificate()
+		if err != nil {
+			log.Fatalf("error while sourcing TLS certificate: %s", err)
+		}
 	}
 
 	client, cleanup, err := getUnlockerClient(rpcAddress, tlsCertificate)
