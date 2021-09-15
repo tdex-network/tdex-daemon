@@ -11,7 +11,7 @@ import (
 
 var reportmarketfee = cli.Command{
 	Name:  "reportmarketfee",
-	Usage: "return a report of the collected fees for a market.",
+	Usage: "get a report of the fees collected for the trades of a market.",
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{
 			Name:  "page",
