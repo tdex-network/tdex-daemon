@@ -24,25 +24,25 @@ func (r tradeRepositoryImpl) GetOrCreateTrade(_ context.Context, tradeID *uuid.U
 	return r.getOrCreateTrade(tradeID)
 }
 
-func (r tradeRepositoryImpl) GetAllTrades(_ context.Context) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) GetAllTrades(_ context.Context, page *domain.Page) ([]*domain.Trade, error) {
 	r.store.locker.Lock()
 	defer r.store.locker.Unlock()
 
-	return r.getAllTrades()
+	return r.getAllTrades(page)
 }
 
-func (r tradeRepositoryImpl) GetAllTradesByMarket(_ context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) GetAllTradesByMarket(_ context.Context, marketQuoteAsset string, page *domain.Page) ([]*domain.Trade, error) {
 	r.store.locker.Lock()
 	defer r.store.locker.Unlock()
 
-	return r.getAllTradesByMarket(marketQuoteAsset)
+	return r.getAllTradesByMarket(marketQuoteAsset, page)
 }
 
-func (r tradeRepositoryImpl) GetCompletedTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) GetCompletedTradesByMarket(_ context.Context, marketQuoteAsset string, page *domain.Page) ([]*domain.Trade, error) {
 	r.store.locker.Lock()
 	defer r.store.locker.Unlock()
 
-	tradesByMarkets, err := r.getAllTradesByMarket(marketQuoteAsset)
+	tradesByMarkets, err := r.getAllTradesByMarket(marketQuoteAsset, page)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (r tradeRepositoryImpl) GetTradeByTxID(
 	r.store.locker.Lock()
 	defer r.store.locker.Unlock()
 
-	trades, err := r.getAllTrades()
+	trades, err := r.getAllTrades(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -131,21 +131,35 @@ func (r tradeRepositoryImpl) getOrCreateTrade(tradeID *uuid.UUID) (*domain.Trade
 	return trade, nil
 }
 
-func (r tradeRepositoryImpl) getAllTrades() ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) getAllTrades(page *domain.Page) ([]*domain.Trade, error) {
+	if page == nil {
+		allTrades := make([]*domain.Trade, 0, len(r.store.trades))
+		for _, trade := range r.store.trades {
+			allTrades = append(allTrades, &trade)
+		}
+		return allTrades, nil
+	}
+
 	allTrades := make([]*domain.Trade, 0)
+	startIndex := page.Number*page.Size - page.Size + 1
+	endIndex := page.Number * page.Size
+	index := 1
 	for _, trade := range r.store.trades {
-		allTrades = append(allTrades, &trade)
+		if index >= startIndex && index <= endIndex {
+			allTrades = append(allTrades, &trade)
+		}
+		index++
 	}
 	return allTrades, nil
 }
 
-func (r tradeRepositoryImpl) getAllTradesByMarket(marketQuoteAsset string) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) getAllTradesByMarket(marketQuoteAsset string, page *domain.Page) ([]*domain.Trade, error) {
 	tradeIDs, ok := r.store.tradesByMarket[marketQuoteAsset]
 	if !ok {
 		return nil, nil
 	}
 
-	tradeList := tradesFromIDs(r.store.trades, tradeIDs)
+	tradeList := tradesFromIDs(r.store.trades, tradeIDs, page)
 	return tradeList, nil
 }
 
@@ -173,13 +187,28 @@ func (r tradeRepositoryImpl) addTradeByMarket(key string, val uuid.UUID) {
 	}
 }
 
-func tradesFromIDs(trades map[uuid.UUID]domain.Trade, tradeIDs []uuid.UUID) []*domain.Trade {
-	tradesByID := make([]*domain.Trade, 0, len(tradeIDs))
+func tradesFromIDs(trades map[uuid.UUID]domain.Trade, tradeIDs []uuid.UUID, page *domain.Page) []*domain.Trade {
+	if page == nil {
+		tradesByID := make([]*domain.Trade, 0, len(trades))
+		for _, tradeID := range tradeIDs {
+			trade := trades[tradeID]
+			tradesByID = append(tradesByID, &trade)
+		}
+		return tradesByID
+	}
+
+	tradesByID := make([]*domain.Trade, 0)
+	startIndex := page.Number*page.Size - page.Size + 1
+	endIndex := page.Number * page.Size
+	index := 1
 	for _, tradeID := range tradeIDs {
-		trade := trades[tradeID]
-		tradesByID = append(tradesByID, &trade)
+		if index >= startIndex && index <= endIndex {
+			trade := trades[tradeID]
+			tradesByID = append(tradesByID, &trade)
+		}
 	}
 	return tradesByID
+
 }
 
 func contain(list []uuid.UUID, id uuid.UUID) bool {

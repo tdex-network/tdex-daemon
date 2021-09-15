@@ -49,16 +49,19 @@ func (u unspentRepositoryImpl) GetAvailableUnspents(
 }
 
 func (u unspentRepositoryImpl) GetAllUnspentsForAddresses(
-	ctx context.Context,
-	addresses []string,
+	ctx context.Context, addresses []string, page *domain.Page,
 ) ([]domain.Unspent, error) {
 	iface := make([]interface{}, 0, len(addresses))
 	for _, v := range addresses {
 		iface = append(iface, v)
 	}
 
-	query := badgerhold.Where("Address").In(iface...)
 	unlockedOnly := false
+	query := badgerhold.Where("Address").In(iface...)
+	if page != nil {
+		from := page.Number*page.Size - page.Size
+		query.Skip(from).Limit(page.Size)
+	}
 
 	return u.findUnspents(ctx, query, unlockedOnly)
 }

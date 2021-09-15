@@ -142,11 +142,12 @@ type AddressAndBlindingKey struct {
 }
 
 type FeeInfo struct {
-	TradeID     string
-	BasisPoint  int64
-	Asset       string
-	Amount      uint64
-	MarketPrice decimal.Decimal
+	TradeID             string
+	BasisPoint          int64
+	Asset               string
+	PercentageFeeAmount uint64
+	FixedFeeAmount      uint64
+	MarketPrice         decimal.Decimal
 }
 
 type TxOutpoint struct {
@@ -187,6 +188,19 @@ func (u Unspents) ToUtxos() []explorer.Utxo {
 	}
 	return l
 }
+
+type Page domain.Page
+
+func (p *Page) ToDomain() *domain.Page {
+	if p == nil {
+		return nil
+	}
+	page := domain.NewPage(p.Number, p.Size)
+	return &page
+}
+
+type Deposits []domain.Deposit
+type Withdrawals []domain.Withdrawal
 
 type UnblindedResult *transactionutil.UnblindedResult
 type BlindingData wallet.BlindingData

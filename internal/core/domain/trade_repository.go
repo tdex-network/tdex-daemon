@@ -13,13 +13,17 @@ type TradeRepository interface {
 	// new empty one if not found.
 	GetOrCreateTrade(ctx context.Context, tradeID *uuid.UUID) (*Trade, error)
 	// GetAllTrades returns all the trades stored in the repository.
-	GetAllTrades(ctx context.Context) ([]*Trade, error)
+	GetAllTrades(ctx context.Context, page *Page) ([]*Trade, error)
 	// GetAllTradesByMarket returns all the trades filtered by a market
 	// identified by its quote asset.
-	GetAllTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*Trade, error)
+	GetAllTradesByMarket(
+		ctx context.Context, marketQuoteAsset string, page *Page,
+	) ([]*Trade, error)
 	// GetCompletedTradesByMarket returns all the Completed or Settled trades
 	// for the provided market identified by its quote asset.
-	GetCompletedTradesByMarket(ctx context.Context, marketQuoteAsset string) ([]*Trade, error)
+	GetCompletedTradesByMarket(
+		ctx context.Context, marketQuoteAsset string, page *Page,
+	) ([]*Trade, error)
 	// GetTradeBySwapAcceptID returns the trade that contains the SwapAccept
 	// message matching the given id.
 	GetTradeBySwapAcceptID(ctx context.Context, swapAcceptID string) (*Trade, error)

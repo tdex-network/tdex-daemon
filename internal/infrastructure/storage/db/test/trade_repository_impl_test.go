@@ -76,7 +76,7 @@ func testGetAllTrades(t *testing.T, repo tradeRepository) {
 		if err != nil {
 			return nil, err
 		}
-		return repo.Repository.GetAllTrades(ctx)
+		return repo.Repository.GetAllTrades(ctx, nil)
 	})
 	require.NoError(t, err)
 	trades, ok := iTrades.([]*domain.Trade)
@@ -94,7 +94,7 @@ func testGetAllTradesByMarket(t *testing.T, repo tradeRepository) {
 			return nil, err
 		}
 		tradeID = trade.ID
-		return repo.Repository.GetAllTradesByMarket(ctx, marketAsset)
+		return repo.Repository.GetAllTradesByMarket(ctx, marketAsset, nil)
 	})
 	require.NoError(t, err)
 	trades, ok := iTrades.([]*domain.Trade)
@@ -112,7 +112,7 @@ func testGetAllTradesByMarket(t *testing.T, repo tradeRepository) {
 		); err != nil {
 			return nil, err
 		}
-		return repo.Repository.GetAllTradesByMarket(ctx, marketAsset)
+		return repo.Repository.GetAllTradesByMarket(ctx, marketAsset, nil)
 	})
 	require.NoError(t, err)
 	trades, ok = iTrades.([]*domain.Trade)
@@ -140,7 +140,7 @@ func testGetCompletedTradesByMarket(t *testing.T, repo tradeRepository) {
 			return nil, err
 		}
 		tradeID = trade.ID
-		return repo.Repository.GetCompletedTradesByMarket(ctx, marketAsset)
+		return repo.Repository.GetCompletedTradesByMarket(ctx, marketAsset, nil)
 	})
 	require.NoError(t, err)
 	trades, ok := iTrades.([]*domain.Trade)
@@ -158,7 +158,7 @@ func testGetCompletedTradesByMarket(t *testing.T, repo tradeRepository) {
 		); err != nil {
 			return nil, err
 		}
-		return repo.Repository.GetCompletedTradesByMarket(ctx, marketAsset)
+		return repo.Repository.GetCompletedTradesByMarket(ctx, marketAsset, nil)
 	})
 	require.NoError(t, err)
 	trades, ok = iTrades.([]*domain.Trade)
@@ -181,7 +181,7 @@ func testGetCompletedTradesByMarket(t *testing.T, repo tradeRepository) {
 		); err != nil {
 			return nil, err
 		}
-		return repo.Repository.GetCompletedTradesByMarket(ctx, marketAsset)
+		return repo.Repository.GetCompletedTradesByMarket(ctx, marketAsset, nil)
 	})
 	require.NoError(t, err)
 	trades, ok = iTrades.([]*domain.Trade)

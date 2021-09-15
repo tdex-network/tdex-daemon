@@ -212,13 +212,15 @@ func (o operatorHandler) listDeposits(
 	ctx context.Context,
 	req *pb.ListDepositsRequest,
 ) (*pb.ListDepositsReply, error) {
+	var page *application.Page
+	if pg := req.GetPage(); pg != nil {
+		page = &application.Page{
+			Number: int(pg.GetPageNumber()),
+			Size:   int(pg.GetPageSize()),
+		}
+	}
 	deposits, err := o.operatorSvc.ListDeposits(
-		ctx,
-		int(req.GetAccountIndex()),
-		domain.NewPage(
-			int(req.GetPage().GetPageNumber()),
-			int(req.GetPage().GetPageSize()),
-		),
+		ctx, int(req.GetAccountIndex()), page,
 	)
 
 	depositsProto := make([]*pb.UtxoInfo, 0, len(deposits))
@@ -243,12 +245,12 @@ func (o operatorHandler) listWithdrawals(
 	ctx context.Context,
 	req *pb.ListWithdrawalsRequest,
 ) (*pb.ListWithdrawalsReply, error) {
-	page := domain.NewPage(0, 0)
-	if req.GetPage() != nil {
-		page = domain.NewPage(
-			int(req.GetPage().GetPageNumber()),
-			int(req.GetPage().GetPageSize()),
-		)
+	var page *application.Page
+	if pg := req.GetPage(); pg != nil {
+		page = &application.Page{
+			Number: int(pg.GetPageNumber()),
+			Size:   int(pg.GetPageSize()),
+		}
 	}
 
 	withdrawals, err := o.operatorSvc.ListWithdrawals(
@@ -292,64 +294,28 @@ func (o operatorHandler) listUtxos(
 	ctx context.Context,
 	req *pb.ListUtxosRequest,
 ) (*pb.ListUtxosReply, error) {
-	utxoInfoPerAccount, err := o.operatorSvc.ListUtxos(
-		ctx,
-	)
+	var page *application.Page
+	if pg := req.GetPage(); pg != nil {
+		page = &application.Page{
+			Number: int(pg.PageNumber),
+			Size:   int(pg.PageSize),
+		}
+	}
+	accountIndex := int(req.GetAccountIndex())
+
+	utxoInfo, err := o.operatorSvc.ListUtxos(ctx, accountIndex, page)
 	if err != nil {
 		return nil, err
 	}
 
-	infoPerAccount := make(map[uint64]*pb.UtxoInfoList)
-
-	for k, v := range utxoInfoPerAccount {
-		uLen := len(v.Unspents)
-		unspents := make([]*pb.UtxoInfo, uLen, uLen)
-		for i, u := range v.Unspents {
-			unspents[i] = &pb.UtxoInfo{
-				Outpoint: &pb.TxOutpoint{
-					Hash:  u.Outpoint.Hash,
-					Index: int32(u.Outpoint.Index),
-				},
-				Value: u.Value,
-				Asset: u.Asset,
-			}
-		}
-
-		sLen := len(v.Spents)
-		spents := make([]*pb.UtxoInfo, sLen, sLen)
-		for i, u := range v.Spents {
-			spents[i] = &pb.UtxoInfo{
-				Outpoint: &pb.TxOutpoint{
-					Hash:  u.Outpoint.Hash,
-					Index: int32(u.Outpoint.Index),
-				},
-				Value: u.Value,
-				Asset: u.Asset,
-			}
-		}
-
-		lLen := len(v.Locks)
-		locks := make([]*pb.UtxoInfo, lLen, lLen)
-		for i, u := range v.Locks {
-			locks[i] = &pb.UtxoInfo{
-				Outpoint: &pb.TxOutpoint{
-					Hash:  u.Outpoint.Hash,
-					Index: int32(u.Outpoint.Index),
-				},
-				Value: u.Value,
-				Asset: u.Asset,
-			}
-		}
-
-		infoPerAccount[k] = &pb.UtxoInfoList{
-			Unspents: unspents,
-			Spents:   spents,
-			Locks:    locks,
-		}
-	}
+	unspents := toUtxoInfoList(utxoInfo.Unspents)
+	spents := toUtxoInfoList(utxoInfo.Spents)
+	locks := toUtxoInfoList(utxoInfo.Locks)
 
 	return &pb.ListUtxosReply{
-		InfoPerAccount: infoPerAccount,
+		Unspents: unspents,
+		Spents:   spents,
+		Locks:    locks,
 	}, nil
 }
 
@@ -366,10 +332,9 @@ func (o operatorHandler) depositMarket(
 	if err != nil {
 		return nil, err
 	}
-	aLen := len(addressesAndKeys)
-	addresses := make([]string, aLen, aLen)
-	for i, a := range addressesAndKeys {
-		addresses[i] = a.Address
+	addresses := make([]string, 0, len(addressesAndKeys))
+	for _, a := range addressesAndKeys {
+		addresses = append(addresses, a.Address)
 	}
 
 	return &pb.DepositMarketReply{Addresses: addresses}, nil
@@ -588,7 +553,25 @@ func (o operatorHandler) listTrades(
 	ctx context.Context,
 	req *pb.ListTradesRequest,
 ) (*pb.ListTradesReply, error) {
-	tradeInfo, err := o.operatorSvc.ListTrades(ctx)
+	var page *application.Page
+	if pg := req.GetPage(); pg != nil {
+		page = &application.Page{
+			Number: int(pg.PageNumber),
+			Size:   int(pg.PageSize),
+		}
+	}
+
+	var tradeInfo []application.TradeInfo
+	var err error
+	if mkt := req.GetMarket(); mkt == nil {
+		tradeInfo, err = o.operatorSvc.ListTrades(ctx, page)
+	} else {
+		market := application.Market{
+			BaseAsset:  mkt.GetBaseAsset(),
+			QuoteAsset: mkt.GetQuoteAsset(),
+		}
+		tradeInfo, err = o.operatorSvc.ListTradesForMarket(ctx, market, page)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -828,16 +811,26 @@ func (o operatorHandler) reportMarketFee(
 	ctx context.Context,
 	req *pb.ReportMarketFeeRequest,
 ) (*pb.ReportMarketFeeReply, error) {
-	if err := validateMarket(req.GetMarket()); err != nil {
+	market := req.GetMarket()
+	if err := validateMarket(market); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	var page *application.Page
+	if pg := req.GetPage(); pg != nil {
+		page = &application.Page{
+			Number: int(pg.PageNumber),
+			Size:   int(pg.PageSize),
+		}
 	}
 
 	report, err := o.operatorSvc.GetCollectedMarketFee(
 		ctx,
 		application.Market{
-			BaseAsset:  req.GetMarket().GetBaseAsset(),
-			QuoteAsset: req.GetMarket().GetQuoteAsset(),
+			BaseAsset:  market.GetBaseAsset(),
+			QuoteAsset: market.GetQuoteAsset(),
 		},
+		page,
 	)
 	if err != nil {
 		return nil, err
@@ -847,11 +840,12 @@ func (o operatorHandler) reportMarketFee(
 	for _, fee := range report.CollectedFees {
 		marketPrice, _ := fee.MarketPrice.BigFloat().Float32()
 		collectedFees = append(collectedFees, &pb.FeeInfo{
-			TradeId:     fee.TradeID,
-			BasisPoint:  fee.BasisPoint,
-			Asset:       fee.Asset,
-			Amount:      fee.Amount,
-			MarketPrice: marketPrice,
+			TradeId:             fee.TradeID,
+			BasisPoint:          fee.BasisPoint,
+			Asset:               fee.Asset,
+			PercentageFeeAmount: fee.PercentageFeeAmount,
+			FixedFeeAmount:      fee.FixedFeeAmount,
+			MarketPrice:         marketPrice,
 		})
 	}
 
@@ -943,4 +937,19 @@ func validateStrategyType(sType pb.StrategyType) error {
 		return errors.New("strategy type is unknown")
 	}
 	return nil
+}
+
+func toUtxoInfoList(list []application.UtxoInfo) []*pb.UtxoInfo {
+	res := make([]*pb.UtxoInfo, 0, len(list))
+	for _, u := range list {
+		res = append(res, &pb.UtxoInfo{
+			Outpoint: &pb.TxOutpoint{
+				Hash:  u.Outpoint.Hash,
+				Index: int32(u.Outpoint.Index),
+			},
+			Value: u.Value,
+			Asset: u.Asset,
+		})
+	}
+	return res
 }

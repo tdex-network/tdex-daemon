@@ -131,7 +131,7 @@ func testGetAllUnspentsForAddresses(t *testing.T, repo unspentRepository) {
 			return nil, err
 		}
 
-		return repo.Repository.GetAllUnspentsForAddresses(ctx, addresses)
+		return repo.Repository.GetAllUnspentsForAddresses(ctx, addresses, nil)
 	})
 	require.NoError(t, err)
 
