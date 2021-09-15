@@ -457,7 +457,8 @@ func (t *tradeService) tradeComplete(
 	ctx context.Context,
 	swapComplete domain.SwapComplete,
 ) (txID string, swapFail domain.SwapFail, err error) {
-	trade, err := t.repoManager.TradeRepository().GetTradeBySwapAcceptID(ctx, swapComplete.GetAcceptId())
+	swapID := swapComplete.GetAcceptId()
+	trade, err := t.repoManager.TradeRepository().GetTradeBySwapAcceptID(ctx, swapID)
 	if err != nil {
 		return
 	}
@@ -468,23 +469,33 @@ func (t *tradeService) tradeComplete(
 
 	tx := swapComplete.GetTransaction()
 
-	// here we manipulate the trade to reach the Complete status
 	res, err := trade.Complete(tx)
 	if err != nil {
 		return
 	}
-	// for domain related errors, we check for swap failures that can happens
-	// for tradin related problems or transaction manomission
+
+	defer func() {
+		if err := t.repoManager.TradeRepository().UpdateTrade(
+			ctx,
+			&trade.ID,
+			func(_ *domain.Trade) (*domain.Trade, error) { return trade, nil },
+		); err != nil {
+			log.WithError(err).Warn("unable to persist changes to trade with id: ", trade.ID)
+		}
+	}()
+
 	if !res.OK {
 		swapFail = trade.SwapFailMessage()
 		return
 	}
 	log.Infof("trade with id %s completed", trade.ID)
 
-	// we are going to broadcast the transaction, this will actually tell if the
-	// transaction is a valid one to be included in blockcchain
 	txID, err = t.explorerSvc.BroadcastTransaction(res.TxHex)
 	if err != nil {
+		trade.Fail(
+			swapID, int(pkgswap.ErrCodeFailedToComplete), fmt.Sprintf(
+				"failed to broadcast tx: %s", err.Error(),
+			))
 		log.WithError(err).WithField("hex", res.TxHex).Warn("unable to broadcast trade tx")
 		return
 	}
@@ -492,19 +503,7 @@ func (t *tradeService) tradeComplete(
 
 	log.Infof("trade with id %s broadcasted: %s", trade.ID, txID)
 
-	// we make sure that any problem happening at this point
-	// is not influencing the trade therefore we run as goroutine
-	// this method will take care to retry to handle potential
-	// datastore conflicts (if any) at repository level
 	go func() {
-		if err := t.repoManager.TradeRepository().UpdateTrade(
-			ctx,
-			&trade.ID,
-			func(_ *domain.Trade) (*domain.Trade, error) { return trade, nil },
-		); err != nil {
-			log.Error("unable to persist completed trade with id ", trade.ID, " : ", err.Error())
-		}
-
 		_, accountIndex, _ := t.repoManager.MarketRepository().GetMarketByAsset(
 			ctx,
 			trade.MarketQuoteAsset,
