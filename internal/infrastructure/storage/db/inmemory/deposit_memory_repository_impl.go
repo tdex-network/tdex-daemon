@@ -29,38 +29,63 @@ func (d DepositRepositoryImpl) AddDeposit(
 	return nil
 }
 
-func (d DepositRepositoryImpl) ListDepositsForAccountIdAndPage(
+func (d DepositRepositoryImpl) ListDepositsForAccountId(
 	ctx context.Context,
 	accountIndex int,
-	page domain.Page,
+	page *domain.Page,
 ) ([]domain.Deposit, error) {
 	d.store.locker.RLock()
 	defer d.store.locker.RUnlock()
 
 	result := make([]domain.Deposit, 0)
 
-	startIndex := page.Number*page.Size - page.Size + 1
-	endIndex := page.Number * page.Size
-	index := 1
-	for _, v := range d.store.deposits {
-		if index >= startIndex && index <= endIndex {
+	if page == nil {
+		for _, v := range d.store.deposits {
 			if v.AccountIndex == accountIndex {
 				result = append(result, v)
 			}
 		}
-		index++
+		return result, nil
+	}
+
+	startIndex := page.Number*page.Size - page.Size + 1
+	endIndex := page.Number * page.Size
+	index := 1
+	for _, v := range d.store.deposits {
+		if v.AccountIndex == accountIndex {
+			if index >= startIndex && index <= endIndex {
+				result = append(result, v)
+			}
+			index++
+		}
 	}
 
 	return result, nil
 }
 
 func (d DepositRepositoryImpl) ListAllDeposits(
-	ctx context.Context,
+	ctx context.Context, page *domain.Page,
 ) ([]domain.Deposit, error) {
+	d.store.locker.RLock()
+	defer d.store.locker.RUnlock()
+
 	deposits := make([]domain.Deposit, 0, len(d.store.deposits))
 
+	if page == nil {
+		for _, v := range d.store.deposits {
+			deposits = append(deposits, v)
+		}
+		return deposits, nil
+	}
+
+	startIndex := page.Number*page.Size - page.Size + 1
+	endIndex := page.Number * page.Size
+	index := 1
 	for _, v := range d.store.deposits {
-		deposits = append(deposits, v)
+		if index >= startIndex && index <= endIndex {
+			deposits = append(deposits, v)
+		}
+		index++
 	}
 
 	return deposits, nil

@@ -53,10 +53,10 @@ func testAddAndListWithdrawals(t *testing.T, repo withdrawalRepository) {
 		}
 	}
 
-	withdrawals, err := depositRepository.ListWithdrawalsForAccountIdAndPage(
+	withdrawals, err := depositRepository.ListWithdrawalsForAccountId(
 		context.Background(),
 		1,
-		domain.Page{
+		&domain.Page{
 			Number: 2,
 			Size:   10,
 		},
@@ -67,10 +67,10 @@ func testAddAndListWithdrawals(t *testing.T, repo withdrawalRepository) {
 
 	assert.Equal(t, 10, len(withdrawals))
 
-	withdrawals, err = depositRepository.ListWithdrawalsForAccountIdAndPage(
+	withdrawals, err = depositRepository.ListWithdrawalsForAccountId(
 		context.Background(),
 		1,
-		domain.Page{
+		&domain.Page{
 			Number: 4,
 			Size:   10,
 		},
@@ -82,7 +82,7 @@ func testAddAndListWithdrawals(t *testing.T, repo withdrawalRepository) {
 	assert.Equal(t, 10, len(withdrawals))
 
 	withdrawals, err = depositRepository.ListAllWithdrawals(
-		context.Background(),
+		context.Background(), nil,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func testWithdrawalDuplicateKeyInsertion(t *testing.T, repo withdrawalRepository
 		t.Fatal(err)
 	}
 
-	withdrwals, err := withdrawalRepository.ListAllWithdrawals(context.Background())
+	withdrwals, err := withdrawalRepository.ListAllWithdrawals(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,34 +24,27 @@ func (d depositRepositoryImpl) AddDeposit(
 	return d.insertDeposit(ctx, deposit)
 }
 
-func (d depositRepositoryImpl) ListDepositsForAccountIdAndPage(
-	ctx context.Context,
-	accountIndex int,
-	page domain.Page,
+func (d depositRepositoryImpl) ListDepositsForAccountId(
+	ctx context.Context, accountIndex int, page *domain.Page,
 ) ([]domain.Deposit, error) {
 	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
-	var deposits []domain.Deposit
-
-	from := page.Number*page.Size - page.Size
-
-	if ctx.Value("tx") != nil {
-		tx := ctx.Value("tx").(*badger.Txn)
-		if err := d.store.TxFind(
-			tx, &deposits,
-			query.Skip(from).Limit(page.Size),
-		); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := d.store.Find(
-			&deposits,
-			query.Skip(from).Limit(page.Size),
-		); err != nil {
-			return nil, err
-		}
+	if page != nil {
+		from := page.Number*page.Size - page.Size
+		query.Skip(from).Limit(page.Size)
 	}
+	return d.findDeposits(ctx, query)
+}
 
-	return deposits, nil
+func (d depositRepositoryImpl) ListAllDeposits(
+	ctx context.Context, page *domain.Page,
+) ([]domain.Deposit, error) {
+	var query *badgerhold.Query
+	if page != nil {
+		from := page.Number*page.Size - page.Size
+		query = &badgerhold.Query{}
+		query.Skip(from).Limit(page.Size)
+	}
+	return d.findDeposits(ctx, query)
 }
 
 func (d depositRepositoryImpl) insertDeposit(
@@ -71,17 +64,6 @@ func (d depositRepositoryImpl) insertDeposit(
 		}
 	}
 	return nil
-}
-
-func (d depositRepositoryImpl) ListAllDeposits(
-	ctx context.Context,
-) ([]domain.Deposit, error) {
-	return d.listAll(ctx), nil
-}
-
-func (d depositRepositoryImpl) listAll(ctx context.Context) []domain.Deposit {
-	deposits, _ := d.findDeposits(ctx, nil)
-	return deposits
 }
 
 func (d depositRepositoryImpl) findDeposits(

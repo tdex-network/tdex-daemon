@@ -4,10 +4,8 @@ import "context"
 
 type WithdrawalRepository interface {
 	AddWithdrawal(ctx context.Context, withdrawal Withdrawal) error
-	ListWithdrawalsForAccountIdAndPage(
-		ctx context.Context,
-		accountIndex int,
-		page Page,
+	ListWithdrawalsForAccountId(
+		ctx context.Context, accountIndex int, page *Page,
 	) ([]Withdrawal, error)
-	ListAllWithdrawals(ctx context.Context) ([]Withdrawal, error)
+	ListAllWithdrawals(ctx context.Context, page *Page) ([]Withdrawal, error)
 }

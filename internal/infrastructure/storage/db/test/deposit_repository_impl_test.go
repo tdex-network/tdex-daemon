@@ -49,10 +49,10 @@ func testAddAndListDeposits(t *testing.T, repo depositRepository) {
 		}
 	}
 
-	deposits, err := depositRepository.ListDepositsForAccountIdAndPage(
+	deposits, err := depositRepository.ListDepositsForAccountId(
 		context.Background(),
 		1,
-		domain.Page{
+		&domain.Page{
 			Number: 2,
 			Size:   10,
 		},
@@ -63,10 +63,10 @@ func testAddAndListDeposits(t *testing.T, repo depositRepository) {
 
 	assert.Equal(t, 10, len(deposits))
 
-	deposits, err = depositRepository.ListDepositsForAccountIdAndPage(
+	deposits, err = depositRepository.ListDepositsForAccountId(
 		context.Background(),
 		1,
-		domain.Page{
+		&domain.Page{
 			Number: 4,
 			Size:   10,
 		},
@@ -78,7 +78,7 @@ func testAddAndListDeposits(t *testing.T, repo depositRepository) {
 	assert.Equal(t, 10, len(deposits))
 
 	deposits, err = depositRepository.ListAllDeposits(
-		context.Background(),
+		context.Background(), nil,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -117,7 +117,7 @@ func testDepositDuplicateKeyInsertion(t *testing.T, repo depositRepository) {
 		t.Fatal(err)
 	}
 
-	deposits, err := depositRepository.ListAllDeposits(context.Background())
+	deposits, err := depositRepository.ListAllDeposits(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
