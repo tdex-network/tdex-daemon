@@ -65,6 +65,12 @@ type OperatorService interface {
 	) error
 	ListTrades(
 		ctx context.Context,
+		page *Page,
+	) ([]TradeInfo, error)
+	ListTradesForMarket(
+		ctx context.Context,
+		market Market,
+		page *Page,
 	) ([]TradeInfo, error)
 	ListMarketExternalAddresses(
 		ctx context.Context,
@@ -77,8 +83,8 @@ type OperatorService interface {
 	ListWithdrawals(
 		ctx context.Context,
 		accountIndex int,
-		page domain.Page,
-	) ([]domain.Withdrawal, error)
+		page *Page,
+	) (Withdrawals, error)
 	FeeAccountBalance(ctx context.Context) (int64, error)
 	ClaimMarketDeposit(
 		ctx context.Context,
@@ -92,16 +98,17 @@ type OperatorService interface {
 	ListDeposits(
 		ctx context.Context,
 		accountIndex int,
-		page domain.Page,
-	) ([]domain.Deposit, error)
+		page *Page,
+	) (Deposits, error)
 	ListMarket(
 		ctx context.Context,
 	) ([]MarketInfo, error)
 	GetCollectedMarketFee(
 		ctx context.Context,
 		market Market,
+		page *Page,
 	) (*ReportMarketFee, error)
-	ListUtxos(ctx context.Context) (map[uint64]UtxoInfoList, error)
+	ListUtxos(ctx context.Context, accountIndex int, page *Page) (*UtxoInfoList, error)
 	ReloadUtxos(ctx context.Context) error
 	DropMarket(ctx context.Context, accountIndex int) error
 	AddWebhook(ctx context.Context, hook Webhook) (string, error)
@@ -195,16 +202,16 @@ func (o *operatorService) DepositMarket(
 		return nil, err
 	}
 
-	list := make([]AddressAndBlindingKey, numOfAddresses, numOfAddresses)
+	list := make([]AddressAndBlindingKey, 0, numOfAddresses)
 	for i := 0; i < numOfAddresses; i++ {
 		info, err := vault.DeriveNextExternalAddressForAccount(accountIndex)
 		if err != nil {
 			return nil, err
 		}
-		list[i] = AddressAndBlindingKey{
+		list = append(list, AddressAndBlindingKey{
 			Address:     info.Address,
 			BlindingKey: hex.EncodeToString(info.BlindingKey),
-		}
+		})
 	}
 
 	go func() {
@@ -251,17 +258,17 @@ func (o *operatorService) DepositFeeAccount(
 		return nil, err
 	}
 
-	list := make([]AddressAndBlindingKey, numOfAddresses, numOfAddresses)
+	list := make([]AddressAndBlindingKey, 0, numOfAddresses)
 	for i := 0; i < numOfAddresses; i++ {
 		info, err := vault.DeriveNextExternalAddressForAccount(domain.FeeAccount)
 		if err != nil {
 			return nil, err
 		}
 
-		list[i] = AddressAndBlindingKey{
+		list = append(list, AddressAndBlindingKey{
 			Address:     info.Address,
 			BlindingKey: hex.EncodeToString(info.BlindingKey),
-		}
+		})
 	}
 
 	go func() {
@@ -579,14 +586,37 @@ func (o *operatorService) UpdateMarketStrategy(
 
 // ListTrades returns the list of all trads processed by the daemon
 func (o *operatorService) ListTrades(
-	ctx context.Context,
+	ctx context.Context, page *Page,
 ) ([]TradeInfo, error) {
-	trades, err := o.repoManager.TradeRepository().GetAllTrades(ctx)
+	var pg *domain.Page
+	if page != nil {
+		pg = page.ToDomain()
+	}
+
+	trades, err := o.repoManager.TradeRepository().GetAllTrades(ctx, pg)
 	if err != nil {
 		return nil, err
 	}
 
 	return tradesToTradeInfo(trades, o.marketBaseAsset, o.network.Name), nil
+}
+
+func (o *operatorService) ListTradesForMarket(
+	ctx context.Context, market Market, page *Page,
+) ([]TradeInfo, error) {
+	var pg *domain.Page
+	if page != nil {
+		pg = page.ToDomain()
+	}
+
+	trades, err := o.repoManager.TradeRepository().GetAllTradesByMarket(
+		ctx, market.QuoteAsset, pg,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return tradesToTradeInfo(trades, market.BaseAsset, o.network.Name), nil
 }
 
 func (o *operatorService) ListMarketExternalAddresses(
@@ -664,7 +694,13 @@ func (o *operatorService) ListMarket(
 func (o *operatorService) GetCollectedMarketFee(
 	ctx context.Context,
 	market Market,
+	page *Page,
 ) (*ReportMarketFee, error) {
+	var pg *domain.Page
+	if page != nil {
+		pg = page.ToDomain()
+	}
+
 	m, _, err := o.repoManager.MarketRepository().GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
@@ -678,12 +714,16 @@ func (o *operatorService) GetCollectedMarketFee(
 	}
 
 	trades, err := o.repoManager.TradeRepository().GetCompletedTradesByMarket(
-		ctx,
-		market.QuoteAsset,
+		ctx, market.QuoteAsset, pg,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	// sort trades by timestamp like done in ListTrades
+	sort.SliceStable(trades, func(i, j int) bool {
+		return trades[i].SwapRequest.Timestamp < trades[j].SwapRequest.Timestamp
+	})
 
 	fees := make([]FeeInfo, 0, len(trades))
 	total := make(map[string]int64)
@@ -692,22 +732,25 @@ func (o *operatorService) GetCollectedMarketFee(
 		swapRequest := trade.SwapRequestMessage()
 		feeAsset := swapRequest.GetAssetP()
 		amountP := swapRequest.GetAmountP()
-		_, feeAmount := mathutil.LessFee(amountP, uint64(feeBasisPoint))
+		_, percentageFeeAmount := mathutil.LessFee(amountP, uint64(feeBasisPoint))
 
 		marketPrice := trade.MarketPrice.BasePrice
+		fixedFeeAmount := uint64(trade.MarketFixedQuoteFee)
 		if feeAsset == m.BaseAsset {
 			marketPrice = trade.MarketPrice.QuotePrice
+			fixedFeeAmount = uint64(trade.MarketFixedBaseFee)
 		}
 
 		fees = append(fees, FeeInfo{
-			TradeID:     trade.ID.String(),
-			BasisPoint:  feeBasisPoint,
-			Asset:       feeAsset,
-			Amount:      feeAmount,
-			MarketPrice: marketPrice,
+			TradeID:             trade.ID.String(),
+			BasisPoint:          feeBasisPoint,
+			Asset:               feeAsset,
+			PercentageFeeAmount: percentageFeeAmount,
+			FixedFeeAmount:      fixedFeeAmount,
+			MarketPrice:         marketPrice,
 		})
 
-		total[feeAsset] += int64(feeAmount)
+		total[feeAsset] += int64(percentageFeeAmount) + int64(fixedFeeAmount)
 	}
 
 	return &ReportMarketFee{
@@ -913,13 +956,21 @@ func (o *operatorService) WithdrawMarketFunds(
 func (o *operatorService) ListWithdrawals(
 	ctx context.Context,
 	accountIndex int,
-	page domain.Page,
-) ([]domain.Withdrawal, error) {
-	return o.repoManager.WithdrawalRepository().ListWithdrawalsForAccountIdAndPage(
-		ctx,
-		accountIndex,
-		page,
+	page *Page,
+) (Withdrawals, error) {
+	var pg *domain.Page
+	if page != nil {
+		pg = page.ToDomain()
+	}
+
+	withdrawals, err := o.repoManager.WithdrawalRepository().ListWithdrawalsForAccountId(
+		ctx, accountIndex, pg,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	return Withdrawals(withdrawals), nil
 }
 
 func (o *operatorService) FeeAccountBalance(ctx context.Context) (int64, error) {
@@ -933,32 +984,43 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (int64, error) 
 }
 
 func (o *operatorService) ListUtxos(
-	ctx context.Context,
-) (map[uint64]UtxoInfoList, error) {
-	utxoInfoPerAccount := make(map[uint64]UtxoInfoList)
-
-	unspents := o.repoManager.UnspentRepository().GetAllUnspents(ctx)
-	for _, u := range unspents {
-		_, accountIndex, err := o.repoManager.VaultRepository().GetAccountByAddress(
-			ctx,
-			u.Address,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		utxoInfo := utxoInfoPerAccount[uint64(accountIndex)]
-		if u.Spent {
-			utxoInfo.Spents = appendUtxoInfo(utxoInfo.Spents, u)
-		} else if u.Locked {
-			utxoInfo.Locks = appendUtxoInfo(utxoInfo.Locks, u)
-		} else {
-			utxoInfo.Unspents = appendUtxoInfo(utxoInfo.Unspents, u)
-		}
-		utxoInfoPerAccount[uint64(accountIndex)] = utxoInfo
+	ctx context.Context, accountIndex int, page *Page,
+) (*UtxoInfoList, error) {
+	var pg *domain.Page
+	if page != nil {
+		pg = page.ToDomain()
 	}
 
-	return utxoInfoPerAccount, nil
+	info, err := o.repoManager.VaultRepository().
+		GetAllDerivedAddressesInfoForAccount(ctx, accountIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	allUtxos, err := o.repoManager.UnspentRepository().
+		GetAllUnspentsForAddresses(ctx, info.Addresses(), pg)
+	if err != nil {
+		return nil, err
+	}
+
+	unspents := make([]UtxoInfo, 0)
+	spents := make([]UtxoInfo, 0)
+	locks := make([]UtxoInfo, 0)
+	for _, u := range allUtxos {
+		if u.Spent {
+			spents = appendUtxoInfo(spents, u)
+		} else if u.Locked {
+			locks = appendUtxoInfo(locks, u)
+		} else {
+			unspents = appendUtxoInfo(unspents, u)
+		}
+	}
+
+	return &UtxoInfoList{
+		Unspents: unspents,
+		Spents:   spents,
+		Locks:    locks,
+	}, nil
 }
 
 // ReloadUtxos triggers reloading of unspents for stored addresses from blockchain
@@ -1060,13 +1122,21 @@ func (o *operatorService) ClaimFeeDeposit(
 func (o *operatorService) ListDeposits(
 	ctx context.Context,
 	accountIndex int,
-	page domain.Page,
-) ([]domain.Deposit, error) {
-	return o.repoManager.DepositRepository().ListDepositsForAccountIdAndPage(
-		ctx,
-		accountIndex,
-		page,
+	page *Page,
+) (Deposits, error) {
+	var pg *domain.Page
+	if page != nil {
+		pg = page.ToDomain()
+	}
+
+	deposits, err := o.repoManager.DepositRepository().ListDepositsForAccountId(
+		ctx, accountIndex, pg,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	return Deposits(deposits), nil
 }
 
 func (o *operatorService) DropMarket(
@@ -1329,29 +1399,6 @@ func (o *operatorService) getAllUnspentsForAccount(
 	return utxos, nil
 }
 
-func (o *operatorService) getMarketsForTrades(
-	ctx context.Context,
-	trades []*domain.Trade,
-) (map[string]*domain.Market, error) {
-	markets := map[string]*domain.Market{}
-	for _, trade := range trades {
-		market, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-			ctx,
-			trade.MarketQuoteAsset,
-		)
-		if err != nil {
-			return nil, err
-		}
-		if accountIndex < 0 {
-			return nil, ErrMarketNotExist
-		}
-		if _, ok := markets[trade.MarketQuoteAsset]; !ok {
-			markets[trade.MarketQuoteAsset] = market
-		}
-	}
-	return markets, nil
-}
-
 func tradesToTradeInfo(trades []*domain.Trade, marketBaseAsset, network string) []TradeInfo {
 	tradeInfo := make([]TradeInfo, 0, len(trades))
 	chInfo := make(chan TradeInfo)
@@ -1363,7 +1410,8 @@ func tradesToTradeInfo(trades []*domain.Trade, marketBaseAsset, network string) 
 		close(chInfo)
 	}()
 
-	for _, trade := range trades {
+	for i := range trades {
+		trade := trades[i]
 		go tradeToTradeInfo(trade, marketBaseAsset, network, chInfo, wg)
 	}
 
@@ -1402,7 +1450,9 @@ func tradeToTradeInfo(
 				QuoteAsset: trade.MarketQuoteAsset,
 			},
 			Fee{
-				BasisPoint: trade.MarketFee,
+				BasisPoint:    trade.MarketFee,
+				FixedBaseFee:  trade.MarketFixedBaseFee,
+				FixedQuoteFee: trade.MarketFixedQuoteFee,
 			},
 		},
 		Price:            Price(trade.MarketPrice),
@@ -1455,7 +1505,6 @@ func tradeToTradeInfo(
 	}
 
 	chInfo <- info
-	return
 }
 
 func validateMarketRequest(marketReq Market, baseAsset string) error {
