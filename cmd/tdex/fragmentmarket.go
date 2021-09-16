@@ -51,6 +51,10 @@ var fragmentmarket = cli.Command{
 			Name:  "recover_funds_to_address",
 			Usage: "specify an address where to send funds stuck into the fragmenter to",
 		},
+		&cli.BoolFlag{
+			Name:  "debug",
+			Usage: "print tx hex in case the transaction fails to be broadcasted",
+		},
 	},
 	Action: fragmentMarketAction,
 }
@@ -89,9 +93,10 @@ func fragmentMarketAction(ctx *cli.Context) error {
 	if baseAssetOpt == "" {
 		baseAssetOpt = net.AssetID
 	}
+	debug := ctx.Bool("debug")
 
 	if recoverAddress != "" {
-		return recoverFundsToAddress(net, walletType, recoverAddress)
+		return recoverFundsToAddress(net, walletType, recoverAddress, debug)
 	}
 
 	explorerSvc, err := getExplorerFromState()
@@ -197,6 +202,9 @@ func fragmentMarketAction(ctx *cli.Context) error {
 	log.Info("sending transaction...")
 	txID, err := explorerSvc.BroadcastTransaction(txHex)
 	if err != nil {
+		if debug {
+			log.Info("tx hex", txHex)
+		}
 		return fmt.Errorf("failed to braodcast tx: %v", err)
 	}
 

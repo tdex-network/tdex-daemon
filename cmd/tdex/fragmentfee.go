@@ -50,6 +50,10 @@ var fragmentfee = cli.Command{
 			Name:  "recover_funds_to_address",
 			Usage: "specify an address where to send funds stuck into the fragmenter to",
 		},
+		&cli.BoolFlag{
+			Name:  "debug",
+			Usage: "print tx hex in case the transaction fails to be broadcasted",
+		},
 	},
 	Action: fragmentFeeAction,
 }
@@ -74,9 +78,10 @@ func fragmentFeeAction(ctx *cli.Context) error {
 	if maxNumOfFragments > MaxNumOfOutputs {
 		maxNumOfFragments = MaxNumOfOutputs
 	}
+	debug := ctx.Bool("debug")
 
 	if recoverAddress != "" {
-		return recoverFundsToAddress(net, walletType, recoverAddress)
+		return recoverFundsToAddress(net, walletType, recoverAddress, debug)
 	}
 
 	explorerSvc, err := getExplorerFromState()
@@ -166,6 +171,9 @@ func fragmentFeeAction(ctx *cli.Context) error {
 	log.Info("sending transactions...")
 	txID, err := explorerSvc.BroadcastTransaction(txHex)
 	if err != nil {
+		if debug {
+			log.Info("tx hex", txHex)
+		}
 		return err
 	}
 	log.Infof("fee account funding txid: %s", txID)
@@ -368,7 +376,7 @@ func waitForOperatorFunds() []string {
 	return strings.Split(trimmedIn, " ")
 }
 
-func recoverFundsToAddress(net *network.Network, walletType, addr string) error {
+func recoverFundsToAddress(net *network.Network, walletType, addr string, debug bool) error {
 	explorerSvc, err := getExplorerFromState()
 	if err != nil {
 		return fmt.Errorf("error while setting up explorer service: %v", err)
@@ -436,6 +444,9 @@ func recoverFundsToAddress(net *network.Network, walletType, addr string) error 
 
 	txid, err := explorerSvc.BroadcastTransaction(txHex)
 	if err != nil {
+		if debug {
+			log.Info("tx hex", txHex)
+		}
 		return err
 	}
 
