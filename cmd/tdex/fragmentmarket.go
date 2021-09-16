@@ -138,6 +138,9 @@ func fragmentMarketAction(ctx *cli.Context) error {
 		assetValuePair,
 		fragmentationMapConfig,
 	)
+	feeAmount := estimateFees(len(unspents), len(baseFragments)+len(quoteFragments))
+	baseFragments = deductFeeFromFragments(baseFragments, feeAmount)
+
 	numUnspents := len(unspents)
 	numFragments := len(baseFragments) + len(quoteFragments)
 	log.Infof(
@@ -155,8 +158,6 @@ func fragmentMarketAction(ctx *cli.Context) error {
 		assetValuePair.QuoteValue,
 		len(quoteFragments),
 	)
-
-	feeAmount := estimateFees(numUnspents, numFragments)
 
 	if quoteAssetOpt == "" {
 		baseAssetOpt = ""
@@ -245,21 +246,15 @@ func createOutputs(
 	feeAmount uint64,
 	addresses []string,
 	assetValuePair AssetValuePair,
-	baseAssetKey string,
 ) []TxOut {
 	outsLen := len(baseFragments) + len(quoteFragments)
 	outputs := make([]TxOut, 0, outsLen)
 
 	index := 0
-	for i, v := range baseFragments {
-		value := int64(v)
-		//deduct fee from last(largest) fragment
-		if i == len(baseFragments)-1 {
-			value = int64(v) - int64(feeAmount)
-		}
+	for _, v := range baseFragments {
 		outputs = append(outputs, TxOut{
-			Asset:   baseAssetKey,
-			Value:   value,
+			Asset:   assetValuePair.BaseAsset,
+			Value:   int64(v),
 			Address: addresses[index],
 		})
 		index++
@@ -341,7 +336,7 @@ func findAssetsUnspents(
 ) (AssetValuePair, []explorer.Utxo, error) {
 	var assetValuePair AssetValuePair
 	var unspents []explorer.Utxo
-	valuePerAsset := make(map[string]uint64, 0)
+	valuePerAsset := make(map[string]uint64)
 
 	for _, txid := range txids {
 		u, err := getUnspents(explorerSvc, randomWallet, txid)
@@ -409,7 +404,6 @@ func craftTransaction(
 		feeAmount,
 		addresses,
 		assetValuePair,
-		baseAssetKey,
 	)
 
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs, network)
@@ -433,15 +427,15 @@ func craftTransaction(
 	}
 
 	dataLen := len(unspents)
-	inBlindData := make([]pset.BlindingDataLike, dataLen, dataLen)
-	for i, u := range unspents {
+	inBlindData := make([]pset.BlindingDataLike, 0, dataLen)
+	for _, u := range unspents {
 		asset, _ := hex.DecodeString(u.Asset())
-		inBlindData[i] = pset.BlindingData{
+		inBlindData = append(inBlindData, pset.BlindingData{
 			Value:               u.Value(),
 			Asset:               elementsutil.ReverseBytes(asset),
 			ValueBlindingFactor: u.ValueBlinder(),
 			AssetBlindingFactor: u.AssetBlinder(),
-		}
+		})
 	}
 
 	blinder, err := pset.NewBlinder(
@@ -527,7 +521,7 @@ func parseRequestOutputs(reqOutputs []TxOut, network *network.Network) (
 	error,
 ) {
 	outLen := len(reqOutputs)
-	outputs := make([]*transaction.TxOutput, outLen, outLen)
+	outputs := make([]*transaction.TxOutput, 0, outLen)
 	blindingKeys := make(map[int][]byte)
 
 	for i, out := range reqOutputs {
@@ -548,7 +542,7 @@ func parseRequestOutputs(reqOutputs []TxOut, network *network.Network) (
 		}
 
 		output := transaction.NewTxOutput(asset, value, script)
-		outputs[i] = output
+		outputs = append(outputs, output)
 		blindingKeys[i] = blindingKey
 	}
 	return outputs, blindingKeys, nil
@@ -620,5 +614,22 @@ func getEphemeralWallet(
 		return nil, err
 	}
 	return w, nil
+}
 
+func deductFeeFromFragments(fragments []uint64, feeAmount uint64) []uint64 {
+	f := make([]uint64, len(fragments))
+	copy(f, fragments)
+
+	amountToPay := int64(feeAmount)
+	for amountToPay > 0 {
+		fLen := len(f) - 1
+		lastFragment := int64(f[fLen])
+		if amountToPay >= lastFragment {
+			f = f[:fLen]
+		} else {
+			f[fLen] -= uint64(amountToPay)
+		}
+		amountToPay -= lastFragment
+	}
+	return f
 }

@@ -24,7 +24,7 @@ import (
 
 const (
 	MinFee          = 5000
-	MaxNumOfOutputs = 150
+	MaxNumOfOutputs = 50
 )
 
 var fragmentfee = cli.Command{
@@ -109,6 +109,8 @@ func fragmentFeeAction(ctx *cli.Context) error {
 
 	log.Info("calculating fragments...")
 	baseFragments := fragmentFeeUnspents(baseAssetValue, MinFee, MaxNumOfOutputs)
+	feeAmount := estimateFees(len(unspents), len(baseFragments))
+	baseFragments = deductFeeFromFragments(baseFragments, feeAmount)
 
 	numUnspents := len(unspents)
 	numFragments := len(baseFragments)
@@ -123,8 +125,6 @@ func fragmentFeeAction(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	feeAmount := estimateFees(numUnspents, numFragments)
 
 	log.Info("crafting transaction...")
 	txHex, err := craftTransaction(
@@ -192,33 +192,6 @@ func fragmentFeeUnspents(
 	return res
 }
 
-func createOutputsForDepositFeeTransaction(
-	baseFragments []uint64,
-	feeAmount uint64,
-	addresses []string,
-	baseAssetKey string,
-) []TxOut {
-	outsLen := len(baseFragments)
-	outputs := make([]TxOut, 0, outsLen)
-
-	index := 0
-	for i, v := range baseFragments {
-		value := int64(v)
-		// deduct fee from last(largest) fragment
-		if i == len(baseFragments)-1 {
-			value = int64(v) - int64(feeAmount)
-		}
-		outputs = append(outputs, TxOut{
-			Asset:   baseAssetKey,
-			Value:   value,
-			Address: addresses[index],
-		})
-		index++
-	}
-
-	return outputs
-}
-
 // findBaseAssetsUnspents polls blockchain until base asset unspent is noticed
 func findBaseAssetsUnspents(
 	randomWallet *trade.Wallet,
@@ -227,7 +200,7 @@ func findBaseAssetsUnspents(
 	txids []string,
 ) (uint64, []explorer.Utxo, error) {
 	unspents := make([]explorer.Utxo, 0)
-	valuePerAsset := make(map[string]uint64, 0)
+	valuePerAsset := make(map[string]uint64)
 
 	for _, txid := range txids {
 		u, err := getUnspents(explorerSvc, randomWallet, txid)
@@ -284,14 +257,14 @@ func getFeeDepositAddresses(
 }
 
 func estimateFees(numIns, numOuts int) uint64 {
-	ins := make([]int, numIns, numIns)
+	ins := make([]int, 0, numIns)
 	for i := 0; i < numIns; i++ {
-		ins[i] = wallet.P2WPKH
+		ins = append(ins, wallet.P2WPKH)
 	}
 
-	outs := make([]int, numOuts, numOuts)
+	outs := make([]int, 0, numOuts)
 	for i := 0; i < numOuts; i++ {
-		outs[i] = wallet.P2WPKH
+		outs = append(outs, wallet.P2WPKH)
 	}
 
 	size := wallet.EstimateTxSize(ins, nil, nil, outs, nil)
