@@ -31,13 +31,22 @@ var fragmentfee = cli.Command{
 	Name: "fragmentfee",
 	Usage: "deposit funds for fee account into an ephemeral wallet, then " +
 		"split the amount into multiple fragments and deposit into the daemon",
-	Action: fragmentFeeAction,
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "txid",
 			Usage: "txid of the funds to resume a previous fragmentfee",
 		},
+		&cli.Uint64Flag{
+			Name: "max_fragments",
+			Usage: fmt.Sprintf(
+				"specify the max number of fragments created. "+
+					"Values over %d will be overridden to %d",
+				MaxNumOfOutputs, MaxNumOfOutputs,
+			),
+			Value: MaxNumOfOutputs,
+		},
 	},
+	Action: fragmentFeeAction,
 }
 
 func fragmentFeeAction(ctx *cli.Context) error {
@@ -55,6 +64,10 @@ func fragmentFeeAction(ctx *cli.Context) error {
 
 	walletType := "fee"
 	txids := ctx.StringSlice("txid")
+	maxNumOfFragments := ctx.Int("max_fragments")
+	if maxNumOfFragments > MaxNumOfOutputs {
+		maxNumOfFragments = MaxNumOfOutputs
+	}
 
 	explorerSvc, err := getExplorerFromState()
 	if err != nil {
@@ -108,7 +121,7 @@ func fragmentFeeAction(ctx *cli.Context) error {
 	}
 
 	log.Info("calculating fragments...")
-	baseFragments := fragmentFeeUnspents(baseAssetValue, MinFee, MaxNumOfOutputs)
+	baseFragments := fragmentFeeUnspents(baseAssetValue, MinFee, maxNumOfFragments)
 	feeAmount := estimateFees(len(unspents), len(baseFragments))
 	baseFragments = deductFeeFromFragments(baseFragments, feeAmount)
 
