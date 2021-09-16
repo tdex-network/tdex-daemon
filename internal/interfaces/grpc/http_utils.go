@@ -23,8 +23,10 @@ import (
 	"time"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 )
 
@@ -184,7 +186,7 @@ func generateOperatorTLSKeyCert(
 
 func serveMux(
 	address, tlsKey, tlsCert string,
-	grpcServer *grpc.Server, httpServer *http.Server,
+	grpcServer *grpc.Server, http1Server, http2Server *http.Server,
 ) (cmux.CMux, error) {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
@@ -197,11 +199,19 @@ func serveMux(
 			return nil, err
 		}
 
-		const requiredCipher = tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 		config := &tls.Config{
-			CipherSuites: []uint16{requiredCipher},
 			NextProtos:   []string{"http/1.1", http2.NextProtoTLS, "h2-14"}, // h2-14 is just for compatibility. will be eventually removed.
 			Certificates: []tls.Certificate{certificate},
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
 		}
 		config.Rand = rand.Reader
 
@@ -209,12 +219,15 @@ func serveMux(
 	}
 
 	mux := cmux.New(lis)
-	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldPrefixSendSettings("content-type", "application/grpc"))
-	httpL := mux.Match(cmux.HTTP1Fast())
+	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+	http2L := mux.Match(cmux.HTTP2())
+	http1L := mux.Match(cmux.HTTP1())
 
 	go grpcServer.Serve(grpcL)
-	go httpServer.Serve(httpL)
+	go http2Server.Serve(http2L)
+	go http1Server.Serve(http1L)
 	go mux.Serve()
+
 	return mux, nil
 }
 
@@ -272,27 +285,39 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 	gRPC web wrapper
 */
 
-type httpHandler struct {
-	grpcWebServer *grpcweb.WrappedGrpcServer
-}
-
-func (h *httpHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	if isValidRequest(req) {
-		h.grpcWebServer.ServeHTTP(resp, req)
-	}
-}
-
-func newGRPCWrappedServer(addr string, grpcServer *grpc.Server) *http.Server {
+func newGRPCWrappedServer(addr string, grpcServer *grpc.Server) (httpSrv *http.Server, http2Srv *http.Server) {
 	grpcWebServer := grpcweb.WrapServer(
 		grpcServer,
 		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
 		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
 	)
-	handler := &httpHandler{grpcWebServer}
-	return &http.Server{
-		Addr:    addr,
-		Handler: handler,
+
+	handler := func(w http.ResponseWriter, req *http.Request) {
+		if isValidRequest(req) {
+			grpcWebServer.ServeHTTP(w, req)
+			return
+		}
+
+		msg := "received a request that could not be matched to grpc or grpc-web"
+		log.Warn(msg)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(msg))
 	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handler)
+
+	httpSrv = &http.Server{
+		Addr:    addr,
+		Handler: mux,
+	}
+
+	http2Srv = &http.Server{
+		Addr:    addr,
+		Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{}),
+	}
+
+	return
 }
 
 func isValidRequest(req *http.Request) bool {
