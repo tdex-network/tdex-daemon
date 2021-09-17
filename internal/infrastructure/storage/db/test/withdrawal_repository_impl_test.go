@@ -70,7 +70,7 @@ func testAddAndListWithdrawals(t *testing.T, repo withdrawalRepository) {
 
 	withdrawals, err = depositRepository.ListWithdrawalsForAccount(context.Background(), 0)
 	require.NoError(t, err)
-	require.Zero(t, withdrawals)
+	require.Empty(t, withdrawals)
 
 	withdrawals, err = depositRepository.ListWithdrawalsForAccountAndPage(
 		context.Background(), 1, domain.Page{Number: 1, Size: 5},

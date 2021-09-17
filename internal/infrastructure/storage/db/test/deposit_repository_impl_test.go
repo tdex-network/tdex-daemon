@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 )
 
 func TestDepositRepositoryImplementations(t *testing.T) {
@@ -60,35 +60,35 @@ func testAddAndListDeposits(t *testing.T, repo depositRepository) {
 
 	deposits, err = depositRepository.ListDepositsForAccount(context.Background(), 1)
 	require.NoError(t, err)
-	require.Len(t, len(deposits), 10)
+	require.Len(t, deposits, 10)
 
 	deposits, err = depositRepository.ListDepositsForAccountAndPage(
 		context.Background(), 1, domain.Page{Number: 1, Size: 5},
 	)
 	require.NoError(t, err)
-	require.Len(t, len(deposits), 5)
+	require.Len(t, deposits, 5)
 
 	deposits, err = depositRepository.ListDepositsForAccountAndPage(
 		context.Background(), 1, domain.Page{Number: 2, Size: 5},
 	)
 	require.NoError(t, err)
-	require.Len(t, len(deposits), 5)
+	require.Len(t, deposits, 5)
 
 	deposits, err = depositRepository.ListAllDeposits(context.Background())
 	require.NoError(t, err)
-	require.Len(t, len(deposits), 10)
+	require.Len(t, deposits, 10)
 
 	deposits, err = depositRepository.ListAllDepositsForPage(
 		context.Background(), domain.Page{Number: 1, Size: 6},
 	)
 	require.NoError(t, err)
-	require.Len(t, len(deposits), 6)
+	require.Len(t, deposits, 6)
 
 	deposits, err = depositRepository.ListAllDepositsForPage(
-		context.Background(), domain.Page{Number: 1, Size: 6},
+		context.Background(), domain.Page{Number: 2, Size: 6},
 	)
 	require.NoError(t, err)
-	require.Len(t, len(deposits), 4)
+	require.Len(t, deposits, 4)
 }
 
 type depositRepository struct {
