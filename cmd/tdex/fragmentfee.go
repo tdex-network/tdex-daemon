@@ -16,6 +16,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/network"
 
 	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 
@@ -24,20 +25,37 @@ import (
 
 const (
 	MinFee          = 5000
-	MaxNumOfOutputs = 150
+	MaxNumOfOutputs = 50
 )
 
 var fragmentfee = cli.Command{
 	Name: "fragmentfee",
 	Usage: "deposit funds for fee account into an ephemeral wallet, then " +
 		"split the amount into multiple fragments and deposit into the daemon",
-	Action: fragmentFeeAction,
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "txid",
 			Usage: "txid of the funds to resume a previous fragmentfee",
 		},
+		&cli.Uint64Flag{
+			Name: "max_fragments",
+			Usage: fmt.Sprintf(
+				"specify the max number of fragments created. "+
+					"Values over %d will be overridden to %d",
+				MaxNumOfOutputs, MaxNumOfOutputs,
+			),
+			Value: MaxNumOfOutputs,
+		},
+		&cli.StringFlag{
+			Name:  "recover_funds_to_address",
+			Usage: "specify an address where to send funds stuck into the fragmenter to",
+		},
+		&cli.BoolFlag{
+			Name:  "debug",
+			Usage: "print tx hex in case the transaction fails to be broadcasted",
+		},
 	},
+	Action: fragmentFeeAction,
 }
 
 func fragmentFeeAction(ctx *cli.Context) error {
@@ -55,6 +73,16 @@ func fragmentFeeAction(ctx *cli.Context) error {
 
 	walletType := "fee"
 	txids := ctx.StringSlice("txid")
+	recoverAddress := ctx.String("recover_funds_to_address")
+	maxNumOfFragments := ctx.Int("max_fragments")
+	if maxNumOfFragments > MaxNumOfOutputs {
+		maxNumOfFragments = MaxNumOfOutputs
+	}
+	debug := ctx.Bool("debug")
+
+	if recoverAddress != "" {
+		return recoverFundsToAddress(net, walletType, recoverAddress, debug)
+	}
 
 	explorerSvc, err := getExplorerFromState()
 	if err != nil {
@@ -108,7 +136,9 @@ func fragmentFeeAction(ctx *cli.Context) error {
 	}
 
 	log.Info("calculating fragments...")
-	baseFragments := fragmentFeeUnspents(baseAssetValue, MinFee, MaxNumOfOutputs)
+	baseFragments := fragmentFeeUnspents(baseAssetValue, MinFee, maxNumOfFragments)
+	feeAmount := estimateFees(len(unspents), len(baseFragments))
+	baseFragments = deductFeeFromFragments(baseFragments, feeAmount)
 
 	numUnspents := len(unspents)
 	numFragments := len(baseFragments)
@@ -123,8 +153,6 @@ func fragmentFeeAction(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	feeAmount := estimateFees(numUnspents, numFragments)
 
 	log.Info("crafting transaction...")
 	txHex, err := craftTransaction(
@@ -143,6 +171,9 @@ func fragmentFeeAction(ctx *cli.Context) error {
 	log.Info("sending transactions...")
 	txID, err := explorerSvc.BroadcastTransaction(txHex)
 	if err != nil {
+		if debug {
+			log.Info("tx hex", txHex)
+		}
 		return err
 	}
 	log.Infof("fee account funding txid: %s", txID)
@@ -192,33 +223,6 @@ func fragmentFeeUnspents(
 	return res
 }
 
-func createOutputsForDepositFeeTransaction(
-	baseFragments []uint64,
-	feeAmount uint64,
-	addresses []string,
-	baseAssetKey string,
-) []TxOut {
-	outsLen := len(baseFragments)
-	outputs := make([]TxOut, 0, outsLen)
-
-	index := 0
-	for i, v := range baseFragments {
-		value := int64(v)
-		// deduct fee from last(largest) fragment
-		if i == len(baseFragments)-1 {
-			value = int64(v) - int64(feeAmount)
-		}
-		outputs = append(outputs, TxOut{
-			Asset:   baseAssetKey,
-			Value:   value,
-			Address: addresses[index],
-		})
-		index++
-	}
-
-	return outputs
-}
-
 // findBaseAssetsUnspents polls blockchain until base asset unspent is noticed
 func findBaseAssetsUnspents(
 	randomWallet *trade.Wallet,
@@ -227,7 +231,7 @@ func findBaseAssetsUnspents(
 	txids []string,
 ) (uint64, []explorer.Utxo, error) {
 	unspents := make([]explorer.Utxo, 0)
-	valuePerAsset := make(map[string]uint64, 0)
+	valuePerAsset := make(map[string]uint64)
 
 	for _, txid := range txids {
 		u, err := getUnspents(explorerSvc, randomWallet, txid)
@@ -284,14 +288,14 @@ func getFeeDepositAddresses(
 }
 
 func estimateFees(numIns, numOuts int) uint64 {
-	ins := make([]int, numIns, numIns)
+	ins := make([]int, 0, numIns)
 	for i := 0; i < numIns; i++ {
-		ins[i] = wallet.P2WPKH
+		ins = append(ins, wallet.P2WPKH)
 	}
 
-	outs := make([]int, numOuts, numOuts)
+	outs := make([]int, 0, numOuts)
 	for i := 0; i < numOuts; i++ {
-		outs[i] = wallet.P2WPKH
+		outs = append(outs, wallet.P2WPKH)
 	}
 
 	size := wallet.EstimateTxSize(ins, nil, nil, outs, nil)
@@ -370,4 +374,96 @@ func waitForOperatorFunds() []string {
 		return nil
 	}
 	return strings.Split(trimmedIn, " ")
+}
+
+func recoverFundsToAddress(net *network.Network, walletType, addr string, debug bool) error {
+	explorerSvc, err := getExplorerFromState()
+	if err != nil {
+		return fmt.Errorf("error while setting up explorer service: %v", err)
+	}
+
+	walletKeys, err := getWalletFromState(walletType)
+	if err != nil {
+		return err
+	}
+	if walletKeys == nil {
+		return fmt.Errorf("no ephemeral wallet detected, aborting")
+	}
+
+	ephWallet, err := getEphemeralWallet(walletType, walletKeys, net)
+	if err != nil {
+		return fmt.Errorf("unable to restore ephemeral wallet: %v", err)
+	}
+
+	log.Info("recovering all unspents owned by fragmenter...")
+	unspents, err := explorerSvc.GetUnspents(ephWallet.Address(), [][]byte{ephWallet.BlindingKey()})
+	if err != nil {
+		return err
+	}
+
+	totalAmountPerAsset := make(map[string]uint64)
+	for _, u := range unspents {
+		totalAmountPerAsset[u.Asset()] += u.Value()
+	}
+
+	numIns := len(unspents)
+	numOuts := len(totalAmountPerAsset)
+	feeAmount := estimateFees(numIns, numOuts)
+
+	if totalLbtcAmount := totalAmountPerAsset[net.AssetID]; totalLbtcAmount < feeAmount {
+		return fmt.Errorf("fragment does not hold enough funds to pay for network fees")
+	}
+	totalAmountPerAsset[net.AssetID] -= feeAmount
+
+	log.Infof("found %d unspents with total amount per asset:", len(unspents))
+
+	outs := make([]TxOut, 0, len(totalAmountPerAsset))
+	for asset, amount := range totalAmountPerAsset {
+		msg := fmt.Sprintf("%s: %d", asset, amount)
+		if asset == net.AssetID {
+			msg += (" (network fees deducted)")
+		}
+		log.Info(msg)
+		outs = append(outs, TxOut{
+			Asset:   asset,
+			Address: addr,
+			Value:   int64(amount),
+		})
+	}
+
+	confirmed := waitForOperatorConfirmation()
+	if !confirmed {
+		log.Info("aborting")
+		return nil
+	}
+
+	txHex, err := buildFinalizedTx(net, ephWallet, unspents, outs, feeAmount)
+	if err != nil {
+		return err
+	}
+
+	txid, err := explorerSvc.BroadcastTransaction(txHex)
+	if err != nil {
+		if debug {
+			log.Info("tx hex", txHex)
+		}
+		return err
+	}
+
+	log.Infof("funds sent to address %s in tx with id: %s", addr, txid)
+
+	flushWallet(walletType)
+	log.Info("done")
+	return nil
+}
+
+func waitForOperatorConfirmation() bool {
+	reader := bufio.NewReader(os.Stdin)
+	log.Info("do you want to proceed [y/n]?")
+	in, _ := reader.ReadString('\n')
+	trimmedIn := strings.Trim(in, "\n")
+	if trimmedIn == "" {
+		return true
+	}
+	return strings.ToLower(trimmedIn) == "y"
 }

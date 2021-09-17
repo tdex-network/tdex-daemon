@@ -38,16 +38,22 @@ var fragmentmarket = cli.Command{
 		&cli.StringFlag{
 			Name:  "base_asset",
 			Usage: "the base asset hash of an existent market",
-			Value: "",
 		},
 		&cli.StringFlag{
 			Name:  "quote_asset",
 			Usage: "the quote asset hash of an existent market",
-			Value: "",
 		},
 		&cli.StringSliceFlag{
 			Name:  "txid",
 			Usage: "txid of the funds to resume a fragmentmarket",
+		},
+		&cli.StringFlag{
+			Name:  "recover_funds_to_address",
+			Usage: "specify an address where to send funds stuck into the fragmenter to",
+		},
+		&cli.BoolFlag{
+			Name:  "debug",
+			Usage: "print tx hex in case the transaction fails to be broadcasted",
 		},
 	},
 	Action: fragmentMarketAction,
@@ -81,10 +87,16 @@ func fragmentMarketAction(ctx *cli.Context) error {
 
 	walletType := "market"
 	txids := ctx.StringSlice("txid")
+	recoverAddress := ctx.String("recover_funds_to_address")
 	quoteAssetOpt := ctx.String("quote_asset")
 	baseAssetOpt := ctx.String("base_asset")
 	if baseAssetOpt == "" {
 		baseAssetOpt = net.AssetID
+	}
+	debug := ctx.Bool("debug")
+
+	if recoverAddress != "" {
+		return recoverFundsToAddress(net, walletType, recoverAddress, debug)
 	}
 
 	explorerSvc, err := getExplorerFromState()
@@ -138,6 +150,9 @@ func fragmentMarketAction(ctx *cli.Context) error {
 		assetValuePair,
 		fragmentationMapConfig,
 	)
+	feeAmount := estimateFees(len(unspents), len(baseFragments)+len(quoteFragments))
+	baseFragments = deductFeeFromFragments(baseFragments, feeAmount)
+
 	numUnspents := len(unspents)
 	numFragments := len(baseFragments) + len(quoteFragments)
 	log.Infof(
@@ -155,8 +170,6 @@ func fragmentMarketAction(ctx *cli.Context) error {
 		assetValuePair.QuoteValue,
 		len(quoteFragments),
 	)
-
-	feeAmount := estimateFees(numUnspents, numFragments)
 
 	if quoteAssetOpt == "" {
 		baseAssetOpt = ""
@@ -189,6 +202,9 @@ func fragmentMarketAction(ctx *cli.Context) error {
 	log.Info("sending transaction...")
 	txID, err := explorerSvc.BroadcastTransaction(txHex)
 	if err != nil {
+		if debug {
+			log.Info("tx hex", txHex)
+		}
 		return fmt.Errorf("failed to braodcast tx: %v", err)
 	}
 
@@ -245,21 +261,15 @@ func createOutputs(
 	feeAmount uint64,
 	addresses []string,
 	assetValuePair AssetValuePair,
-	baseAssetKey string,
 ) []TxOut {
 	outsLen := len(baseFragments) + len(quoteFragments)
 	outputs := make([]TxOut, 0, outsLen)
 
 	index := 0
-	for i, v := range baseFragments {
-		value := int64(v)
-		//deduct fee from last(largest) fragment
-		if i == len(baseFragments)-1 {
-			value = int64(v) - int64(feeAmount)
-		}
+	for _, v := range baseFragments {
 		outputs = append(outputs, TxOut{
-			Asset:   baseAssetKey,
-			Value:   value,
+			Asset:   assetValuePair.BaseAsset,
+			Value:   int64(v),
 			Address: addresses[index],
 		})
 		index++
@@ -341,7 +351,7 @@ func findAssetsUnspents(
 ) (AssetValuePair, []explorer.Utxo, error) {
 	var assetValuePair AssetValuePair
 	var unspents []explorer.Utxo
-	valuePerAsset := make(map[string]uint64, 0)
+	valuePerAsset := make(map[string]uint64)
 
 	for _, txid := range txids {
 		u, err := getUnspents(explorerSvc, randomWallet, txid)
@@ -399,120 +409,18 @@ func craftTransaction(
 	baseFragments, quoteFragments []uint64,
 	addresses []string,
 	feeAmount uint64,
-	network *network.Network,
+	net *network.Network,
 	assetValuePair AssetValuePair,
 ) (string, error) {
-	baseAssetKey := assetValuePair.BaseAsset
 	outs := createOutputs(
 		baseFragments,
 		quoteFragments,
 		feeAmount,
 		addresses,
 		assetValuePair,
-		baseAssetKey,
 	)
 
-	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs, network)
-	if err != nil {
-		return "", err
-	}
-
-	ptx, err := pset.New(
-		make([]*transaction.TxInput, 0, len(unspents)),
-		make([]*transaction.TxOutput, 0, len(outputs)),
-		2,
-		0,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	ptx, err = addInsAndOutsToPset(ptx, unspents, outputs)
-	if err != nil {
-		return "", err
-	}
-
-	dataLen := len(unspents)
-	inBlindData := make([]pset.BlindingDataLike, dataLen, dataLen)
-	for i, u := range unspents {
-		asset, _ := hex.DecodeString(u.Asset())
-		inBlindData[i] = pset.BlindingData{
-			Value:               u.Value(),
-			Asset:               elementsutil.ReverseBytes(asset),
-			ValueBlindingFactor: u.ValueBlinder(),
-			AssetBlindingFactor: u.AssetBlinder(),
-		}
-	}
-
-	blinder, err := pset.NewBlinder(
-		ptx,
-		inBlindData,
-		outputsBlindingKeys,
-		nil,
-		nil,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	err = blinder.Blind()
-	if err != nil {
-		return "", err
-	}
-
-	updater, err := pset.NewUpdater(ptx)
-	if err != nil {
-		return "", err
-	}
-
-	feeValue, _ := elementsutil.SatoshiToElementsValue(feeAmount)
-	lbtc, err := bufferutil.AssetHashToBytes(baseAssetKey)
-	if err != nil {
-		return "", err
-	}
-	feeOutput := transaction.NewTxOutput(lbtc, feeValue[:], []byte{})
-	updater.AddOutput(feeOutput)
-
-	ptxBase64, err := ptx.ToBase64()
-	if err != nil {
-		return "", err
-	}
-
-	signedPtxBase64, err := randomWallet.Sign(ptxBase64)
-	if err != nil {
-		return "", err
-	}
-
-	signedPtx, err := pset.NewPsetFromBase64(signedPtxBase64)
-	if err != nil {
-		return "", err
-	}
-
-	valid, err := signedPtx.ValidateAllSignatures()
-	if err != nil {
-		return "", err
-	}
-
-	if !valid {
-		return "", errors.New("invalid signatures")
-	}
-
-	err = pset.FinalizeAll(signedPtx)
-	if err != nil {
-		return "", err
-	}
-
-	finalTx, err := pset.Extract(signedPtx)
-	if err != nil {
-		return "", err
-	}
-
-	txHex, err := finalTx.ToHex()
-	if err != nil {
-		return "", err
-	}
-
-	return txHex, nil
+	return buildFinalizedTx(net, randomWallet, unspents, outs, feeAmount)
 }
 
 type TxOut struct {
@@ -527,7 +435,7 @@ func parseRequestOutputs(reqOutputs []TxOut, network *network.Network) (
 	error,
 ) {
 	outLen := len(reqOutputs)
-	outputs := make([]*transaction.TxOutput, outLen, outLen)
+	outputs := make([]*transaction.TxOutput, 0, outLen)
 	blindingKeys := make(map[int][]byte)
 
 	for i, out := range reqOutputs {
@@ -548,7 +456,7 @@ func parseRequestOutputs(reqOutputs []TxOut, network *network.Network) (
 		}
 
 		output := transaction.NewTxOutput(asset, value, script)
-		outputs[i] = output
+		outputs = append(outputs, output)
 		blindingKeys[i] = blindingKey
 	}
 	return outputs, blindingKeys, nil
@@ -620,5 +528,132 @@ func getEphemeralWallet(
 		return nil, err
 	}
 	return w, nil
+}
 
+func deductFeeFromFragments(fragments []uint64, feeAmount uint64) []uint64 {
+	f := make([]uint64, len(fragments))
+	copy(f, fragments)
+
+	amountToPay := int64(feeAmount)
+	for amountToPay > 0 {
+		fLen := len(f) - 1
+		lastFragment := int64(f[fLen])
+		if amountToPay >= lastFragment {
+			f = f[:fLen]
+		} else {
+			f[fLen] -= uint64(amountToPay)
+		}
+		amountToPay -= lastFragment
+	}
+	return f
+}
+
+func buildFinalizedTx(
+	net *network.Network,
+	randomWallet *trade.Wallet,
+	unspents []explorer.Utxo,
+	outs []TxOut,
+	feeAmount uint64,
+) (string, error) {
+	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs, net)
+	if err != nil {
+		return "", err
+	}
+
+	ptx, err := pset.New(
+		make([]*transaction.TxInput, 0, len(unspents)),
+		make([]*transaction.TxOutput, 0, len(outputs)),
+		2,
+		0,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	ptx, err = addInsAndOutsToPset(ptx, unspents, outputs)
+	if err != nil {
+		return "", err
+	}
+
+	dataLen := len(unspents)
+	inBlindData := make([]pset.BlindingDataLike, 0, dataLen)
+	for _, u := range unspents {
+		asset, _ := hex.DecodeString(u.Asset())
+		inBlindData = append(inBlindData, pset.BlindingData{
+			Value:               u.Value(),
+			Asset:               elementsutil.ReverseBytes(asset),
+			ValueBlindingFactor: u.ValueBlinder(),
+			AssetBlindingFactor: u.AssetBlinder(),
+		})
+	}
+
+	blinder, err := pset.NewBlinder(
+		ptx,
+		inBlindData,
+		outputsBlindingKeys,
+		nil,
+		nil,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	err = blinder.Blind()
+	if err != nil {
+		return "", err
+	}
+
+	updater, err := pset.NewUpdater(ptx)
+	if err != nil {
+		return "", err
+	}
+
+	feeValue, _ := elementsutil.SatoshiToElementsValue(feeAmount)
+	lbtc, err := bufferutil.AssetHashToBytes(net.AssetID)
+	if err != nil {
+		return "", err
+	}
+	feeOutput := transaction.NewTxOutput(lbtc, feeValue[:], []byte{})
+	updater.AddOutput(feeOutput)
+
+	ptxBase64, err := ptx.ToBase64()
+	if err != nil {
+		return "", err
+	}
+
+	signedPtxBase64, err := randomWallet.Sign(ptxBase64)
+	if err != nil {
+		return "", err
+	}
+
+	signedPtx, err := pset.NewPsetFromBase64(signedPtxBase64)
+	if err != nil {
+		return "", err
+	}
+
+	valid, err := signedPtx.ValidateAllSignatures()
+	if err != nil {
+		return "", err
+	}
+
+	if !valid {
+		return "", errors.New("invalid signatures")
+	}
+
+	err = pset.FinalizeAll(signedPtx)
+	if err != nil {
+		return "", err
+	}
+
+	finalTx, err := pset.Extract(signedPtx)
+	if err != nil {
+		return "", err
+	}
+
+	txHex, err := finalTx.ToHex()
+	if err != nil {
+		return "", err
+	}
+
+	return txHex, nil
 }
