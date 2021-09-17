@@ -9,7 +9,7 @@ import (
 // TradeRepository is the abstraction for any kind of database intended to
 // persist Trades.
 type TradeRepository interface {
-	// GetOrCreateVault returns the trade with the given tradeID, or create a
+	// GetOrCreateTrade returns the trade with the given tradeID, or create a
 	// new empty one if not found.
 	GetOrCreateTrade(ctx context.Context, tradeID *uuid.UUID) (*Trade, error)
 	// GetAllTrades returns all the trades stored in the repository.
