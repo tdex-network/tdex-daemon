@@ -52,25 +52,32 @@ func (r UnspentRepositoryImpl) GetAvailableUnspents(_ context.Context) ([]domain
 
 // GetAllUnspentsForAddresses ...
 func (r UnspentRepositoryImpl) GetAllUnspentsForAddresses(
-	ctx context.Context, addresses []string, page *domain.Page,
+	ctx context.Context, addresses []string,
 ) ([]domain.Unspent, error) {
 	r.store.locker.Lock()
 	defer r.store.locker.Unlock()
 
 	results := make([]domain.Unspent, 0)
-
-	if page == nil {
-		for _, unspent := range r.store.unspents {
-			unspentAddress := unspent.Address
-			for _, addr := range addresses {
-				if unspentAddress == addr {
-					results = append(results, unspent)
-				}
+	for _, unspent := range r.store.unspents {
+		unspentAddress := unspent.Address
+		for _, addr := range addresses {
+			if unspentAddress == addr {
+				results = append(results, unspent)
 			}
 		}
-		return results, nil
 	}
 
+	return results, nil
+}
+
+// GetAllUnspentsForAddressesAndPage ...
+func (r UnspentRepositoryImpl) GetAllUnspentsForAddressesAndPage(
+	ctx context.Context, addresses []string, page domain.Page,
+) ([]domain.Unspent, error) {
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
+
+	results := make([]domain.Unspent, 0)
 	startIndex := page.Number*page.Size - page.Size + 1
 	endIndex := page.Number * page.Size
 	index := 1

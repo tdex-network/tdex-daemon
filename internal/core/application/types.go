@@ -191,12 +191,8 @@ func (u Unspents) ToUtxos() []explorer.Utxo {
 
 type Page domain.Page
 
-func (p *Page) ToDomain() *domain.Page {
-	if p == nil {
-		return nil
-	}
-	page := domain.NewPage(p.Number, p.Size)
-	return &page
+func (p *Page) ToDomain() domain.Page {
+	return domain.NewPage(p.Number, p.Size)
 }
 
 type Deposits []domain.Deposit

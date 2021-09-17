@@ -588,12 +588,14 @@ func (o *operatorService) UpdateMarketStrategy(
 func (o *operatorService) ListTrades(
 	ctx context.Context, page *Page,
 ) ([]TradeInfo, error) {
-	var pg *domain.Page
-	if page != nil {
-		pg = page.ToDomain()
+	var trades []*domain.Trade
+	var err error
+	if page == nil {
+		trades, err = o.repoManager.TradeRepository().GetAllTrades(ctx)
+	} else {
+		pg := page.ToDomain()
+		trades, err = o.repoManager.TradeRepository().GetAllTradesForPage(ctx, pg)
 	}
-
-	trades, err := o.repoManager.TradeRepository().GetAllTrades(ctx, pg)
 	if err != nil {
 		return nil, err
 	}
@@ -604,14 +606,18 @@ func (o *operatorService) ListTrades(
 func (o *operatorService) ListTradesForMarket(
 	ctx context.Context, market Market, page *Page,
 ) ([]TradeInfo, error) {
-	var pg *domain.Page
-	if page != nil {
-		pg = page.ToDomain()
+	var trades []*domain.Trade
+	var err error
+	if page == nil {
+		trades, err = o.repoManager.TradeRepository().GetAllTradesByMarket(
+			ctx, market.QuoteAsset,
+		)
+	} else {
+		pg := page.ToDomain()
+		trades, err = o.repoManager.TradeRepository().GetAllTradesByMarketAndPage(
+			ctx, market.QuoteAsset, pg,
+		)
 	}
-
-	trades, err := o.repoManager.TradeRepository().GetAllTradesByMarket(
-		ctx, market.QuoteAsset, pg,
-	)
 	if err != nil {
 		return nil, err
 	}
@@ -696,11 +702,6 @@ func (o *operatorService) GetCollectedMarketFee(
 	market Market,
 	page *Page,
 ) (*ReportMarketFee, error) {
-	var pg *domain.Page
-	if page != nil {
-		pg = page.ToDomain()
-	}
-
 	m, _, err := o.repoManager.MarketRepository().GetMarketByAsset(
 		ctx,
 		market.QuoteAsset,
@@ -713,9 +714,17 @@ func (o *operatorService) GetCollectedMarketFee(
 		return nil, ErrMarketNotExist
 	}
 
-	trades, err := o.repoManager.TradeRepository().GetCompletedTradesByMarket(
-		ctx, market.QuoteAsset, pg,
-	)
+	var trades []*domain.Trade
+	if page == nil {
+		trades, err = o.repoManager.TradeRepository().GetCompletedTradesByMarket(
+			ctx, market.QuoteAsset,
+		)
+	} else {
+		pg := page.ToDomain()
+		trades, err = o.repoManager.TradeRepository().GetCompletedTradesByMarketAndPage(
+			ctx, market.QuoteAsset, pg,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -933,19 +942,24 @@ func (o *operatorService) WithdrawMarketFunds(
 	}()
 
 	go func() {
-		if err := o.repoManager.WithdrawalRepository().AddWithdrawal(
+		count, err := o.repoManager.WithdrawalRepository().AddWithdrawals(
 			ctx,
-			domain.Withdrawal{
-				TxID:            txid,
-				AccountIndex:    accountIndex,
-				BaseAmount:      req.BalanceToWithdraw.BaseAmount,
-				QuoteAmount:     req.BalanceToWithdraw.QuoteAmount,
-				MillisatPerByte: req.MillisatPerByte,
-				Address:         req.Address,
+			[]domain.Withdrawal{
+				{
+					TxID:            txid,
+					AccountIndex:    accountIndex,
+					BaseAmount:      req.BalanceToWithdraw.BaseAmount,
+					QuoteAmount:     req.BalanceToWithdraw.QuoteAmount,
+					MillisatPerByte: req.MillisatPerByte,
+					Address:         req.Address,
+				},
 			},
-		); err != nil {
+		)
+		if err != nil {
 			log.WithError(err).Warn("an error occured while storing withdrawal info")
+			return
 		}
+		log.Debugf("added %d withdrawals", count)
 	}()
 
 	rawTx, _ := hex.DecodeString(txHex)
@@ -958,14 +972,18 @@ func (o *operatorService) ListWithdrawals(
 	accountIndex int,
 	page *Page,
 ) (Withdrawals, error) {
-	var pg *domain.Page
-	if page != nil {
-		pg = page.ToDomain()
+	var withdrawals []domain.Withdrawal
+	var err error
+	if page == nil {
+		withdrawals, err = o.repoManager.WithdrawalRepository().ListWithdrawalsForAccount(
+			ctx, accountIndex,
+		)
+	} else {
+		pg := page.ToDomain()
+		withdrawals, err = o.repoManager.WithdrawalRepository().ListWithdrawalsForAccountAndPage(
+			ctx, accountIndex, pg,
+		)
 	}
-
-	withdrawals, err := o.repoManager.WithdrawalRepository().ListWithdrawalsForAccountId(
-		ctx, accountIndex, pg,
-	)
 	if err != nil {
 		return nil, err
 	}
@@ -986,19 +1004,21 @@ func (o *operatorService) FeeAccountBalance(ctx context.Context) (int64, error) 
 func (o *operatorService) ListUtxos(
 	ctx context.Context, accountIndex int, page *Page,
 ) (*UtxoInfoList, error) {
-	var pg *domain.Page
-	if page != nil {
-		pg = page.ToDomain()
-	}
-
 	info, err := o.repoManager.VaultRepository().
 		GetAllDerivedAddressesInfoForAccount(ctx, accountIndex)
 	if err != nil {
 		return nil, err
 	}
 
-	allUtxos, err := o.repoManager.UnspentRepository().
-		GetAllUnspentsForAddresses(ctx, info.Addresses(), pg)
+	var allUtxos []domain.Unspent
+	if page == nil {
+		allUtxos, err = o.repoManager.UnspentRepository().
+			GetAllUnspentsForAddresses(ctx, info.Addresses())
+	} else {
+		pg := page.ToDomain()
+		allUtxos, err = o.repoManager.UnspentRepository().
+			GetAllUnspentsForAddressesAndPage(ctx, info.Addresses(), pg)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -1124,14 +1144,18 @@ func (o *operatorService) ListDeposits(
 	accountIndex int,
 	page *Page,
 ) (Deposits, error) {
-	var pg *domain.Page
-	if page != nil {
-		pg = page.ToDomain()
+	var deposits []domain.Deposit
+	var err error
+	if page == nil {
+		deposits, err = o.repoManager.DepositRepository().ListDepositsForAccount(
+			ctx, accountIndex,
+		)
+	} else {
+		pg := page.ToDomain()
+		deposits, err = o.repoManager.DepositRepository().ListDepositsForAccountAndPage(
+			ctx, accountIndex, pg,
+		)
 	}
-
-	deposits, err := o.repoManager.DepositRepository().ListDepositsForAccountId(
-		ctx, accountIndex, pg,
-	)
 	if err != nil {
 		return nil, err
 	}
@@ -1312,12 +1336,14 @@ func (o *operatorService) claimDeposit(
 					}
 					log.Info("fee account funded. Trades can be served")
 
-					for _, v := range deposits {
-						err := o.repoManager.DepositRepository().AddDeposit(ctx, v)
-						if err != nil {
-							log.Error(err)
-						}
+					count, err := o.repoManager.DepositRepository().AddDeposits(
+						ctx, deposits,
+					)
+					if err != nil {
+						log.WithError(err).Warn("an error occured while storing deposits info")
+						return
 					}
+					log.Debugf("added %d deposits", count)
 				}
 			}()
 

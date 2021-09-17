@@ -17,41 +17,69 @@ func NewWithdrawalRepositoryImpl(store *badgerhold.Store) domain.WithdrawalRepos
 	return withdrawalRepositoryImpl{store}
 }
 
-func (w withdrawalRepositoryImpl) AddWithdrawal(
+func (w withdrawalRepositoryImpl) AddWithdrawals(
 	ctx context.Context,
-	withdrawal domain.Withdrawal,
-) error {
-	return w.insertWithdrawal(ctx, withdrawal)
+	withdrawals []domain.Withdrawal,
+) (int, error) {
+	return w.insertWithdrawals(ctx, withdrawals)
 }
 
-func (w withdrawalRepositoryImpl) ListWithdrawalsForAccountId(
-	ctx context.Context, accountIndex int, page *domain.Page,
+func (w withdrawalRepositoryImpl) ListWithdrawalsForAccount(
+	ctx context.Context, accountIndex int,
 ) ([]domain.Withdrawal, error) {
 	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
-	if page != nil {
-		from := page.Number*page.Size - page.Size
-		query.Skip(from).Limit(page.Size)
-	}
+
+	return w.findWithdrawals(ctx, query)
+}
+
+func (w withdrawalRepositoryImpl) ListWithdrawalsForAccountAndPage(
+	ctx context.Context, accountIndex int, page domain.Page,
+) ([]domain.Withdrawal, error) {
+	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
+	from := page.Number*page.Size - page.Size
+	query.Skip(from).Limit(page.Size)
 
 	return w.findWithdrawals(ctx, query)
 }
 
 func (w withdrawalRepositoryImpl) ListAllWithdrawals(
-	ctx context.Context, page *domain.Page,
+	ctx context.Context,
+) ([]domain.Withdrawal, error) {
+	return w.findWithdrawals(ctx, nil)
+}
+
+func (w withdrawalRepositoryImpl) ListAllWithdrawalsForPage(
+	ctx context.Context, page domain.Page,
 ) ([]domain.Withdrawal, error) {
 	query := &badgerhold.Query{}
-	if page != nil {
-		from := page.Number*page.Size - page.Size
-		query.Skip(from).Limit(page.Size)
-	}
+	from := page.Number*page.Size - page.Size
+	query.Skip(from).Limit(page.Size)
 
 	return w.findWithdrawals(ctx, query)
+}
+
+func (w withdrawalRepositoryImpl) insertWithdrawals(
+	ctx context.Context,
+	withdrawals []domain.Withdrawal,
+) (int, error) {
+	count := 0
+	for _, ww := range withdrawals {
+		done, err := w.insertWithdrawal(ctx, ww)
+		if err != nil {
+			return -1, err
+		}
+		if done {
+			count++
+		}
+	}
+	return count, nil
+
 }
 
 func (w withdrawalRepositoryImpl) insertWithdrawal(
 	ctx context.Context,
 	withdrawal domain.Withdrawal,
-) error {
+) (bool, error) {
 	var err error
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
@@ -60,11 +88,12 @@ func (w withdrawalRepositoryImpl) insertWithdrawal(
 		err = w.store.Insert(withdrawal.TxID, &withdrawal)
 	}
 	if err != nil {
-		if err != badgerhold.ErrKeyExists {
-			return err
+		if err == badgerhold.ErrKeyExists {
+			return false, nil
 		}
+		return false, err
 	}
-	return nil
+	return true, nil
 }
 
 func (w withdrawalRepositoryImpl) findWithdrawals(

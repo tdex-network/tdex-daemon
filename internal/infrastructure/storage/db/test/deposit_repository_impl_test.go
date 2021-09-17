@@ -2,13 +2,13 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 )
@@ -23,109 +23,72 @@ func TestDepositRepositoryImplementations(t *testing.T) {
 			t.Run("testAddAndListDeposits", func(t *testing.T) {
 				testAddAndListDeposits(t, repo)
 			})
-
-			t.Run("testDepositDuplicateKeyInsertion", func(t *testing.T) {
-				testDepositDuplicateKeyInsertion(t, repo)
-			})
 		})
 	}
 }
 
 func testAddAndListDeposits(t *testing.T, repo depositRepository) {
 	depositRepository := repo.Repository
-	for i := 0; i < 100; i++ {
-		err := depositRepository.AddDeposit(
-			context.Background(),
-			domain.Deposit{
-				TxID:         "3232",
-				AccountIndex: 1,
-				VOut:         i,
-				Asset:        "dummy",
-				Value:        400,
-			},
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
 
-	deposits, err := depositRepository.ListDepositsForAccountId(
-		context.Background(),
-		1,
-		&domain.Page{
-			Number: 2,
-			Size:   10,
-		},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 10, len(deposits))
-
-	deposits, err = depositRepository.ListDepositsForAccountId(
-		context.Background(),
-		1,
-		&domain.Page{
-			Number: 4,
-			Size:   10,
-		},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, 10, len(deposits))
-
-	deposits, err = depositRepository.ListAllDeposits(
-		context.Background(), nil,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, 100, len(deposits))
-}
-
-func testDepositDuplicateKeyInsertion(t *testing.T, repo depositRepository) {
-	depositRepository := repo.Repository
-
-	err := depositRepository.AddDeposit(
-		context.Background(),
-		domain.Deposit{
-			TxID:         "tx",
+	deposits := make([]domain.Deposit, 0, 10)
+	for i := 0; i < 10; i++ {
+		deposits = append(deposits, domain.Deposit{
+			TxID:         fmt.Sprintf("%d", i),
 			AccountIndex: 1,
 			VOut:         1,
 			Asset:        "dummy",
 			Value:        400,
-		},
+		})
+	}
+	count, err := depositRepository.AddDeposits(context.Background(), deposits)
+	require.NoError(t, err)
+	require.Equal(t, 10, count)
+
+	count, err = depositRepository.AddDeposits(context.Background(), []domain.Deposit{{
+		TxID:         "0",
+		AccountIndex: 1,
+		VOut:         1,
+		Asset:        "dummy",
+		Value:        400,
+	}})
+	require.NoError(t, err)
+	require.Zero(t, count)
+
+	deposits, err = depositRepository.ListDepositsForAccount(context.Background(), 0)
+	require.NoError(t, err)
+	require.Empty(t, deposits)
+
+	deposits, err = depositRepository.ListDepositsForAccount(context.Background(), 1)
+	require.NoError(t, err)
+	require.Len(t, len(deposits), 10)
+
+	deposits, err = depositRepository.ListDepositsForAccountAndPage(
+		context.Background(), 1, domain.Page{Number: 1, Size: 5},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.Len(t, len(deposits), 5)
 
-	err = depositRepository.AddDeposit(
-		context.Background(),
-		domain.Deposit{
-			TxID:         "tx",
-			AccountIndex: 1,
-			VOut:         1,
-			Asset:        "dummy",
-			Value:        500,
-		},
+	deposits, err = depositRepository.ListDepositsForAccountAndPage(
+		context.Background(), 1, domain.Page{Number: 2, Size: 5},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.Len(t, len(deposits), 5)
 
-	deposits, err := depositRepository.ListAllDeposits(context.Background(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	deposits, err = depositRepository.ListAllDeposits(context.Background())
+	require.NoError(t, err)
+	require.Len(t, len(deposits), 10)
 
-	//length increased by 1 and not two
-	assert.Equal(t, 101, len(deposits))
-	//first inserted is not updated
-	assert.Equal(t, 400, int(deposits[0].Value))
+	deposits, err = depositRepository.ListAllDepositsForPage(
+		context.Background(), domain.Page{Number: 1, Size: 6},
+	)
+	require.NoError(t, err)
+	require.Len(t, len(deposits), 6)
+
+	deposits, err = depositRepository.ListAllDepositsForPage(
+		context.Background(), domain.Page{Number: 1, Size: 6},
+	)
+	require.NoError(t, err)
+	require.Len(t, len(deposits), 4)
 }
 
 type depositRepository struct {

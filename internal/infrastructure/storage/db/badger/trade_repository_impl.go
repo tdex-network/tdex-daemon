@@ -32,42 +32,59 @@ func (t tradeRepositoryImpl) GetOrCreateTrade(
 }
 
 func (t tradeRepositoryImpl) GetAllTrades(
-	ctx context.Context, page *domain.Page,
+	ctx context.Context,
+) ([]*domain.Trade, error) {
+	return t.findTrades(ctx, nil)
+}
+
+func (t tradeRepositoryImpl) GetAllTradesForPage(
+	ctx context.Context, page domain.Page,
 ) ([]*domain.Trade, error) {
 	query := &badgerhold.Query{}
-	if page != nil {
-		from := page.Number*page.Size - page.Size
-		query.Skip(from).Limit(page.Size)
-	}
+	from := page.Number*page.Size - page.Size
+	query.Skip(from).Limit(page.Size)
 
 	return t.findTrades(ctx, query)
 }
 
 func (t tradeRepositoryImpl) GetAllTradesByMarket(
-	ctx context.Context, marketQuoteAsset string, page *domain.Page,
+	ctx context.Context, marketQuoteAsset string,
 ) ([]*domain.Trade, error) {
 	query := badgerhold.Where("MarketQuoteAsset").Eq(marketQuoteAsset)
-	if page != nil {
-		from := page.Number*page.Size - page.Size
-		query.Skip(from).Limit(page.Size)
-	}
+
+	return t.findTrades(ctx, query)
+}
+
+func (t tradeRepositoryImpl) GetAllTradesByMarketAndPage(
+	ctx context.Context, marketQuoteAsset string, page domain.Page,
+) ([]*domain.Trade, error) {
+	query := badgerhold.Where("MarketQuoteAsset").Eq(marketQuoteAsset)
+	from := page.Number*page.Size - page.Size
+	query.Skip(from).Limit(page.Size)
 
 	return t.findTrades(ctx, query)
 }
 
 func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
-	ctx context.Context,
-	marketQuoteAsset string,
-	page *domain.Page,
+	ctx context.Context, marketQuoteAsset string,
 ) ([]*domain.Trade, error) {
 	query := badgerhold.
 		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
 		And("Status.Code").Ge(domain.Completed).
 		And("Status.Failed").Eq(false)
-	if page != nil {
-		from := page.Number*page.Size - page.Size
-		query.Skip(from).Limit(page.Size)
-	}
+
+	return t.findTrades(ctx, query)
+}
+
+func (t tradeRepositoryImpl) GetCompletedTradesByMarketAndPage(
+	ctx context.Context, marketQuoteAsset string, page domain.Page,
+) ([]*domain.Trade, error) {
+	query := badgerhold.
+		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
+		And("Status.Code").Ge(domain.Completed).
+		And("Status.Failed").Eq(false)
+	from := page.Number*page.Size - page.Size
+	query.Skip(from).Limit(page.Size)
 
 	return t.findTrades(ctx, query)
 }

@@ -24,25 +24,58 @@ func (r tradeRepositoryImpl) GetOrCreateTrade(_ context.Context, tradeID *uuid.U
 	return r.getOrCreateTrade(tradeID)
 }
 
-func (r tradeRepositoryImpl) GetAllTrades(_ context.Context, page *domain.Page) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) GetAllTrades(_ context.Context) ([]*domain.Trade, error) {
 	r.store.locker.Lock()
 	defer r.store.locker.Unlock()
 
-	return r.getAllTrades(page)
+	return r.getAllTrades(nil)
 }
 
-func (r tradeRepositoryImpl) GetAllTradesByMarket(_ context.Context, marketQuoteAsset string, page *domain.Page) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) GetAllTradesForPage(_ context.Context, page domain.Page) ([]*domain.Trade, error) {
 	r.store.locker.Lock()
 	defer r.store.locker.Unlock()
 
-	return r.getAllTradesByMarket(marketQuoteAsset, page)
+	return r.getAllTrades(&page)
 }
 
-func (r tradeRepositoryImpl) GetCompletedTradesByMarket(_ context.Context, marketQuoteAsset string, page *domain.Page) ([]*domain.Trade, error) {
+func (r tradeRepositoryImpl) GetAllTradesByMarket(_ context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
 	r.store.locker.Lock()
 	defer r.store.locker.Unlock()
 
-	tradesByMarkets, err := r.getAllTradesByMarket(marketQuoteAsset, page)
+	return r.getAllTradesByMarket(marketQuoteAsset, nil)
+}
+
+func (r tradeRepositoryImpl) GetAllTradesByMarketAndPage(_ context.Context, marketQuoteAsset string, page domain.Page) ([]*domain.Trade, error) {
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
+
+	return r.getAllTradesByMarket(marketQuoteAsset, &page)
+}
+
+func (r tradeRepositoryImpl) GetCompletedTradesByMarket(_ context.Context, marketQuoteAsset string) ([]*domain.Trade, error) {
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
+
+	tradesByMarkets, err := r.getAllTradesByMarket(marketQuoteAsset, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	completedTrades := make([]*domain.Trade, 0)
+	for _, trade := range tradesByMarkets {
+		if trade.Status.Code >= domain.CompletedStatus.Code && !trade.Status.Failed {
+			completedTrades = append(completedTrades, trade)
+		}
+	}
+
+	return completedTrades, nil
+}
+
+func (r tradeRepositoryImpl) GetCompletedTradesByMarketAndPage(_ context.Context, marketQuoteAsset string, page domain.Page) ([]*domain.Trade, error) {
+	r.store.locker.Lock()
+	defer r.store.locker.Unlock()
+
+	tradesByMarkets, err := r.getAllTradesByMarket(marketQuoteAsset, &page)
 	if err != nil {
 		return nil, err
 	}
