@@ -34,25 +34,58 @@ func (t tradeRepositoryImpl) GetOrCreateTrade(
 func (t tradeRepositoryImpl) GetAllTrades(
 	ctx context.Context,
 ) ([]*domain.Trade, error) {
-	return t.getAllTrades(ctx), nil
+	return t.findTrades(ctx, nil)
+}
+
+func (t tradeRepositoryImpl) GetAllTradesForPage(
+	ctx context.Context, page domain.Page,
+) ([]*domain.Trade, error) {
+	query := &badgerhold.Query{}
+	from := page.Number*page.Size - page.Size
+	query.Skip(from).Limit(page.Size)
+
+	return t.findTrades(ctx, query)
 }
 
 func (t tradeRepositoryImpl) GetAllTradesByMarket(
-	ctx context.Context,
-	marketQuoteAsset string,
+	ctx context.Context, marketQuoteAsset string,
 ) ([]*domain.Trade, error) {
 	query := badgerhold.Where("MarketQuoteAsset").Eq(marketQuoteAsset)
+
+	return t.findTrades(ctx, query)
+}
+
+func (t tradeRepositoryImpl) GetAllTradesByMarketAndPage(
+	ctx context.Context, marketQuoteAsset string, page domain.Page,
+) ([]*domain.Trade, error) {
+	query := badgerhold.Where("MarketQuoteAsset").Eq(marketQuoteAsset)
+	from := page.Number*page.Size - page.Size
+	query.Skip(from).Limit(page.Size)
+
 	return t.findTrades(ctx, query)
 }
 
 func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
-	ctx context.Context,
-	marketQuoteAsset string,
+	ctx context.Context, marketQuoteAsset string,
 ) ([]*domain.Trade, error) {
 	query := badgerhold.
 		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
 		And("Status.Code").Ge(domain.Completed).
 		And("Status.Failed").Eq(false)
+
+	return t.findTrades(ctx, query)
+}
+
+func (t tradeRepositoryImpl) GetCompletedTradesByMarketAndPage(
+	ctx context.Context, marketQuoteAsset string, page domain.Page,
+) ([]*domain.Trade, error) {
+	query := badgerhold.
+		Where("MarketQuoteAsset").Eq(marketQuoteAsset).
+		And("Status.Code").Ge(domain.Completed).
+		And("Status.Failed").Eq(false)
+	from := page.Number*page.Size - page.Size
+	query.Skip(from).Limit(page.Size)
+
 	return t.findTrades(ctx, query)
 }
 
@@ -162,7 +195,8 @@ func (t tradeRepositoryImpl) findTrades(
 	}
 
 	trades := make([]*domain.Trade, 0, len(tr))
-	for _, trade := range tr {
+	for i := range tr {
+		trade := tr[i]
 		trades = append(trades, &trade)
 	}
 
@@ -220,9 +254,4 @@ func (t tradeRepositoryImpl) insertTrade(
 		}
 	}
 	return nil
-}
-
-func (t tradeRepositoryImpl) getAllTrades(ctx context.Context) []*domain.Trade {
-	trades, _ := t.findTrades(ctx, nil)
-	return trades
 }

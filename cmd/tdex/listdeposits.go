@@ -8,45 +8,49 @@ import (
 )
 
 var listdeposits = cli.Command{
-	Name:   "listdeposits",
-	Usage:  "list deposits",
-	Action: listDeposits,
+	Name:  "listdeposits",
+	Usage: "list all deposits for a wallet account",
 	Flags: []cli.Flag{
-		&cli.IntFlag{
-			Name:  "account_index",
-			Usage: "account index for which deposits should be listed",
+		&cli.Uint64Flag{
+			Name:     "account_index",
+			Usage:    "the index of the account for which listing deposits",
+			Required: true,
 		},
-		&cli.IntFlag{
-			Name:  "page_number",
-			Usage: "page to be listed",
-			Value: 1,
+		&cli.Uint64Flag{
+			Name:  "page",
+			Usage: "the number of the page to be listed. If omitted, the entire list is returned",
 		},
-		&cli.IntFlag{
+		&cli.Uint64Flag{
 			Name:  "page_size",
-			Usage: "size of the page",
+			Usage: "the size of the page",
 			Value: 10,
 		},
 	},
+	Action: listDepositsAction,
 }
 
-func listDeposits(ctx *cli.Context) error {
+func listDepositsAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	accountIndex := ctx.Int("account_index")
-	pageNumber := ctx.Int("page_number")
-	pageSize := ctx.Int("page_size")
+	accountIndex := ctx.Int64("account_index")
+	pageNumber := ctx.Int64("page")
+	pageSize := ctx.Int64("page_size")
+	var page *pboperator.Page
+	if pageNumber > 0 {
+		page = &pboperator.Page{
+			PageNumber: pageNumber,
+			PageSize:   pageSize,
+		}
+	}
 
 	resp, err := client.ListDeposits(
 		context.Background(), &pboperator.ListDepositsRequest{
-			AccountIndex: int64(accountIndex),
-			Page: &pboperator.Page{
-				PageNumber: int64(pageNumber),
-				PageSize:   int64(pageSize),
-			},
+			AccountIndex: accountIndex,
+			Page:         page,
 		},
 	)
 	if err != nil {

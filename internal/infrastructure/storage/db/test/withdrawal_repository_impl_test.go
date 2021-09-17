@@ -2,12 +2,11 @@ package db
 
 import (
 	"context"
-	"strconv"
+	"fmt"
 	"testing"
 
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 
@@ -26,112 +25,80 @@ func TestWithdrawalRepositoryImplementations(t *testing.T) {
 			t.Run("testAddAndListWithdrawals", func(t *testing.T) {
 				testAddAndListWithdrawals(t, repo)
 			})
-
-			t.Run("testWithdrawalDuplicateKeyInsertion", func(t *testing.T) {
-				testWithdrawalDuplicateKeyInsertion(t, repo)
-			})
 		})
 	}
 }
 
 func testAddAndListWithdrawals(t *testing.T, repo withdrawalRepository) {
 	depositRepository := repo.Repository
-	for i := 0; i < 100; i++ {
-		err := depositRepository.AddWithdrawal(
-			context.Background(),
-			domain.Withdrawal{
-				TxID:            strconv.Itoa(i),
+	withdrawals := make([]domain.Withdrawal, 0)
+	for i := 0; i < 10; i++ {
+		withdrawals = append(withdrawals, domain.Withdrawal{
+			TxID:            fmt.Sprintf("%d", i),
+			AccountIndex:    1,
+			BaseAmount:      20,
+			QuoteAmount:     20,
+			MillisatPerByte: 10,
+			Address:         "dwd",
+		})
+	}
+
+	count, err := depositRepository.AddWithdrawals(
+		context.Background(), withdrawals,
+	)
+	require.NoError(t, err)
+	require.Equal(t, 10, count)
+
+	count, err = depositRepository.AddWithdrawals(
+		context.Background(), []domain.Withdrawal{
+			{
+				TxID:            "0",
 				AccountIndex:    1,
 				BaseAmount:      20,
 				QuoteAmount:     20,
 				MillisatPerByte: 10,
 				Address:         "dwd",
 			},
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	withdrawals, err := depositRepository.ListWithdrawalsForAccountIdAndPage(
-		context.Background(),
-		1,
-		domain.Page{
-			Number: 2,
-			Size:   10,
 		},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.Zero(t, count)
 
-	assert.Equal(t, 10, len(withdrawals))
+	withdrawals, err = depositRepository.ListWithdrawalsForAccount(context.Background(), 1)
+	require.NoError(t, err)
+	require.Len(t, withdrawals, 10)
 
-	withdrawals, err = depositRepository.ListWithdrawalsForAccountIdAndPage(
-		context.Background(),
-		1,
-		domain.Page{
-			Number: 4,
-			Size:   10,
-		},
+	withdrawals, err = depositRepository.ListWithdrawalsForAccount(context.Background(), 0)
+	require.NoError(t, err)
+	require.Empty(t, withdrawals)
+
+	withdrawals, err = depositRepository.ListWithdrawalsForAccountAndPage(
+		context.Background(), 1, domain.Page{Number: 1, Size: 5},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.Len(t, withdrawals, 5)
 
-	assert.Equal(t, 10, len(withdrawals))
-
-	withdrawals, err = depositRepository.ListAllWithdrawals(
-		context.Background(),
+	withdrawals, err = depositRepository.ListWithdrawalsForAccountAndPage(
+		context.Background(), 1, domain.Page{Number: 2, Size: 5},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, 100, len(withdrawals))
-}
+	require.NoError(t, err)
+	require.Len(t, withdrawals, 5)
 
-func testWithdrawalDuplicateKeyInsertion(t *testing.T, repo withdrawalRepository) {
-	withdrawalRepository := repo.Repository
+	withdrawals, err = depositRepository.ListAllWithdrawals(context.Background())
+	require.NoError(t, err)
+	require.Len(t, withdrawals, 10)
 
-	err := withdrawalRepository.AddWithdrawal(
-		context.Background(),
-		domain.Withdrawal{
-			TxID:            "tx",
-			AccountIndex:    1,
-			BaseAmount:      20,
-			QuoteAmount:     20,
-			MillisatPerByte: 10,
-			Address:         "dwd",
-		},
+	withdrawals, err = depositRepository.ListAllWithdrawalsForPage(
+		context.Background(), domain.Page{Number: 1, Size: 6},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.Len(t, withdrawals, 6)
 
-	err = withdrawalRepository.AddWithdrawal(
-		context.Background(),
-		domain.Withdrawal{
-			TxID:            "tx",
-			AccountIndex:    1,
-			BaseAmount:      20,
-			QuoteAmount:     20,
-			MillisatPerByte: 10,
-			Address:         "dwd1",
-		},
+	withdrawals, err = depositRepository.ListAllWithdrawalsForPage(
+		context.Background(), domain.Page{Number: 2, Size: 6},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	withdrwals, err := withdrawalRepository.ListAllWithdrawals(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	//length increased by 1 and not two
-	assert.Equal(t, 101, len(withdrwals))
-	//first inserted is not updated
-	assert.Equal(t, "dwd", withdrwals[0].Address)
+	require.NoError(t, err)
+	require.Len(t, withdrawals, 4)
 }
 
 type withdrawalRepository struct {

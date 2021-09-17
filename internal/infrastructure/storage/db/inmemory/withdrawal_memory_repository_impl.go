@@ -15,52 +15,82 @@ func NewWithdrawalRepositoryImpl(store *withdrawalInmemoryStore) domain.Withdraw
 	return &WithdrawalRepositoryImpl{store}
 }
 
-func (w WithdrawalRepositoryImpl) AddWithdrawal(
-	ctx context.Context,
-	withdrawal domain.Withdrawal,
-) error {
+func (w WithdrawalRepositoryImpl) AddWithdrawals(
+	_ context.Context,
+	withdrawals []domain.Withdrawal,
+) (int, error) {
 	w.store.locker.Lock()
 	defer w.store.locker.Unlock()
 
-	if _, ok := w.store.withdrawals[withdrawal.TxID]; !ok {
-		w.store.withdrawals[withdrawal.TxID] = withdrawal
+	count := 0
+	for _, withdrawal := range withdrawals {
+		if _, ok := w.store.withdrawals[withdrawal.TxID]; !ok {
+			w.store.withdrawals[withdrawal.TxID] = withdrawal
+			count++
+		}
 	}
-	return nil
+	return count, nil
 }
 
-func (w WithdrawalRepositoryImpl) ListWithdrawalsForAccountIdAndPage(
-	ctx context.Context,
-	accountIndex int,
-	page domain.Page,
+func (w WithdrawalRepositoryImpl) ListWithdrawalsForAccount(
+	_ context.Context, accountIndex int,
 ) ([]domain.Withdrawal, error) {
 	w.store.locker.RLock()
 	defer w.store.locker.RUnlock()
 
 	result := make([]domain.Withdrawal, 0)
+	for _, v := range w.store.withdrawals {
+		if v.AccountIndex == accountIndex {
+			result = append(result, v)
+		}
+	}
 
+	return result, nil
+}
+func (w WithdrawalRepositoryImpl) ListWithdrawalsForAccountAndPage(
+	_ context.Context, accountIndex int, page domain.Page,
+) ([]domain.Withdrawal, error) {
+	w.store.locker.RLock()
+	defer w.store.locker.RUnlock()
+
+	result := make([]domain.Withdrawal, 0)
 	startIndex := page.Number*page.Size - page.Size + 1
 	endIndex := page.Number * page.Size
 	index := 1
 	for _, v := range w.store.withdrawals {
-		if index >= startIndex && index <= endIndex {
-			if v.AccountIndex == accountIndex {
+		if v.AccountIndex == accountIndex {
+			if index >= startIndex && index <= endIndex {
 				result = append(result, v)
 			}
+			index++
 		}
-		index++
 	}
 
 	return result, nil
 }
 
 func (w WithdrawalRepositoryImpl) ListAllWithdrawals(
-	ctx context.Context,
+	_ context.Context,
 ) ([]domain.Withdrawal, error) {
 	withdrawals := make([]domain.Withdrawal, 0, len(w.store.withdrawals))
-
 	for _, v := range w.store.withdrawals {
 		withdrawals = append(withdrawals, v)
 	}
+	return withdrawals, nil
+}
 
+func (w WithdrawalRepositoryImpl) ListAllWithdrawalsForPage(
+	_ context.Context, page domain.Page,
+) ([]domain.Withdrawal, error) {
+	withdrawals := make([]domain.Withdrawal, 0)
+	startIndex := page.Number*page.Size - page.Size + 1
+	endIndex := page.Number * page.Size
+	index := 1
+	for _, v := range w.store.withdrawals {
+		if index >= startIndex && index <= endIndex {
+			withdrawals = append(withdrawals, v)
+		}
+		index++
+	}
 	return withdrawals, nil
 }

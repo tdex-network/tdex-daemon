@@ -20,6 +20,9 @@ type UnspentRepository interface {
 	// GetAllUnspentsForAddresses returns the entire UTXO set (locked and spent
 	// included) for the provided list of addresses.
 	GetAllUnspentsForAddresses(ctx context.Context, addresses []string) ([]Unspent, error)
+	// GetAllUnspentsForAddressesAndPage returns a subset of the entire UTXO set
+	// (locked and spent included) for the provided list of addresses.
+	GetAllUnspentsForAddressesAndPage(ctx context.Context, addresses []string, page Page) ([]Unspent, error)
 	// GetUnspentsForAddresses returns the list of all unspent UTXOs for the
 	// provided list of address (locked unspents included).
 	GetUnspentsForAddresses(ctx context.Context, addresses []string) ([]Unspent, error)
