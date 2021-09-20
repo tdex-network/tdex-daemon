@@ -131,6 +131,39 @@ type WithdrawMarketReq struct {
 	Push              bool
 }
 
+func (r WithdrawMarketReq) Validate() error {
+	if err := validateAssetString(r.BaseAsset); err != nil {
+		return ErrMarketInvalidBaseAsset
+	}
+	if err := validateAssetString(r.QuoteAsset); err != nil {
+		return ErrMarketInvalidQuoteAsset
+	}
+	if r.BalanceToWithdraw.BaseAmount == 0 && r.BalanceToWithdraw.QuoteAmount == 0 {
+		return ErrMissingMarketBalanceToWithdraw
+	}
+	if r.Address == "" {
+		return ErrMissingWithdrawAddress
+	}
+	return nil
+}
+
+type WithdrawFeeReq struct {
+	Amount          uint64
+	MillisatPerByte uint64
+	Address         string
+	Push            bool
+}
+
+func (r WithdrawFeeReq) Validate() error {
+	if r.Amount == 0 {
+		return fmt.Errorf("amount must not be 0")
+	}
+	if r.Address == "" {
+		return fmt.Errorf("address must not be null")
+	}
+	return nil
+}
+
 type ReportMarketFee struct {
 	CollectedFees              []FeeInfo
 	TotalCollectedFeesPerAsset map[string]int64

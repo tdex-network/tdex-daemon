@@ -108,6 +108,12 @@ func (o operatorHandler) WithdrawMarket(
 	return o.withdrawMarket(ctx, req)
 }
 
+func (o operatorHandler) WithdrawFee(
+	ctx context.Context, req *pb.WithdrawFeeRequest,
+) (*pb.WithdrawFeeReply, error) {
+	return o.withdrawFee(ctx, req)
+}
+
 func (o operatorHandler) BalanceFeeAccount(
 	ctx context.Context,
 	req *pb.BalanceFeeAccountRequest,
@@ -656,31 +662,61 @@ func (o operatorHandler) withdrawMarket(
 	ctx context.Context,
 	req *pb.WithdrawMarketRequest,
 ) (*pb.WithdrawMarketReply, error) {
-	market := req.GetMarket()
-	if err := validateMarket(market); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	var baseAsset, quoteAsset string
+	if mkt := req.GetMarket(); mkt != nil {
+		baseAsset = mkt.GetBaseAsset()
+		quoteAsset = mkt.GetQuoteAsset()
+	}
+	var baseAmount, quoteAmount uint64
+	if bal := req.GetBalanceToWithdraw(); bal != nil {
+		baseAmount = bal.GetBaseAmount()
+		quoteAmount = bal.GetQuoteAmount()
 	}
 
-	wm := application.WithdrawMarketReq{
+	args := application.WithdrawMarketReq{
 		Market: application.Market{
-			BaseAsset:  req.GetMarket().GetBaseAsset(),
-			QuoteAsset: req.GetMarket().GetQuoteAsset(),
+			BaseAsset:  baseAsset,
+			QuoteAsset: quoteAsset,
 		},
 		BalanceToWithdraw: application.Balance{
-			BaseAmount:  req.GetBalanceToWithdraw().GetBaseAmount(),
-			QuoteAmount: req.GetBalanceToWithdraw().GetQuoteAmount(),
+			BaseAmount:  baseAmount,
+			QuoteAmount: quoteAmount,
 		},
 		MillisatPerByte: req.GetMillisatPerByte(),
 		Address:         req.GetAddress(),
 		Push:            true,
 	}
+	if err := args.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
-	rawTx, txid, err := o.operatorSvc.WithdrawMarketFunds(ctx, wm)
+	rawTx, txid, err := o.operatorSvc.WithdrawMarketFunds(ctx, args)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.WithdrawMarketReply{RawTx: rawTx, Txid: txid}, nil
+}
+
+func (o operatorHandler) withdrawFee(
+	ctx context.Context, req *pb.WithdrawFeeRequest,
+) (*pb.WithdrawFeeReply, error) {
+	args := application.WithdrawFeeReq{
+		Amount:          req.GetAmount(),
+		Address:         req.GetAddress(),
+		MillisatPerByte: req.GetMillisatsPerByte(),
+		Push:            true,
+	}
+	if err := args.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	rawTx, txid, err := o.operatorSvc.WithdrawFeeFunds(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.WithdrawFeeReply{RawTx: rawTx, Txid: txid}, nil
 }
 
 func (o operatorHandler) balanceFeeAccount(

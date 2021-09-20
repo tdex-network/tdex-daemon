@@ -460,11 +460,8 @@ func sendToMany(opts sendToManyOpts) (string, error) {
 			PsetBase64: signedPset,
 		},
 	)
-	if err != nil {
-		return "", err
-	}
 
-	return txHex, nil
+	return txHex, err
 }
 
 func getBalancesByAsset(unspents []explorer.Utxo) map[string]BalanceInfo {

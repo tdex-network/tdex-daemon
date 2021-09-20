@@ -16,8 +16,11 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
+	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/network"
+	"github.com/vulpemventures/go-elements/transaction"
 )
 
 const (
@@ -50,6 +53,9 @@ type OperatorService interface {
 	ListMarketExternalAddresses(ctx context.Context, req Market) ([]string, error)
 	WithdrawMarketFunds(
 		ctx context.Context, req WithdrawMarketReq,
+	) ([]byte, []byte, error)
+	WithdrawFeeFunds(
+		ctx context.Context, req WithdrawFeeReq,
 	) ([]byte, []byte, error)
 	ListWithdrawals(
 		ctx context.Context, accountIndex int, page *Page,
@@ -856,7 +862,7 @@ func (o *operatorService) WithdrawMarketFunds(
 
 	// Publish message for topic AccountWithdraw to pubsub service.
 	go func() {
-		if err := publishAccountWithdrawTopic(
+		if err := publishMarketWithdrawTopic(
 			o.blockchainListener.PubSubService(),
 			req.Market, *balance, req.BalanceToWithdraw, req.Address, txid,
 		); err != nil {
@@ -874,6 +880,133 @@ func (o *operatorService) WithdrawMarketFunds(
 					BaseAmount:      req.BalanceToWithdraw.BaseAmount,
 					QuoteAmount:     req.BalanceToWithdraw.QuoteAmount,
 					MillisatPerByte: req.MillisatPerByte,
+					Address:         req.Address,
+				},
+			},
+		)
+		if err != nil {
+			log.WithError(err).Warn("an error occured while storing withdrawal info")
+			return
+		}
+		log.Debugf("added %d withdrawals", count)
+	}()
+
+	rawTx, _ := hex.DecodeString(txHex)
+	rawTxid, _ := hex.DecodeString(txid)
+	return rawTx, rawTxid, nil
+}
+
+func (o *operatorService) WithdrawFeeFunds(
+	ctx context.Context, req WithdrawFeeReq,
+) ([]byte, []byte, error) {
+	lbtcAsset := o.network.AssetID
+	balance, err := getUnlockedBalanceForFee(o.repoManager, ctx, lbtcAsset)
+	if err != nil {
+		return nil, nil, err
+	}
+	if req.Amount > balance {
+		return nil, nil, ErrWithdrawAmountTooBig
+	}
+
+	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(
+		ctx, nil, "", nil,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mnemonic, err := vault.GetMnemonicSafe()
+	if err != nil {
+		return nil, nil, err
+	}
+	feeAccount, err := vault.AccountByIndex(domain.FeeAccount)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outs := []TxOut{
+		{lbtcAsset, int64(req.Amount), req.Address},
+	}
+	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	unspents, err := o.getAllUnspentsForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	feeInfo, err := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+	if err != nil {
+		return nil, nil, err
+	}
+	feeChangePathByAsset := map[string]string{
+		lbtcAsset: feeAccount.DerivationPathByScript[feeInfo.Script],
+	}
+
+	txHex, err := sendToManyFeeAccount(sendToManyFeeAccountOpts{
+		mnemonic:            mnemonic,
+		unspents:            unspents,
+		outputs:             outputs,
+		outputsBlindingKeys: outputsBlindingKeys,
+		changePathsByAsset:  feeChangePathByAsset,
+		inputPathsByScript:  feeAccount.DerivationPathByScript,
+		milliSatPerByte:     int(req.MillisatPerByte),
+		network:             o.network,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var txid string
+	if req.Push {
+		txid, err = o.explorerSvc.BroadcastTransaction(txHex)
+		if err != nil {
+			return nil, nil, err
+		}
+		log.Debugf("withdrawal tx broadcasted with id: %s", txid)
+	}
+
+	if err := o.repoManager.VaultRepository().UpdateVault(
+		ctx,
+		func(_ *domain.Vault) (*domain.Vault, error) {
+			return vault, nil
+		},
+	); err != nil {
+		return nil, nil, err
+	}
+
+	go extractUnspentsFromTxAndUpdateUtxoSet(
+		o.repoManager.UnspentRepository(),
+		o.repoManager.VaultRepository(),
+		o.network,
+		txHex,
+		domain.FeeAccount,
+	)
+
+	// Start watching tx to confirm new unspents once the tx is in blockchain.
+	go o.blockchainListener.StartObserveTx(txid, "")
+
+	// Publish message for topic AccountWithdraw to pubsub service.
+	go func() {
+		if err := publishFeeWithdrawTopic(
+			o.blockchainListener.PubSubService(),
+			balance, req.Amount, req.Address, txid, lbtcAsset,
+		); err != nil {
+			log.Warn(err)
+		}
+	}()
+
+	go func() {
+		count, err := o.repoManager.WithdrawalRepository().AddWithdrawals(
+			ctx,
+			[]domain.Withdrawal{
+				{
+					TxID:            txid,
+					AccountIndex:    domain.FeeAccount,
+					BaseAmount:      req.Amount,
+					MillisatPerByte: int64(req.MillisatPerByte),
 					Address:         req.Address,
 				},
 			},
@@ -1485,4 +1618,109 @@ func appendUtxoInfo(list []UtxoInfo, unspent domain.Unspent) []UtxoInfo {
 		Value: unspent.Value,
 		Asset: unspent.AssetHash,
 	})
+}
+
+type sendToManyFeeAccountOpts struct {
+	mnemonic            []string
+	unspents            []explorer.Utxo
+	outputs             []*transaction.TxOutput
+	outputsBlindingKeys [][]byte
+	changePathsByAsset  map[string]string
+	inputPathsByScript  map[string]string
+	milliSatPerByte     int
+	network             *network.Network
+}
+
+func sendToManyFeeAccount(opts sendToManyFeeAccountOpts) (string, error) {
+	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: opts.mnemonic,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// Default to MinMilliSatPerByte if needed
+	milliSatPerByte := opts.milliSatPerByte
+	if milliSatPerByte < domain.MinMilliSatPerByte {
+		milliSatPerByte = domain.MinMilliSatPerByte
+	}
+
+	// Create the transaction
+	newPset, err := w.CreateTx()
+	if err != nil {
+		return "", err
+	}
+	network := opts.network
+
+	// Add inputs and outputs
+	updateResult, err := w.UpdateTx(wallet.UpdateTxOpts{
+		PsetBase64:         newPset,
+		Unspents:           opts.unspents,
+		Outputs:            opts.outputs,
+		ChangePathsByAsset: opts.changePathsByAsset,
+		MilliSatsPerBytes:  milliSatPerByte,
+		Network:            network,
+		WantChangeForFees:  true,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	inputBlindingData := make(map[int]wallet.BlindingData)
+	index := 0
+	for _, v := range updateResult.SelectedUnspents {
+		inputBlindingData[index] = wallet.BlindingData{
+			Asset:         v.Asset(),
+			Amount:        v.Value(),
+			AssetBlinder:  v.AssetBlinder(),
+			AmountBlinder: v.ValueBlinder(),
+		}
+		index++
+	}
+
+	// Update the list of output blinding keys with those of the eventual changes
+	outputsBlindingKeys := opts.outputsBlindingKeys
+	for _, v := range updateResult.ChangeOutputsBlindingKeys {
+		outputsBlindingKeys = append(outputsBlindingKeys, v)
+	}
+
+	// Blind the transaction
+	blindedPset, err := w.BlindTransactionWithData(
+		wallet.BlindTransactionWithDataOpts{
+			PsetBase64:         updateResult.PsetBase64,
+			InputBlindingData:  inputBlindingData,
+			OutputBlindingKeys: outputsBlindingKeys,
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+
+	// Ddd the explicit fee amount
+	blindedPlusFees, err := w.UpdateTx(wallet.UpdateTxOpts{
+		PsetBase64: blindedPset,
+		Outputs:    transactionutil.NewFeeOutput(updateResult.FeeAmount, network),
+		Network:    network,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// Sign the inputs
+	signedPset, err := w.SignTransaction(wallet.SignTransactionOpts{
+		PsetBase64:        blindedPlusFees.PsetBase64,
+		DerivationPathMap: opts.inputPathsByScript,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// Finalize, extract and return the transaction
+	txHex, _, err := wallet.FinalizeAndExtractTransaction(
+		wallet.FinalizeAndExtractTransactionOpts{
+			PsetBase64: signedPset,
+		},
+	)
+
+	return txHex, err
 }

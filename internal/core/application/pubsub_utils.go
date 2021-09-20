@@ -77,7 +77,7 @@ func publishAccountLowBalanceTopic(
 	return nil
 }
 
-func publishAccountWithdrawTopic(
+func publishMarketWithdrawTopic(
 	pubsub ports.SecurePubSub,
 	mkt Market, mktBalance, withdrewBalance Balance,
 	destAddress, txid string,
@@ -103,6 +103,42 @@ func publishAccountWithdrawTopic(
 		"balance": map[string]uint64{
 			"base_balance":  baseBalance,
 			"quote_balance": quoteBalance,
+		},
+	}
+	message, _ := json.Marshal(payload)
+	topics := pubsub.TopicsByCode()
+	topic := topics[AccountWithdraw]
+	if err := pubsub.Publish(topic.Label(), string(message)); err != nil {
+		log.WithError(err).Warnf(
+			"an error occured while publishing message for topic %s",
+			topic.Label(),
+		)
+	}
+	return nil
+}
+
+func publishFeeWithdrawTopic(
+	pubsub ports.SecurePubSub,
+	balance, withdrewBalance uint64,
+	destAddress, txid, lbtcAsset string,
+) error {
+	if pubsub == nil {
+		return nil
+	}
+
+	lbtcBalance := balance - withdrewBalance
+
+	payload := map[string]interface{}{
+		"fee": map[string]string{
+			"lbtc_asset": lbtcAsset,
+		},
+		"amount_withdraw": map[string]interface{}{
+			"lbtc_amount": withdrewBalance,
+		},
+		"receiving_address": destAddress,
+		"txid":              txid,
+		"balance": map[string]uint64{
+			"lbtc_balance": lbtcBalance,
 		},
 	}
 	message, _ := json.Marshal(payload)
