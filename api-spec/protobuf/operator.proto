@@ -69,6 +69,8 @@ service Operator {
   // from a specific market. The Market MUST be closed before doing this change.
   rpc WithdrawMarket(WithdrawMarketRequest) returns (WithdrawMarketReply) {}
 
+  rpc WithdrawFee(WithdrawFeeRequest) returns (WithdrawFeeReply) {}
+
   // Returs all the trades processed by the daemon (during process, compelted and rejected)
   rpc ListTrades(ListTradesRequest) returns (ListTradesReply) {}
 
@@ -207,17 +209,34 @@ message WithdrawMarketRequest {
   Market market = 1;
   // Amount for base and quote asset to be withdrawn
   Balance balance_to_withdraw = 2;
-  // The number of millisatoshis per byte that should be
-  // used when crafting this transaction.
+  // The number of millisatoshis per byte that should be paid for network fees
   int64 millisat_per_byte = 3;
-  // The address to send to the funds
+  // The address to send the funds to
   string address = 4;
   // Optional: if true the transaction will be pushed to the network
   bool push = 5;
 }
 message WithdrawMarketReply {
-  /* The serialized transaction */
+  // The serialized transaction if the tx hasn't been broadcasted
   bytes raw_tx = 1;
+  // The transaction id on mempool/blockchain if the tx has been broadcasted
+  bytes txid = 2;
+}
+
+message WithdrawFeeRequest {
+  // Amount of L-BTC to widthdraw expressed in Satoshi
+  uint64 amount = 1;
+  // The number of millisatoshis per byte that should be paid for network fees
+  uint64 millisats_per_byte = 2;
+  // The address to send the funds to
+  string address = 3; 
+  // Optional: if true the transaction will be pushed to the network
+  bool push = 4; 
+}
+message WithdrawFeeReply {
+  // The serialized transaction if the tx hasn't been broadcasted
+  bytes raw_tx = 1;
+  // The transaction id in mempool/blockchain if the tx has been broadcasted
   bytes txid = 2;
 }
 
