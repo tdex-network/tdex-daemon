@@ -1382,21 +1382,20 @@ func (o *operatorService) claimDeposit(
 
 			go func() {
 				addUnspentsAsync(o.repoManager.UnspentRepository(), unspents)
+				count, err := o.repoManager.DepositRepository().AddDeposits(
+					ctx, deposits,
+				)
+				if err != nil {
+					log.WithError(err).Warn("an error occured while storing deposits info")
+				} else {
+					log.Debugf("added %d deposits", count)
+				}
 				if depositType == feeDeposit {
 					if err := o.checkAccountBalance(infoPerAccount[accountIndex]); err != nil {
 						log.Warn(err)
 						return
 					}
 					log.Info("fee account funded. Trades can be served")
-
-					count, err := o.repoManager.DepositRepository().AddDeposits(
-						ctx, deposits,
-					)
-					if err != nil {
-						log.WithError(err).Warn("an error occured while storing deposits info")
-						return
-					}
-					log.Debugf("added %d deposits", count)
 				}
 			}()
 
