@@ -75,7 +75,6 @@ func main() {
 		&marketAccount,
 		&fragmentfee,
 		&fragmentmarket,
-		&listmarket,
 		&listmarkets,
 		&listtrades,
 		&listutxos,
@@ -85,7 +84,8 @@ func main() {
 		&listwebhooks,
 		&listdeposits,
 		&listwithdrawals,
-		//deprecated
+		// TODO: deprecated commands, to be removed in next version.
+		&listmarket,
 		&depositfee,
 		&depositmarket,
 		&claimfee,
