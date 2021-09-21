@@ -1,10 +1,7 @@
 package main
 
 import (
-	"context"
-
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
+	"fmt"
 
 	"github.com/urfave/cli/v2"
 )
@@ -32,28 +29,8 @@ var depositmarket = cli.Command{
 }
 
 func depositMarketAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	numOfAddresses := ctx.Int64("num_of_addresses")
-	resp, err := client.DepositMarket(
-		context.Background(),
-		&pboperator.DepositMarketRequest{
-			Market: &pbtypes.Market{
-				BaseAsset:  ctx.String("base_asset"),
-				QuoteAsset: ctx.String("quote_asset"),
-			},
-			NumOfAddresses: numOfAddresses,
-		},
+	return fmt.Errorf(
+		"this command is deprecated and will be removed in the next version.\n" +
+			"Instead, use the new command 'tdex market deposit'",
 	)
-	if err != nil {
-		return err
-	}
-
-	printRespJSON(resp)
-
-	return nil
 }

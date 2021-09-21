@@ -1,11 +1,7 @@
 package main
 
 import (
-	"context"
 	"fmt"
-
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 
 	"github.com/urfave/cli/v2"
 )
@@ -23,36 +19,8 @@ var claimmarket = cli.Command{
 }
 
 func claimMarketAction(ctx *cli.Context) error {
-	outpoints, err := parseOutpoints(ctx.String("outpoints"))
-	if err != nil {
-		return err
-	}
-
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	baseAsset, quoteAsset, err := getMarketFromState()
-	if err != nil {
-		return err
-	}
-
-	if _, err := client.ClaimMarketDeposit(
-		context.Background(), &pboperator.ClaimMarketDepositRequest{
-			Market: &pbtypes.Market{
-				BaseAsset:  baseAsset,
-				QuoteAsset: quoteAsset,
-			},
-			Outpoints: outpoints,
-		},
-	); err != nil {
-		return err
-	}
-
-	fmt.Println()
-	fmt.Println("market is funded")
-
-	return nil
+	return fmt.Errorf(
+		"this command is deprecated and will be removed in the next version.\n" +
+			"Instead, use the new command 'tdex market claim'",
+	)
 }

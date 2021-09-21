@@ -1,11 +1,7 @@
 package main
 
 import (
-	"context"
 	"fmt"
-
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 
 	"github.com/urfave/cli/v2"
 )
@@ -29,34 +25,8 @@ var updateprice = cli.Command{
 }
 
 func updatePriceAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	baseAsset, quoteAsset, err := getMarketFromState()
-	if err != nil {
-		return err
-	}
-
-	_, err = client.UpdateMarketPrice(
-		context.Background(), &pboperator.UpdateMarketPriceRequest{
-			Market: &pbtypes.Market{
-				BaseAsset:  baseAsset,
-				QuoteAsset: quoteAsset,
-			},
-			Price: &pbtypes.Price{
-				BasePrice:  float32(ctx.Float64("base_price")),
-				QuotePrice: float32(ctx.Float64("quote_price")),
-			},
-		},
+	return fmt.Errorf(
+		"this command is deprecated and will be removed in the next version.\n" +
+			"Instead, use the new command 'tdex market price'",
 	)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println()
-	fmt.Println("price has been updated")
-	return nil
 }
