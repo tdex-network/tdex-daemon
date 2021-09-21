@@ -85,6 +85,21 @@ func main() {
 		&listwebhooks,
 		&listdeposits,
 		&listwithdrawals,
+		//deprecated
+		&depositfee,
+		&depositmarket,
+		&claimfee,
+		&claimmarket,
+		&balancefee,
+		&openmarket,
+		&closemarket,
+		&dropmarket,
+		&updatestrategy,
+		&updateprice,
+		&updatePercentagefee,
+		&updateFixedfee,
+		&withdrawmarket,
+		&reportmarketfee,
 	)
 
 	err := app.Run(os.Args)
