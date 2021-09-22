@@ -16,6 +16,12 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
+type WalletInfo struct {
+	RootPath          string
+	MasterBlindingKey string
+	Accounts          []AccountInfo
+}
+
 type WalletStatus struct {
 	Initialized bool
 	Unlocked    bool
@@ -26,6 +32,15 @@ type PassphraseMsg struct {
 	Method     int
 	CurrentPwd string
 	NewPwd     string
+}
+
+// AccountInfo contains info about a wallet account.
+type AccountInfo struct {
+	Index               uint32
+	DerivationPath      string
+	Xpub                string
+	LastExternalDerived uint32
+	LastInternalDerived uint32
 }
 
 // SwapInfo contains info about a swap

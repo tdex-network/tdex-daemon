@@ -16,6 +16,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/network"
 )
@@ -27,6 +28,7 @@ const (
 
 // OperatorService defines the methods of the application layer for the operator service.
 type OperatorService interface {
+	GetInfo(ctx context.Context) (*WalletInfo, error)
 	DepositMarket(
 		ctx context.Context,
 		baseAsset string,
@@ -145,6 +147,62 @@ func NewOperatorService(
 		network:                    net,
 		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
 	}
+}
+
+func (o *operatorService) GetInfo(ctx context.Context) (*WalletInfo, error) {
+	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	mnemonic, err := vault.GetMnemonicSafe()
+	if err != nil {
+		return nil, err
+	}
+
+	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: mnemonic,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	rootPath := wallet.DefaultBaseDerivationPath
+	masterBlindingKey, err := w.MasterBlindingKey()
+	if err != nil {
+		return nil, err
+	}
+
+	accountInfo := make([]AccountInfo, 0, len(vault.Accounts))
+	for _, a := range vault.Accounts {
+		accountIndex := uint32(a.AccountIndex)
+		lastExternalDerived := uint32(a.LastExternalIndex)
+		lastInternalDerived := uint32(a.LastInternalIndex)
+		derivationPath := fmt.Sprintf("%s/%d'", rootPath.String(), a.AccountIndex)
+		xpub, err := w.ExtendedPublicKey(wallet.ExtendedKeyOpts{
+			Account: accountIndex,
+		})
+		if err != nil {
+			return nil, err
+		}
+		accountInfo = append(accountInfo, AccountInfo{
+			Index:               accountIndex,
+			DerivationPath:      derivationPath,
+			Xpub:                xpub,
+			LastExternalDerived: lastExternalDerived,
+			LastInternalDerived: lastInternalDerived,
+		})
+	}
+
+	sort.SliceStable(accountInfo, func(i, j int) bool {
+		return accountInfo[i].Index < accountInfo[j].Index
+	})
+
+	return &WalletInfo{
+		RootPath:          rootPath.String(),
+		MasterBlindingKey: masterBlindingKey,
+		Accounts:          accountInfo,
+	}, nil
 }
 
 func (o *operatorService) DepositMarket(
