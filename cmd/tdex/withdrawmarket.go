@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -32,8 +30,6 @@ var withdrawmarket = cli.Command{
 }
 
 func withdrawMarketAction(ctx *cli.Context) error {
-	return fmt.Errorf(
-		"this command is deprecated and will be removed in the next version.\n" +
-			"Instead, use the new command 'tdex market withdraw'",
-	)
+	printDeprecatedWarn("tdex market withdraw")
+	return nil
 }

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -23,8 +21,6 @@ var updateFixedfee = cli.Command{
 }
 
 func updateFixedFeeAction(ctx *cli.Context) error {
-	return fmt.Errorf(
-		"this command is deprecated and will be removed in the next version.\n" +
-			"Instead, use the new command 'tdex market fixedfee'",
-	)
+	printDeprecatedWarn("tdex market fixedfee")
+	return nil
 }

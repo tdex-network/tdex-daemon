@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -19,8 +17,6 @@ var depositfee = cli.Command{
 }
 
 func depositFeeAction(ctx *cli.Context) error {
-	return fmt.Errorf(
-		"this command is deprecated and will be removed in the next version.\n" +
-			"Instead, use the new command 'tdex fee deposit'",
-	)
+	printDeprecatedWarn("tdex fee deposit")
+	return nil
 }

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -13,8 +11,6 @@ var openmarket = cli.Command{
 }
 
 func openMarketAction(ctx *cli.Context) error {
-	return fmt.Errorf(
-		"this command is deprecated and will be removed in the next version.\n" +
-			"Instead, use the new command 'tdex market open'",
-	)
+	printDeprecatedWarn("tdex market open")
+	return nil
 }

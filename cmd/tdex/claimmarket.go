@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -19,8 +17,6 @@ var claimmarket = cli.Command{
 }
 
 func claimMarketAction(ctx *cli.Context) error {
-	return fmt.Errorf(
-		"this command is deprecated and will be removed in the next version.\n" +
-			"Instead, use the new command 'tdex market claim'",
-	)
+	printDeprecatedWarn("tdex market claim")
+	return nil
 }

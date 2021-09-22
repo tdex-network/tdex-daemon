@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -24,8 +22,6 @@ var reportmarketfee = cli.Command{
 }
 
 func reportMarketFeeAction(ctx *cli.Context) error {
-	return fmt.Errorf(
-		"this command is deprecated and will be removed in the next version.\n" +
-			"Instead, use the new command 'tdex market reportfee'",
-	)
+	printDeprecatedWarn("tdex market reportfee")
+	return nil
 }

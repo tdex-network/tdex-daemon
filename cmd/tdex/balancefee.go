@@ -13,8 +13,14 @@ var balancefee = cli.Command{
 }
 
 func balanceFeeAccountAction(ctx *cli.Context) error {
-	return fmt.Errorf(
-		"this command is deprecated and will be removed in the next version.\n" +
-			"Instead, use the new command 'tdex fee balance'",
-	)
+	printDeprecatedWarn("tdex balance fee")
+	return nil
+}
+
+func printDeprecatedWarn(newCmd string) {
+	colorYellow := "\033[33m"
+	fmt.Println(fmt.Sprintf(
+		"%sWarning: this command is deprecated and will be removed in the next "+
+			"version.\nInstead, use the new command '%s'", string(colorYellow), newCmd,
+	))
 }
