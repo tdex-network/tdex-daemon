@@ -1,6 +1,8 @@
 package wallet
 
 import (
+	"encoding/hex"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -74,6 +76,19 @@ func (w *Wallet) ExtendedPublicKey(opts ExtendedKeyOpts) (string, error) {
 		return "", err
 	}
 	return xpub.String(), nil
+}
+
+// MasterBlindingKey returns the master blinding key of the wallet in hex format.
+func (w *Wallet) MasterBlindingKey() (string, error) {
+	if err := w.validate(); err != nil {
+		return "", err
+	}
+
+	if len(w.blindingMnemonic) == 0 {
+		return "", nil
+	}
+
+	return hex.EncodeToString(w.blindingMasterKey), nil
 }
 
 // DeriveSigningKeyPairOpts is the struct given to DeriveSigningKeyPair method

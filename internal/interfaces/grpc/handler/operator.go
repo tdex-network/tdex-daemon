@@ -38,6 +38,12 @@ func newOperatorHandler(
 	}
 }
 
+func (o operatorHandler) GetInfo(
+	ctx context.Context, req *pb.GetInfoRequest,
+) (*pb.GetInfoReply, error) {
+	return o.getInfo(ctx, req)
+}
+
 func (o operatorHandler) DepositMarket(
 	ctx context.Context,
 	req *pb.DepositMarketRequest,
@@ -206,6 +212,30 @@ func (o operatorHandler) ListWithdrawals(
 	req *pb.ListWithdrawalsRequest,
 ) (*pb.ListWithdrawalsReply, error) {
 	return o.listWithdrawals(ctx, req)
+}
+
+func (o operatorHandler) getInfo(
+	ctx context.Context, _ *pb.GetInfoRequest,
+) (*pb.GetInfoReply, error) {
+	info, err := o.operatorSvc.GetInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	accountInfo := make([]*pb.AccountInfo, 0, len(info.Accounts))
+	for _, a := range info.Accounts {
+		accountInfo = append(accountInfo, &pb.AccountInfo{
+			AccountIndex:        a.Index,
+			DerivationPath:      a.DerivationPath,
+			Xpub:                a.Xpub,
+			LastExternalDerived: a.LastExternalDerived,
+			LastInternalDerived: a.LastInternalDerived,
+		})
+	}
+	return &pb.GetInfoReply{
+		RootPath:          info.RootPath,
+		MasterBlindingKey: info.MasterBlindingKey,
+		AccountInfo:       accountInfo,
+	}, nil
 }
 
 func (o operatorHandler) listDeposits(
