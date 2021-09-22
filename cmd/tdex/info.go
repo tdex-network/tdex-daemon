@@ -8,12 +8,12 @@ import (
 )
 
 var getwalletinfo = cli.Command{
-	Name:   "getwalletinfo",
+	Name:   "info",
 	Usage:  "get info about the internal wallet of the daemon",
-	Action: getWalletInfoAction,
+	Action: infoAction,
 }
 
-func getWalletInfoAction(ctx *cli.Context) error {
+func infoAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
 		return err

@@ -16,13 +16,15 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
-type WalletInfo struct {
+// HDWalletInfo contains info about the internal wallet of the daemon and its
+// sub-accounts.
+type HDWalletInfo struct {
 	RootPath          string
 	MasterBlindingKey string
 	Accounts          []AccountInfo
 }
 
-type WalletStatus struct {
+type HDWalletStatus struct {
 	Initialized bool
 	Unlocked    bool
 	Synced      bool

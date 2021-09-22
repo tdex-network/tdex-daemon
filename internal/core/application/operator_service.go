@@ -28,7 +28,7 @@ const (
 
 // OperatorService defines the methods of the application layer for the operator service.
 type OperatorService interface {
-	GetInfo(ctx context.Context) (*WalletInfo, error)
+	GetInfo(ctx context.Context) (*HDWalletInfo, error)
 	DepositMarket(
 		ctx context.Context,
 		baseAsset string,
@@ -149,7 +149,7 @@ func NewOperatorService(
 	}
 }
 
-func (o *operatorService) GetInfo(ctx context.Context) (*WalletInfo, error) {
+func (o *operatorService) GetInfo(ctx context.Context) (*HDWalletInfo, error) {
 	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
 	if err != nil {
 		return nil, err
@@ -198,7 +198,7 @@ func (o *operatorService) GetInfo(ctx context.Context) (*WalletInfo, error) {
 		return accountInfo[i].Index < accountInfo[j].Index
 	})
 
-	return &WalletInfo{
+	return &HDWalletInfo{
 		RootPath:          rootPath.String(),
 		MasterBlindingKey: masterBlindingKey,
 		Accounts:          accountInfo,
