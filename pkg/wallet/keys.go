@@ -34,14 +34,7 @@ func (w *Wallet) ExtendedPrivateKey(opts ExtendedKeyOpts) (string, error) {
 		return "", err
 	}
 
-	masterKey, err := hdkeychain.NewKeyFromString(
-		base58.Encode(w.signingMasterKey),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	xprv, err := masterKey.Derive(opts.Account)
+	xprv, err := w.extendedPrivateKey(opts.Account)
 	if err != nil {
 		return "", err
 	}
@@ -59,14 +52,7 @@ func (w *Wallet) ExtendedPublicKey(opts ExtendedKeyOpts) (string, error) {
 		return "", err
 	}
 
-	masterKey, err := hdkeychain.NewKeyFromString(
-		base58.Encode(w.signingMasterKey),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	xprv, err := masterKey.Derive(opts.Account)
+	xprv, err := w.extendedPrivateKey(opts.Account)
 	if err != nil {
 		return "", err
 	}
@@ -75,6 +61,7 @@ func (w *Wallet) ExtendedPublicKey(opts ExtendedKeyOpts) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return xpub.String(), nil
 }
 
@@ -243,6 +230,18 @@ func (w *Wallet) DeriveConfidentialAddress(
 		return "", nil, err
 	}
 	return addr, p2wpkh.WitnessScript, nil
+}
+
+func (w *Wallet) extendedPrivateKey(account uint32) (*hdkeychain.ExtendedKey, error) {
+	masterKey, err := hdkeychain.NewKeyFromString(
+		base58.Encode(w.signingMasterKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	step := account + hdkeychain.HardenedKeyStart
+	return masterKey.Derive(step)
 }
 
 func checkDerivationPath(path DerivationPath) error {
