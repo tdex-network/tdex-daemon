@@ -12,7 +12,7 @@ import (
 
 var walletAccount = cli.Command{
 	Name:  "wallet",
-	Usage: "send or receive funds of the daemon wallet account",
+	Usage: "manage the funds of the personal 'wallet' account of the daemon's wallet",
 	Subcommands: []*cli.Command{
 		{
 			Name:   "balance",

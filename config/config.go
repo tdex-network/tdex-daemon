@@ -55,7 +55,7 @@ const (
 	TradeTLSCertKey = "SSL_CERT"
 	// MnemonicKey is the mnemonic of the master private key of the daemon's wallet
 	MnemonicKey = "MNEMONIC"
-	// EnableProfilerKey nables profiler that can be used to investigate performance issues
+	// EnableProfilerKey enables profiler that can be used to investigate performance issues
 	EnableProfilerKey = "ENABLE_PROFILER"
 	// StatsIntervalKey defines interval for printing basic tdex statistics
 	StatsIntervalKey = "STATS_INTERVAL"
@@ -84,6 +84,16 @@ const (
 	// failing ratio over which the circuit breaker service to change its
 	// internal state and stop making network calls.
 	CBFailingRatioKey = "FAILING_RATIO"
+	// RescanRangeStartKey defines the initial index from where the daemon should
+	// start deriving and scanning for addresses of an account during the
+	// restoration of the utxos.
+	RescanRangeStartKey = "RESCAN_RANGE_START"
+	// RescanRangeEndKey defines the max number of consecutive unused addresses
+	// that cause the restoration to stop.
+	// For example, if set to 20, the utxo set restoration terminates whenever
+	// 20 consecutive unused addresses, or those not involved in any transaction
+	// in the blockchain.
+	RescanRangeEndKey = "RESCAN_RANGE_END"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
@@ -122,6 +132,8 @@ func init() {
 	vip.SetDefault(NoMacaroonsKey, false)
 	vip.SetDefault(CBMaxFailingRequestsKey, 20)
 	vip.SetDefault(CBFailingRatioKey, 0.7)
+	vip.SetDefault(RescanRangeStartKey, 0)
+	vip.SetDefault(RescanRangeEndKey, 20)
 
 	if err := validate(); err != nil {
 		log.Fatalf("error while validating config: %s", err)
@@ -266,6 +278,18 @@ func validate() error {
 	failingRatio := GetString(CBFailingRatioKey)
 	if _, err := strconv.ParseFloat(failingRatio, 64); err != nil {
 		return fmt.Errorf("%s must be a value in range (0, 1)", CBFailingRatioKey)
+	}
+
+	start := GetInt(RescanRangeStartKey)
+	end := GetInt(RescanRangeEndKey)
+	if start < 0 {
+		return fmt.Errorf("%s must not be a negative number", RescanRangeStartKey)
+	}
+	if end < 0 {
+		return fmt.Errorf("%s must not be a negative number", RescanRangeEndKey)
+	}
+	if start >= end {
+		return fmt.Errorf("%s must be greater than %s", RescanRangeStartKey, RescanRangeEndKey)
 	}
 
 	return nil

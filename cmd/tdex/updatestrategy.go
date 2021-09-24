@@ -1,12 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
-
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -24,36 +18,6 @@ var updatestrategy = cli.Command{
 }
 
 func updateStrategyAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	baseAsset, quoteAsset, err := getMarketFromState()
-	if err != nil {
-		return err
-	}
-
-	strategy := pboperator.StrategyType_BALANCED
-	if ctx.Bool("pluggable") {
-		strategy = pboperator.StrategyType_PLUGGABLE
-	}
-
-	_, err = client.UpdateMarketStrategy(
-		context.Background(), &pboperator.UpdateMarketStrategyRequest{
-			Market: &pbtypes.Market{
-				BaseAsset:  baseAsset,
-				QuoteAsset: quoteAsset,
-			},
-			StrategyType: strategy,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println()
-	fmt.Println("strategy has been updated")
+	printDeprecatedWarn("tdex market strategy")
 	return nil
 }

@@ -38,6 +38,8 @@ var (
 	mnemonicStr       = strings.Join(mnemonic, " ")
 	encryptedMnemonic = "RF0mJIJzHqokOgSD8fbHSy9YpN56qTZAaMxRQD6DSH27Q1Y7npNy4wuznaBbJL3s6j7HkmBOEGLpj8gf9PHo4cbv+6uIStF8DE0wTNxSu8AJKPQDbYi/lx59mhIkisL77Zx2cZQKFrFvTGHw5En8Zt8eKgFSnrM1goZZbsU9oe5C6MRK8zLdmVau9ipTN3nhTFMfTR1KsQ5OLhXWpjIdezrdb1LmN/7I/CU3Ts81/+R5fefzaa4vB+3g02TgPJmcvr1Yg53gjfwBpUVtrK4naQ=="
 	ctx               = context.Background()
+	rescanRangeStart  = 0
+	rescanRangeEnd    = 20
 )
 
 func TestMain(m *testing.M) {
@@ -160,6 +162,8 @@ func newWalletUnlockerService() application.WalletUnlockerService {
 		regtest,
 		marketFee,
 		marketBaseAsset,
+		rescanRangeStart,
+		rescanRangeEnd,
 	)
 }
 
@@ -189,6 +193,8 @@ func newWalletUnlockerServiceRestart() (application.WalletUnlockerService, error
 		regtest,
 		marketFee,
 		marketBaseAsset,
+		rescanRangeStart,
+		rescanRangeEnd,
 	), nil
 }
 
@@ -253,6 +259,8 @@ func newWalletUnlockerServiceRestore() application.WalletUnlockerService {
 		regtest,
 		marketFee,
 		marketBaseAsset,
+		rescanRangeStart,
+		rescanRangeEnd,
 	)
 }
 
@@ -299,11 +307,10 @@ func listenToReplies(
 }
 
 func randomUtxos(addresses []string) []explorer.Utxo {
-	uLen := len(addresses)
-	utxos := make([]explorer.Utxo, uLen, uLen)
-	for i, addr := range addresses {
+	utxos := make([]explorer.Utxo, 0, len(addresses))
+	for _, addr := range addresses {
 		script, _ := address.ToOutputScript(addr)
-		utxos[i] = esplora.NewWitnessUtxo(
+		utxos = append(utxos, esplora.NewWitnessUtxo(
 			randomHex(32),           //hash
 			randomVout(),            // index
 			randomValue(),           // value
@@ -317,7 +324,7 @@ func randomUtxos(addresses []string) []explorer.Utxo {
 			randomBytes(100), // rangeproof
 			randomBytes(100), // surjectionproof
 			true,             // confirmed
-		)
+		))
 	}
 	return utxos
 }

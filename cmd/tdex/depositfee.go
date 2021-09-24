@@ -1,10 +1,6 @@
 package main
 
 import (
-	"context"
-
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -21,23 +17,6 @@ var depositfee = cli.Command{
 }
 
 func depositFeeAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	numOfAddresses := ctx.Int64("num_of_addresses")
-	resp, err := client.DepositFeeAccount(
-		context.Background(), &pboperator.DepositFeeAccountRequest{
-			NumOfAddresses: numOfAddresses,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	printRespJSON(resp)
-
+	printDeprecatedWarn("tdex fee deposit")
 	return nil
 }

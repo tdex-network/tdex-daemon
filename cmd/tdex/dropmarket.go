@@ -1,11 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
-
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -22,24 +17,6 @@ var dropmarket = cli.Command{
 }
 
 func dropMarketAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	accountIndex := ctx.Uint64("account_index")
-
-	_, err = client.DropMarket(
-		context.Background(), &pboperator.DropMarketRequest{
-			AccountIndex: accountIndex,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println()
-	fmt.Println("market is dropped")
+	printDeprecatedWarn("tdex market drop")
 	return nil
 }

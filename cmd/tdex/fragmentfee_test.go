@@ -4,42 +4,7 @@ import (
 	"testing"
 
 	"github.com/magiconair/properties/assert"
-	"github.com/urfave/cli/v2"
 )
-
-func TestDepositFeeCli(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	explorerFlag := cli.StringFlag{
-		Name:  "explorer",
-		Usage: "explorer endpoint url",
-		Value: "http://127.0.0.1:3001",
-	}
-
-	app := cli.NewApp()
-
-	app.Version = "0.0.1"
-	app.Name = "tdex operator CLI"
-	app.Usage = "Command line interface for tdexd daemon operators"
-	app.Flags = []cli.Flag{
-		&rpcFlag,
-		&networkFlag,
-		&explorerFlag,
-	}
-
-	app.Commands = append(
-		app.Commands,
-		&depositfee,
-	)
-
-	err := app.Run([]string{"", "--network=regtest", "depositfee"})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-}
 
 func TestFragmentFeeUnspents(t *testing.T) {
 	type args struct {

@@ -3,11 +3,9 @@ package main
 import (
 	"reflect"
 	"testing"
-
-	"github.com/urfave/cli/v2"
 )
 
-func TestFragmentation(t *testing.T) {
+func TestFragmentMarketUnspents(t *testing.T) {
 	type args struct {
 		pair   AssetValuePair
 		config map[int]int
@@ -78,31 +76,4 @@ func TestFragmentation(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestDepositMarketCli(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	app := cli.NewApp()
-
-	app.Version = "0.0.1"
-	app.Name = "tdex operator CLI"
-	app.Usage = "Command line interface for tdexd daemon operators"
-	app.Flags = []cli.Flag{
-		&rpcFlag,
-		&networkFlag,
-	}
-
-	app.Commands = append(
-		app.Commands,
-		&depositmarket,
-	)
-
-	err := app.Run([]string{"", "--network=regtest", "depositmarket"})
-	if err != nil {
-		t.Fatal(err)
-	}
-
 }

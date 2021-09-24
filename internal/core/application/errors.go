@@ -1,8 +1,14 @@
 package application
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+)
 
 var (
+	ErrMarketInvalidBaseAsset  = domain.ErrMarketInvalidBaseAsset
+	ErrMarketInvalidQuoteAsset = domain.ErrMarketInvalidQuoteAsset
 	// ErrFeeAccountNotFunded ...
 	ErrFeeAccountNotFunded = errors.New("fee account not funded")
 	// ErrUnknownStrategy ...
@@ -42,6 +48,19 @@ var (
 	ErrWithdrawQuoteAmountTooBig = errors.New(
 		"quote amount to withdraw is too big",
 	)
+	// ErrWithdrawAmountTooBig is returned when attempting to withdraw more
+	// than the total amount of LBTC asset of the fee account.
+	ErrWithdrawAmountTooBig = errors.New(
+		"amount to withdraw os too big",
+	)
 	// ErrInvalidAccountIndex returned if provided account index is invalid
 	ErrInvalidAccountIndex = errors.New("invalid account index")
+	// ErrMissingMarketBalanceToWithdraw is returned in case none of the base or
+	// quote amounts to withdraw for a market are defined.
+	ErrMissingMarketBalanceToWithdraw = errors.New(
+		"either base or quote amount to withdraw must be specified",
+	)
+	// ErrMissingWithdrawAddress is returned if the receiving address to is not
+	// set for a withdrawal.
+	ErrMissingWithdrawAddress = errors.New("address must not be null")
 )

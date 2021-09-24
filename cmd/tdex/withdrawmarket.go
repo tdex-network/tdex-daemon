@@ -1,13 +1,6 @@
 package main
 
 import (
-	"context"
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
-
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"github.com/urfave/cli/v2"
 )
 
@@ -37,44 +30,6 @@ var withdrawmarket = cli.Command{
 }
 
 func withdrawMarketAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	baseAsset, quoteAsset, err := getMarketFromState()
-	if err != nil {
-		return err
-	}
-	baseAmount := ctx.Uint64("base_amount")
-	quoteAmount := ctx.Uint64("quote_amount")
-	addr := ctx.String("address")
-	mSatsPerByte := ctx.Int64("millisatsperbyte")
-
-	reply, err := client.WithdrawMarket(context.Background(), &pb.WithdrawMarketRequest{
-		Market: &pbtypes.Market{
-			BaseAsset:  baseAsset,
-			QuoteAsset: quoteAsset,
-		},
-		BalanceToWithdraw: &pbtypes.Balance{
-			BaseAmount:  baseAmount,
-			QuoteAmount: quoteAmount,
-		},
-		Address:         addr,
-		MillisatPerByte: mSatsPerByte,
-		Push:            true,
-	})
-	if err != nil {
-		return err
-	}
-
-	res := map[string]string{
-		"txid": hex.EncodeToString(reply.GetTxid()),
-	}
-	resStr, _ := json.MarshalIndent(res, "", "\t")
-
-	fmt.Println(string(resStr))
-
+	printDeprecatedWarn("tdex market withdraw")
 	return nil
 }

@@ -1,11 +1,6 @@
 package main
 
 import (
-	"context"
-
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -27,41 +22,6 @@ var reportmarketfee = cli.Command{
 }
 
 func reportMarketFeeAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	baseAsset, quoteAsset, err := getMarketFromState()
-	if err != nil {
-		return err
-	}
-
-	pageNumber := ctx.Int64("page")
-	pageSize := ctx.Int64("page_size")
-	var page *pboperator.Page
-	if pageNumber > 0 {
-		page = &pboperator.Page{
-			PageNumber: pageNumber,
-			PageSize:   pageSize,
-		}
-	}
-
-	reply, err := client.ReportMarketFee(
-		context.Background(), &pboperator.ReportMarketFeeRequest{
-			Market: &pbtypes.Market{
-				BaseAsset:  baseAsset,
-				QuoteAsset: quoteAsset,
-			},
-			Page: page,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	printRespJSON(reply)
-
+	printDeprecatedWarn("tdex market reportfee")
 	return nil
 }
