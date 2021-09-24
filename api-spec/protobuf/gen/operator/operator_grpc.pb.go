@@ -18,6 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OperatorClient interface {
+	GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoReply, error)
 	// Returns a new derived address for the given market.
 	// If market field is empty, a new Market is created and MUST be initialized.
 	DepositMarket(ctx context.Context, in *DepositMarketRequest, opts ...grpc.CallOption) (*DepositMarketReply, error)
@@ -91,6 +92,15 @@ type operatorClient struct {
 
 func NewOperatorClient(cc grpc.ClientConnInterface) OperatorClient {
 	return &operatorClient{cc}
+}
+
+func (c *operatorClient) GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoReply, error) {
+	out := new(GetInfoReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *operatorClient) DepositMarket(ctx context.Context, in *DepositMarketRequest, opts ...grpc.CallOption) (*DepositMarketReply, error) {
@@ -322,6 +332,7 @@ func (c *operatorClient) ListWithdrawals(ctx context.Context, in *ListWithdrawal
 // All implementations must embed UnimplementedOperatorServer
 // for forward compatibility
 type OperatorServer interface {
+	GetInfo(context.Context, *GetInfoRequest) (*GetInfoReply, error)
 	// Returns a new derived address for the given market.
 	// If market field is empty, a new Market is created and MUST be initialized.
 	DepositMarket(context.Context, *DepositMarketRequest) (*DepositMarketReply, error)
@@ -394,6 +405,9 @@ type OperatorServer interface {
 type UnimplementedOperatorServer struct {
 }
 
+func (UnimplementedOperatorServer) GetInfo(context.Context, *GetInfoRequest) (*GetInfoReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetInfo not implemented")
+}
 func (UnimplementedOperatorServer) DepositMarket(context.Context, *DepositMarketRequest) (*DepositMarketReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DepositMarket not implemented")
 }
@@ -480,6 +494,24 @@ type UnsafeOperatorServer interface {
 
 func RegisterOperatorServer(s grpc.ServiceRegistrar, srv OperatorServer) {
 	s.RegisterService(&Operator_ServiceDesc, srv)
+}
+
+func _Operator_GetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).GetInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/GetInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).GetInfo(ctx, req.(*GetInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Operator_DepositMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -939,6 +971,10 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "Operator",
 	HandlerType: (*OperatorServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetInfo",
+			Handler:    _Operator_GetInfo_Handler,
+		},
 		{
 			MethodName: "DepositMarket",
 			Handler:    _Operator_DepositMarket_Handler,

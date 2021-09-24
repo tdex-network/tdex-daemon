@@ -44,7 +44,7 @@ type WalletUnlockerService interface {
 		currentPassphrase string,
 		newPassphrase string,
 	) error
-	IsReady(ctx context.Context) WalletStatus
+	IsReady(ctx context.Context) HDWalletStatus
 	PassphraseChan() chan PassphraseMsg
 	ReadyChan() chan bool
 }
@@ -149,8 +149,8 @@ func (w *walletUnlockerService) GenSeed(ctx context.Context) ([]string, error) {
 	return mnemonic, nil
 }
 
-func (w *walletUnlockerService) IsReady(_ context.Context) WalletStatus {
-	return WalletStatus{
+func (w *walletUnlockerService) IsReady(_ context.Context) HDWalletStatus {
+	return HDWalletStatus{
 		Initialized: w.isInitialized(),
 		Unlocked:    w.isUnlocked(),
 		Synced:      w.isRestored(),

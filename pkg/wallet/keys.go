@@ -1,6 +1,8 @@
 package wallet
 
 import (
+	"encoding/hex"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -32,14 +34,7 @@ func (w *Wallet) ExtendedPrivateKey(opts ExtendedKeyOpts) (string, error) {
 		return "", err
 	}
 
-	masterKey, err := hdkeychain.NewKeyFromString(
-		base58.Encode(w.signingMasterKey),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	xprv, err := masterKey.Derive(opts.Account)
+	xprv, err := w.extendedPrivateKey(opts.Account)
 	if err != nil {
 		return "", err
 	}
@@ -57,14 +52,7 @@ func (w *Wallet) ExtendedPublicKey(opts ExtendedKeyOpts) (string, error) {
 		return "", err
 	}
 
-	masterKey, err := hdkeychain.NewKeyFromString(
-		base58.Encode(w.signingMasterKey),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	xprv, err := masterKey.Derive(opts.Account)
+	xprv, err := w.extendedPrivateKey(opts.Account)
 	if err != nil {
 		return "", err
 	}
@@ -73,7 +61,21 @@ func (w *Wallet) ExtendedPublicKey(opts ExtendedKeyOpts) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return xpub.String(), nil
+}
+
+// MasterBlindingKey returns the master blinding key of the wallet in hex format.
+func (w *Wallet) MasterBlindingKey() (string, error) {
+	if err := w.validate(); err != nil {
+		return "", err
+	}
+
+	if len(w.blindingMnemonic) == 0 {
+		return "", nil
+	}
+
+	return hex.EncodeToString(w.blindingMasterKey), nil
 }
 
 // DeriveSigningKeyPairOpts is the struct given to DeriveSigningKeyPair method
@@ -228,6 +230,18 @@ func (w *Wallet) DeriveConfidentialAddress(
 		return "", nil, err
 	}
 	return addr, p2wpkh.WitnessScript, nil
+}
+
+func (w *Wallet) extendedPrivateKey(account uint32) (*hdkeychain.ExtendedKey, error) {
+	masterKey, err := hdkeychain.NewKeyFromString(
+		base58.Encode(w.signingMasterKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	step := account + hdkeychain.HardenedKeyStart
+	return masterKey.Derive(step)
 }
 
 func checkDerivationPath(path DerivationPath) error {

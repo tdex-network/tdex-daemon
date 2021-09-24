@@ -7,6 +7,7 @@ import "types.proto";
  * Service for operators to configure and manage a TDEX daemon
  */
 service Operator {
+  rpc GetInfo(GetInfoRequest) returns (GetInfoReply) {}
   // Returns a new derived address for the given market.
   // If market field is empty, a new Market is created and MUST be initialized.
   rpc DepositMarket(DepositMarketRequest) returns (DepositMarketReply) {}
@@ -101,6 +102,14 @@ service Operator {
 
   // Returns withdrawal requests
   rpc ListWithdrawals(ListWithdrawalsRequest) returns(ListWithdrawalsReply){}
+}
+
+message GetInfoRequest{}
+
+message GetInfoReply{
+  string root_path = 1;
+  string master_blinding_key = 2;
+  repeated AccountInfo account_info = 3;
 }
 
 message DropMarketRequest {
@@ -318,6 +327,14 @@ enum ActionType {
   ACCOUNT_LOW_BALANCE = 1;
   ACCOUNT_WITHDRAW = 2;
   ALL_ACTIONS = 3;
+}
+
+message AccountInfo {
+  uint32 account_index = 1;
+  string derivation_path = 2;
+  string xpub = 3;
+  uint32 last_external_derived = 4;
+  uint32 last_internal_derived = 5;
 }
 
 message MarketInfo {

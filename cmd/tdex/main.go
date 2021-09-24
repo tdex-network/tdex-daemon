@@ -70,6 +70,7 @@ func main() {
 		&unlockwallet,
 		&status,
 		&changepassword,
+		&getwalletinfo,
 		&walletAccount,
 		&feeAccount,
 		&marketAccount,
