@@ -56,6 +56,8 @@ var (
 	explorerTimoutRequest         = config.GetDuration(config.ExplorerRequestTimeoutKey)
 	cbMaxFailingRequest           = config.GetInt(config.CBMaxFailingRequestsKey)
 	cbFailingRatio                = config.GetFloat(config.CBFailingRatioKey)
+	rescanRangeStart              = config.GetInt(config.RescanRangeStartKey)
+	rescanRangeEnd                = config.GetInt(config.RescanRangeEndKey)
 )
 
 func main() {
@@ -153,6 +155,8 @@ func main() {
 		network,
 		marketsFee,
 		marketsBaseAsset,
+		rescanRangeStart,
+		rescanRangeEnd,
 	)
 
 	// Init gRPC interfaces.

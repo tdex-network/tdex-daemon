@@ -60,6 +60,8 @@ type walletUnlockerService struct {
 	network            *network.Network
 	marketFee          int64
 	marketBaseAsset    string
+	rescanRangeStart   int
+	rescanRangeEnd     int
 
 	lock      *sync.RWMutex
 	pwChan    chan PassphraseMsg
@@ -73,6 +75,7 @@ func NewWalletUnlockerService(
 	net *network.Network,
 	marketFee int64,
 	marketBaseAsset string,
+	rescanRangeStart, rescanRangeEnd int,
 ) WalletUnlockerService {
 	return newWalletUnlockerService(
 		repoManager,
@@ -81,6 +84,8 @@ func NewWalletUnlockerService(
 		net,
 		marketFee,
 		marketBaseAsset,
+		rescanRangeStart,
+		rescanRangeEnd,
 	)
 }
 
@@ -91,6 +96,7 @@ func newWalletUnlockerService(
 	net *network.Network,
 	marketFee int64,
 	marketBaseAsset string,
+	rescanRangeStart, rescanRangeEnd int,
 ) *walletUnlockerService {
 	w := &walletUnlockerService{
 		repoManager:        repoManager,
@@ -99,6 +105,8 @@ func newWalletUnlockerService(
 		network:            net,
 		marketFee:          marketFee,
 		marketBaseAsset:    marketBaseAsset,
+		rescanRangeStart:   rescanRangeStart,
+		rescanRangeEnd:     rescanRangeEnd,
 		lock:               &sync.RWMutex{},
 		pwChan:             make(chan PassphraseMsg, 1),
 		readyChan:          make(chan bool, 1),
@@ -504,11 +512,17 @@ func (w *walletUnlockerService) restoreAccount(
 	ww *wallet.Wallet, accountIndex int,
 ) *accountLastDerivedIndex {
 	lastDerivedIndex := &accountLastDerivedIndex{}
-	for chainIndex := 0; chainIndex <= 1; chainIndex++ {
+	ranges := [][2]int{
+		{w.rescanRangeStart, w.rescanRangeEnd}, // configurable range for external addresses
+		{0, 20},                                // fixed range for internal ones
+	}
+	for chainIndex, rr := range ranges {
 		firstUnusedAddress := -1
+		rangeStart := rr[0]
+		rangeEnd := rr[1]
 		unusedAddressesCounter := 0
-		i := 0
-		for unusedAddressesCounter < 20 {
+		i := rangeStart
+		for unusedAddressesCounter < (rangeEnd - rangeStart) {
 			ctAddress, script, _ := ww.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
 				DerivationPath: fmt.Sprintf("%d'/%d/%d", accountIndex, chainIndex, i),
 				Network:        w.network,
@@ -519,7 +533,11 @@ func (w *walletUnlockerService) restoreAccount(
 
 			if !isAddressFunded(ctAddress, blindKey.Serialize(), w.explorerService) {
 				if firstUnusedAddress < 0 {
-					firstUnusedAddress = i
+					if i == rangeStart {
+						firstUnusedAddress = 0
+					} else {
+						firstUnusedAddress = i
+					}
 				}
 				unusedAddressesCounter++
 			} else {
