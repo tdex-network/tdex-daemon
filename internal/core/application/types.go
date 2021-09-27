@@ -90,6 +90,16 @@ type Market struct {
 	QuoteAsset string
 }
 
+func (m Market) Validate() error {
+	if err := validateAssetString(m.BaseAsset); err != nil {
+		return ErrMarketInvalidBaseAsset
+	}
+	if err := validateAssetString(m.QuoteAsset); err != nil {
+		return ErrMarketInvalidQuoteAsset
+	}
+	return nil
+}
+
 type Fee struct {
 	BasisPoint    int64
 	FixedBaseFee  int64
@@ -109,6 +119,17 @@ type MarketWithPrice struct {
 type Price struct {
 	BasePrice  decimal.Decimal
 	QuotePrice decimal.Decimal
+}
+
+func (p Price) Validate() error {
+	zero := decimal.NewFromInt(0)
+	if p.BasePrice.LessThanOrEqual(zero) {
+		return domain.ErrMarketInvalidBasePrice
+	}
+	if p.QuotePrice.LessThanOrEqual(zero) {
+		return domain.ErrMarketInvalidQuotePrice
+	}
+	return nil
 }
 
 type PriceWithFee struct {

@@ -30,7 +30,7 @@ func TestAccountManagement(t *testing.T) {
 	operatorSvc, err := newOperatorService()
 	require.NoError(t, err)
 
-	feeAddressesAndKeys, err := operatorSvc.DepositFeeAccount(ctx, 2)
+	feeAddressesAndKeys, err := operatorSvc.GetFeeAddress(ctx, 2)
 	require.NoError(t, err)
 
 	mockedBlinderManager := &mockBlinderManager{}
@@ -48,7 +48,15 @@ func TestAccountManagement(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	mktAddressesAndKeys, err := operatorSvc.DepositMarket(ctx, "", "", 2)
+	mkt := application.Market{
+		BaseAsset:  marketBaseAsset,
+		QuoteAsset: marketQuoteAsset,
+	}
+
+	err = operatorSvc.NewMarket(ctx, mkt)
+	require.NoError(t, err)
+
+	mktAddressesAndKeys, err := operatorSvc.GetMarketAddress(ctx, mkt, 2)
 	require.NoError(t, err)
 
 	for i, m := range mktAddressesAndKeys {
@@ -71,45 +79,41 @@ func TestAccountManagement(t *testing.T) {
 
 	application.BlinderManager = mockedBlinderManager
 
-	err = operatorSvc.ClaimFeeDeposit(ctx, feeOutpoints)
+	err = operatorSvc.ClaimFeeDeposits(ctx, feeOutpoints)
 	require.NoError(t, err)
 
-	feeBalance, err := operatorSvc.FeeAccountBalance(ctx)
+	_, feeBalance, err := operatorSvc.GetFeeBalance(ctx)
 	require.NoError(t, err)
 	require.Greater(t, feeBalance, int64(0))
 
-	mkt := application.Market{
-		BaseAsset:  marketBaseAsset,
-		QuoteAsset: marketQuoteAsset,
-	}
-	err = operatorSvc.ClaimMarketDeposit(ctx, mkt, mktOutpoints)
+	err = operatorSvc.ClaimMarketDeposits(ctx, mkt, mktOutpoints)
 	require.NoError(t, err)
 
-	markets, err := operatorSvc.ListMarket(ctx)
+	markets, err := operatorSvc.ListMarkets(ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(markets), 1)
 	require.False(t, markets[0].Tradable)
 
-	err = operatorSvc.OpenMarket(ctx, marketBaseAsset, marketQuoteAsset)
+	err = operatorSvc.OpenMarket(ctx, mkt)
 	require.NoError(t, err)
 
-	markets, err = operatorSvc.ListMarket(ctx)
+	markets, err = operatorSvc.ListMarkets(ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(markets), 1)
 	require.True(t, markets[0].Tradable)
 
-	err = operatorSvc.CloseMarket(ctx, marketBaseAsset, marketQuoteAsset)
+	err = operatorSvc.CloseMarket(ctx, mkt)
 	require.NoError(t, err)
 
-	markets, err = operatorSvc.ListMarket(ctx)
+	markets, err = operatorSvc.ListMarkets(ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(markets), 1)
 	require.False(t, markets[0].Tradable)
 
-	err = operatorSvc.DropMarket(ctx, int(markets[0].AccountIndex))
+	err = operatorSvc.DropMarket(ctx, markets[0].Market)
 	require.NoError(t, err)
 
-	markets, err = operatorSvc.ListMarket(ctx)
+	markets, err = operatorSvc.ListMarkets(ctx)
 	require.NoError(t, err)
 	require.Len(t, markets, 0)
 }
