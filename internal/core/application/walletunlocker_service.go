@@ -592,14 +592,7 @@ func (w *walletUnlockerService) restoreMarket(
 	info domain.AddressesInfo,
 	unspentsByAddress map[string][]domain.Unspent,
 ) (*domain.Market, error) {
-	market, err := w.repoManager.MarketRepository().GetOrCreateMarket(ctx, &domain.Market{
-		AccountIndex: accountIndex,
-		Fee:          w.marketFee,
-	})
-	if err != nil {
-		return nil, err
-	}
-
+	var market *domain.Market
 	if len(unspentsByAddress) > 0 {
 		outpoints := make([]domain.OutpointWithAsset, 0)
 		for _, i := range info {
@@ -609,7 +602,28 @@ func (w *walletUnlockerService) restoreMarket(
 			}
 		}
 
-		if err := market.FundMarket(outpoints, w.marketBaseAsset); err != nil {
+		outpointsByAsset := make(map[string]struct{})
+		for _, o := range outpoints {
+			outpointsByAsset[o.Asset] = struct{}{}
+		}
+		var baseAsset, quoteAsset string
+		for asset := range outpointsByAsset {
+			if asset == w.marketBaseAsset {
+				baseAsset = asset
+			} else {
+				quoteAsset = asset
+			}
+		}
+
+		var err error
+		market, err = domain.NewMarket(
+			accountIndex, baseAsset, quoteAsset, w.marketFee,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := market.VerifyMarketFunds(outpoints); err != nil {
 			return nil, err
 		}
 	}
@@ -639,6 +653,11 @@ func (w *walletUnlockerService) persistRestoredState(
 
 			// update changes to markets
 			for _, m := range markets {
+				if _, err := w.repoManager.MarketRepository().GetOrCreateMarket(
+					ctx, m,
+				); err != nil {
+					return nil, err
+				}
 				if err := w.repoManager.MarketRepository().UpdateMarket(
 					ctx,
 					m.AccountIndex,
