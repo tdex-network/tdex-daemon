@@ -198,18 +198,11 @@ func (m marketRepositoryImpl) getOrCreateMarket(
 	}
 
 	if mkt == nil {
-		accountIndex := market.AccountIndex
-		fee := market.Fee
-
-		mkt, err = domain.NewMarket(accountIndex, fee)
+		err = m.insertMarket(ctx, market.AccountIndex, market)
 		if err != nil {
 			return nil, err
 		}
-
-		err = m.insertMarket(ctx, accountIndex, mkt)
-		if err != nil {
-			return nil, err
-		}
+		mkt = market
 	}
 
 	return mkt, nil
