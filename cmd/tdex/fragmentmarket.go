@@ -35,14 +35,6 @@ var fragmentmarket = cli.Command{
 		"into an ephemeral wallet, then split the amount into multiple " +
 		"fragments and deposit into the daemon",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "base_asset",
-			Usage: "the base asset hash of an existent market",
-		},
-		&cli.StringFlag{
-			Name:  "quote_asset",
-			Usage: "the quote asset hash of an existent market",
-		},
 		&cli.StringSliceFlag{
 			Name:  "txid",
 			Usage: "txid of the funds to resume a fragmentmarket",
@@ -85,14 +77,14 @@ func fragmentMarketAction(ctx *cli.Context) error {
 		return err
 	}
 
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
 	walletType := "market"
 	txids := ctx.StringSlice("txid")
 	recoverAddress := ctx.String("recover_funds_to_address")
-	quoteAssetOpt := ctx.String("quote_asset")
-	baseAssetOpt := ctx.String("base_asset")
-	if baseAssetOpt == "" {
-		baseAssetOpt = net.AssetID
-	}
 	debug := ctx.Bool("debug")
 
 	if recoverAddress != "" {
@@ -135,7 +127,7 @@ func fragmentMarketAction(ctx *cli.Context) error {
 		assetValuePair, unspents, err = findAssetsUnspents(
 			ephWallet,
 			explorerSvc,
-			baseAssetOpt,
+			baseAsset,
 			funds,
 		)
 		if err != nil {
@@ -171,15 +163,11 @@ func fragmentMarketAction(ctx *cli.Context) error {
 		len(quoteFragments),
 	)
 
-	if quoteAssetOpt == "" {
-		baseAssetOpt = ""
-	}
-
 	addresses, err := getMarketDepositAddresses(
 		numFragments,
 		client,
-		baseAssetOpt,
-		quoteAssetOpt,
+		baseAsset,
+		quoteAsset,
 	)
 	if err != nil {
 		return err
@@ -217,8 +205,8 @@ func fragmentMarketAction(ctx *cli.Context) error {
 
 	log.Info("claiming market deposits...")
 	outpoints := createOutpoints(txID, numFragments)
-	if _, err := client.ClaimMarketDeposit(
-		context.Background(), &pboperator.ClaimMarketDepositRequest{
+	if _, err := client.ClaimMarketDeposits(
+		context.Background(), &pboperator.ClaimMarketDepositsRequest{
 			Market: &pbtypes.Market{
 				BaseAsset:  assetValuePair.BaseAsset,
 				QuoteAsset: assetValuePair.QuoteAsset,
@@ -240,8 +228,8 @@ func getMarketDepositAddresses(
 	baseAssetOpt string,
 	quoteAssetOpt string,
 ) ([]string, error) {
-	depositMarket, err := client.DepositMarket(
-		context.Background(), &pboperator.DepositMarketRequest{
+	resp, err := client.GetMarketAddress(
+		context.Background(), &pboperator.GetMarketAddressRequest{
 			Market: &pbtypes.Market{
 				BaseAsset:  baseAssetOpt,
 				QuoteAsset: quoteAssetOpt,
@@ -253,7 +241,13 @@ func getMarketDepositAddresses(
 		return nil, err
 	}
 
-	return depositMarket.GetAddresses(), nil
+	addressesAndKeys := resp.GetAddressWithBlindingKey()
+	addresses := make([]string, 0, len(addressesAndKeys))
+	for _, a := range addressesAndKeys {
+		addresses = append(addresses, a.Address)
+	}
+
+	return addresses, nil
 }
 
 func createOutputs(
