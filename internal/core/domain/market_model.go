@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"encoding/hex"
+
 	"github.com/shopspring/decimal"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
@@ -54,20 +56,37 @@ type PreviewInfo struct {
 	Asset  string
 }
 
-// NewMarket returns an empty market with a reference to an account index.
-// It is also mandatory to define a fee (in BP) for the market.
-func NewMarket(positiveAccountIndex int, feeInBasisPoint int64) (*Market, error) {
-	if err := validateAccountIndex(positiveAccountIndex); err != nil {
+// NewMarket returns a new market with an account index, the asset pair and the
+// percentage fee set.
+func NewMarket(
+	accountIndex int, baseAsset, quoteAsset string, feeInBasisPoint int64,
+) (*Market, error) {
+	if !isValidAsset(baseAsset) {
+		return nil, ErrMarketInvalidBaseAsset
+	}
+	if !isValidAsset(quoteAsset) {
+		return nil, ErrMarketInvalidQuoteAsset
+	}
+	if err := validateAccountIndex(accountIndex); err != nil {
 		return nil, err
 	}
-
 	if err := validateFee(feeInBasisPoint); err != nil {
 		return nil, err
 	}
 
 	return &Market{
-		AccountIndex: positiveAccountIndex,
+		AccountIndex: accountIndex,
+		BaseAsset:    baseAsset,
+		QuoteAsset:   quoteAsset,
 		Fee:          feeInBasisPoint,
 		Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
 	}, nil
+}
+
+func isValidAsset(asset string) bool {
+	buf, err := hex.DecodeString(asset)
+	if err != nil {
+		return false
+	}
+	return len(buf) == 32
 }

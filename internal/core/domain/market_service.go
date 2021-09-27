@@ -37,11 +37,6 @@ func (m *Market) IsTradable() bool {
 	return m.Tradable
 }
 
-// IsFunded method returns true if the market contains a non empty funding tx outpoint for each asset
-func (m *Market) IsFunded() bool {
-	return m.BaseAsset != "" && m.QuoteAsset != ""
-}
-
 // BaseAssetPrice returns the latest price for the base asset
 func (m *Market) BaseAssetPrice() decimal.Decimal {
 	basePrice, _ := getLatestPrice(m.Price)
@@ -68,24 +63,16 @@ func (m *Market) IsStrategyPluggableInitialized() bool {
 	return !m.Price.AreZero()
 }
 
-// FundMarket adds the assets of market from the given array of outpoints.
-// Since the list of outpoints can contain an infinite number of utxos with
-// different  assets, they're fistly indexed by their asset, then the market's
-// base asset is updated if found in the list, otherwise only the very first
-// asset type is used as the market's quote asset, discarding the others that
-// should be manually transferred to some other address because they won't be
-// used by the daemon.
-func (m *Market) FundMarket(fundingTxs []OutpointWithAsset, baseAssetHash string) error {
-	if m.IsFunded() {
-		return nil
-	}
-
+// VerifyMarketFunds verifies that the provided list of outpoints (each
+// including the unblinded asset) are valid funds of the market, by checking
+// that their assets match those of the market.
+func (m *Market) VerifyMarketFunds(fundingTxs []OutpointWithAsset) error {
 	assetCount := make(map[string]int)
 	for _, o := range fundingTxs {
 		assetCount[o.Asset]++
 	}
 
-	if _, ok := assetCount[baseAssetHash]; !ok {
+	if _, ok := assetCount[m.BaseAsset]; !ok {
 		return ErrMarketMissingBaseAsset
 	}
 	if len(assetCount) < 2 {
@@ -96,23 +83,11 @@ func (m *Market) FundMarket(fundingTxs []OutpointWithAsset, baseAssetHash string
 		return ErrMarketTooManyAssets
 	}
 
-	for asset := range assetCount {
-		if asset == baseAssetHash {
-			m.BaseAsset = baseAssetHash
-		} else {
-			m.QuoteAsset = asset
-		}
-	}
-
 	return nil
 }
 
 // MakeTradable ...
 func (m *Market) MakeTradable() error {
-	if !m.IsFunded() {
-		return ErrMarketNotFunded
-	}
-
 	if m.IsStrategyPluggable() && !m.IsStrategyPluggableInitialized() {
 		return ErrMarketNotPriced
 	}
@@ -123,16 +98,12 @@ func (m *Market) MakeTradable() error {
 
 // MakeNotTradable ...
 func (m *Market) MakeNotTradable() error {
-	if !m.IsFunded() {
-		return ErrMarketNotFunded
-	}
-
 	m.Tradable = false
 	return nil
 }
 
 // MakeStrategyPluggable makes the current market using a given price
-//(ie. set via UpdateMarketPrice rpc either manually or a price feed plugin)
+// (ie. set via UpdateMarketPrice rpc either manually or a price feed plugin)
 func (m *Market) MakeStrategyPluggable() error {
 	if m.IsTradable() {
 		// We need the market be switched off before making this change
@@ -160,10 +131,6 @@ func (m *Market) MakeStrategyBalanced() error {
 
 // ChangeFeeBasisPoint ...
 func (m *Market) ChangeFeeBasisPoint(fee int64) error {
-	if !m.IsFunded() {
-		return ErrMarketNotFunded
-	}
-
 	if m.IsTradable() {
 		return ErrMarketMustBeClosed
 	}
@@ -178,10 +145,6 @@ func (m *Market) ChangeFeeBasisPoint(fee int64) error {
 
 // ChangeFixedFee ...
 func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
-	if !m.IsFunded() {
-		return ErrMarketNotFunded
-	}
-
 	if m.IsTradable() {
 		return ErrMarketMustBeClosed
 	}
@@ -197,11 +160,10 @@ func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
 
 // ChangeBasePrice ...
 func (m *Market) ChangeBasePrice(price decimal.Decimal) error {
-	if !m.IsFunded() {
-		return ErrMarketNotFunded
+	zero := decimal.NewFromInt(0)
+	if price.LessThanOrEqual(zero) {
+		return ErrMarketInvalidBasePrice
 	}
-
-	// TODO add logic to be sure that the price do not change to much from the latest one
 
 	m.Price.BasePrice = price
 	return nil
@@ -209,11 +171,10 @@ func (m *Market) ChangeBasePrice(price decimal.Decimal) error {
 
 // ChangeQuotePrice ...
 func (m *Market) ChangeQuotePrice(price decimal.Decimal) error {
-	if !m.IsFunded() {
-		return ErrMarketNotFunded
+	zero := decimal.NewFromInt(0)
+	if price.LessThanOrEqual(zero) {
+		return ErrMarketInvalidQuotePrice
 	}
-
-	//TODO check if the previous price is changing too much as security measure
 
 	m.Price.QuotePrice = price
 	return nil
