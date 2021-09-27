@@ -105,18 +105,12 @@ func (t traderHandler) balances(
 	ctx context.Context,
 	req *pb.BalancesRequest,
 ) (*pb.BalancesReply, error) {
-	mkt := req.GetMarket()
-	if err := validateMarket(mkt); err != nil {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	balance, err := t.traderSvc.GetMarketBalance(
-		ctx,
-		application.Market{
-			BaseAsset:  req.Market.BaseAsset,
-			QuoteAsset: req.Market.QuoteAsset,
-		},
-	)
+	balance, err := t.traderSvc.GetMarketBalance(ctx, market)
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +139,8 @@ func (t traderHandler) marketPrice(
 	ctx context.Context,
 	req *pb.MarketPriceRequest,
 ) (*pb.MarketPriceReply, error) {
-	market := req.GetMarket()
-	if err := validateMarket(market); err != nil {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	tradeType := req.GetType()
@@ -163,14 +157,7 @@ func (t traderHandler) marketPrice(
 	}
 
 	preview, err := t.traderSvc.GetMarketPrice(
-		ctx,
-		application.Market{
-			BaseAsset:  market.GetBaseAsset(),
-			QuoteAsset: market.GetQuoteAsset(),
-		},
-		int(tradeType),
-		amount,
-		asset,
+		ctx, market, int(tradeType), amount, asset,
 	)
 	if err != nil {
 		return nil, err
@@ -208,8 +195,8 @@ func (t traderHandler) tradePropose(
 	req *pb.TradeProposeRequest,
 	stream pb.Trade_TradeProposeServer,
 ) error {
-	mkt := req.GetMarket()
-	if err := validateMarket(mkt); err != nil {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	tradeType := req.GetType()
@@ -221,16 +208,8 @@ func (t traderHandler) tradePropose(
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	var market = application.Market{
-		BaseAsset:  mkt.GetBaseAsset(),
-		QuoteAsset: mkt.GetQuoteAsset(),
-	}
-
 	accept, fail, swapExpiryTime, err := t.traderSvc.TradePropose(
-		stream.Context(),
-		market,
-		int(tradeType),
-		swapRequest,
+		stream.Context(), market, int(tradeType), swapRequest,
 	)
 	if err != nil {
 		return err
