@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -76,7 +75,7 @@ func feeBalanceAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	reply, err := client.BalanceFeeAccount(context.Background(), &pb.BalanceFeeAccountRequest{})
+	reply, err := client.GetFeeBalance(context.Background(), &pb.GetFeeBalanceRequest{})
 	if err != nil {
 		return err
 	}
@@ -94,8 +93,8 @@ func feeDepositAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	numOfAddresses := ctx.Int64("num_of_addresses")
-	resp, err := client.DepositFeeAccount(
-		context.Background(), &pb.DepositFeeAccountRequest{
+	resp, err := client.GetFeeAddress(
+		context.Background(), &pb.GetFeeAddressRequest{
 			NumOfAddresses: numOfAddresses,
 		},
 	)
@@ -120,8 +119,8 @@ func feeClaimAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	if _, err := client.ClaimFeeDeposit(
-		context.Background(), &pb.ClaimFeeDepositRequest{
+	if _, err := client.ClaimFeeDeposits(
+		context.Background(), &pb.ClaimFeeDepositsRequest{
 			Outpoints: outpoints,
 		},
 	); err != nil {
@@ -157,19 +156,11 @@ func feeWithdrawAction(ctx *cli.Context) error {
 		Amount:           amount,
 		Address:          addr,
 		MillisatsPerByte: mSatsPerByte,
-		Push:             true,
 	})
 	if err != nil {
 		return err
 	}
 
-	res := map[string]string{
-		"txid": hex.EncodeToString(reply.GetTxid()),
-	}
-
-	resStr, _ := json.MarshalIndent(res, "", "\t")
-
-	fmt.Println(string(resStr))
-
+	printRespJSON(reply)
 	return nil
 }

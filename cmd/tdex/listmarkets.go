@@ -21,8 +21,8 @@ func listMarketsAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	resp, err := client.ListMarket(
-		context.Background(), &pboperator.ListMarketRequest{},
+	resp, err := client.ListMarkets(
+		context.Background(), &pboperator.ListMarketsRequest{},
 	)
 	if err != nil {
 		return err
