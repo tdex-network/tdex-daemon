@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
@@ -16,6 +14,7 @@ var (
 		Name:  "market",
 		Usage: "manage a market account of the daemon's wallet",
 		Subcommands: []*cli.Command{
+			marketNewCmd, marketBalanceCmd,
 			marketDepositCmd, marketClaimCmd, marketWithdrawCmd,
 			marketOpenCmd, marketCloseCmd, marketDropCmd,
 			marketUpdateFixedFeeCmd, marketUpdatePercentageFeeCmd, marketReportFeeCmd,
@@ -23,9 +22,9 @@ var (
 		},
 	}
 
-	marketDepositCmd = &cli.Command{
-		Name:  "deposit",
-		Usage: "generate some address(es) to deposit funds for a market",
+	marketNewCmd = &cli.Command{
+		Name:  "new",
+		Usage: "create a new market",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "base_asset",
@@ -37,6 +36,18 @@ var (
 				Usage: "the base asset hash of an existent market",
 				Value: "",
 			},
+		},
+		Action: newMarketAction,
+	}
+	marketBalanceCmd = &cli.Command{
+		Name:   "balance",
+		Usage:  "check the balance of a market",
+		Action: marketBalanceAction,
+	}
+	marketDepositCmd = &cli.Command{
+		Name:  "deposit",
+		Usage: "generate some address(es) to deposit funds for a market",
+		Flags: []cli.Flag{
 			&cli.IntFlag{
 				Name:  "num_of_addresses",
 				Usage: "the number of addresses to generate for the market",
@@ -174,6 +185,60 @@ var (
 	}
 )
 
+func newMarketAction(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	baseAsset := ctx.String("base_asset")
+	quoteAsset := ctx.String("quote_asset")
+
+	if _, err := client.NewMarket(
+		context.Background(), &pb.NewMarketRequest{
+			Market: &pbtypes.Market{
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
+			},
+		},
+	); err != nil {
+		return err
+	}
+
+	fmt.Println()
+	fmt.Println("market created")
+	return nil
+}
+
+func marketBalanceAction(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.GetMarketBalance(
+		context.Background(), &pb.GetMarketBalanceRequest{
+			Market: &pbtypes.Market{
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(resp)
+	return nil
+}
+
 func marketDepositAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
@@ -181,13 +246,18 @@ func marketDepositAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
 	numOfAddresses := ctx.Int64("num_of_addresses")
-	resp, err := client.DepositMarket(
+	resp, err := client.GetMarketAddress(
 		context.Background(),
-		&pb.DepositMarketRequest{
+		&pb.GetMarketAddressRequest{
 			Market: &pbtypes.Market{
-				BaseAsset:  ctx.String("base_asset"),
-				QuoteAsset: ctx.String("quote_asset"),
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
 			},
 			NumOfAddresses: numOfAddresses,
 		},
@@ -197,7 +267,6 @@ func marketDepositAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(resp)
-
 	return nil
 }
 
@@ -218,8 +287,8 @@ func marketClaimAction(ctx *cli.Context) error {
 		return err
 	}
 
-	if _, err := client.ClaimMarketDeposit(
-		context.Background(), &pb.ClaimMarketDepositRequest{
+	if _, err := client.ClaimMarketDeposits(
+		context.Background(), &pb.ClaimMarketDepositsRequest{
 			Market: &pbtypes.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -232,7 +301,6 @@ func marketClaimAction(ctx *cli.Context) error {
 
 	fmt.Println()
 	fmt.Println("market is funded")
-
 	return nil
 }
 
@@ -263,19 +331,12 @@ func marketWithdrawAction(ctx *cli.Context) error {
 		},
 		Address:         addr,
 		MillisatPerByte: mSatsPerByte,
-		Push:            true,
 	})
 	if err != nil {
 		return err
 	}
 
-	res := map[string]string{
-		"txid": hex.EncodeToString(reply.GetTxid()),
-	}
-	resStr, _ := json.MarshalIndent(res, "", "\t")
-
-	fmt.Println(string(resStr))
-
+	printRespJSON(reply)
 	return nil
 }
 
@@ -344,11 +405,17 @@ func marketDropAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	accountIndex := ctx.Uint64("account_index")
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
 
 	_, err = client.DropMarket(
 		context.Background(), &pb.DropMarketRequest{
-			AccountIndex: accountIndex,
+			Market: &pbtypes.Market{
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
+			},
 		},
 	)
 	if err != nil {
@@ -464,7 +531,6 @@ func marketReportFeeAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(reply)
-
 	return nil
 }
 
