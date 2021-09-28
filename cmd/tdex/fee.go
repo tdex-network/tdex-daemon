@@ -15,7 +15,8 @@ var (
 		Name:  "fee",
 		Usage: "manage the fee account of the daemon's wallet",
 		Subcommands: []*cli.Command{
-			feeBalanceCmd, feeDepositCmd, feeClaimCmd, feeWithdrawCmd,
+			feeBalanceCmd, feeDepositCmd, feeListAddressesCmd, feeClaimCmd,
+			feeWithdrawCmd,
 		},
 	}
 
@@ -34,6 +35,11 @@ var (
 			},
 		},
 		Action: feeDepositAction,
+	}
+	feeListAddressesCmd = &cli.Command{
+		Name:   "listaddresses",
+		Usage:  "list all the derived deposit addresses of the fee account",
+		Action: feeListAddressesAction,
 	}
 	feeClaimCmd = &cli.Command{
 		Name:  "claim",
@@ -103,6 +109,32 @@ func feeDepositAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(resp)
+
+	return nil
+}
+
+func feeListAddressesAction(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	reply, err := client.ListFeeAddresses(
+		context.Background(), &pb.ListFeeAddressesRequest{},
+	)
+	if err != nil {
+		return err
+	}
+
+	list := reply.GetAddressWithBlinidngKey()
+	if list == nil {
+		fmt.Println("[]")
+		return nil
+	}
+
+	listStr, _ := json.MarshalIndent(list, "", "   ")
+	fmt.Println(string(listStr))
 
 	return nil
 }

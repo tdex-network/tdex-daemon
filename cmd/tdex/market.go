@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
@@ -14,7 +15,7 @@ var (
 		Name:  "market",
 		Usage: "manage a market account of the daemon's wallet",
 		Subcommands: []*cli.Command{
-			marketNewCmd, marketBalanceCmd,
+			marketNewCmd, marketBalanceCmd, marketListAddressesCmd,
 			marketDepositCmd, marketClaimCmd, marketWithdrawCmd,
 			marketOpenCmd, marketCloseCmd, marketDropCmd,
 			marketUpdateFixedFeeCmd, marketUpdatePercentageFeeCmd, marketReportFeeCmd,
@@ -54,6 +55,11 @@ var (
 			},
 		},
 		Action: marketDepositAction,
+	}
+	marketListAddressesCmd = &cli.Command{
+		Name:   "listaddresses",
+		Usage:  "list all the derived deposit addresses of a market",
+		Action: marketListAddressesAction,
 	}
 	marketClaimCmd = &cli.Command{
 		Name:  "claim",
@@ -267,6 +273,41 @@ func marketDepositAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(resp)
+	return nil
+}
+
+func marketListAddressesAction(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.ListMarketAddresses(
+		context.Background(), &pb.ListMarketAddressesRequest{
+			Market: &pbtypes.Market{
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	list := resp.GetAddressWithBlinidngKey()
+	if list == nil {
+		fmt.Println("[]")
+		return nil
+	}
+
+	listStr, _ := json.MarshalIndent(list, "", "   ")
+	fmt.Println(string(listStr))
 	return nil
 }
 
