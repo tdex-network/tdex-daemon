@@ -50,7 +50,7 @@ type OperatorClient interface {
 	// Deletes a market.
 	DropMarket(ctx context.Context, in *DropMarketRequest, opts ...grpc.CallOption) (*DropMarketReply, error)
 	// Displays a report of the colected fees for the given market.
-	ReportMarketFee(ctx context.Context, in *ReportMarketFeeRequest, opts ...grpc.CallOption) (*ReportMarketFeeReply, error)
+	GetMarketCollectedSwapFees(ctx context.Context, in *GetMarketCollectedSwapFeesRequest, opts ...grpc.CallOption) (*GetMarketCollectedSwapFeesReply, error)
 	// Allows to withdraw funds from the given market to a given address.
 	WithdrawMarket(ctx context.Context, in *WithdrawMarketRequest, opts ...grpc.CallOption) (*WithdrawMarketReply, error)
 	// Changes the Liquidity Provider percentage fee for the given market.
@@ -217,9 +217,9 @@ func (c *operatorClient) DropMarket(ctx context.Context, in *DropMarketRequest, 
 	return out, nil
 }
 
-func (c *operatorClient) ReportMarketFee(ctx context.Context, in *ReportMarketFeeRequest, opts ...grpc.CallOption) (*ReportMarketFeeReply, error) {
-	out := new(ReportMarketFeeReply)
-	err := c.cc.Invoke(ctx, "/Operator/ReportMarketFee", in, out, opts...)
+func (c *operatorClient) GetMarketCollectedSwapFees(ctx context.Context, in *GetMarketCollectedSwapFeesRequest, opts ...grpc.CallOption) (*GetMarketCollectedSwapFeesReply, error) {
+	out := new(GetMarketCollectedSwapFeesReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetMarketCollectedSwapFees", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +388,7 @@ type OperatorServer interface {
 	// Deletes a market.
 	DropMarket(context.Context, *DropMarketRequest) (*DropMarketReply, error)
 	// Displays a report of the colected fees for the given market.
-	ReportMarketFee(context.Context, *ReportMarketFeeRequest) (*ReportMarketFeeReply, error)
+	GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesReply, error)
 	// Allows to withdraw funds from the given market to a given address.
 	WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketReply, error)
 	// Changes the Liquidity Provider percentage fee for the given market.
@@ -468,8 +468,8 @@ func (UnimplementedOperatorServer) CloseMarket(context.Context, *CloseMarketRequ
 func (UnimplementedOperatorServer) DropMarket(context.Context, *DropMarketRequest) (*DropMarketReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropMarket not implemented")
 }
-func (UnimplementedOperatorServer) ReportMarketFee(context.Context, *ReportMarketFeeRequest) (*ReportMarketFeeReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReportMarketFee not implemented")
+func (UnimplementedOperatorServer) GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMarketCollectedSwapFees not implemented")
 }
 func (UnimplementedOperatorServer) WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WithdrawMarket not implemented")
@@ -778,20 +778,20 @@ func _Operator_DropMarket_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ReportMarketFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReportMarketFeeRequest)
+func _Operator_GetMarketCollectedSwapFees_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMarketCollectedSwapFeesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ReportMarketFee(ctx, in)
+		return srv.(OperatorServer).GetMarketCollectedSwapFees(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Operator/ReportMarketFee",
+		FullMethod: "/Operator/GetMarketCollectedSwapFees",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ReportMarketFee(ctx, req.(*ReportMarketFeeRequest))
+		return srv.(OperatorServer).GetMarketCollectedSwapFees(ctx, req.(*GetMarketCollectedSwapFeesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1112,8 +1112,8 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Operator_DropMarket_Handler,
 		},
 		{
-			MethodName: "ReportMarketFee",
-			Handler:    _Operator_ReportMarketFee_Handler,
+			MethodName: "GetMarketCollectedSwapFees",
+			Handler:    _Operator_GetMarketCollectedSwapFees_Handler,
 		},
 		{
 			MethodName: "WithdrawMarket",

@@ -122,10 +122,10 @@ func (o operatorHandler) DropMarket(
 	return o.dropMarket(ctx, req)
 }
 
-func (o operatorHandler) ReportMarketFee(
-	ctx context.Context, req *pb.ReportMarketFeeRequest,
-) (*pb.ReportMarketFeeReply, error) {
-	return o.reportMarketFee(ctx, req)
+func (o operatorHandler) GetMarketCollectedSwapFees(
+	ctx context.Context, req *pb.GetMarketCollectedSwapFeesRequest,
+) (*pb.GetMarketCollectedSwapFeesReply, error) {
+	return o.getMarketCollectedSwapFees(ctx, req)
 }
 
 func (o operatorHandler) WithdrawMarket(
@@ -489,9 +489,9 @@ func (o operatorHandler) dropMarket(
 	return &pb.DropMarketReply{}, nil
 }
 
-func (o operatorHandler) reportMarketFee(
-	ctx context.Context, req *pb.ReportMarketFeeRequest,
-) (*pb.ReportMarketFeeReply, error) {
+func (o operatorHandler) getMarketCollectedSwapFees(
+	ctx context.Context, req *pb.GetMarketCollectedSwapFeesRequest,
+) (*pb.GetMarketCollectedSwapFeesReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -516,7 +516,7 @@ func (o operatorHandler) reportMarketFee(
 		})
 	}
 
-	return &pb.ReportMarketFeeReply{
+	return &pb.GetMarketCollectedSwapFeesReply{
 		CollectedFees:              collectedFees,
 		TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
 	}, nil

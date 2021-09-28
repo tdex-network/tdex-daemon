@@ -53,10 +53,11 @@ service Operator {
   rpc CloseMarket(CloseMarketRequest) returns (CloseMarketReply) {}
 
   // Deletes a market.
-  rpc DropMarket(DropMarketRequest) returns(DropMarketReply){}
+  rpc DropMarket(DropMarketRequest) returns(DropMarketReply) {}
 
   // Displays a report of the colected fees for the given market.
-  rpc ReportMarketFee(ReportMarketFeeRequest) returns (ReportMarketFeeReply) {}
+  rpc GetMarketCollectedSwapFees(GetMarketCollectedSwapFeesRequest)
+    returns (GetMarketCollectedSwapFeesReply) {}
 
   // Allows to withdraw funds from the given market to a given address.
   rpc WithdrawMarket(WithdrawMarketRequest) returns (WithdrawMarketReply) {}
@@ -231,13 +232,13 @@ message DropMarketRequest {
 }
 message DropMarketReply{}
 
-message ReportMarketFeeRequest {
+message GetMarketCollectedSwapFeesRequest {
   // The marker for which returning the report of collected fees.
   Market market = 1;
   // The page for a paginated reply.
   Page page = 2;
 }
-message ReportMarketFeeReply {
+message GetMarketCollectedSwapFeesReply {
   // The list of info about the collected fees per each trade.
   repeated FeeInfo collected_fees = 1;
   // The map of total fees collected per asset.

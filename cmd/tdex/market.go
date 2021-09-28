@@ -517,8 +517,8 @@ func marketReportFeeAction(ctx *cli.Context) error {
 		}
 	}
 
-	reply, err := client.ReportMarketFee(
-		context.Background(), &pb.ReportMarketFeeRequest{
+	reply, err := client.GetMarketCollectedSwapFees(
+		context.Background(), &pb.GetMarketCollectedSwapFeesRequest{
 			Market: &pbtypes.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
