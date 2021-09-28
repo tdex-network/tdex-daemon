@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 )
 
@@ -328,15 +329,15 @@ func testWriteRollback(t *testing.T, repo marketRepository) {
 
 func createMarketRepositories(t *testing.T) []marketRepository {
 	inmemoryDBManager := inmemory.NewRepoManager()
-	// badgerDBManager, err := dbbadger.NewRepoManager("", nil)
-	// require.NoError(t, err)
+	badgerDBManager, err := dbbadger.NewRepoManager("", nil)
+	require.NoError(t, err)
 
 	return []marketRepository{
-		// {
-		// 	Name:       "badger",
-		// 	DBManager:  badgerDBManager,
-		// 	Repository: badgerDBManager.MarketRepository(),
-		// },
+		{
+			Name:       "badger",
+			DBManager:  badgerDBManager,
+			Repository: badgerDBManager.MarketRepository(),
+		},
 		{
 			Name:       "inmemory",
 			DBManager:  inmemoryDBManager,
