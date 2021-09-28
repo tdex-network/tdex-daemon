@@ -37,7 +37,7 @@ var (
 		Action: feeDepositAction,
 	}
 	feeListAddressesCmd = &cli.Command{
-		Name:   "listaddresses",
+		Name:   "addresses",
 		Usage:  "list all the derived deposit addresses of the fee account",
 		Action: feeListAddressesAction,
 	}

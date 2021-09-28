@@ -57,7 +57,7 @@ var (
 		Action: marketDepositAction,
 	}
 	marketListAddressesCmd = &cli.Command{
-		Name:   "listaddresses",
+		Name:   "addresses",
 		Usage:  "list all the derived deposit addresses of a market",
 		Action: marketListAddressesAction,
 	}
