@@ -124,8 +124,8 @@ func (u unspentRepositoryImpl) GetBalance(
 	addresses []string,
 	assetHash string,
 ) (uint64, error) {
-	unlockedOnly := false
-	return u.getBalance(ctx, addresses, assetHash, unlockedOnly)
+	unlockedAndConfirmedOnly := false
+	return u.getBalance(ctx, addresses, assetHash, unlockedAndConfirmedOnly)
 }
 
 func (u unspentRepositoryImpl) GetUnlockedBalance(
@@ -133,8 +133,8 @@ func (u unspentRepositoryImpl) GetUnlockedBalance(
 	addresses []string,
 	assetHash string,
 ) (uint64, error) {
-	unlockedOnly := true
-	return u.getBalance(ctx, addresses, assetHash, unlockedOnly)
+	unlockedAndConfirmedOnly := true
+	return u.getBalance(ctx, addresses, assetHash, unlockedAndConfirmedOnly)
 }
 
 func (u unspentRepositoryImpl) SpendUnspents(
@@ -193,7 +193,7 @@ func (u unspentRepositoryImpl) getBalance(
 	ctx context.Context,
 	addresses []string,
 	assetHash string,
-	unlockedOnly bool,
+	unlockedAndConfirmedOnly bool,
 ) (uint64, error) {
 	iface := make([]interface{}, 0, len(addresses))
 	for _, v := range addresses {
@@ -202,10 +202,12 @@ func (u unspentRepositoryImpl) getBalance(
 
 	query := badgerhold.Where("AssetHash").Eq(assetHash).
 		And("Spent").Eq(false).
-		And("Confirmed").Eq(true).
 		And("Address").In(iface...)
+	if unlockedAndConfirmedOnly {
+		query = query.And("Confirmed").Eq(unlockedAndConfirmedOnly)
+	}
 
-	unspents, err := u.findUnspents(ctx, query, unlockedOnly)
+	unspents, err := u.findUnspents(ctx, query, unlockedAndConfirmedOnly)
 	if err != nil {
 		return 0, err
 	}

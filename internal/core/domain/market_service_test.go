@@ -8,12 +8,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
-const (
-	baseAsset  = "0000000000000000000000000000000000000000000000000000000000000000"
-	quoteAsset = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-)
-
-func TestFundMarket(t *testing.T) {
+func TestVerifyMarketFunds(t *testing.T) {
 	t.Parallel()
 
 	market := newTestMarket()
@@ -30,27 +25,22 @@ func TestFundMarket(t *testing.T) {
 		},
 	}
 
-	err := market.FundMarket(outpoints, baseAsset)
+	err := market.VerifyMarketFunds(outpoints)
 	require.NoError(t, err)
-	require.Equal(t, baseAsset, market.BaseAsset)
-	require.Equal(t, quoteAsset, market.QuoteAsset)
-	require.True(t, market.IsFunded())
 }
 
-func TestFailingFundMarket(t *testing.T) {
+func TestFailingVerifyMarketFunds(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name          string
 		market        *domain.Market
-		baseAsset     string
 		outpoints     []domain.OutpointWithAsset
 		expectedError error
 	}{
 		{
-			name:      "missing_quote_asset",
-			market:    newTestMarket(),
-			baseAsset: "0000000000000000000000000000000000000000000000000000000000000000",
+			name:   "missing_quote_asset",
+			market: newTestMarket(),
 			outpoints: []domain.OutpointWithAsset{
 				{
 					Asset: "0000000000000000000000000000000000000000000000000000000000000000",
@@ -61,9 +51,8 @@ func TestFailingFundMarket(t *testing.T) {
 			expectedError: domain.ErrMarketMissingQuoteAsset,
 		},
 		{
-			name:      "missing_base_asset",
-			market:    newTestMarket(),
-			baseAsset: "0000000000000000000000000000000000000000000000000000000000000000",
+			name:   "missing_base_asset",
+			market: newTestMarket(),
 			outpoints: []domain.OutpointWithAsset{
 				{
 					Asset: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -74,9 +63,8 @@ func TestFailingFundMarket(t *testing.T) {
 			expectedError: domain.ErrMarketMissingBaseAsset,
 		},
 		{
-			name:      "to_many_assets",
-			market:    newTestMarket(),
-			baseAsset: "0000000000000000000000000000000000000000000000000000000000000000",
+			name:   "to_many_assets",
+			market: newTestMarket(),
 			outpoints: []domain.OutpointWithAsset{
 				{
 					Asset: "0000000000000000000000000000000000000000000000000000000000000000",
@@ -100,7 +88,7 @@ func TestFailingFundMarket(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.market.FundMarket(tt.outpoints, tt.baseAsset)
+			err := tt.market.VerifyMarketFunds(tt.outpoints)
 			require.EqualError(t, err, tt.expectedError.Error())
 		})
 	}
@@ -109,7 +97,7 @@ func TestFailingFundMarket(t *testing.T) {
 func TestMakeTradable(t *testing.T) {
 	t.Parallel()
 
-	m := newTestMarketFunded()
+	m := newTestMarket()
 
 	err := m.MakeTradable()
 	require.NoError(t, err)
@@ -125,13 +113,8 @@ func TestFailingMakeTradable(t *testing.T) {
 		expectedError error
 	}{
 		{
-			name:          "not_funded",
-			market:        newTestMarket(),
-			expectedError: domain.ErrMarketNotFunded,
-		},
-		{
 			name:          "not_priced",
-			market:        newTestMarketFundedWithPluggableStrategy(),
+			market:        newTestMarketWithPluggableStrategy(),
 			expectedError: domain.ErrMarketNotPriced,
 		},
 	}
@@ -154,19 +137,10 @@ func TestMakeNotTradable(t *testing.T) {
 	require.False(t, m.IsTradable())
 }
 
-func TestFailingMakeNotTradable(t *testing.T) {
-	t.Parallel()
-
-	m := newTestMarket()
-
-	err := m.MakeNotTradable()
-	require.EqualError(t, err, domain.ErrMarketNotFunded.Error())
-}
-
 func TestMakeStrategyPluggable(t *testing.T) {
 	t.Parallel()
 
-	m := newTestMarketFunded()
+	m := newTestMarket()
 
 	err := m.MakeStrategyPluggable()
 	require.NoError(t, err)
@@ -186,7 +160,7 @@ func TestFailingMakeStrategyPluggable(t *testing.T) {
 func TestMakeStrategyBalanced(t *testing.T) {
 	t.Parallel()
 
-	m := newTestMarketFundedWithPluggableStrategy()
+	m := newTestMarketWithPluggableStrategy()
 
 	err := m.MakeStrategyBalanced()
 	require.NoError(t, err)
@@ -205,7 +179,7 @@ func TestFailingMakeStrategyBalanced(t *testing.T) {
 func TestChangeFeeBasisPoint(t *testing.T) {
 	t.Parallel()
 
-	m := newTestMarketFunded()
+	m := newTestMarket()
 	newFee := int64(50)
 
 	err := m.ChangeFeeBasisPoint(newFee)
@@ -223,12 +197,6 @@ func TestFailingChangeFeeBasisPoint(t *testing.T) {
 		expectedError error
 	}{
 		{
-			name:          "not_funded",
-			market:        newTestMarket(),
-			marketFee:     50,
-			expectedError: domain.ErrMarketNotFunded,
-		},
-		{
 			name:          "must_be_closed",
 			market:        newTestMarketTradable(),
 			marketFee:     50,
@@ -236,13 +204,13 @@ func TestFailingChangeFeeBasisPoint(t *testing.T) {
 		},
 		{
 			name:          "fee_too_low",
-			market:        newTestMarketFunded(),
+			market:        newTestMarket(),
 			marketFee:     -1,
 			expectedError: domain.ErrMarketFeeTooLow,
 		},
 		{
 			name:          "fee_too_high",
-			market:        newTestMarketFunded(),
+			market:        newTestMarket(),
 			marketFee:     10000,
 			expectedError: domain.ErrMarketFeeTooHigh,
 		},
@@ -259,7 +227,7 @@ func TestFailingChangeFeeBasisPoint(t *testing.T) {
 func TestChangeFixedFee(t *testing.T) {
 	t.Parallel()
 
-	m := newTestMarketFunded()
+	m := newTestMarket()
 	baseFee := int64(100)
 	quoteFee := int64(200000)
 
@@ -279,38 +247,33 @@ func TestFailingChangeFixedFee(t *testing.T) {
 		expectedError     error
 	}{
 		{
-			name:          "not_funded",
-			market:        newTestMarket(),
-			expectedError: domain.ErrMarketNotFunded,
-		},
-		{
 			name:          "must_be_closed",
 			market:        newTestMarketTradable(),
 			expectedError: domain.ErrMarketMustBeClosed,
 		},
 		{
 			name:          "invalid_fixed_base_fee",
-			market:        newTestMarketFunded(),
+			market:        newTestMarket(),
 			baseFee:       -1,
 			quoteFee:      1000,
 			expectedError: domain.ErrInvalidFixedFee,
 		},
 		{
 			name:          "invalid_fixed_quote_fee",
-			market:        newTestMarketFunded(),
+			market:        newTestMarket(),
 			baseFee:       100,
 			quoteFee:      -1,
 			expectedError: domain.ErrInvalidFixedFee,
 		},
 		{
 			name:          "missing_fixed_base_fee",
-			market:        newTestMarketFunded(),
+			market:        newTestMarket(),
 			quoteFee:      1000,
 			expectedError: domain.ErrMissingFixedFee,
 		},
 		{
 			name:          "missing_fixed_quote_fee",
-			market:        newTestMarketFunded(),
+			market:        newTestMarket(),
 			baseFee:       1000,
 			expectedError: domain.ErrMissingFixedFee,
 		},
@@ -335,13 +298,13 @@ func TestChangeMarketPrices(t *testing.T) {
 	}{
 		{
 			name:       "change_prices_with_balanced_strategy",
-			market:     newTestMarketFunded(),
+			market:     newTestMarket(),
 			basePrice:  decimal.NewFromFloat(0.00002),
 			quotePrice: decimal.NewFromFloat(50000),
 		},
 		{
 			name:       "change_prices_with_pluggable_strategy",
-			market:     newTestMarketFundedWithPluggableStrategy(),
+			market:     newTestMarketWithPluggableStrategy(),
 			basePrice:  decimal.NewFromFloat(0.00002),
 			quotePrice: decimal.NewFromFloat(50000),
 		},
@@ -366,8 +329,8 @@ func TestFailingChangeBasePrice(t *testing.T) {
 
 	m := newTestMarket()
 
-	err := m.ChangeBasePrice(decimal.NewFromFloat(0.0002))
-	require.EqualError(t, err, domain.ErrMarketNotFunded.Error())
+	err := m.ChangeBasePrice(decimal.NewFromFloat(-0.0002))
+	require.EqualError(t, err, domain.ErrMarketInvalidBasePrice.Error())
 }
 
 func TestFailingChangeQuotePrice(t *testing.T) {
@@ -375,15 +338,15 @@ func TestFailingChangeQuotePrice(t *testing.T) {
 
 	m := newTestMarket()
 
-	err := m.ChangeQuotePrice(decimal.NewFromFloat(50000))
-	require.EqualError(t, err, domain.ErrMarketNotFunded.Error())
+	err := m.ChangeQuotePrice(decimal.NewFromFloat(-50000))
+	require.EqualError(t, err, domain.ErrMarketInvalidQuotePrice.Error())
 }
 
 func TestPreview(t *testing.T) {
 	t.Parallel()
 
 	t.Run("market with balanced strategy", func(t *testing.T) {
-		market := newTestMarketFunded()
+		market := newTestMarket()
 		market.ChangeFeeBasisPoint(100)
 		market.ChangeFixedFee(650, 20000000)
 		market.MakeTradable()
@@ -470,7 +433,7 @@ func TestPreview(t *testing.T) {
 	})
 
 	t.Run("market with pluggable strategy", func(t *testing.T) {
-		market := newTestMarketFundedWithPluggableStrategy()
+		market := newTestMarketWithPluggableStrategy()
 		market.MakeNotTradable()
 		market.ChangeFeeBasisPoint(100)
 		market.ChangeFixedFee(650, 20000000)
@@ -564,7 +527,7 @@ func TestFailingPreview(t *testing.T) {
 	t.Parallel()
 
 	t.Run("market with balanced strategy", func(t *testing.T) {
-		market := newTestMarketFunded()
+		market := newTestMarket()
 		market.ChangeFeeBasisPoint(100)
 		market.MakeTradable()
 
@@ -672,7 +635,7 @@ func TestFailingPreview(t *testing.T) {
 	})
 
 	t.Run("market with pluggable strategy", func(t *testing.T) {
-		market := newTestMarketFundedWithPluggableStrategy()
+		market := newTestMarketWithPluggableStrategy()
 		market.MakeNotTradable()
 		market.ChangeFeeBasisPoint(100)
 		market.ChangeBasePrice(decimal.NewFromFloat(0.000028571429))
@@ -792,7 +755,7 @@ func TestFailingPreview(t *testing.T) {
 	})
 
 	t.Run("market with balanced strategy and fixed fees", func(t *testing.T) {
-		market := newTestMarketFunded()
+		market := newTestMarket()
 		market.ChangeFeeBasisPoint(100)
 		market.ChangeFixedFee(650, 20000000)
 		market.MakeTradable()
@@ -912,7 +875,7 @@ func TestFailingPreview(t *testing.T) {
 	t.Run("market with pluggable strategy and fixed fees", func(t *testing.T) {
 		t.Parallel()
 
-		market := newTestMarketFundedWithPluggableStrategy()
+		market := newTestMarketWithPluggableStrategy()
 		market.MakeNotTradable()
 		market.ChangeFeeBasisPoint(100)
 		market.ChangeFixedFee(650, 20000000)
@@ -1052,37 +1015,18 @@ func TestFailingPreview(t *testing.T) {
 }
 
 func newTestMarket() *domain.Market {
-	m, _ := domain.NewMarket(0, 25)
-	return m
-}
-
-func newTestMarketFunded() *domain.Market {
-	outpoints := []domain.OutpointWithAsset{
-		{
-			Asset: baseAsset,
-			Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-			Vout:  0,
-		},
-		{
-			Asset: quoteAsset,
-			Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-			Vout:  1,
-		},
-	}
-
-	m := newTestMarket()
-	m.FundMarket(outpoints, baseAsset)
+	m, _ := domain.NewMarket(0, baseAsset, quoteAsset, 25)
 	return m
 }
 
 func newTestMarketTradable() *domain.Market {
-	m := newTestMarketFunded()
+	m := newTestMarket()
 	m.MakeTradable()
 	return m
 }
 
-func newTestMarketFundedWithPluggableStrategy() *domain.Market {
-	m := newTestMarketFunded()
+func newTestMarketWithPluggableStrategy() *domain.Market {
+	m := newTestMarket()
 	m.MakeStrategyPluggable()
 	return m
 }

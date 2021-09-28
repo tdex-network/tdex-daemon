@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +15,8 @@ var (
 		Name:  "fee",
 		Usage: "manage the fee account of the daemon's wallet",
 		Subcommands: []*cli.Command{
-			feeBalanceCmd, feeDepositCmd, feeClaimCmd, feeWithdrawCmd,
+			feeBalanceCmd, feeDepositCmd, feeListAddressesCmd, feeClaimCmd,
+			feeWithdrawCmd,
 		},
 	}
 
@@ -35,6 +35,11 @@ var (
 			},
 		},
 		Action: feeDepositAction,
+	}
+	feeListAddressesCmd = &cli.Command{
+		Name:   "addresses",
+		Usage:  "list all the derived deposit addresses of the fee account",
+		Action: feeListAddressesAction,
 	}
 	feeClaimCmd = &cli.Command{
 		Name:  "claim",
@@ -76,7 +81,7 @@ func feeBalanceAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	reply, err := client.BalanceFeeAccount(context.Background(), &pb.BalanceFeeAccountRequest{})
+	reply, err := client.GetFeeBalance(context.Background(), &pb.GetFeeBalanceRequest{})
 	if err != nil {
 		return err
 	}
@@ -94,8 +99,8 @@ func feeDepositAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	numOfAddresses := ctx.Int64("num_of_addresses")
-	resp, err := client.DepositFeeAccount(
-		context.Background(), &pb.DepositFeeAccountRequest{
+	resp, err := client.GetFeeAddress(
+		context.Background(), &pb.GetFeeAddressRequest{
 			NumOfAddresses: numOfAddresses,
 		},
 	)
@@ -104,6 +109,32 @@ func feeDepositAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(resp)
+
+	return nil
+}
+
+func feeListAddressesAction(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	reply, err := client.ListFeeAddresses(
+		context.Background(), &pb.ListFeeAddressesRequest{},
+	)
+	if err != nil {
+		return err
+	}
+
+	list := reply.GetAddressWithBlinidngKey()
+	if list == nil {
+		fmt.Println("[]")
+		return nil
+	}
+
+	listStr, _ := json.MarshalIndent(list, "", "   ")
+	fmt.Println(string(listStr))
 
 	return nil
 }
@@ -120,8 +151,8 @@ func feeClaimAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	if _, err := client.ClaimFeeDeposit(
-		context.Background(), &pb.ClaimFeeDepositRequest{
+	if _, err := client.ClaimFeeDeposits(
+		context.Background(), &pb.ClaimFeeDepositsRequest{
 			Outpoints: outpoints,
 		},
 	); err != nil {
@@ -157,19 +188,11 @@ func feeWithdrawAction(ctx *cli.Context) error {
 		Amount:           amount,
 		Address:          addr,
 		MillisatsPerByte: mSatsPerByte,
-		Push:             true,
 	})
 	if err != nil {
 		return err
 	}
 
-	res := map[string]string{
-		"txid": hex.EncodeToString(reply.GetTxid()),
-	}
-
-	resStr, _ := json.MarshalIndent(res, "", "\t")
-
-	fmt.Println(string(resStr))
-
+	printRespJSON(reply)
 	return nil
 }

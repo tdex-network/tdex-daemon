@@ -73,15 +73,18 @@ func TestMarketRepositoryImplementations(t *testing.T) {
 }
 
 func testGetOrCreateMarket(t *testing.T, repo marketRepository) {
-	// to create a market is mandatory to specify the AccountIndex and Fee
+	// to create a market is mandatory to specify the account index, the asset
+	// pair and the fee
 	accountIndex := domain.MarketAccountStart
+	marketBaseAsset := "0000000000000000000000000000000000000000000000000000000000000000"
+	marketQuoteAsset := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 	iNewMarket, err := repo.write(
 		func(ctx context.Context) (interface{}, error) {
-			return repo.Repository.GetOrCreateMarket(
-				ctx,
-				&domain.Market{AccountIndex: accountIndex, Fee: fee},
+			market, _ := domain.NewMarket(
+				accountIndex, marketBaseAsset, marketQuoteAsset, fee,
 			)
+			return repo.Repository.GetOrCreateMarket(ctx, market)
 		},
 	)
 	require.NoError(t, err)
@@ -90,6 +93,8 @@ func testGetOrCreateMarket(t *testing.T, repo marketRepository) {
 	require.True(t, ok)
 	require.NotNil(t, newMarket)
 	require.Equal(t, accountIndex, newMarket.AccountIndex)
+	require.Equal(t, marketBaseAsset, newMarket.BaseAsset)
+	require.Equal(t, marketQuoteAsset, newMarket.QuoteAsset)
 	require.Equal(t, fee, newMarket.Fee)
 
 	// to retrieve an existing market is enough to specify just the AccountIndex
@@ -111,6 +116,8 @@ func testGetOrCreateMarket(t *testing.T, repo marketRepository) {
 
 func testGetMarketByAccount(t *testing.T, repo marketRepository) {
 	accountIndex := domain.MarketAccountStart + 1
+	baseAsset := "0000000000000000000000000000000000000000000000000000000000000000"
+	quoteAsset := "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
 	market, err := repo.read(
 		func(ctx context.Context) (interface{}, error) {
@@ -122,10 +129,10 @@ func testGetMarketByAccount(t *testing.T, repo marketRepository) {
 
 	_, err = repo.write(
 		func(ctx context.Context) (interface{}, error) {
-			return repo.Repository.GetOrCreateMarket(
-				ctx,
-				&domain.Market{AccountIndex: accountIndex, Fee: fee},
+			market, _ := domain.NewMarket(
+				accountIndex, baseAsset, quoteAsset, fee,
 			)
+			return repo.Repository.GetOrCreateMarket(ctx, market)
 		},
 	)
 	require.NoError(t, err)
@@ -142,8 +149,7 @@ func testGetMarketByAccount(t *testing.T, repo marketRepository) {
 func testGetMarketByAsset(t *testing.T, repo marketRepository) {
 	accountIndex := domain.MarketAccountStart + 2
 	baseAsset := "0000000000000000000000000000000000000000000000000000000000000000"
-	quoteAsset := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	mockedOutpoints := mockMarketFunds(baseAsset, quoteAsset)
+	quoteAsset := "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
 
 	type response struct {
 		market       *domain.Market
@@ -164,25 +170,10 @@ func testGetMarketByAsset(t *testing.T, repo marketRepository) {
 
 	_, err = repo.write(
 		func(ctx context.Context) (interface{}, error) {
-			_, err := repo.Repository.GetOrCreateMarket(
-				ctx,
-				&domain.Market{AccountIndex: accountIndex, Fee: fee},
+			market, _ := domain.NewMarket(
+				accountIndex, baseAsset, quoteAsset, fee,
 			)
-			if err != nil {
-				return nil, err
-			}
-
-			return nil, repo.Repository.UpdateMarket(
-				ctx,
-				accountIndex,
-				func(market *domain.Market) (*domain.Market, error) {
-					err := market.FundMarket(
-						mockedOutpoints,
-						baseAsset,
-					)
-					return market, err
-				},
-			)
+			return repo.Repository.GetOrCreateMarket(ctx, market)
 		},
 	)
 	require.NoError(t, err)
@@ -226,25 +217,11 @@ func testGetAllMarkets(t *testing.T, repo marketRepository) {
 func testOpenCloseMarket(t *testing.T, repo marketRepository) {
 	accountIndex := domain.MarketAccountStart + 4
 	baseAsset := "0000000000000000000000000000000000000000000000000000000000000000"
-	quoteAsset := "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-	mockedOutpoints := mockMarketFunds(baseAsset, quoteAsset)
+	quoteAsset := "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+
 	iOpenMarkets, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if _, err := repo.Repository.GetOrCreateMarket(
-			ctx,
-			&domain.Market{AccountIndex: accountIndex, Fee: fee},
-		); err != nil {
-			return nil, err
-		}
-		if err := repo.Repository.UpdateMarket(
-			ctx,
-			accountIndex,
-			func(m *domain.Market) (*domain.Market, error) {
-				if err := m.FundMarket(mockedOutpoints, baseAsset); err != nil {
-					return nil, err
-				}
-				return m, nil
-			},
-		); err != nil {
+		market, _ := domain.NewMarket(accountIndex, baseAsset, quoteAsset, fee)
+		if _, err := repo.Repository.GetOrCreateMarket(ctx, market); err != nil {
 			return nil, err
 		}
 

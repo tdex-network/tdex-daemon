@@ -220,19 +220,19 @@ func newTradeService(
 			Return(randomTxs(info.Address)[0], nil)
 	}
 
-	mkt, err := repoManager.MarketRepository().GetOrCreateMarket(
-		ctx,
-		&domain.Market{
-			AccountIndex: domain.MarketAccountStart,
-			Fee:          marketFee,
-		},
+	mkt, err := domain.NewMarket(
+		domain.MarketAccountStart, marketBaseAsset, marketQuoteAsset, marketFee,
 	)
 	if err != nil {
 		return nil, err
 	}
+	if _, err := repoManager.MarketRepository().GetOrCreateMarket(
+		ctx, mkt,
+	); err != nil {
+		return nil, err
+	}
 
 	if err := repoManager.MarketRepository().UpdateMarket(ctx, mkt.AccountIndex, func(m *domain.Market) (*domain.Market, error) {
-		m.FundMarket(mktOutpointsWithAsset, marketBaseAsset)
 		if withFixedFee {
 			m.ChangeFixedFee(600, 5000)
 		}

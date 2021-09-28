@@ -185,8 +185,8 @@ func fragmentFeeAction(ctx *cli.Context) error {
 
 	log.Info("claiming fee deposits...")
 	outpoints := createOutpoints(txID, numFragments)
-	if _, err := client.ClaimFeeDeposit(
-		context.Background(), &pboperator.ClaimFeeDepositRequest{
+	if _, err := client.ClaimFeeDeposits(
+		context.Background(), &pboperator.ClaimFeeDepositsRequest{
 			Outpoints: outpoints,
 		},
 	); err != nil {
@@ -270,8 +270,8 @@ func getFeeDepositAddresses(
 	numOfAddresses int,
 	client pboperator.OperatorClient,
 ) ([]string, error) {
-	resp, err := client.DepositFeeAccount(
-		context.Background(), &pboperator.DepositFeeAccountRequest{
+	resp, err := client.GetFeeAddress(
+		context.Background(), &pboperator.GetFeeAddressRequest{
 			NumOfAddresses: int64(numOfAddresses),
 		},
 	)
@@ -279,8 +279,9 @@ func getFeeDepositAddresses(
 		return nil, err
 	}
 
-	addresses := make([]string, 0, len(resp.GetAddressWithBlindingKey()))
-	for _, v := range resp.GetAddressWithBlindingKey() {
+	addressesAndKeys := resp.GetAddressWithBlindingKey()
+	addresses := make([]string, 0, len(addressesAndKeys))
+	for _, v := range addressesAndKeys {
 		addresses = append(addresses, v.Address)
 	}
 

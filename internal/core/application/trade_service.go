@@ -147,16 +147,8 @@ func (t *tradeService) GetMarketPrice(
 	amount uint64,
 	asset string,
 ) (*PriceWithFee, error) {
-	if err := validateAssetString(market.BaseAsset); err != nil {
-		return nil, domain.ErrMarketInvalidBaseAsset
-	}
-
-	if err := validateAssetString(market.QuoteAsset); err != nil {
-		return nil, domain.ErrMarketInvalidQuoteAsset
-	}
-
-	if market.BaseAsset != t.marketBaseAsset {
-		return nil, ErrMarketNotExist
+	if err := market.Validate(); err != nil {
+		return nil, err
 	}
 
 	if err := validateAssetString(asset); err != nil {
@@ -195,13 +187,8 @@ func (t *tradeService) GetMarketBalance(
 	ctx context.Context,
 	market Market,
 ) (*BalanceWithFee, error) {
-	// check the asset strings
-	if err := validateAssetString(market.BaseAsset); err != nil {
-		return nil, domain.ErrMarketInvalidBaseAsset
-	}
-
-	if err := validateAssetString(market.QuoteAsset); err != nil {
-		return nil, domain.ErrMarketInvalidQuoteAsset
+	if err := market.Validate(); err != nil {
+		return nil, err
 	}
 
 	m, accountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
@@ -238,12 +225,8 @@ func (t *tradeService) TradePropose(
 	tradeType int,
 	swapRequest domain.SwapRequest,
 ) (domain.SwapAccept, domain.SwapFail, uint64, error) {
-	if err := validateAssetString(market.BaseAsset); err != nil {
-		return nil, nil, 0, domain.ErrMarketInvalidBaseAsset
-	}
-
-	if err := validateAssetString(market.QuoteAsset); err != nil {
-		return nil, nil, 0, domain.ErrMarketInvalidQuoteAsset
+	if err := market.Validate(); err != nil {
+		return nil, nil, 0, err
 	}
 
 	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)

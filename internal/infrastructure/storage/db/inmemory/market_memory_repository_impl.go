@@ -100,9 +100,7 @@ func (r MarketRepositoryImpl) UpdateMarket(
 	}
 
 	r.store.markets[accountIndex] = *updatedMarket
-	if updatedMarket.IsFunded() {
-		r.store.accountsByAsset[updatedMarket.QuoteAsset] = accountIndex
-	}
+	r.store.accountsByAsset[updatedMarket.QuoteAsset] = accountIndex
 
 	return nil
 }
@@ -115,6 +113,9 @@ func (r MarketRepositoryImpl) OpenMarket(_ context.Context, quoteAsset string) e
 	currentMarket, accountIndex, err := r.getMarketByAsset(quoteAsset)
 	if err != nil {
 		return err
+	}
+	if currentMarket == nil {
+		return nil
 	}
 
 	// We update the market status only if the market is closed.
@@ -197,12 +198,13 @@ func (r MarketRepositoryImpl) getOrCreateMarket(market *domain.Market) (*domain.
 	// returns one actually. The err variable is only needed to be able to
 	// override mkt into the if statement.
 	mkt, err := r.getMarketByAccount(market.AccountIndex)
+	if err != nil {
+		return nil, err
+	}
 	if mkt == nil {
-		mkt, err = domain.NewMarket(market.AccountIndex, market.Fee)
-		if err != nil {
-			return nil, err
-		}
-		r.store.markets[market.AccountIndex] = *mkt
+		r.store.markets[market.AccountIndex] = *market
+		r.store.accountsByAsset[market.QuoteAsset] = market.AccountIndex
+		mkt = market
 	}
 	return mkt, nil
 }
