@@ -12,6 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 )
 
 var mockedErr = &domain.SwapError{
@@ -373,6 +374,10 @@ func TestFailingTradeSettle(t *testing.T) {
 				name:  "with_trade_proposal",
 				trade: newTradeProposal(),
 			},
+			{
+				name:  "with_trade_failed",
+				trade: newTradeFailed(),
+			},
 		}
 
 		for i := range tests {
@@ -516,6 +521,14 @@ func newTradeSettled() *domain.Trade {
 	trade.ExpiryTime = 0
 	trade.SettlementTime = uint64(time.Now().Unix())
 	trade.Status = domain.SettledStatus
+	return trade
+}
+
+func newTradeFailed() *domain.Trade {
+	trade := newTradeProposal()
+	trade.Fail(
+		trade.SwapRequest.ID, int(pkgswap.ErrCodeRejectedSwapRequest), "mock error",
+	)
 	return trade
 }
 
