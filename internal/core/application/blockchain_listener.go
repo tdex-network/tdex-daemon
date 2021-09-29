@@ -232,6 +232,11 @@ func (b *blockchainListener) listenToEventChannel() {
 				break
 			}
 
+			if trade.Status.Failed {
+				b.StopObserveOutpoints(e.Outpoints)
+				break
+			}
+
 			if txIsConfirmed {
 				if err := b.settleTrade(tradeID, e.BlockTime, e.TxHex, e.TxID); err != nil {
 					log.WithError(err).Warnf(
@@ -239,6 +244,10 @@ func (b *blockchainListener) listenToEventChannel() {
 					)
 					break
 				}
+				// Publish message for topic TradeSettled to pubsub service.
+				go b.publishTradeSettledEvent(trade)
+				// Stop watching outpoints.
+				b.StopObserveOutpoints(e.Outpoints)
 			}
 
 			if err := b.updateUtxoSet(
@@ -247,14 +256,6 @@ func (b *blockchainListener) listenToEventChannel() {
 				log.WithError(err).Warnf(
 					"an error occured while confirming or addding unspents",
 				)
-				break
-			}
-
-			if txIsConfirmed {
-				// Publish message for topic TradeSettled to pubsub service.
-				go b.publishTradeSettledEvent(trade)
-				// Stop watching outpoints.
-				b.StopObserveOutpoints(e.Outpoints)
 			}
 		}
 	}
