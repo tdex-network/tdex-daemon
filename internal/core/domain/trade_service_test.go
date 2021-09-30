@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
@@ -360,6 +361,14 @@ func TestTradeSettle(t *testing.T) {
 
 func TestFailingTradeSettle(t *testing.T) {
 	now := uint64(time.Now().Unix())
+	mockedSwapParser := mockSwapParser{}
+	mockedSwapParser.On(
+		"SerializeFail",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(randomID(), randomBytes(100))
+	domain.SwapParserManager = mockedSwapParser
 
 	t.Run("failing_because_invalid_status", func(t *testing.T) {
 		tests := []struct {
