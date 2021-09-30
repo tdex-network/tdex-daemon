@@ -13,6 +13,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
+	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
@@ -473,7 +474,10 @@ func (t *tradeService) tradeComplete(
 	}
 	log.Infof("trade with id %s completed", trade.ID)
 
-	txID, err = t.explorerSvc.BroadcastTransaction(res.TxHex)
+	cb := circuitbreaker.NewCircuitBreaker()
+	iTxid, err := cb.Execute(func() (interface{}, error) {
+		return t.explorerSvc.BroadcastTransaction(res.TxHex)
+	})
 	if err != nil {
 		trade.Fail(
 			swapID, int(pkgswap.ErrCodeFailedToComplete), fmt.Sprintf(
@@ -482,6 +486,7 @@ func (t *tradeService) tradeComplete(
 		log.WithError(err).WithField("hex", res.TxHex).Warn("unable to broadcast trade tx")
 		return
 	}
+	txID = iTxid.(string)
 	trade.TxID = txID
 
 	log.Infof("trade with id %s broadcasted: %s", trade.ID, txID)

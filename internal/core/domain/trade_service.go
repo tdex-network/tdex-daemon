@@ -160,7 +160,7 @@ func (t *Trade) Settle(settlementTime uint64) (bool, error) {
 		return true, nil
 	}
 
-	if !(t.IsCompleted() || t.IsAccepted() || t.Status.Failed) {
+	if !(t.IsCompleted() || t.IsAccepted()) || t.Status.Failed {
 		return false, ErrTradeMustBeCompletedOrAccepted
 	}
 

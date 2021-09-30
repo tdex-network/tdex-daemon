@@ -112,13 +112,6 @@ func (u unspentRepositoryImpl) GetAvailableUnspentsForAddresses(
 	return u.findUnspents(ctx, query, unlockedOnly)
 }
 
-func (u unspentRepositoryImpl) GetUnspentWithKey(
-	ctx context.Context,
-	unspentKey domain.UnspentKey,
-) (*domain.Unspent, error) {
-	return u.getUnspent(ctx, unspentKey)
-}
-
 func (u unspentRepositoryImpl) GetBalance(
 	ctx context.Context,
 	addresses []string,
@@ -241,15 +234,18 @@ func (u unspentRepositoryImpl) spendUnspent(
 	ctx context.Context,
 	key domain.UnspentKey,
 ) (bool, error) {
-	unspent, err := u.getUnspent(ctx, key)
+	query := badgerhold.Where("TxID").Eq(key.TxID).And("VOut").Eq(key.VOut)
+	unlockedOnly := false
+	unspents, err := u.findUnspents(ctx, query, unlockedOnly)
 	if err != nil {
 		return false, err
 	}
 
-	if unspent == nil {
+	if unspents == nil {
 		return false, nil
 	}
 
+	unspent := unspents[0]
 	if unspent.Spent {
 		return false, nil
 	}
@@ -257,7 +253,7 @@ func (u unspentRepositoryImpl) spendUnspent(
 	unspent.Spend()
 	unspent.Unlock() // prevent conflict, locks not stored under unspent prefix
 
-	if err := u.updateUnspent(ctx, key, *unspent); err != nil {
+	if err := u.updateUnspent(ctx, key, unspent); err != nil {
 		return false, err
 	}
 
@@ -285,19 +281,22 @@ func (u unspentRepositoryImpl) confirmUnspent(
 	ctx context.Context,
 	key domain.UnspentKey,
 ) (bool, error) {
-	unspent, err := u.getUnspent(ctx, key)
+	query := badgerhold.Where("TxID").Eq(key.TxID).And("VOut").Eq(key.VOut)
+	unlockedOnly := true
+	unspents, err := u.findUnspents(ctx, query, unlockedOnly)
 	if err != nil {
 		return false, err
 	}
 
-	if unspent == nil {
+	if unspents == nil {
 		return false, nil
 	}
 
+	unspent := unspents[0]
 	unspent.Confirm()
 	unspent.Unlock() // prevent conflict, locks not stored under unspent prefix
 
-	if err := u.updateUnspent(ctx, key, *unspent); err != nil {
+	if err := u.updateUnspent(ctx, key, unspent); err != nil {
 		return false, err
 	}
 
@@ -327,15 +326,17 @@ func (u unspentRepositoryImpl) lockUnspent(
 	key domain.UnspentKey,
 	tradeID uuid.UUID,
 ) (bool, error) {
-	unspent, err := u.getUnspent(ctx, key)
+	query := badgerhold.Where("TxID").Eq(key.TxID).And("VOut").Eq(key.VOut)
+	unlockedOnly := true
+	unspents, err := u.findUnspents(ctx, query, unlockedOnly)
 	if err != nil {
 		return false, err
 	}
-
-	if unspent == nil {
+	if unspents == nil {
 		return false, nil
 	}
 
+	unspent := unspents[0]
 	if unspent.IsLocked() {
 		return false, nil
 	}
@@ -368,15 +369,18 @@ func (u unspentRepositoryImpl) unlockUnspent(
 	ctx context.Context,
 	key domain.UnspentKey,
 ) (bool, error) {
-	unspent, err := u.getUnspent(ctx, key)
+	query := badgerhold.Where("TxID").Eq(key.TxID).And("VOut").Eq(key.VOut)
+	unlockedOnly := false
+	unspents, err := u.findUnspents(ctx, query, unlockedOnly)
 	if err != nil {
 		return false, err
 	}
 
-	if unspent == nil {
+	if unspents == nil {
 		return false, nil
 	}
 
+	unspent := unspents[0]
 	if !unspent.IsLocked() {
 		return false, nil
 	}
@@ -395,16 +399,18 @@ func (u unspentRepositoryImpl) findUnspents(
 ) ([]domain.Unspent, error) {
 	var unspents []domain.Unspent
 	var unlockedUnspents []domain.Unspent
-
+	var err error
 	if ctx.Value("utx") != nil {
 		tx := ctx.Value("utx").(*badger.Txn)
-		if err := u.store.TxFind(tx, &unspents, query); err != nil {
-			return nil, err
-		}
+		err = u.store.TxFind(tx, &unspents, query)
 	} else {
-		if err := u.store.Find(&unspents, query); err != nil {
-			return nil, err
+		err = u.store.Find(&unspents, query)
+	}
+	if err != nil {
+		if err == badgerhold.ErrNotFound {
+			return nil, nil
 		}
+		return nil, err
 	}
 
 	for i, unspent := range unspents {
@@ -427,48 +433,28 @@ func (u unspentRepositoryImpl) findUnspents(
 	return unspents, nil
 }
 
-func (u unspentRepositoryImpl) getUnspent(
-	ctx context.Context,
-	key domain.UnspentKey,
-) (*domain.Unspent, error) {
-	var unspent domain.Unspent
-	var err error
-
-	if ctx.Value("utx") != nil {
-		tx := ctx.Value("utx").(*badger.Txn)
-		err = u.store.TxGet(tx, key, &unspent)
-	} else {
-		err = u.store.Get(key, &unspent)
-	}
-	if err != nil {
-		if err == badgerhold.ErrNotFound {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	tradeID, err := u.getLock(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	if tradeID != nil {
-		unspent.Lock(tradeID)
-	}
-
-	return &unspent, nil
-}
-
 func (u unspentRepositoryImpl) updateUnspent(
 	ctx context.Context,
 	key domain.UnspentKey,
 	unspent domain.Unspent,
 ) error {
+	query := badgerhold.Where("TxID").Eq(key.TxID).And("VOut").Eq(key.VOut)
 	if ctx.Value("utx") != nil {
 		tx := ctx.Value("utx").(*badger.Txn)
-		return u.store.TxUpdate(tx, key, unspent)
+		return u.store.TxUpdateMatching(
+			tx, &domain.Unspent{}, query, func(record interface{}) error {
+				u := record.(*domain.Unspent)
+				*u = unspent
+				return nil
+			},
+		)
 	}
 
-	return u.store.Update(key, unspent)
+	return u.store.UpdateMatching(&domain.Unspent{}, query, func(record interface{}) error {
+		u := record.(*domain.Unspent)
+		*u = unspent
+		return nil
+	})
 }
 
 func (u unspentRepositoryImpl) insertUnspent(

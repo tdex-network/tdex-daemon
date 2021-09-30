@@ -29,9 +29,6 @@ type UnspentRepository interface {
 	// GetAvailableUnspentsForAddresses returns the list of spendable UTXOs for the
 	// provided list of addresses (locked unspents excluded).
 	GetAvailableUnspentsForAddresses(ctx context.Context, addresses []string) ([]Unspent, error)
-	// GetUnspentWithKey returns all the info about an UTXO, if existing in the
-	// repository.
-	GetUnspentWithKey(ctx context.Context, unspentKey UnspentKey) (*Unspent, error)
 	// GetBalance returns the current balance of a certain asset for the provided
 	// list of addresses (locked unspents included)
 	GetBalance(ctx context.Context, addresses []string, assetHash string) (uint64, error)

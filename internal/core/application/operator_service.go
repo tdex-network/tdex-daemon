@@ -14,6 +14,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
+	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
@@ -21,11 +22,6 @@ import (
 	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/transaction"
-)
-
-const (
-	marketDeposit = iota
-	feeDeposit
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -332,10 +328,14 @@ func (o *operatorService) WithdrawFeeFunds(
 
 	var txid string
 	if req.Push {
-		txid, err = o.explorerSvc.BroadcastTransaction(txHex)
+		cb := circuitbreaker.NewCircuitBreaker()
+		iTxid, err := cb.Execute(func() (interface{}, error) {
+			return o.explorerSvc.BroadcastTransaction(txHex)
+		})
 		if err != nil {
 			return nil, nil, err
 		}
+		txid = iTxid.(string)
 		log.Debugf("withdrawal tx broadcasted with id: %s", txid)
 	}
 
@@ -899,10 +899,14 @@ func (o *operatorService) WithdrawMarketFunds(
 
 	var txid string
 	if req.Push {
-		txid, err = o.explorerSvc.BroadcastTransaction(txHex)
+		cb := circuitbreaker.NewCircuitBreaker()
+		iTxid, err := cb.Execute(func() (interface{}, error) {
+			return o.explorerSvc.BroadcastTransaction(txHex)
+		})
 		if err != nil {
 			return nil, nil, err
 		}
+		txid = iTxid.(string)
 		log.Debugf("withdrawal tx broadcasted with id: %s", txid)
 	}
 

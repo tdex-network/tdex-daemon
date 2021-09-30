@@ -52,11 +52,6 @@ func TestUnspentRepositoryImplementations(t *testing.T) {
 				testGetAvailableUnspentsForAddresses(t, repo)
 			})
 
-			t.Run("testGetUnspentWithKey", func(t *testing.T) {
-				t.Parallel()
-				testGetUnspentWithKey(t, repo)
-			})
-
 			t.Run("testGetBalance", func(t *testing.T) {
 				t.Parallel()
 				testGetBalance(t, repo)
@@ -177,28 +172,6 @@ func testGetAvailableUnspentsForAddresses(t *testing.T, repo unspentRepository) 
 	unspents, ok := iAvailableUnspents.([]domain.Unspent)
 	require.True(t, ok)
 	require.GreaterOrEqual(t, len(unspents), mockedData.expectedUnspents)
-}
-
-func testGetUnspentWithKey(t *testing.T, repo unspentRepository) {
-	mockedData := mockUnspentTestData(opts{numOfUnspents: 1})
-	mockedUnspents := mockedData.unspents
-	unspentKey := mockedUnspents[0].Key()
-
-	unspent, err := repo.read(func(ctx context.Context) (interface{}, error) {
-		return repo.Repository.GetUnspentWithKey(ctx, unspentKey)
-	})
-	require.NoError(t, err)
-	require.Nil(t, unspent)
-
-	unspent, err = repo.write(func(ctx context.Context) (interface{}, error) {
-		if _, err := repo.Repository.AddUnspents(ctx, mockedUnspents); err != nil {
-			return nil, err
-		}
-
-		return repo.Repository.GetUnspentWithKey(ctx, unspentKey)
-	})
-	require.NoError(t, err)
-	require.NotNil(t, unspent)
 }
 
 func testGetBalance(t *testing.T, repo unspentRepository) {

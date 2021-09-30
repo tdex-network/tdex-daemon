@@ -118,21 +118,6 @@ func (r UnspentRepositoryImpl) GetAvailableUnspentsForAddresses(
 	return r.getAvailableUnspents(addresses), nil
 }
 
-// GetUnspentWithKey ...
-func (r UnspentRepositoryImpl) GetUnspentWithKey(
-	_ context.Context,
-	unspentKey domain.UnspentKey,
-) (*domain.Unspent, error) {
-	r.store.locker.RLock()
-	defer r.store.locker.RUnlock()
-
-	unspent, ok := r.store.unspents[unspentKey]
-	if !ok {
-		return nil, nil
-	}
-	return &unspent, nil
-}
-
 // GetBalance ...
 func (r UnspentRepositoryImpl) GetBalance(
 	_ context.Context,
