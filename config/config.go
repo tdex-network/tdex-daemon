@@ -59,12 +59,6 @@ const (
 	EnableProfilerKey = "ENABLE_PROFILER"
 	// StatsIntervalKey defines interval for printing basic tdex statistics
 	StatsIntervalKey = "STATS_INTERVAL"
-	// CrawlLimitKey represents number of requests per second that crawler
-	//makes to explorer
-	CrawlLimitKey = "CRAWL_LIMIT"
-	// CrawlTokenBurst represents number of bursts tokens permitted from
-	//crawler to explorer
-	CrawlTokenBurstKey = "CRAWL_TOKEN"
 	// NoMacaroonsKey is used to start the daemon without using macaroons auth
 	// service.
 	NoMacaroonsKey = "NO_MACAROONS"
@@ -87,13 +81,13 @@ const (
 	// RescanRangeStartKey defines the initial index from where the daemon should
 	// start deriving and scanning for addresses of an account during the
 	// restoration of the utxos.
-	RescanRangeStartKey = "RESCAN_RANGE_START"
-	// RescanRangeEndKey defines the max number of consecutive unused addresses
+	RescanRangeStartKey = "RESCAN_START"
+	// RescanGapLimitKey defines the max number of consecutive unused addresses
 	// that cause the restoration to stop.
 	// For example, if set to 20, the utxo set restoration terminates whenever
 	// 20 consecutive unused addresses, or those not involved in any transaction
 	// in the blockchain.
-	RescanRangeEndKey = "RESCAN_RANGE_END"
+	RescanGapLimitKey = "RESCAN_GAP_LIMIT"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
@@ -127,13 +121,11 @@ func init() {
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
 	vip.SetDefault(StatsIntervalKey, 600)
-	vip.SetDefault(CrawlLimitKey, 10)
-	vip.SetDefault(CrawlTokenBurstKey, 1)
 	vip.SetDefault(NoMacaroonsKey, false)
 	vip.SetDefault(CBMaxFailingRequestsKey, 20)
 	vip.SetDefault(CBFailingRatioKey, 0.7)
 	vip.SetDefault(RescanRangeStartKey, 0)
-	vip.SetDefault(RescanRangeEndKey, 20)
+	vip.SetDefault(RescanGapLimitKey, 50)
 
 	if err := validate(); err != nil {
 		log.Fatalf("error while validating config: %s", err)
@@ -281,15 +273,15 @@ func validate() error {
 	}
 
 	start := GetInt(RescanRangeStartKey)
-	end := GetInt(RescanRangeEndKey)
+	end := GetInt(RescanGapLimitKey)
 	if start < 0 {
 		return fmt.Errorf("%s must not be a negative number", RescanRangeStartKey)
 	}
 	if end < 0 {
-		return fmt.Errorf("%s must not be a negative number", RescanRangeEndKey)
+		return fmt.Errorf("%s must not be a negative number", RescanGapLimitKey)
 	}
 	if start >= end {
-		return fmt.Errorf("%s must be greater than %s", RescanRangeStartKey, RescanRangeEndKey)
+		return fmt.Errorf("%s must be greater than %s", RescanRangeStartKey, RescanGapLimitKey)
 	}
 
 	return nil

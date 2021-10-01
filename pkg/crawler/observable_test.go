@@ -13,12 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/pkg/crawler"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"golang.org/x/time/rate"
 )
 
 var (
 	observationInterval = 2 * time.Second
-	rateLimiter         = newTestRateLimiter()
 	wantUtxoSpent       = true
 	wantTxConfirmed     = true
 )
@@ -89,7 +87,7 @@ func TestObservables(t *testing.T) {
 			errChan := make(chan error)
 			handler := crawler.NewObservableHandler(
 				tt.observable, tt.mockedExplorer,
-				wg, observationInterval, eventChan, errChan, rateLimiter,
+				wg, observationInterval, eventChan, errChan,
 			)
 
 			go handler.Start()
@@ -137,11 +135,6 @@ func mockedExplorerForOutpointsObs(wantUtxoSpent, wantTxConfirmed bool) explorer
 	svc.On("GetTransactionStatus", mock.Anything).Return(txStatus, nil)
 	svc.On("GetTransactionHex", mock.Anything).Return(randomHex(100), nil)
 	return svc
-}
-
-func newTestRateLimiter() *rate.Limiter {
-	rt := rate.Every(100 * time.Millisecond)
-	return rate.NewLimiter(rt, 1)
 }
 
 func newMockedTxStatus(wantTxConfirmed bool) explorer.TransactionStatus {

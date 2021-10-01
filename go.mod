@@ -9,7 +9,7 @@ replace github.com/tdex-network/tdex-daemon/pkg/securestore => ./pkg/securestore
 replace github.com/tdex-network/tdex-daemon/pkg/macaroons => ./pkg/macaroons
 
 require (
-	github.com/btcsuite/btcd v0.21.0-beta.0.20210426180113-7eba688b65e5
+	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2
@@ -29,7 +29,7 @@ require (
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20210322164638-77a31ea9e66d
+	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20211001103242-a11e4485705a
 	github.com/tdex-network/tdex-daemon/pkg/macaroons v0.0.0-20210813140257-70d50a8b72a4
 	github.com/tdex-network/tdex-daemon/pkg/securestore v0.0.0-20210813140257-70d50a8b72a4
 	github.com/tdex-network/tdex-protobuf v0.0.0-20210507104156-d509331cccdb
@@ -37,12 +37,11 @@ require (
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/vulpemventures/go-bip39 v1.0.2
-	github.com/vulpemventures/go-elements v0.3.3-0.20210906091437-98e11643c7e0
-	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
-	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
+	github.com/vulpemventures/go-elements v0.3.3
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/sys v0.0.0-20210908233432-aa78b53d3365 // indirect
-	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/grpc v1.40.0
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/macaroon-bakery.v2 v2.3.0

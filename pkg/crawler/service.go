@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"golang.org/x/time/rate"
 )
 
 const (
@@ -22,28 +21,18 @@ type blockchainCrawler struct {
 	errorHandler func(err error)
 	mutex        *sync.RWMutex
 	wg           *sync.WaitGroup
-	rateLimiter  *rate.Limiter
 }
 
 // Opts defines the parameters needed for creating a crawler service with NewService method
 type Opts struct {
 	ExplorerSvc explorer.Service
-	//crawler interval in milliseconds
+	// Crawler interval in milliseconds
 	CrawlerInterval time.Duration
-	//number of requests per second
-	ExplorerLimit int
-	//number of bursts tokens permitted
-	ExplorerTokenBurst int
-	ErrorHandler       func(err error)
+	ErrorHandler    func(err error)
 }
 
 // NewService returns an utxoCrawelr that is ready for watch for blockchain activites. Use Start and Stop methods to manage it.
 func NewService(opts Opts) Service {
-	oneSecInMillisecond := 1000
-	everyMillisecond := oneSecInMillisecond / opts.ExplorerLimit
-	rt := rate.Every(time.Duration(everyMillisecond) * time.Millisecond)
-	rateLimiter := rate.NewLimiter(rt, opts.ExplorerTokenBurst)
-
 	return &blockchainCrawler{
 		interval:     opts.CrawlerInterval,
 		explorerSvc:  opts.ExplorerSvc,
@@ -53,7 +42,6 @@ func NewService(opts Opts) Service {
 		errorHandler: opts.ErrorHandler,
 		mutex:        &sync.RWMutex{},
 		wg:           &sync.WaitGroup{},
-		rateLimiter:  rateLimiter,
 	}
 }
 
@@ -104,7 +92,6 @@ func (bc *blockchainCrawler) AddObservable(observable Observable) {
 			bc.interval,
 			bc.eventChan,
 			bc.errChan,
-			bc.rateLimiter,
 		)
 
 		bc.observables[observable.Key()] = obsHandler

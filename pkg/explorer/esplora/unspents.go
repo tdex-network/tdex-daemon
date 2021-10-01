@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/vulpemventures/go-elements/transaction"
+	"go.uber.org/ratelimit"
 )
 
 func (e *esplora) GetUnspents(addr string, blindingKeys [][]byte) (coins []explorer.Utxo, err error) {
@@ -36,10 +36,10 @@ func (e *esplora) GetUnspentsForAddresses(
 		close(chRes)
 	}()
 
+	limiter := ratelimit.New(len(addresses))
 	for i := range addresses {
 		addr := addresses[i]
-		go e.getUnspentsForAddress(addr, blindingKeys, chRes, wg)
-		time.Sleep(1 * time.Millisecond)
+		go e.getUnspentsForAddress(addr, blindingKeys, chRes, wg, limiter)
 	}
 
 	for r := range chRes {
@@ -151,8 +151,12 @@ func (e *esplora) getUnspentsForAddress(
 	blindingKeys [][]byte,
 	chRes chan utxosResult,
 	wg *sync.WaitGroup,
+	limiter ratelimit.Limiter,
 ) {
 	defer wg.Done()
+
+	limiter.Take()
+
 	utxos, err := e.getUtxos(addr, blindingKeys)
 	if err != nil {
 		chRes <- utxosResult{err: err}

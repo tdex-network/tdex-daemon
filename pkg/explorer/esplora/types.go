@@ -1,13 +1,11 @@
 package esplora
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -133,65 +131,6 @@ func (s txStatus) BlockTime() int {
 		return -1
 	}
 	return int(blockTime)
-}
-
-func parseInput(i interface{}) *transaction.TxInput {
-	m := i.(map[string]interface{})
-
-	txid := interfaceToBytes(m["txid"])
-	vout := uint32(m["vout"].(float64))
-	in := transaction.NewTxInput(elementsutil.ReverseBytes(txid), vout)
-
-	in.Script = interfaceToBytes(m["scriptsig"])
-
-	if m["witness"] != nil {
-		in.Witness = parseWitness(m["witness"])
-	}
-
-	in.Sequence = uint32(m["sequence"].(float64))
-	in.IsPegin = m["is_pegin"].(bool)
-
-	// TODO: parse issuance
-	return in
-}
-
-func parseOutput(i interface{}) *transaction.TxOutput {
-	m := i.(map[string]interface{})
-
-	asset := make([]byte, 33)
-	if m["asset"] != nil {
-		asset, _ = bufferutil.AssetHashToBytes(m["asset"].(string))
-	} else {
-		asset = interfaceToBytes(m["assetcommitment"])
-	}
-
-	value := make([]byte, 0)
-	if m["value"] != nil {
-		value, _ = bufferutil.ValueToBytes(uint64(m["value"].(float64)))
-	} else {
-		value = interfaceToBytes(m["valuecommitment"])
-	}
-	script := interfaceToBytes(m["scriptpubkey"])
-
-	// TODO: parse nonce and proof; these values must be retrieved by parsing the
-	// hex of the transaction like done in getUtxoDetails
-	return transaction.NewTxOutput(asset, value, script)
-}
-
-func interfaceToBytes(i interface{}) []byte {
-	s := i.(string)
-	buf, _ := hex.DecodeString(s)
-	return buf
-}
-
-func parseWitness(i interface{}) transaction.TxWitness {
-	witnesses := i.([]interface{})
-	buf := make(transaction.TxWitness, 0, len(witnesses))
-	for _, wit := range witnesses {
-		b := interfaceToBytes(wit)
-		buf = append(buf, b)
-	}
-	return buf
 }
 
 /**** UTXO *****/

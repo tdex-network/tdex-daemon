@@ -23,9 +23,7 @@ func TestCrawler(t *testing.T) {
 				fmt.Println(err)
 			}
 		},
-		CrawlerInterval:    500,
-		ExplorerLimit:      10,
-		ExplorerTokenBurst: 1,
+		CrawlerInterval: 500,
 	})
 
 	go crawlSvc.Start()

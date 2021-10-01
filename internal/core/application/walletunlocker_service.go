@@ -1,11 +1,10 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/network"
 )
 
@@ -223,7 +223,6 @@ func (w *walletUnlockerService) InitWallet(
 			Data:   data,
 		}
 
-		allInfo := make(domain.AddressesInfo, 0)
 		feeInfo, marketInfoByAccount, err := w.restoreVault(ctx, mnemonic, vault)
 		if err != nil {
 			chErr <- fmt.Errorf("unable to restore vault: %v", err)
@@ -234,9 +233,10 @@ func (w *walletUnlockerService) InitWallet(
 			Data:   data,
 		}
 
-		allInfo = append(allInfo, feeInfo...)
-		for _, marketInfo := range marketInfoByAccount {
-			allInfo = append(allInfo, marketInfo...)
+		allInfo := make(map[int]domain.AddressesInfo)
+		allInfo[domain.FeeAccount] = feeInfo
+		for accountIndex, info := range marketInfoByAccount {
+			allInfo[accountIndex] = info
 		}
 
 		// restore unspents
@@ -513,8 +513,8 @@ func (w *walletUnlockerService) restoreAccount(
 ) *accountLastDerivedIndex {
 	lastDerivedIndex := &accountLastDerivedIndex{}
 	ranges := [][2]int{
-		{w.rescanRangeStart, w.rescanRangeEnd}, // configurable range for external addresses
-		{0, 20},                                // fixed range for internal ones
+		{w.rescanRangeStart, w.rescanRangeEnd}, // configurable starting index for external addresses
+		{0, w.rescanRangeEnd},                  // fixed starting index for internal ones
 	}
 	for chainIndex, rr := range ranges {
 		firstUnusedAddress := -1
@@ -682,88 +682,58 @@ func (w *walletUnlockerService) persistRestoredState(
 	return nil
 }
 
-type unspentInfo struct {
-	info     domain.AddressInfo
-	unspents []domain.Unspent
-	err      error
-}
-
 func (w *walletUnlockerService) restoreUnspents(
-	info domain.AddressesInfo, chRes chan *InitWalletReply,
+	info map[int]domain.AddressesInfo, chRes chan *InitWalletReply,
 ) ([]domain.Unspent, error) {
-	chUnspentsInfo := make(chan unspentInfo)
 	unspents := make([]domain.Unspent, 0)
 	cb := circuitbreaker.NewCircuitBreaker()
-	wg := &sync.WaitGroup{}
-	wg.Add(len(info))
 
-	go func() {
-		wg.Wait()
-		close(chUnspentsInfo)
-	}()
-
-	for i := range info {
-		in := info[i]
-		path := strings.Split(in.DerivationPath, "/")
-		addressIndex, _ := strconv.Atoi(path[len(path)-1])
+	for accountIndex, addrInfo := range info {
 		chRes <- &InitWalletReply{
-			AccountIndex: in.AccountIndex,
-			AddressIndex: addressIndex,
+			AccountIndex: accountIndex,
 			Status:       Processing,
-			Data: fmt.Sprintf(
-				"account %d index %d", in.AccountIndex, addressIndex,
-			),
 		}
-		go w.restoreUnspentsForAddress(cb, in, chUnspentsInfo, wg)
-		time.Sleep(1 * time.Millisecond)
-	}
-
-	for r := range chUnspentsInfo {
-		if r.err != nil {
-			return nil, r.err
+		unspentsForAccount, err := w.restoreUnspentsForAccount(cb, addrInfo)
+		if err != nil {
+			return nil, err
 		}
 
-		unspents = append(unspents, r.unspents...)
-
-		path := strings.Split(r.info.DerivationPath, "/")
-		addressIndex, _ := strconv.Atoi(path[len(path)-1])
+		unspents = append(unspents, unspentsForAccount...)
 		chRes <- &InitWalletReply{
-			AccountIndex: r.info.AccountIndex,
-			AddressIndex: addressIndex,
+			AccountIndex: accountIndex,
 			Status:       Done,
-			Data: fmt.Sprintf(
-				"account %d index %d",
-				r.info.AccountIndex,
-				addressIndex,
-			),
 		}
 	}
 
 	return unspents, nil
 }
 
-func (w *walletUnlockerService) restoreUnspentsForAddress(
+func (w *walletUnlockerService) restoreUnspentsForAccount(
 	cb *gobreaker.CircuitBreaker,
-	info domain.AddressInfo,
-	chUnspent chan unspentInfo,
-	wg *sync.WaitGroup,
-) {
-	defer wg.Done()
-
-	addr := info.Address
-	blindingKeys := [][]byte{info.BlindingKey}
+	info domain.AddressesInfo,
+) ([]domain.Unspent, error) {
+	addresses, blindingKeys := info.AddressesAndKeys()
 
 	iUtxos, err := cb.Execute(func() (interface{}, error) {
-		return w.explorerService.GetUnspents(addr, blindingKeys)
+		return w.explorerService.GetUnspentsForAddresses(addresses, blindingKeys)
 	})
 	if err != nil {
-		chUnspent <- unspentInfo{err: err}
-		return
+		return nil, err
 	}
 	utxos := iUtxos.([]explorer.Utxo)
 
+	addressFromScript := func(script []byte) string {
+		for _, addr := range addresses {
+			s, _ := address.ToOutputScript(addr)
+			if bytes.Equal(s, script) {
+				return addr
+			}
+		}
+		return ""
+	}
 	unspents := make([]domain.Unspent, 0, len(utxos))
 	for _, u := range utxos {
+		addr := addressFromScript(u.Script())
 		unspents = append(unspents, domain.Unspent{
 			TxID:            u.Hash(),
 			VOut:            u.Index(),
@@ -781,7 +751,7 @@ func (w *walletUnlockerService) restoreUnspentsForAddress(
 			Address:         addr,
 		})
 	}
-	chUnspent <- unspentInfo{info: info, unspents: unspents}
+	return unspents, nil
 }
 
 type accountLastDerivedIndex struct {
