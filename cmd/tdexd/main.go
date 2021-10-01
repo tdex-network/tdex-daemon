@@ -55,7 +55,7 @@ var (
 	cbMaxFailingRequest           = config.GetInt(config.CBMaxFailingRequestsKey)
 	cbFailingRatio                = config.GetFloat(config.CBFailingRatioKey)
 	rescanRangeStart              = config.GetInt(config.RescanRangeStartKey)
-	rescanRangeEnd                = config.GetInt(config.RescanRangeEndKey)
+	rescanGapLimit                = config.GetInt(config.RescanGapLimitKey)
 )
 
 func main() {
@@ -152,7 +152,7 @@ func main() {
 		marketsFee,
 		marketsBaseAsset,
 		rescanRangeStart,
-		rescanRangeEnd,
+		rescanGapLimit,
 	)
 
 	// Init gRPC interfaces.
