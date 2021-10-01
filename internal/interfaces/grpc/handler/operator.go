@@ -987,8 +987,11 @@ func parsePrice(p *pbtypes.Price) (price application.Price, err error) {
 		basePrice = decimal.NewFromFloat32(p.GetBasePrice())
 		quotePrice = decimal.NewFromFloat32(p.GetQuotePrice())
 	}
-	pp := application.Price{basePrice, quotePrice}
-	if err = price.Validate(); err != nil {
+	pp := application.Price{
+		BasePrice:  basePrice,
+		QuotePrice: quotePrice,
+	}
+	if err = pp.Validate(); err != nil {
 		return
 	}
 	price = pp
