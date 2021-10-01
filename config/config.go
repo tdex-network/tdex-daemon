@@ -81,7 +81,7 @@ const (
 	// RescanRangeStartKey defines the initial index from where the daemon should
 	// start deriving and scanning for addresses of an account during the
 	// restoration of the utxos.
-	RescanRangeStartKey = "RESCAN_RANGE_START"
+	RescanRangeStartKey = "RESCAN_START"
 	// RescanGapLimitKey defines the max number of consecutive unused addresses
 	// that cause the restoration to stop.
 	// For example, if set to 20, the utxo set restoration terminates whenever
@@ -125,7 +125,7 @@ func init() {
 	vip.SetDefault(CBMaxFailingRequestsKey, 20)
 	vip.SetDefault(CBFailingRatioKey, 0.7)
 	vip.SetDefault(RescanRangeStartKey, 0)
-	vip.SetDefault(RescanGapLimitKey, 20)
+	vip.SetDefault(RescanGapLimitKey, 50)
 
 	if err := validate(); err != nil {
 		log.Fatalf("error while validating config: %s", err)

@@ -40,7 +40,6 @@ func (e *esplora) GetUnspentsForAddresses(
 	for i := range addresses {
 		addr := addresses[i]
 		go e.getUnspentsForAddress(addr, blindingKeys, chRes, wg, limiter)
-		// time.Sleep(1 * time.Millisecond)
 	}
 
 	for r := range chRes {
