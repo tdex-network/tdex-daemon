@@ -1,25 +1,16 @@
 package crawler
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
 
-	"golang.org/x/time/rate"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-)
-
-const (
-	New       Status = "NEW"
-	Waiting   Status = "WAITING"
-	Processed Status = "PROCESSED"
 )
 
 type AddressObservable struct {
@@ -44,17 +35,8 @@ func (a *AddressObservable) Observe(
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
-	observableStatus *observableStatus,
-	rateLimiter *rate.Limiter,
 ) {
 	if a == nil {
-		return
-	}
-
-	observableStatus.Set(Waiting)
-	defer observableStatus.Set(Processed)
-	if err := rateLimiter.Wait(context.Background()); err != nil {
-		errChan <- err
 		return
 	}
 
@@ -100,17 +82,8 @@ func (t *TransactionObservable) Observe(
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
-	observableStatus *observableStatus,
-	rateLimiter *rate.Limiter,
 ) {
 	if t == nil {
-		return
-	}
-
-	observableStatus.Set(Waiting)
-	defer observableStatus.Set(Processed)
-	if err := rateLimiter.Wait(context.Background()); err != nil {
-		errChan <- err
 		return
 	}
 
@@ -182,17 +155,8 @@ func (o *OutpointsObservable) Observe(
 	explorerSvc explorer.Service,
 	errChan chan error,
 	eventChan chan Event,
-	observableStatus *observableStatus,
-	rateLimiter *rate.Limiter,
 ) {
 	if o == nil {
-		return
-	}
-
-	observableStatus.Set(Waiting)
-	defer observableStatus.Set(Processed)
-	if err := rateLimiter.Wait(context.Background()); err != nil {
-		errChan <- err
 		return
 	}
 
@@ -271,41 +235,14 @@ func (o *OutpointsObservable) Key() string {
 	return hex.EncodeToString(buf[:])
 }
 
-type Status string
-
-type observableStatus struct {
-	sync.RWMutex
-	status Status
-}
-
-func newObservableStatus() *observableStatus {
-	return &observableStatus{
-		status: New,
-	}
-}
-
-func (o *observableStatus) Get() Status {
-	o.RLock()
-	defer o.RUnlock()
-	return o.status
-}
-
-func (o *observableStatus) Set(status Status) {
-	o.Lock()
-	defer o.Unlock()
-	o.status = status
-}
-
 type ObservableHandler struct {
-	observable       Observable
-	explorerSvc      explorer.Service
-	wg               *sync.WaitGroup
-	ticker           *time.Ticker
-	eventChan        chan Event
-	errChan          chan error
-	stopChan         chan int
-	observableStatus *observableStatus
-	rateLimiter      *rate.Limiter
+	observable  Observable
+	explorerSvc explorer.Service
+	wg          *sync.WaitGroup
+	ticker      *time.Ticker
+	eventChan   chan Event
+	errChan     chan error
+	stopChan    chan int
 }
 
 func NewObservableHandler(
@@ -315,7 +252,6 @@ func NewObservableHandler(
 	interval time.Duration,
 	eventChan chan Event,
 	errChan chan error,
-	rateLimiter *rate.Limiter,
 ) *ObservableHandler {
 	ticker := time.NewTicker(interval)
 	stopChan := make(chan int, 1)
@@ -328,8 +264,6 @@ func NewObservableHandler(
 		eventChan,
 		errChan,
 		stopChan,
-		newObservableStatus(),
-		rateLimiter,
 	}
 }
 
@@ -339,15 +273,11 @@ func (oh *ObservableHandler) Start() {
 	for {
 		select {
 		case <-oh.ticker.C:
-			if oh.observableStatus.Get() != Waiting {
-				oh.observable.Observe(
-					oh.explorerSvc,
-					oh.errChan,
-					oh.eventChan,
-					oh.observableStatus,
-					oh.rateLimiter,
-				)
-			}
+			oh.observable.Observe(
+				oh.explorerSvc,
+				oh.errChan,
+				oh.eventChan,
+			)
 		case <-oh.stopChan:
 			oh.ticker.Stop()
 			close(oh.stopChan)

@@ -272,10 +272,8 @@ func newServices() (
 	repoManager, _ := dbbadger.NewRepoManager("", nil)
 	explorerSvc := &mockExplorer{}
 	crawlerSvc := crawler.NewService(crawler.Opts{
-		ExplorerSvc:        explorerSvc,
-		ExplorerLimit:      10,
-		ExplorerTokenBurst: 1,
-		CrawlerInterval:    1000,
+		ExplorerSvc:     explorerSvc,
+		CrawlerInterval: 1000,
 	})
 	bcListener := application.NewBlockchainListener(
 		crawlerSvc,

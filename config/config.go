@@ -59,12 +59,6 @@ const (
 	EnableProfilerKey = "ENABLE_PROFILER"
 	// StatsIntervalKey defines interval for printing basic tdex statistics
 	StatsIntervalKey = "STATS_INTERVAL"
-	// CrawlLimitKey represents number of requests per second that crawler
-	//makes to explorer
-	CrawlLimitKey = "CRAWL_LIMIT"
-	// CrawlTokenBurst represents number of bursts tokens permitted from
-	//crawler to explorer
-	CrawlTokenBurstKey = "CRAWL_TOKEN"
 	// NoMacaroonsKey is used to start the daemon without using macaroons auth
 	// service.
 	NoMacaroonsKey = "NO_MACAROONS"
@@ -127,8 +121,6 @@ func init() {
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
 	vip.SetDefault(StatsIntervalKey, 600)
-	vip.SetDefault(CrawlLimitKey, 10)
-	vip.SetDefault(CrawlTokenBurstKey, 1)
 	vip.SetDefault(NoMacaroonsKey, false)
 	vip.SetDefault(CBMaxFailingRequestsKey, 20)
 	vip.SetDefault(CBFailingRatioKey, 0.7)

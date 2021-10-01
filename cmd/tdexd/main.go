@@ -51,8 +51,6 @@ var (
 	tradeSvcPort                  = config.GetInt(config.TradeListeningPortKey)
 	operatorSvcPort               = config.GetInt(config.OperatorListeningPortKey)
 	crawlerIntervalInMilliseconds = time.Duration(config.GetInt(config.CrawlIntervalKey)) * time.Millisecond
-	crawlerLimit                  = config.GetInt(config.CrawlLimitKey)
-	crawlerTokenBurst             = config.GetInt(config.CrawlTokenBurstKey)
 	explorerTimoutRequest         = config.GetDuration(config.ExplorerRequestTimeoutKey)
 	cbMaxFailingRequest           = config.GetInt(config.CBMaxFailingRequestsKey)
 	cbFailingRatio                = config.GetFloat(config.CBFailingRatioKey)
@@ -90,11 +88,9 @@ func main() {
 		return
 	}
 	crawlerSvc := crawler.NewService(crawler.Opts{
-		ExplorerSvc:        explorerSvc,
-		ErrorHandler:       func(err error) { log.Warn(err) },
-		CrawlerInterval:    crawlerIntervalInMilliseconds,
-		ExplorerLimit:      crawlerLimit,
-		ExplorerTokenBurst: crawlerTokenBurst,
+		ExplorerSvc:     explorerSvc,
+		ErrorHandler:    func(err error) { log.Warn(err) },
+		CrawlerInterval: crawlerIntervalInMilliseconds,
 	})
 	webhookPubSub, err := newWebhookPubSubService(dbDir, explorerTimoutRequest)
 	if err != nil {
