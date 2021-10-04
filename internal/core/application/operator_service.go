@@ -266,8 +266,16 @@ func (o *operatorService) ClaimFeeDeposits(
 func (o *operatorService) WithdrawFeeFunds(
 	ctx context.Context, req WithdrawFeeReq,
 ) ([]byte, []byte, error) {
+	if err := req.Validate(); err != nil {
+		return nil, nil, err
+	}
+
 	lbtcAsset := o.network.AssetID
-	balance, err := getUnlockedBalanceForFee(o.repoManager, ctx, lbtcAsset)
+	asset := lbtcAsset
+	if req.Asset != "" {
+		asset = req.Asset
+	}
+	balance, err := getUnlockedBalanceForFee(o.repoManager, ctx, asset)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -292,7 +300,7 @@ func (o *operatorService) WithdrawFeeFunds(
 	}
 
 	outs := []TxOut{
-		{lbtcAsset, int64(req.Amount), req.Address},
+		{asset, int64(req.Amount), req.Address},
 	}
 	outputs, outputsBlindingKeys, err := parseRequestOutputs(outs)
 	if err != nil {
@@ -309,21 +317,47 @@ func (o *operatorService) WithdrawFeeFunds(
 		return nil, nil, err
 	}
 	feeChangePathByAsset := map[string]string{
-		lbtcAsset: feeAccount.DerivationPathByScript[feeInfo.Script],
+		asset: feeAccount.DerivationPathByScript[feeInfo.Script],
 	}
 
-	txHex, err := sendToManyFeeAccount(sendToManyFeeAccountOpts{
-		mnemonic:            mnemonic,
-		unspents:            unspents,
-		outputs:             outputs,
-		outputsBlindingKeys: outputsBlindingKeys,
-		changePathsByAsset:  feeChangePathByAsset,
-		inputPathsByScript:  feeAccount.DerivationPathByScript,
-		milliSatPerByte:     int(req.MillisatPerByte),
-		network:             o.network,
-	})
-	if err != nil {
-		return nil, nil, err
+	var txHex string
+	if asset == lbtcAsset {
+		txHex, err = sendToManyFeeAccount(sendToManyFeeAccountOpts{
+			mnemonic:            mnemonic,
+			unspents:            unspents,
+			outputs:             outputs,
+			outputsBlindingKeys: outputsBlindingKeys,
+			changePathsByAsset:  feeChangePathByAsset,
+			inputPathsByScript:  feeAccount.DerivationPathByScript,
+			milliSatPerByte:     int(req.MillisatPerByte),
+			network:             o.network,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		feeInfo, err := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+		if err != nil {
+			return nil, nil, err
+		}
+		lbtcChangePathByAsset := map[string]string{
+			lbtcAsset: feeAccount.DerivationPathByScript[feeInfo.Script],
+		}
+		txHex, err = sendToMany((sendToManyOpts{
+			mnemonic:             mnemonic,
+			unspents:             unspents,
+			feeUnspents:          unspents,
+			outputs:              outputs,
+			outputsBlindingKeys:  outputsBlindingKeys,
+			changePathsByAsset:   feeChangePathByAsset,
+			feeChangePathByAsset: lbtcChangePathByAsset,
+			inputPathsByScript:   feeAccount.DerivationPathByScript,
+			milliSatPerByte:      int(req.MillisatPerByte),
+			network:              o.network,
+		}))
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	var txid string
@@ -363,7 +397,7 @@ func (o *operatorService) WithdrawFeeFunds(
 	go func() {
 		if err := publishFeeWithdrawTopic(
 			o.blockchainListener.PubSubService(),
-			balance, req.Amount, req.Address, txid, lbtcAsset,
+			balance, req.Amount, req.Address, txid, asset,
 		); err != nil {
 			log.Warn(err)
 		}
