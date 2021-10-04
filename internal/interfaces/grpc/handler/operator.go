@@ -314,6 +314,7 @@ func (o operatorHandler) withdrawFee(
 	args := application.WithdrawFeeReq{
 		Amount:          req.GetAmount(),
 		Address:         req.GetAddress(),
+		Asset:           req.GetAsset(),
 		MillisatPerByte: req.GetMillisatsPerByte(),
 		Push:            true,
 	}
