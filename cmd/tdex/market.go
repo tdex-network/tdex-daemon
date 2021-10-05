@@ -107,14 +107,8 @@ var (
 		Action: marketCloseAction,
 	}
 	marketDropCmd = &cli.Command{
-		Name:  "drop",
-		Usage: "drop a market",
-		Flags: []cli.Flag{
-			&cli.IntFlag{
-				Name:  "account_index",
-				Usage: "the account index of the market to drop",
-			},
-		},
+		Name:   "drop",
+		Usage:  "drop a market",
 		Action: marketDropAction,
 	}
 	marketUpdateFixedFeeCmd = &cli.Command{

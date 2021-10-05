@@ -156,6 +156,10 @@ message WithdrawFeeRequest {
   uint64 millisats_per_byte = 2;
   // The address to send the funds to.
   string address = 3; 
+  // The asset to withdraw. To leave blank for LBTC. This is aimed for
+  // those cases where the operator deposits funds with assets diffent from LBTC
+  // into the Fee account and than needs to withdraw'em.
+  string asset = 4;
 }
 message WithdrawFeeReply {
   // The transaction hash in mempool/blockchain.

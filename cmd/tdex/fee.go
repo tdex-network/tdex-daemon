@@ -58,11 +58,15 @@ var (
 		Flags: []cli.Flag{
 			&cli.Uint64Flag{
 				Name:  "amount",
-				Usage: "the amount in Satoshi to wtìithdraw",
+				Usage: "the amount in Satoshi to withdraw",
 			},
 			&cli.StringFlag{
 				Name:  "address",
 				Usage: "the address of the receiver of the funds",
+			},
+			&cli.StringFlag{
+				Name:  "asset",
+				Usage: "the asset of the funds to withdraw",
 			},
 			&cli.Uint64Flag{
 				Name:  "millisatsperbyte",
@@ -183,10 +187,12 @@ func feeWithdrawAction(ctx *cli.Context) error {
 	amount := ctx.Uint64("amount")
 	addr := ctx.String("address")
 	mSatsPerByte := ctx.Uint64("millisatsperbyte")
+	asset := ctx.String("asset")
 
 	reply, err := client.WithdrawFee(context.Background(), &pb.WithdrawFeeRequest{
 		Amount:           amount,
 		Address:          addr,
+		Asset:            asset,
 		MillisatsPerByte: mSatsPerByte,
 	})
 	if err != nil {

@@ -189,6 +189,7 @@ type WithdrawFeeReq struct {
 	Amount          uint64
 	MillisatPerByte uint64
 	Address         string
+	Asset           string
 	Push            bool
 }
 
@@ -199,6 +200,12 @@ func (r WithdrawFeeReq) Validate() error {
 	if r.Address == "" {
 		return fmt.Errorf("address must not be null")
 	}
+	if r.Asset != "" {
+		if err := validateAssetString(r.Asset); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
