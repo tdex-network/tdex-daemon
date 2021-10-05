@@ -1,9 +1,12 @@
 name: goreleaser
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "*"
+  
+
 jobs:
   goreleaser:
     runs-on: ubuntu-20.04
