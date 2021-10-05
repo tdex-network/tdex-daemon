@@ -26,6 +26,10 @@ func (e *esplora) GetUnspentsForAddresses(
 	addresses []string,
 	blindingKeys [][]byte,
 ) ([]explorer.Utxo, error) {
+	if len(addresses) == 0 {
+		return nil, nil
+	}
+
 	chRes := make(chan utxosResult)
 	utxos := make([]explorer.Utxo, 0)
 	wg := &sync.WaitGroup{}
