@@ -203,19 +203,47 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityWallet,
 			Action: "read",
 		}},
-		"/Operator/DepositMarket": {{
+		"/Operator/GetInfo": {{
+			Entity: EntityOperator,
+			Action: "read",
+		}},
+		"/Operator/GetFeeAddress": {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		"/Operator/DepositFeeAccount": {{
+		"/Operator/ListFeeAddresses": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/GetFeeBalance": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/ClaimFeeDeposits": {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		"/Operator/ClaimMarketDeposit": {{
+		"/Operator/WithdrawFee": {{
+			Entity: EntityOperator,
+			Action: "write",
+		}},
+		"/Operator/NewMarket": {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		"/Operator/ClaimFeeDeposit": {{
+		"/Operator/GetMarketAddress": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
+		"/Operator/ListMarketAddresses": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/GetMarketBalance": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/ClaimMarketDeposits": {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
@@ -227,6 +255,18 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityMarket,
 			Action: "write",
 		}},
+		"/Operator/DropMarket": {{
+			Entity: EntityOperator,
+			Action: "write",
+		}},
+		"/Operator/GetMarketCollectedSwapFees": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/WithdrawMarket": {{
+			Entity: EntityOperator,
+			Action: "write",
+		}},
 		"/Operator/UpdateMarketPercentageFee": {{
 			Entity: EntityMarket,
 			Action: "write",
@@ -235,41 +275,33 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		"/Operator/UpdateMarketStrategy": {{
-			Entity: EntityMarket,
-			Action: "write",
-		}},
-		"/Operator/ListMarket": {{
-			Entity: EntityMarket,
-			Action: "read",
-		}},
-		"/Operator/ListDepositMarket": {{
-			Entity: EntityMarket,
-			Action: "read",
-		}},
-		"/Operator/BalanceFeeAccount": {{
-			Entity: EntityMarket,
-			Action: "read",
-		}},
-		"/Operator/DropMarket": {{
-			Entity: EntityMarket,
-			Action: "write",
-		}},
 		"/Operator/UpdateMarketPrice": {{
 			Entity: EntityPrice,
 			Action: "write",
 		}},
-		"/Operator/WithdrawMarket": {{
-			Entity: EntityOperator,
+		"/Operator/UpdateMarketStrategy": {{
+			Entity: EntityMarket,
 			Action: "write",
+		}},
+		"/Operator/ListMarkets": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/ListTrades": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/ListDeposits": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/ListWithdrawals": {{
+			Entity: EntityMarket,
+			Action: "read",
 		}},
 		"/Operator/ReloadUtxos": {{
 			Entity: EntityOperator,
 			Action: "write",
-		}},
-		"/Operator/ListTrades": {{
-			Entity: EntityOperator,
-			Action: "read",
 		}},
 		"/Operator/ListUtxos": {{
 			Entity: EntityOperator,
