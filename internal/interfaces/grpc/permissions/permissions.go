@@ -256,7 +256,7 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Action: "write",
 		}},
 		"/Operator/DropMarket": {{
-			Entity: EntityMarket,
+			Entity: EntityOperator,
 			Action: "write",
 		}},
 		"/Operator/GetMarketCollectedSwapFees": {{
@@ -288,7 +288,15 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Action: "read",
 		}},
 		"/Operator/ListTrades": {{
-			Entity: EntityOperator,
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/ListDeposits": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/ListWithdrawals": {{
+			Entity: EntityMarket,
 			Action: "read",
 		}},
 		"/Operator/ReloadUtxos": {{
@@ -296,14 +304,6 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Action: "write",
 		}},
 		"/Operator/ListUtxos": {{
-			Entity: EntityOperator,
-			Action: "read",
-		}},
-		"/Operator/ListDeposits": {{
-			Entity: EntityOperator,
-			Action: "read",
-		}},
-		"/Operator/ListWithdrawals": {{
 			Entity: EntityOperator,
 			Action: "read",
 		}},
