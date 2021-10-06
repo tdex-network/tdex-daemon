@@ -36,6 +36,13 @@ type PassphraseMsg struct {
 	NewPwd     string
 }
 
+type InitWalletReply struct {
+	AccountIndex int32
+	Status       int
+	Data         string
+	Err          error
+}
+
 // AccountInfo contains info about a wallet account.
 type AccountInfo struct {
 	Index               uint32

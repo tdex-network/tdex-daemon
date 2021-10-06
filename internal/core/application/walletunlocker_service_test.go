@@ -101,8 +101,7 @@ func TestInitWallet(t *testing.T) {
 		walletSvc := newWalletUnlockerService()
 		require.NotNil(t, walletSvc)
 
-		chReplies := make(chan *application.InitWalletReply)
-		chErr := make(chan error, 1)
+		chReplies := make(chan application.InitWalletReply)
 
 		go walletSvc.InitWallet(
 			ctx,
@@ -110,10 +109,9 @@ func TestInitWallet(t *testing.T) {
 			passphrase,
 			!restore,
 			chReplies,
-			chErr,
 		)
 
-		replies, err := listenToReplies(chReplies, chErr)
+		replies, err := listenToReplies(chReplies)
 		require.NoError(t, err)
 		require.Len(t, replies, 0)
 	})
@@ -134,8 +132,7 @@ func TestInitWallet(t *testing.T) {
 		walletSvc := newWalletUnlockerServiceRestore()
 		require.NotNil(t, walletSvc)
 
-		chReplies := make(chan *application.InitWalletReply)
-		chErr := make(chan error, 1)
+		chReplies := make(chan application.InitWalletReply)
 
 		go walletSvc.InitWallet(
 			ctx,
@@ -143,10 +140,9 @@ func TestInitWallet(t *testing.T) {
 			passphrase,
 			restore,
 			chReplies,
-			chErr,
 		)
 
-		replies, err := listenToReplies(chReplies, chErr)
+		replies, err := listenToReplies(chReplies)
 		require.NoError(t, err)
 		require.Greater(t, len(replies), 0)
 	})
@@ -285,23 +281,16 @@ func newServices() (
 }
 
 func listenToReplies(
-	chReplies chan *application.InitWalletReply,
-	chErr chan error,
-) ([]*application.InitWalletReply, error) {
-	replies := make([]*application.InitWalletReply, 0)
-	for {
-		select {
-		case err, ok := <-chErr:
-			if ok {
-				return nil, err
-			}
-		case reply, ok := <-chReplies:
-			if !ok {
-				return replies, nil
-			}
-			replies = append(replies, reply)
+	chReplies chan application.InitWalletReply,
+) ([]application.InitWalletReply, error) {
+	replies := make([]application.InitWalletReply, 0)
+	for reply := range chReplies {
+		if reply.Err != nil {
+			return nil, reply.Err
 		}
+		replies = append(replies, reply)
 	}
+	return replies, nil
 }
 
 func randomUtxos(addresses []string) []explorer.Utxo {

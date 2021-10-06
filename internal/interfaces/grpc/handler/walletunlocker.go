@@ -2,7 +2,10 @@ package grpchandler
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
+	"io/ioutil"
+	"os"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"google.golang.org/grpc/codes"
@@ -14,19 +17,23 @@ import (
 type walletUnlockerHandler struct {
 	pb.UnimplementedWalletUnlockerServer
 	walletUnlockerSvc application.WalletUnlockerService
+	adminMacaroonPath string
 }
 
 func NewWalletUnlockerHandler(
 	walletUnlockerSvc application.WalletUnlockerService,
+	adminMacPath string,
 ) pb.WalletUnlockerServer {
-	return newWalletUnlockerHandler(walletUnlockerSvc)
+	return newWalletUnlockerHandler(walletUnlockerSvc, adminMacPath)
 }
 
 func newWalletUnlockerHandler(
 	walletUnlockerSvc application.WalletUnlockerService,
+	adminMacPath string,
 ) *walletUnlockerHandler {
 	return &walletUnlockerHandler{
 		walletUnlockerSvc: walletUnlockerSvc,
+		adminMacaroonPath: adminMacPath,
 	}
 }
 
@@ -82,35 +89,60 @@ func (w *walletUnlockerHandler) initWallet(
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	chReplies := make(chan *application.InitWalletReply)
-	chErr := make(chan error, 1)
+	chReplies := make(chan application.InitWalletReply)
 	go w.walletUnlockerSvc.InitWallet(
 		stream.Context(),
 		mnemonic,
 		string(password),
 		req.GetRestore(),
 		chReplies,
-		chErr,
 	)
 
-	for {
-		select {
-		case err := <-chErr:
+	noReplies := true
+	for reply := range chReplies {
+		if err := reply.Err; err != nil {
 			return err
-		case reply, ok := <-chReplies:
-			if !ok {
-				return nil
-			}
-			if err := stream.Send(&pb.InitWalletReply{
-				Account: uint64(reply.AccountIndex),
-				Index:   uint64(reply.AddressIndex),
-				Status:  pb.InitWalletReply_Status(reply.Status),
-				Data:    reply.Data,
-			}); err != nil {
-				return err
-			}
+		}
+
+		noReplies = false
+		if err := stream.Send(&pb.InitWalletReply{
+			Account: reply.AccountIndex,
+			Status:  pb.InitWalletReply_Status(reply.Status),
+			Data:    reply.Data,
+		}); err != nil {
+			return err
 		}
 	}
+
+	// Inject admin.macaroon to InitWalletReply only if the app service has
+	// actually initialized the internal wallet.
+	// If the reply channel didn't contain any message before closing, it means
+	// that the app service skipped the operation because the wallet was already
+	// initialized.
+	if !noReplies && w.adminMacaroonPath != "" {
+		var mac []byte
+		// Retry reading the admin.macaroon file until it's found in the datadir.
+		for {
+			var err error
+			mac, err = ioutil.ReadFile(w.adminMacaroonPath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					continue
+				}
+				return nil
+			}
+			break
+		}
+		macStr := hex.EncodeToString(mac)
+		if err := stream.Send(&pb.InitWalletReply{
+			Data:    macStr,
+			Account: -1,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (w *walletUnlockerHandler) unlockWallet(

@@ -661,8 +661,8 @@ type WithdrawFeeRequest struct {
 	// The address to send the funds to.
 	Address string `protobuf:"bytes,3,opt,name=address,proto3" json:"address,omitempty"`
 	// The asset to withdraw. To leave blank for LBTC. This is aimed for
-	// those case where the operator deposits funds of diffent from LBTC into the
-	// Fee account and needs to withdraw'em.
+	// those cases where the operator deposits funds with assets diffent from LBTC
+	// into the Fee account and than needs to withdraw'em.
 	Asset string `protobuf:"bytes,4,opt,name=asset,proto3" json:"asset,omitempty"`
 }
 
