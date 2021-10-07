@@ -19,12 +19,14 @@ RUN go mod download
 RUN go build -ldflags="-s -w " -o tdexd-linux cmd/tdexd/main.go
 RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o tdex cmd/tdex/*
 RUN go build -ldflags="-s -w " -o unlockerd cmd/unlockerd/*
+RUN go build -ldflags="-s -w " -o tdexdconnect cmd/tdexdconnect/*
 
 WORKDIR /build
 
 RUN cp /tdex-daemon/tdexd-linux .
 RUN cp /tdex-daemon/tdex .
 RUN cp /tdex-daemon/unlockerd .
+RUN cp /tdex-daemon/tdexdconnect .
 
 # Second image, running the tdexd executable
 FROM debian:buster
@@ -51,9 +53,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 COPY --from=builder /build/tdexd-linux /
 COPY --from=builder /build/tdex /
 COPY --from=builder /build/unlockerd /
+COPY --from=builder /build/tdexdconnect /
 
 RUN install /tdex /bin
 RUN install /unlockerd /bin
+RUN install /tddexdconnect /bin
 # Prevents `VOLUME $HOME/.tdex-daemon/` being created as owned by `root`
 RUN useradd -ms /bin/bash user
 USER user

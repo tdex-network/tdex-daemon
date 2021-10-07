@@ -1,4 +1,4 @@
-.PHONY: build build-cli build-unlocker proto clean cov fmt help install integrationtest run test trade-cert vet
+.PHONY: build build-cli build-unlocker build-tdexdconnect proto clean cov fmt help install integrationtest run test trade-cert vet
 
 install:
 	go mod download
@@ -18,6 +18,10 @@ build-cli:
 build-unlocker: 
 	chmod u+x ./scripts/build-unlocker
 	./scripts/build-unlocker
+
+build-tdexdconnect:
+	chmod u+x ./scripts/build-tdexdconnect
+	./scripts/build-tdexdconnect
 
 ## proto: compile proto files
 proto: install
