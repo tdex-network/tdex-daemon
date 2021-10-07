@@ -278,14 +278,18 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	unaryInterceptor := interceptor.UnaryInterceptor(s.macaroonSvc)
 	streamInterceptor := interceptor.StreamInterceptor(s.macaroonSvc)
 
+	var adminMacaroonPath string
+	if s.withMacaroons() {
+		adminMacaroonPath = filepath.Join(s.opts.macaroonsDatadir(), AdminMacaroonFile)
+	}
+
 	// gRPC Operator server
 	operatorAddr := s.opts.OperatorAddress
 	grpcOperatorServer := grpc.NewServer(
-		unaryInterceptor,
-		streamInterceptor,
+		unaryInterceptor, streamInterceptor,
 	)
 	walletUnlockerHandler := grpchandler.NewWalletUnlockerHandler(
-		s.opts.WalletUnlockerSvc,
+		s.opts.WalletUnlockerSvc, adminMacaroonPath,
 	)
 	pbwalletunlocker.RegisterWalletUnlockerServer(
 		grpcOperatorServer, walletUnlockerHandler,

@@ -141,12 +141,6 @@ func (r *RootKeyStorage) CreateUnlock(password *[]byte) error {
 // ChangePassword decrypts the macaroon root key with the old password and then
 // encrypts it again with the new password.
 func (r *RootKeyStorage) ChangePassword(oldPw, newPw []byte) error {
-	// We need the store to already be unlocked. With this we can make sure
-	// that there already is a key in the DB.
-	if r.encKey == nil {
-		return ErrStoreLocked
-	}
-
 	// Check if a nil password has been passed; return an error if so.
 	if oldPw == nil || newPw == nil {
 		return ErrPasswordRequired

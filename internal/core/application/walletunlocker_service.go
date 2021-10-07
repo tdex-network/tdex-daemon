@@ -23,6 +23,46 @@ var (
 	// ErrWalletNotInitialized is returned when attempting to unlock or change
 	// the password of a not initialized wallet.
 	ErrWalletNotInitialized = fmt.Errorf("wallet not initialized")
+
+	// Replies used by InitWallet method.
+	walletCreateProcessing = InitWalletReply{
+		Data:         "create wallet",
+		Status:       Processing,
+		AccountIndex: -1,
+	}
+	walletCreateComplete = InitWalletReply{
+		Data:         "create wallet",
+		Status:       Done,
+		AccountIndex: -1,
+	}
+
+	addressesDiscoveryProcessing = InitWalletReply{
+		Data:         "addresses discovery",
+		Status:       Processing,
+		AccountIndex: -1,
+	}
+	addressesDiscoveryComplete = InitWalletReply{
+		Data:         "addresses discovery",
+		Status:       Done,
+		AccountIndex: -1,
+	}
+
+	restoreAccountProcessing = func(account int) InitWalletReply {
+		return InitWalletReply{
+			AccountIndex: int32(account),
+			Status:       Processing,
+		}
+	}
+	restoreAccountComplete = func(account int) InitWalletReply {
+		return InitWalletReply{
+			AccountIndex: int32(account),
+			Status:       Done,
+		}
+	}
+
+	errReply = func(err error) InitWalletReply {
+		return InitWalletReply{Err: err}
+	}
 )
 
 type WalletUnlockerService interface {
@@ -32,8 +72,7 @@ type WalletUnlockerService interface {
 		mnemonic []string,
 		passphrase string,
 		restore bool,
-		chRes chan *InitWalletReply,
-		chErr chan error,
+		chRes chan InitWalletReply,
 	)
 	UnlockWallet(
 		ctx context.Context,
@@ -165,25 +204,15 @@ func (w *walletUnlockerService) IsReady(_ context.Context) HDWalletStatus {
 	}
 }
 
-type InitWalletReply struct {
-	AccountIndex int
-	AddressIndex int
-	Status       int
-	Data         string
-}
-
 func (w *walletUnlockerService) InitWallet(
 	ctx context.Context,
 	mnemonic []string,
 	passphrase string,
 	restore bool,
-	chRes chan *InitWalletReply,
-	chErr chan error,
+	chRes chan InitWalletReply,
 ) {
-	defer func() {
-		close(chErr)
-		close(chRes)
-	}()
+	defer close(chRes)
+
 	if w.isInitialized() {
 		return
 	}
@@ -197,11 +226,12 @@ func (w *walletUnlockerService) InitWallet(
 		log.Debug("restoring wallet")
 	} else {
 		log.Debug("creating wallet")
+		chRes <- walletCreateProcessing
 	}
 
 	vault, err := w.repoManager.VaultRepository().GetOrCreateVault(ctx, mnemonic, passphrase, w.network)
 	if err != nil {
-		chErr <- fmt.Errorf("unable to retrieve vault: %v", err)
+		chRes <- errReply(fmt.Errorf("unable to retrieve vault: %v", err))
 		return
 	}
 	defer vault.Lock()
@@ -216,22 +246,14 @@ func (w *walletUnlockerService) InitWallet(
 			}
 		}()
 
-		data := "addresses discovery"
-
-		chRes <- &InitWalletReply{
-			Status: Processing,
-			Data:   data,
-		}
+		chRes <- addressesDiscoveryProcessing
 
 		feeInfo, marketInfoByAccount, err := w.restoreVault(ctx, mnemonic, vault)
 		if err != nil {
-			chErr <- fmt.Errorf("unable to restore vault: %v", err)
+			chRes <- errReply(fmt.Errorf("unable to restore vault: %v", err))
 			return
 		}
-		chRes <- &InitWalletReply{
-			Status: Done,
-			Data:   data,
-		}
+		chRes <- addressesDiscoveryComplete
 
 		allInfo := make(map[int]domain.AddressesInfo)
 		allInfo[domain.FeeAccount] = feeInfo
@@ -242,7 +264,7 @@ func (w *walletUnlockerService) InitWallet(
 		// restore unspents
 		unspents, err := w.restoreUnspents(allInfo, chRes)
 		if err != nil {
-			chErr <- fmt.Errorf("unable to restore unspents: %v", err)
+			chRes <- errReply(fmt.Errorf("unable to restore unspents: %v", err))
 			return
 		}
 
@@ -254,22 +276,22 @@ func (w *walletUnlockerService) InitWallet(
 
 		// restore markets
 		mLen := len(marketInfoByAccount)
-		markets := make([]*domain.Market, mLen, mLen)
-		i := 0
+		markets := make([]*domain.Market, 0, mLen)
 		for accountIndex, info := range marketInfoByAccount {
 			market, err := w.restoreMarket(ctx, accountIndex, info, unspentsByAddress)
 			if err != nil {
-				chErr <- fmt.Errorf("unable to restore market: %v", err)
+				chRes <- errReply(fmt.Errorf("unable to restore market: %v", err))
 				return
 			}
-			markets[i] = market
-			i++
+			markets = append(markets, market)
 		}
 
 		if err := w.persistRestoredState(ctx, vault, unspents, markets); err != nil {
-			chErr <- fmt.Errorf("unable to persist restored state: %v", err)
+			chRes <- errReply(fmt.Errorf("unable to persist restored state: %v", err))
 			return
 		}
+	} else {
+		chRes <- walletCreateComplete
 	}
 
 	if w.blockchainListener.PubSubService() != nil {
@@ -683,26 +705,21 @@ func (w *walletUnlockerService) persistRestoredState(
 }
 
 func (w *walletUnlockerService) restoreUnspents(
-	info map[int]domain.AddressesInfo, chRes chan *InitWalletReply,
+	info map[int]domain.AddressesInfo, chRes chan InitWalletReply,
 ) ([]domain.Unspent, error) {
 	unspents := make([]domain.Unspent, 0)
 	cb := circuitbreaker.NewCircuitBreaker()
 
 	for accountIndex, addrInfo := range info {
-		chRes <- &InitWalletReply{
-			AccountIndex: accountIndex,
-			Status:       Processing,
-		}
+		chRes <- restoreAccountProcessing(accountIndex)
+
 		unspentsForAccount, err := w.restoreUnspentsForAccount(cb, addrInfo)
 		if err != nil {
 			return nil, err
 		}
 
 		unspents = append(unspents, unspentsForAccount...)
-		chRes <- &InitWalletReply{
-			AccountIndex: accountIndex,
-			Status:       Done,
-		}
+		chRes <- restoreAccountComplete(accountIndex)
 	}
 
 	return unspents, nil
