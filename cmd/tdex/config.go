@@ -1,13 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
+	"github.com/tdex-network/tdex-daemon/pkg/tdexdconnect"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/network"
 )
@@ -88,6 +94,11 @@ var cliConfig = cli.Command{
 				&macaroonsFlag,
 			},
 		},
+		{
+			Name:   "connect",
+			Usage:  "configure the CLI with a tdexdconnect URL",
+			Action: configConnectAction,
+		},
 	},
 }
 
@@ -133,6 +144,78 @@ func configSetAction(c *cli.Context) error {
 
 	fmt.Printf("%s %s has been set\n", key, value)
 
+	return nil
+}
+
+func configConnectAction(c *cli.Context) (err error) {
+	connectUrl := c.Args().Get(0)
+	if connectUrl == "" {
+		err = fmt.Errorf("tdexdconnect URI is missing")
+		return
+	}
+
+	rpcServerAddr, network, certificate, macaroon, err :=
+		tdexdconnect.Decode(connectUrl)
+	if err != nil {
+		return
+	}
+
+	// Create CLI datadir if required
+	if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
+		os.Mkdir(tdexDataDir, os.ModeDir|0755)
+	}
+
+	var tlsCertPath string
+	if len(certificate) > 0 {
+		tlsCertPath = filepath.Join(tdexDataDir, "cert.pem")
+		buf := &bytes.Buffer{}
+		if err = pem.Encode(
+			buf, &pem.Block{Type: "CERTIFICATE", Bytes: certificate},
+		); err != nil {
+			err = fmt.Errorf("failed to encode certificate: %v", err)
+			return
+		}
+
+		if err = ioutil.WriteFile(tlsCertPath, buf.Bytes(), 0644); err != nil {
+			err = fmt.Errorf("failed to write certificate to file: %s", err)
+			return
+		}
+	}
+	defer func() {
+		if err != nil && tlsCertPath != "" {
+			os.Remove(tlsCertPath)
+		}
+	}()
+
+	var macaroonsPath string
+	if len(macaroon) > 0 {
+		macaroonsPath = filepath.Join(tdexDataDir, "admin.macaroon")
+		if err = ioutil.WriteFile(macaroonsPath, macaroon, 0644); err != nil {
+			err = fmt.Errorf("failed to write macaroon to file: %s", err)
+			return
+		}
+	}
+	defer func() {
+		if err != nil && macaroonsPath != "" {
+			os.Remove(macaroonsPath)
+		}
+	}()
+
+	noMacaroons := strconv.FormatBool(certificate == nil && macaroon == nil)
+
+	if err = setState(map[string]string{
+		"rpcserver":      rpcServerAddr,
+		"network":        network,
+		"no_macaroons":   noMacaroons,
+		"tls_cert_path":  tlsCertPath,
+		"macaroons_path": macaroonsPath,
+	}); err != nil {
+		return
+	}
+
+	fmt.Println()
+	fmt.Println("CLI configured via tdexdconnect URL.")
+	fmt.Println("Check configuration with `tdex config`")
 	return nil
 }
 
