@@ -196,7 +196,7 @@ func configConnectAction(c *cli.Context) (err error) {
 		}
 	}()
 
-	noMacaroons := strconv.FormatBool(certificate == nil && macaroon == nil)
+	noMacaroons := strconv.FormatBool(len(certificate) == 0 && len(macaroon) == 0)
 
 	if err = setState(map[string]string{
 		"rpcserver":      rpcServerAddr,
