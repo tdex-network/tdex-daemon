@@ -94,13 +94,13 @@ func validateFlags(
 		return fmt.Errorf("%s must not be null", tlsCertKey)
 	}
 	if _, err := os.Stat(tlsCertPath); err != nil {
-		return err
+		return fmt.Errorf("TLS certificate not found at path %s", tlsCertPath)
 	}
 
 	// In case the macaroon path is customized, make sure the file exists.
 	if macaroonsPath != defaultMacaroonsPath {
 		if _, err := os.Stat(macaroonsPath); err != nil {
-			return err
+			return fmt.Errorf("macaroon not found at path %s", macaroonsPath)
 		}
 	}
 
