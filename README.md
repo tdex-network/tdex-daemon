@@ -60,6 +60,14 @@ Builds `unlockerd` as static binary in the `./build` folder
 $ make build-unlocker
 ```
 
+### Build tdexdconnect
+
+Builds `tdexdconnect` as a static binary in the `./build` folder
+
+```bash
+$ make build-tdexdconnect
+```
+
 ### Build and Run with docker
 
 Build and use `tdex` with docker.
@@ -69,25 +77,31 @@ Build and use `tdex` with docker.
 _At the root of the repository_
 
 ```bash
-docker build --pull --rm -f "Dockerfile" -t tdexd:latest "."
+$ docker build --pull --rm -f "Dockerfile" -t tdexd:latest "."
 ```
 
 #### Run the daemon
 
 ```bash
-docker run -d -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex-daemon tdexd:latest
+$ docker run -d -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex-daemon tdexd:latest
 ```
 
 #### Use the CLI
 
 ```bash
-alias tdex="docker exec -it tdexd tdex"
+$ alias tdex="docker exec -it tdexd tdex"
 ```
 
 #### Use the unlocker
 
 ```bash
-alias unlockerd="docker exec -it tdexd unlockerd"
+$ alias unlockerd="docker exec -it tdexd unlockerd"
+```
+
+### Use tdexdconnect
+
+```bash
+$ alias tdexdconnect="docker exec tdexd tdexdconnect"
 ```
 
 ### Test
