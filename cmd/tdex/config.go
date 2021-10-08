@@ -154,7 +154,7 @@ func configConnectAction(c *cli.Context) (err error) {
 		return
 	}
 
-	rpcServerAddr, network, certificate, macaroon, err :=
+	rpcServerAddr, certificate, macaroon, err :=
 		tdexdconnect.Decode(connectUrl)
 	if err != nil {
 		return
@@ -200,7 +200,6 @@ func configConnectAction(c *cli.Context) (err error) {
 
 	if err = setState(map[string]string{
 		"rpcserver":      rpcServerAddr,
-		"network":        network,
 		"no_macaroons":   noMacaroons,
 		"tls_cert_path":  tlsCertPath,
 		"macaroons_path": macaroonsPath,

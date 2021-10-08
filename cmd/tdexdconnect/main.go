@@ -22,7 +22,6 @@ const (
 	rpcServerKey = "rpcserver"
 	tlsCertKey   = "tls_cert_path"
 	macaroonsKey = "macaroons_path"
-	networkKey   = "network"
 	outputKey    = "out"
 
 	qrFilename = "tdexdconnect-qr.png"
@@ -33,17 +32,12 @@ var (
 	defaultDatadir       = btcutil.AppDataDir("tdex-daemon", false)
 	defaultTLSCertPath   = filepath.Join(defaultDatadir, "tls", "cert.pem")
 	defaultMacaroonsPath = filepath.Join(defaultDatadir, "macaroons", "admin.macaroon")
-	defaultNetworkKey    = "liquid"
 	defaultOutputKey     = "qr"
 
 	supportedOutputs = map[string]struct{}{
 		"qr":    {},
 		"url":   {},
 		"image": {},
-	}
-	supportedNetworks = map[string]struct{}{
-		"regtest": {},
-		"liquid":  {},
 	}
 
 	rpcServerFlag = pflag.String(
@@ -55,10 +49,6 @@ var (
 	macaroonsFlag = pflag.String(
 		macaroonsKey, defaultMacaroonsPath, "the path of the macaroon file",
 	)
-	networkFlag = pflag.String(
-		networkKey, defaultNetworkKey,
-		"either 'regtest' or 'liquid' network",
-	)
 	outputFlag = pflag.String(
 		outputKey, defaultOutputKey,
 		"whether 'qr' to display QRCode, 'url' to display string URL, "+
@@ -67,7 +57,7 @@ var (
 )
 
 func validateFlags(
-	rpcServerAddr, tlsCertPath, macaroonsPath, network, out string,
+	rpcServerAddr, tlsCertPath, macaroonsPath, out string,
 ) error {
 	// Validate rpc server address
 	if rpcServerAddr == "" {
@@ -94,24 +84,23 @@ func validateFlags(
 		return fmt.Errorf("%s must not be null", tlsCertKey)
 	}
 	if _, err := os.Stat(tlsCertPath); err != nil {
-		return fmt.Errorf("TLS certificate not found at path %s", tlsCertPath)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("TLS certificate not found at path %s", macaroonsPath)
+		}
+		return fmt.Errorf("%s is not a valid path", tlsCertPath)
 	}
 
+	if macaroonsPath == "" {
+		return fmt.Errorf("%s must not be null", macaroonsPath)
+	}
 	// In case the macaroon path is customized, make sure the file exists.
 	if macaroonsPath != defaultMacaroonsPath {
 		if _, err := os.Stat(macaroonsPath); err != nil {
-			return fmt.Errorf("macaroon not found at path %s", macaroonsPath)
+			if os.IsNotExist(err) {
+				return fmt.Errorf("macaroon not found at path %s", macaroonsPath)
+			}
+			return fmt.Errorf("%s is not a valid path", macaroonsPath)
 		}
-	}
-
-	if _, ok := supportedNetworks[network]; !ok {
-		nets := make([]string, 0, len(supportedNetworks))
-		for n := range supportedNetworks {
-			nets = append(nets, n)
-		}
-		return fmt.Errorf(
-			"network is invalid. It must be one of %s", strings.Join(nets, " | "),
-		)
 	}
 
 	if _, ok := supportedOutputs[out]; !ok {
@@ -134,11 +123,10 @@ func main() {
 	rpcServerAddr := viper.GetString(rpcServerKey)
 	tlsCertPath := viper.GetString(tlsCertKey)
 	macaroonsPath := viper.GetString(macaroonsKey)
-	network := strings.ToLower(viper.GetString(networkKey))
 	out := strings.ToLower(viper.GetString(outputKey))
 
 	if err := validateFlags(
-		rpcServerAddr, tlsCertPath, macaroonsPath, network, out,
+		rpcServerAddr, tlsCertPath, macaroonsPath, out,
 	); err != nil {
 		log.Fatalf("invalid flag: %s", err)
 	}
@@ -150,7 +138,7 @@ func main() {
 	}
 
 	connectUrl, err := tdexdconnect.EncodeToString(
-		rpcServerAddr, network, certBytes, macBytes,
+		rpcServerAddr, certBytes, macBytes,
 	)
 	if err != nil {
 		log.Fatalf("failed to encode url string: %s", err)

@@ -9,7 +9,7 @@ import (
 
 // Encode encodes the given args as query parameters of the returned *url.URL.
 func Encode(
-	rpcServerAddr, network string, certBytes, macBytes []byte,
+	rpcServerAddr string, certBytes, macBytes []byte,
 ) (*url.URL, error) {
 	u := url.URL{Scheme: "tdexdconnect", Host: rpcServerAddr}
 	q := u.Query()
@@ -26,16 +26,15 @@ func Encode(
 		q.Add("macaroon", macaroon)
 	}
 
-	q.Add("net", network)
 	u.RawQuery = q.Encode()
 	return &u, nil
 }
 
 // EncodeToString encodes the given args into a base64 string URL.
 func EncodeToString(
-	rpcServerAddr, network string, certBytes, macBytes []byte,
+	rpcServerAddr string, certBytes, macBytes []byte,
 ) (string, error) {
-	u, err := Encode(rpcServerAddr, network, certBytes, macBytes)
+	u, err := Encode(rpcServerAddr, certBytes, macBytes)
 	if err != nil {
 		return "", err
 	}
@@ -45,7 +44,7 @@ func EncodeToString(
 // Decode decodes a base64 string URL and returns its query parameters.
 func Decode(
 	connectUrl string,
-) (rpcAddress, network string, certBytes, macBytes []byte, err error) {
+) (rpcAddress string, certBytes, macBytes []byte, err error) {
 	u, err := url.Parse(connectUrl)
 	if err != nil {
 		return
@@ -65,9 +64,8 @@ func Decode(
 		return
 	}
 
-	network = u.Query().Get("net")
 	rpcAddress = u.Host
-	certBytes = []byte(cBytes)
-	macBytes = []byte(mBytes)
+	certBytes = cBytes
+	macBytes = mBytes
 	return
 }
