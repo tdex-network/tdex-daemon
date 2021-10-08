@@ -160,11 +160,6 @@ func configConnectAction(c *cli.Context) (err error) {
 		return
 	}
 
-	// Create CLI datadir if required
-	if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
-		os.Mkdir(tdexDataDir, os.ModeDir|0755)
-	}
-
 	var tlsCertPath string
 	if len(certificate) > 0 {
 		tlsCertPath = filepath.Join(tdexDataDir, "cert.pem")
