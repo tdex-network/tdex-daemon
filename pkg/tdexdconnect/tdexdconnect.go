@@ -14,14 +14,16 @@ func Encode(
 	u := url.URL{Scheme: "tdexdconnect", Host: rpcServerAddr}
 	q := u.Query()
 
-	block, _ := pem.Decode(certBytes)
-	if block == nil || block.Type != "CERTIFICATE" {
-		return nil, fmt.Errorf("failed to decode PEM block containing certificate")
+	if len(certBytes) > 0 {
+		block, _ := pem.Decode(certBytes)
+		if block == nil || block.Type != "CERTIFICATE" {
+			return nil, fmt.Errorf("failed to decode PEM block containing certificate")
+		}
+		certificate := base64.RawURLEncoding.EncodeToString(block.Bytes)
+		q.Add("cert", certificate)
 	}
-	certificate := base64.RawURLEncoding.EncodeToString(block.Bytes)
-	q.Add("cert", certificate)
 
-	if macBytes != nil {
+	if len(macBytes) > 0 {
 		macaroon := base64.RawURLEncoding.EncodeToString(macBytes)
 		q.Add("macaroon", macaroon)
 	}
