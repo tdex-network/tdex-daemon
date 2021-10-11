@@ -252,24 +252,17 @@ func (t traderHandler) tradeComplete(
 	req *pb.TradeCompleteRequest,
 	stream pb.Trade_TradeCompleteServer,
 ) error {
-	var swapCompletePtr *domain.SwapComplete
 	var swapComplete domain.SwapComplete
 	if s := req.SwapComplete; s != nil {
 		swapComplete = s
-		swapCompletePtr = &swapComplete
 	}
-	var swapFailPtr *domain.SwapFail
 	var swapFail domain.SwapFail
 	if s := req.SwapFail; s != nil {
 		swapFail = s
-		swapFailPtr = &swapFail
 	}
 	txID, fail, err := t.traderSvc.TradeComplete(
-		stream.Context(),
-		swapCompletePtr,
-		swapFailPtr,
+		stream.Context(), swapComplete, swapFail,
 	)
-
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -289,7 +282,7 @@ func (t traderHandler) tradeComplete(
 		SwapFail: swapFailStub,
 	}
 
-	if err = stream.Send(res); err != nil {
+	if err := stream.Send(res); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 

@@ -40,8 +40,8 @@ type TradeService interface {
 	) (domain.SwapAccept, domain.SwapFail, uint64, error)
 	TradeComplete(
 		ctx context.Context,
-		swapComplete *domain.SwapComplete,
-		swapFail *domain.SwapFail,
+		swapComplete domain.SwapComplete,
+		swapFail domain.SwapFail,
 	) (string, domain.SwapFail, error)
 	GetMarketBalance(
 		ctx context.Context,
@@ -429,11 +429,11 @@ end:
 // TradeComplete is the domain controller for the TradeComplete RPC
 func (t *tradeService) TradeComplete(
 	ctx context.Context,
-	swapComplete *domain.SwapComplete,
-	swapFail *domain.SwapFail,
+	swapComplete domain.SwapComplete,
+	swapFail domain.SwapFail,
 ) (string, domain.SwapFail, error) {
 	if swapFail != nil {
-		swapFailMsg, err := t.tradeFail(ctx, *swapFail)
+		swapFailMsg, err := t.tradeFail(ctx, swapFail)
 		if err != nil {
 			log.Debugf("error while aborting trade: %s", err)
 			return "", nil, ErrServiceUnavailable
@@ -441,7 +441,7 @@ func (t *tradeService) TradeComplete(
 		return "", swapFailMsg, nil
 	}
 
-	return t.tradeComplete(ctx, *swapComplete)
+	return t.tradeComplete(ctx, swapComplete)
 }
 
 func (t *tradeService) tradeComplete(

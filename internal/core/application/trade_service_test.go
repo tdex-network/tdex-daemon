@@ -367,17 +367,14 @@ func marketOrder(
 	require.NotNil(t, swapAccept)
 	require.True(t, time.Now().Before(time.Unix(int64(expiryTimestamp), 0)))
 
-	var swapCompletePtr *domain.SwapComplete
-	var swapComplete domain.SwapComplete
-	swapComplete = &pbswap.SwapComplete{
+	swapComplete := &pbswap.SwapComplete{
 		Id:          randomId(),
 		AcceptId:    swapAccept.GetId(),
 		Transaction: swapAccept.GetTransaction(),
 	}
-	swapCompletePtr = &swapComplete
 
 	time.Sleep(200 * time.Millisecond)
-	_, _, err = tradeSvc.TradeComplete(ctx, swapCompletePtr, nil)
+	_, _, err = tradeSvc.TradeComplete(ctx, swapComplete, nil)
 	require.NoError(t, err)
 
 	time.Sleep(200 * time.Millisecond)
