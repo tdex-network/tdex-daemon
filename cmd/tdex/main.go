@@ -103,6 +103,13 @@ func main() {
 		&reportmarketfee,
 	)
 
+	app.Before = func(ctx *cli.Context) error {
+		if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
+			os.Mkdir(tdexDataDir, os.ModeDir|0755)
+		}
+		return nil
+	}
+
 	err := app.Run(os.Args)
 	if err != nil {
 		fatal(err)
@@ -128,10 +135,6 @@ func getState() (map[string]string, error) {
 }
 
 func setState(data map[string]string) error {
-	if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
-		os.Mkdir(tdexDataDir, os.ModeDir|0755)
-	}
-
 	file, err := os.OpenFile(statePath, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err

@@ -20,10 +20,12 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/magiconair/properties v1.8.4
+	github.com/mdp/qrterminal/v3 v3.0.0
 	github.com/prometheus/client_golang v1.0.0
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/shopspring/decimal v1.2.0
 	github.com/sirupsen/logrus v1.8.1
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/soheilhy/cmux v0.1.5
 	github.com/sony/gobreaker v0.4.1
 	github.com/spf13/pflag v1.0.3

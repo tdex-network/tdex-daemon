@@ -66,6 +66,20 @@ builds:
     goarch:
       - amd64
     binary: unlockerd
+
+  # tdexdconnect
+  - id: "tdexdconnect"
+    main: ./cmd/tdexdconnect
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+    binary: tdexdconnect
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
   prerelease: auto
@@ -116,6 +130,12 @@ archives:
     builds:
       - unlockerd
     name_template: "unlockerd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+
+  - id: tdexdconnect
+    format: binary
+    builds:
+      - tdexdconnect
+    name_template: "tdexdconnect-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
 dockers:
   # push always either release or prerelease with a docker tag with the semver only
