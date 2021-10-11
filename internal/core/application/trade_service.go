@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -57,6 +58,8 @@ type tradeService struct {
 	priceSlippage              decimal.Decimal
 	network                    *network.Network
 	feeAccountBalanceThreshold uint64
+
+	lock *sync.Mutex
 }
 
 func NewTradeService(
@@ -100,6 +103,7 @@ func newTradeService(
 		priceSlippage:              priceSlippage,
 		network:                    net,
 		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
+		lock:                       &sync.Mutex{},
 	}
 }
 
@@ -226,6 +230,9 @@ func (t *tradeService) TradePropose(
 	tradeType int,
 	swapRequest domain.SwapRequest,
 ) (domain.SwapAccept, domain.SwapFail, uint64, error) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
 	if err := market.Validate(); err != nil {
 		return nil, nil, 0, err
 	}
