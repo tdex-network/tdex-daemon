@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,8 +40,8 @@ type TradeService interface {
 	) (domain.SwapAccept, domain.SwapFail, uint64, error)
 	TradeComplete(
 		ctx context.Context,
-		swapComplete *domain.SwapComplete,
-		swapFail *domain.SwapFail,
+		swapComplete domain.SwapComplete,
+		swapFail domain.SwapFail,
 	) (string, domain.SwapFail, error)
 	GetMarketBalance(
 		ctx context.Context,
@@ -57,6 +58,8 @@ type tradeService struct {
 	priceSlippage              decimal.Decimal
 	network                    *network.Network
 	feeAccountBalanceThreshold uint64
+
+	lock *sync.Mutex
 }
 
 func NewTradeService(
@@ -100,6 +103,7 @@ func newTradeService(
 		priceSlippage:              priceSlippage,
 		network:                    net,
 		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
+		lock:                       &sync.Mutex{},
 	}
 }
 
@@ -226,6 +230,9 @@ func (t *tradeService) TradePropose(
 	tradeType int,
 	swapRequest domain.SwapRequest,
 ) (domain.SwapAccept, domain.SwapFail, uint64, error) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
 	if err := market.Validate(); err != nil {
 		return nil, nil, 0, err
 	}
@@ -422,11 +429,11 @@ end:
 // TradeComplete is the domain controller for the TradeComplete RPC
 func (t *tradeService) TradeComplete(
 	ctx context.Context,
-	swapComplete *domain.SwapComplete,
-	swapFail *domain.SwapFail,
+	swapComplete domain.SwapComplete,
+	swapFail domain.SwapFail,
 ) (string, domain.SwapFail, error) {
 	if swapFail != nil {
-		swapFailMsg, err := t.tradeFail(ctx, *swapFail)
+		swapFailMsg, err := t.tradeFail(ctx, swapFail)
 		if err != nil {
 			log.Debugf("error while aborting trade: %s", err)
 			return "", nil, ErrServiceUnavailable
@@ -434,7 +441,7 @@ func (t *tradeService) TradeComplete(
 		return "", swapFailMsg, nil
 	}
 
-	return t.tradeComplete(ctx, *swapComplete)
+	return t.tradeComplete(ctx, swapComplete)
 }
 
 func (t *tradeService) tradeComplete(

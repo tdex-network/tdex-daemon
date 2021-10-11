@@ -98,15 +98,19 @@ func TestMarketTrading(t *testing.T) {
 		require.True(t, balances.Balance.QuoteAmount > 0)
 
 		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
 		})
 		t.Run("buy LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
 		})
 		t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
 		})
 		t.Run("sell LBTC fixed USDT", func(t *testing.T) {
+			t.Parallel()
 			marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
 		})
 	})
@@ -184,7 +188,6 @@ func newTradeService(
 	}
 
 	oLen := len(tradeMktOutpoints)
-	mktOutpointsWithAsset := make([]domain.OutpointWithAsset, oLen, oLen)
 	for i, outpoint := range tradeMktOutpoints {
 		info, _ := v.DeriveNextExternalAddressForAccount(domain.MarketAccountStart)
 		script, _ := hex.DecodeString(info.Script)
@@ -193,11 +196,6 @@ func newTradeService(
 		if i > (oLen/2 - 1) {
 			assetHash = marketQuoteAsset
 			value = 50000000000
-		}
-		mktOutpointsWithAsset[i] = domain.OutpointWithAsset{
-			Asset: assetHash,
-			Txid:  outpoint.Hash,
-			Vout:  outpoint.Index,
 		}
 
 		unspents = append(unspents, domain.Unspent{
@@ -369,17 +367,14 @@ func marketOrder(
 	require.NotNil(t, swapAccept)
 	require.True(t, time.Now().Before(time.Unix(int64(expiryTimestamp), 0)))
 
-	var swapCompletePtr *domain.SwapComplete
-	var swapComplete domain.SwapComplete
-	swapComplete = &pbswap.SwapComplete{
+	swapComplete := &pbswap.SwapComplete{
 		Id:          randomId(),
 		AcceptId:    swapAccept.GetId(),
 		Transaction: swapAccept.GetTransaction(),
 	}
-	swapCompletePtr = &swapComplete
 
 	time.Sleep(200 * time.Millisecond)
-	_, _, err = tradeSvc.TradeComplete(ctx, swapCompletePtr, nil)
+	_, _, err = tradeSvc.TradeComplete(ctx, swapComplete, nil)
 	require.NoError(t, err)
 
 	time.Sleep(200 * time.Millisecond)
@@ -390,10 +385,10 @@ func randomBase64() string {
 }
 
 func randomSelection(list []domain.Unspent, counter int) []explorer.Utxo {
-	selectedUtxos := make([]explorer.Utxo, 3, 3)
+	selectedUtxos := make([]explorer.Utxo, 0, 3)
 	for i := 0; i < 3; i++ {
 		selectedIndex := counter*3 + i
-		selectedUtxos[i] = list[selectedIndex].ToUtxo()
+		selectedUtxos = append(selectedUtxos, list[selectedIndex].ToUtxo())
 	}
 	return selectedUtxos
 }
