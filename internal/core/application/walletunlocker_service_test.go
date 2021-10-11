@@ -113,7 +113,7 @@ func TestInitWallet(t *testing.T) {
 
 		replies, err := listenToReplies(chReplies)
 		require.NoError(t, err)
-		require.Len(t, replies, 0)
+		require.Len(t, replies, 2)
 	})
 
 	t.Run("wallet_from_restart", func(t *testing.T) {
