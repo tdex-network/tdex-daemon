@@ -17,11 +17,17 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
+	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/transaction"
+)
+
+var (
+	DefaultFeeFragmenterFragments = uint32(50)
+	DefaultFeeFragmenterAmount    = uint64(5000)
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -35,6 +41,11 @@ type OperatorService interface {
 	) ([]AddressAndBlindingKey, error)
 	GetFeeBalance(ctx context.Context) (int64, int64, error)
 	ClaimFeeDeposits(ctx context.Context, outpoints []TxOutpoint) error
+	GetFeeFragmenterAddress(ctx context.Context) (string, error)
+	FragmentFeeDeposits(
+		ctx context.Context,
+		req FragmentDepositsReq, chRes chan FragmentDepositsReply,
+	)
 	WithdrawFeeFunds(
 		ctx context.Context, req WithdrawFeeReq,
 	) ([]byte, []byte, error)
@@ -55,6 +66,11 @@ type OperatorService interface {
 	GetMarketCollectedFee(
 		ctx context.Context, market Market, page *Page,
 	) (*ReportMarketFee, error)
+	GetMarketFragmenterAddress(ctx context.Context, market Market) (string, error)
+	FragmentMarketDeposits(
+		ctx context.Context, market Market, req FragmentDepositsReq,
+		chRes chan FragmentDepositsReply,
+	)
 	WithdrawMarketFunds(
 		ctx context.Context, req WithdrawMarketReq,
 	) ([]byte, []byte, error)
@@ -94,6 +110,9 @@ type operatorService struct {
 	marketFee                  int64
 	network                    *network.Network
 	feeAccountBalanceThreshold uint64
+
+	ephemeralWalletByAccount map[int]*trade.Wallet
+	ephWalletLock            *sync.RWMutex
 }
 
 // NewOperatorService is a constructor function for OperatorService.
@@ -114,6 +133,8 @@ func NewOperatorService(
 		marketFee:                  marketFee,
 		network:                    net,
 		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
+		ephemeralWalletByAccount:   make(map[int]*trade.Wallet),
+		ephWalletLock:              &sync.RWMutex{},
 	}
 }
 
@@ -249,18 +270,74 @@ func (o *operatorService) GetFeeBalance(ctx context.Context) (int64, int64, erro
 func (o *operatorService) ClaimFeeDeposits(
 	ctx context.Context, outpoints []TxOutpoint,
 ) error {
-	info, err := o.repoManager.VaultRepository().GetAllDerivedExternalAddressesInfoForAccount(
-		ctx,
-		domain.FeeAccount,
-	)
+	accountInfo, err := o.repoManager.VaultRepository().
+		GetAllDerivedExternalAddressesInfoForAccount(ctx, domain.FeeAccount)
 	if err != nil {
 		return err
 	}
 
-	infoPerAccount := make(map[int]domain.AddressesInfo)
-	infoPerAccount[domain.FeeAccount] = info
+	return o.claimDeposit(ctx, accountInfo, outpoints, nil)
+}
 
-	return o.claimDeposit(ctx, infoPerAccount, outpoints, nil)
+func (o *operatorService) GetFeeFragmenterAddress(
+	ctx context.Context,
+) (string, error) {
+	accountIndex := domain.FeeAccount
+	if w := o.getEphWalletForAccount(accountIndex); w != nil {
+		return w.Address(), nil
+	}
+
+	w, err := trade.NewRandomWallet(o.network)
+	if err != nil {
+		return "", fmt.Errorf(
+			"failed to create ephemeral wallet for fee fragmenter: %s", err,
+		)
+	}
+
+	o.setEphWalletForAccount(accountIndex, w)
+	return w.Address(), nil
+}
+
+func (o *operatorService) FragmentFeeDeposits(
+	ctx context.Context, req FragmentDepositsReq,
+	chRes chan FragmentDepositsReply,
+) {
+	defer close(chRes)
+
+	accountIndex := domain.FeeAccount
+	ephWallet := o.getEphWalletForAccount(accountIndex)
+	if ephWallet == nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf(
+				"ephemeral wallet not found. Generate one with GetFeeFragmenterAddress",
+			),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "fetching funds for ephemeral wallet",
+	}
+
+	utxos, err := o.getEphWalletUtxos(ephWallet)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: err,
+		}
+		return
+	}
+	if len(utxos) <= 0 {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("no funds detected for ephemeral wallet"),
+		}
+		return
+	}
+
+	if req.RecoverAddress != "" {
+		o.abortFragmentation(ctx, ephWallet, accountIndex, req, nil, utxos, chRes)
+		return
+	}
+	o.computeFeeFragmentation(ctx, req, utxos, chRes)
 }
 
 func (o *operatorService) WithdrawFeeFunds(
@@ -620,16 +697,14 @@ func (o *operatorService) ClaimMarketDeposits(
 		return ErrMarketNotFunded
 	}
 
-	infoPerAccount := make(map[int]domain.AddressesInfo)
 	info, err := o.repoManager.VaultRepository().GetAllDerivedExternalAddressesInfoForAccount(
 		ctx, accountIndex,
 	)
 	if err != nil {
 		return err
 	}
-	infoPerAccount[accountIndex] = info
 
-	return o.claimDeposit(ctx, infoPerAccount, outpoints, market)
+	return o.claimDeposit(ctx, info, outpoints, market)
 }
 
 func (o *operatorService) OpenMarket(ctx context.Context, mkt Market) error {
@@ -797,6 +872,92 @@ func (o *operatorService) GetMarketCollectedFee(
 		CollectedFees:              fees,
 		TotalCollectedFeesPerAsset: total,
 	}, nil
+}
+
+func (o *operatorService) GetMarketFragmenterAddress(
+	ctx context.Context, market Market,
+) (string, error) {
+	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
+		ctx, market.QuoteAsset,
+	)
+	if err != nil {
+		return "", err
+	}
+	if accountIndex < 0 {
+		return "", ErrMarketNotExist
+	}
+
+	if w := o.getEphWalletForAccount(accountIndex); w != nil {
+		return w.Address(), nil
+	}
+
+	w, err := trade.NewRandomWallet(o.network)
+	if err != nil {
+		return "", fmt.Errorf(
+			"failed to create ephemeral wallet for market fragmenter: %s", err,
+		)
+	}
+
+	o.setEphWalletForAccount(accountIndex, w)
+	return w.Address(), nil
+}
+
+func (o *operatorService) FragmentMarketDeposits(
+	ctx context.Context, market Market, req FragmentDepositsReq,
+	chRes chan FragmentDepositsReply,
+) {
+	defer close(chRes)
+
+	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
+		ctx, market.QuoteAsset,
+	)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to retrieve market: %s", err),
+		}
+		return
+	}
+	if accountIndex < 0 {
+		chRes <- FragmentDepositsReply{
+			Err: ErrMarketNotExist,
+		}
+		return
+	}
+
+	ephWallet := o.getEphWalletForAccount(accountIndex)
+	if ephWallet == nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf(
+				"ephemeral wallet not found for market. " +
+					"Generate one with GetMarketFragmenterAddress",
+			),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "fetching funds for ephemeral wallet",
+	}
+
+	utxos, err := o.getEphWalletUtxos(ephWallet)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: err,
+		}
+		return
+	}
+	if len(utxos) <= 0 {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("no funds detected for ephemeral wallet"),
+		}
+		return
+	}
+
+	if req.RecoverAddress != "" {
+		o.abortFragmentation(ctx, ephWallet, accountIndex, req, nil, utxos, chRes)
+		return
+	}
+	o.computeMarketFragmentation(ctx, req, mkt, ephWallet, utxos, chRes)
 }
 
 func (o *operatorService) WithdrawMarketFunds(
@@ -1410,34 +1571,34 @@ func (o *operatorService) ListWebhooks(
 
 func (o *operatorService) claimDeposit(
 	ctx context.Context,
-	infoPerAccount map[int]domain.AddressesInfo,
+	accountInfo domain.AddressesInfo,
 	outpoints []TxOutpoint,
 	market *domain.Market,
 ) error {
+	accountIndex := domain.FeeAccount
+	if market != nil {
+		accountIndex = market.AccountIndex
+	}
 	// Group all addresses info by script
 	infoByScript := make(map[string]domain.AddressInfo)
-	for _, info := range infoPerAccount {
-		for s, i := range groupAddressesInfoByScript(info) {
-			infoByScript[s] = i
-		}
+	for s, i := range groupAddressesInfoByScript(accountInfo) {
+		infoByScript[s] = i
 	}
 
 	// For each outpoint retrieve the raw tx and output. If the output script
 	// exists in infoByScript, increment the counter of the related account and
 	// unblind the raw confidential output.
 	// Since all outpoints MUST be funds of the same account, at the end of the
-	// loop there MUST be only one counter matching the length of the give
+	// loop there MUST be only one counter matching the length of the given
 	// outpoints.
-	counter := make(map[int]int)
+	counter := 0
 	unspents := make([]domain.Unspent, 0, len(outpoints))
 	deposits := make([]domain.Deposit, 0, len(outpoints))
+	unconfirmedTxs := make([]string, 0)
 	for _, v := range outpoints {
 		confirmed, err := o.explorerSvc.IsTransactionConfirmed(v.Hash)
 		if err != nil {
 			return err
-		}
-		if !confirmed {
-			return ErrTxNotConfirmed
 		}
 
 		tx, err := o.explorerSvc.GetTransaction(v.Hash)
@@ -1452,7 +1613,7 @@ func (o *operatorService) claimDeposit(
 		txOut := tx.Outputs()[v.Index]
 		script := hex.EncodeToString(txOut.Script)
 		if info, ok := infoByScript[script]; ok {
-			counter[info.AccountIndex]++
+			counter++
 
 			unconfidential, ok := BlinderManager.UnblindOutput(
 				txOut,
@@ -1476,7 +1637,7 @@ func (o *operatorService) claimDeposit(
 				RangeProof:      make([]byte, 1),
 				SurjectionProof: make([]byte, 1),
 				Address:         info.Address,
-				Confirmed:       true,
+				Confirmed:       confirmed,
 			})
 
 			deposits = append(deposits, domain.Deposit{
@@ -1486,39 +1647,52 @@ func (o *operatorService) claimDeposit(
 				Asset:        unconfidential.AssetHash,
 				Value:        unconfidential.Value,
 			})
+
+			if !confirmed {
+				unconfirmedTxs = append(unconfirmedTxs, v.Hash)
+			}
 		}
 	}
 
-	for accountIndex, count := range counter {
-		if count == len(outpoints) {
-			if market != nil {
-				if err := verifyMarketFunds(market, unspents); err != nil {
-					return err
-				}
-				log.Infof("funded market with account %d", accountIndex)
+	if counter == len(outpoints) {
+		if market != nil {
+			if err := verifyMarketFunds(market, unspents); err != nil {
+				return err
 			}
-
-			go func() {
-				addUnspentsAsync(o.repoManager.UnspentRepository(), unspents)
-				count, err := o.repoManager.DepositRepository().AddDeposits(
-					ctx, deposits,
-				)
-				if err != nil {
-					log.WithError(err).Warn("an error occured while storing deposits info")
-				} else {
-					log.Debugf("added %d deposits", count)
-				}
-				if market == nil {
-					if err := o.checkAccountBalance(infoPerAccount[accountIndex]); err != nil {
-						log.Warn(err)
-						return
-					}
-					log.Info("fee account funded. Trades can be served")
-				}
-			}()
-
-			return nil
+			log.Infof("funded market with account %d", accountIndex)
 		}
+
+		go func() {
+			addUnspentsAsync(o.repoManager.UnspentRepository(), unspents)
+			count, err := o.repoManager.DepositRepository().AddDeposits(
+				ctx, deposits,
+			)
+			if err != nil {
+				log.WithError(err).Warn("an error occured while storing deposits info")
+			} else {
+				log.Debugf("added %d deposits for account %d", count, accountIndex)
+			}
+			if market == nil {
+				if err := o.checkFeeBalance(accountInfo); err != nil {
+					log.Warn(err)
+					return
+				}
+				log.Info("fee account funded. Trades can be served")
+			}
+		}()
+
+		// Start watching for those funds that are not yet confirmed.
+		go func() {
+			for _, txid := range unconfirmedTxs {
+				var mktQuoteAsset string
+				if market != nil {
+					mktQuoteAsset = market.QuoteAsset
+				}
+				o.blockchainListener.StartObserveTx(txid, mktQuoteAsset)
+			}
+		}()
+
+		return nil
 	}
 
 	return ErrInvalidOutpoints
@@ -1534,7 +1708,7 @@ func verifyMarketFunds(
 	return market.VerifyMarketFunds(outpoints)
 }
 
-func (o *operatorService) checkAccountBalance(accountInfo domain.AddressesInfo) error {
+func (o *operatorService) checkFeeBalance(accountInfo domain.AddressesInfo) error {
 	feeAccountBalance, err := o.repoManager.UnspentRepository().GetBalance(
 		context.Background(),
 		accountInfo.Addresses(),
@@ -1575,6 +1749,421 @@ func (o *operatorService) getAllUnspentsForAccount(
 		utxos = append(utxos, u.ToUtxo())
 	}
 	return utxos, nil
+}
+
+func (o *operatorService) getEphWalletForAccount(account int) *trade.Wallet {
+	o.ephWalletLock.RLock()
+	defer o.ephWalletLock.RUnlock()
+
+	return o.ephemeralWalletByAccount[account]
+}
+
+func (o *operatorService) setEphWalletForAccount(account int, w *trade.Wallet) {
+	o.ephWalletLock.Lock()
+	defer o.ephWalletLock.Unlock()
+
+	o.ephemeralWalletByAccount[account] = w
+}
+
+func (o *operatorService) getEphWalletUtxos(ephWallet *trade.Wallet) ([]explorer.Utxo, error) {
+	addr := ephWallet.Address()
+	blindingKey := ephWallet.BlindingKey()
+
+	addresses, keys := []string{addr}, [][]byte{blindingKey}
+	cb := circuitbreaker.NewCircuitBreaker()
+	iUtxos, err := cb.Execute(func() (interface{}, error) {
+		return o.explorerSvc.GetUnspentsForAddresses(addresses, keys)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch utxos for ephemeral wallet: %s", err)
+	}
+	utxos := iUtxos.([]explorer.Utxo)
+	return utxos, nil
+}
+
+func (o *operatorService) computeFeeFragmentation(
+	ctx context.Context, req FragmentDepositsReq,
+	utxos []explorer.Utxo, chRes chan FragmentDepositsReply,
+) {
+	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(
+		ctx, nil, "", nil,
+	)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: err,
+		}
+		return
+	}
+	accountIndex := domain.FeeAccount
+	ephWallet := o.getEphWalletForAccount(accountIndex)
+	lbtc := o.network.AssetID
+	maxFragments := DefaultFeeFragmenterFragments
+	if req.MaxFragments > 0 {
+		maxFragments = req.MaxFragments
+	}
+
+	amountPerAsset := make(map[string]uint64)
+	for _, u := range utxos {
+		amountPerAsset[u.Asset()] += u.Value()
+	}
+	if _, ok := amountPerAsset[lbtc]; !ok {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf(
+				"no LBTC funds found for the ephemeral wallet. In case you sent funds " +
+					"of other asset types you MUST abort the fragmentation and send back " +
+					"all to an address of yours",
+			),
+		}
+		return
+	}
+	if len(amountPerAsset) != 1 {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf(
+				"found funds with asset different from LBTC. To not loose these " +
+					"funds, you MUST abort the fragmentation and retry by sending only " +
+					"LBTCs to the ephemeral wallet address",
+			),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "calculating fragments for LBTC funds",
+	}
+
+	totalAmount := amountPerAsset[lbtc]
+	fragmentedAmounts := fragmentAmountForFeeAccount(
+		totalAmount, DefaultFeeFragmenterAmount, maxFragments,
+	)
+	feeAmount := estimateFees(len(utxos), len(fragmentedAmounts))
+	fragmentedAmounts = deductFeeFromFragments(fragmentedAmounts, feeAmount)
+
+	chRes <- FragmentDepositsReply{
+		Msg: fmt.Sprintf(
+			"detected %d fund(s) of total amount %d that will be split into %d "+
+				"fragments", len(utxos), totalAmount, len(fragmentedAmounts),
+		),
+	}
+
+	feeAddresses := make([]string, 0, len(fragmentedAmounts))
+	for range fragmentedAmounts {
+		info, err := vault.DeriveNextExternalAddressForAccount(domain.FeeAccount)
+		if err != nil {
+			chRes <- FragmentDepositsReply{
+				Err: fmt.Errorf("failed to derive new address for fee account: %s", err),
+			}
+			return
+		}
+		feeAddresses = append(feeAddresses, info.Address)
+	}
+	accountInfo, err := vault.AllDerivedExternalAddressesInfoForAccount(domain.FeeAccount)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to retrieve fee account info: %s", err),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "crafting fee deposit transaction",
+	}
+
+	txHex, err := craftTransaction(
+		ephWallet, utxos,
+		fragmentedAmounts, nil,
+		feeAddresses, feeAmount,
+		pair{baseAsset: lbtc}, lbtc,
+	)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to craft fee deposit transaction: %s", err),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "broadcasting transaction",
+	}
+
+	cb := circuitbreaker.NewCircuitBreaker()
+	iTxid, err := cb.Execute(func() (interface{}, error) {
+		return o.explorerSvc.BroadcastTransaction(txHex)
+	})
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to broadcast transaction: %s", err),
+		}
+		return
+	}
+	txid := iTxid.(string)
+
+	chRes <- FragmentDepositsReply{
+		Msg: fmt.Sprintf("fee account funding transaction: %s", txid),
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "claiming deposits for fee account",
+	}
+
+	outpoints := createOutpoints(txid, len(fragmentedAmounts))
+	if err := o.claimDeposit(ctx, accountInfo, outpoints, nil); err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to claim deposits: %s", err),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "fragmentation succeeded",
+	}
+
+	go func() {
+		o.setEphWalletForAccount(accountIndex, nil)
+		if err := o.repoManager.VaultRepository().UpdateVault(
+			ctx, func(_ *domain.Vault) (*domain.Vault, error) {
+				return vault, nil
+			},
+		); err != nil {
+			log.WithError(err).Warn("an error occured while updating vault")
+		}
+	}()
+}
+
+func (o *operatorService) computeMarketFragmentation(
+	ctx context.Context, req FragmentDepositsReq,
+	market *domain.Market, ephWallet *trade.Wallet, utxos []explorer.Utxo,
+	chRes chan FragmentDepositsReply,
+) {
+	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(
+		ctx, nil, "", nil,
+	)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: err,
+		}
+		return
+	}
+
+	amountPerAsset := make(map[string]uint64)
+	for _, u := range utxos {
+		amountPerAsset[u.Asset()] += u.Value()
+	}
+
+	var assetValuePair pair
+	for k, v := range amountPerAsset {
+		if k == market.BaseAsset {
+			assetValuePair.baseAsset = k
+			assetValuePair.baseValue = v
+		} else if k == market.QuoteAsset {
+			assetValuePair.quoteAsset = k
+			assetValuePair.quoteValue = v
+		} else {
+			chRes <- FragmentDepositsReply{
+				Err: fmt.Errorf(
+					"fetched funds of asset different from the market pair. " +
+						"Recover all the funds and abort this fragmentation",
+				),
+			}
+			return
+		}
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "calculating fragments for market asset pair",
+	}
+
+	lbtc := o.network.AssetID
+	baseFragments, quoteFragments := fragmentAmountsForMarket(assetValuePair)
+	feeAmount := estimateFees(len(utxos), len(baseFragments)+len(quoteFragments))
+	baseFragments = deductFeeFromFragments(baseFragments, feeAmount)
+	numIns := len(utxos)
+	numOuts := len(baseFragments) + len(quoteFragments)
+
+	chRes <- FragmentDepositsReply{
+		Msg: fmt.Sprintf("detected %d funds", numIns),
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: fmt.Sprintf(
+			"splitting base asset amount %d into %d fragments",
+			assetValuePair.baseValue, len(baseFragments),
+		),
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: fmt.Sprintf(
+			"splitting quote asset amount %d into %d fragments",
+			assetValuePair.quoteValue, len(quoteFragments),
+		),
+	}
+
+	addresses := make([]string, 0, numOuts)
+	for i := 0; i < numOuts; i++ {
+		info, err := vault.DeriveNextExternalAddressForAccount(market.AccountIndex)
+		if err != nil {
+			chRes <- FragmentDepositsReply{
+				Err: fmt.Errorf("failed to derive new address for market: %s", err),
+			}
+			return
+		}
+		addresses = append(addresses, info.Address)
+	}
+	accountInfo, err := vault.AllDerivedExternalAddressesInfoForAccount(
+		market.AccountIndex,
+	)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to retrieve market account info: %s", err),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "crafting market deposit transaction",
+	}
+
+	txHex, err := craftTransaction(
+		ephWallet, utxos, baseFragments, quoteFragments,
+		addresses, feeAmount, assetValuePair, lbtc,
+	)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to craft market deposit transaction: %s", err),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "broadcasting transaction",
+	}
+
+	cb := circuitbreaker.NewCircuitBreaker()
+	iTxid, err := cb.Execute(func() (interface{}, error) {
+		return o.explorerSvc.BroadcastTransaction(txHex)
+	})
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to broadcast transaction: %s", err),
+		}
+		return
+	}
+	txid := iTxid.(string)
+
+	chRes <- FragmentDepositsReply{
+		Msg: fmt.Sprintf("market account funding transaction: %s", txid),
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "claiming deposits for market account",
+	}
+
+	outpoints := createOutpoints(txid, numOuts)
+	if err := o.claimDeposit(ctx, accountInfo, outpoints, market); err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to claim deposits: %s", err),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "fragmentation succeeded",
+	}
+
+	go func() {
+		o.setEphWalletForAccount(market.AccountIndex, nil)
+		if err := o.repoManager.VaultRepository().UpdateVault(
+			ctx, func(_ *domain.Vault) (*domain.Vault, error) {
+				return vault, nil
+			},
+		); err != nil {
+			log.WithError(err).Warn("an error occured while updating vault")
+		}
+	}()
+}
+
+func (o *operatorService) abortFragmentation(
+	ctx context.Context, ephWallet *trade.Wallet, accountIndex int,
+	req FragmentDepositsReq, market *Market, utxos []explorer.Utxo,
+	chRes chan FragmentDepositsReply,
+) {
+	lbtc := o.network.AssetID
+
+	amountPerAsset := make(map[string]uint64)
+	for _, u := range utxos {
+		amountPerAsset[u.Asset()] += u.Value()
+	}
+	if _, ok := amountPerAsset[lbtc]; !ok {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf(
+				"send more LBTC funds to the ephemeral wallet to make it able to pay " +
+					"for network fees. Extra amount will be sent back to your address",
+			),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: fmt.Sprintf("found %d unspents with amount per asset:", len(utxos)),
+	}
+
+	feeAmount := estimateFees(len(utxos), len(amountPerAsset))
+	amountPerAsset[lbtc] -= feeAmount
+
+	outs := make([]TxOut, 0, len(amountPerAsset))
+	for asset, amount := range amountPerAsset {
+		outs = append(outs, TxOut{
+			Asset:   asset,
+			Address: req.RecoverAddress,
+			Value:   int64(amount),
+		})
+
+		msg := fmt.Sprintf("%s: %d", asset, amount)
+		if asset == lbtc {
+			msg += (" (network fees deducted)")
+		}
+		chRes <- FragmentDepositsReply{Msg: msg}
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "crafting recover trasaction",
+	}
+
+	txHex, err := buildFinalizedTx(
+		ephWallet, utxos, outs, feeAmount, lbtc,
+	)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to craft recover transaction: %s", err),
+		}
+		return
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "broadcasting transaction",
+	}
+
+	cb := circuitbreaker.NewCircuitBreaker()
+	iTxid, err := cb.Execute(func() (interface{}, error) {
+		return o.explorerSvc.BroadcastTransaction(txHex)
+	})
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("failed to broadcast transaction: %s", err),
+		}
+	}
+	txid := iTxid.(string)
+
+	chRes <- FragmentDepositsReply{
+		Msg: fmt.Sprintf(
+			"sent all ephemeral wallet funds to address %s in tx: %s",
+			req.RecoverAddress, txid,
+		),
+	}
+
+	chRes <- FragmentDepositsReply{
+		Msg: "recover succeeded",
+	}
+	o.setEphWalletForAccount(accountIndex, nil)
 }
 
 func tradesToTradeInfo(trades []*domain.Trade, marketBaseAsset, network string) []TradeInfo {

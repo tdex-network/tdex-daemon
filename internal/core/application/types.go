@@ -168,6 +168,16 @@ type BalanceInfo struct {
 	UnconfirmedBalance uint64
 }
 
+type FragmentDepositsReq struct {
+	RecoverAddress string
+	MaxFragments   uint32
+}
+
+type FragmentDepositsReply struct {
+	Msg string
+	Err error
+}
+
 type WithdrawMarketReq struct {
 	Market
 	BalanceToWithdraw Balance
