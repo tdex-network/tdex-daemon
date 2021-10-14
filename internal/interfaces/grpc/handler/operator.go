@@ -68,6 +68,18 @@ func (o operatorHandler) ClaimFeeDeposits(
 	return o.claimFeeDeposits(ctx, req)
 }
 
+func (o operatorHandler) GetFeeFragmenterAddress(
+	ctx context.Context, _ *pb.GetFeeFragmenterAddressRequest,
+) (*pb.GetFeeFragmenterAddressReply, error) {
+	return o.getFeeFragmenterAddress(ctx)
+}
+
+func (o operatorHandler) FragmentFeeDeposits(
+	req *pb.FragmentFeeDepositsRequest, stream pb.Operator_FragmentFeeDepositsServer,
+) error {
+	return o.fragmentFeeDeposits(req, stream)
+}
+
 func (o operatorHandler) WithdrawFee(
 	ctx context.Context, req *pb.WithdrawFeeRequest,
 ) (*pb.WithdrawFeeReply, error) {
@@ -126,6 +138,18 @@ func (o operatorHandler) GetMarketCollectedSwapFees(
 	ctx context.Context, req *pb.GetMarketCollectedSwapFeesRequest,
 ) (*pb.GetMarketCollectedSwapFeesReply, error) {
 	return o.getMarketCollectedSwapFees(ctx, req)
+}
+
+func (o operatorHandler) GetMarketFragmenterAddress(
+	ctx context.Context, req *pb.GetMarketFragmenterAddressRequest,
+) (*pb.GetMarketFragmenterAddressReply, error) {
+	return o.getMarketFragmenterAddress(ctx, req)
+}
+
+func (o operatorHandler) FragmentMarketDeposits(
+	req *pb.FragmentMarketDepositsRequest, stream pb.Operator_FragmentMarketDepositsServer,
+) error {
+	return o.fragmentMarketDeposits(req, stream)
 }
 
 func (o operatorHandler) WithdrawMarket(
@@ -306,6 +330,45 @@ func (o operatorHandler) claimFeeDeposits(
 	}
 
 	return &pb.ClaimFeeDepositsReply{}, nil
+}
+
+func (o operatorHandler) getFeeFragmenterAddress(
+	ctx context.Context,
+) (*pb.GetFeeFragmenterAddressReply, error) {
+	addr, err := o.operatorSvc.GetFeeFragmenterAddress(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetFeeFragmenterAddressReply{
+		Address: addr,
+	}, nil
+}
+
+func (o operatorHandler) fragmentFeeDeposits(
+	req *pb.FragmentFeeDepositsRequest,
+	stream pb.Operator_FragmentFeeDepositsServer,
+) error {
+	fd := application.FragmentDepositsReq{
+		RecoverAddress: req.GetRecoverAddress(),
+		MaxFragments:   req.GetMaxFragments(),
+	}
+
+	chReplies := make(chan application.FragmentDepositsReply)
+	go o.operatorSvc.FragmentFeeDeposits(stream.Context(), fd, chReplies)
+
+	for reply := range chReplies {
+		if reply.Err != nil {
+			return reply.Err
+		}
+
+		if err := stream.Send(&pb.FragmentFeeDepositsReply{
+			Message: reply.Msg,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (o operatorHandler) withdrawFee(
@@ -521,6 +584,56 @@ func (o operatorHandler) getMarketCollectedSwapFees(
 		CollectedFees:              collectedFees,
 		TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
 	}, nil
+}
+
+func (o operatorHandler) getMarketFragmenterAddress(
+	ctx context.Context, req *pb.GetMarketFragmenterAddressRequest,
+) (*pb.GetMarketFragmenterAddressReply, error) {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	addr, err := o.operatorSvc.GetMarketFragmenterAddress(ctx, market)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.GetMarketFragmenterAddressReply{
+		Address: addr,
+	}, nil
+}
+
+func (o operatorHandler) fragmentMarketDeposits(
+	req *pb.FragmentMarketDepositsRequest,
+	stream pb.Operator_FragmentMarketDepositsServer,
+) error {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	fd := application.FragmentDepositsReq{
+		RecoverAddress: req.GetRecoverAddress(),
+	}
+
+	chReplies := make(chan application.FragmentDepositsReply)
+	go o.operatorSvc.FragmentMarketDeposits(
+		stream.Context(), market, fd, chReplies,
+	)
+
+	for reply := range chReplies {
+		if reply.Err != nil {
+			return reply.Err
+		}
+
+		if err := stream.Send(&pb.FragmentMarketDepositsReply{
+			Message: reply.Msg,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (o operatorHandler) withdrawMarket(
