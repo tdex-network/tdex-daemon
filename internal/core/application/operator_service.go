@@ -20,6 +20,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -877,6 +878,10 @@ func (o *operatorService) GetMarketCollectedFee(
 func (o *operatorService) GetMarketFragmenterAddress(
 	ctx context.Context, market Market,
 ) (string, error) {
+	if err := market.Validate(); err != nil {
+		return "", fmt.Errorf("invalid market: %s", err)
+	}
+
 	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
 		ctx, market.QuoteAsset,
 	)
@@ -907,6 +912,13 @@ func (o *operatorService) FragmentMarketDeposits(
 	chRes chan FragmentDepositsReply,
 ) {
 	defer close(chRes)
+
+	if err := market.Validate(); err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("invalid market: %s", err),
+		}
+		return
+	}
 
 	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
 		ctx, market.QuoteAsset,
@@ -2086,6 +2098,19 @@ func (o *operatorService) abortFragmentation(
 	req FragmentDepositsReq, market *Market, utxos []explorer.Utxo,
 	chRes chan FragmentDepositsReply,
 ) {
+	net, err := address.NetworkForAddress(req.RecoverAddress)
+	if err != nil {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("recover address is invalid"),
+		}
+		return
+	}
+	if net.Name != o.network.Name {
+		chRes <- FragmentDepositsReply{
+			Err: fmt.Errorf("recover address is not for network %s", o.network.Name),
+		}
+		return
+	}
 	lbtc := o.network.AssetID
 
 	amountPerAsset := make(map[string]uint64)
