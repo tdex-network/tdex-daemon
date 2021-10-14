@@ -65,6 +65,7 @@ var (
 				Name: "address",
 				Usage: "specify an address where to send the funds owned by the " +
 					"fragmenter to abort the process",
+				Required: true,
 			},
 		},
 		Action: feeFragmenterRecoverAction,
@@ -92,6 +93,7 @@ var (
 				Name: "address",
 				Usage: "specify an address where to send the funds owned by the " +
 					"fragmenter to abort the process",
+				Required: true,
 			},
 		},
 		Action: mktFragmenterRecoverAction,
@@ -158,6 +160,9 @@ func feeFragmenterRecoverAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	recoverAddress := ctx.String("address")
+	if len(recoverAddress) <= 0 {
+		return fmt.Errorf("recover address is missing")
+	}
 
 	stream, err := client.FragmentFeeDeposits(context.Background(), &pb.FragmentFeeDepositsRequest{
 		RecoverAddress: recoverAddress,
@@ -265,6 +270,9 @@ func mktFragmenterRecoverAction(ctx *cli.Context) error {
 		return err
 	}
 	recoverAddress := ctx.String("address")
+	if len(recoverAddress) <= 0 {
+		return fmt.Errorf("recover address is missing")
+	}
 
 	stream, err := client.FragmentMarketDeposits(
 		context.Background(), &pb.FragmentMarketDepositsRequest{
