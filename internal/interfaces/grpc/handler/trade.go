@@ -58,17 +58,17 @@ func (t traderHandler) MarketPrice(
 }
 
 func (t traderHandler) TradePropose(
+	ctx context.Context,
 	req *pb.TradeProposeRequest,
-	stream pb.Trade_TradeProposeServer,
-) error {
-	return t.tradePropose(req, stream)
+) (*pb.TradeProposeReply, error) {
+	return t.tradePropose(ctx, req)
 }
 
 func (t traderHandler) TradeComplete(
+	ctx context.Context,
 	req *pb.TradeCompleteRequest,
-	stream pb.Trade_TradeCompleteServer,
-) error {
-	return t.tradeComplete(req, stream)
+) (*pb.TradeCompleteReply, error) {
+	return t.tradeComplete(ctx, req)
 }
 
 func (t traderHandler) markets(
@@ -192,27 +192,27 @@ func (t traderHandler) marketPrice(
 }
 
 func (t traderHandler) tradePropose(
+	ctx context.Context,
 	req *pb.TradeProposeRequest,
-	stream pb.Trade_TradeProposeServer,
-) error {
+) (*pb.TradeProposeReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	tradeType := req.GetType()
 	if err := validateTradeType(tradeType); err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	swapRequest := req.GetSwapRequest()
 	if err := validateSwapRequest(swapRequest); err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	accept, fail, swapExpiryTime, err := t.traderSvc.TradePropose(
-		stream.Context(), market, int(tradeType), swapRequest,
+		ctx, market, int(tradeType), swapRequest,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var swapAccept *pbswap.SwapAccept
@@ -236,22 +236,17 @@ func (t traderHandler) tradePropose(
 		}
 	}
 
-	reply := &pb.TradeProposeReply{
+	return &pb.TradeProposeReply{
 		SwapAccept:     swapAccept,
 		SwapFail:       swapFail,
 		ExpiryTimeUnix: swapExpiryTime,
-	}
-
-	if err := stream.Send(reply); err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-	return nil
+	}, nil
 }
 
 func (t traderHandler) tradeComplete(
+	ctx context.Context,
 	req *pb.TradeCompleteRequest,
-	stream pb.Trade_TradeCompleteServer,
-) error {
+) (*pb.TradeCompleteReply, error) {
 	var swapComplete domain.SwapComplete
 	if s := req.SwapComplete; s != nil {
 		swapComplete = s
@@ -261,10 +256,10 @@ func (t traderHandler) tradeComplete(
 		swapFail = s
 	}
 	txID, fail, err := t.traderSvc.TradeComplete(
-		stream.Context(), swapComplete, swapFail,
+		ctx, swapComplete, swapFail,
 	)
 	if err != nil {
-		return status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	var swapFailStub *pbswap.SwapFail
@@ -277,16 +272,10 @@ func (t traderHandler) tradeComplete(
 		}
 	}
 
-	res := &pb.TradeCompleteReply{
+	return &pb.TradeCompleteReply{
 		Txid:     txID,
 		SwapFail: swapFailStub,
-	}
-
-	if err := stream.Send(res); err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-
-	return nil
+	}, nil
 }
 
 func validateTradeType(tType pb.TradeType) error {
