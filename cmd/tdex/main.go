@@ -74,7 +74,6 @@ func main() {
 		&walletAccount,
 		&feeAccount,
 		&marketAccount,
-		&fragmenter,
 		&fragmentfee,
 		&fragmentmarket,
 		&listmarkets,

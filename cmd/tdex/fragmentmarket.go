@@ -27,6 +27,6 @@ var fragmentmarket = cli.Command{
 }
 
 func fragmentMarketAction(ctx *cli.Context) error {
-	printDeprecatedWarn("tdex fragmenter market")
+	printDeprecatedWarn("tdex market deposit --fragment")
 	return nil
 }

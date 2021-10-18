@@ -42,6 +42,6 @@ var fragmentfee = cli.Command{
 }
 
 func fragmentFeeAction(ctx *cli.Context) error {
-	printDeprecatedWarn("tdex fragmenter fee")
+	printDeprecatedWarn("tdex fee deposit --fragment")
 	return nil
 }
