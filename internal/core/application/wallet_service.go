@@ -127,12 +127,6 @@ type SendToManyRequest struct {
 	Push            bool
 }
 
-type TxOut struct {
-	Asset   string
-	Value   int64
-	Address string
-}
-
 func (w *walletService) SendToMany(
 	ctx context.Context,
 	req SendToManyRequest,
@@ -276,15 +270,15 @@ func parseRequestOutputs(
 	blindingKeys := make([][]byte, 0, len(reqOutputs))
 
 	for _, out := range reqOutputs {
-		asset, err := bufferutil.AssetHashToBytes(out.Asset)
+		asset, err := bufferutil.AssetHashToBytes(out.asset)
 		if err != nil {
 			return nil, nil, err
 		}
-		value, err := bufferutil.ValueToBytes(uint64(out.Value))
+		value, err := bufferutil.ValueToBytes(uint64(out.value))
 		if err != nil {
 			return nil, nil, err
 		}
-		script, blindingKey, err := parseConfidentialAddress(out.Address)
+		script, blindingKey, err := parseConfidentialAddress(out.address)
 		if err != nil {
 			return nil, nil, err
 		}

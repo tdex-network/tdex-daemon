@@ -250,6 +250,26 @@ type TxOutpoint struct {
 	Index int
 }
 
+type TxOut struct {
+	asset   string
+	value   int64
+	address string
+}
+
+func NewTxOut(address, asset string, value int64) TxOut {
+	return TxOut{asset, value, address}
+}
+
+func (o TxOut) Asset() string {
+	return o.asset
+}
+func (o TxOut) Value() uint64 {
+	return uint64(o.value)
+}
+func (o TxOut) Address() string {
+	return o.address
+}
+
 type UtxoInfoList struct {
 	Unspents []UtxoInfo
 	Spents   []UtxoInfo
