@@ -69,9 +69,5 @@ func (c *Client) TradeComplete(opts TradeCompleteOpts) (*pbtrade.TradeCompleteRe
 		SwapComplete: swapComplete,
 		SwapFail:     swapFail,
 	}
-	stream, err := c.client.TradeComplete(context.Background(), request)
-	if err != nil {
-		return nil, err
-	}
-	return stream.Recv()
+	return c.client.TradeComplete(context.Background(), request)
 }
