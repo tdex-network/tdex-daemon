@@ -125,22 +125,6 @@ func (o UpdateSwapTxOpts) validate() error {
 	return nil
 }
 
-func (o UpdateSwapTxOpts) getUnspentsUnblindingKeys(w *Wallet) ([][]byte, error) {
-	keys := make([][]byte, 0, len(o.Unspents))
-	for _, u := range o.Unspents {
-		blindingPrvkey, _, err := w.DeriveBlindingKeyPair(
-			DeriveBlindingKeyPairOpts{
-				Script: u.Script(),
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-		keys = append(keys, blindingPrvkey.Serialize())
-	}
-	return keys, nil
-}
-
 // UpdateSwapTx takes care of adding inputs and output(s) to the provided partial
 // transaction. Inputs are selected so that the minimum number of them is used
 // to reach the target InputAmount. The subset of selected inputs is returned
@@ -222,14 +206,26 @@ func (o UpdateTxOpts) validate() error {
 			}
 		}
 
-		if len(o.ChangePathsByAsset) <= 0 {
+		if o.ChangePathsByAsset == nil {
 			return ErrNullChangePathsByAsset
 		}
 
-		for _, out := range o.Outputs {
-			asset := bufferutil.AssetHashFromBytes(out.Asset)
-			if _, ok := o.ChangePathsByAsset[asset]; !ok {
-				return fmt.Errorf("missing derivation path for eventual change of asset '%s'", asset)
+		inAmountByAsset := o.getInputsTotalAmountsByAsset()
+		outAmountByAsset := o.getOutputsTotalAmountsByAsset()
+		for asset, outAmount := range outAmountByAsset {
+			inAmount, ok := inAmountByAsset[asset]
+			if !ok {
+				return fmt.Errorf("missing inputs for asset %s", asset)
+			}
+
+			if outAmount > inAmount {
+				return fmt.Errorf("input amount does not cover output amount for asset %s", asset)
+			}
+
+			if outAmount != inAmount {
+				if _, ok := o.ChangePathsByAsset[asset]; !ok {
+					return fmt.Errorf("missing change derivation path for asset %s", asset)
+				}
 			}
 		}
 
@@ -250,6 +246,14 @@ func (o UpdateTxOpts) validate() error {
 	return nil
 }
 
+func (o UpdateTxOpts) getInputsTotalAmountsByAsset() map[string]uint64 {
+	totalAmountsByAsset := map[string]uint64{}
+	for _, u := range o.Unspents {
+		totalAmountsByAsset[u.Asset()] += u.Value()
+	}
+	return totalAmountsByAsset
+}
+
 func (o UpdateTxOpts) getOutputsTotalAmountsByAsset() map[string]uint64 {
 	totalAmountsByAsset := map[string]uint64{}
 	for _, out := range o.Outputs {
@@ -257,27 +261,6 @@ func (o UpdateTxOpts) getOutputsTotalAmountsByAsset() map[string]uint64 {
 		totalAmountsByAsset[asset] += bufferutil.ValueFromBytes(out.Value)
 	}
 	return totalAmountsByAsset
-}
-
-func (o UpdateTxOpts) getUnspentsUnblindingKeys(w *Wallet) [][]byte {
-	keys := make([][]byte, 0, len(o.Unspents))
-	for _, u := range o.Unspents {
-		blindingPrvkey, _, _ := w.DeriveBlindingKeyPair(
-			DeriveBlindingKeyPairOpts{
-				Script: u.Script(),
-			},
-		)
-		keys = append(keys, blindingPrvkey.Serialize())
-	}
-	return keys
-}
-
-func (o UpdateTxOpts) getInputAssets() []string {
-	assets := make([]string, 0, len(o.ChangePathsByAsset))
-	for asset := range o.ChangePathsByAsset {
-		assets = append(assets, asset)
-	}
-	return assets
 }
 
 // UpdateTxResult is the struct returned by UpdateTx method.
@@ -324,17 +307,17 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 
 	if len(opts.Unspents) > 0 {
 		// retrieve all the asset hashes of input to add to the pset
-		inAssets := opts.getInputAssets()
+		totalInAmountsByAsset := opts.getInputsTotalAmountsByAsset()
 		// calculate target amount of each asset for coin selection
-		totalAmountsByAsset := opts.getOutputsTotalAmountsByAsset()
+		totalOutAmountsByAsset := opts.getOutputsTotalAmountsByAsset()
 
 		// select unspents and update the list of inputs to add and eventually the
 		// list of outputs to add by adding the change output if necessary
-		for _, asset := range inAssets {
-			if totalAmountsByAsset[asset] > 0 {
+		for asset, _ := range totalInAmountsByAsset {
+			if totalOutAmountsByAsset[asset] > 0 {
 				selectedUnspents, change, err := explorer.SelectUnspents(
 					opts.Unspents,
-					totalAmountsByAsset[asset],
+					totalOutAmountsByAsset[asset],
 					asset,
 				)
 				if err != nil {
