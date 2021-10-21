@@ -108,6 +108,7 @@ func (m *mockTransactionManager) ExtractBlindingData(
 
 type mockExplorer struct {
 	mock.Mock
+	mockedBlockHeight int
 }
 
 func (m *mockExplorer) GetUnspents(
@@ -235,13 +236,8 @@ func (m *mockExplorer) Mint(addr string, amount float64) (string, string, error)
 }
 
 func (m *mockExplorer) GetBlockHeight() (int, error) {
-	args := m.Called()
-
-	var res int
-	if a := args.Get(0); a != nil {
-		res = a.(int)
-	}
-	return res, args.Error(1)
+	m.mockedBlockHeight++
+	return m.mockedBlockHeight, nil
 }
 
 // **** Explorer's Transaction ****

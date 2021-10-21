@@ -749,7 +749,10 @@ func (t *tradeService) checkTradeExpiration(
 		}
 		return nil, nil
 	}); err != nil {
-		log.WithError(err).Warn("failed to persist changes after spending unspents of expired trade with id: %s", tradeID)
+		log.WithError(err).Warnf(
+			"failed to persist changes after spending unspents of expired trade "+
+				"with id: %s", tradeID,
+		)
 	}
 	t.blockchainListener.StartObserveTx(txid, trade.MarketQuoteAsset)
 }

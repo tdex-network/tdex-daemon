@@ -75,7 +75,7 @@ var (
 )
 
 func TestMarketTrading(t *testing.T) {
-	repoManager, explorerSvc, bcListener := newServices() //
+	repoManager, explorerSvc, bcListener := newServices()
 
 	t.Run("without fixed fees", func(t *testing.T) {
 		tradeSvc, err := newTradeService(
