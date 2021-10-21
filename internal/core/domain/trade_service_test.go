@@ -62,7 +62,7 @@ func TestTradePropose(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ok, err := tt.trade.Propose(swapRequest, marketAsset, marketFee, 0, 0, traderPubkey)
+			ok, err := tt.trade.Propose(swapRequest, marketAsset, marketFee, 0, 0, 0, traderPubkey)
 			require.NoError(t, err)
 			require.True(t, ok)
 
@@ -92,7 +92,7 @@ func TestFailingTradePropose(t *testing.T) {
 	t.Run("failing_because_invalid_request", func(t *testing.T) {
 		trade := newTradeEmpty()
 
-		ok, err := trade.Propose(swapRequest, marketAsset, marketFee, 0, 0, traderPubkey)
+		ok, err := trade.Propose(swapRequest, marketAsset, marketFee, 0, 0, 0, traderPubkey)
 		require.NoError(t, err)
 		require.False(t, ok)
 		require.True(t, trade.IsProposal())
@@ -281,30 +281,26 @@ func TestFailingTradeComplete(t *testing.T) {
 		require.True(t, trade.IsRejected())
 	})
 
-	t.Run("failing_because_expired", func(t *testing.T) {
-		trade := newTradeAccepted()
-		trade.ExpiryTime = uint64(time.Now().AddDate(0, 0, -1).Unix())
-		require.True(t, trade.IsExpired())
-
-		res, err := trade.Complete(tx)
-		require.EqualError(t, err, domain.ErrTradeExpired.Error())
-		require.Nil(t, res)
-		require.False(t, trade.IsCompleted())
-		require.True(t, trade.IsRejected())
-	})
-
 	t.Run("failing_because_invalid_status", func(t *testing.T) {
 		tests := []struct {
-			name  string
-			trade *domain.Trade
+			name        string
+			trade       *domain.Trade
+			expectedErr error
 		}{
 			{
-				name:  "with_trade_empty",
-				trade: newTradeEmpty(),
+				name:        "with_trade_empty",
+				trade:       newTradeEmpty(),
+				expectedErr: domain.ErrTradeMustBeAccepted,
 			},
 			{
-				name:  "with_trade_proposal",
-				trade: newTradeProposal(),
+				name:        "with_trade_proposal",
+				trade:       newTradeProposal(),
+				expectedErr: domain.ErrTradeMustBeAccepted,
+			},
+			{
+				name:        "with_trade_expired",
+				trade:       newTradeExpired(),
+				expectedErr: domain.ErrTradeExpired,
 			},
 		}
 
@@ -315,7 +311,7 @@ func TestFailingTradeComplete(t *testing.T) {
 				t.Parallel()
 
 				res, err := tt.trade.Complete(tx)
-				require.EqualError(t, err, domain.ErrTradeMustBeAccepted.Error())
+				require.EqualError(t, err, tt.expectedErr.Error())
 				require.Nil(t, res)
 				require.False(t, tt.trade.IsCompleted())
 			})
@@ -429,7 +425,7 @@ func TestTradeExpire(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ok, err := tt.trade.Expire()
+			ok, err := tt.trade.Expire(2)
 			require.NoError(t, err)
 			require.True(t, ok)
 			require.True(t, tt.trade.IsExpired())
@@ -463,13 +459,37 @@ func TestFailingTradeExpire(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				ok, err := tt.trade.Expire()
+				ok, err := tt.trade.Expire(2)
 				require.EqualError(t, err, domain.ErrTradeNullExpirationDate.Error())
 				require.False(t, ok)
 				require.False(t, tt.trade.IsExpired())
 			})
 		}
+	})
+	t.Run("failing_because_expiration_date_not_reached", func(t *testing.T) {
+		t.Run("with_invalid_blocktime", func(t *testing.T) {
+			t.Parallel()
 
+			trade := newTradeAccepted()
+
+			ok, err := trade.Expire(0)
+			require.False(t, ok)
+			require.EqualError(t, err, domain.ErrTradeExpirationDateNotReached.Error())
+
+			ok, err = trade.Expire(1)
+			require.False(t, ok)
+			require.EqualError(t, err, domain.ErrTradeExpirationDateNotReached.Error())
+		})
+
+		t.Run("with_invalid_timestamp", func(t *testing.T) {
+			t.Parallel()
+
+			trade := newTradeAccepted()
+
+			ok, err := trade.Expire(2)
+			require.False(t, ok)
+			require.EqualError(t, err, domain.ErrTradeExpirationDateNotReached.Error())
+		})
 	})
 }
 
@@ -493,6 +513,7 @@ func newTradeProposal() *domain.Trade {
 			Message:   randomBytes(100),
 			Timestamp: uint64(now.Unix()),
 		},
+		ProposalTime: 1,
 	}
 }
 
@@ -538,6 +559,14 @@ func newTradeFailed() *domain.Trade {
 	trade.Fail(
 		trade.SwapRequest.ID, int(pkgswap.ErrCodeRejectedSwapRequest), "mock error",
 	)
+	return trade
+}
+
+func newTradeExpired() *domain.Trade {
+	trade := newTradeAccepted()
+	oneDayAgo := uint64(time.Now().AddDate(0, 0, -1).Unix())
+	trade.ExpiryTime = oneDayAgo
+	trade.Expire(2)
 	return trade
 }
 

@@ -295,6 +295,7 @@ type Trade struct {
 	PsetBase64          string
 	TxID                string
 	TxHex               string
+	ProposalTime        uint64
 	ExpiryTime          uint64
 	SettlementTime      uint64
 	SwapRequest         Swap

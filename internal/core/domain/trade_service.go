@@ -13,6 +13,7 @@ func (t *Trade) Propose(
 	swapRequest SwapRequest,
 	marketQuoteAsset string,
 	marketFee, fixedBaseFee, fixedQuoteFee int64,
+	proposalTime uint64,
 	traderPubkey []byte,
 ) (bool, error) {
 	if t.Status.Code >= Proposal {
@@ -44,6 +45,7 @@ func (t *Trade) Propose(
 	t.MarketFee = marketFee
 	t.MarketFixedBaseFee = fixedBaseFee
 	t.MarketFixedQuoteFee = fixedQuoteFee
+	t.ProposalTime = proposalTime
 	return true, nil
 }
 
@@ -103,19 +105,16 @@ type CompleteResult struct {
 // be called before the trade expires, otherwise it won't be possible to
 // actually complete an accepted trade.
 func (t *Trade) Complete(tx string) (*CompleteResult, error) {
-	if t.Status.Code >= Completed {
+	if t.IsCompleted() || t.IsSettled() {
 		return &CompleteResult{OK: true, TxHex: t.TxHex, TxID: t.TxID}, nil
+	}
+
+	if t.IsExpired() {
+		return nil, ErrTradeExpired
 	}
 
 	if !t.IsAccepted() {
 		return nil, ErrTradeMustBeAccepted
-	}
-
-	if t.IsExpired() {
-		if !t.Status.Failed {
-			t.Status.Failed = true
-		}
-		return nil, ErrTradeExpired
 	}
 
 	swapCompleteID, swapCompleteMsg, err := SwapParserManager.SerializeComplete(
@@ -187,7 +186,7 @@ func (t *Trade) Fail(swapID string, errCode int, errMsg string) {
 // previosly set. This infers that it must be in any of the Accepted, Completed,
 // or related failed statuses. This method makes also sure that the expiration
 // date has passed before changing the status.
-func (t *Trade) Expire() (bool, error) {
+func (t *Trade) Expire(blocktime uint64) (bool, error) {
 	if t.Status.Code == Expired {
 		return true, nil
 	}
@@ -197,7 +196,7 @@ func (t *Trade) Expire() (bool, error) {
 	}
 
 	now := uint64(time.Now().Unix())
-	if now < t.ExpiryTime {
+	if now < t.ExpiryTime || blocktime <= t.ProposalTime {
 		return false, ErrTradeExpirationDateNotReached
 	}
 
@@ -235,12 +234,9 @@ func (t *Trade) IsRejected() bool {
 	return t.Status.Failed
 }
 
-// IsExpired returns whether the trade is in Expired status, or if its
-// expiration date has passed.
+// IsExpired returns whether the trade is in Expired status.
 func (t *Trade) IsExpired() bool {
-	now := uint64(time.Now().Unix())
-	return t.Status.Code == Expired ||
-		(t.ExpiryTime > 0 && now >= t.ExpiryTime)
+	return t.Status.Code == Expired
 }
 
 // ContainsSwap returns whether a swap identified by its id belongs to the
