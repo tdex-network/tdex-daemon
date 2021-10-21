@@ -294,6 +294,16 @@ func (t *tradeService) TradePropose(
 		return nil, nil, 0, ErrFeeAccountNotFunded
 	}
 
+	cb := circuitbreaker.NewCircuitBreaker()
+	iBlocktime, err := cb.Execute(func() (interface{}, error) {
+		return t.explorerSvc.GetBlockHeight()
+	})
+	if err != nil {
+		log.Debugf("error while retrieving block height: %s", err)
+		return nil, nil, 0, ErrServiceUnavailable
+	}
+	blocktime := iBlocktime.(int)
+
 	// parse swap proposal and possibly accept
 	var swapAccept domain.SwapAccept
 	var swapFail domain.SwapFail
@@ -312,6 +322,7 @@ func (t *tradeService) TradePropose(
 		mkt.Fee,
 		mkt.FixedFee.BaseFee,
 		mkt.FixedFee.QuoteFee,
+		uint64(blocktime),
 		nil,
 	); !ok {
 		swapFail = trade.SwapFailMessage()
@@ -570,14 +581,13 @@ func (t *tradeService) getInfoAndUnspentsForAccount(
 
 func (t *tradeService) unlockUnspentsForTrade(trade *domain.Trade) {
 	p, _ := pset.NewPsetFromBase64(trade.PsetBase64)
-	keyLen := len(p.Inputs)
-	unspentKeys := make([]domain.UnspentKey, keyLen, keyLen)
+	unspentKeys := make([]domain.UnspentKey, 0, len(p.Inputs))
 
-	for i, in := range p.UnsignedTx.Inputs {
-		unspentKeys[i] = domain.UnspentKey{
+	for _, in := range p.UnsignedTx.Inputs {
+		unspentKeys = append(unspentKeys, domain.UnspentKey{
 			TxID: bufferutil.TxIDFromBytes(in.Hash),
 			VOut: in.Index,
-		}
+		})
 	}
 
 	count, err := t.repoManager.UnspentRepository().UnlockUnspents(
@@ -600,43 +610,148 @@ func (t *tradeService) checkTradeExpiration(
 	unspents []explorer.Utxo,
 ) {
 	ctx := context.Background()
-
-	// if the trade is expired it's required to unlock the unspents used as input
-	// and to bring the trade to failed status
 	trade, _ := t.repoManager.TradeRepository().GetOrCreateTrade(ctx, &tradeID)
 
-	if trade.IsExpired() {
-		t.blockchainListener.StopObserveOutpoints(unspents)
-		unspentKeys := getUnspentKeys(unspents)
-
-		count, err := t.repoManager.UnspentRepository().UnlockUnspents(ctx, unspentKeys)
-		if err != nil {
-			log.WithError(err).Warnf(
-				"trade with id %s has expired but an error occured while "+
-					"unlocking its unspents. You must run ReloadUtxo RPC as soon as "+
-					"possible to restore the utxo set of the internal wallet",
-				trade.ID,
-			)
-			return
-		}
-		log.Debugf("unlocked %d unspents", count)
-
-		if err := t.repoManager.TradeRepository().UpdateTrade(
-			ctx,
-			&trade.ID,
-			func(tt *domain.Trade) (*domain.Trade, error) {
-				if _, err := tt.Expire(); err != nil {
-					return nil, err
-				}
-				return tt, nil
-			},
-		); err != nil {
-			log.Warnf("unable to persist expiration of trade with id %s", trade.ID)
-			return
-		}
-		log.Infof("trade with id %s expired", trade.ID)
+	// If trade has been completed or settled nothing must be done.
+	if trade.IsCompleted() || trade.IsSettled() {
 		return
 	}
+
+	cb := circuitbreaker.NewCircuitBreaker()
+	iBlocktime, _ := cb.Execute(func() (interface{}, error) {
+		return t.explorerSvc.GetBlockHeight()
+	})
+	blocktime := iBlocktime.(int)
+
+	if _, err := trade.Expire(uint64(blocktime)); err != nil {
+		// If the trade hasn't expired yet, let's wait ideally for the next block
+		// (2 minutes) to eventually spend ins of expired trade.
+		if err == domain.ErrTradeExpirationDateNotReached {
+			go func() {
+				log.Infof(
+					"no new block fetched in blockchain, postponed check for "+
+						"expiration of trade with id: %s", tradeID,
+				)
+				time.Sleep(2 * time.Minute)
+				t.checkTradeExpiration(tradeID, unspents)
+			}()
+			return
+		}
+		log.WithError(err).Warnf(
+			"an error occured while setting status to expired for trade with id: %s",
+			trade.ID,
+		)
+		return
+	}
+
+	t.blockchainListener.StopObserveOutpoints(unspents)
+
+	vault, _ := t.repoManager.VaultRepository().GetOrCreateVault(
+		ctx, nil, "", nil,
+	)
+	mnemonic, _ := vault.GetMnemonicSafe()
+
+	_, mktAccountIndex, _ := t.repoManager.MarketRepository().GetMarketByAsset(
+		ctx, trade.MarketQuoteAsset,
+	)
+
+	feeInfo, _ := vault.AllDerivedAddressesInfoForAccount(domain.FeeAccount)
+	feeUnspents := make([]explorer.Utxo, 0)
+	mktUnspents := make([]explorer.Utxo, 0)
+	for _, u := range unspents {
+		found := false
+		for _, info := range feeInfo {
+			script := hex.EncodeToString(u.Script())
+			if script == info.Script {
+				found = true
+				break
+			}
+		}
+		if found {
+			feeUnspents = append(feeUnspents, u)
+		} else {
+			mktUnspents = append(mktUnspents, u)
+		}
+	}
+
+	amountByAsset := make(map[string]uint64)
+	for _, u := range mktUnspents {
+		amountByAsset[u.Asset()] += u.Value()
+	}
+	outs := make([]TxOut, 0, len(amountByAsset))
+	for asset, amount := range amountByAsset {
+		info, _ := vault.DeriveNextExternalAddressForAccount(mktAccountIndex)
+		outs = append(outs, TxOut{asset, int64(amount), info.Address})
+	}
+	outputs, outKeys, _ := parseRequestOutputs(outs)
+
+	feeAccount, _ := vault.AccountByIndex(domain.FeeAccount)
+	info, _ := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+	feeChangePathByAsset := map[string]string{
+		t.network.AssetID: feeAccount.DerivationPathByScript[info.Script],
+	}
+	mktAccount, _ := vault.AccountByIndex(mktAccountIndex)
+
+	txHex, err := sendToMany(sendToManyOpts{
+		mnemonic:              mnemonic,
+		unspents:              mktUnspents,
+		feeUnspents:           feeUnspents,
+		outputs:               outputs,
+		outputsBlindingKeys:   outKeys,
+		changePathsByAsset:    make(map[string]string),
+		feeChangePathByAsset:  feeChangePathByAsset,
+		inputPathsByScript:    mktAccount.DerivationPathByScript,
+		feeInputPathsByScript: feeAccount.DerivationPathByScript,
+		milliSatPerByte:       domain.MinMilliSatPerByte,
+		network:               t.network,
+	})
+	if err != nil {
+		log.WithError(err).Warnf(
+			"failed to create transaction to spend unspents of expired trade with id: %s",
+			trade.ID,
+		)
+		return
+	}
+
+	cb = circuitbreaker.NewCircuitBreaker()
+	iTxid, err := cb.Execute(func() (interface{}, error) {
+		return t.explorerSvc.BroadcastTransaction(txHex)
+	})
+	if err != nil {
+		log.WithError(err).Warnf(
+			"failed to broadcast transactio to spend unspents of expired trade with id: %s",
+			trade.ID,
+		)
+		return
+	}
+	txid := iTxid.(string)
+
+	log.Infof(
+		"spent inputs of expired trade with id: %s in tx: %s", trade.ID, txid,
+	)
+
+	unspentKeys := getUnspentKeys(unspents)
+	if n, _ := t.repoManager.UnspentRepository().UnlockUnspents(ctx, unspentKeys); n > 0 {
+		log.Debugf("unlocked %d unspents", n)
+	}
+	if _, err := t.repoManager.RunTransaction(ctx, false, func(ctx context.Context) (interface{}, error) {
+		if err := t.repoManager.TradeRepository().UpdateTrade(
+			ctx, &trade.ID, func(_ *domain.Trade) (*domain.Trade, error) {
+				return trade, nil
+			}); err != nil {
+			return nil, err
+		}
+		if err := t.repoManager.VaultRepository().UpdateVault(
+			ctx, func(_ *domain.Vault) (*domain.Vault, error) {
+				return vault, nil
+			}); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}); err != nil {
+		log.WithError(err).Warn("failed to persist changes after spending unspents of expired trade with id: %s", tradeID)
+	}
+	t.blockchainListener.StartObserveTx(txid, trade.MarketQuoteAsset)
 }
 
 func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
@@ -794,7 +909,7 @@ func getUnspentKeys(unspents []explorer.Utxo) []domain.UnspentKey {
 }
 
 func mergeDerivationPaths(maps ...map[string]string) map[string]string {
-	merge := make(map[string]string, 0)
+	merge := make(map[string]string)
 	for _, m := range maps {
 		for k, v := range m {
 			merge[k] = v
