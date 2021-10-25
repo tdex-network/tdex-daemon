@@ -58,15 +58,43 @@ func (t traderHandler) MarketPrice(
 }
 
 func (t traderHandler) TradePropose(
-	ctx context.Context,
 	req *pb.TradeProposeRequest,
+	stream pb.Trade_TradeProposeServer,
+) error {
+	reply, err := t.tradePropose(stream.Context(), req)
+	if err != nil {
+		return err
+	}
+
+	if err := stream.Send(reply); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
+}
+
+func (t traderHandler) TradeProposeUnary(
+	ctx context.Context, req *pb.TradeProposeRequest,
 ) (*pb.TradeProposeReply, error) {
 	return t.tradePropose(ctx, req)
 }
 
 func (t traderHandler) TradeComplete(
-	ctx context.Context,
-	req *pb.TradeCompleteRequest,
+	req *pb.TradeCompleteRequest, stream pb.Trade_TradeCompleteServer,
+) error {
+	reply, err := t.tradeComplete(stream.Context(), req)
+	if err != nil {
+		return err
+	}
+	if err := stream.Send(reply); err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
+}
+
+func (t traderHandler) TradeCompleteUnary(
+	ctx context.Context, req *pb.TradeCompleteRequest,
 ) (*pb.TradeCompleteReply, error) {
 	return t.tradeComplete(ctx, req)
 }
@@ -192,8 +220,7 @@ func (t traderHandler) marketPrice(
 }
 
 func (t traderHandler) tradePropose(
-	ctx context.Context,
-	req *pb.TradeProposeRequest,
+	ctx context.Context, req *pb.TradeProposeRequest,
 ) (*pb.TradeProposeReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
@@ -244,8 +271,7 @@ func (t traderHandler) tradePropose(
 }
 
 func (t traderHandler) tradeComplete(
-	ctx context.Context,
-	req *pb.TradeCompleteRequest,
+	ctx context.Context, req *pb.TradeCompleteRequest,
 ) (*pb.TradeCompleteReply, error) {
 	var swapComplete domain.SwapComplete
 	if s := req.SwapComplete; s != nil {

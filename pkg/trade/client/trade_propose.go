@@ -58,5 +58,5 @@ func (c *Client) TradePropose(opts TradeProposeOpts) (*pbtrade.TradeProposeReply
 		SwapRequest: swapRequest,
 		Type:        pbtrade.TradeType(opts.TradeType),
 	}
-	return c.client.TradePropose(context.Background(), request)
+	return c.client.TradeProposeUnary(context.Background(), request)
 }

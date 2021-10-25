@@ -69,5 +69,5 @@ func (c *Client) TradeComplete(opts TradeCompleteOpts) (*pbtrade.TradeCompleteRe
 		SwapComplete: swapComplete,
 		SwapFail:     swapFail,
 	}
-	return c.client.TradeComplete(context.Background(), request)
+	return c.client.TradeCompleteUnary(context.Background(), request)
 }
