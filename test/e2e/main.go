@@ -215,13 +215,6 @@ func main() {
 		eg.Go(func() error {
 			return tradeOnMarket(client, wallet, asset)
 		})
-
-		// TODO: our goal is to decrese this wating time. At the moment, decreasing
-		// it would result in making trades that double spend some inputs. This is
-		// caused by the daemon that apparently, selects the same unspents in case
-		// of concurrent proposals, ie 2 requests arriving nearly at the same time.
-		// Ideally, this should be removed.
-		time.Sleep(2 * time.Second)
 	}
 
 	if err := eg.Wait(); err != nil {
@@ -231,8 +224,6 @@ func main() {
 }
 
 func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
-	defer time.Sleep(200 * time.Millisecond)
-
 	if asset == usdtAsset {
 		_, err := client.BuyAndComplete(trade.BuyOrSellAndCompleteOpts{
 			Market: trademarket.Market{
