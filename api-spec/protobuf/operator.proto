@@ -25,6 +25,16 @@ service Operator {
   // The transaction(s) must be already included in blockchain.
   rpc ClaimFeeDeposits(ClaimFeeDepositsRequest) returns (ClaimFeeDepositsReply) {}
 
+  // Returns the address of an ephemeral single key wallet where to send the
+  // funds to be splited and deposited into the fee account.
+  rpc GetFeeFragmenterAddress(GetFeeFragmenterAddressRequest)
+    returns(GetFeeFragmenterAddressReply) {}
+
+  // Splits the funds sent to the ephemeral wallet address into multiple
+  // fragments that then becomes deposits of the Fee account.
+  rpc FragmentFeeDeposits(FragmentFeeDepositsRequest)
+    returns (stream FragmentFeeDepositsReply) {}
+
   // Allows to withdraw funds from the fee account to a given address.
   rpc WithdrawFee(WithdrawFeeRequest) returns (WithdrawFeeReply) {}
 
@@ -58,6 +68,16 @@ service Operator {
   // Displays a report of the colected fees for the given market.
   rpc GetMarketCollectedSwapFees(GetMarketCollectedSwapFeesRequest)
     returns (GetMarketCollectedSwapFeesReply) {}
+
+  // Returns the address of an ephemeral single key wallet where to send the
+  // funds to be splited and deposited for a market.
+  rpc GetMarketFragmenterAddress(GetMarketFragmenterAddressRequest)
+    returns (GetMarketFragmenterAddressReply) {}
+
+  // Splits the funds sent to the ephemeral wallet address into multiple
+  // fragments that then becomes deposits of the given market.
+  rpc FragmentMarketDeposits(FragmentMarketDepositsRequest)
+    returns (stream FragmentMarketDepositsReply) {}
 
   // Allows to withdraw funds from the given market to a given address.
   rpc WithdrawMarket(WithdrawMarketRequest) returns (WithdrawMarketReply) {}
@@ -148,6 +168,24 @@ message ClaimFeeDepositsRequest {
   repeated TxOutpoint outpoints = 1;
 }
 message ClaimFeeDepositsReply {}
+
+message GetFeeFragmenterAddressRequest {}
+message GetFeeFragmenterAddressReply {
+  string address = 1;
+}
+
+message FragmentFeeDepositsRequest {
+  // Optionally, a recover address where to send all the ephemeral wallet's 
+  // funds to for aborting the fragmentation.
+  string recover_address = 1;
+  // The max number of fragments the fragmenter can generate when splitting
+  // its funds.
+  uint32 max_fragments = 2;
+}
+message FragmentFeeDepositsReply {
+  // A sequence of string messages returned during the process.
+  string message = 1;
+}
 
 message WithdrawFeeRequest {
   // The amount of L-BTC to widthdraw expressed in Satoshi.
@@ -247,6 +285,25 @@ message GetMarketCollectedSwapFeesReply {
   repeated FeeInfo collected_fees = 1;
   // The map of total fees collected per asset.
   map<string, int64> total_collected_fees_per_asset = 2;
+}
+
+message GetMarketFragmenterAddressRequest{
+  Market market = 1;
+}
+message GetMarketFragmenterAddressReply {
+  string address = 1;
+}
+
+message FragmentMarketDepositsRequest {
+  // Optionally, a recover address where to send all the ephemeral wallet's 
+  // funds to for aborting the fragmentation.
+  string recover_address = 1;
+  // The market for which computing/aborting the fragmentation.
+  Market market = 2;
+}
+message FragmentMarketDepositsReply {
+  // A sequence of string messages returned during the process.
+  string message = 1;
 }
 
 message WithdrawMarketRequest {

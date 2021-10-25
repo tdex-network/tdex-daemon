@@ -82,7 +82,7 @@ func initWalletAction(ctx *cli.Context) error {
 		status := reply.GetStatus()
 		data := reply.GetData()
 		if account >= 0 {
-			fmt.Println("restore account", account, status)
+			fmt.Println(data, account, status)
 			continue
 		}
 

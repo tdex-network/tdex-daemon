@@ -30,6 +30,12 @@ type OperatorClient interface {
 	// Allows to provide transaction(s) outpoints of deposits made to fund the fee account.
 	// The transaction(s) must be already included in blockchain.
 	ClaimFeeDeposits(ctx context.Context, in *ClaimFeeDepositsRequest, opts ...grpc.CallOption) (*ClaimFeeDepositsReply, error)
+	// Returns the address of an ephemeral single key wallet where to send the
+	// funds to be splited and deposited into the fee account.
+	GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressReply, error)
+	// Splits the funds sent to the ephemeral wallet address into multiple
+	// fragments that then becomes deposits of the Fee account.
+	FragmentFeeDeposits(ctx context.Context, in *FragmentFeeDepositsRequest, opts ...grpc.CallOption) (Operator_FragmentFeeDepositsClient, error)
 	// Allows to withdraw funds from the fee account to a given address.
 	WithdrawFee(ctx context.Context, in *WithdrawFeeRequest, opts ...grpc.CallOption) (*WithdrawFeeReply, error)
 	// Creates a new market account in the daemon's wallet.
@@ -51,6 +57,12 @@ type OperatorClient interface {
 	DropMarket(ctx context.Context, in *DropMarketRequest, opts ...grpc.CallOption) (*DropMarketReply, error)
 	// Displays a report of the colected fees for the given market.
 	GetMarketCollectedSwapFees(ctx context.Context, in *GetMarketCollectedSwapFeesRequest, opts ...grpc.CallOption) (*GetMarketCollectedSwapFeesReply, error)
+	// Returns the address of an ephemeral single key wallet where to send the
+	// funds to be splited and deposited for a market.
+	GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressReply, error)
+	// Splits the funds sent to the ephemeral wallet address into multiple
+	// fragments that then becomes deposits of the given market.
+	FragmentMarketDeposits(ctx context.Context, in *FragmentMarketDepositsRequest, opts ...grpc.CallOption) (Operator_FragmentMarketDepositsClient, error)
 	// Allows to withdraw funds from the given market to a given address.
 	WithdrawMarket(ctx context.Context, in *WithdrawMarketRequest, opts ...grpc.CallOption) (*WithdrawMarketReply, error)
 	// Changes the Liquidity Provider percentage fee for the given market.
@@ -134,6 +146,47 @@ func (c *operatorClient) ClaimFeeDeposits(ctx context.Context, in *ClaimFeeDepos
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *operatorClient) GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressReply, error) {
+	out := new(GetFeeFragmenterAddressReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetFeeFragmenterAddress", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) FragmentFeeDeposits(ctx context.Context, in *FragmentFeeDepositsRequest, opts ...grpc.CallOption) (Operator_FragmentFeeDepositsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Operator_ServiceDesc.Streams[0], "/Operator/FragmentFeeDeposits", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &operatorFragmentFeeDepositsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Operator_FragmentFeeDepositsClient interface {
+	Recv() (*FragmentFeeDepositsReply, error)
+	grpc.ClientStream
+}
+
+type operatorFragmentFeeDepositsClient struct {
+	grpc.ClientStream
+}
+
+func (x *operatorFragmentFeeDepositsClient) Recv() (*FragmentFeeDepositsReply, error) {
+	m := new(FragmentFeeDepositsReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *operatorClient) WithdrawFee(ctx context.Context, in *WithdrawFeeRequest, opts ...grpc.CallOption) (*WithdrawFeeReply, error) {
@@ -224,6 +277,47 @@ func (c *operatorClient) GetMarketCollectedSwapFees(ctx context.Context, in *Get
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *operatorClient) GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressReply, error) {
+	out := new(GetMarketFragmenterAddressReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetMarketFragmenterAddress", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) FragmentMarketDeposits(ctx context.Context, in *FragmentMarketDepositsRequest, opts ...grpc.CallOption) (Operator_FragmentMarketDepositsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Operator_ServiceDesc.Streams[1], "/Operator/FragmentMarketDeposits", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &operatorFragmentMarketDepositsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Operator_FragmentMarketDepositsClient interface {
+	Recv() (*FragmentMarketDepositsReply, error)
+	grpc.ClientStream
+}
+
+type operatorFragmentMarketDepositsClient struct {
+	grpc.ClientStream
+}
+
+func (x *operatorFragmentMarketDepositsClient) Recv() (*FragmentMarketDepositsReply, error) {
+	m := new(FragmentMarketDepositsReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *operatorClient) WithdrawMarket(ctx context.Context, in *WithdrawMarketRequest, opts ...grpc.CallOption) (*WithdrawMarketReply, error) {
@@ -368,6 +462,12 @@ type OperatorServer interface {
 	// Allows to provide transaction(s) outpoints of deposits made to fund the fee account.
 	// The transaction(s) must be already included in blockchain.
 	ClaimFeeDeposits(context.Context, *ClaimFeeDepositsRequest) (*ClaimFeeDepositsReply, error)
+	// Returns the address of an ephemeral single key wallet where to send the
+	// funds to be splited and deposited into the fee account.
+	GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressReply, error)
+	// Splits the funds sent to the ephemeral wallet address into multiple
+	// fragments that then becomes deposits of the Fee account.
+	FragmentFeeDeposits(*FragmentFeeDepositsRequest, Operator_FragmentFeeDepositsServer) error
 	// Allows to withdraw funds from the fee account to a given address.
 	WithdrawFee(context.Context, *WithdrawFeeRequest) (*WithdrawFeeReply, error)
 	// Creates a new market account in the daemon's wallet.
@@ -389,6 +489,12 @@ type OperatorServer interface {
 	DropMarket(context.Context, *DropMarketRequest) (*DropMarketReply, error)
 	// Displays a report of the colected fees for the given market.
 	GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesReply, error)
+	// Returns the address of an ephemeral single key wallet where to send the
+	// funds to be splited and deposited for a market.
+	GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressReply, error)
+	// Splits the funds sent to the ephemeral wallet address into multiple
+	// fragments that then becomes deposits of the given market.
+	FragmentMarketDeposits(*FragmentMarketDepositsRequest, Operator_FragmentMarketDepositsServer) error
 	// Allows to withdraw funds from the given market to a given address.
 	WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketReply, error)
 	// Changes the Liquidity Provider percentage fee for the given market.
@@ -441,6 +547,12 @@ func (UnimplementedOperatorServer) GetFeeBalance(context.Context, *GetFeeBalance
 func (UnimplementedOperatorServer) ClaimFeeDeposits(context.Context, *ClaimFeeDepositsRequest) (*ClaimFeeDepositsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClaimFeeDeposits not implemented")
 }
+func (UnimplementedOperatorServer) GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFeeFragmenterAddress not implemented")
+}
+func (UnimplementedOperatorServer) FragmentFeeDeposits(*FragmentFeeDepositsRequest, Operator_FragmentFeeDepositsServer) error {
+	return status.Errorf(codes.Unimplemented, "method FragmentFeeDeposits not implemented")
+}
 func (UnimplementedOperatorServer) WithdrawFee(context.Context, *WithdrawFeeRequest) (*WithdrawFeeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WithdrawFee not implemented")
 }
@@ -470,6 +582,12 @@ func (UnimplementedOperatorServer) DropMarket(context.Context, *DropMarketReques
 }
 func (UnimplementedOperatorServer) GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketCollectedSwapFees not implemented")
+}
+func (UnimplementedOperatorServer) GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMarketFragmenterAddress not implemented")
+}
+func (UnimplementedOperatorServer) FragmentMarketDeposits(*FragmentMarketDepositsRequest, Operator_FragmentMarketDepositsServer) error {
+	return status.Errorf(codes.Unimplemented, "method FragmentMarketDeposits not implemented")
 }
 func (UnimplementedOperatorServer) WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WithdrawMarket not implemented")
@@ -614,6 +732,45 @@ func _Operator_ClaimFeeDeposits_Handler(srv interface{}, ctx context.Context, de
 		return srv.(OperatorServer).ClaimFeeDeposits(ctx, req.(*ClaimFeeDepositsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_GetFeeFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFeeFragmenterAddressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).GetFeeFragmenterAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/GetFeeFragmenterAddress",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).GetFeeFragmenterAddress(ctx, req.(*GetFeeFragmenterAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_FragmentFeeDeposits_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(FragmentFeeDepositsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(OperatorServer).FragmentFeeDeposits(m, &operatorFragmentFeeDepositsServer{stream})
+}
+
+type Operator_FragmentFeeDepositsServer interface {
+	Send(*FragmentFeeDepositsReply) error
+	grpc.ServerStream
+}
+
+type operatorFragmentFeeDepositsServer struct {
+	grpc.ServerStream
+}
+
+func (x *operatorFragmentFeeDepositsServer) Send(m *FragmentFeeDepositsReply) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _Operator_WithdrawFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -794,6 +951,45 @@ func _Operator_GetMarketCollectedSwapFees_Handler(srv interface{}, ctx context.C
 		return srv.(OperatorServer).GetMarketCollectedSwapFees(ctx, req.(*GetMarketCollectedSwapFeesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_GetMarketFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMarketFragmenterAddressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).GetMarketFragmenterAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/GetMarketFragmenterAddress",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).GetMarketFragmenterAddress(ctx, req.(*GetMarketFragmenterAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_FragmentMarketDeposits_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(FragmentMarketDepositsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(OperatorServer).FragmentMarketDeposits(m, &operatorFragmentMarketDepositsServer{stream})
+}
+
+type Operator_FragmentMarketDepositsServer interface {
+	Send(*FragmentMarketDepositsReply) error
+	grpc.ServerStream
+}
+
+type operatorFragmentMarketDepositsServer struct {
+	grpc.ServerStream
+}
+
+func (x *operatorFragmentMarketDepositsServer) Send(m *FragmentMarketDepositsReply) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _Operator_WithdrawMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1076,6 +1272,10 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Operator_ClaimFeeDeposits_Handler,
 		},
 		{
+			MethodName: "GetFeeFragmenterAddress",
+			Handler:    _Operator_GetFeeFragmenterAddress_Handler,
+		},
+		{
 			MethodName: "WithdrawFee",
 			Handler:    _Operator_WithdrawFee_Handler,
 		},
@@ -1114,6 +1314,10 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMarketCollectedSwapFees",
 			Handler:    _Operator_GetMarketCollectedSwapFees_Handler,
+		},
+		{
+			MethodName: "GetMarketFragmenterAddress",
+			Handler:    _Operator_GetMarketFragmenterAddress_Handler,
 		},
 		{
 			MethodName: "WithdrawMarket",
@@ -1172,6 +1376,17 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Operator_ListWithdrawals_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "FragmentFeeDeposits",
+			Handler:       _Operator_FragmentFeeDeposits_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "FragmentMarketDeposits",
+			Handler:       _Operator_FragmentMarketDeposits_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "operator.proto",
 }
