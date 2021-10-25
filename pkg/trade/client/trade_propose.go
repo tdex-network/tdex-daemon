@@ -41,7 +41,7 @@ func (o TradeProposeOpts) validate() error {
 }
 
 // TradePropose crafts the request and calls the TradePropose rpc
-func (c *Client) TradePropose(opts TradeProposeOpts) (*pbtrade.TradeProposeReply, error) {
+func (c *Client) TradePropose(opts TradeProposeOpts) (*pbtrade.ProposeTradeReply, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
@@ -53,14 +53,10 @@ func (c *Client) TradePropose(opts TradeProposeOpts) (*pbtrade.TradeProposeReply
 	swapRequest := &pbswap.SwapRequest{}
 	proto.Unmarshal(opts.SwapRequest, swapRequest)
 
-	request := &pbtrade.TradeProposeRequest{
+	request := &pbtrade.ProposeTradeRequest{
 		Market:      market,
 		SwapRequest: swapRequest,
 		Type:        pbtrade.TradeType(opts.TradeType),
 	}
-	stream, err := c.client.TradePropose(context.Background(), request)
-	if err != nil {
-		return nil, err
-	}
-	return stream.Recv()
+	return c.client.ProposeTrade(context.Background(), request)
 }

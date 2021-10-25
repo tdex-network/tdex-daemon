@@ -113,25 +113,26 @@ func main() {
 	}
 
 	// deposit some funds to pay for future trades' network fees
-	out, err := runCommandWithEnv(cliEnv, cli, "depositfee", "--num_of_addresses", "10")
+	out, err := runCommandWithEnv(cliEnv, cli, "fee", "deposit", "--num_of_addresses", "10")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	feeAddresses := feeAddressesFromStdout(out)
+	feeAddresses := addressesFromStdout(out)
 	feeOutpoints := fundFeeAccount(feeAddresses)
-	if _, err := runCommandWithEnv(cliEnv, cli, "claimfee", "--outpoints", feeOutpoints); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "fee", "claim", "--outpoints", feeOutpoints); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	// create a LBTC/USDT market on regtest and deposit funds
-	out, err = runCommandWithEnv(cliEnv, cli, "depositmarket", "--num_of_addresses", "10")
-	if err != nil {
+	if _, err = runCommandWithEnv(
+		cliEnv, cli, "market", "new",
+		"--base_asset", lbtcAsset, "--quote_asset", usdtAsset,
+	); err != nil {
 		fmt.Println(err)
 		return
 	}
-	marketAddresses := marketAddressesFromStdout(out)
 
 	if _, err := runCommandWithEnv(cliEnv, cli, "config", "set", "base_asset", lbtcAsset); err != nil {
 		fmt.Println(err)
@@ -142,15 +143,22 @@ func main() {
 		return
 	}
 
+	out, err = runCommandWithEnv(cliEnv, cli, "market", "deposit", "--num_of_addresses", "10")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	marketAddresses := addressesFromStdout(out)
+
 	outpoints := fundMarketAccount(marketAddresses)
-	if _, err := runCommandWithEnv(cliEnv, cli, "claimmarket", "--outpoints", outpoints); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "market", "claim", "--outpoints", outpoints); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	// before opening the market, let's set the strategy to pluggable)
 	// and start the feeder
-	if _, err := runCommandWithEnv(cliEnv, cli, "strategy", "--pluggable"); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "market", "strategy", "--pluggable"); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -172,7 +180,7 @@ func main() {
 
 	time.Sleep(5 * time.Second)
 
-	if _, err := runCommandWithEnv(cliEnv, cli, "open"); err != nil {
+	if _, err := runCommandWithEnv(cliEnv, cli, "market", "open"); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -207,26 +215,15 @@ func main() {
 		eg.Go(func() error {
 			return tradeOnMarket(client, wallet, asset)
 		})
-
-		// TODO: our goal is to decrese this wating time. At the moment, decreasing
-		// it would result in making trades that double spend some inputs. This is
-		// caused by the daemon that apparently, selects the same unspents in case
-		// of concurrent proposals, ie 2 requests arriving nearly at the same time.
-		// Ideally, this should be removed.
-		time.Sleep(2 * time.Second)
 	}
 
 	if err := eg.Wait(); err != nil {
 		fmt.Printf("error occoured while trading against LBTC/USDT market: \n%s\n", err)
 		return
 	}
-
-	return
 }
 
 func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
-	defer time.Sleep(200 * time.Millisecond)
-
 	if asset == usdtAsset {
 		_, err := client.BuyAndComplete(trade.BuyOrSellAndCompleteOpts{
 			Market: trademarket.Market{
@@ -316,7 +313,7 @@ func newCommand(out, err io.Writer, name string, arg ...string) *exec.Cmd {
 	return cmd
 }
 
-func feeAddressesFromStdout(out string) []string {
+func addressesFromStdout(out string) []string {
 	res := make(map[string]interface{})
 	json.Unmarshal([]byte(out), &res)
 
@@ -347,17 +344,6 @@ func fundFeeAccount(addresses []string) string {
 
 	buf, _ := json.Marshal(funds)
 	return string(buf)
-}
-
-func marketAddressesFromStdout(out string) []string {
-	res := make(map[string]interface{})
-	json.Unmarshal([]byte(out), &res)
-
-	addresses := make([]string, 0)
-	for _, i := range res["addresses"].([]interface{}) {
-		addresses = append(addresses, i.(string))
-	}
-	return addresses
 }
 
 func fundMarketAccount(addresses []string) string {
@@ -403,22 +389,25 @@ func setupUSDTAsset() error {
 
 func setupFeeder() error {
 	configMap := map[string]interface{}{
-		"daemon_endpoint":    "127.0.0.1:9000",
-		"kraken_ws_endpoint": "ws.kraken.com",
+		"price_feeder": "kraken",
+		"interval":     1000,
 		"markets": []map[string]interface{}{
 			{
-				"base_asset":    lbtcAsset,
-				"quote_asset":   usdtAsset,
-				"kraken_ticker": "XBT/USDT",
-				"interval":      500,
+				"base_asset":  lbtcAsset,
+				"quote_asset": usdtAsset,
+				"ticker":      "XBT/USDT",
+				"targets": map[string]string{
+					"rpc_address":    "localhost:9000",
+					"tls_cert_path":  "",
+					"macaroons_path": "",
+				},
 			},
 		},
 	}
 	configJSON, _ := json.Marshal(configMap)
 	ioutil.WriteFile(feederConfigJSON, configJSON, 0777)
 
-	// get feeder's latest relase
-
+	// get feeder's latest release
 	cmd := "curl -s https://api.github.com/repos/Tdex-network/tdex-feeder/releases/latest | grep '\"tag_name\":' | sed -E 's/.*\"([^\"]+)\".*/\\1/'"
 	latestVersion, err := runCommand("bash", "-c", cmd)
 	if err != nil {
