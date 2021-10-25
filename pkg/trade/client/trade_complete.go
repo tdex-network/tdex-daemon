@@ -49,7 +49,7 @@ func (o TradeCompleteOpts) validate() error {
 }
 
 // TradeComplete crafts the request and calls the TradeComplete rpc
-func (c *Client) TradeComplete(opts TradeCompleteOpts) (*pbtrade.TradeCompleteReply, error) {
+func (c *Client) TradeComplete(opts TradeCompleteOpts) (*pbtrade.CompleteTradeReply, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
@@ -65,9 +65,9 @@ func (c *Client) TradeComplete(opts TradeCompleteOpts) (*pbtrade.TradeCompleteRe
 		proto.Unmarshal(opts.SwapFail, swapFail)
 	}
 
-	request := &pbtrade.TradeCompleteRequest{
+	request := &pbtrade.CompleteTradeRequest{
 		SwapComplete: swapComplete,
 		SwapFail:     swapFail,
 	}
-	return c.client.TradeCompleteUnary(context.Background(), request)
+	return c.client.CompleteTrade(context.Background(), request)
 }
