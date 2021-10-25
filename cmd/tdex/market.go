@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
@@ -52,6 +53,16 @@ var (
 			&cli.IntFlag{
 				Name:  "num_of_addresses",
 				Usage: "the number of addresses to generate for the market",
+			},
+			&cli.BoolFlag{
+				Name: "fragment",
+				Usage: "send funds to an ephemeral wallet to be split into multiple " +
+					"fragments and deposited into the market account",
+			},
+			&cli.StringFlag{
+				Name: "recover_funds_to_address",
+				Usage: "specify an address where to send the funds owned by the " +
+					"fragmenter to abort the process",
 			},
 		},
 		Action: marketDepositAction,
@@ -240,6 +251,10 @@ func marketBalanceAction(ctx *cli.Context) error {
 }
 
 func marketDepositAction(ctx *cli.Context) error {
+	if withFragmenter := ctx.Bool("fragment"); withFragmenter {
+		return marketFragmentDepositAction(ctx)
+	}
+
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
 		return err
@@ -267,6 +282,64 @@ func marketDepositAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(resp)
+	return nil
+}
+
+func marketFragmentDepositAction(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+	market := &pbtypes.Market{
+		BaseAsset:  baseAsset,
+		QuoteAsset: quoteAsset,
+	}
+
+	reply, err := client.GetMarketFragmenterAddress(
+		context.Background(), &pb.GetMarketFragmenterAddressRequest{
+			Market: market,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("send funds to the following address:", reply.GetAddress())
+
+	waitForConfirmation()
+
+	recoverAddress := ctx.String("recover_funds_to_address")
+
+	stream, err := client.FragmentMarketDeposits(
+		context.Background(), &pb.FragmentMarketDepositsRequest{
+			Market:         market,
+			RecoverAddress: recoverAddress,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	for {
+		fmt.Println()
+
+		reply, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		fmt.Println(reply.GetMessage())
+	}
+
 	return nil
 }
 
