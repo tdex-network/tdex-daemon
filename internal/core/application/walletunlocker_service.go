@@ -49,14 +49,16 @@ var (
 
 	restoreAccountProcessing = func(account int) InitWalletReply {
 		return InitWalletReply{
-			AccountIndex: int32(account),
+			Data:         "restore account",
 			Status:       Processing,
+			AccountIndex: int32(account),
 		}
 	}
 	restoreAccountComplete = func(account int) InitWalletReply {
 		return InitWalletReply{
-			AccountIndex: int32(account),
+			Data:         "restore account",
 			Status:       Done,
+			AccountIndex: int32(account),
 		}
 	}
 
@@ -810,11 +812,15 @@ func initVaultAccount(
 func isAddressFunded(
 	addr string, blindKey []byte, explorerSvc explorer.Service,
 ) bool {
-	txs, err := explorerSvc.GetTransactionsForAddress(addr, blindKey)
+	cb := circuitbreaker.NewCircuitBreaker()
+
+	iTxs, err := cb.Execute(func() (interface{}, error) {
+		return explorerSvc.GetTransactionsForAddress(addr, blindKey)
+	})
 	if err != nil {
-		// should we retry?
 		return false
 	}
+	txs := iTxs.([]explorer.Transaction)
 	return len(txs) > 0
 }
 

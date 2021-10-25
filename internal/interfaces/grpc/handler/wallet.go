@@ -103,12 +103,9 @@ func (w walletHandler) sendToMany(
 
 	outputs := make([]application.TxOut, 0)
 	for _, v := range outs {
-		output := application.TxOut{
-			Asset:   v.GetAsset(),
-			Value:   v.GetValue(),
-			Address: v.GetAddress(),
-		}
-		outputs = append(outputs, output)
+		outputs = append(outputs, application.NewTxOut(
+			v.GetAddress(), v.GetAsset(), v.GetValue(),
+		))
 	}
 
 	walletReq := application.SendToManyRequest{

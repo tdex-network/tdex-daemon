@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 	"github.com/urfave/cli/v2"
@@ -32,6 +35,22 @@ var (
 			&cli.UintFlag{
 				Name:  "num_of_addresses",
 				Usage: "the number of addresses to generate",
+			},
+			&cli.BoolFlag{
+				Name: "fragment",
+				Usage: "send funds to an ephemeral wallet to be split into multiple " +
+					"fragments and deposited into the Fee account",
+			},
+			&cli.UintFlag{
+				Name: "max_fragments",
+				Usage: "specify the max number of fragments the fragmenter can " +
+					"create when splitting its funds",
+				Value: 50,
+			},
+			&cli.StringFlag{
+				Name: "recover_funds_to_address",
+				Usage: "specify an address where to send the funds owned by the " +
+					"fragmenter to abort the process",
 			},
 		},
 		Action: feeDepositAction,
@@ -96,6 +115,10 @@ func feeBalanceAction(ctx *cli.Context) error {
 }
 
 func feeDepositAction(ctx *cli.Context) error {
+	if withFragmenter := ctx.Bool("fragment"); withFragmenter {
+		return feeFragmentDepositAction(ctx)
+	}
+
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
 		return err
@@ -113,6 +136,52 @@ func feeDepositAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(resp)
+
+	return nil
+}
+
+func feeFragmentDepositAction(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	reply, err := client.GetFeeFragmenterAddress(
+		context.Background(), &pb.GetFeeFragmenterAddressRequest{},
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("send funds to the following address:", reply.GetAddress())
+
+	waitForConfirmation()
+
+	maxFragments := ctx.Uint64("max_fragments")
+	recoverAddress := ctx.String("recover_funds_to_address")
+
+	stream, err := client.FragmentFeeDeposits(context.Background(), &pb.FragmentFeeDepositsRequest{
+		MaxFragments:   uint32(maxFragments),
+		RecoverAddress: recoverAddress,
+	})
+	if err != nil {
+		return err
+	}
+
+	for {
+		fmt.Println()
+
+		reply, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		fmt.Println(reply.GetMessage())
+	}
 
 	return nil
 }
@@ -201,4 +270,13 @@ func feeWithdrawAction(ctx *cli.Context) error {
 
 	printRespJSON(reply)
 	return nil
+}
+
+func waitForConfirmation() {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println(
+		"press ENTER to continue after the funds have been trasferred to the " +
+			"fragmenter",
+	)
+	reader.ReadString('\n')
 }

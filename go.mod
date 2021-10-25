@@ -19,7 +19,6 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4
 	github.com/improbable-eng/grpc-web v0.13.0
-	github.com/magiconair/properties v1.8.4
 	github.com/mdp/qrterminal/v3 v3.0.0
 	github.com/prometheus/client_golang v1.0.0
 	github.com/rs/cors v1.7.0 // indirect
@@ -34,7 +33,7 @@ require (
 	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20211001103242-a11e4485705a
 	github.com/tdex-network/tdex-daemon/pkg/macaroons v0.0.0-20210813140257-70d50a8b72a4
 	github.com/tdex-network/tdex-daemon/pkg/securestore v0.0.0-20210813140257-70d50a8b72a4
-	github.com/tdex-network/tdex-protobuf v0.0.0-20210507104156-d509331cccdb
+	github.com/tdex-network/tdex-protobuf v0.0.0-20211025103804-7ead2ca5a7b3
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/urfave/cli/v2 v2.3.0
