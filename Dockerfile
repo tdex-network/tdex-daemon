@@ -57,7 +57,7 @@ COPY --from=builder /build/tdexdconnect /
 
 RUN install /tdex /bin
 RUN install /unlockerd /bin
-RUN install /tddexdconnect /bin
+RUN install /tdexdconnect /bin
 # Prevents `VOLUME $HOME/.tdex-daemon/` being created as owned by `root`
 RUN useradd -ms /bin/bash user
 USER user
