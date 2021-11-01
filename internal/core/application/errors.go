@@ -51,7 +51,7 @@ var (
 	// ErrWithdrawAmountTooBig is returned when attempting to withdraw more
 	// than the total amount of LBTC asset of the fee account.
 	ErrWithdrawAmountTooBig = errors.New(
-		"amount to withdraw os too big",
+		"amount to withdraw is too big",
 	)
 	// ErrInvalidAccountIndex returned if provided account index is invalid
 	ErrInvalidAccountIndex = errors.New("invalid account index")
