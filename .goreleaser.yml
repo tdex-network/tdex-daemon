@@ -10,6 +10,7 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
     binary: tdexd-linux
 
   - id: "tdexd-darwin"
@@ -24,33 +25,20 @@ builds:
       - darwin
     goarch:
       - amd64
+      - arm64
     binary: tdexd-darwin
 
   # CLI
-  - id: "tdex-linux"
+  - id: "tdex"
     main: ./cmd/tdex
     ldflags:
       - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
-    env:
-      - CGO_ENABLED=1
     goos:
       - linux
-    goarch:
-      - amd64
-    binary: tdex-linux
-
-  - id: "tdex-darwin"
-    main: ./cmd/tdex
-    ldflags:
-      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
-    env:
-      - CGO_ENABLED=1
-      - CC=/home/runner/work/osxcross/target/bin/o64-clang
-      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
-    goos:
       - darwin
     goarch:
       - amd64
+      - arm64
     binary: tdex-darwin
 
   # unlocker
@@ -65,6 +53,7 @@ builds:
       - darwin
     goarch:
       - amd64
+      - arm64
     binary: unlockerd
 
   # tdexdconnect
@@ -79,6 +68,7 @@ builds:
       - darwin
     goarch:
       - amd64
+      - arm64
     binary: tdexdconnect
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
@@ -121,8 +111,7 @@ archives:
   - id: tdex
     format: binary
     builds:
-      - tdex-linux
-      - tdex-darwin
+      - tdex
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     
   - id: unlockerd
