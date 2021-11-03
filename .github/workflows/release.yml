@@ -2,10 +2,6 @@ name: goreleaser
 
 on:
   workflow_dispatch:
-  push:
-    # todo: remove
-    branches:
-      - "arm"
     tags:
       - "*"
   
