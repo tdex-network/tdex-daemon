@@ -28,6 +28,10 @@ func MarketPermissions() []bakery.Op {
 		},
 		{
 			Entity: EntityPrice,
+			Action: "read",
+		},
+		{
+			Entity: EntityPrice,
 			Action: "write",
 		},
 	}
@@ -37,6 +41,10 @@ func MarketPermissions() []bakery.Op {
 // This grants access to all actions for the price entity.
 func PricePermissions() []bakery.Op {
 	return []bakery.Op{
+		{
+			Entity: EntityPrice,
+			Action: "read",
+		},
 		{
 			Entity: EntityPrice,
 			Action: "write",
@@ -54,6 +62,10 @@ func ReadOnlyPermissions() []bakery.Op {
 		},
 		{
 			Entity: EntityMarket,
+			Action: "read",
+		},
+		{
+			Entity: EntityPrice,
 			Action: "read",
 		},
 		{
@@ -116,6 +128,10 @@ func AdminPermissions() []bakery.Op {
 		{
 			Entity: EntityMarket,
 			Action: "write",
+		},
+		{
+			Entity: EntityPrice,
+			Action: "read",
 		},
 		{
 			Entity: EntityPrice,
@@ -284,7 +300,7 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Action: "write",
 		}},
 		"/Operator/ListMarkets": {{
-			Entity: EntityMarket,
+			Entity: EntityPrice,
 			Action: "read",
 		}},
 		"/Operator/ListTrades": {{
