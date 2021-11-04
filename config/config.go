@@ -47,6 +47,8 @@ const (
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
 	// TradeExpiryTimeKey is the duration in seconds of lock on unspents we reserve for accpeted trades, before eventually double spending it
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
+	// TradeSatsPerByte is the sats per byte ratio to use for paying for trades' network fees
+	TradeSatsPerByte = "TRADE_SATS_PER_BYTE"
 	// PriceSlippageKey is the percentage of the slipage for accepting trades compared to current spot price
 	PriceSlippageKey = "PRICE_SLIPPAGE"
 	// TradeTLSKeyKey is the path of the the TLS key for the Trade interface
@@ -117,6 +119,7 @@ func init() {
 	vip.SetDefault(NetworkKey, network.Liquid.Name)
 	vip.SetDefault(BaseAssetKey, network.Liquid.AssetID)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
+	vip.SetDefault(TradeSatsPerByte, 0.1)
 	vip.SetDefault(DatadirKey, defaultDatadir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
@@ -282,6 +285,11 @@ func validate() error {
 	}
 	if start >= end {
 		return fmt.Errorf("%s must be greater than %s", RescanRangeStartKey, RescanGapLimitKey)
+	}
+
+	satsPerByte := GetFloat(TradeSatsPerByte)
+	if satsPerByte < 0.1 {
+		return fmt.Errorf("%s must be equal or greater than 0.1", TradeSatsPerByte)
 	}
 
 	return nil
