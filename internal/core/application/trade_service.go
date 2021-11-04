@@ -58,6 +58,7 @@ type tradeService struct {
 	priceSlippage              decimal.Decimal
 	network                    *network.Network
 	feeAccountBalanceThreshold uint64
+	milliSatsPerByte           int
 
 	lock *sync.Mutex
 }
@@ -68,6 +69,7 @@ func NewTradeService(
 	bcListener BlockchainListener,
 	marketBaseAsset string,
 	expiryDuration time.Duration,
+	satsPerByte float64,
 	priceSlippage decimal.Decimal,
 	net *network.Network,
 	feeAccountBalanceThreshold uint64,
@@ -78,6 +80,7 @@ func NewTradeService(
 		bcListener,
 		marketBaseAsset,
 		expiryDuration,
+		satsPerByte,
 		priceSlippage,
 		net,
 		feeAccountBalanceThreshold,
@@ -90,6 +93,7 @@ func newTradeService(
 	bcListener BlockchainListener,
 	marketBaseAsset string,
 	expiryDuration time.Duration,
+	satsPerByte float64,
 	priceSlippage decimal.Decimal,
 	net *network.Network,
 	feeAccountBalanceThreshold uint64,
@@ -100,6 +104,7 @@ func newTradeService(
 		blockchainListener:         bcListener,
 		marketBaseAsset:            marketBaseAsset,
 		expiryDuration:             expiryDuration,
+		milliSatsPerByte:           int(satsPerByte * 1000),
 		priceSlippage:              priceSlippage,
 		network:                    net,
 		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
@@ -335,16 +340,17 @@ func (t *tradeService) TradePropose(
 
 	mnemonic, _ = vault.GetMnemonicSafe()
 	fillProposalResult, err = TradeManager.FillProposal(FillProposalOpts{
-		Mnemonic:      mnemonic,
-		SwapRequest:   swapRequest,
-		MarketUtxos:   marketUnspents.ToUtxos(),
-		FeeUtxos:      feeUnspents.ToUtxos(),
-		MarketInfo:    marketInfo,
-		FeeInfo:       feeInfo,
-		OutputInfo:    *outInfo,
-		ChangeInfo:    *changeInfo,
-		FeeChangeInfo: *feeChangeInfo,
-		Network:       t.network,
+		Mnemonic:         mnemonic,
+		SwapRequest:      swapRequest,
+		MarketUtxos:      marketUnspents.ToUtxos(),
+		FeeUtxos:         feeUnspents.ToUtxos(),
+		MarketInfo:       marketInfo,
+		FeeInfo:          feeInfo,
+		OutputInfo:       *outInfo,
+		ChangeInfo:       *changeInfo,
+		FeeChangeInfo:    *feeChangeInfo,
+		MilliSatsPerByte: t.milliSatsPerByte,
+		Network:          t.network,
 	})
 	if err != nil {
 		trade.Fail(
@@ -669,7 +675,7 @@ func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 	psetWithFeesResult, err := w.UpdateTx(wallet.UpdateTxOpts{
 		PsetBase64:        psetBase64,
 		Unspents:          opts.FeeUtxos,
-		MilliSatsPerBytes: domain.MinMilliSatPerByte,
+		MilliSatsPerBytes: opts.MilliSatsPerByte,
 		Network:           network,
 		ChangePathsByAsset: map[string]string{
 			network.AssetID: opts.FeeChangeInfo.DerivationPath,

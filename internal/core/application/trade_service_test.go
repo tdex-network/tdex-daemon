@@ -23,6 +23,7 @@ import (
 var (
 	tradeExpiryDuration = 120 * time.Second
 	tradePriceSlippage  = decimal.NewFromFloat(0.1)
+	tradeSatsPerByte    = 0.1
 
 	tradeFeeOutpoints = []application.TxOutpoint{
 		{Hash: randomHex(32), Index: 0},
@@ -282,6 +283,7 @@ func newTradeService(
 		bcListener,
 		marketBaseAsset,
 		tradeExpiryDuration,
+		tradeSatsPerByte,
 		tradePriceSlippage,
 		regtest,
 		feeBalanceThreshold,

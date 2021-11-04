@@ -46,6 +46,7 @@ var (
 	marketsFee                    = int64(config.GetFloat(config.DefaultFeeKey) * 100)
 	marketsBaseAsset              = config.GetString(config.BaseAssetKey)
 	tradesExpiryDurationInSeconds = config.GetDuration(config.TradeExpiryTimeKey) * time.Second
+	tradesSatsPerByte             = config.GetFloat(config.TradeSatsPerByte)
 	pricesSlippagePercentage      = decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
 	feeThreshold                  = uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
 	tradeSvcPort                  = config.GetInt(config.TradeListeningPortKey)
@@ -124,6 +125,7 @@ func main() {
 		blockchainListener,
 		marketsBaseAsset,
 		tradesExpiryDurationInSeconds,
+		tradesSatsPerByte,
 		pricesSlippagePercentage,
 		network,
 		feeThreshold,
