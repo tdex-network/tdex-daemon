@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -414,39 +413,9 @@ func (b *blockchainListener) publishTradeSettledEvent(trade *domain.Trade) {
 		return
 	}
 
-	payload := map[string]interface{}{
-		"txid":                 trade.TxID,
-		"settlement_timestamp": trade.SettlementTime,
-		"settlement_date":      time.Unix(int64(trade.SettlementTime), 0).Format(time.UnixDate),
-		"swap": map[string]interface{}{
-			"amount_p": trade.SwapRequestMessage().GetAmountP(),
-			"asset_p":  trade.SwapRequestMessage().GetAssetP(),
-			"amount_r": trade.SwapRequestMessage().GetAmountR(),
-			"asset_r":  trade.SwapRequestMessage().GetAssetR(),
-		},
-		"price": map[string]string{
-			"base_price":  trade.MarketPrice.BasePrice.String(),
-			"quote_price": trade.MarketPrice.QuotePrice.String(),
-		},
-		"market": map[string]string{
-			"base_asset":  mkt.BaseAsset,
-			"quote_asset": trade.MarketQuoteAsset,
-		},
-		"balance": map[string]uint64{
-			"base_balance":  baseBalance,
-			"quote_balance": quoteBalance,
-		},
-	}
-	message, _ := json.Marshal(payload)
-	topics := b.pubsubSvc.TopicsByCode()
-	topic := topics[TradeSettled]
-
-	if err := b.pubsubSvc.Publish(topic.Label(), string(message)); err != nil {
-		log.WithError(err).Warnf(
-			"an error occured while publishing message for topic %s",
-			topic.Label(),
-		)
-	}
+	publishTradeSettledTopic(
+		b.pubsubSvc, trade, mkt.BaseAsset, baseBalance, quoteBalance,
+	)
 }
 
 func extractTradeID(data interface{}) (*uuid.UUID, error) {
