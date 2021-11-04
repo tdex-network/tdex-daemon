@@ -321,16 +321,17 @@ type Blinder interface {
 }
 
 type FillProposalOpts struct {
-	Mnemonic      []string
-	SwapRequest   domain.SwapRequest
-	MarketUtxos   []explorer.Utxo
-	FeeUtxos      []explorer.Utxo
-	MarketInfo    domain.AddressesInfo
-	FeeInfo       domain.AddressesInfo
-	OutputInfo    domain.AddressInfo
-	ChangeInfo    domain.AddressInfo
-	FeeChangeInfo domain.AddressInfo
-	Network       *network.Network
+	Mnemonic         []string
+	SwapRequest      domain.SwapRequest
+	MarketUtxos      []explorer.Utxo
+	FeeUtxos         []explorer.Utxo
+	MarketInfo       domain.AddressesInfo
+	FeeInfo          domain.AddressesInfo
+	OutputInfo       domain.AddressInfo
+	ChangeInfo       domain.AddressInfo
+	FeeChangeInfo    domain.AddressInfo
+	Network          *network.Network
+	MilliSatsPerByte int
 }
 
 type FillProposalResult struct {
