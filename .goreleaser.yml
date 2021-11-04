@@ -1,26 +1,10 @@
 builds:
   # daemon
-  - id: "tdexd-linux"
-    main: ./cmd/tdexd
-    ldflags:
-      - -s -w
-    env:
-      - CGO_ENABLED=1
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-    binary: tdexd-linux
 
   - id: "tdexd-darwin"
     main: ./cmd/tdexd
     ldflags:
       - -s -w
-    env:
-      - CGO_ENABLED=1
-      - CC=/home/runner/work/osxcross/target/bin/o64-clang
-      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
     goos:
       - darwin
     goarch:
@@ -104,7 +88,6 @@ archives:
   - id: tdexd
     format: binary
     builds:
-      - tdexd-linux
       - tdexd-darwin
     name_template: "tdexd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     
