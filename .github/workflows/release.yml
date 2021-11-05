@@ -49,7 +49,9 @@ jobs:
         run: |
           mkdir -p ../../osxcross/target/bin
           docker run --name cross ghcr.io/gythialy/golang-cross-builder /bin/bash
-          docker cp cross:/osxcross/target/bin /home/runner/work/osxcross/target/bin
+          docker cp -a cross:/osxcross/target/bin /home/runner/work/osxcross/target/bin
+          cd /home/runner/work/osxcross/target/bin
+          ls -la
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
