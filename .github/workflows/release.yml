@@ -53,16 +53,16 @@ jobs:
 
       - name: Install ubuntu cross-compiling targets
         run: |
-          dpkg --add-architecture arm64                      \
-          && dpkg --add-architecture armel                      \
-          && dpkg --add-architecture armhf                      \
-          && dpkg --add-architecture i386                       \
-          && dpkg --add-architecture mips                       \
-          && dpkg --add-architecture mipsel                     \
-          && dpkg --add-architecture powerpc                    \
-          && dpkg --add-architecture ppc64el                    \
-          && apt-get update                                     \
-          && apt-get install -y -q                              \
+          sudo dpkg --add-architecture arm64                      \
+          && sudo dpkg --add-architecture armel                      \
+          && sudo dpkg --add-architecture armhf                      \
+          && sudo dpkg --add-architecture i386                       \
+          && sudo dpkg --add-architecture mips                       \
+          && sudo dpkg --add-architecture mipsel                     \
+          && sudo dpkg --add-architecture powerpc                    \
+          && sudo dpkg --add-architecture ppc64el                    \
+          && sudo apt-get update                                     \
+          && sudo apt-get install -y -q                              \
                   autoconf                                       \
                   automake                                       \
                   autotools-dev                                  \
@@ -97,12 +97,12 @@ jobs:
                   openssl                                        \
                   mingw-w64                                      \
                   musl-tools                                     \
-                  libssl-dev                                  && \
-                  apt -y autoremove && \
-                  apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+                  libssl-dev                                     \
+            && sudo apt -y autoremove                           \
+            && sudo apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
       - run: which aarch64-linux-gnu-gcc
-      
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
