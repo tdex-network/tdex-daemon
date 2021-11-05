@@ -64,7 +64,7 @@ jobs:
           docker run --rm --privileged \
             -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
             -v $(pwd):/app \
-            -v var/run/docker.sock:/var/run/docker.sock \
+            -v /var/run/docker.sock:/var/run/docker.sock \
             -v ~/go/src:/go/src \
             -w /app \
             ghcr.io/gythialy/golang-cross:latest --rm-dist --debug
