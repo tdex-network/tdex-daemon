@@ -1,7 +1,7 @@
 builds:
   # daemon
 
-  - id: "tdexd-linux"
+  - id: "tdexd-linux-amd64"
     main: ./cmd/tdexd
     ldflags:
       - -s -w
@@ -11,8 +11,28 @@ builds:
       - linux
     goarch:
       - amd64
-      - arm64
-    binary: tdexd-linux
+    binary: tdexd-linux-amd64
+
+  - id: "tdexd-linux-armhf"
+    main: ./cmd/tdexd
+    ldflags:
+      - -s -w
+    flags:
+      - -mod=readonly
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+      - CXX=arm-linux-gnueabihf-g++
+      - CGO_FLAGS=--sysroot=/home/runner/work/sysroot/linux/armhf
+      - CGO_LDFLAGS=--sysroot=/home/runner/work/sysroot/linux/armhf
+      - PKG_CONFIG_SYSROOT_DIR=/home/runner/work/sysroot/linux/armhf
+      - PKG_CONFIG_PATH=/home/runner/work/sysroot/linux/armhf/opt/vc/lib/pkgconfig:/home/runner/work/sysroot/linux/armhf/usr/lib/arm-linux-gnueabihf/pkgconfig:/home/runner/work/sysroot/linux/armhf/usr/lib/pkgconfig:/home/runner/work/sysroot/linux/armhf/usr/local/lib/pkgconfig
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - 7
+    binary: tdexd-linux-armhf
 
   - id: "tdexd-darwin"
     main: ./cmd/tdexd
@@ -104,7 +124,8 @@ archives:
   - id: tdexd
     format: binary
     builds:
-      - tdexd-linux
+      - tdexd-linux-amd64
+      - tdexd-linux-armhf
       - tdexd-darwin
     name_template: "tdexd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     

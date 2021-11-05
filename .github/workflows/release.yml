@@ -44,6 +44,12 @@ jobs:
           mkdir ../../osxcross
           git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
 
+
+      - name: Linux armhf for CGO Support
+        run: |
+          mkdir ../../sysroot
+          git clone https://github.com/troian/golang-cross-example-sysroot.git ../../sysroot
+
       - name: Import GPG key
         id: import_gpg
         uses: crazy-max/ghaction-import-gpg@v3
