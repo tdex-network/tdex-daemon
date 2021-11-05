@@ -19,6 +19,8 @@ jobs:
         with:
           fetch-depth: 0
 
+      - run: ls -la
+
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -60,10 +62,10 @@ jobs:
       - name: Run GoReleaser with docker image for cross-compiling
         run: |
           docker run --rm --privileged \
-            -e "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" \
-            -e "PRIVATE_KEY=${{ secrets.GPG_PRIVATE_KEY }}" \
-            -v "$(CURDIR):/app" \
-            -v "/var/run/docker.sock:/var/run/docker.sock" \
-            -v "$(GOPATH)/src:/go/src" \
+            -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+            -e PRIVATE_KEY=${{ secrets.GPG_PRIVATE_KEY }} \
+            -v $(pwd):/app \
+            -v var/run/docker.sock:/var/run/docker.sock \
+            -v ~/go/src:/go/src \
             -w /app \
             ghcr.io/gythialy/golang-cross:latest --rm-dist --debug
