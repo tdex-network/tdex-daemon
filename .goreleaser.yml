@@ -20,8 +20,8 @@ builds:
       - -s -w
     env:
       - CGO_ENABLED=1
-      - CC=/home/runner/work/osxcross/target/bin/aarch64-linux-gnu-gcc
-      - CXX=/home/runner/work/osxcross/target/bin/aarch64-linux-gnu-g++
+      - CC=aarch64-linux-gnu-gcc
+      - CXX=aarch64-linux-gnu-g++
     goos:
       - linux
     goarch:

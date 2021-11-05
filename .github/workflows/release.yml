@@ -101,6 +101,8 @@ jobs:
                   apt -y autoremove && \
                   apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+      - run: which aarch64-linux-gnu-gcc
+      
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
