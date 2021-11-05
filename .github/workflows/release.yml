@@ -45,13 +45,61 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get cross-compiling targets
+      - name: Get OSX cross-compiling targets
         run: |
           mkdir -p ../../osxcross/target
           docker run --name cross ghcr.io/gythialy/golang-cross-builder /bin/bash
           docker cp -a cross:/osxcross/target/bin /home/runner/work/osxcross/target
-          cd /home/runner/work/osxcross/target/bin
-          ls -la
+
+      - name: Install ubuntu cross-compiling targets
+        run: |
+          dpkg --add-architecture arm64                      \
+          && dpkg --add-architecture armel                      \
+          && dpkg --add-architecture armhf                      \
+          && dpkg --add-architecture i386                       \
+          && dpkg --add-architecture mips                       \
+          && dpkg --add-architecture mipsel                     \
+          && dpkg --add-architecture powerpc                    \
+          && dpkg --add-architecture ppc64el                    \
+          && apt-get update                                     \
+          && apt-get install -y -q                              \
+                  autoconf                                       \
+                  automake                                       \
+                  autotools-dev                                  \
+                  bc                                             \
+                  binfmt-support                                 \
+                  binutils-multiarch                             \
+                  binutils-multiarch-dev                         \
+                  build-essential                                \
+                  clang                                          \
+                  crossbuild-essential-arm64                     \
+                  crossbuild-essential-armel                     \
+                  crossbuild-essential-armhf                     \
+                  crossbuild-essential-mipsel                    \
+                  crossbuild-essential-ppc64el                   \
+                  curl                                           \
+                  devscripts                                     \
+                  gdb                                            \
+                  git-core                                       \
+                  libtool                                        \
+                  llvm                                           \
+                  mercurial                                      \
+                  multistrap                                     \
+                  patch                                          \
+                  software-properties-common                     \
+                  subversion                                     \
+                  wget                                           \
+                  xz-utils                                       \
+                  cmake                                          \
+                  qemu-user-static                               \
+                  libxml2-dev                                    \
+                  lzma-dev                                       \
+                  openssl                                        \
+                  mingw-w64                                      \
+                  musl-tools                                     \
+                  libssl-dev                                  && \
+                  apt -y autoremove && \
+                  apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
