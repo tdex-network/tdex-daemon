@@ -44,12 +44,6 @@ jobs:
           mkdir ../../osxcross
           git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
 
-
-      - name: Linux armhf for CGO Support
-        run: |
-          mkdir ../../sysroot
-          git clone https://github.com/troian/golang-cross-example-sysroot.git ../../sysroot
-
       - name: Import GPG key
         id: import_gpg
         uses: crazy-max/ghaction-import-gpg@v3
@@ -63,11 +57,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          version: latest
-          args: release --rm-dist --debug
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+      - name: Run GoReleaser with docker image for cross-compiling
+        run: |
+          docker run --rm --privileged \
+            -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+            -e PRIVATE_KEY=${{ secrets.GPG_PRIVATE_KEY }} \
+            -v $(CURDIR):/app \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v $(GOPATH)/src:/go/src \
+            -w /app \
+            ghcr.io/gythialy/golang-cross:latest --rm-dist --debug
