@@ -47,7 +47,7 @@ jobs:
 
       - name: Get cross-compiling targets
         run: |
-          docker run --name cross ghcr.io/gythialy/golang-cross:latest /bin/bash
+          docker run --name cross ghcr.io/gythialy/golang-cross-builder /bin/bash
           docker cp cross:/osxcross/target/bin /
 
       - name: Run GoReleaser
