@@ -63,6 +63,7 @@ jobs:
         run: |
           docker run --rm --privileged \
             -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+            -e GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }} \
             -v $(pwd):/app \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v ~/go/src:/go/src \
