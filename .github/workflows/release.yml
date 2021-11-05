@@ -19,8 +19,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - run: ls -la
-
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -33,18 +31,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-
-      # This because https://github.com/plentico/osxcross-target/issues/2#issuecomment-815850611
-      - name: Downgrade libssl
-        run: |
-          echo 'deb http://security.ubuntu.com/ubuntu bionic-security main' | sudo tee -a /etc/apt/sources.list
-          sudo apt update && apt-cache policy libssl1.0-dev
-          sudo apt-get install libssl1.0-dev
-
-      - name: OSXCross for CGO Support
-        run: |
-          mkdir ../../osxcross
-          git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
 
       - name: Import GPG key
         id: import_gpg
@@ -59,12 +45,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run GoReleaser with docker image for cross-compiling
+      - name: Get cross-compiling targets
         run: |
-          docker run --rm --privileged \
-            -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
-            -v $(pwd):/app \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v ~/go/src:/go/src \
-            -w /app \
-            ghcr.io/gythialy/golang-cross:latest --rm-dist --debug
+          docker run --name cross ghcr.io/gythialy/golang-cross:latest /bin/bash
+          docker cp cross:/osxcross/target/bin /
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: release --rm-dist --debug
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
