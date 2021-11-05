@@ -58,4 +58,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run GoReleaser with docker image for cross-compiling
-        run: docker run --rm --privileged -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} -e PRIVATE_KEY=${{ secrets.GPG_PRIVATE_KEY }} -v $(CURDIR):/app -v /var/run/docker.sock:/var/run/docker.sock -v $(GOPATH)/src:/go/src -w /app ghcr.io/gythialy/golang-cross:latest --rm-dist --debug
+        run: |
+          docker run --rm --privileged \
+            -e "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" \
+            -e "PRIVATE_KEY=${{ secrets.GPG_PRIVATE_KEY }}" \
+            -v "$(CURDIR):/app" \
+            -v "/var/run/docker.sock:/var/run/docker.sock" \
+            -v "$(GOPATH)/src:/go/src" \
+            -w /app \
+            ghcr.io/gythialy/golang-cross:latest --rm-dist --debug
