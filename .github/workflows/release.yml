@@ -47,7 +47,7 @@ jobs:
 
       - name: Get cross-compiling targets
         run: |
-          mkdir ../../osxcross/target/bin
+          mkdir -p ../../osxcross/target/bin
           docker run --name cross ghcr.io/gythialy/golang-cross-builder /bin/bash
           docker cp cross:/osxcross/target/bin /home/runner/work/osxcross/target/bin
 
