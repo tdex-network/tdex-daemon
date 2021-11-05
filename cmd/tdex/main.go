@@ -38,7 +38,6 @@ var (
 
 	initialState = map[string]string{
 		"network":        defaultNetwork,
-		"explorer_url":   defaultExplorer,
 		"rpcserver":      defaultRPCServer,
 		"no_macaroons":   strconv.FormatBool(defaultNoMacaroonsAuth),
 		"tls_cert_path":  defaultTLSCertPath,
