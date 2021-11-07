@@ -8,7 +8,7 @@ ARG DATE
 RUN apt install gcc make gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
 
 ENV GO111MODULE=on \
-    CGO_ENABLED=1 \
+    CGO_ENABLED=1
 
 WORKDIR /tdex-daemon
 
