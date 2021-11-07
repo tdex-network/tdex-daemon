@@ -198,12 +198,11 @@ dockers:
      # push always either release or prerelease with a docker tag with the semver only
     skip_push: false
     use: buildx
-    goarch: arm64
     dockerfile: Dockerfile
     # GOOS of the built binaries/packages that should be used.
     goos: linux
     # GOARCH of the built binaries/packages that should be used.
-    goarch: amd64
+    goarch: arm64
     # Template of the docker build flags.
     build_flag_templates:
       - "--platform=linux/arm64/v8"
