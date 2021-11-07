@@ -31,6 +31,22 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      
+      # This because https://github.com/plentico/osxcross-target/issues/2#issuecomment-815850611
+      - name: Downgrade libssl
+        run: |
+          echo 'deb http://security.ubuntu.com/ubuntu bionic-security main' | sudo tee -a /etc/apt/sources.list
+          sudo apt update && apt-cache policy libssl1.0-dev
+          sudo apt-get install libssl1.0-dev
+
+      - name: Install OSX cross-compiling targets
+        run: |
+          mkdir ../../osxcross
+          git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
+
+      - name: Install Linux aarch64 cross-compiling targets
+        run: sudo apt install gcc make gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
 
       - name: Import GPG key
         id: import_gpg
@@ -44,17 +60,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get OSX cross-compiling targets
-        run: |
-          mkdir -p ../../osxcross/target
-          docker run --name cross ghcr.io/gythialy/golang-cross-builder /bin/bash
-          docker cp -a cross:/osxcross/target/bin /home/runner/work/osxcross/target
-
-      - name: Install ubuntu cross-compiling targets
-        run: sudo apt install gcc make gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
-
-      - run: which aarch64-linux-gnu-gcc
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
