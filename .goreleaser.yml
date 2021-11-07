@@ -160,6 +160,10 @@ archives:
 
 dockers:
 
+  ########################### 
+  # tag latest & prerelease #
+  ########################### 
+
   #amd64
   - image_templates:
     - "ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64"
@@ -229,3 +233,11 @@ docker_manifests:
     image_templates:
     - ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64
     - ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8
+    skip_push: false
+
+  - name_template: ghcr.io/tdex-network/tdexd:latest
+    image_templates:
+    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64
+    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8
+    skip_push: auto
+  

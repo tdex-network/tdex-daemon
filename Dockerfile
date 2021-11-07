@@ -5,11 +5,10 @@ ARG VERSION
 ARG COMMIT
 ARG DATE
 
+RUN apt install gcc make gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
 
 ENV GO111MODULE=on \
-    GOOS=linux \
     CGO_ENABLED=1 \
-    GOARCH=amd64
 
 WORKDIR /tdex-daemon
 
