@@ -10,6 +10,8 @@ on:
 jobs:
   goreleaser:
     runs-on: ubuntu-20.04
+    env:
+      DOCKER_CLI_EXPERIMENTAL: "enabled"
 
     permissions: write-all
 
@@ -18,7 +20,10 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
+      
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -46,7 +51,6 @@ jobs:
 
       - name: Install Linux aarch64 cross-compiling targets
         run: sudo apt install gcc make gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
-
 
       - name: Import GPG key
         id: import_gpg

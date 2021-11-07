@@ -159,21 +159,24 @@ archives:
     name_template: "tdexdconnect-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
 dockers:
-  # push always either release or prerelease with a docker tag with the semver only
-  - skip_push: false
+
+  #amd64
+  - image_templates:
+    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64"
+     # push always either release or prerelease with a docker tag with the semver only
+    skip_push: false
+    use: buildx
     dockerfile: Dockerfile
-    # image templates
-    image_templates:
-      - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
     # GOOS of the built binaries/packages that should be used.
     goos: linux
     # GOARCH of the built binaries/packages that should be used.
     goarch: amd64
     # Template of the docker build flags.
     build_flag_templates:
+      - "--platform=linux/amd64"
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--build-arg=VERSION={{.Version}}"
@@ -188,26 +191,31 @@ dockers:
       - pkg
       - cmd
       - api-spec
-  # push only release with both a docker tag latest and one with the semver
-  - skip_push: auto
+
+  # arm64
+  - image_templates:
+    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8"
+     # push always either release or prerelease with a docker tag with the semver only
+    skip_push: false
+    use: buildx
+    goarch: arm64
     dockerfile: Dockerfile
-    # image templates
-    image_templates:
-      - "ghcr.io/tdex-network/tdexd:latest"
     # GOOS of the built binaries/packages that should be used.
     goos: linux
     # GOARCH of the built binaries/packages that should be used.
     goarch: amd64
     # Template of the docker build flags.
     build_flag_templates:
+      - "--platform=linux/arm64/v8"
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--build-arg=VERSION={{.Version}}"
       - "--build-arg=COMMIT={{.Commit}}"
       - "--build-arg=DATE={{.Date}}"
+
     extra_files:
       - go.mod
       - go.sum
@@ -216,3 +224,9 @@ dockers:
       - pkg
       - cmd
       - api-spec
+
+docker_manifests:
+  - name_template: ghcr.io/tdex-network/tdexd:{{ .Tag }}
+    image_templates:
+    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64
+    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8
