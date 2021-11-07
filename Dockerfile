@@ -4,18 +4,16 @@ FROM golang:1.16-buster AS builder
 ARG VERSION
 ARG COMMIT
 ARG DATE
+ARG TARGETOS
+ARG TARGETARCH
 
-RUN apt install gcc make gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
-
-ENV GO111MODULE=on \
-    CGO_ENABLED=1
 
 WORKDIR /tdex-daemon
 
 COPY . .
 RUN go mod download
 
-RUN go build -ldflags="-s -w " -o tdexd-linux cmd/tdexd/main.go
+RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w " -o tdexd-linux cmd/tdexd/main.go
 RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o tdex cmd/tdex/*
 RUN go build -ldflags="-s -w " -o unlockerd cmd/unlockerd/*
 RUN go build -ldflags="-s -w " -o tdexdconnect cmd/tdexdconnect/*
