@@ -239,6 +239,14 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityMarket,
 			Action: "write",
 		}},
+		"/Operator/GetFeeFragmenterAddress": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
+		"/Operator/FragmentFeeDeposits": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
 		"/Operator/WithdrawFee": {{
 			Entity: EntityOperator,
 			Action: "write",
@@ -278,6 +286,14 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 		"/Operator/GetMarketCollectedSwapFees": {{
 			Entity: EntityMarket,
 			Action: "read",
+		}},
+		"/Operator/GetMarketFragmenterAddress": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
+		"/Operator/FragmentMarketDeposits": {{
+			Entity: EntityMarket,
+			Action: "write",
 		}},
 		"/Operator/WithdrawMarket": {{
 			Entity: EntityOperator,
