@@ -1,6 +1,8 @@
 builds:
   # daemon
-  - id: "tdexd-linux"
+
+  ### Linux
+  - id: "tdexd-linux-amd64"
     main: ./cmd/tdexd
     ldflags:
       - -s -w
@@ -10,9 +12,25 @@ builds:
       - linux
     goarch:
       - amd64
-    binary: tdexd-linux
+    binary: tdexd-linux-amd64
 
-  - id: "tdexd-darwin"
+  - id: "tdexd-linux-arm64"
+    main: ./cmd/tdexd
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+      - CXX=aarch64-linux-gnu-g++
+    goos:
+      - linux
+    goarch:
+      - arm64
+    binary: tdexd-linux-arm64
+
+  ### Darwin
+
+  - id: "tdexd-darwin-amd64"
     main: ./cmd/tdexd
     ldflags:
       - -s -w
@@ -24,33 +42,33 @@ builds:
       - darwin
     goarch:
       - amd64
-    binary: tdexd-darwin
+    binary: tdexd-darwin-amd64
+    
+  - id: "tdexd-darwin-arm64"
+    main: ./cmd/tdexd
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/osxcross/target/bin/oa64-clang
+      - CXX=/home/runner/work/osxcross/target/bin/oa64-clang++
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    binary: tdexd-darwin-arm64
 
   # CLI
-  - id: "tdex-linux"
+  - id: "tdex"
     main: ./cmd/tdex
     ldflags:
       - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
-    env:
-      - CGO_ENABLED=1
     goos:
       - linux
-    goarch:
-      - amd64
-    binary: tdex-linux
-
-  - id: "tdex-darwin"
-    main: ./cmd/tdex
-    ldflags:
-      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
-    env:
-      - CGO_ENABLED=1
-      - CC=/home/runner/work/osxcross/target/bin/o64-clang
-      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
-    goos:
       - darwin
     goarch:
       - amd64
+      - arm64
     binary: tdex-darwin
 
   # unlocker
@@ -65,6 +83,7 @@ builds:
       - darwin
     goarch:
       - amd64
+      - arm64
     binary: unlockerd
 
   # tdexdconnect
@@ -79,6 +98,7 @@ builds:
       - darwin
     goarch:
       - amd64
+      - arm64
     binary: tdexdconnect
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
@@ -114,15 +134,16 @@ archives:
   - id: tdexd
     format: binary
     builds:
-      - tdexd-linux
-      - tdexd-darwin
+      - tdexd-linux-amd64
+      - tdexd-linux-arm64
+      - tdexd-darwin-amd64
+      - tdexd-darwin-arm64
     name_template: "tdexd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     
   - id: tdex
     format: binary
     builds:
-      - tdex-linux
-      - tdex-darwin
+      - tdex
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     
   - id: unlockerd
@@ -138,21 +159,28 @@ archives:
     name_template: "tdexdconnect-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
 dockers:
-  # push always either release or prerelease with a docker tag with the semver only
-  - skip_push: false
+
+  ########################### 
+  # tag latest & prerelease #
+  ########################### 
+
+  #amd64
+  - image_templates:
+    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64"
+     # push always either release or prerelease with a docker tag with the semver only
+    skip_push: false
+    use: buildx
     dockerfile: Dockerfile
-    # image templates
-    image_templates:
-      - "ghcr.io/tdex-network/tdexd:{{ .Tag }}"
     # GOOS of the built binaries/packages that should be used.
     goos: linux
     # GOARCH of the built binaries/packages that should be used.
     goarch: amd64
     # Template of the docker build flags.
     build_flag_templates:
+      - "--platform=linux/amd64"
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--build-arg=VERSION={{.Version}}"
@@ -167,26 +195,30 @@ dockers:
       - pkg
       - cmd
       - api-spec
-  # push only release with both a docker tag latest and one with the semver
-  - skip_push: auto
+
+  # arm64
+  - image_templates:
+    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8"
+     # push always either release or prerelease with a docker tag with the semver only
+    skip_push: false
+    use: buildx
     dockerfile: Dockerfile
-    # image templates
-    image_templates:
-      - "ghcr.io/tdex-network/tdexd:latest"
     # GOOS of the built binaries/packages that should be used.
     goos: linux
     # GOARCH of the built binaries/packages that should be used.
-    goarch: amd64
+    goarch: arm64
     # Template of the docker build flags.
     build_flag_templates:
+      - "--platform=linux/arm64/v8"
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--build-arg=VERSION={{.Version}}"
       - "--build-arg=COMMIT={{.Commit}}"
       - "--build-arg=DATE={{.Date}}"
+
     extra_files:
       - go.mod
       - go.sum
@@ -195,3 +227,17 @@ dockers:
       - pkg
       - cmd
       - api-spec
+
+docker_manifests:
+  - name_template: ghcr.io/tdex-network/tdexd:{{ .Tag }}
+    image_templates:
+    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64
+    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8
+    skip_push: false
+
+  - name_template: ghcr.io/tdex-network/tdexd:latest
+    image_templates:
+    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64
+    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8
+    skip_push: auto
+  

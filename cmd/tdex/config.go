@@ -11,8 +11,6 @@ import (
 	"strconv"
 
 	"github.com/btcsuite/btcutil"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/tdexdconnect"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/network"
@@ -28,7 +26,6 @@ var (
 	daemonDatadir = btcutil.AppDataDir("tdex-daemon", false)
 
 	defaultNetwork         = network.Liquid.Name
-	defaultExplorer        = "https://blockstream.info/liquid/api"
 	defaultRPCServer       = "localhost:9000"
 	defaultNoMacaroonsAuth = false
 	defaultTLSCertPath     = filepath.Join(daemonDatadir, "tls", "cert.pem")
@@ -38,12 +35,6 @@ var (
 		Name:  "network, n",
 		Usage: "the network tdexd is running on: liquid or regtest",
 		Value: defaultNetwork,
-	}
-
-	explorerUrlFlag = cli.StringFlag{
-		Name:  "explorer_url",
-		Usage: "explorer url for the current network",
-		Value: defaultExplorer,
 	}
 
 	rpcFlag = cli.StringFlag{
@@ -87,7 +78,6 @@ var cliConfig = cli.Command{
 			Action: configInitAction,
 			Flags: []cli.Flag{
 				&networkFlag,
-				&explorerUrlFlag,
 				&rpcFlag,
 				&tlsCertFlag,
 				&noMacaroonsFlag,
@@ -118,7 +108,6 @@ func configAction(ctx *cli.Context) error {
 func configInitAction(c *cli.Context) error {
 	return setState(map[string]string{
 		"network":        c.String("network"),
-		"explorer_url":   c.String("explorer_url"),
 		"rpcserver":      c.String("rpcserver"),
 		"no_macaroons":   c.String(noMacaroonsKey),
 		"tls_cert_path":  cleanAndExpandPath(c.String(tlsCertPathKey)),
@@ -244,21 +233,6 @@ func getMarketFromState() (string, string, error) {
 	}
 
 	return baseAsset, quoteAsset, nil
-}
-
-func getExplorerFromState() (explorer.Service, error) {
-	state, err := getState()
-	if err != nil {
-		return nil, err
-	}
-
-	reqTimeout := 15000
-	url, ok := state["explorer_url"]
-	if !ok {
-		url = "https://blockstream.info/liquid/api"
-	}
-
-	return esplora.NewService(url, reqTimeout)
 }
 
 func getWalletFromState(walletType string) (map[string]string, error) {
