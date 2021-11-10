@@ -11,7 +11,7 @@ import (
 // provided arguments.
 func (t *Trade) Propose(
 	swapRequest SwapRequest,
-	marketQuoteAsset string,
+	marketBaseAsset, marketQuoteAsset string,
 	marketFee, fixedBaseFee, fixedQuoteFee int64,
 	traderPubkey []byte,
 ) (bool, error) {
@@ -21,6 +21,7 @@ func (t *Trade) Propose(
 
 	now := uint64(time.Now().Unix())
 	t.TraderPubkey = traderPubkey
+	t.MarketBaseAsset = marketBaseAsset
 	t.MarketQuoteAsset = marketQuoteAsset
 	t.SwapRequest.ID = swapRequest.GetId()
 	t.SwapRequest.Timestamp = now
