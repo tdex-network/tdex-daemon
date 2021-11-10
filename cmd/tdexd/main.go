@@ -45,6 +45,7 @@ var (
 	// App services config
 	marketsFee                    = int64(config.GetFloat(config.DefaultFeeKey) * 100)
 	marketsBaseAsset              = config.GetString(config.BaseAssetKey)
+	marketsQuoteAsset             = config.GetString(config.QuoteAssetKey)
 	tradesExpiryDurationInSeconds = config.GetDuration(config.TradeExpiryTimeKey) * time.Second
 	tradesSatsPerByte             = config.GetFloat(config.TradeSatsPerByte)
 	pricesSlippagePercentage      = decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
@@ -123,7 +124,6 @@ func main() {
 		repoManager,
 		explorerSvc,
 		blockchainListener,
-		marketsBaseAsset,
 		tradesExpiryDurationInSeconds,
 		tradesSatsPerByte,
 		pricesSlippagePercentage,
@@ -135,6 +135,7 @@ func main() {
 		explorerSvc,
 		blockchainListener,
 		marketsBaseAsset,
+		marketsQuoteAsset,
 		marketsFee,
 		network,
 		feeThreshold,
@@ -153,6 +154,7 @@ func main() {
 		network,
 		marketsFee,
 		marketsBaseAsset,
+		marketsQuoteAsset,
 		rescanRangeStart,
 		rescanGapLimit,
 	)

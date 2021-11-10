@@ -9,7 +9,9 @@ type MarketRepository interface {
 	// Retrieves a market with a given account index.
 	GetMarketByAccount(ctx context.Context, accountIndex int) (market *Market, err error)
 	// Retrieves a market with a given a quote asset hash.
-	GetMarketByAsset(ctx context.Context, quoteAsset string) (market *Market, accountIndex int, err error)
+	GetMarketByAssets(
+		ctx context.Context, baseAsset, quoteAsset string,
+	) (market *Market, accountIndex int, err error)
 	// Retrieves the latest market sorted by account index
 	GetLatestMarket(ctx context.Context) (market *Market, accountIndex int, err error)
 	// Retrieves all the markets that are open for trading
@@ -24,8 +26,8 @@ type MarketRepository interface {
 		updateFn func(m *Market) (*Market, error),
 	) error
 	// Open and close trading activities for a market with the given quote asset hash
-	OpenMarket(ctx context.Context, quoteAsset string) error
-	CloseMarket(ctx context.Context, quoteAsset string) error
+	OpenMarket(ctx context.Context, accountIndex int) error
+	CloseMarket(ctx context.Context, accountIndex int) error
 	// Update only the price without touching market details
 	UpdatePrices(ctx context.Context, accountIndex int, prices Prices) error
 	// DeleteMarket deletes market for accountIndex

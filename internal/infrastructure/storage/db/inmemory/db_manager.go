@@ -11,9 +11,9 @@ import (
 )
 
 type marketInmemoryStore struct {
-	markets         map[int]domain.Market
-	accountsByAsset map[string]int
-	locker          *sync.Mutex
+	markets             map[int]domain.Market
+	accountsByAssetsKey map[string]int
+	locker              *sync.Mutex
 }
 
 type tradeInmemoryStore struct {
@@ -78,9 +78,9 @@ func (tx *InmemoryTx) Discard() {
 
 func NewRepoManager() ports.RepoManager {
 	marketStore := &marketInmemoryStore{
-		markets:         map[int]domain.Market{},
-		accountsByAsset: map[string]int{},
-		locker:          &sync.Mutex{},
+		markets:             map[int]domain.Market{},
+		accountsByAssetsKey: map[string]int{},
+		locker:              &sync.Mutex{},
 	}
 	tradeStore := &tradeInmemoryStore{
 		trades:               map[uuid.UUID]domain.Trade{},

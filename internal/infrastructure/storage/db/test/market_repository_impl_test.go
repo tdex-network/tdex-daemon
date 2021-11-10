@@ -157,7 +157,7 @@ func testGetMarketByAsset(t *testing.T, repo marketRepository) {
 	}
 	resp, err := repo.read(
 		func(ctx context.Context) (interface{}, error) {
-			mkt, accountIndex, err := repo.Repository.GetMarketByAsset(ctx, quoteAsset)
+			mkt, accountIndex, err := repo.Repository.GetMarketByAssets(ctx, baseAsset, quoteAsset)
 			if err != nil {
 				return nil, err
 			}
@@ -180,7 +180,7 @@ func testGetMarketByAsset(t *testing.T, repo marketRepository) {
 
 	resp, err = repo.read(
 		func(ctx context.Context) (interface{}, error) {
-			mkt, accountIndex, err := repo.Repository.GetMarketByAsset(ctx, quoteAsset)
+			mkt, accountIndex, err := repo.Repository.GetMarketByAssets(ctx, baseAsset, quoteAsset)
 			if err != nil {
 				return nil, err
 			}
@@ -225,7 +225,7 @@ func testOpenCloseMarket(t *testing.T, repo marketRepository) {
 			return nil, err
 		}
 
-		if err := repo.Repository.OpenMarket(ctx, quoteAsset); err != nil {
+		if err := repo.Repository.OpenMarket(ctx, accountIndex); err != nil {
 			return nil, err
 		}
 
@@ -238,7 +238,7 @@ func testOpenCloseMarket(t *testing.T, repo marketRepository) {
 	require.True(t, len(markets) > 0)
 
 	iClosedMarkets, err := repo.write(func(ctx context.Context) (interface{}, error) {
-		if err := repo.Repository.CloseMarket(ctx, quoteAsset); err != nil {
+		if err := repo.Repository.CloseMarket(ctx, accountIndex); err != nil {
 			return nil, err
 		}
 		return repo.Repository.GetTradableMarkets(ctx)

@@ -35,11 +35,12 @@ func (m marketRepositoryImpl) GetMarketByAccount(
 	return m.getMarket(ctx, accountIndex)
 }
 
-func (m marketRepositoryImpl) GetMarketByAsset(
+func (m marketRepositoryImpl) GetMarketByAssets(
 	ctx context.Context,
-	quoteAsset string,
+	baseAsset, quoteAsset string,
 ) (market *domain.Market, accountIndex int, err error) {
-	query := badgerhold.Where("QuoteAsset").Eq(quoteAsset)
+	query := badgerhold.
+		Where("BaseAsset").Eq(baseAsset).And("QuoteAsset").Eq(quoteAsset)
 	markets, err := m.findMarkets(ctx, query)
 	if err != nil {
 		return nil, -1, err
@@ -117,9 +118,9 @@ func (m marketRepositoryImpl) UpdateMarket(
 
 func (m marketRepositoryImpl) OpenMarket(
 	ctx context.Context,
-	quoteAsset string,
+	accountIndex int,
 ) error {
-	query := badgerhold.Where("QuoteAsset").Eq(quoteAsset)
+	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
 	markets, err := m.findMarkets(ctx, query)
 	if err != nil {
 		return err
@@ -147,9 +148,9 @@ func (m marketRepositoryImpl) OpenMarket(
 
 func (m marketRepositoryImpl) CloseMarket(
 	ctx context.Context,
-	quoteAsset string,
+	accountIndex int,
 ) error {
-	query := badgerhold.Where("QuoteAsset").Eq(quoteAsset)
+	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
 	markets, err := m.findMarkets(ctx, query)
 	if err != nil {
 		return err

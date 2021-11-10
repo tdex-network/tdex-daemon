@@ -115,6 +115,7 @@ type operatorService struct {
 	explorerSvc                explorer.Service
 	blockchainListener         BlockchainListener
 	marketBaseAsset            string
+	marketQuoteAsset           string
 	marketFee                  int64
 	network                    *network.Network
 	feeAccountBalanceThreshold uint64
@@ -128,7 +129,7 @@ func NewOperatorService(
 	repoManager ports.RepoManager,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
-	marketBaseAsset string,
+	marketBaseAsset, marketQuoteAsset string,
 	marketFee int64,
 	net *network.Network,
 	feeAccountBalanceThreshold uint64,
@@ -138,6 +139,7 @@ func NewOperatorService(
 		explorerSvc:                explorerSvc,
 		blockchainListener:         bcListener,
 		marketBaseAsset:            marketBaseAsset,
+		marketQuoteAsset:           marketQuoteAsset,
 		marketFee:                  marketFee,
 		network:                    net,
 		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
@@ -476,7 +478,7 @@ func (o *operatorService) WithdrawFeeFunds(
 	)
 
 	// Start watching tx to confirm new unspents once the tx is in blockchain.
-	go o.blockchainListener.StartObserveTx(txid, "")
+	go o.blockchainListener.StartObserveTx(txid, Market{})
 
 	// Publish message for topic AccountWithdraw to pubsub service.
 	go func() {
@@ -517,9 +519,15 @@ func (o *operatorService) NewMarket(ctx context.Context, mkt Market) error {
 	if err := mkt.Validate(); err != nil {
 		return err
 	}
+	if len(o.marketBaseAsset) > 0 && mkt.BaseAsset != o.marketBaseAsset {
+		return ErrMarketInvalidBaseAsset
+	}
+	if len(o.marketQuoteAsset) > 0 && mkt.QuoteAsset != o.marketQuoteAsset {
+		return ErrMarketInvalidQuoteAsset
+	}
 
-	_, existingAccountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, mkt.QuoteAsset,
+	_, existingAccountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, mkt.BaseAsset, mkt.QuoteAsset,
 	)
 	if err != nil {
 		return err
@@ -579,8 +587,8 @@ func (o *operatorService) GetMarketAddress(
 		return nil, err
 	}
 
-	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, mkt.QuoteAsset,
+	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, mkt.BaseAsset, mkt.QuoteAsset,
 	)
 	if err != nil {
 		return nil, err
@@ -629,8 +637,8 @@ func (o *operatorService) ListMarketExternalAddresses(
 		return nil, err
 	}
 
-	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, mkt.QuoteAsset,
+	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, mkt.BaseAsset, mkt.QuoteAsset,
 	)
 	if err != nil {
 		return nil, err
@@ -664,8 +672,8 @@ func (o *operatorService) GetMarketBalance(
 		return nil, nil, err
 	}
 
-	market, _, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, mkt.QuoteAsset,
+	market, _, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, mkt.BaseAsset, mkt.QuoteAsset,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -689,14 +697,14 @@ func (o *operatorService) GetMarketBalance(
 
 // ClaimMarketDeposit method add unspents to the market
 func (o *operatorService) ClaimMarketDeposits(
-	ctx context.Context, marketReq Market, outpoints []TxOutpoint,
+	ctx context.Context, mkt Market, outpoints []TxOutpoint,
 ) error {
-	if err := validateMarketRequest(marketReq, o.marketBaseAsset); err != nil {
+	if err := mkt.Validate(); err != nil {
 		return err
 	}
 
-	market, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, marketReq.QuoteAsset,
+	market, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, mkt.BaseAsset, mkt.QuoteAsset,
 	)
 	if err != nil {
 		return err
@@ -731,8 +739,8 @@ func (o *operatorService) OpenMarket(ctx context.Context, mkt Market) error {
 	}
 
 	// Check if market exists
-	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, mkt.QuoteAsset,
+	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, mkt.BaseAsset, mkt.QuoteAsset,
 	)
 	if err != nil {
 		return err
@@ -757,8 +765,8 @@ func (o *operatorService) CloseMarket(ctx context.Context, mkt Market) error {
 		return err
 	}
 
-	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, mkt.QuoteAsset,
+	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, mkt.BaseAsset, mkt.QuoteAsset,
 	)
 	if err != nil {
 		return err
@@ -781,8 +789,8 @@ func (o *operatorService) DropMarket(ctx context.Context, market Market) error {
 		return err
 	}
 
-	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, market.QuoteAsset,
+	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
 	)
 	if err != nil {
 		return err
@@ -817,8 +825,8 @@ func (o *operatorService) DropMarket(ctx context.Context, market Market) error {
 func (o *operatorService) GetMarketCollectedFee(
 	ctx context.Context, mkt Market, page *Page,
 ) (*ReportMarketFee, error) {
-	m, _, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, mkt.QuoteAsset,
+	m, _, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, mkt.BaseAsset, mkt.QuoteAsset,
 	)
 	if err != nil {
 		return nil, err
@@ -889,8 +897,8 @@ func (o *operatorService) GetMarketFragmenterAddress(
 		return "", fmt.Errorf("invalid market: %s", err)
 	}
 
-	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, market.QuoteAsset,
+	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
 	)
 	if err != nil {
 		return "", err
@@ -927,8 +935,8 @@ func (o *operatorService) FragmentMarketDeposits(
 		return
 	}
 
-	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, market.QuoteAsset,
+	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
 	)
 	if err != nil {
 		chRes <- FragmentDepositsReply{
@@ -986,8 +994,8 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, nil, err
 	}
 
-	market, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, req.QuoteAsset,
+	market, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, req.BaseAsset, req.QuoteAsset,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -1142,7 +1150,7 @@ func (o *operatorService) WithdrawMarketFunds(
 	)
 
 	// Start watching tx to confirm new unspents once the tx is in blockchain.
-	go o.blockchainListener.StartObserveTx(txid, market.QuoteAsset)
+	go o.blockchainListener.StartObserveTx(txid, req.Market)
 
 	// Publish message for topic AccountWithdraw to pubsub service.
 	go func() {
@@ -1191,12 +1199,8 @@ func (o *operatorService) UpdateMarketPercentageFee(
 		return nil, err
 	}
 
-	if req.BaseAsset != o.marketBaseAsset {
-		return nil, ErrMarketNotExist
-	}
-
-	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, req.QuoteAsset,
+	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, req.BaseAsset, req.QuoteAsset,
 	)
 	if err != nil {
 		return nil, err
@@ -1239,8 +1243,8 @@ func (o *operatorService) UpdateMarketFixedFee(
 		return nil, err
 	}
 
-	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, req.QuoteAsset,
+	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, req.BaseAsset, req.QuoteAsset,
 	)
 	if err != nil {
 		return nil, err
@@ -1287,8 +1291,8 @@ func (o *operatorService) UpdateMarketPrice(
 		return err
 	}
 
-	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, req.QuoteAsset,
+	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, req.BaseAsset, req.QuoteAsset,
 	)
 	if err != nil {
 		return err
@@ -1317,8 +1321,8 @@ func (o *operatorService) UpdateMarketStrategy(
 		return err
 	}
 
-	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, req.QuoteAsset,
+	_, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, req.BaseAsset, req.QuoteAsset,
 	)
 	if err != nil {
 		return err
@@ -1703,11 +1707,14 @@ func (o *operatorService) claimDeposit(
 		// Start watching for those funds that are not yet confirmed.
 		go func() {
 			for _, txid := range unconfirmedTxs {
-				var mktQuoteAsset string
+				var mkt Market
 				if market != nil {
-					mktQuoteAsset = market.QuoteAsset
+					mkt = Market{
+						BaseAsset:  market.BaseAsset,
+						QuoteAsset: market.QuoteAsset,
+					}
 				}
-				o.blockchainListener.StartObserveTx(txid, mktQuoteAsset)
+				o.blockchainListener.StartObserveTx(txid, mkt)
 			}
 		}()
 
@@ -1731,7 +1738,7 @@ func (o *operatorService) checkFeeBalance(accountInfo domain.AddressesInfo) erro
 	feeAccountBalance, err := o.repoManager.UnspentRepository().GetBalance(
 		context.Background(),
 		accountInfo.Addresses(),
-		o.marketBaseAsset,
+		o.network.AssetID,
 	)
 	if err != nil {
 		return err
@@ -2233,13 +2240,19 @@ func tradeToTradeInfo(
 	if trade.IsEmpty() {
 		return
 	}
+	// to maintain backward compatibility, since trade.MarketBaseAsset has been
+	// introduced only in versions above v0.7.1.
+	mktBaseAsset := trade.MarketBaseAsset
+	if len(mktBaseAsset) == 0 {
+		mktBaseAsset = marketBaseAsset
+	}
 
 	info := TradeInfo{
 		ID:     trade.ID.String(),
 		Status: trade.Status,
 		MarketWithFee: MarketWithFee{
 			Market{
-				BaseAsset:  marketBaseAsset,
+				BaseAsset:  mktBaseAsset,
 				QuoteAsset: trade.MarketQuoteAsset,
 			},
 			Fee{
@@ -2298,23 +2311,6 @@ func tradeToTradeInfo(
 	}
 
 	chInfo <- info
-}
-
-func validateMarketRequest(marketReq Market, baseAsset string) error {
-	if err := validateAssetString(marketReq.BaseAsset); err != nil {
-		return err
-	}
-
-	if err := validateAssetString(marketReq.QuoteAsset); err != nil {
-		return err
-	}
-
-	// Checks if base asset is valid
-	if marketReq.BaseAsset != baseAsset {
-		return domain.ErrMarketInvalidBaseAsset
-	}
-
-	return nil
 }
 
 func groupAddressesInfoByScript(info domain.AddressesInfo) map[string]domain.AddressInfo {

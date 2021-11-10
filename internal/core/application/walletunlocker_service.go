@@ -101,6 +101,7 @@ type walletUnlockerService struct {
 	network            *network.Network
 	marketFee          int64
 	marketBaseAsset    string
+	marketQuoteAsset   string
 	rescanRangeStart   int
 	rescanRangeEnd     int
 
@@ -116,6 +117,7 @@ func NewWalletUnlockerService(
 	net *network.Network,
 	marketFee int64,
 	marketBaseAsset string,
+	marketQuoteAsset string,
 	rescanRangeStart, rescanRangeEnd int,
 ) WalletUnlockerService {
 	return newWalletUnlockerService(
@@ -125,6 +127,7 @@ func NewWalletUnlockerService(
 		net,
 		marketFee,
 		marketBaseAsset,
+		marketQuoteAsset,
 		rescanRangeStart,
 		rescanRangeEnd,
 	)
@@ -136,7 +139,7 @@ func newWalletUnlockerService(
 	blockchainListener BlockchainListener,
 	net *network.Network,
 	marketFee int64,
-	marketBaseAsset string,
+	marketBaseAsset, marketQuoteAsset string,
 	rescanRangeStart, rescanRangeEnd int,
 ) *walletUnlockerService {
 	w := &walletUnlockerService{
@@ -146,6 +149,7 @@ func newWalletUnlockerService(
 		network:            net,
 		marketFee:          marketFee,
 		marketBaseAsset:    marketBaseAsset,
+		marketQuoteAsset:   marketQuoteAsset,
 		rescanRangeStart:   rescanRangeStart,
 		rescanRangeEnd:     rescanRangeEnd,
 		lock:               &sync.RWMutex{},
@@ -632,10 +636,18 @@ func (w *walletUnlockerService) restoreMarket(
 		}
 		var baseAsset, quoteAsset string
 		for asset := range outpointsByAsset {
-			if asset == w.marketBaseAsset {
-				baseAsset = asset
+			if len(w.marketBaseAsset) > 0 {
+				if asset == w.marketBaseAsset {
+					baseAsset = asset
+				} else {
+					quoteAsset = asset
+				}
 			} else {
-				quoteAsset = asset
+				if asset == w.marketQuoteAsset {
+					quoteAsset = asset
+				} else {
+					baseAsset = asset
+				}
 			}
 		}
 

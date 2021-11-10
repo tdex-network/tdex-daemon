@@ -53,7 +53,6 @@ type tradeService struct {
 	repoManager                ports.RepoManager
 	explorerSvc                explorer.Service
 	blockchainListener         BlockchainListener
-	marketBaseAsset            string
 	expiryDuration             time.Duration
 	priceSlippage              decimal.Decimal
 	network                    *network.Network
@@ -67,7 +66,6 @@ func NewTradeService(
 	repoManager ports.RepoManager,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
-	marketBaseAsset string,
 	expiryDuration time.Duration,
 	satsPerByte float64,
 	priceSlippage decimal.Decimal,
@@ -78,7 +76,6 @@ func NewTradeService(
 		repoManager,
 		explorerSvc,
 		bcListener,
-		marketBaseAsset,
 		expiryDuration,
 		satsPerByte,
 		priceSlippage,
@@ -91,7 +88,6 @@ func newTradeService(
 	repoManager ports.RepoManager,
 	explorerSvc explorer.Service,
 	bcListener BlockchainListener,
-	marketBaseAsset string,
 	expiryDuration time.Duration,
 	satsPerByte float64,
 	priceSlippage decimal.Decimal,
@@ -102,7 +98,6 @@ func newTradeService(
 		repoManager:                repoManager,
 		explorerSvc:                explorerSvc,
 		blockchainListener:         bcListener,
-		marketBaseAsset:            marketBaseAsset,
 		expiryDuration:             expiryDuration,
 		milliSatsPerByte:           int(satsPerByte * 1000),
 		priceSlippage:              priceSlippage,
@@ -160,7 +155,6 @@ func (t *tradeService) GetMarketPrice(
 	if err := market.Validate(); err != nil {
 		return nil, err
 	}
-
 	if err := validateAssetString(asset); err != nil {
 		return nil, errors.New("invalid asset")
 	}
@@ -168,9 +162,8 @@ func (t *tradeService) GetMarketPrice(
 		return nil, errors.New("asset must match one of those of the market")
 	}
 
-	mkt, mktAccountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
-		ctx,
-		market.QuoteAsset,
+	mkt, mktAccountIndex, err := t.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
 	)
 	if err != nil {
 		log.Debugf("error while retrieving market: %s", err)
@@ -201,9 +194,8 @@ func (t *tradeService) GetMarketBalance(
 		return nil, err
 	}
 
-	m, accountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
-		ctx,
-		market.QuoteAsset,
+	m, accountIndex, err := t.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
 	)
 	if err != nil {
 		log.WithError(err).Debug("error while retrieving market")
@@ -252,9 +244,8 @@ func (t *tradeService) TradePropose(
 		return nil, nil, 0, ErrServiceUnavailable
 	}
 
-	mkt, marketAccountIndex, err := t.repoManager.MarketRepository().GetMarketByAsset(
-		ctx,
-		market.QuoteAsset,
+	mkt, marketAccountIndex, err := t.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
 	)
 	if err != nil {
 		log.Debugf("error while retrieving market: %s", err)
@@ -313,6 +304,7 @@ func (t *tradeService) TradePropose(
 	trade := domain.NewTrade()
 	if ok, _ := trade.Propose(
 		swapRequest,
+		market.BaseAsset,
 		market.QuoteAsset,
 		mkt.Fee,
 		mkt.FixedFee.BaseFee,
@@ -505,8 +497,9 @@ func (t *tradeService) tradeComplete(
 	log.Infof("trade with id %s broadcasted: %s", trade.ID, txID)
 
 	go func() {
-		_, accountIndex, _ := t.repoManager.MarketRepository().GetMarketByAsset(
+		_, accountIndex, _ := t.repoManager.MarketRepository().GetMarketByAssets(
 			ctx,
+			trade.MarketBaseAsset,
 			trade.MarketQuoteAsset,
 		)
 		extractUnspentsFromTxAndUpdateUtxoSet(
