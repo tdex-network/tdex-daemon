@@ -23,7 +23,7 @@ type BlockchainListener interface {
 	StartObserveAddress(accountIndex int, addr string, blindKey []byte)
 	StopObserveAddress(addr string)
 
-	StartObserveTx(txid, marketQuoteAsset string)
+	StartObserveTx(txid string, market Market)
 	StopObserveTx(txid string)
 
 	StartObserveOutpoints(outpoints []explorer.Utxo, tradeID string)
@@ -112,12 +112,13 @@ func (b *blockchainListener) StartObserveAddress(
 	b.addOrQueueObservable(observable)
 }
 
-func (b *blockchainListener) StartObserveTx(txid string, mktQuoteAsset string) {
+func (b *blockchainListener) StartObserveTx(txid string, mkt Market) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
 	extraData := map[string]interface{}{
-		"quoteasset": mktQuoteAsset,
+		"baseasset":  mkt.BaseAsset,
+		"quoteasset": mkt.QuoteAsset,
 	}
 	observable := crawler.NewTransactionObservable(txid, extraData)
 
@@ -191,16 +192,16 @@ func (b *blockchainListener) listenToEventChannel() {
 			e := event.(crawler.TransactionEvent)
 			isTxConfirmed := e.Type() == crawler.TransactionConfirmed
 
-			marketQuoteAsset, err := extractMarketQuoteAsset(e.ExtraData)
+			market, err := extractMarket(e.ExtraData)
 			if err != nil {
 				log.WithError(err).Warn(
-					"an error occured while retrieving market quote asset from event",
+					"an error occured while retrieving market from event",
 				)
 				break
 			}
 
 			if err := b.updateUtxoSet(
-				e.TxHex, e.TxID, marketQuoteAsset, isTxConfirmed,
+				e.TxHex, e.TxID, market, isTxConfirmed,
 			); err != nil {
 				log.Warnf("trying to confirm or add unspents: %v", err)
 				break
@@ -249,8 +250,12 @@ func (b *blockchainListener) listenToEventChannel() {
 				b.StopObserveOutpoints(e.Outpoints)
 			}
 
+			mkt := &Market{
+				BaseAsset:  trade.MarketBaseAsset,
+				QuoteAsset: trade.MarketQuoteAsset,
+			}
 			if err := b.updateUtxoSet(
-				e.TxHex, e.TxID, trade.MarketQuoteAsset, txIsConfirmed,
+				e.TxHex, e.TxID, mkt, txIsConfirmed,
 			); err != nil {
 				log.WithError(err).Warnf(
 					"an error occured while confirming or addding unspents",
@@ -302,14 +307,16 @@ func (b *blockchainListener) settleTrade(
 }
 
 func (b *blockchainListener) updateUtxoSet(
-	txHex, txID, mktAsset string, isTxConfirmed bool,
+	txHex, txID string, mkt *Market, isTxConfirmed bool,
 ) error {
 	ctx := context.Background()
 	accountIndex := domain.FeeAccount
 	var err error
 
-	if len(mktAsset) > 0 {
-		_, accountIndex, err = b.repoManager.MarketRepository().GetMarketByAsset(ctx, mktAsset)
+	if mkt != nil {
+		_, accountIndex, err = b.repoManager.MarketRepository().GetMarketByAssets(
+			ctx, mkt.BaseAsset, mkt.QuoteAsset,
+		)
 		if err != nil {
 			return err
 		}
@@ -382,8 +389,8 @@ func (b *blockchainListener) publishTradeSettledEvent(trade *domain.Trade) {
 	}
 
 	ctx := context.Background()
-	mkt, mktAccount, err := b.repoManager.MarketRepository().GetMarketByAsset(
-		ctx, trade.MarketQuoteAsset,
+	mkt, mktAccount, err := b.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, trade.MarketBaseAsset, trade.MarketQuoteAsset,
 	)
 	if err != nil {
 		log.WithError(err).Warn("an error occured while retrieving market")
@@ -438,18 +445,33 @@ func extractTradeID(data interface{}) (*uuid.UUID, error) {
 	return &id, nil
 }
 
-func extractMarketQuoteAsset(data interface{}) (string, error) {
+func extractMarket(data interface{}) (*Market, error) {
 	m, ok := data.(map[string]interface{})
 	if !ok {
-		return "", fmt.Errorf("extra data unknown type")
+		return nil, fmt.Errorf("extra data unknown type")
+	}
+	iMktBaseAsset, ok := m["baseasset"]
+	if !ok {
+		return nil, fmt.Errorf("extra data misses market base asset")
+	}
+	mktBaseAsset, ok := iMktBaseAsset.(string)
+	if !ok {
+		return nil, fmt.Errorf("extra data unknown market base asset type")
 	}
 	iMktQuoteAsset, ok := m["quoteasset"]
 	if !ok {
-		return "", fmt.Errorf("extra data misses market quote asset")
+		return nil, fmt.Errorf("extra data misses market quote asset")
 	}
 	mktQuoteAsset, ok := iMktQuoteAsset.(string)
 	if !ok {
-		return "", fmt.Errorf("extra data unknown market quote asset type")
+		return nil, fmt.Errorf("extra data unknown market quote asset type")
 	}
-	return mktQuoteAsset, nil
+
+	if len(mktQuoteAsset) == 0 && len(mktBaseAsset) == 0 {
+		return nil, nil
+	}
+	return &Market{
+		BaseAsset:  mktBaseAsset,
+		QuoteAsset: mktQuoteAsset,
+	}, nil
 }
