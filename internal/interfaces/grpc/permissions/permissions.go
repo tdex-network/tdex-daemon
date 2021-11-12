@@ -239,14 +239,6 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		"/Operator/GetFeeFragmenterAddress": {{
-			Entity: EntityMarket,
-			Action: "write",
-		}},
-		"/Operator/FragmentFeeDeposits": {{
-			Entity: EntityMarket,
-			Action: "write",
-		}},
 		"/Operator/WithdrawFee": {{
 			Entity: EntityOperator,
 			Action: "write",
@@ -287,14 +279,6 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		"/Operator/GetMarketFragmenterAddress": {{
-			Entity: EntityMarket,
-			Action: "write",
-		}},
-		"/Operator/FragmentMarketDeposits": {{
-			Entity: EntityMarket,
-			Action: "write",
-		}},
 		"/Operator/WithdrawMarket": {{
 			Entity: EntityOperator,
 			Action: "write",
@@ -312,6 +296,46 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Action: "write",
 		}},
 		"/Operator/UpdateMarketStrategy": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
+		"/Operator/GetFeeFragmenterAddress": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
+		"/Operator/ListFeeFragmenterAddresses": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/GetFeeFragmenterBalance": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/FeeFragmenterSplitFunds": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
+		"/Operator/WithdrawFeeFragmenter": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
+		"/Operator/GetMarketFragmenterAddress": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
+		"/Operator/ListMarketFragmenterAddresses": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/GetMarketFragmenterBalance": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
+		"/Operator/MarketFragmenterSplitFunds": {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
+		"/Operator/WithdrawMarketFragmenter": {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},

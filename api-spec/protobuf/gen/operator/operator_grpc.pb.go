@@ -30,12 +30,6 @@ type OperatorClient interface {
 	// Allows to provide transaction(s) outpoints of deposits made to fund the fee account.
 	// The transaction(s) must be already included in blockchain.
 	ClaimFeeDeposits(ctx context.Context, in *ClaimFeeDepositsRequest, opts ...grpc.CallOption) (*ClaimFeeDepositsReply, error)
-	// Returns the address of an ephemeral single key wallet where to send the
-	// funds to be splited and deposited into the fee account.
-	GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressReply, error)
-	// Splits the funds sent to the ephemeral wallet address into multiple
-	// fragments that then becomes deposits of the Fee account.
-	FragmentFeeDeposits(ctx context.Context, in *FragmentFeeDepositsRequest, opts ...grpc.CallOption) (Operator_FragmentFeeDepositsClient, error)
 	// Allows to withdraw funds from the fee account to a given address.
 	WithdrawFee(ctx context.Context, in *WithdrawFeeRequest, opts ...grpc.CallOption) (*WithdrawFeeReply, error)
 	// Creates a new market account in the daemon's wallet.
@@ -57,12 +51,6 @@ type OperatorClient interface {
 	DropMarket(ctx context.Context, in *DropMarketRequest, opts ...grpc.CallOption) (*DropMarketReply, error)
 	// Displays a report of the colected fees for the given market.
 	GetMarketCollectedSwapFees(ctx context.Context, in *GetMarketCollectedSwapFeesRequest, opts ...grpc.CallOption) (*GetMarketCollectedSwapFeesReply, error)
-	// Returns the address of an ephemeral single key wallet where to send the
-	// funds to be splited and deposited for a market.
-	GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressReply, error)
-	// Splits the funds sent to the ephemeral wallet address into multiple
-	// fragments that then becomes deposits of the given market.
-	FragmentMarketDeposits(ctx context.Context, in *FragmentMarketDepositsRequest, opts ...grpc.CallOption) (Operator_FragmentMarketDepositsClient, error)
 	// Allows to withdraw funds from the given market to a given address.
 	WithdrawMarket(ctx context.Context, in *WithdrawMarketRequest, opts ...grpc.CallOption) (*WithdrawMarketReply, error)
 	// Changes the Liquidity Provider percentage fee for the given market.
@@ -74,6 +62,28 @@ type OperatorClient interface {
 	// Updates the current market making strategy, either using an automated
 	// market making formula or a pluggable price feed.
 	UpdateMarketStrategy(ctx context.Context, in *UpdateMarketStrategyRequest, opts ...grpc.CallOption) (*UpdateMarketStrategyReply, error)
+	// Returns some new derived address(es) for the fee fragmenter account.
+	GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressReply, error)
+	// Returns the list of all derived addresses for the fee fragmenter account.
+	ListFeeFragmenterAddresses(ctx context.Context, in *ListFeeFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListFeeFragmenterAddressesReply, error)
+	// Returns info about the balance of the fee fragmenter account.
+	GetFeeFragmenterBalance(ctx context.Context, in *GetFeeFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetFeeFragmenterBalanceReply, error)
+	// Splits the funds sent to the fee fragmenter account into multiple
+	// fragments that then becomes deposits of the Fee account.
+	FeeFragmenterSplitFunds(ctx context.Context, in *FeeFragmenterSplitFundsRequest, opts ...grpc.CallOption) (Operator_FeeFragmenterSplitFundsClient, error)
+	// Allows to withdraw funds from the fee fragmenter account to a given address.
+	WithdrawFeeFragmenter(ctx context.Context, in *WithdrawFeeFragmenterRequest, opts ...grpc.CallOption) (*WithdrawFeeFragmenterReply, error)
+	// Returns some new derived address(es) for the market fragmenter account.
+	GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressReply, error)
+	// Returns the list of all derived addresses for the market fragmenter account.
+	ListMarketFragmenterAddresses(ctx context.Context, in *ListMarketFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListMarketFragmenterAddressesReply, error)
+	// Returns info about the balance of the market fragmenter account.
+	GetMarketFragmenterBalance(ctx context.Context, in *GetMarketFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetMarketFragmenterBalanceReply, error)
+	// Splits the funds sent to the market fragmenter account into multiple
+	// fragments that then becomes deposits of the given market.
+	MarketFragmenterSplitFunds(ctx context.Context, in *MarketFragmenterSplitFundsRequest, opts ...grpc.CallOption) (Operator_MarketFragmenterSplitFundsClient, error)
+	// Allows to withdraw funds from the market fragmenter account to a given address.
+	WithdrawMarketFragmenter(ctx context.Context, in *WithdrawMarketFragmenterRequest, opts ...grpc.CallOption) (*WithdrawMarketFragmenterReply, error)
 	// Get extended details for each market either open, closed or to be funded.
 	ListMarkets(ctx context.Context, in *ListMarketsRequest, opts ...grpc.CallOption) (*ListMarketsReply, error)
 	// Returs all the trades processed by the daemon (ongoing, completed and
@@ -146,47 +156,6 @@ func (c *operatorClient) ClaimFeeDeposits(ctx context.Context, in *ClaimFeeDepos
 		return nil, err
 	}
 	return out, nil
-}
-
-func (c *operatorClient) GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressReply, error) {
-	out := new(GetFeeFragmenterAddressReply)
-	err := c.cc.Invoke(ctx, "/Operator/GetFeeFragmenterAddress", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *operatorClient) FragmentFeeDeposits(ctx context.Context, in *FragmentFeeDepositsRequest, opts ...grpc.CallOption) (Operator_FragmentFeeDepositsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Operator_ServiceDesc.Streams[0], "/Operator/FragmentFeeDeposits", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &operatorFragmentFeeDepositsClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Operator_FragmentFeeDepositsClient interface {
-	Recv() (*FragmentFeeDepositsReply, error)
-	grpc.ClientStream
-}
-
-type operatorFragmentFeeDepositsClient struct {
-	grpc.ClientStream
-}
-
-func (x *operatorFragmentFeeDepositsClient) Recv() (*FragmentFeeDepositsReply, error) {
-	m := new(FragmentFeeDepositsReply)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
 }
 
 func (c *operatorClient) WithdrawFee(ctx context.Context, in *WithdrawFeeRequest, opts ...grpc.CallOption) (*WithdrawFeeReply, error) {
@@ -279,47 +248,6 @@ func (c *operatorClient) GetMarketCollectedSwapFees(ctx context.Context, in *Get
 	return out, nil
 }
 
-func (c *operatorClient) GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressReply, error) {
-	out := new(GetMarketFragmenterAddressReply)
-	err := c.cc.Invoke(ctx, "/Operator/GetMarketFragmenterAddress", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *operatorClient) FragmentMarketDeposits(ctx context.Context, in *FragmentMarketDepositsRequest, opts ...grpc.CallOption) (Operator_FragmentMarketDepositsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Operator_ServiceDesc.Streams[1], "/Operator/FragmentMarketDeposits", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &operatorFragmentMarketDepositsClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Operator_FragmentMarketDepositsClient interface {
-	Recv() (*FragmentMarketDepositsReply, error)
-	grpc.ClientStream
-}
-
-type operatorFragmentMarketDepositsClient struct {
-	grpc.ClientStream
-}
-
-func (x *operatorFragmentMarketDepositsClient) Recv() (*FragmentMarketDepositsReply, error) {
-	m := new(FragmentMarketDepositsReply)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func (c *operatorClient) WithdrawMarket(ctx context.Context, in *WithdrawMarketRequest, opts ...grpc.CallOption) (*WithdrawMarketReply, error) {
 	out := new(WithdrawMarketReply)
 	err := c.cc.Invoke(ctx, "/Operator/WithdrawMarket", in, out, opts...)
@@ -359,6 +287,142 @@ func (c *operatorClient) UpdateMarketPrice(ctx context.Context, in *UpdateMarket
 func (c *operatorClient) UpdateMarketStrategy(ctx context.Context, in *UpdateMarketStrategyRequest, opts ...grpc.CallOption) (*UpdateMarketStrategyReply, error) {
 	out := new(UpdateMarketStrategyReply)
 	err := c.cc.Invoke(ctx, "/Operator/UpdateMarketStrategy", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressReply, error) {
+	out := new(GetFeeFragmenterAddressReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetFeeFragmenterAddress", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) ListFeeFragmenterAddresses(ctx context.Context, in *ListFeeFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListFeeFragmenterAddressesReply, error) {
+	out := new(ListFeeFragmenterAddressesReply)
+	err := c.cc.Invoke(ctx, "/Operator/ListFeeFragmenterAddresses", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) GetFeeFragmenterBalance(ctx context.Context, in *GetFeeFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetFeeFragmenterBalanceReply, error) {
+	out := new(GetFeeFragmenterBalanceReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetFeeFragmenterBalance", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) FeeFragmenterSplitFunds(ctx context.Context, in *FeeFragmenterSplitFundsRequest, opts ...grpc.CallOption) (Operator_FeeFragmenterSplitFundsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Operator_ServiceDesc.Streams[0], "/Operator/FeeFragmenterSplitFunds", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &operatorFeeFragmenterSplitFundsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Operator_FeeFragmenterSplitFundsClient interface {
+	Recv() (*FragmenterSplitFundsReply, error)
+	grpc.ClientStream
+}
+
+type operatorFeeFragmenterSplitFundsClient struct {
+	grpc.ClientStream
+}
+
+func (x *operatorFeeFragmenterSplitFundsClient) Recv() (*FragmenterSplitFundsReply, error) {
+	m := new(FragmenterSplitFundsReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *operatorClient) WithdrawFeeFragmenter(ctx context.Context, in *WithdrawFeeFragmenterRequest, opts ...grpc.CallOption) (*WithdrawFeeFragmenterReply, error) {
+	out := new(WithdrawFeeFragmenterReply)
+	err := c.cc.Invoke(ctx, "/Operator/WithdrawFeeFragmenter", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressReply, error) {
+	out := new(GetMarketFragmenterAddressReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetMarketFragmenterAddress", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) ListMarketFragmenterAddresses(ctx context.Context, in *ListMarketFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListMarketFragmenterAddressesReply, error) {
+	out := new(ListMarketFragmenterAddressesReply)
+	err := c.cc.Invoke(ctx, "/Operator/ListMarketFragmenterAddresses", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) GetMarketFragmenterBalance(ctx context.Context, in *GetMarketFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetMarketFragmenterBalanceReply, error) {
+	out := new(GetMarketFragmenterBalanceReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetMarketFragmenterBalance", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) MarketFragmenterSplitFunds(ctx context.Context, in *MarketFragmenterSplitFundsRequest, opts ...grpc.CallOption) (Operator_MarketFragmenterSplitFundsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Operator_ServiceDesc.Streams[1], "/Operator/MarketFragmenterSplitFunds", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &operatorMarketFragmenterSplitFundsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Operator_MarketFragmenterSplitFundsClient interface {
+	Recv() (*FragmenterSplitFundsReply, error)
+	grpc.ClientStream
+}
+
+type operatorMarketFragmenterSplitFundsClient struct {
+	grpc.ClientStream
+}
+
+func (x *operatorMarketFragmenterSplitFundsClient) Recv() (*FragmenterSplitFundsReply, error) {
+	m := new(FragmenterSplitFundsReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *operatorClient) WithdrawMarketFragmenter(ctx context.Context, in *WithdrawMarketFragmenterRequest, opts ...grpc.CallOption) (*WithdrawMarketFragmenterReply, error) {
+	out := new(WithdrawMarketFragmenterReply)
+	err := c.cc.Invoke(ctx, "/Operator/WithdrawMarketFragmenter", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -462,12 +526,6 @@ type OperatorServer interface {
 	// Allows to provide transaction(s) outpoints of deposits made to fund the fee account.
 	// The transaction(s) must be already included in blockchain.
 	ClaimFeeDeposits(context.Context, *ClaimFeeDepositsRequest) (*ClaimFeeDepositsReply, error)
-	// Returns the address of an ephemeral single key wallet where to send the
-	// funds to be splited and deposited into the fee account.
-	GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressReply, error)
-	// Splits the funds sent to the ephemeral wallet address into multiple
-	// fragments that then becomes deposits of the Fee account.
-	FragmentFeeDeposits(*FragmentFeeDepositsRequest, Operator_FragmentFeeDepositsServer) error
 	// Allows to withdraw funds from the fee account to a given address.
 	WithdrawFee(context.Context, *WithdrawFeeRequest) (*WithdrawFeeReply, error)
 	// Creates a new market account in the daemon's wallet.
@@ -489,12 +547,6 @@ type OperatorServer interface {
 	DropMarket(context.Context, *DropMarketRequest) (*DropMarketReply, error)
 	// Displays a report of the colected fees for the given market.
 	GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesReply, error)
-	// Returns the address of an ephemeral single key wallet where to send the
-	// funds to be splited and deposited for a market.
-	GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressReply, error)
-	// Splits the funds sent to the ephemeral wallet address into multiple
-	// fragments that then becomes deposits of the given market.
-	FragmentMarketDeposits(*FragmentMarketDepositsRequest, Operator_FragmentMarketDepositsServer) error
 	// Allows to withdraw funds from the given market to a given address.
 	WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketReply, error)
 	// Changes the Liquidity Provider percentage fee for the given market.
@@ -506,6 +558,28 @@ type OperatorServer interface {
 	// Updates the current market making strategy, either using an automated
 	// market making formula or a pluggable price feed.
 	UpdateMarketStrategy(context.Context, *UpdateMarketStrategyRequest) (*UpdateMarketStrategyReply, error)
+	// Returns some new derived address(es) for the fee fragmenter account.
+	GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressReply, error)
+	// Returns the list of all derived addresses for the fee fragmenter account.
+	ListFeeFragmenterAddresses(context.Context, *ListFeeFragmenterAddressesRequest) (*ListFeeFragmenterAddressesReply, error)
+	// Returns info about the balance of the fee fragmenter account.
+	GetFeeFragmenterBalance(context.Context, *GetFeeFragmenterBalanceRequest) (*GetFeeFragmenterBalanceReply, error)
+	// Splits the funds sent to the fee fragmenter account into multiple
+	// fragments that then becomes deposits of the Fee account.
+	FeeFragmenterSplitFunds(*FeeFragmenterSplitFundsRequest, Operator_FeeFragmenterSplitFundsServer) error
+	// Allows to withdraw funds from the fee fragmenter account to a given address.
+	WithdrawFeeFragmenter(context.Context, *WithdrawFeeFragmenterRequest) (*WithdrawFeeFragmenterReply, error)
+	// Returns some new derived address(es) for the market fragmenter account.
+	GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressReply, error)
+	// Returns the list of all derived addresses for the market fragmenter account.
+	ListMarketFragmenterAddresses(context.Context, *ListMarketFragmenterAddressesRequest) (*ListMarketFragmenterAddressesReply, error)
+	// Returns info about the balance of the market fragmenter account.
+	GetMarketFragmenterBalance(context.Context, *GetMarketFragmenterBalanceRequest) (*GetMarketFragmenterBalanceReply, error)
+	// Splits the funds sent to the market fragmenter account into multiple
+	// fragments that then becomes deposits of the given market.
+	MarketFragmenterSplitFunds(*MarketFragmenterSplitFundsRequest, Operator_MarketFragmenterSplitFundsServer) error
+	// Allows to withdraw funds from the market fragmenter account to a given address.
+	WithdrawMarketFragmenter(context.Context, *WithdrawMarketFragmenterRequest) (*WithdrawMarketFragmenterReply, error)
 	// Get extended details for each market either open, closed or to be funded.
 	ListMarkets(context.Context, *ListMarketsRequest) (*ListMarketsReply, error)
 	// Returs all the trades processed by the daemon (ongoing, completed and
@@ -547,12 +621,6 @@ func (UnimplementedOperatorServer) GetFeeBalance(context.Context, *GetFeeBalance
 func (UnimplementedOperatorServer) ClaimFeeDeposits(context.Context, *ClaimFeeDepositsRequest) (*ClaimFeeDepositsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClaimFeeDeposits not implemented")
 }
-func (UnimplementedOperatorServer) GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetFeeFragmenterAddress not implemented")
-}
-func (UnimplementedOperatorServer) FragmentFeeDeposits(*FragmentFeeDepositsRequest, Operator_FragmentFeeDepositsServer) error {
-	return status.Errorf(codes.Unimplemented, "method FragmentFeeDeposits not implemented")
-}
 func (UnimplementedOperatorServer) WithdrawFee(context.Context, *WithdrawFeeRequest) (*WithdrawFeeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WithdrawFee not implemented")
 }
@@ -583,12 +651,6 @@ func (UnimplementedOperatorServer) DropMarket(context.Context, *DropMarketReques
 func (UnimplementedOperatorServer) GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketCollectedSwapFees not implemented")
 }
-func (UnimplementedOperatorServer) GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetMarketFragmenterAddress not implemented")
-}
-func (UnimplementedOperatorServer) FragmentMarketDeposits(*FragmentMarketDepositsRequest, Operator_FragmentMarketDepositsServer) error {
-	return status.Errorf(codes.Unimplemented, "method FragmentMarketDeposits not implemented")
-}
 func (UnimplementedOperatorServer) WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WithdrawMarket not implemented")
 }
@@ -603,6 +665,36 @@ func (UnimplementedOperatorServer) UpdateMarketPrice(context.Context, *UpdateMar
 }
 func (UnimplementedOperatorServer) UpdateMarketStrategy(context.Context, *UpdateMarketStrategyRequest) (*UpdateMarketStrategyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMarketStrategy not implemented")
+}
+func (UnimplementedOperatorServer) GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFeeFragmenterAddress not implemented")
+}
+func (UnimplementedOperatorServer) ListFeeFragmenterAddresses(context.Context, *ListFeeFragmenterAddressesRequest) (*ListFeeFragmenterAddressesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListFeeFragmenterAddresses not implemented")
+}
+func (UnimplementedOperatorServer) GetFeeFragmenterBalance(context.Context, *GetFeeFragmenterBalanceRequest) (*GetFeeFragmenterBalanceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFeeFragmenterBalance not implemented")
+}
+func (UnimplementedOperatorServer) FeeFragmenterSplitFunds(*FeeFragmenterSplitFundsRequest, Operator_FeeFragmenterSplitFundsServer) error {
+	return status.Errorf(codes.Unimplemented, "method FeeFragmenterSplitFunds not implemented")
+}
+func (UnimplementedOperatorServer) WithdrawFeeFragmenter(context.Context, *WithdrawFeeFragmenterRequest) (*WithdrawFeeFragmenterReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WithdrawFeeFragmenter not implemented")
+}
+func (UnimplementedOperatorServer) GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMarketFragmenterAddress not implemented")
+}
+func (UnimplementedOperatorServer) ListMarketFragmenterAddresses(context.Context, *ListMarketFragmenterAddressesRequest) (*ListMarketFragmenterAddressesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListMarketFragmenterAddresses not implemented")
+}
+func (UnimplementedOperatorServer) GetMarketFragmenterBalance(context.Context, *GetMarketFragmenterBalanceRequest) (*GetMarketFragmenterBalanceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMarketFragmenterBalance not implemented")
+}
+func (UnimplementedOperatorServer) MarketFragmenterSplitFunds(*MarketFragmenterSplitFundsRequest, Operator_MarketFragmenterSplitFundsServer) error {
+	return status.Errorf(codes.Unimplemented, "method MarketFragmenterSplitFunds not implemented")
+}
+func (UnimplementedOperatorServer) WithdrawMarketFragmenter(context.Context, *WithdrawMarketFragmenterRequest) (*WithdrawMarketFragmenterReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WithdrawMarketFragmenter not implemented")
 }
 func (UnimplementedOperatorServer) ListMarkets(context.Context, *ListMarketsRequest) (*ListMarketsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListMarkets not implemented")
@@ -732,45 +824,6 @@ func _Operator_ClaimFeeDeposits_Handler(srv interface{}, ctx context.Context, de
 		return srv.(OperatorServer).ClaimFeeDeposits(ctx, req.(*ClaimFeeDepositsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
-}
-
-func _Operator_GetFeeFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetFeeFragmenterAddressRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OperatorServer).GetFeeFragmenterAddress(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Operator/GetFeeFragmenterAddress",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetFeeFragmenterAddress(ctx, req.(*GetFeeFragmenterAddressRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Operator_FragmentFeeDeposits_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(FragmentFeeDepositsRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(OperatorServer).FragmentFeeDeposits(m, &operatorFragmentFeeDepositsServer{stream})
-}
-
-type Operator_FragmentFeeDepositsServer interface {
-	Send(*FragmentFeeDepositsReply) error
-	grpc.ServerStream
-}
-
-type operatorFragmentFeeDepositsServer struct {
-	grpc.ServerStream
-}
-
-func (x *operatorFragmentFeeDepositsServer) Send(m *FragmentFeeDepositsReply) error {
-	return x.ServerStream.SendMsg(m)
 }
 
 func _Operator_WithdrawFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -953,45 +1006,6 @@ func _Operator_GetMarketCollectedSwapFees_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetMarketFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetMarketFragmenterAddressRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OperatorServer).GetMarketFragmenterAddress(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Operator/GetMarketFragmenterAddress",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetMarketFragmenterAddress(ctx, req.(*GetMarketFragmenterAddressRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Operator_FragmentMarketDeposits_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(FragmentMarketDepositsRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(OperatorServer).FragmentMarketDeposits(m, &operatorFragmentMarketDepositsServer{stream})
-}
-
-type Operator_FragmentMarketDepositsServer interface {
-	Send(*FragmentMarketDepositsReply) error
-	grpc.ServerStream
-}
-
-type operatorFragmentMarketDepositsServer struct {
-	grpc.ServerStream
-}
-
-func (x *operatorFragmentMarketDepositsServer) Send(m *FragmentMarketDepositsReply) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 func _Operator_WithdrawMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(WithdrawMarketRequest)
 	if err := dec(in); err != nil {
@@ -1078,6 +1092,192 @@ func _Operator_UpdateMarketStrategy_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OperatorServer).UpdateMarketStrategy(ctx, req.(*UpdateMarketStrategyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_GetFeeFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFeeFragmenterAddressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).GetFeeFragmenterAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/GetFeeFragmenterAddress",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).GetFeeFragmenterAddress(ctx, req.(*GetFeeFragmenterAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_ListFeeFragmenterAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListFeeFragmenterAddressesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).ListFeeFragmenterAddresses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/ListFeeFragmenterAddresses",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).ListFeeFragmenterAddresses(ctx, req.(*ListFeeFragmenterAddressesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_GetFeeFragmenterBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFeeFragmenterBalanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).GetFeeFragmenterBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/GetFeeFragmenterBalance",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).GetFeeFragmenterBalance(ctx, req.(*GetFeeFragmenterBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_FeeFragmenterSplitFunds_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(FeeFragmenterSplitFundsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(OperatorServer).FeeFragmenterSplitFunds(m, &operatorFeeFragmenterSplitFundsServer{stream})
+}
+
+type Operator_FeeFragmenterSplitFundsServer interface {
+	Send(*FragmenterSplitFundsReply) error
+	grpc.ServerStream
+}
+
+type operatorFeeFragmenterSplitFundsServer struct {
+	grpc.ServerStream
+}
+
+func (x *operatorFeeFragmenterSplitFundsServer) Send(m *FragmenterSplitFundsReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Operator_WithdrawFeeFragmenter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WithdrawFeeFragmenterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).WithdrawFeeFragmenter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/WithdrawFeeFragmenter",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).WithdrawFeeFragmenter(ctx, req.(*WithdrawFeeFragmenterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_GetMarketFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMarketFragmenterAddressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).GetMarketFragmenterAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/GetMarketFragmenterAddress",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).GetMarketFragmenterAddress(ctx, req.(*GetMarketFragmenterAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_ListMarketFragmenterAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMarketFragmenterAddressesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).ListMarketFragmenterAddresses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/ListMarketFragmenterAddresses",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).ListMarketFragmenterAddresses(ctx, req.(*ListMarketFragmenterAddressesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_GetMarketFragmenterBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMarketFragmenterBalanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).GetMarketFragmenterBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/GetMarketFragmenterBalance",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).GetMarketFragmenterBalance(ctx, req.(*GetMarketFragmenterBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_MarketFragmenterSplitFunds_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(MarketFragmenterSplitFundsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(OperatorServer).MarketFragmenterSplitFunds(m, &operatorMarketFragmenterSplitFundsServer{stream})
+}
+
+type Operator_MarketFragmenterSplitFundsServer interface {
+	Send(*FragmenterSplitFundsReply) error
+	grpc.ServerStream
+}
+
+type operatorMarketFragmenterSplitFundsServer struct {
+	grpc.ServerStream
+}
+
+func (x *operatorMarketFragmenterSplitFundsServer) Send(m *FragmenterSplitFundsReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Operator_WithdrawMarketFragmenter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WithdrawMarketFragmenterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).WithdrawMarketFragmenter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/WithdrawMarketFragmenter",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).WithdrawMarketFragmenter(ctx, req.(*WithdrawMarketFragmenterRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1272,10 +1472,6 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Operator_ClaimFeeDeposits_Handler,
 		},
 		{
-			MethodName: "GetFeeFragmenterAddress",
-			Handler:    _Operator_GetFeeFragmenterAddress_Handler,
-		},
-		{
 			MethodName: "WithdrawFee",
 			Handler:    _Operator_WithdrawFee_Handler,
 		},
@@ -1316,10 +1512,6 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Operator_GetMarketCollectedSwapFees_Handler,
 		},
 		{
-			MethodName: "GetMarketFragmenterAddress",
-			Handler:    _Operator_GetMarketFragmenterAddress_Handler,
-		},
-		{
 			MethodName: "WithdrawMarket",
 			Handler:    _Operator_WithdrawMarket_Handler,
 		},
@@ -1338,6 +1530,38 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateMarketStrategy",
 			Handler:    _Operator_UpdateMarketStrategy_Handler,
+		},
+		{
+			MethodName: "GetFeeFragmenterAddress",
+			Handler:    _Operator_GetFeeFragmenterAddress_Handler,
+		},
+		{
+			MethodName: "ListFeeFragmenterAddresses",
+			Handler:    _Operator_ListFeeFragmenterAddresses_Handler,
+		},
+		{
+			MethodName: "GetFeeFragmenterBalance",
+			Handler:    _Operator_GetFeeFragmenterBalance_Handler,
+		},
+		{
+			MethodName: "WithdrawFeeFragmenter",
+			Handler:    _Operator_WithdrawFeeFragmenter_Handler,
+		},
+		{
+			MethodName: "GetMarketFragmenterAddress",
+			Handler:    _Operator_GetMarketFragmenterAddress_Handler,
+		},
+		{
+			MethodName: "ListMarketFragmenterAddresses",
+			Handler:    _Operator_ListMarketFragmenterAddresses_Handler,
+		},
+		{
+			MethodName: "GetMarketFragmenterBalance",
+			Handler:    _Operator_GetMarketFragmenterBalance_Handler,
+		},
+		{
+			MethodName: "WithdrawMarketFragmenter",
+			Handler:    _Operator_WithdrawMarketFragmenter_Handler,
 		},
 		{
 			MethodName: "ListMarkets",
@@ -1378,13 +1602,13 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "FragmentFeeDeposits",
-			Handler:       _Operator_FragmentFeeDeposits_Handler,
+			StreamName:    "FeeFragmenterSplitFunds",
+			Handler:       _Operator_FeeFragmenterSplitFunds_Handler,
 			ServerStreams: true,
 		},
 		{
-			StreamName:    "FragmentMarketDeposits",
-			Handler:       _Operator_FragmentMarketDeposits_Handler,
+			StreamName:    "MarketFragmenterSplitFunds",
+			Handler:       _Operator_MarketFragmenterSplitFunds_Handler,
 			ServerStreams: true,
 		},
 	},
