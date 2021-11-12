@@ -168,12 +168,7 @@ type BalanceInfo struct {
 	UnconfirmedBalance uint64
 }
 
-type FragmentDepositsReq struct {
-	RecoverAddress string
-	MaxFragments   uint32
-}
-
-type FragmentDepositsReply struct {
+type FragmenterSplitFundsReply struct {
 	Msg string
 	Err error
 }
@@ -251,23 +246,13 @@ type TxOutpoint struct {
 }
 
 type TxOut struct {
-	asset   string
-	value   int64
-	address string
+	Asset   string
+	Value   int64
+	Address string
 }
 
 func NewTxOut(address, asset string, value int64) TxOut {
 	return TxOut{asset, value, address}
-}
-
-func (o TxOut) Asset() string {
-	return o.asset
-}
-func (o TxOut) Value() uint64 {
-	return uint64(o.value)
-}
-func (o TxOut) Address() string {
-	return o.address
 }
 
 type UtxoInfoList struct {

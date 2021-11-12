@@ -107,18 +107,9 @@ func (w *walletService) GenerateAddressAndBlindingKey(
 func (w *walletService) GetWalletBalance(
 	ctx context.Context,
 ) (map[string]BalanceInfo, error) {
-	info, err := w.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(ctx, domain.WalletAccount)
-	if err != nil {
-		return nil, err
-	}
-
-	addresses, keys := info.AddressesAndKeys()
-	unspents, err := w.explorerService.GetUnspentsForAddresses(addresses, keys)
-	if err != nil {
-		return nil, err
-	}
-
-	return getBalancesByAsset(unspents), nil
+	return getAccountBalanceFromExplorer(
+		w.repoManager, w.explorerService, ctx, domain.WalletAccount,
+	)
 }
 
 type SendToManyRequest struct {
@@ -270,15 +261,15 @@ func parseRequestOutputs(
 	blindingKeys := make([][]byte, 0, len(reqOutputs))
 
 	for _, out := range reqOutputs {
-		asset, err := bufferutil.AssetHashToBytes(out.asset)
+		asset, err := bufferutil.AssetHashToBytes(out.Asset)
 		if err != nil {
 			return nil, nil, err
 		}
-		value, err := bufferutil.ValueToBytes(uint64(out.value))
+		value, err := bufferutil.ValueToBytes(uint64(out.Value))
 		if err != nil {
 			return nil, nil, err
 		}
-		script, blindingKey, err := parseConfidentialAddress(out.address)
+		script, blindingKey, err := parseConfidentialAddress(out.Address)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -456,23 +447,4 @@ func sendToMany(opts sendToManyOpts) (string, error) {
 	)
 
 	return txHex, err
-}
-
-func getBalancesByAsset(unspents []explorer.Utxo) map[string]BalanceInfo {
-	balances := map[string]BalanceInfo{}
-	for _, unspent := range unspents {
-		if _, ok := balances[unspent.Asset()]; !ok {
-			balances[unspent.Asset()] = BalanceInfo{}
-		}
-
-		balance := balances[unspent.Asset()]
-		balance.TotalBalance += unspent.Value()
-		if unspent.IsConfirmed() {
-			balance.ConfirmedBalance += unspent.Value()
-		} else {
-			balance.UnconfirmedBalance += unspent.Value()
-		}
-		balances[unspent.Asset()] = balance
-	}
-	return balances
 }
