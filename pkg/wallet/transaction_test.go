@@ -225,117 +225,147 @@ func TestUpdateTx(t *testing.T) {
 		outputs              outputList
 		changePathsByAsset   map[string]string
 		wantChangeForFees    bool
+		subtractFees         bool
 		expectedIns          int
 		expectedOuts         int
 		expectedBlindingKeys int
 	}{
 		// without change for network fees
 		{
-			mockUnspentsForUpdateTx(),
-			outputList{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
 				{
 					network.Regtest.AssetID,
 					1,
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
 			},
-			map[string]string{
-				network.Regtest.AssetID: "0'/1/1",
-			},
-			false, // without change for network fees
-			1,     // no input for change added
-			1,     // outputs (no LBTC change!)
-			0,     // no change is added becaus 1 lbtc in = 1 lbtc out
+			expectedIns:          1, // no input for change added
+			expectedOuts:         1, // outputs (no LBTC change!)
+			expectedBlindingKeys: 0, // no change is added becaus 1 lbtc in = 1 lbtc out
 		},
 		{
-			mockUnspentsForUpdateTx(),
-			outputList{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
 				{
 					network.Regtest.AssetID,
 					0.3,
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
 			},
-			map[string]string{
+			changePathsByAsset: map[string]string{
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			false, // without change for network fees
-			1,     // no input for change added
-			2,     // outputs (out + change -> 1 lbtc in - 0.3 out = 0.7 change)
-			1,     // change output added
+			expectedIns:          1, // no input for change added
+			expectedOuts:         2, // outputs (out + change -> 1 lbtc in - 0.3 out = 0.7 change)
+			expectedBlindingKeys: 1, // change output added
 		},
 		{
-			nil, // no unspents
-			outputList{
+			unspents: nil,
+			outputs: outputList{
 				{
 					network.Regtest.AssetID,
 					1,
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
 			},
-			nil, // no changed derivation map
-			false,
-			0,
-			1, // outputs
-			0,
+			expectedIns:          0,
+			expectedOuts:         1,
+			expectedBlindingKeys: 0,
 		},
 		// with change network fees
 		{
-			mockUnspentsForUpdateTx(),
-			outputList{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
 				{
 					network.Regtest.AssetID,
 					1,
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
 			},
-			map[string]string{
+			changePathsByAsset: map[string]string{
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			true,
-			2,
-			2, // outputs + LBTC change
-			1,
+			wantChangeForFees:    true,
+			expectedIns:          2, // input for change added
+			expectedOuts:         2, // outputs + LBTC change
+			expectedBlindingKeys: 1,
 		},
 		{
-			mockUnspentsForUpdateTx(),
-			outputList{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
+				{
+					network.Regtest.AssetID,
+					1,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+			},
+			changePathsByAsset: map[string]string{
+				network.Regtest.AssetID: "0'/1/1",
+			},
+			subtractFees:         true,
+			expectedIns:          1, // no input change added
+			expectedOuts:         1, // outputs with fees deducted
+			expectedBlindingKeys: 0,
+		},
+		{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
 				{
 					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
 					1000,
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
 			},
-			map[string]string{
+			changePathsByAsset: map[string]string{
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			true,
-			2,
-			2, // outputs + LBTC change
-			1,
+			wantChangeForFees:    true,
+			expectedIns:          2,
+			expectedOuts:         2, // outputs + LBTC change
+			expectedBlindingKeys: 1,
 		},
 		{
-			mockUnspentsForUpdateTx(),
-			outputList{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
+				{
+					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
+					1000,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+				{
+					network.Regtest.AssetID,
+					1,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+			},
+			subtractFees:         true,
+			expectedIns:          2,
+			expectedOuts:         2, // outputs - LBTC fees subtracted from LBTC output
+			expectedBlindingKeys: 0,
+		},
+		{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
 				{
 					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
 					500,
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
 			},
-			map[string]string{
+			changePathsByAsset: map[string]string{
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			true,
-			2,
-			3, // outputs + asset change + lbtc change
-			2,
+			wantChangeForFees:    true,
+			expectedIns:          2,
+			expectedOuts:         3, // outputs + asset change + lbtc change
+			expectedBlindingKeys: 2,
 		},
 		{
-			mockUnspentsForUpdateTx(),
-			outputList{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
 				{
 					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
 					1000,
@@ -347,18 +377,18 @@ func TestUpdateTx(t *testing.T) {
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
 			},
-			map[string]string{
+			changePathsByAsset: map[string]string{
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				network.Regtest.AssetID: "0'/1/1",
 			},
-			true,
-			2,
-			3, // outputs + lbtc change
-			1,
+			wantChangeForFees:    true,
+			expectedIns:          2,
+			expectedOuts:         3, // outputs + lbtc change
+			expectedBlindingKeys: 1,
 		},
 		{
-			mockUnspentsForUpdateTx(),
-			[]output{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
 				{
 					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
 					400,
@@ -375,15 +405,15 @@ func TestUpdateTx(t *testing.T) {
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
 			},
-			map[string]string{
+			changePathsByAsset: map[string]string{
 				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
 				"3be6cc6330799ea0a1ae2b7a950ba983e88f41b75a0cb36342e7a039903e7d55": "0'/1/1",
 				network.Regtest.AssetID: "0'/1/2",
 			},
-			true,
-			3,
-			6, // outputs + asset1 change + asset2 change + lbtc change
-			3,
+			wantChangeForFees:    true,
+			expectedIns:          3,
+			expectedOuts:         6, // outputs + asset1 change + asset2 change + lbtc change
+			expectedBlindingKeys: 3,
 		},
 	}
 
@@ -394,6 +424,7 @@ func TestUpdateTx(t *testing.T) {
 			Outputs:            tt.outputs.TxOutputs(),
 			ChangePathsByAsset: tt.changePathsByAsset,
 			WantChangeForFees:  tt.wantChangeForFees,
+			SubtractFees:       tt.subtractFees,
 			MilliSatsPerBytes:  100,
 			Network:            &network.Regtest,
 		}
@@ -406,7 +437,7 @@ func TestUpdateTx(t *testing.T) {
 		assert.Equal(t, tt.expectedOuts, len(ptx.Outputs))
 		assert.Equal(t, tt.expectedIns, len(res.SelectedUnspents))
 		assert.Equal(t, tt.expectedBlindingKeys, len(res.ChangeOutputsBlindingKeys))
-		if len(tt.unspents) > 0 && tt.wantChangeForFees {
+		if len(tt.unspents) > 0 && (tt.wantChangeForFees || tt.subtractFees) {
 			assert.Equal(t, true, res.FeeAmount > 0)
 		} else {
 			assert.Equal(t, uint64(0), res.FeeAmount)
@@ -421,6 +452,8 @@ func TestFailingUpdateTx(t *testing.T) {
 		changePathsByAsset map[string]string
 		milliSatsPerByte   int
 		network            *network.Network
+		wantChangeForFees  bool
+		subtractFees       bool
 		err                error
 	}{
 		{
@@ -431,57 +464,6 @@ func TestFailingUpdateTx(t *testing.T) {
 					500,
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
-			},
-			changePathsByAsset: nil,
-			milliSatsPerByte:   100,
-			network:            &network.Regtest,
-			err:                ErrNullChangePathsByAsset,
-		},
-		{
-			unspents: mockUnspentsForUpdateTx(),
-			outputs: outputList{
-				{
-					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
-					500,
-					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
-				},
-			},
-			changePathsByAsset: map[string]string{
-				"3be6cc6330799ea0a1ae2b7a950ba983e88f41b75a0cb36342e7a039903e7d55": "0'/1/0",
-				network.Regtest.AssetID: "0'/1/1",
-			},
-			milliSatsPerByte: 100,
-			network:          &network.Regtest,
-			err:              nil,
-		},
-		{
-			unspents: mockUnspentsForUpdateTx(),
-			outputs: outputList{
-				{
-					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
-					500,
-					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
-				},
-			},
-			changePathsByAsset: map[string]string{
-				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
-			},
-			milliSatsPerByte: 100,
-			network:          &network.Regtest,
-			err:              nil,
-		},
-		{
-			unspents: mockUnspentsForUpdateTx(),
-			outputs: outputList{
-				{
-					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
-					500,
-					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
-				},
-			},
-			changePathsByAsset: map[string]string{
-				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
-				network.Regtest.AssetID: "0'/1/1",
 			},
 			milliSatsPerByte: 50,
 			network:          &network.Regtest,
@@ -496,12 +478,50 @@ func TestFailingUpdateTx(t *testing.T) {
 					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
 				},
 			},
-			changePathsByAsset: map[string]string{
-				"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c": "0'/1/0",
-				network.Regtest.AssetID: "0'/1/1",
-			},
 			milliSatsPerByte: 100,
 			err:              ErrNullNetwork,
+		},
+		{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
+				{
+					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
+					500,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+			},
+			wantChangeForFees: true,
+			milliSatsPerByte:  100,
+			network:           &network.Regtest,
+			err:               ErrNullChangePathsByAsset,
+		},
+		{
+			unspents: mockUnspents()[1:],
+			outputs: outputList{
+				{
+					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
+					500,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+			},
+			subtractFees:     true,
+			milliSatsPerByte: 100,
+			network:          &network.Regtest,
+			err:              ErrMissingLBTCInput,
+		},
+		{
+			unspents: mockUnspentsForUpdateTx(),
+			outputs: outputList{
+				{
+					"be54f05c6ec9e9b1886b862458e76cf9f32c0d99b73b980e7a5a700292bd1a2c",
+					500,
+					"0014595a242dc9f345268b40cbe669e5d5f746301bb9",
+				},
+			},
+			subtractFees:     true,
+			milliSatsPerByte: 100,
+			network:          &network.Regtest,
+			err:              ErrMissingLBTCOutput,
 		},
 	}
 
@@ -525,6 +545,8 @@ func TestFailingUpdateTx(t *testing.T) {
 			ChangePathsByAsset: tt.changePathsByAsset,
 			MilliSatsPerBytes:  tt.milliSatsPerByte,
 			Network:            tt.network,
+			WantChangeForFees:  tt.wantChangeForFees,
+			SubtractFees:       tt.subtractFees,
 		}
 		_, err := wallet.UpdateTx(opts)
 		if tt.err != nil {

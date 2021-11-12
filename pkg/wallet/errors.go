@@ -124,4 +124,9 @@ var (
 	ErrMissingInBlindingKey = errors.New("missing blinding key for input")
 	// ErrMissingOutBlindingKey ...
 	ErrMissingOutBlindingKey = errors.New("missing blinding key for output")
+
+	// ErrMissingLBTCInput ...
+	ErrMissingLBTCInput = errors.New("missing LBTC input to cover network fees")
+	// ErrMissingLBTCOutput ...
+	ErrMissingLBTCOutput = errors.New("missing LBTC output to subtract network fees from")
 )
