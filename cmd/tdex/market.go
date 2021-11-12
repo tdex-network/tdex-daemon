@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
@@ -286,60 +285,7 @@ func marketDepositAction(ctx *cli.Context) error {
 }
 
 func marketFragmentDepositAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	baseAsset, quoteAsset, err := getMarketFromState()
-	if err != nil {
-		return err
-	}
-	market := &pbtypes.Market{
-		BaseAsset:  baseAsset,
-		QuoteAsset: quoteAsset,
-	}
-
-	reply, err := client.GetMarketFragmenterAddress(
-		context.Background(), &pb.GetMarketFragmenterAddressRequest{
-			Market: market,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("send funds to the following address:", reply.GetAddress())
-
-	waitForConfirmation()
-
-	recoverAddress := ctx.String("recover_funds_to_address")
-
-	stream, err := client.FragmentMarketDeposits(
-		context.Background(), &pb.FragmentMarketDepositsRequest{
-			Market:         market,
-			RecoverAddress: recoverAddress,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	for {
-		fmt.Println()
-
-		reply, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-
-		fmt.Println(reply.GetMessage())
-	}
-
+	printDeprecatedWarn("tdex marketfragmenter split")
 	return nil
 }
 
