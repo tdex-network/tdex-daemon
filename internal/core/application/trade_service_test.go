@@ -281,7 +281,6 @@ func newTradeService(
 		repoManager,
 		explorerSvc,
 		bcListener,
-		marketBaseAsset,
 		tradeExpiryDuration,
 		tradeSatsPerByte,
 		tradePriceSlippage,

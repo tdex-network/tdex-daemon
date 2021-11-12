@@ -157,6 +157,7 @@ func newOperatorService() (application.OperatorService, error) {
 		explorerSvc,
 		bcListener,
 		marketBaseAsset,
+		"",
 		marketFee,
 		regtest,
 		feeBalanceThreshold,

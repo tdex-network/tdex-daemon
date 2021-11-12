@@ -220,7 +220,7 @@ func (w *walletService) SendToMany(
 		domain.FeeAccount,
 	)
 
-	go w.blockchainListener.StartObserveTx(txid, "")
+	go w.blockchainListener.StartObserveTx(txid, Market{})
 
 	rawTx, _ := hex.DecodeString(txHex)
 	rawTxid, _ := hex.DecodeString(txid)

@@ -1,12 +1,11 @@
 package config
 
 import (
-	"errors"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -39,6 +38,8 @@ const (
 	NetworkKey = "NETWORK"
 	// BaseAssetKey is the default asset hash to be used as base asset for all markets. Default is LBTC
 	BaseAssetKey = "BASE_ASSET"
+	// QuoteAssetKey is the default asset hash to be used as quote asset for all markets. This is mutually exclusive with BaseAssetKey.
+	QuoteAssetKey = "QUOTE_ASSET"
 	//NativeAssetKey is used to set lbtc hash, used for fee outputs, in regtest network
 	NativeAssetKey = "NATIVE_ASSET"
 	// CrawlIntervalKey is the interval in milliseconds to be used when watching the blockchain via the explorer
@@ -292,6 +293,23 @@ func validate() error {
 		return fmt.Errorf("%s must be equal or greater than 0.1", TradeSatsPerByte)
 	}
 
+	if viper.IsSet(QuoteAssetKey) && viper.IsSet(BaseAssetKey) {
+		return fmt.Errorf(
+			"only one between %s and %s must be set", BaseAssetKey, QuoteAssetKey,
+		)
+	}
+
+	if baseAsset := viper.GetString(BaseAssetKey); len(baseAsset) > 0 {
+		if err := validateAssetString(baseAsset); err != nil {
+			return err
+		}
+	}
+	if quoteAsset := viper.GetString(QuoteAssetKey); len(quoteAsset) > 0 {
+		if err := validateAssetString(quoteAsset); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -330,16 +348,12 @@ func makeDirectoryIfNotExists(path string) error {
 }
 
 func validateAssetString(asset string) error {
-	const regularExpression = `[0-9a-f]{64}`
-
-	matched, err := regexp.Match(regularExpression, []byte(asset))
+	b, err := hex.DecodeString(asset)
 	if err != nil {
-		return err
+		return fmt.Errorf("asset %s is not an hex string", asset)
 	}
-
-	if !matched {
-		return errors.New(asset + " is an invalid asset string.")
+	if len(b) != 32 {
+		return fmt.Errorf("asset has invalid length")
 	}
-
 	return nil
 }

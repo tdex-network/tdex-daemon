@@ -158,6 +158,7 @@ func newWalletUnlockerService() application.WalletUnlockerService {
 		regtest,
 		marketFee,
 		marketBaseAsset,
+		"",
 		rescanRangeStart,
 		rescanRangeEnd,
 	)
@@ -189,6 +190,7 @@ func newWalletUnlockerServiceRestart() (application.WalletUnlockerService, error
 		regtest,
 		marketFee,
 		marketBaseAsset,
+		"",
 		rescanRangeStart,
 		rescanRangeEnd,
 	), nil
@@ -255,6 +257,7 @@ func newWalletUnlockerServiceRestore() application.WalletUnlockerService {
 		regtest,
 		marketFee,
 		marketBaseAsset,
+		"",
 		rescanRangeStart,
 		rescanRangeEnd,
 	)

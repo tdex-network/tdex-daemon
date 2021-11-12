@@ -285,6 +285,7 @@ type Status struct {
 // Trade is the data structure representing a trade entity.
 type Trade struct {
 	ID                  uuid.UUID
+	MarketBaseAsset     string
 	MarketQuoteAsset    string
 	MarketPrice         Prices
 	MarketFee           int64

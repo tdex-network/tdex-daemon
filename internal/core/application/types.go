@@ -104,6 +104,9 @@ func (m Market) Validate() error {
 	if err := validateAssetString(m.QuoteAsset); err != nil {
 		return ErrMarketInvalidQuoteAsset
 	}
+	if m.BaseAsset == m.QuoteAsset {
+		return fmt.Errorf("quote asset must not be equal to base asset")
+	}
 	return nil
 }
 

@@ -88,9 +88,9 @@ func main() {
 	if _, err := runCommandWithEnv(
 		cliEnv, cli, "config", "init",
 		"--network", "regtest",
-		"--explorer_url", explorerUrl,
 		"--no_macaroons",
 	); err != nil {
+		fmt.Println(err)
 		return
 	}
 
@@ -281,7 +281,7 @@ func runCommandWithEnv(env []string, name string, arg ...string) (string, error)
 	cmd := newCommand(outb, errb, name, arg...)
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
-		return "", err
+		return "", fmt.Errorf("%s: %s", err, errb.String())
 	}
 	if errMsg := errb.String(); len(errMsg) > 0 {
 		return "", fmt.Errorf(errMsg)
@@ -391,15 +391,17 @@ func setupFeeder() error {
 	configMap := map[string]interface{}{
 		"price_feeder": "kraken",
 		"interval":     1000,
-		"markets": []map[string]interface{}{
-			{
-				"base_asset":  lbtcAsset,
-				"quote_asset": usdtAsset,
-				"ticker":      "XBT/USDT",
-				"targets": map[string]string{
-					"rpc_address":    "localhost:9000",
-					"tls_cert_path":  "",
-					"macaroons_path": "",
+		"targets": map[string]string{
+			"rpc_address":    "localhost:9000",
+			"tls_cert_path":  "",
+			"macaroons_path": "",
+		},
+		"well_known_markets": map[string]interface{}{
+			"kraken": []map[string]interface{}{
+				{
+					"base_asset":  lbtcAsset,
+					"quote_asset": usdtAsset,
+					"ticker":      "XBT/USDT",
 				},
 			},
 		},
