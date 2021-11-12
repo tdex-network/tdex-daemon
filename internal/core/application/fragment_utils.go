@@ -1,8 +1,9 @@
 package application
 
 import (
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+	"sort"
+
+	"github.com/shopspring/decimal"
 )
 
 type pair struct {
@@ -12,53 +13,80 @@ type pair struct {
 	quoteValue uint64
 }
 
-func (p pair) BaseAsset() string {
-	return p.baseAsset
-}
-
-func (p pair) QuoteAsset() string {
-	return p.quoteAsset
-}
-
-func (p pair) BaseValue() uint64 {
-	return p.baseValue
-}
-
-func (p pair) QuoteValue() uint64 {
-	return p.quoteValue
-}
-
-func estimateFees(numIns, numOuts int) uint64 {
-	ins := make([]int, 0, numIns)
-	for i := 0; i < numIns; i++ {
-		ins = append(ins, wallet.P2WPKH)
+func feeFragmentAmount(
+	valueToBeFragmented, fragmentValue uint64, maxNumOfFragments uint32,
+) []uint64 {
+	res := make([]uint64, 0)
+	for i := uint32(0); valueToBeFragmented >= fragmentValue && i < maxNumOfFragments; i++ {
+		res = append(res, fragmentValue)
+		valueToBeFragmented -= fragmentValue
 	}
-
-	outs := make([]int, 0, numOuts)
-	for i := 0; i < numOuts; i++ {
-		outs = append(outs, wallet.P2WPKH)
-	}
-
-	size := wallet.EstimateTxSize(ins, nil, nil, outs, nil)
-	return uint64(float64(size) * 0.1)
-}
-
-func deductFeeFromFragments(fragments []uint64, feeAmount uint64) []uint64 {
-	f := make([]uint64, len(fragments))
-	copy(f, fragments)
-
-	amountToPay := int64(feeAmount)
-	for amountToPay > 0 {
-		fLen := len(f) - 1
-		lastFragment := int64(f[fLen])
-		if amountToPay >= lastFragment {
-			f = f[:fLen]
+	if valueToBeFragmented > 0 {
+		if len(res) > 0 {
+			res[len(res)-1] += valueToBeFragmented
 		} else {
-			f[fLen] -= uint64(amountToPay)
+			res = append(res, valueToBeFragmented)
 		}
-		amountToPay -= lastFragment
 	}
-	return f
+	return res
+}
+
+func marketFragmentAmount(
+	assetValuePair pair, fragmentationMap map[int]int,
+) (baseFragments, quoteFragments []uint64, err error) {
+	baseSum := uint64(0)
+	quoteSum := uint64(0)
+	for numOfUtxo, percentage := range fragmentationMap {
+		for ; numOfUtxo > 0; numOfUtxo-- {
+			if assetValuePair.baseValue > 0 {
+				baseAssetPart := percent(int(assetValuePair.baseValue), percentage)
+				baseSum += baseAssetPart
+				baseFragments = append(baseFragments, baseAssetPart)
+			}
+
+			if assetValuePair.quoteValue > 0 {
+				quoteAssetPart := percent(int(assetValuePair.quoteValue), percentage)
+				quoteSum += quoteAssetPart
+				quoteFragments = append(quoteFragments, quoteAssetPart)
+			}
+		}
+	}
+
+	sort.Slice(baseFragments, func(i, j int) bool {
+		return baseFragments[i] < baseFragments[j]
+	})
+
+	sort.Slice(quoteFragments, func(i, j int) bool {
+		return quoteFragments[i] < quoteFragments[j]
+	})
+
+	// if there is rest, created when calculating percentage,
+	// add it to last fragment
+	if baseSum != assetValuePair.baseValue {
+		baseRest := assetValuePair.baseValue - baseSum
+		if baseRest > 0 {
+			baseFragments[len(baseFragments)-1] =
+				baseFragments[len(baseFragments)-1] + baseRest
+		}
+	}
+
+	// if there is rest, created when calculating percentage,
+	// add it to last fragment
+	if quoteSum != assetValuePair.quoteValue {
+		quoteRest := assetValuePair.quoteValue - quoteSum
+		if quoteRest > 0 {
+			quoteFragments[len(quoteFragments)-1] =
+				quoteFragments[len(quoteFragments)-1] + quoteRest
+		}
+	}
+
+	return
+}
+
+func percent(num, percent int) uint64 {
+	return decimal.NewFromInt(int64(num)).
+		Mul(decimal.NewFromInt(int64(percent))).
+		Div(decimal.NewFromInt(100)).BigInt().Uint64()
 }
 
 func createOutpoints(txid string, numOuts int) []TxOutpoint {
@@ -74,27 +102,26 @@ func createOutpoints(txid string, numOuts int) []TxOutpoint {
 
 func createOutputs(
 	baseFragments, quoteFragments []uint64,
-	feeAmount uint64,
 	addresses []string,
 	assetValuePair pair,
-) []ports.TxOut {
+) []TxOut {
 	outsLen := len(baseFragments) + len(quoteFragments)
-	outputs := make([]ports.TxOut, 0, outsLen)
+	outputs := make([]TxOut, 0, outsLen)
 
 	index := 0
 	for _, v := range baseFragments {
 		outputs = append(outputs, TxOut{
-			asset:   assetValuePair.baseAsset,
-			value:   int64(v),
-			address: addresses[index],
+			Asset:   assetValuePair.baseAsset,
+			Value:   int64(v),
+			Address: addresses[index],
 		})
 		index++
 	}
 	for _, v := range quoteFragments {
 		outputs = append(outputs, TxOut{
-			asset:   assetValuePair.quoteAsset,
-			value:   int64(v),
-			address: addresses[index],
+			Asset:   assetValuePair.quoteAsset,
+			Value:   int64(v),
+			Address: addresses[index],
 		})
 		index++
 	}
