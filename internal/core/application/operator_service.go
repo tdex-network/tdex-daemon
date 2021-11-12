@@ -1932,6 +1932,23 @@ func (o *operatorService) splitMarketFragmenterFunds(
 		}
 	}
 
+	if assetValuePair.baseValue == 0 {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf(
+				"missing base asset funds",
+			),
+		}
+		return
+	}
+	if assetValuePair.quoteValue == 0 {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf(
+				"missing quote asset funds",
+			),
+		}
+		return
+	}
+
 	chRes <- FragmenterSplitFundsReply{
 		Msg: "calculating fragments for market asset pair",
 	}
