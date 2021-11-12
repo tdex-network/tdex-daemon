@@ -341,7 +341,7 @@ func (o operatorHandler) listFeeAddresses(
 	}
 
 	return &pb.ListFeeAddressesReply{
-		AddressWithBlinidngKey: addressesAndKeys,
+		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
@@ -458,7 +458,7 @@ func (o operatorHandler) listMarketAddresses(
 	}
 
 	return &pb.ListMarketAddressesReply{
-		AddressWithBlinidngKey: addressesAndKeys,
+		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
@@ -598,7 +598,7 @@ func (o operatorHandler) withdrawMarket(
 	args := application.WithdrawMarketReq{
 		Market:            market,
 		BalanceToWithdraw: balanceToWithdraw,
-		MillisatPerByte:   req.GetMillisatPerByte(),
+		MillisatPerByte:   req.GetMillisatsPerByte(),
 		Address:           req.GetAddress(),
 		Push:              true,
 	}
@@ -794,7 +794,8 @@ func (o operatorHandler) feeFragmenterSplitFunds(
 ) error {
 	chReplies := make(chan application.FragmenterSplitFundsReply)
 	go o.operatorSvc.FeeFragmenterSplitFunds(
-		stream.Context(), req.GetMaxFragments(), chReplies,
+		stream.Context(), req.GetMaxFragments(), req.GetMillisatsPerByte(),
+		chReplies,
 	)
 
 	for reply := range chReplies {
@@ -904,7 +905,7 @@ func (o operatorHandler) marketFragmenterSplitFunds(
 
 	chReplies := make(chan application.FragmenterSplitFundsReply)
 	go o.operatorSvc.MarketFragmenterSplitFunds(
-		stream.Context(), market, chReplies,
+		stream.Context(), market, req.GetMillisatsPerByte(), chReplies,
 	)
 
 	for reply := range chReplies {

@@ -174,7 +174,7 @@ message ListFeeAddressesRequest {}
 message ListFeeAddressesReply {
   // The list of derived confidential addresses and related private blinding
   // keys.
-  repeated AddressWithBlindingKey address_with_blinidng_key = 1;
+  repeated AddressWithBlindingKey address_with_blinding_key = 1;
 }
 
 message GetFeeBalanceRequest {}
@@ -233,7 +233,7 @@ message ListMarketAddressesRequest {
 message ListMarketAddressesReply {
   // The list of derived confidential addresses and related private blinding
   // keys.
-  repeated AddressWithBlindingKey address_with_blinidng_key = 1;
+  repeated AddressWithBlindingKey address_with_blinding_key = 1;
 }
 
 message GetMarketBalanceRequest {
@@ -298,7 +298,7 @@ message WithdrawMarketRequest {
   // The amount of base and quote asset to be withdrawn.
   Balance balance_to_withdraw = 2;
   // The number of millisatoshis per byte that should be paid for network fees.
-  int64 millisat_per_byte = 3;
+  int64 millisats_per_byte = 3;
   // The address to send the funds to.
   string address = 4;
 }
@@ -365,6 +365,7 @@ message FeeFragmenterSplitFundsRequest {
   // The max number of fragments the fragmenter can generate when splitting
   // its funds.
   uint32 max_fragments = 1;
+  uint64 millisats_per_byte = 2;
 }
 message FragmenterSplitFundsReply {
   // A sequence of string messages returned during the process.
@@ -403,7 +404,8 @@ message GetMarketFragmenterBalanceReply {
 message MarketFragmenterSplitFundsRequest {
   // The market to which to deposit the fragmented funds owned by the market 
   // fragmenter.
-  Market market = 2;
+  Market market = 1;
+  uint64 millisats_per_byte = 2;
 }
 
 message WithdrawMarketFragmenterRequest {

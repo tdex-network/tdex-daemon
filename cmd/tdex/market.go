@@ -313,7 +313,7 @@ func marketListAddressesAction(ctx *cli.Context) error {
 		return err
 	}
 
-	list := resp.GetAddressWithBlinidngKey()
+	list := resp.GetAddressWithBlindingKey()
 	if list == nil {
 		fmt.Println("[]")
 		return nil
@@ -383,8 +383,8 @@ func marketWithdrawAction(ctx *cli.Context) error {
 			BaseAmount:  baseAmount,
 			QuoteAmount: quoteAmount,
 		},
-		Address:         addr,
-		MillisatPerByte: mSatsPerByte,
+		Address:          addr,
+		MillisatsPerByte: mSatsPerByte,
 	})
 	if err != nil {
 		return err

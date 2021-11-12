@@ -89,8 +89,8 @@ type OperatorService interface {
 	) ([]AddressAndBlindingKey, error)
 	GetFeeFragmenterBalance(ctx context.Context) (map[string]BalanceInfo, error)
 	FeeFragmenterSplitFunds(
-		ctx context.Context,
-		maxFragments uint32, chRes chan FragmenterSplitFundsReply,
+		ctx context.Context, maxFragments uint32, millisatsPerByte uint64,
+		chRes chan FragmenterSplitFundsReply,
 	)
 	WithdrawFeeFragmenterFunds(
 		ctx context.Context, address string, millisatsPerByte uint64,
@@ -106,7 +106,8 @@ type OperatorService interface {
 		ctx context.Context,
 	) (map[string]BalanceInfo, error)
 	MarketFragmenterSplitFunds(
-		ctx context.Context, market Market, chRes chan FragmenterSplitFundsReply,
+		ctx context.Context, market Market, millisatsPerByte uint64,
+		chRes chan FragmenterSplitFundsReply,
 	)
 	WithdrawMarketFragmenterFunds(
 		ctx context.Context, address string, millisatsPerByte uint64,
@@ -320,44 +321,28 @@ func (o *operatorService) WithdrawFeeFunds(
 		asset: feeAccount.DerivationPathByScript[feeInfo.Script],
 	}
 
-	var txHex string
-	if asset == lbtcAsset {
-		txHex, err = sendToManyFeeAccount(sendToManyFeeAccountOpts{
-			mnemonic:            mnemonic,
-			unspents:            unspents,
-			outputs:             outputs,
-			outputsBlindingKeys: outputsBlindingKeys,
-			changePathsByAsset:  feeChangePathByAsset,
-			inputPathsByScript:  feeAccount.DerivationPathByScript,
-			milliSatPerByte:     int(req.MillisatPerByte),
-			network:             o.network,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
+	if asset != lbtcAsset {
 		feeInfo, err := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
 		if err != nil {
 			return nil, nil, err
 		}
-		lbtcChangePathByAsset := map[string]string{
+		feeChangePathByAsset = map[string]string{
 			lbtcAsset: feeAccount.DerivationPathByScript[feeInfo.Script],
 		}
-		txHex, err = sendToMany(sendToManyOpts{
-			mnemonic:             mnemonic,
-			unspents:             unspents,
-			feeUnspents:          unspents,
-			outputs:              outputs,
-			outputsBlindingKeys:  outputsBlindingKeys,
-			changePathsByAsset:   feeChangePathByAsset,
-			feeChangePathByAsset: lbtcChangePathByAsset,
-			inputPathsByScript:   feeAccount.DerivationPathByScript,
-			milliSatPerByte:      int(req.MillisatPerByte),
-			network:              o.network,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
+	}
+
+	txHex, err := sendToManyWithoutFeeTopup(sendToManyWithoutFeeTopupOpts{
+		mnemonic:            mnemonic,
+		unspents:            unspents,
+		outputs:             outputs,
+		outputsBlindingKeys: outputsBlindingKeys,
+		changePathsByAsset:  feeChangePathByAsset,
+		inputPathsByScript:  feeAccount.DerivationPathByScript,
+		milliSatPerByte:     int(req.MillisatPerByte),
+		network:             o.network,
+	})
+	if err != nil {
+		return nil, nil, err
 	}
 
 	var txid string
@@ -867,7 +852,7 @@ func (o *operatorService) WithdrawMarketFunds(
 	feeChangePathByAsset[o.network.AssetID] =
 		feeAccount.DerivationPathByScript[feeInfo.Script]
 
-	txHex, err := sendToMany(sendToManyOpts{
+	txHex, err := sendToManyWithFeeTopup(sendToManyWithFeeTopupOpts{
 		mnemonic:              mnemonic,
 		unspents:              marketUnspents,
 		feeUnspents:           feeUnspents,
@@ -1150,8 +1135,8 @@ func (o *operatorService) GetFeeFragmenterBalance(
 }
 
 func (o *operatorService) FeeFragmenterSplitFunds(
-	ctx context.Context,
-	maxFragments uint32, chRes chan FragmenterSplitFundsReply,
+	ctx context.Context, maxFragments uint32, millisatsPerByte uint64,
+	chRes chan FragmenterSplitFundsReply,
 ) {
 	defer close(chRes)
 
@@ -1178,7 +1163,7 @@ func (o *operatorService) FeeFragmenterSplitFunds(
 		return
 	}
 
-	o.splitFeeFragmenterFunds(ctx, utxos, maxFragments, chRes)
+	o.splitFeeFragmenterFunds(ctx, utxos, maxFragments, int(millisatsPerByte), chRes)
 }
 
 func (o *operatorService) WithdrawFeeFragmenterFunds(
@@ -1212,7 +1197,8 @@ func (o *operatorService) GetMarketFragmenterBalance(
 }
 
 func (o *operatorService) MarketFragmenterSplitFunds(
-	ctx context.Context, market Market, chRes chan FragmenterSplitFundsReply,
+	ctx context.Context, market Market, millisatsPerByte uint64,
+	chRes chan FragmenterSplitFundsReply,
 ) {
 	defer close(chRes)
 
@@ -1261,7 +1247,7 @@ func (o *operatorService) MarketFragmenterSplitFunds(
 		return
 	}
 
-	o.splitMarketFragmenterFunds(ctx, mkt, utxos, chRes)
+	o.splitMarketFragmenterFunds(ctx, mkt, utxos, int(millisatsPerByte), chRes)
 }
 
 func (o *operatorService) WithdrawMarketFragmenterFunds(
@@ -1748,11 +1734,15 @@ func (o *operatorService) getAllUnspentsForAccount(
 
 func (o *operatorService) splitFeeFragmenterFunds(
 	ctx context.Context,
-	utxos []explorer.Utxo, maxFragments uint32, chRes chan FragmenterSplitFundsReply,
+	utxos []explorer.Utxo, maxFragments uint32, millisatsPerByte int,
+	chRes chan FragmenterSplitFundsReply,
 ) {
 	lbtc := o.network.AssetID
 	if maxFragments == 0 {
 		maxFragments = DefaultFeeFragmenterFragments
+	}
+	if millisatsPerByte == 0 {
+		millisatsPerByte = domain.MinMilliSatPerByte
 	}
 	vault, _ := o.repoManager.VaultRepository().GetOrCreateVault(
 		ctx, nil, "", nil,
@@ -1834,15 +1824,16 @@ func (o *operatorService) splitFeeFragmenterFunds(
 	}
 	outs := createOutputs(fragmentedAmounts, nil, feeAddresses, pair{baseAsset: lbtc})
 	outputs, outBlindKeys, _ := parseRequestOutputs(outs)
-	txHex, err := sendToManyFeeAccount(sendToManyFeeAccountOpts{
+	txHex, err := sendToManyWithoutFeeTopup(sendToManyWithoutFeeTopupOpts{
 		mnemonic:            mnemonic,
 		unspents:            utxos,
 		outputs:             outputs,
 		outputsBlindingKeys: outBlindKeys,
 		changePathsByAsset:  changePathByAsset,
 		inputPathsByScript:  vault.Accounts[domain.FeeFragmenterAccount].DerivationPathByScript,
-		milliSatPerByte:     100,
+		milliSatPerByte:     millisatsPerByte,
 		network:             o.network,
+		subtractFees:        true,
 	})
 	if err != nil {
 		chRes <- FragmenterSplitFundsReply{
@@ -1900,12 +1891,15 @@ func (o *operatorService) splitFeeFragmenterFunds(
 
 func (o *operatorService) splitMarketFragmenterFunds(
 	ctx context.Context,
-	market *domain.Market, utxos []explorer.Utxo,
+	market *domain.Market, utxos []explorer.Utxo, millisatsPerByte int,
 	chRes chan FragmenterSplitFundsReply,
 ) {
 	vault, _ := o.repoManager.VaultRepository().GetOrCreateVault(
 		ctx, nil, "", nil,
 	)
+	if millisatsPerByte == 0 {
+		millisatsPerByte = domain.MinMilliSatPerByte
+	}
 
 	amountPerAsset := make(map[string]uint64)
 	for _, u := range utxos {
@@ -1998,15 +1992,16 @@ func (o *operatorService) splitMarketFragmenterFunds(
 	}
 	outs := createOutputs(baseFragments, quoteFragments, addresses, assetValuePair)
 	outputs, outBlindKeys, _ := parseRequestOutputs(outs)
-	txHex, err := sendToManyFeeAccount(sendToManyFeeAccountOpts{
+	txHex, err := sendToManyWithoutFeeTopup(sendToManyWithoutFeeTopupOpts{
 		mnemonic:            mnemonic,
 		unspents:            utxos,
 		outputs:             outputs,
 		outputsBlindingKeys: outBlindKeys,
 		changePathsByAsset:  changePathsByAsset,
 		inputPathsByScript:  vault.Accounts[domain.MarketFragmenterAccount].DerivationPathByScript,
-		milliSatPerByte:     100,
+		milliSatPerByte:     millisatsPerByte,
 		network:             o.network,
+		subtractFees:        true,
 	})
 	if err != nil {
 		chRes <- FragmenterSplitFundsReply{
@@ -2119,7 +2114,7 @@ func (o *operatorService) withdrawFragmenterAccount(
 		changePathByAsset[asset] = info.DerivationPath
 	}
 	outputs, outBlindKeys, _ := parseRequestOutputs(outs)
-	txHex, err := sendToManyFeeAccount(sendToManyFeeAccountOpts{
+	txHex, err := sendToManyWithoutFeeTopup(sendToManyWithoutFeeTopupOpts{
 		mnemonic:            mnemonic,
 		unspents:            utxos,
 		outputs:             outputs,
@@ -2128,6 +2123,7 @@ func (o *operatorService) withdrawFragmenterAccount(
 		inputPathsByScript:  vault.Accounts[accountIndex].DerivationPathByScript,
 		milliSatPerByte:     int(millisatsPerByte),
 		network:             o.network,
+		subtractFees:        true,
 	})
 	if err != nil {
 		return "", err
@@ -2288,7 +2284,7 @@ func appendUtxoInfo(list []UtxoInfo, unspent domain.Unspent) []UtxoInfo {
 	})
 }
 
-type sendToManyFeeAccountOpts struct {
+type sendToManyWithoutFeeTopupOpts struct {
 	mnemonic            []string
 	unspents            []explorer.Utxo
 	outputs             []*transaction.TxOutput
@@ -2297,9 +2293,10 @@ type sendToManyFeeAccountOpts struct {
 	inputPathsByScript  map[string]string
 	milliSatPerByte     int
 	network             *network.Network
+	subtractFees        bool
 }
 
-func sendToManyFeeAccount(opts sendToManyFeeAccountOpts) (string, error) {
+func sendToManyWithoutFeeTopup(opts sendToManyWithoutFeeTopupOpts) (string, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: opts.mnemonic,
 	})
@@ -2328,7 +2325,8 @@ func sendToManyFeeAccount(opts sendToManyFeeAccountOpts) (string, error) {
 		ChangePathsByAsset: opts.changePathsByAsset,
 		MilliSatsPerBytes:  milliSatPerByte,
 		Network:            network,
-		WantChangeForFees:  true,
+		SubtractFees:       opts.subtractFees,
+		WantChangeForFees:  !opts.subtractFees,
 	})
 	if err != nil {
 		return "", err

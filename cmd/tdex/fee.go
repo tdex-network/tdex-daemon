@@ -158,7 +158,7 @@ func feeListAddressesAction(ctx *cli.Context) error {
 		return err
 	}
 
-	list := reply.GetAddressWithBlinidngKey()
+	list := reply.GetAddressWithBlindingKey()
 	if list == nil {
 		fmt.Println("[]")
 		return nil

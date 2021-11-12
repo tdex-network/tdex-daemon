@@ -178,7 +178,7 @@ func (w *walletService) SendToMany(
 	}
 	feeChangePathByAsset[w.network.AssetID] = feeInfo.DerivationPath
 
-	txHex, err := sendToMany(sendToManyOpts{
+	txHex, err := sendToManyWithFeeTopup(sendToManyWithFeeTopupOpts{
 		mnemonic:              mnemonic,
 		unspents:              walletUnspents,
 		feeUnspents:           feeUnspents,
@@ -313,7 +313,7 @@ func containsAsset(assets []string, asset string) bool {
 	return false
 }
 
-type sendToManyOpts struct {
+type sendToManyWithFeeTopupOpts struct {
 	mnemonic              []string
 	unspents              []explorer.Utxo
 	feeUnspents           []explorer.Utxo
@@ -327,7 +327,7 @@ type sendToManyOpts struct {
 	network               *network.Network
 }
 
-func sendToMany(opts sendToManyOpts) (string, error) {
+func sendToManyWithFeeTopup(opts sendToManyWithFeeTopupOpts) (string, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: opts.mnemonic,
 	})
