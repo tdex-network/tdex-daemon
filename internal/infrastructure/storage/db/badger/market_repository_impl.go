@@ -364,12 +364,14 @@ func (m marketRepositoryImpl) updatePriceByAccountIndex(ctx context.Context, acc
 }
 
 func restoreStrategy(market *domain.Market) {
-	if !market.IsStrategyPluggable() {
-		switch market.Strategy.Type {
-		case formula.BalancedReservesType:
-			market.Strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})
-		}
+	var strategy mm.MakingStrategy
+	switch market.Strategy.Type {
+	case formula.BalancedReservesType:
+		strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})
+	default:
+		strategy = mm.NewStrategyFromFormula(domain.PluggableStrategy{})
 	}
+	market.Strategy = strategy
 }
 
 func (m marketRepositoryImpl) DeleteMarket(

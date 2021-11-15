@@ -52,10 +52,8 @@ func (m *Market) QuoteAssetPrice() decimal.Decimal {
 }
 
 // IsStrategyPluggable returns true if the the startegy isn't automated.
-// For backward compatibility it returns whether the strategy is zero-ed or,
-// on the contrary, its type is extaclty PluggableStrategyType.
 func (m *Market) IsStrategyPluggable() bool {
-	return m.Strategy.IsZero() || m.Strategy.Type == PluggableStrategyType
+	return !m.Strategy.IsZero() && m.Strategy.Type == int(StrategyTypePluggable)
 }
 
 // IsStrategyPluggableInitialized returns true if the prices have been set.
