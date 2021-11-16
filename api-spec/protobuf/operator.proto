@@ -2,6 +2,7 @@ syntax = "proto3";
 option go_package = "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator";
 
 import "types.proto";
+import "wallet.proto";
 
 /**
  * Service for operators to configure and manage a TDEX daemon
@@ -24,16 +25,6 @@ service Operator {
   // Allows to provide transaction(s) outpoints of deposits made to fund the fee account.
   // The transaction(s) must be already included in blockchain.
   rpc ClaimFeeDeposits(ClaimFeeDepositsRequest) returns (ClaimFeeDepositsReply) {}
-
-  // Returns the address of an ephemeral single key wallet where to send the
-  // funds to be splited and deposited into the fee account.
-  rpc GetFeeFragmenterAddress(GetFeeFragmenterAddressRequest)
-    returns(GetFeeFragmenterAddressReply) {}
-
-  // Splits the funds sent to the ephemeral wallet address into multiple
-  // fragments that then becomes deposits of the Fee account.
-  rpc FragmentFeeDeposits(FragmentFeeDepositsRequest)
-    returns (stream FragmentFeeDepositsReply) {}
 
   // Allows to withdraw funds from the fee account to a given address.
   rpc WithdrawFee(WithdrawFeeRequest) returns (WithdrawFeeReply) {}
@@ -69,16 +60,6 @@ service Operator {
   rpc GetMarketCollectedSwapFees(GetMarketCollectedSwapFeesRequest)
     returns (GetMarketCollectedSwapFeesReply) {}
 
-  // Returns the address of an ephemeral single key wallet where to send the
-  // funds to be splited and deposited for a market.
-  rpc GetMarketFragmenterAddress(GetMarketFragmenterAddressRequest)
-    returns (GetMarketFragmenterAddressReply) {}
-
-  // Splits the funds sent to the ephemeral wallet address into multiple
-  // fragments that then becomes deposits of the given market.
-  rpc FragmentMarketDeposits(FragmentMarketDepositsRequest)
-    returns (stream FragmentMarketDepositsReply) {}
-
   // Allows to withdraw funds from the given market to a given address.
   rpc WithdrawMarket(WithdrawMarketRequest) returns (WithdrawMarketReply) {}
 
@@ -98,6 +79,48 @@ service Operator {
   // market making formula or a pluggable price feed.
   rpc UpdateMarketStrategy(UpdateMarketStrategyRequest)
       returns (UpdateMarketStrategyReply) {}
+
+  // Returns some new derived address(es) for the fee fragmenter account.
+  rpc GetFeeFragmenterAddress(GetFeeFragmenterAddressRequest)
+    returns(GetFeeFragmenterAddressReply) {}
+
+  // Returns the list of all derived addresses for the fee fragmenter account.
+  rpc ListFeeFragmenterAddresses(ListFeeFragmenterAddressesRequest)
+    returns(ListFeeFragmenterAddressesReply) {}
+
+  // Returns info about the balance of the fee fragmenter account.
+  rpc GetFeeFragmenterBalance(GetFeeFragmenterBalanceRequest)
+    returns(GetFeeFragmenterBalanceReply) {}
+
+  // Splits the funds sent to the fee fragmenter account into multiple
+  // fragments that then becomes deposits of the Fee account.
+  rpc FeeFragmenterSplitFunds(FeeFragmenterSplitFundsRequest)
+    returns (stream FragmenterSplitFundsReply) {}
+  
+  // Allows to withdraw funds from the fee fragmenter account to a given address.
+  rpc WithdrawFeeFragmenter(WithdrawFeeFragmenterRequest)
+    returns (WithdrawFeeFragmenterReply) {}
+
+  // Returns some new derived address(es) for the market fragmenter account.
+  rpc GetMarketFragmenterAddress(GetMarketFragmenterAddressRequest)
+    returns(GetMarketFragmenterAddressReply) {}
+
+  // Returns the list of all derived addresses for the market fragmenter account.
+  rpc ListMarketFragmenterAddresses(ListMarketFragmenterAddressesRequest)
+    returns(ListMarketFragmenterAddressesReply) {}
+
+  // Returns info about the balance of the market fragmenter account.
+  rpc GetMarketFragmenterBalance(GetMarketFragmenterBalanceRequest)
+    returns(GetMarketFragmenterBalanceReply) {}
+
+  // Splits the funds sent to the market fragmenter account into multiple
+  // fragments that then becomes deposits of the given market.
+  rpc MarketFragmenterSplitFunds(MarketFragmenterSplitFundsRequest)
+    returns (stream FragmenterSplitFundsReply) {}
+  
+  // Allows to withdraw funds from the market fragmenter account to a given address.
+  rpc WithdrawMarketFragmenter(WithdrawMarketFragmenterRequest)
+    returns (WithdrawMarketFragmenterReply) {}
 
   // Get extended details for each market either open, closed or to be funded.
   rpc ListMarkets(ListMarketsRequest) returns (ListMarketsReply) {}
@@ -151,7 +174,7 @@ message ListFeeAddressesRequest {}
 message ListFeeAddressesReply {
   // The list of derived confidential addresses and related private blinding
   // keys.
-  repeated AddressWithBlindingKey address_with_blinidng_key = 1;
+  repeated AddressWithBlindingKey address_with_blinding_key = 1;
 }
 
 message GetFeeBalanceRequest {}
@@ -168,24 +191,6 @@ message ClaimFeeDepositsRequest {
   repeated TxOutpoint outpoints = 1;
 }
 message ClaimFeeDepositsReply {}
-
-message GetFeeFragmenterAddressRequest {}
-message GetFeeFragmenterAddressReply {
-  string address = 1;
-}
-
-message FragmentFeeDepositsRequest {
-  // Optionally, a recover address where to send all the ephemeral wallet's 
-  // funds to for aborting the fragmentation.
-  string recover_address = 1;
-  // The max number of fragments the fragmenter can generate when splitting
-  // its funds.
-  uint32 max_fragments = 2;
-}
-message FragmentFeeDepositsReply {
-  // A sequence of string messages returned during the process.
-  string message = 1;
-}
 
 message WithdrawFeeRequest {
   // The amount of L-BTC to widthdraw expressed in Satoshi.
@@ -228,7 +233,7 @@ message ListMarketAddressesRequest {
 message ListMarketAddressesReply {
   // The list of derived confidential addresses and related private blinding
   // keys.
-  repeated AddressWithBlindingKey address_with_blinidng_key = 1;
+  repeated AddressWithBlindingKey address_with_blinding_key = 1;
 }
 
 message GetMarketBalanceRequest {
@@ -287,32 +292,13 @@ message GetMarketCollectedSwapFeesReply {
   map<string, int64> total_collected_fees_per_asset = 2;
 }
 
-message GetMarketFragmenterAddressRequest{
-  Market market = 1;
-}
-message GetMarketFragmenterAddressReply {
-  string address = 1;
-}
-
-message FragmentMarketDepositsRequest {
-  // Optionally, a recover address where to send all the ephemeral wallet's 
-  // funds to for aborting the fragmentation.
-  string recover_address = 1;
-  // The market for which computing/aborting the fragmentation.
-  Market market = 2;
-}
-message FragmentMarketDepositsReply {
-  // A sequence of string messages returned during the process.
-  string message = 1;
-}
-
 message WithdrawMarketRequest {
   // The market from which funds should be withdrawn.
   Market market = 1;
   // The amount of base and quote asset to be withdrawn.
   Balance balance_to_withdraw = 2;
   // The number of millisatoshis per byte that should be paid for network fees.
-  int64 millisat_per_byte = 3;
+  int64 millisats_per_byte = 3;
   // The address to send the funds to.
   string address = 4;
 }
@@ -355,6 +341,82 @@ message UpdateMarketStrategyRequest {
   string metadata = 3;
 }
 message UpdateMarketStrategyReply {}
+
+message GetFeeFragmenterAddressRequest {
+  int64 num_of_addresses = 1;
+}
+message GetFeeFragmenterAddressReply {
+  repeated AddressWithBlindingKey address_with_blinding_key = 1;
+}
+
+message ListFeeFragmenterAddressesRequest {}
+message ListFeeFragmenterAddressesReply {
+  repeated AddressWithBlindingKey address_with_blinding_key = 1;
+}
+
+message GetFeeFragmenterBalanceRequest {}
+message GetFeeFragmenterBalanceReply {
+  // The balance info (total, confirmed, unconfirmed) of the account grouped by
+  // asset.
+  map<string, BalanceInfo> balance = 1;
+}
+
+message FeeFragmenterSplitFundsRequest {
+  // The max number of fragments the fragmenter can generate when splitting
+  // its funds.
+  uint32 max_fragments = 1;
+  uint64 millisats_per_byte = 2;
+}
+message FragmenterSplitFundsReply {
+  // A sequence of string messages returned during the process.
+  string message = 1;
+}
+
+message WithdrawFeeFragmenterRequest {
+  // The address to send the funds to.
+  string address = 1;
+  // The number of millisatoshis per byte that should be paid for network fees.
+  uint64 millisats_per_byte = 2;
+}
+message WithdrawFeeFragmenterReply {
+  string txid = 1;
+}
+
+message GetMarketFragmenterAddressRequest{
+  int64 num_of_addresses = 1;
+}
+message GetMarketFragmenterAddressReply {
+  repeated AddressWithBlindingKey address_with_blinding_key = 1;
+}
+
+message ListMarketFragmenterAddressesRequest{}
+message ListMarketFragmenterAddressesReply {
+  repeated AddressWithBlindingKey address_with_blinding_key = 1;
+}
+
+message GetMarketFragmenterBalanceRequest {}
+message GetMarketFragmenterBalanceReply {
+  // The balance info (total, confirmed, unconfirmed) of the account grouped by
+  // asset.
+  map<string, BalanceInfo> balance = 1;
+}
+
+message MarketFragmenterSplitFundsRequest {
+  // The market to which to deposit the fragmented funds owned by the market 
+  // fragmenter.
+  Market market = 1;
+  uint64 millisats_per_byte = 2;
+}
+
+message WithdrawMarketFragmenterRequest {
+  // The address to send the funds to.
+  string address = 1;
+  // The number of millisatoshis per byte that should be paid for network fees.
+  uint64 millisats_per_byte = 2;
+}
+message WithdrawMarketFragmenterReply {
+  string txid = 1;
+}
 
 message ListTradesRequest {
   // Optional: request all trades related to a specific market.

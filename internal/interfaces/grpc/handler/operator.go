@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	pbw "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
 	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 )
 
@@ -66,18 +67,6 @@ func (o operatorHandler) ClaimFeeDeposits(
 	ctx context.Context, req *pb.ClaimFeeDepositsRequest,
 ) (*pb.ClaimFeeDepositsReply, error) {
 	return o.claimFeeDeposits(ctx, req)
-}
-
-func (o operatorHandler) GetFeeFragmenterAddress(
-	ctx context.Context, _ *pb.GetFeeFragmenterAddressRequest,
-) (*pb.GetFeeFragmenterAddressReply, error) {
-	return o.getFeeFragmenterAddress(ctx)
-}
-
-func (o operatorHandler) FragmentFeeDeposits(
-	req *pb.FragmentFeeDepositsRequest, stream pb.Operator_FragmentFeeDepositsServer,
-) error {
-	return o.fragmentFeeDeposits(req, stream)
 }
 
 func (o operatorHandler) WithdrawFee(
@@ -140,18 +129,6 @@ func (o operatorHandler) GetMarketCollectedSwapFees(
 	return o.getMarketCollectedSwapFees(ctx, req)
 }
 
-func (o operatorHandler) GetMarketFragmenterAddress(
-	ctx context.Context, req *pb.GetMarketFragmenterAddressRequest,
-) (*pb.GetMarketFragmenterAddressReply, error) {
-	return o.getMarketFragmenterAddress(ctx, req)
-}
-
-func (o operatorHandler) FragmentMarketDeposits(
-	req *pb.FragmentMarketDepositsRequest, stream pb.Operator_FragmentMarketDepositsServer,
-) error {
-	return o.fragmentMarketDeposits(req, stream)
-}
-
 func (o operatorHandler) WithdrawMarket(
 	ctx context.Context, req *pb.WithdrawMarketRequest,
 ) (*pb.WithdrawMarketReply, error) {
@@ -180,6 +157,68 @@ func (o operatorHandler) UpdateMarketStrategy(
 	ctx context.Context, req *pb.UpdateMarketStrategyRequest,
 ) (*pb.UpdateMarketStrategyReply, error) {
 	return o.updateMarketStrategy(ctx, req)
+}
+
+func (o operatorHandler) GetFeeFragmenterAddress(
+	ctx context.Context, req *pb.GetFeeFragmenterAddressRequest,
+) (*pb.GetFeeFragmenterAddressReply, error) {
+	return o.getFeeFragmenterAddress(ctx, req)
+}
+
+func (o operatorHandler) ListFeeFragmenterAddresses(
+	ctx context.Context, req *pb.ListFeeFragmenterAddressesRequest,
+) (*pb.ListFeeFragmenterAddressesReply, error) {
+	return o.listFeeFragmenterAddresses(ctx, req)
+}
+
+func (o operatorHandler) GetFeeFragmenterBalance(
+	ctx context.Context,
+	req *pb.GetFeeFragmenterBalanceRequest,
+) (*pb.GetFeeFragmenterBalanceReply, error) {
+	return o.getFeeFragmenterBalance(ctx, req)
+}
+
+func (o operatorHandler) FeeFragmenterSplitFunds(
+	req *pb.FeeFragmenterSplitFundsRequest, stream pb.Operator_FeeFragmenterSplitFundsServer,
+) error {
+	return o.feeFragmenterSplitFunds(req, stream)
+}
+
+func (o operatorHandler) WithdrawFeeFragmenter(
+	ctx context.Context, req *pb.WithdrawFeeFragmenterRequest,
+) (*pb.WithdrawFeeFragmenterReply, error) {
+	return o.withdrawFeeFragmenter(ctx, req)
+}
+
+func (o operatorHandler) GetMarketFragmenterAddress(
+	ctx context.Context, req *pb.GetMarketFragmenterAddressRequest,
+) (*pb.GetMarketFragmenterAddressReply, error) {
+	return o.getMarketFragmenterAddress(ctx, req)
+}
+
+func (o operatorHandler) ListMarketFragmenterAddresses(
+	ctx context.Context, req *pb.ListMarketFragmenterAddressesRequest,
+) (*pb.ListMarketFragmenterAddressesReply, error) {
+	return o.listMarketFragmenterAddresses(ctx, req)
+}
+
+func (o operatorHandler) GetMarketFragmenterBalance(
+	ctx context.Context,
+	req *pb.GetMarketFragmenterBalanceRequest,
+) (*pb.GetMarketFragmenterBalanceReply, error) {
+	return o.getMarketFragmenterBalance(ctx, req)
+}
+
+func (o operatorHandler) MarketFragmenterSplitFunds(
+	req *pb.MarketFragmenterSplitFundsRequest, stream pb.Operator_MarketFragmenterSplitFundsServer,
+) error {
+	return o.marketFragmenterSplitFunds(req, stream)
+}
+
+func (o operatorHandler) WithdrawMarketFragmenter(
+	ctx context.Context, req *pb.WithdrawMarketFragmenterRequest,
+) (*pb.WithdrawMarketFragmenterReply, error) {
+	return o.withdrawMarketFragmenter(ctx, req)
 }
 
 func (o operatorHandler) ListMarkets(
@@ -302,7 +341,7 @@ func (o operatorHandler) listFeeAddresses(
 	}
 
 	return &pb.ListFeeAddressesReply{
-		AddressWithBlinidngKey: addressesAndKeys,
+		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
@@ -330,45 +369,6 @@ func (o operatorHandler) claimFeeDeposits(
 	}
 
 	return &pb.ClaimFeeDepositsReply{}, nil
-}
-
-func (o operatorHandler) getFeeFragmenterAddress(
-	ctx context.Context,
-) (*pb.GetFeeFragmenterAddressReply, error) {
-	addr, err := o.operatorSvc.GetFeeFragmenterAddress(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetFeeFragmenterAddressReply{
-		Address: addr,
-	}, nil
-}
-
-func (o operatorHandler) fragmentFeeDeposits(
-	req *pb.FragmentFeeDepositsRequest,
-	stream pb.Operator_FragmentFeeDepositsServer,
-) error {
-	fd := application.FragmentDepositsReq{
-		RecoverAddress: req.GetRecoverAddress(),
-		MaxFragments:   req.GetMaxFragments(),
-	}
-
-	chReplies := make(chan application.FragmentDepositsReply)
-	go o.operatorSvc.FragmentFeeDeposits(stream.Context(), fd, chReplies)
-
-	for reply := range chReplies {
-		if reply.Err != nil {
-			return reply.Err
-		}
-
-		if err := stream.Send(&pb.FragmentFeeDepositsReply{
-			Message: reply.Msg,
-		}); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (o operatorHandler) withdrawFee(
@@ -458,7 +458,7 @@ func (o operatorHandler) listMarketAddresses(
 	}
 
 	return &pb.ListMarketAddressesReply{
-		AddressWithBlinidngKey: addressesAndKeys,
+		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
@@ -586,56 +586,6 @@ func (o operatorHandler) getMarketCollectedSwapFees(
 	}, nil
 }
 
-func (o operatorHandler) getMarketFragmenterAddress(
-	ctx context.Context, req *pb.GetMarketFragmenterAddressRequest,
-) (*pb.GetMarketFragmenterAddressReply, error) {
-	market, err := parseMarket(req.GetMarket())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	addr, err := o.operatorSvc.GetMarketFragmenterAddress(ctx, market)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetMarketFragmenterAddressReply{
-		Address: addr,
-	}, nil
-}
-
-func (o operatorHandler) fragmentMarketDeposits(
-	req *pb.FragmentMarketDepositsRequest,
-	stream pb.Operator_FragmentMarketDepositsServer,
-) error {
-	market, err := parseMarket(req.GetMarket())
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	fd := application.FragmentDepositsReq{
-		RecoverAddress: req.GetRecoverAddress(),
-	}
-
-	chReplies := make(chan application.FragmentDepositsReply)
-	go o.operatorSvc.FragmentMarketDeposits(
-		stream.Context(), market, fd, chReplies,
-	)
-
-	for reply := range chReplies {
-		if reply.Err != nil {
-			return reply.Err
-		}
-
-		if err := stream.Send(&pb.FragmentMarketDepositsReply{
-			Message: reply.Msg,
-		}); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (o operatorHandler) withdrawMarket(
 	ctx context.Context, req *pb.WithdrawMarketRequest,
 ) (*pb.WithdrawMarketReply, error) {
@@ -648,7 +598,7 @@ func (o operatorHandler) withdrawMarket(
 	args := application.WithdrawMarketReq{
 		Market:            market,
 		BalanceToWithdraw: balanceToWithdraw,
-		MillisatPerByte:   req.GetMillisatPerByte(),
+		MillisatPerByte:   req.GetMillisatsPerByte(),
 		Address:           req.GetAddress(),
 		Push:              true,
 	}
@@ -770,6 +720,222 @@ func (o operatorHandler) updateMarketStrategy(
 	}
 
 	return &pb.UpdateMarketStrategyReply{}, nil
+}
+
+func (o operatorHandler) getFeeFragmenterAddress(
+	ctx context.Context, req *pb.GetFeeFragmenterAddressRequest,
+) (*pb.GetFeeFragmenterAddressReply, error) {
+	info, err := o.operatorSvc.GetFeeFragmenterAddress(
+		ctx, int(req.GetNumOfAddresses()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	for _, d := range info {
+		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+			Address:  d.Address,
+			Blinding: d.BlindingKey,
+		})
+	}
+
+	return &pb.GetFeeFragmenterAddressReply{
+		AddressWithBlindingKey: addressesAndKeys,
+	}, nil
+}
+
+func (o operatorHandler) listFeeFragmenterAddresses(
+	ctx context.Context, req *pb.ListFeeFragmenterAddressesRequest,
+) (*pb.ListFeeFragmenterAddressesReply, error) {
+	info, err := o.operatorSvc.ListFeeFragmenterExternalAddresses(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	for _, d := range info {
+		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+			Address:  d.Address,
+			Blinding: d.BlindingKey,
+		})
+	}
+
+	return &pb.ListFeeFragmenterAddressesReply{
+		AddressWithBlindingKey: addressesAndKeys,
+	}, nil
+}
+
+func (o operatorHandler) getFeeFragmenterBalance(
+	ctx context.Context, req *pb.GetFeeFragmenterBalanceRequest,
+) (*pb.GetFeeFragmenterBalanceReply, error) {
+	info, err := o.operatorSvc.GetFeeFragmenterBalance(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	balance := make(map[string]*pbw.BalanceInfo)
+	for a, b := range info {
+		balance[a] = &pbw.BalanceInfo{
+			ConfirmedBalance:   b.ConfirmedBalance,
+			UnconfirmedBalance: b.UnconfirmedBalance,
+			TotalBalance:       b.TotalBalance,
+		}
+	}
+
+	return &pb.GetFeeFragmenterBalanceReply{
+		Balance: balance,
+	}, nil
+}
+
+func (o operatorHandler) feeFragmenterSplitFunds(
+	req *pb.FeeFragmenterSplitFundsRequest,
+	stream pb.Operator_FeeFragmenterSplitFundsServer,
+) error {
+	chReplies := make(chan application.FragmenterSplitFundsReply)
+	go o.operatorSvc.FeeFragmenterSplitFunds(
+		stream.Context(), req.GetMaxFragments(), req.GetMillisatsPerByte(),
+		chReplies,
+	)
+
+	for reply := range chReplies {
+		if reply.Err != nil {
+			return reply.Err
+		}
+
+		if err := stream.Send(&pb.FragmenterSplitFundsReply{
+			Message: reply.Msg,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (o operatorHandler) withdrawFeeFragmenter(
+	ctx context.Context, req *pb.WithdrawFeeFragmenterRequest,
+) (*pb.WithdrawFeeFragmenterReply, error) {
+	txid, err := o.operatorSvc.WithdrawFeeFragmenterFunds(
+		ctx, req.GetAddress(), req.GetMillisatsPerByte(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.WithdrawFeeFragmenterReply{
+		Txid: txid,
+	}, nil
+}
+
+func (o operatorHandler) getMarketFragmenterAddress(
+	ctx context.Context, req *pb.GetMarketFragmenterAddressRequest,
+) (*pb.GetMarketFragmenterAddressReply, error) {
+	info, err := o.operatorSvc.GetMarketFragmenterAddress(
+		ctx, int(req.GetNumOfAddresses()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	for _, d := range info {
+		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+			Address:  d.Address,
+			Blinding: d.BlindingKey,
+		})
+	}
+
+	return &pb.GetMarketFragmenterAddressReply{
+		AddressWithBlindingKey: addressesAndKeys,
+	}, nil
+}
+
+func (o operatorHandler) listMarketFragmenterAddresses(
+	ctx context.Context, req *pb.ListMarketFragmenterAddressesRequest,
+) (*pb.ListMarketFragmenterAddressesReply, error) {
+	info, err := o.operatorSvc.ListMarketFragmenterExternalAddresses(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	for _, d := range info {
+		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+			Address:  d.Address,
+			Blinding: d.BlindingKey,
+		})
+	}
+
+	return &pb.ListMarketFragmenterAddressesReply{
+		AddressWithBlindingKey: addressesAndKeys,
+	}, nil
+}
+
+func (o operatorHandler) getMarketFragmenterBalance(
+	ctx context.Context, req *pb.GetMarketFragmenterBalanceRequest,
+) (*pb.GetMarketFragmenterBalanceReply, error) {
+	info, err := o.operatorSvc.GetMarketFragmenterBalance(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	balance := make(map[string]*pbw.BalanceInfo)
+	for a, b := range info {
+		balance[a] = &pbw.BalanceInfo{
+			ConfirmedBalance:   b.ConfirmedBalance,
+			UnconfirmedBalance: b.UnconfirmedBalance,
+			TotalBalance:       b.TotalBalance,
+		}
+	}
+
+	return &pb.GetMarketFragmenterBalanceReply{
+		Balance: balance,
+	}, nil
+}
+
+func (o operatorHandler) marketFragmenterSplitFunds(
+	req *pb.MarketFragmenterSplitFundsRequest,
+	stream pb.Operator_MarketFragmenterSplitFundsServer,
+) error {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	chReplies := make(chan application.FragmenterSplitFundsReply)
+	go o.operatorSvc.MarketFragmenterSplitFunds(
+		stream.Context(), market, req.GetMillisatsPerByte(), chReplies,
+	)
+
+	for reply := range chReplies {
+		if reply.Err != nil {
+			return reply.Err
+		}
+
+		if err := stream.Send(&pb.FragmenterSplitFundsReply{
+			Message: reply.Msg,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (o operatorHandler) withdrawMarketFragmenter(
+	ctx context.Context, req *pb.WithdrawMarketFragmenterRequest,
+) (*pb.WithdrawMarketFragmenterReply, error) {
+	txid, err := o.operatorSvc.WithdrawMarketFragmenterFunds(
+		ctx, req.GetAddress(), req.GetMillisatsPerByte(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.WithdrawMarketFragmenterReply{
+		Txid: txid,
+	}, nil
 }
 
 func (o operatorHandler) listTrades(

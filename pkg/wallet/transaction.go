@@ -199,6 +199,7 @@ type UpdateTxOpts struct {
 	Network              *network.Network
 	WantPrivateBlindKeys bool
 	WantChangeForFees    bool
+	SubtractFees         bool
 }
 
 func (o UpdateTxOpts) validate() error {
@@ -222,23 +223,42 @@ func (o UpdateTxOpts) validate() error {
 			}
 		}
 
-		if len(o.ChangePathsByAsset) <= 0 {
-			return ErrNullChangePathsByAsset
+		if o.SubtractFees && o.WantChangeForFees {
+			return fmt.Errorf(
+				"only one between SubtractFees and WantChangeForFees must be true",
+			)
 		}
 
-		for _, out := range o.Outputs {
-			asset := bufferutil.AssetHashFromBytes(out.Asset)
-			if _, ok := o.ChangePathsByAsset[asset]; !ok {
-				return fmt.Errorf("missing derivation path for eventual change of asset '%s'", asset)
+		if o.SubtractFees {
+			inTotalAmountsByAsset := o.getInputsTotalAmountByAsset()
+			outTotalAmountsByAsset := o.getOutputsTotalAmountsByAsset()
+			inTotalLBTCAmount := inTotalAmountsByAsset[o.Network.AssetID]
+			outTotalLBTCAmount := outTotalAmountsByAsset[o.Network.AssetID]
+			if inTotalLBTCAmount == 0 {
+				return ErrMissingLBTCInput
+			}
+			if outTotalLBTCAmount == 0 {
+				return ErrMissingLBTCOutput
 			}
 		}
 
-		// in case change for network fees is requested, make sure that a change
-		// path for LBTC asset exists.
 		if o.WantChangeForFees {
-			lbtcAsset := o.Network.AssetID
-			if _, ok := o.ChangePathsByAsset[lbtcAsset]; !ok {
-				return fmt.Errorf("missing derivation path for eventual change of asset '%s'", lbtcAsset)
+			if len(o.ChangePathsByAsset) <= 0 {
+				return ErrNullChangePathsByAsset
+			}
+			for _, out := range o.Outputs {
+				asset := bufferutil.AssetHashFromBytes(out.Asset)
+				if _, ok := o.ChangePathsByAsset[asset]; !ok {
+					return fmt.Errorf("missing derivation path for eventual change of asset '%s'", asset)
+				}
+			}
+			// in case change for network fees is requested, make sure that a change
+			// path for LBTC asset exists.
+			if o.WantChangeForFees {
+				lbtcAsset := o.Network.AssetID
+				if _, ok := o.ChangePathsByAsset[lbtcAsset]; !ok {
+					return fmt.Errorf("missing derivation path for eventual change of asset '%s'", lbtcAsset)
+				}
 			}
 		}
 
@@ -250,8 +270,16 @@ func (o UpdateTxOpts) validate() error {
 	return nil
 }
 
+func (o UpdateTxOpts) getInputsTotalAmountByAsset() map[string]uint64 {
+	totalAmountsByAsset := make(map[string]uint64)
+	for _, u := range o.Unspents {
+		totalAmountsByAsset[u.Asset()] += u.Value()
+	}
+	return totalAmountsByAsset
+}
+
 func (o UpdateTxOpts) getOutputsTotalAmountsByAsset() map[string]uint64 {
-	totalAmountsByAsset := map[string]uint64{}
+	totalAmountsByAsset := make(map[string]uint64)
 	for _, out := range o.Outputs {
 		asset := bufferutil.AssetHashFromBytes(out.Asset)
 		totalAmountsByAsset[asset] += bufferutil.ValueFromBytes(out.Value)
@@ -259,22 +287,10 @@ func (o UpdateTxOpts) getOutputsTotalAmountsByAsset() map[string]uint64 {
 	return totalAmountsByAsset
 }
 
-func (o UpdateTxOpts) getUnspentsUnblindingKeys(w *Wallet) [][]byte {
-	keys := make([][]byte, 0, len(o.Unspents))
-	for _, u := range o.Unspents {
-		blindingPrvkey, _, _ := w.DeriveBlindingKeyPair(
-			DeriveBlindingKeyPairOpts{
-				Script: u.Script(),
-			},
-		)
-		keys = append(keys, blindingPrvkey.Serialize())
-	}
-	return keys
-}
-
 func (o UpdateTxOpts) getInputAssets() []string {
-	assets := make([]string, 0, len(o.ChangePathsByAsset))
-	for asset := range o.ChangePathsByAsset {
+	assetMap := o.getInputsTotalAmountByAsset()
+	assets := make([]string, 0, len(assetMap))
+	for asset := range assetMap {
 		assets = append(assets, asset)
 	}
 	return assets
@@ -327,7 +343,6 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 		inAssets := opts.getInputAssets()
 		// calculate target amount of each asset for coin selection
 		totalAmountsByAsset := opts.getOutputsTotalAmountsByAsset()
-
 		// select unspents and update the list of inputs to add and eventually the
 		// list of outputs to add by adding the change output if necessary
 		for _, asset := range inAssets {
@@ -341,8 +356,13 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					return nil, err
 				}
 				inputsToAdd = append(inputsToAdd, selectedUnspents...)
-
 				if change > 0 {
+					if asset == opts.Network.AssetID && opts.SubtractFees {
+						return nil, fmt.Errorf(
+							"total LBTC input amount must be equal to output one to " +
+								"substract fees, otherwise a change address path would be required",
+						)
+					}
 					_, script, _ := w.DeriveConfidentialAddress(
 						DeriveConfidentialAddressOpts{
 							DerivationPath: opts.ChangePathsByAsset[asset],
@@ -369,6 +389,21 @@ func (w *Wallet) UpdateTx(opts UpdateTxOpts) (*UpdateTxResult, error) {
 					}
 				}
 			}
+		}
+
+		if opts.SubtractFees {
+			feeAmount = calcFeeAmount(ptx, len(inputsToAdd), len(outputsToAdd), opts.MilliSatsPerBytes)
+			var outIndex int
+			var outAmount uint64
+			for i, out := range outputsToAdd {
+				if bufferutil.AssetHashFromBytes(out.Asset) == opts.Network.AssetID &&
+					bufferutil.ValueFromBytes(out.Value) > feeAmount {
+					outAmount = bufferutil.ValueFromBytes(out.Value)
+					outIndex = i
+					break
+				}
+			}
+			outputsToAdd[outIndex].Value, _ = bufferutil.ValueToBytes(outAmount - feeAmount)
 		}
 
 		if opts.WantChangeForFees {

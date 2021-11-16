@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
@@ -141,48 +140,7 @@ func feeDepositAction(ctx *cli.Context) error {
 }
 
 func feeFragmentDepositAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	reply, err := client.GetFeeFragmenterAddress(
-		context.Background(), &pb.GetFeeFragmenterAddressRequest{},
-	)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("send funds to the following address:", reply.GetAddress())
-
-	waitForConfirmation()
-
-	maxFragments := ctx.Uint64("max_fragments")
-	recoverAddress := ctx.String("recover_funds_to_address")
-
-	stream, err := client.FragmentFeeDeposits(context.Background(), &pb.FragmentFeeDepositsRequest{
-		MaxFragments:   uint32(maxFragments),
-		RecoverAddress: recoverAddress,
-	})
-	if err != nil {
-		return err
-	}
-
-	for {
-		fmt.Println()
-
-		reply, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-
-		fmt.Println(reply.GetMessage())
-	}
-
+	printDeprecatedWarn("tdex feefragmenter split")
 	return nil
 }
 
@@ -200,7 +158,7 @@ func feeListAddressesAction(ctx *cli.Context) error {
 		return err
 	}
 
-	list := reply.GetAddressWithBlinidngKey()
+	list := reply.GetAddressWithBlindingKey()
 	if list == nil {
 		fmt.Println("[]")
 		return nil

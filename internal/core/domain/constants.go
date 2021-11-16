@@ -3,8 +3,8 @@ package domain
 const (
 	FeeAccount = iota
 	WalletAccount
-	UnusedAccount1
-	UnusedAccount2
+	FeeFragmenterAccount
+	MarketFragmenterAccount
 	UnusedAccount3
 	MarketAccountStart
 
