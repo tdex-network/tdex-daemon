@@ -20,18 +20,6 @@ func (p Prices) AreZero() bool {
 	return decimal.Decimal(p.BasePrice).Equal(decimal.NewFromInt(0)) && decimal.Decimal(p.QuotePrice).Equal(decimal.NewFromInt(0))
 }
 
-func (f FixedFee) validate() error {
-	if f.BaseFee < 0 || f.QuoteFee < 0 {
-		return ErrInvalidFixedFee
-	}
-
-	if (f.BaseFee > 0 && f.QuoteFee == 0) || (f.QuoteFee > 0 && f.BaseFee == 0) {
-		return ErrMissingFixedFee
-	}
-
-	return nil
-}
-
 // IsTradable returns true if the market is available for trading
 func (m *Market) IsTradable() bool {
 	return m.Tradable
@@ -52,10 +40,8 @@ func (m *Market) QuoteAssetPrice() decimal.Decimal {
 }
 
 // IsStrategyPluggable returns true if the the startegy isn't automated.
-// For backward compatibility it returns whether the strategy is zero-ed or,
-// on the contrary, its type is extaclty PluggableStrategyType.
 func (m *Market) IsStrategyPluggable() bool {
-	return m.Strategy.IsZero() || m.Strategy.Type == PluggableStrategyType
+	return !m.Strategy.IsZero() && m.Strategy.Type == int(StrategyTypePluggable)
 }
 
 // IsStrategyPluggableInitialized returns true if the prices have been set.
@@ -153,8 +139,12 @@ func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
 		return err
 	}
 
-	m.FixedFee.BaseFee = baseFee
-	m.FixedFee.QuoteFee = quoteFee
+	if baseFee > 0 {
+		m.FixedFee.BaseFee = baseFee
+	}
+	if quoteFee > 0 {
+		m.FixedFee.QuoteFee = quoteFee
+	}
 	return nil
 }
 
@@ -378,9 +368,6 @@ func validateFee(basisPoint int64) error {
 func validateFixedFee(baseFee, quoteFee int64) error {
 	if baseFee < 0 || quoteFee < 0 {
 		return ErrInvalidFixedFee
-	}
-	if (baseFee > 0 && quoteFee == 0) || (quoteFee > 0 && baseFee == 0) {
-		return ErrMissingFixedFee
 	}
 
 	return nil

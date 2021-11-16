@@ -37,8 +37,6 @@ var (
 	ErrMarketInvalidQuoteAsset = errors.New("invalid quote asset")
 	// ErrInvalidFixedFee ...
 	ErrInvalidFixedFee = errors.New("fixed fee must be a positive value")
-	// ErrMissingFixedFee ...
-	ErrMissingFixedFee = errors.New("fixed fee requires both base and quote amounts to be defined")
 	// ErrMarketPreviewAmountTooLow is returned when a preview fails because
 	// the provided amount makes the previewed amount to be too low (lower than
 	// the optional fixed fee).

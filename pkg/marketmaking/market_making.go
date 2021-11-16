@@ -32,7 +32,7 @@ func NewStrategyFromFormula(
 
 // IsZero checks if the given strategy is the zero value
 func (ms MakingStrategy) IsZero() bool {
-	return ms.Type == 0
+	return ms.Type == 0 && ms.formula == nil
 }
 
 // Formula returns the mathematical formula of the MM strategy

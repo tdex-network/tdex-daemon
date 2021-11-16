@@ -7,8 +7,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
-const PluggableStrategyType = 255
-
 type PluggableStrategyOpts struct {
 	BalanceIn  uint64
 	BalanceOut uint64
@@ -60,5 +58,5 @@ func (s PluggableStrategy) InGivenOut(_opts interface{}, amountOut uint64) (uint
 }
 
 func (s PluggableStrategy) FormulaType() int {
-	return PluggableStrategyType
+	return int(StrategyTypePluggable)
 }
