@@ -34,6 +34,7 @@ type OperatorClient interface {
 	WithdrawFee(ctx context.Context, in *WithdrawFeeRequest, opts ...grpc.CallOption) (*WithdrawFeeReply, error)
 	// Creates a new market account in the daemon's wallet.
 	NewMarket(ctx context.Context, in *NewMarketRequest, opts ...grpc.CallOption) (*NewMarketReply, error)
+	GetMarketInfo(ctx context.Context, in *GetMarketInfoRequest, opts ...grpc.CallOption) (*GetMarketInfoReply, error)
 	// Returns some new derived address(es) for the given market.
 	GetMarketAddress(ctx context.Context, in *GetMarketAddressRequest, opts ...grpc.CallOption) (*GetMarketAddressReply, error)
 	// Returns the list of all derived addresses for the given market.
@@ -170,6 +171,15 @@ func (c *operatorClient) WithdrawFee(ctx context.Context, in *WithdrawFeeRequest
 func (c *operatorClient) NewMarket(ctx context.Context, in *NewMarketRequest, opts ...grpc.CallOption) (*NewMarketReply, error) {
 	out := new(NewMarketReply)
 	err := c.cc.Invoke(ctx, "/Operator/NewMarket", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorClient) GetMarketInfo(ctx context.Context, in *GetMarketInfoRequest, opts ...grpc.CallOption) (*GetMarketInfoReply, error) {
+	out := new(GetMarketInfoReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetMarketInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -530,6 +540,7 @@ type OperatorServer interface {
 	WithdrawFee(context.Context, *WithdrawFeeRequest) (*WithdrawFeeReply, error)
 	// Creates a new market account in the daemon's wallet.
 	NewMarket(context.Context, *NewMarketRequest) (*NewMarketReply, error)
+	GetMarketInfo(context.Context, *GetMarketInfoRequest) (*GetMarketInfoReply, error)
 	// Returns some new derived address(es) for the given market.
 	GetMarketAddress(context.Context, *GetMarketAddressRequest) (*GetMarketAddressReply, error)
 	// Returns the list of all derived addresses for the given market.
@@ -626,6 +637,9 @@ func (UnimplementedOperatorServer) WithdrawFee(context.Context, *WithdrawFeeRequ
 }
 func (UnimplementedOperatorServer) NewMarket(context.Context, *NewMarketRequest) (*NewMarketReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewMarket not implemented")
+}
+func (UnimplementedOperatorServer) GetMarketInfo(context.Context, *GetMarketInfoRequest) (*GetMarketInfoReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMarketInfo not implemented")
 }
 func (UnimplementedOperatorServer) GetMarketAddress(context.Context, *GetMarketAddressRequest) (*GetMarketAddressReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketAddress not implemented")
@@ -858,6 +872,24 @@ func _Operator_NewMarket_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OperatorServer).NewMarket(ctx, req.(*NewMarketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Operator_GetMarketInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMarketInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).GetMarketInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/GetMarketInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).GetMarketInfo(ctx, req.(*GetMarketInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1478,6 +1510,10 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NewMarket",
 			Handler:    _Operator_NewMarket_Handler,
+		},
+		{
+			MethodName: "GetMarketInfo",
+			Handler:    _Operator_GetMarketInfo_Handler,
 		},
 		{
 			MethodName: "GetMarketAddress",

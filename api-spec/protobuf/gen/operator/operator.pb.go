@@ -861,6 +861,100 @@ func (*NewMarketReply) Descriptor() ([]byte, []int) {
 	return file_operator_proto_rawDescGZIP(), []int{13}
 }
 
+type GetMarketInfoRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Market *types.Market `protobuf:"bytes,1,opt,name=market,proto3" json:"market,omitempty"`
+}
+
+func (x *GetMarketInfoRequest) Reset() {
+	*x = GetMarketInfoRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_operator_proto_msgTypes[14]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetMarketInfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMarketInfoRequest) ProtoMessage() {}
+
+func (x *GetMarketInfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_operator_proto_msgTypes[14]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMarketInfoRequest.ProtoReflect.Descriptor instead.
+func (*GetMarketInfoRequest) Descriptor() ([]byte, []int) {
+	return file_operator_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetMarketInfoRequest) GetMarket() *types.Market {
+	if x != nil {
+		return x.Market
+	}
+	return nil
+}
+
+type GetMarketInfoReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Info *MarketInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+}
+
+func (x *GetMarketInfoReply) Reset() {
+	*x = GetMarketInfoReply{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_operator_proto_msgTypes[15]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetMarketInfoReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMarketInfoReply) ProtoMessage() {}
+
+func (x *GetMarketInfoReply) ProtoReflect() protoreflect.Message {
+	mi := &file_operator_proto_msgTypes[15]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMarketInfoReply.ProtoReflect.Descriptor instead.
+func (*GetMarketInfoReply) Descriptor() ([]byte, []int) {
+	return file_operator_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetMarketInfoReply) GetInfo() *MarketInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
 type GetMarketAddressRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -875,7 +969,7 @@ type GetMarketAddressRequest struct {
 func (x *GetMarketAddressRequest) Reset() {
 	*x = GetMarketAddressRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[14]
+		mi := &file_operator_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -888,7 +982,7 @@ func (x *GetMarketAddressRequest) String() string {
 func (*GetMarketAddressRequest) ProtoMessage() {}
 
 func (x *GetMarketAddressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[14]
+	mi := &file_operator_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -901,7 +995,7 @@ func (x *GetMarketAddressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMarketAddressRequest.ProtoReflect.Descriptor instead.
 func (*GetMarketAddressRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{14}
+	return file_operator_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetMarketAddressRequest) GetMarket() *types.Market {
@@ -930,7 +1024,7 @@ type GetMarketAddressReply struct {
 func (x *GetMarketAddressReply) Reset() {
 	*x = GetMarketAddressReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[15]
+		mi := &file_operator_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -943,7 +1037,7 @@ func (x *GetMarketAddressReply) String() string {
 func (*GetMarketAddressReply) ProtoMessage() {}
 
 func (x *GetMarketAddressReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[15]
+	mi := &file_operator_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -956,7 +1050,7 @@ func (x *GetMarketAddressReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMarketAddressReply.ProtoReflect.Descriptor instead.
 func (*GetMarketAddressReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{15}
+	return file_operator_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetMarketAddressReply) GetAddressWithBlindingKey() []*types.AddressWithBlindingKey {
@@ -978,7 +1072,7 @@ type ListMarketAddressesRequest struct {
 func (x *ListMarketAddressesRequest) Reset() {
 	*x = ListMarketAddressesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[16]
+		mi := &file_operator_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -991,7 +1085,7 @@ func (x *ListMarketAddressesRequest) String() string {
 func (*ListMarketAddressesRequest) ProtoMessage() {}
 
 func (x *ListMarketAddressesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[16]
+	mi := &file_operator_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1004,7 +1098,7 @@ func (x *ListMarketAddressesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMarketAddressesRequest.ProtoReflect.Descriptor instead.
 func (*ListMarketAddressesRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{16}
+	return file_operator_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListMarketAddressesRequest) GetMarket() *types.Market {
@@ -1027,7 +1121,7 @@ type ListMarketAddressesReply struct {
 func (x *ListMarketAddressesReply) Reset() {
 	*x = ListMarketAddressesReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[17]
+		mi := &file_operator_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1040,7 +1134,7 @@ func (x *ListMarketAddressesReply) String() string {
 func (*ListMarketAddressesReply) ProtoMessage() {}
 
 func (x *ListMarketAddressesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[17]
+	mi := &file_operator_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1053,7 +1147,7 @@ func (x *ListMarketAddressesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMarketAddressesReply.ProtoReflect.Descriptor instead.
 func (*ListMarketAddressesReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{17}
+	return file_operator_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListMarketAddressesReply) GetAddressWithBlindingKey() []*types.AddressWithBlindingKey {
@@ -1075,7 +1169,7 @@ type GetMarketBalanceRequest struct {
 func (x *GetMarketBalanceRequest) Reset() {
 	*x = GetMarketBalanceRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[18]
+		mi := &file_operator_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1088,7 +1182,7 @@ func (x *GetMarketBalanceRequest) String() string {
 func (*GetMarketBalanceRequest) ProtoMessage() {}
 
 func (x *GetMarketBalanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[18]
+	mi := &file_operator_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1101,7 +1195,7 @@ func (x *GetMarketBalanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMarketBalanceRequest.ProtoReflect.Descriptor instead.
 func (*GetMarketBalanceRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{18}
+	return file_operator_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetMarketBalanceRequest) GetMarket() *types.Market {
@@ -1125,7 +1219,7 @@ type GetMarketBalanceReply struct {
 func (x *GetMarketBalanceReply) Reset() {
 	*x = GetMarketBalanceReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[19]
+		mi := &file_operator_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1138,7 +1232,7 @@ func (x *GetMarketBalanceReply) String() string {
 func (*GetMarketBalanceReply) ProtoMessage() {}
 
 func (x *GetMarketBalanceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[19]
+	mi := &file_operator_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1151,7 +1245,7 @@ func (x *GetMarketBalanceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMarketBalanceReply.ProtoReflect.Descriptor instead.
 func (*GetMarketBalanceReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{19}
+	return file_operator_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetMarketBalanceReply) GetAvailableBalance() *types.Balance {
@@ -1183,7 +1277,7 @@ type ClaimMarketDepositsRequest struct {
 func (x *ClaimMarketDepositsRequest) Reset() {
 	*x = ClaimMarketDepositsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[20]
+		mi := &file_operator_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1196,7 +1290,7 @@ func (x *ClaimMarketDepositsRequest) String() string {
 func (*ClaimMarketDepositsRequest) ProtoMessage() {}
 
 func (x *ClaimMarketDepositsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[20]
+	mi := &file_operator_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1209,7 +1303,7 @@ func (x *ClaimMarketDepositsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaimMarketDepositsRequest.ProtoReflect.Descriptor instead.
 func (*ClaimMarketDepositsRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{20}
+	return file_operator_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ClaimMarketDepositsRequest) GetMarket() *types.Market {
@@ -1235,7 +1329,7 @@ type ClaimMarketDepositsReply struct {
 func (x *ClaimMarketDepositsReply) Reset() {
 	*x = ClaimMarketDepositsReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[21]
+		mi := &file_operator_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1248,7 +1342,7 @@ func (x *ClaimMarketDepositsReply) String() string {
 func (*ClaimMarketDepositsReply) ProtoMessage() {}
 
 func (x *ClaimMarketDepositsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[21]
+	mi := &file_operator_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1261,7 +1355,7 @@ func (x *ClaimMarketDepositsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaimMarketDepositsReply.ProtoReflect.Descriptor instead.
 func (*ClaimMarketDepositsReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{21}
+	return file_operator_proto_rawDescGZIP(), []int{23}
 }
 
 type OpenMarketRequest struct {
@@ -1276,7 +1370,7 @@ type OpenMarketRequest struct {
 func (x *OpenMarketRequest) Reset() {
 	*x = OpenMarketRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[22]
+		mi := &file_operator_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1289,7 +1383,7 @@ func (x *OpenMarketRequest) String() string {
 func (*OpenMarketRequest) ProtoMessage() {}
 
 func (x *OpenMarketRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[22]
+	mi := &file_operator_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1302,7 +1396,7 @@ func (x *OpenMarketRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenMarketRequest.ProtoReflect.Descriptor instead.
 func (*OpenMarketRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{22}
+	return file_operator_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *OpenMarketRequest) GetMarket() *types.Market {
@@ -1321,7 +1415,7 @@ type OpenMarketReply struct {
 func (x *OpenMarketReply) Reset() {
 	*x = OpenMarketReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[23]
+		mi := &file_operator_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1334,7 +1428,7 @@ func (x *OpenMarketReply) String() string {
 func (*OpenMarketReply) ProtoMessage() {}
 
 func (x *OpenMarketReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[23]
+	mi := &file_operator_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1347,7 +1441,7 @@ func (x *OpenMarketReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenMarketReply.ProtoReflect.Descriptor instead.
 func (*OpenMarketReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{23}
+	return file_operator_proto_rawDescGZIP(), []int{25}
 }
 
 type CloseMarketRequest struct {
@@ -1362,7 +1456,7 @@ type CloseMarketRequest struct {
 func (x *CloseMarketRequest) Reset() {
 	*x = CloseMarketRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[24]
+		mi := &file_operator_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1375,7 +1469,7 @@ func (x *CloseMarketRequest) String() string {
 func (*CloseMarketRequest) ProtoMessage() {}
 
 func (x *CloseMarketRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[24]
+	mi := &file_operator_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1388,7 +1482,7 @@ func (x *CloseMarketRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseMarketRequest.ProtoReflect.Descriptor instead.
 func (*CloseMarketRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{24}
+	return file_operator_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *CloseMarketRequest) GetMarket() *types.Market {
@@ -1407,7 +1501,7 @@ type CloseMarketReply struct {
 func (x *CloseMarketReply) Reset() {
 	*x = CloseMarketReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[25]
+		mi := &file_operator_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1420,7 +1514,7 @@ func (x *CloseMarketReply) String() string {
 func (*CloseMarketReply) ProtoMessage() {}
 
 func (x *CloseMarketReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[25]
+	mi := &file_operator_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1433,7 +1527,7 @@ func (x *CloseMarketReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseMarketReply.ProtoReflect.Descriptor instead.
 func (*CloseMarketReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{25}
+	return file_operator_proto_rawDescGZIP(), []int{27}
 }
 
 type ListMarketsRequest struct {
@@ -1445,7 +1539,7 @@ type ListMarketsRequest struct {
 func (x *ListMarketsRequest) Reset() {
 	*x = ListMarketsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[26]
+		mi := &file_operator_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1458,7 +1552,7 @@ func (x *ListMarketsRequest) String() string {
 func (*ListMarketsRequest) ProtoMessage() {}
 
 func (x *ListMarketsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[26]
+	mi := &file_operator_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1471,7 +1565,7 @@ func (x *ListMarketsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMarketsRequest.ProtoReflect.Descriptor instead.
 func (*ListMarketsRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{26}
+	return file_operator_proto_rawDescGZIP(), []int{28}
 }
 
 type ListMarketsReply struct {
@@ -1486,7 +1580,7 @@ type ListMarketsReply struct {
 func (x *ListMarketsReply) Reset() {
 	*x = ListMarketsReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[27]
+		mi := &file_operator_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1499,7 +1593,7 @@ func (x *ListMarketsReply) String() string {
 func (*ListMarketsReply) ProtoMessage() {}
 
 func (x *ListMarketsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[27]
+	mi := &file_operator_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1512,7 +1606,7 @@ func (x *ListMarketsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMarketsReply.ProtoReflect.Descriptor instead.
 func (*ListMarketsReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{27}
+	return file_operator_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListMarketsReply) GetMarkets() []*MarketInfo {
@@ -1533,7 +1627,7 @@ type DropMarketRequest struct {
 func (x *DropMarketRequest) Reset() {
 	*x = DropMarketRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[28]
+		mi := &file_operator_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1546,7 +1640,7 @@ func (x *DropMarketRequest) String() string {
 func (*DropMarketRequest) ProtoMessage() {}
 
 func (x *DropMarketRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[28]
+	mi := &file_operator_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1559,7 +1653,7 @@ func (x *DropMarketRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DropMarketRequest.ProtoReflect.Descriptor instead.
 func (*DropMarketRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{28}
+	return file_operator_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *DropMarketRequest) GetMarket() *types.Market {
@@ -1578,7 +1672,7 @@ type DropMarketReply struct {
 func (x *DropMarketReply) Reset() {
 	*x = DropMarketReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[29]
+		mi := &file_operator_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1591,7 +1685,7 @@ func (x *DropMarketReply) String() string {
 func (*DropMarketReply) ProtoMessage() {}
 
 func (x *DropMarketReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[29]
+	mi := &file_operator_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1604,7 +1698,7 @@ func (x *DropMarketReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DropMarketReply.ProtoReflect.Descriptor instead.
 func (*DropMarketReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{29}
+	return file_operator_proto_rawDescGZIP(), []int{31}
 }
 
 type GetMarketCollectedSwapFeesRequest struct {
@@ -1621,7 +1715,7 @@ type GetMarketCollectedSwapFeesRequest struct {
 func (x *GetMarketCollectedSwapFeesRequest) Reset() {
 	*x = GetMarketCollectedSwapFeesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[30]
+		mi := &file_operator_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1634,7 +1728,7 @@ func (x *GetMarketCollectedSwapFeesRequest) String() string {
 func (*GetMarketCollectedSwapFeesRequest) ProtoMessage() {}
 
 func (x *GetMarketCollectedSwapFeesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[30]
+	mi := &file_operator_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1647,7 +1741,7 @@ func (x *GetMarketCollectedSwapFeesRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetMarketCollectedSwapFeesRequest.ProtoReflect.Descriptor instead.
 func (*GetMarketCollectedSwapFeesRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{30}
+	return file_operator_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetMarketCollectedSwapFeesRequest) GetMarket() *types.Market {
@@ -1678,7 +1772,7 @@ type GetMarketCollectedSwapFeesReply struct {
 func (x *GetMarketCollectedSwapFeesReply) Reset() {
 	*x = GetMarketCollectedSwapFeesReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[31]
+		mi := &file_operator_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1691,7 +1785,7 @@ func (x *GetMarketCollectedSwapFeesReply) String() string {
 func (*GetMarketCollectedSwapFeesReply) ProtoMessage() {}
 
 func (x *GetMarketCollectedSwapFeesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[31]
+	mi := &file_operator_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1704,7 +1798,7 @@ func (x *GetMarketCollectedSwapFeesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMarketCollectedSwapFeesReply.ProtoReflect.Descriptor instead.
 func (*GetMarketCollectedSwapFeesReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{31}
+	return file_operator_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetMarketCollectedSwapFeesReply) GetCollectedFees() []*FeeInfo {
@@ -1739,7 +1833,7 @@ type WithdrawMarketRequest struct {
 func (x *WithdrawMarketRequest) Reset() {
 	*x = WithdrawMarketRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[32]
+		mi := &file_operator_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1752,7 +1846,7 @@ func (x *WithdrawMarketRequest) String() string {
 func (*WithdrawMarketRequest) ProtoMessage() {}
 
 func (x *WithdrawMarketRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[32]
+	mi := &file_operator_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1765,7 +1859,7 @@ func (x *WithdrawMarketRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawMarketRequest.ProtoReflect.Descriptor instead.
 func (*WithdrawMarketRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{32}
+	return file_operator_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *WithdrawMarketRequest) GetMarket() *types.Market {
@@ -1808,7 +1902,7 @@ type WithdrawMarketReply struct {
 func (x *WithdrawMarketReply) Reset() {
 	*x = WithdrawMarketReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[33]
+		mi := &file_operator_proto_msgTypes[35]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1821,7 +1915,7 @@ func (x *WithdrawMarketReply) String() string {
 func (*WithdrawMarketReply) ProtoMessage() {}
 
 func (x *WithdrawMarketReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[33]
+	mi := &file_operator_proto_msgTypes[35]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1834,7 +1928,7 @@ func (x *WithdrawMarketReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawMarketReply.ProtoReflect.Descriptor instead.
 func (*WithdrawMarketReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{33}
+	return file_operator_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *WithdrawMarketReply) GetTxid() string {
@@ -1858,7 +1952,7 @@ type UpdateMarketPercentageFeeRequest struct {
 func (x *UpdateMarketPercentageFeeRequest) Reset() {
 	*x = UpdateMarketPercentageFeeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[34]
+		mi := &file_operator_proto_msgTypes[36]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1871,7 +1965,7 @@ func (x *UpdateMarketPercentageFeeRequest) String() string {
 func (*UpdateMarketPercentageFeeRequest) ProtoMessage() {}
 
 func (x *UpdateMarketPercentageFeeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[34]
+	mi := &file_operator_proto_msgTypes[36]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1884,7 +1978,7 @@ func (x *UpdateMarketPercentageFeeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMarketPercentageFeeRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMarketPercentageFeeRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{34}
+	return file_operator_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *UpdateMarketPercentageFeeRequest) GetMarket() *types.Market {
@@ -1915,7 +2009,7 @@ type UpdateMarketFixedFeeRequest struct {
 func (x *UpdateMarketFixedFeeRequest) Reset() {
 	*x = UpdateMarketFixedFeeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[35]
+		mi := &file_operator_proto_msgTypes[37]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1928,7 +2022,7 @@ func (x *UpdateMarketFixedFeeRequest) String() string {
 func (*UpdateMarketFixedFeeRequest) ProtoMessage() {}
 
 func (x *UpdateMarketFixedFeeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[35]
+	mi := &file_operator_proto_msgTypes[37]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1941,7 +2035,7 @@ func (x *UpdateMarketFixedFeeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMarketFixedFeeRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMarketFixedFeeRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{35}
+	return file_operator_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *UpdateMarketFixedFeeRequest) GetMarket() *types.Market {
@@ -1970,7 +2064,7 @@ type UpdateMarketFeeReply struct {
 func (x *UpdateMarketFeeReply) Reset() {
 	*x = UpdateMarketFeeReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[36]
+		mi := &file_operator_proto_msgTypes[38]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1983,7 +2077,7 @@ func (x *UpdateMarketFeeReply) String() string {
 func (*UpdateMarketFeeReply) ProtoMessage() {}
 
 func (x *UpdateMarketFeeReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[36]
+	mi := &file_operator_proto_msgTypes[38]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1996,7 +2090,7 @@ func (x *UpdateMarketFeeReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMarketFeeReply.ProtoReflect.Descriptor instead.
 func (*UpdateMarketFeeReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{36}
+	return file_operator_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *UpdateMarketFeeReply) GetMarketWithFee() *types.MarketWithFee {
@@ -2020,7 +2114,7 @@ type UpdateMarketPriceRequest struct {
 func (x *UpdateMarketPriceRequest) Reset() {
 	*x = UpdateMarketPriceRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[37]
+		mi := &file_operator_proto_msgTypes[39]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2033,7 +2127,7 @@ func (x *UpdateMarketPriceRequest) String() string {
 func (*UpdateMarketPriceRequest) ProtoMessage() {}
 
 func (x *UpdateMarketPriceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[37]
+	mi := &file_operator_proto_msgTypes[39]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2046,7 +2140,7 @@ func (x *UpdateMarketPriceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMarketPriceRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMarketPriceRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{37}
+	return file_operator_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *UpdateMarketPriceRequest) GetMarket() *types.Market {
@@ -2072,7 +2166,7 @@ type UpdateMarketPriceReply struct {
 func (x *UpdateMarketPriceReply) Reset() {
 	*x = UpdateMarketPriceReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[38]
+		mi := &file_operator_proto_msgTypes[40]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2085,7 +2179,7 @@ func (x *UpdateMarketPriceReply) String() string {
 func (*UpdateMarketPriceReply) ProtoMessage() {}
 
 func (x *UpdateMarketPriceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[38]
+	mi := &file_operator_proto_msgTypes[40]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2098,7 +2192,7 @@ func (x *UpdateMarketPriceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMarketPriceReply.ProtoReflect.Descriptor instead.
 func (*UpdateMarketPriceReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{38}
+	return file_operator_proto_rawDescGZIP(), []int{40}
 }
 
 type UpdateMarketStrategyRequest struct {
@@ -2117,7 +2211,7 @@ type UpdateMarketStrategyRequest struct {
 func (x *UpdateMarketStrategyRequest) Reset() {
 	*x = UpdateMarketStrategyRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[39]
+		mi := &file_operator_proto_msgTypes[41]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2130,7 +2224,7 @@ func (x *UpdateMarketStrategyRequest) String() string {
 func (*UpdateMarketStrategyRequest) ProtoMessage() {}
 
 func (x *UpdateMarketStrategyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[39]
+	mi := &file_operator_proto_msgTypes[41]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2143,7 +2237,7 @@ func (x *UpdateMarketStrategyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMarketStrategyRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMarketStrategyRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{39}
+	return file_operator_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *UpdateMarketStrategyRequest) GetMarket() *types.Market {
@@ -2176,7 +2270,7 @@ type UpdateMarketStrategyReply struct {
 func (x *UpdateMarketStrategyReply) Reset() {
 	*x = UpdateMarketStrategyReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[40]
+		mi := &file_operator_proto_msgTypes[42]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2189,7 +2283,7 @@ func (x *UpdateMarketStrategyReply) String() string {
 func (*UpdateMarketStrategyReply) ProtoMessage() {}
 
 func (x *UpdateMarketStrategyReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[40]
+	mi := &file_operator_proto_msgTypes[42]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2202,7 +2296,7 @@ func (x *UpdateMarketStrategyReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMarketStrategyReply.ProtoReflect.Descriptor instead.
 func (*UpdateMarketStrategyReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{40}
+	return file_operator_proto_rawDescGZIP(), []int{42}
 }
 
 type GetFeeFragmenterAddressRequest struct {
@@ -2216,7 +2310,7 @@ type GetFeeFragmenterAddressRequest struct {
 func (x *GetFeeFragmenterAddressRequest) Reset() {
 	*x = GetFeeFragmenterAddressRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[41]
+		mi := &file_operator_proto_msgTypes[43]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2229,7 +2323,7 @@ func (x *GetFeeFragmenterAddressRequest) String() string {
 func (*GetFeeFragmenterAddressRequest) ProtoMessage() {}
 
 func (x *GetFeeFragmenterAddressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[41]
+	mi := &file_operator_proto_msgTypes[43]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2242,7 +2336,7 @@ func (x *GetFeeFragmenterAddressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFeeFragmenterAddressRequest.ProtoReflect.Descriptor instead.
 func (*GetFeeFragmenterAddressRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{41}
+	return file_operator_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *GetFeeFragmenterAddressRequest) GetNumOfAddresses() int64 {
@@ -2263,7 +2357,7 @@ type GetFeeFragmenterAddressReply struct {
 func (x *GetFeeFragmenterAddressReply) Reset() {
 	*x = GetFeeFragmenterAddressReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[42]
+		mi := &file_operator_proto_msgTypes[44]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2276,7 +2370,7 @@ func (x *GetFeeFragmenterAddressReply) String() string {
 func (*GetFeeFragmenterAddressReply) ProtoMessage() {}
 
 func (x *GetFeeFragmenterAddressReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[42]
+	mi := &file_operator_proto_msgTypes[44]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2289,7 +2383,7 @@ func (x *GetFeeFragmenterAddressReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFeeFragmenterAddressReply.ProtoReflect.Descriptor instead.
 func (*GetFeeFragmenterAddressReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{42}
+	return file_operator_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *GetFeeFragmenterAddressReply) GetAddressWithBlindingKey() []*types.AddressWithBlindingKey {
@@ -2308,7 +2402,7 @@ type ListFeeFragmenterAddressesRequest struct {
 func (x *ListFeeFragmenterAddressesRequest) Reset() {
 	*x = ListFeeFragmenterAddressesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[43]
+		mi := &file_operator_proto_msgTypes[45]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2321,7 +2415,7 @@ func (x *ListFeeFragmenterAddressesRequest) String() string {
 func (*ListFeeFragmenterAddressesRequest) ProtoMessage() {}
 
 func (x *ListFeeFragmenterAddressesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[43]
+	mi := &file_operator_proto_msgTypes[45]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2334,7 +2428,7 @@ func (x *ListFeeFragmenterAddressesRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ListFeeFragmenterAddressesRequest.ProtoReflect.Descriptor instead.
 func (*ListFeeFragmenterAddressesRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{43}
+	return file_operator_proto_rawDescGZIP(), []int{45}
 }
 
 type ListFeeFragmenterAddressesReply struct {
@@ -2348,7 +2442,7 @@ type ListFeeFragmenterAddressesReply struct {
 func (x *ListFeeFragmenterAddressesReply) Reset() {
 	*x = ListFeeFragmenterAddressesReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[44]
+		mi := &file_operator_proto_msgTypes[46]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2361,7 +2455,7 @@ func (x *ListFeeFragmenterAddressesReply) String() string {
 func (*ListFeeFragmenterAddressesReply) ProtoMessage() {}
 
 func (x *ListFeeFragmenterAddressesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[44]
+	mi := &file_operator_proto_msgTypes[46]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2374,7 +2468,7 @@ func (x *ListFeeFragmenterAddressesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeeFragmenterAddressesReply.ProtoReflect.Descriptor instead.
 func (*ListFeeFragmenterAddressesReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{44}
+	return file_operator_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ListFeeFragmenterAddressesReply) GetAddressWithBlindingKey() []*types.AddressWithBlindingKey {
@@ -2393,7 +2487,7 @@ type GetFeeFragmenterBalanceRequest struct {
 func (x *GetFeeFragmenterBalanceRequest) Reset() {
 	*x = GetFeeFragmenterBalanceRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[45]
+		mi := &file_operator_proto_msgTypes[47]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2406,7 +2500,7 @@ func (x *GetFeeFragmenterBalanceRequest) String() string {
 func (*GetFeeFragmenterBalanceRequest) ProtoMessage() {}
 
 func (x *GetFeeFragmenterBalanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[45]
+	mi := &file_operator_proto_msgTypes[47]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2419,7 +2513,7 @@ func (x *GetFeeFragmenterBalanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFeeFragmenterBalanceRequest.ProtoReflect.Descriptor instead.
 func (*GetFeeFragmenterBalanceRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{45}
+	return file_operator_proto_rawDescGZIP(), []int{47}
 }
 
 type GetFeeFragmenterBalanceReply struct {
@@ -2435,7 +2529,7 @@ type GetFeeFragmenterBalanceReply struct {
 func (x *GetFeeFragmenterBalanceReply) Reset() {
 	*x = GetFeeFragmenterBalanceReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[46]
+		mi := &file_operator_proto_msgTypes[48]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2448,7 +2542,7 @@ func (x *GetFeeFragmenterBalanceReply) String() string {
 func (*GetFeeFragmenterBalanceReply) ProtoMessage() {}
 
 func (x *GetFeeFragmenterBalanceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[46]
+	mi := &file_operator_proto_msgTypes[48]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2461,7 +2555,7 @@ func (x *GetFeeFragmenterBalanceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFeeFragmenterBalanceReply.ProtoReflect.Descriptor instead.
 func (*GetFeeFragmenterBalanceReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{46}
+	return file_operator_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetFeeFragmenterBalanceReply) GetBalance() map[string]*wallet.BalanceInfo {
@@ -2485,7 +2579,7 @@ type FeeFragmenterSplitFundsRequest struct {
 func (x *FeeFragmenterSplitFundsRequest) Reset() {
 	*x = FeeFragmenterSplitFundsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[47]
+		mi := &file_operator_proto_msgTypes[49]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2498,7 +2592,7 @@ func (x *FeeFragmenterSplitFundsRequest) String() string {
 func (*FeeFragmenterSplitFundsRequest) ProtoMessage() {}
 
 func (x *FeeFragmenterSplitFundsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[47]
+	mi := &file_operator_proto_msgTypes[49]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2511,7 +2605,7 @@ func (x *FeeFragmenterSplitFundsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeeFragmenterSplitFundsRequest.ProtoReflect.Descriptor instead.
 func (*FeeFragmenterSplitFundsRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{47}
+	return file_operator_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *FeeFragmenterSplitFundsRequest) GetMaxFragments() uint32 {
@@ -2540,7 +2634,7 @@ type FragmenterSplitFundsReply struct {
 func (x *FragmenterSplitFundsReply) Reset() {
 	*x = FragmenterSplitFundsReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[48]
+		mi := &file_operator_proto_msgTypes[50]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2553,7 +2647,7 @@ func (x *FragmenterSplitFundsReply) String() string {
 func (*FragmenterSplitFundsReply) ProtoMessage() {}
 
 func (x *FragmenterSplitFundsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[48]
+	mi := &file_operator_proto_msgTypes[50]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2566,7 +2660,7 @@ func (x *FragmenterSplitFundsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FragmenterSplitFundsReply.ProtoReflect.Descriptor instead.
 func (*FragmenterSplitFundsReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{48}
+	return file_operator_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *FragmenterSplitFundsReply) GetMessage() string {
@@ -2590,7 +2684,7 @@ type WithdrawFeeFragmenterRequest struct {
 func (x *WithdrawFeeFragmenterRequest) Reset() {
 	*x = WithdrawFeeFragmenterRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[49]
+		mi := &file_operator_proto_msgTypes[51]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2603,7 +2697,7 @@ func (x *WithdrawFeeFragmenterRequest) String() string {
 func (*WithdrawFeeFragmenterRequest) ProtoMessage() {}
 
 func (x *WithdrawFeeFragmenterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[49]
+	mi := &file_operator_proto_msgTypes[51]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2616,7 +2710,7 @@ func (x *WithdrawFeeFragmenterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawFeeFragmenterRequest.ProtoReflect.Descriptor instead.
 func (*WithdrawFeeFragmenterRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{49}
+	return file_operator_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *WithdrawFeeFragmenterRequest) GetAddress() string {
@@ -2644,7 +2738,7 @@ type WithdrawFeeFragmenterReply struct {
 func (x *WithdrawFeeFragmenterReply) Reset() {
 	*x = WithdrawFeeFragmenterReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[50]
+		mi := &file_operator_proto_msgTypes[52]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2657,7 +2751,7 @@ func (x *WithdrawFeeFragmenterReply) String() string {
 func (*WithdrawFeeFragmenterReply) ProtoMessage() {}
 
 func (x *WithdrawFeeFragmenterReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[50]
+	mi := &file_operator_proto_msgTypes[52]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2670,7 +2764,7 @@ func (x *WithdrawFeeFragmenterReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawFeeFragmenterReply.ProtoReflect.Descriptor instead.
 func (*WithdrawFeeFragmenterReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{50}
+	return file_operator_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *WithdrawFeeFragmenterReply) GetTxid() string {
@@ -2691,7 +2785,7 @@ type GetMarketFragmenterAddressRequest struct {
 func (x *GetMarketFragmenterAddressRequest) Reset() {
 	*x = GetMarketFragmenterAddressRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[51]
+		mi := &file_operator_proto_msgTypes[53]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2704,7 +2798,7 @@ func (x *GetMarketFragmenterAddressRequest) String() string {
 func (*GetMarketFragmenterAddressRequest) ProtoMessage() {}
 
 func (x *GetMarketFragmenterAddressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[51]
+	mi := &file_operator_proto_msgTypes[53]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2717,7 +2811,7 @@ func (x *GetMarketFragmenterAddressRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetMarketFragmenterAddressRequest.ProtoReflect.Descriptor instead.
 func (*GetMarketFragmenterAddressRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{51}
+	return file_operator_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *GetMarketFragmenterAddressRequest) GetNumOfAddresses() int64 {
@@ -2738,7 +2832,7 @@ type GetMarketFragmenterAddressReply struct {
 func (x *GetMarketFragmenterAddressReply) Reset() {
 	*x = GetMarketFragmenterAddressReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[52]
+		mi := &file_operator_proto_msgTypes[54]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2751,7 +2845,7 @@ func (x *GetMarketFragmenterAddressReply) String() string {
 func (*GetMarketFragmenterAddressReply) ProtoMessage() {}
 
 func (x *GetMarketFragmenterAddressReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[52]
+	mi := &file_operator_proto_msgTypes[54]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2764,7 +2858,7 @@ func (x *GetMarketFragmenterAddressReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMarketFragmenterAddressReply.ProtoReflect.Descriptor instead.
 func (*GetMarketFragmenterAddressReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{52}
+	return file_operator_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *GetMarketFragmenterAddressReply) GetAddressWithBlindingKey() []*types.AddressWithBlindingKey {
@@ -2783,7 +2877,7 @@ type ListMarketFragmenterAddressesRequest struct {
 func (x *ListMarketFragmenterAddressesRequest) Reset() {
 	*x = ListMarketFragmenterAddressesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[53]
+		mi := &file_operator_proto_msgTypes[55]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2796,7 +2890,7 @@ func (x *ListMarketFragmenterAddressesRequest) String() string {
 func (*ListMarketFragmenterAddressesRequest) ProtoMessage() {}
 
 func (x *ListMarketFragmenterAddressesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[53]
+	mi := &file_operator_proto_msgTypes[55]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2809,7 +2903,7 @@ func (x *ListMarketFragmenterAddressesRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use ListMarketFragmenterAddressesRequest.ProtoReflect.Descriptor instead.
 func (*ListMarketFragmenterAddressesRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{53}
+	return file_operator_proto_rawDescGZIP(), []int{55}
 }
 
 type ListMarketFragmenterAddressesReply struct {
@@ -2823,7 +2917,7 @@ type ListMarketFragmenterAddressesReply struct {
 func (x *ListMarketFragmenterAddressesReply) Reset() {
 	*x = ListMarketFragmenterAddressesReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[54]
+		mi := &file_operator_proto_msgTypes[56]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2836,7 +2930,7 @@ func (x *ListMarketFragmenterAddressesReply) String() string {
 func (*ListMarketFragmenterAddressesReply) ProtoMessage() {}
 
 func (x *ListMarketFragmenterAddressesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[54]
+	mi := &file_operator_proto_msgTypes[56]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2849,7 +2943,7 @@ func (x *ListMarketFragmenterAddressesReply) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ListMarketFragmenterAddressesReply.ProtoReflect.Descriptor instead.
 func (*ListMarketFragmenterAddressesReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{54}
+	return file_operator_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ListMarketFragmenterAddressesReply) GetAddressWithBlindingKey() []*types.AddressWithBlindingKey {
@@ -2868,7 +2962,7 @@ type GetMarketFragmenterBalanceRequest struct {
 func (x *GetMarketFragmenterBalanceRequest) Reset() {
 	*x = GetMarketFragmenterBalanceRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[55]
+		mi := &file_operator_proto_msgTypes[57]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2881,7 +2975,7 @@ func (x *GetMarketFragmenterBalanceRequest) String() string {
 func (*GetMarketFragmenterBalanceRequest) ProtoMessage() {}
 
 func (x *GetMarketFragmenterBalanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[55]
+	mi := &file_operator_proto_msgTypes[57]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2894,7 +2988,7 @@ func (x *GetMarketFragmenterBalanceRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetMarketFragmenterBalanceRequest.ProtoReflect.Descriptor instead.
 func (*GetMarketFragmenterBalanceRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{55}
+	return file_operator_proto_rawDescGZIP(), []int{57}
 }
 
 type GetMarketFragmenterBalanceReply struct {
@@ -2910,7 +3004,7 @@ type GetMarketFragmenterBalanceReply struct {
 func (x *GetMarketFragmenterBalanceReply) Reset() {
 	*x = GetMarketFragmenterBalanceReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[56]
+		mi := &file_operator_proto_msgTypes[58]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2923,7 +3017,7 @@ func (x *GetMarketFragmenterBalanceReply) String() string {
 func (*GetMarketFragmenterBalanceReply) ProtoMessage() {}
 
 func (x *GetMarketFragmenterBalanceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[56]
+	mi := &file_operator_proto_msgTypes[58]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2936,7 +3030,7 @@ func (x *GetMarketFragmenterBalanceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMarketFragmenterBalanceReply.ProtoReflect.Descriptor instead.
 func (*GetMarketFragmenterBalanceReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{56}
+	return file_operator_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *GetMarketFragmenterBalanceReply) GetBalance() map[string]*wallet.BalanceInfo {
@@ -2960,7 +3054,7 @@ type MarketFragmenterSplitFundsRequest struct {
 func (x *MarketFragmenterSplitFundsRequest) Reset() {
 	*x = MarketFragmenterSplitFundsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[57]
+		mi := &file_operator_proto_msgTypes[59]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2973,7 +3067,7 @@ func (x *MarketFragmenterSplitFundsRequest) String() string {
 func (*MarketFragmenterSplitFundsRequest) ProtoMessage() {}
 
 func (x *MarketFragmenterSplitFundsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[57]
+	mi := &file_operator_proto_msgTypes[59]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2986,7 +3080,7 @@ func (x *MarketFragmenterSplitFundsRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use MarketFragmenterSplitFundsRequest.ProtoReflect.Descriptor instead.
 func (*MarketFragmenterSplitFundsRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{57}
+	return file_operator_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *MarketFragmenterSplitFundsRequest) GetMarket() *types.Market {
@@ -3017,7 +3111,7 @@ type WithdrawMarketFragmenterRequest struct {
 func (x *WithdrawMarketFragmenterRequest) Reset() {
 	*x = WithdrawMarketFragmenterRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[58]
+		mi := &file_operator_proto_msgTypes[60]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3030,7 +3124,7 @@ func (x *WithdrawMarketFragmenterRequest) String() string {
 func (*WithdrawMarketFragmenterRequest) ProtoMessage() {}
 
 func (x *WithdrawMarketFragmenterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[58]
+	mi := &file_operator_proto_msgTypes[60]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3043,7 +3137,7 @@ func (x *WithdrawMarketFragmenterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawMarketFragmenterRequest.ProtoReflect.Descriptor instead.
 func (*WithdrawMarketFragmenterRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{58}
+	return file_operator_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *WithdrawMarketFragmenterRequest) GetAddress() string {
@@ -3071,7 +3165,7 @@ type WithdrawMarketFragmenterReply struct {
 func (x *WithdrawMarketFragmenterReply) Reset() {
 	*x = WithdrawMarketFragmenterReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[59]
+		mi := &file_operator_proto_msgTypes[61]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3084,7 +3178,7 @@ func (x *WithdrawMarketFragmenterReply) String() string {
 func (*WithdrawMarketFragmenterReply) ProtoMessage() {}
 
 func (x *WithdrawMarketFragmenterReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[59]
+	mi := &file_operator_proto_msgTypes[61]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3097,7 +3191,7 @@ func (x *WithdrawMarketFragmenterReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawMarketFragmenterReply.ProtoReflect.Descriptor instead.
 func (*WithdrawMarketFragmenterReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{59}
+	return file_operator_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *WithdrawMarketFragmenterReply) GetTxid() string {
@@ -3121,7 +3215,7 @@ type ListTradesRequest struct {
 func (x *ListTradesRequest) Reset() {
 	*x = ListTradesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[60]
+		mi := &file_operator_proto_msgTypes[62]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3134,7 +3228,7 @@ func (x *ListTradesRequest) String() string {
 func (*ListTradesRequest) ProtoMessage() {}
 
 func (x *ListTradesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[60]
+	mi := &file_operator_proto_msgTypes[62]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3147,7 +3241,7 @@ func (x *ListTradesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTradesRequest.ProtoReflect.Descriptor instead.
 func (*ListTradesRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{60}
+	return file_operator_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ListTradesRequest) GetMarket() *types.Market {
@@ -3177,7 +3271,7 @@ type ListTradesReply struct {
 func (x *ListTradesReply) Reset() {
 	*x = ListTradesReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[61]
+		mi := &file_operator_proto_msgTypes[63]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3190,7 +3284,7 @@ func (x *ListTradesReply) String() string {
 func (*ListTradesReply) ProtoMessage() {}
 
 func (x *ListTradesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[61]
+	mi := &file_operator_proto_msgTypes[63]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3203,7 +3297,7 @@ func (x *ListTradesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTradesReply.ProtoReflect.Descriptor instead.
 func (*ListTradesReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{61}
+	return file_operator_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *ListTradesReply) GetTrades() []*TradeInfo {
@@ -3222,7 +3316,7 @@ type ReloadUtxosRequest struct {
 func (x *ReloadUtxosRequest) Reset() {
 	*x = ReloadUtxosRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[62]
+		mi := &file_operator_proto_msgTypes[64]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3235,7 +3329,7 @@ func (x *ReloadUtxosRequest) String() string {
 func (*ReloadUtxosRequest) ProtoMessage() {}
 
 func (x *ReloadUtxosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[62]
+	mi := &file_operator_proto_msgTypes[64]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3248,7 +3342,7 @@ func (x *ReloadUtxosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadUtxosRequest.ProtoReflect.Descriptor instead.
 func (*ReloadUtxosRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{62}
+	return file_operator_proto_rawDescGZIP(), []int{64}
 }
 
 type ReloadUtxosReply struct {
@@ -3260,7 +3354,7 @@ type ReloadUtxosReply struct {
 func (x *ReloadUtxosReply) Reset() {
 	*x = ReloadUtxosReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[63]
+		mi := &file_operator_proto_msgTypes[65]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3273,7 +3367,7 @@ func (x *ReloadUtxosReply) String() string {
 func (*ReloadUtxosReply) ProtoMessage() {}
 
 func (x *ReloadUtxosReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[63]
+	mi := &file_operator_proto_msgTypes[65]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3286,7 +3380,7 @@ func (x *ReloadUtxosReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadUtxosReply.ProtoReflect.Descriptor instead.
 func (*ReloadUtxosReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{63}
+	return file_operator_proto_rawDescGZIP(), []int{65}
 }
 
 type ListUtxosRequest struct {
@@ -3303,7 +3397,7 @@ type ListUtxosRequest struct {
 func (x *ListUtxosRequest) Reset() {
 	*x = ListUtxosRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[64]
+		mi := &file_operator_proto_msgTypes[66]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3316,7 +3410,7 @@ func (x *ListUtxosRequest) String() string {
 func (*ListUtxosRequest) ProtoMessage() {}
 
 func (x *ListUtxosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[64]
+	mi := &file_operator_proto_msgTypes[66]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3329,7 +3423,7 @@ func (x *ListUtxosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUtxosRequest.ProtoReflect.Descriptor instead.
 func (*ListUtxosRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{64}
+	return file_operator_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ListUtxosRequest) GetAccountIndex() uint64 {
@@ -3362,7 +3456,7 @@ type ListUtxosReply struct {
 func (x *ListUtxosReply) Reset() {
 	*x = ListUtxosReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[65]
+		mi := &file_operator_proto_msgTypes[67]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3375,7 +3469,7 @@ func (x *ListUtxosReply) String() string {
 func (*ListUtxosReply) ProtoMessage() {}
 
 func (x *ListUtxosReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[65]
+	mi := &file_operator_proto_msgTypes[67]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3388,7 +3482,7 @@ func (x *ListUtxosReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUtxosReply.ProtoReflect.Descriptor instead.
 func (*ListUtxosReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{65}
+	return file_operator_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ListUtxosReply) GetUnspents() []*UtxoInfo {
@@ -3429,7 +3523,7 @@ type AddWebhookRequest struct {
 func (x *AddWebhookRequest) Reset() {
 	*x = AddWebhookRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[66]
+		mi := &file_operator_proto_msgTypes[68]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3442,7 +3536,7 @@ func (x *AddWebhookRequest) String() string {
 func (*AddWebhookRequest) ProtoMessage() {}
 
 func (x *AddWebhookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[66]
+	mi := &file_operator_proto_msgTypes[68]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3455,7 +3549,7 @@ func (x *AddWebhookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddWebhookRequest.ProtoReflect.Descriptor instead.
 func (*AddWebhookRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{66}
+	return file_operator_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *AddWebhookRequest) GetEndpoint() string {
@@ -3491,7 +3585,7 @@ type AddWebhookReply struct {
 func (x *AddWebhookReply) Reset() {
 	*x = AddWebhookReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[67]
+		mi := &file_operator_proto_msgTypes[69]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3504,7 +3598,7 @@ func (x *AddWebhookReply) String() string {
 func (*AddWebhookReply) ProtoMessage() {}
 
 func (x *AddWebhookReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[67]
+	mi := &file_operator_proto_msgTypes[69]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3517,7 +3611,7 @@ func (x *AddWebhookReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddWebhookReply.ProtoReflect.Descriptor instead.
 func (*AddWebhookReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{67}
+	return file_operator_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *AddWebhookReply) GetId() string {
@@ -3539,7 +3633,7 @@ type RemoveWebhookRequest struct {
 func (x *RemoveWebhookRequest) Reset() {
 	*x = RemoveWebhookRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[68]
+		mi := &file_operator_proto_msgTypes[70]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3552,7 +3646,7 @@ func (x *RemoveWebhookRequest) String() string {
 func (*RemoveWebhookRequest) ProtoMessage() {}
 
 func (x *RemoveWebhookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[68]
+	mi := &file_operator_proto_msgTypes[70]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3565,7 +3659,7 @@ func (x *RemoveWebhookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveWebhookRequest.ProtoReflect.Descriptor instead.
 func (*RemoveWebhookRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{68}
+	return file_operator_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *RemoveWebhookRequest) GetId() string {
@@ -3584,7 +3678,7 @@ type RemoveWebhookReply struct {
 func (x *RemoveWebhookReply) Reset() {
 	*x = RemoveWebhookReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[69]
+		mi := &file_operator_proto_msgTypes[71]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3597,7 +3691,7 @@ func (x *RemoveWebhookReply) String() string {
 func (*RemoveWebhookReply) ProtoMessage() {}
 
 func (x *RemoveWebhookReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[69]
+	mi := &file_operator_proto_msgTypes[71]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3610,7 +3704,7 @@ func (x *RemoveWebhookReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveWebhookReply.ProtoReflect.Descriptor instead.
 func (*RemoveWebhookReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{69}
+	return file_operator_proto_rawDescGZIP(), []int{71}
 }
 
 type ListWebhooksRequest struct {
@@ -3625,7 +3719,7 @@ type ListWebhooksRequest struct {
 func (x *ListWebhooksRequest) Reset() {
 	*x = ListWebhooksRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[70]
+		mi := &file_operator_proto_msgTypes[72]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3638,7 +3732,7 @@ func (x *ListWebhooksRequest) String() string {
 func (*ListWebhooksRequest) ProtoMessage() {}
 
 func (x *ListWebhooksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[70]
+	mi := &file_operator_proto_msgTypes[72]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3651,7 +3745,7 @@ func (x *ListWebhooksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWebhooksRequest.ProtoReflect.Descriptor instead.
 func (*ListWebhooksRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{70}
+	return file_operator_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *ListWebhooksRequest) GetAction() ActionType {
@@ -3673,7 +3767,7 @@ type ListWebhooksReply struct {
 func (x *ListWebhooksReply) Reset() {
 	*x = ListWebhooksReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[71]
+		mi := &file_operator_proto_msgTypes[73]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3686,7 +3780,7 @@ func (x *ListWebhooksReply) String() string {
 func (*ListWebhooksReply) ProtoMessage() {}
 
 func (x *ListWebhooksReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[71]
+	mi := &file_operator_proto_msgTypes[73]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3699,7 +3793,7 @@ func (x *ListWebhooksReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWebhooksReply.ProtoReflect.Descriptor instead.
 func (*ListWebhooksReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{71}
+	return file_operator_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *ListWebhooksReply) GetWebhookInfo() []*WebhookInfo {
@@ -3723,7 +3817,7 @@ type ListDepositsRequest struct {
 func (x *ListDepositsRequest) Reset() {
 	*x = ListDepositsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[72]
+		mi := &file_operator_proto_msgTypes[74]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3736,7 +3830,7 @@ func (x *ListDepositsRequest) String() string {
 func (*ListDepositsRequest) ProtoMessage() {}
 
 func (x *ListDepositsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[72]
+	mi := &file_operator_proto_msgTypes[74]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3749,7 +3843,7 @@ func (x *ListDepositsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDepositsRequest.ProtoReflect.Descriptor instead.
 func (*ListDepositsRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{72}
+	return file_operator_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ListDepositsRequest) GetAccountIndex() int64 {
@@ -3780,7 +3874,7 @@ type ListDepositsReply struct {
 func (x *ListDepositsReply) Reset() {
 	*x = ListDepositsReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[73]
+		mi := &file_operator_proto_msgTypes[75]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3793,7 +3887,7 @@ func (x *ListDepositsReply) String() string {
 func (*ListDepositsReply) ProtoMessage() {}
 
 func (x *ListDepositsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[73]
+	mi := &file_operator_proto_msgTypes[75]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3806,7 +3900,7 @@ func (x *ListDepositsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDepositsReply.ProtoReflect.Descriptor instead.
 func (*ListDepositsReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{73}
+	return file_operator_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *ListDepositsReply) GetAccountIndex() int64 {
@@ -3837,7 +3931,7 @@ type ListWithdrawalsRequest struct {
 func (x *ListWithdrawalsRequest) Reset() {
 	*x = ListWithdrawalsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[74]
+		mi := &file_operator_proto_msgTypes[76]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3850,7 +3944,7 @@ func (x *ListWithdrawalsRequest) String() string {
 func (*ListWithdrawalsRequest) ProtoMessage() {}
 
 func (x *ListWithdrawalsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[74]
+	mi := &file_operator_proto_msgTypes[76]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3863,7 +3957,7 @@ func (x *ListWithdrawalsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWithdrawalsRequest.ProtoReflect.Descriptor instead.
 func (*ListWithdrawalsRequest) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{74}
+	return file_operator_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *ListWithdrawalsRequest) GetAccountIndex() int64 {
@@ -3894,7 +3988,7 @@ type ListWithdrawalsReply struct {
 func (x *ListWithdrawalsReply) Reset() {
 	*x = ListWithdrawalsReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[75]
+		mi := &file_operator_proto_msgTypes[77]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3907,7 +4001,7 @@ func (x *ListWithdrawalsReply) String() string {
 func (*ListWithdrawalsReply) ProtoMessage() {}
 
 func (x *ListWithdrawalsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[75]
+	mi := &file_operator_proto_msgTypes[77]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3920,7 +4014,7 @@ func (x *ListWithdrawalsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWithdrawalsReply.ProtoReflect.Descriptor instead.
 func (*ListWithdrawalsReply) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{75}
+	return file_operator_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ListWithdrawalsReply) GetAccountIndex() int64 {
@@ -3957,7 +4051,7 @@ type AccountInfo struct {
 func (x *AccountInfo) Reset() {
 	*x = AccountInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[76]
+		mi := &file_operator_proto_msgTypes[78]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3970,7 +4064,7 @@ func (x *AccountInfo) String() string {
 func (*AccountInfo) ProtoMessage() {}
 
 func (x *AccountInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[76]
+	mi := &file_operator_proto_msgTypes[78]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3983,7 +4077,7 @@ func (x *AccountInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountInfo.ProtoReflect.Descriptor instead.
 func (*AccountInfo) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{76}
+	return file_operator_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *AccountInfo) GetAccountIndex() uint32 {
@@ -4045,7 +4139,7 @@ type MarketInfo struct {
 func (x *MarketInfo) Reset() {
 	*x = MarketInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[77]
+		mi := &file_operator_proto_msgTypes[79]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4058,7 +4152,7 @@ func (x *MarketInfo) String() string {
 func (*MarketInfo) ProtoMessage() {}
 
 func (x *MarketInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[77]
+	mi := &file_operator_proto_msgTypes[79]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4071,7 +4165,7 @@ func (x *MarketInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarketInfo.ProtoReflect.Descriptor instead.
 func (*MarketInfo) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{77}
+	return file_operator_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *MarketInfo) GetMarket() *types.Market {
@@ -4139,7 +4233,7 @@ type UtxoInfo struct {
 func (x *UtxoInfo) Reset() {
 	*x = UtxoInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[78]
+		mi := &file_operator_proto_msgTypes[80]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4152,7 +4246,7 @@ func (x *UtxoInfo) String() string {
 func (*UtxoInfo) ProtoMessage() {}
 
 func (x *UtxoInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[78]
+	mi := &file_operator_proto_msgTypes[80]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4165,7 +4259,7 @@ func (x *UtxoInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UtxoInfo.ProtoReflect.Descriptor instead.
 func (*UtxoInfo) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{78}
+	return file_operator_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *UtxoInfo) GetOutpoint() *TxOutpoint {
@@ -4203,7 +4297,7 @@ type TradeStatusInfo struct {
 func (x *TradeStatusInfo) Reset() {
 	*x = TradeStatusInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[79]
+		mi := &file_operator_proto_msgTypes[81]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4216,7 +4310,7 @@ func (x *TradeStatusInfo) String() string {
 func (*TradeStatusInfo) ProtoMessage() {}
 
 func (x *TradeStatusInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[79]
+	mi := &file_operator_proto_msgTypes[81]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4229,7 +4323,7 @@ func (x *TradeStatusInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TradeStatusInfo.ProtoReflect.Descriptor instead.
 func (*TradeStatusInfo) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{79}
+	return file_operator_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *TradeStatusInfo) GetStatus() TradeStatus {
@@ -4264,7 +4358,7 @@ type SwapInfo struct {
 func (x *SwapInfo) Reset() {
 	*x = SwapInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[80]
+		mi := &file_operator_proto_msgTypes[82]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4277,7 +4371,7 @@ func (x *SwapInfo) String() string {
 func (*SwapInfo) ProtoMessage() {}
 
 func (x *SwapInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[80]
+	mi := &file_operator_proto_msgTypes[82]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4290,7 +4384,7 @@ func (x *SwapInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SwapInfo.ProtoReflect.Descriptor instead.
 func (*SwapInfo) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{80}
+	return file_operator_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *SwapInfo) GetAmountP() uint64 {
@@ -4335,7 +4429,7 @@ type SwapFailInfo struct {
 func (x *SwapFailInfo) Reset() {
 	*x = SwapFailInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[81]
+		mi := &file_operator_proto_msgTypes[83]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4348,7 +4442,7 @@ func (x *SwapFailInfo) String() string {
 func (*SwapFailInfo) ProtoMessage() {}
 
 func (x *SwapFailInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[81]
+	mi := &file_operator_proto_msgTypes[83]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4361,7 +4455,7 @@ func (x *SwapFailInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SwapFailInfo.ProtoReflect.Descriptor instead.
 func (*SwapFailInfo) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{81}
+	return file_operator_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *SwapFailInfo) GetFailureCode() uint32 {
@@ -4422,7 +4516,7 @@ type TradeInfo struct {
 func (x *TradeInfo) Reset() {
 	*x = TradeInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[82]
+		mi := &file_operator_proto_msgTypes[84]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4435,7 +4529,7 @@ func (x *TradeInfo) String() string {
 func (*TradeInfo) ProtoMessage() {}
 
 func (x *TradeInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[82]
+	mi := &file_operator_proto_msgTypes[84]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4448,7 +4542,7 @@ func (x *TradeInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TradeInfo.ProtoReflect.Descriptor instead.
 func (*TradeInfo) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{82}
+	return file_operator_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *TradeInfo) GetTradeId() string {
@@ -4592,7 +4686,7 @@ type FeeInfo struct {
 func (x *FeeInfo) Reset() {
 	*x = FeeInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[83]
+		mi := &file_operator_proto_msgTypes[85]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4605,7 +4699,7 @@ func (x *FeeInfo) String() string {
 func (*FeeInfo) ProtoMessage() {}
 
 func (x *FeeInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[83]
+	mi := &file_operator_proto_msgTypes[85]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4618,7 +4712,7 @@ func (x *FeeInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeeInfo.ProtoReflect.Descriptor instead.
 func (*FeeInfo) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{83}
+	return file_operator_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *FeeInfo) GetTradeId() string {
@@ -4677,7 +4771,7 @@ type TxOutpoint struct {
 func (x *TxOutpoint) Reset() {
 	*x = TxOutpoint{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[84]
+		mi := &file_operator_proto_msgTypes[86]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4690,7 +4784,7 @@ func (x *TxOutpoint) String() string {
 func (*TxOutpoint) ProtoMessage() {}
 
 func (x *TxOutpoint) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[84]
+	mi := &file_operator_proto_msgTypes[86]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4703,7 +4797,7 @@ func (x *TxOutpoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TxOutpoint.ProtoReflect.Descriptor instead.
 func (*TxOutpoint) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{84}
+	return file_operator_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *TxOutpoint) GetHash() string {
@@ -4732,7 +4826,7 @@ type TradePrice struct {
 func (x *TradePrice) Reset() {
 	*x = TradePrice{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[85]
+		mi := &file_operator_proto_msgTypes[87]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4745,7 +4839,7 @@ func (x *TradePrice) String() string {
 func (*TradePrice) ProtoMessage() {}
 
 func (x *TradePrice) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[85]
+	mi := &file_operator_proto_msgTypes[87]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4758,7 +4852,7 @@ func (x *TradePrice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TradePrice.ProtoReflect.Descriptor instead.
 func (*TradePrice) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{85}
+	return file_operator_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *TradePrice) GetBasePrice() float64 {
@@ -4791,7 +4885,7 @@ type WebhookInfo struct {
 func (x *WebhookInfo) Reset() {
 	*x = WebhookInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[86]
+		mi := &file_operator_proto_msgTypes[88]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4804,7 +4898,7 @@ func (x *WebhookInfo) String() string {
 func (*WebhookInfo) ProtoMessage() {}
 
 func (x *WebhookInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[86]
+	mi := &file_operator_proto_msgTypes[88]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4817,7 +4911,7 @@ func (x *WebhookInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WebhookInfo.ProtoReflect.Descriptor instead.
 func (*WebhookInfo) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{86}
+	return file_operator_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *WebhookInfo) GetId() string {
@@ -4857,7 +4951,7 @@ type Withdrawal struct {
 func (x *Withdrawal) Reset() {
 	*x = Withdrawal{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[87]
+		mi := &file_operator_proto_msgTypes[89]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4870,7 +4964,7 @@ func (x *Withdrawal) String() string {
 func (*Withdrawal) ProtoMessage() {}
 
 func (x *Withdrawal) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[87]
+	mi := &file_operator_proto_msgTypes[89]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4883,7 +4977,7 @@ func (x *Withdrawal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Withdrawal.ProtoReflect.Descriptor instead.
 func (*Withdrawal) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{87}
+	return file_operator_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *Withdrawal) GetTxId() string {
@@ -4921,7 +5015,7 @@ type Page struct {
 func (x *Page) Reset() {
 	*x = Page{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_operator_proto_msgTypes[88]
+		mi := &file_operator_proto_msgTypes[90]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4934,7 +5028,7 @@ func (x *Page) String() string {
 func (*Page) ProtoMessage() {}
 
 func (x *Page) ProtoReflect() protoreflect.Message {
-	mi := &file_operator_proto_msgTypes[88]
+	mi := &file_operator_proto_msgTypes[90]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4947,7 +5041,7 @@ func (x *Page) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Page.ProtoReflect.Descriptor instead.
 func (*Page) Descriptor() ([]byte, []int) {
-	return file_operator_proto_rawDescGZIP(), []int{88}
+	return file_operator_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *Page) GetPageNumber() int64 {
@@ -5028,7 +5122,14 @@ var file_operator_proto_rawDesc = []byte{
 	0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1f, 0x0a, 0x06, 0x6d, 0x61, 0x72, 0x6b,
 	0x65, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x4d, 0x61, 0x72, 0x6b, 0x65,
 	0x74, 0x52, 0x06, 0x6d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x22, 0x10, 0x0a, 0x0e, 0x4e, 0x65, 0x77,
-	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x64, 0x0a, 0x17, 0x47,
+	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x37, 0x0a, 0x14, 0x47,
+	0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x1f, 0x0a, 0x06, 0x6d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x06, 0x6d, 0x61,
+	0x72, 0x6b, 0x65, 0x74, 0x22, 0x35, 0x0a, 0x12, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65,
+	0x74, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x1f, 0x0a, 0x04, 0x69, 0x6e,
+	0x66, 0x6f, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0b, 0x2e, 0x4d, 0x61, 0x72, 0x6b, 0x65,
+	0x74, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x04, 0x69, 0x6e, 0x66, 0x6f, 0x22, 0x64, 0x0a, 0x17, 0x47,
 	0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1f, 0x0a, 0x06, 0x6d, 0x61, 0x72, 0x6b, 0x65, 0x74,
 	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52,
@@ -5496,7 +5597,7 @@ var file_operator_proto_rawDesc = []byte{
 	0x4f, 0x57, 0x5f, 0x42, 0x41, 0x4c, 0x41, 0x4e, 0x43, 0x45, 0x10, 0x01, 0x12, 0x14, 0x0a, 0x10,
 	0x41, 0x43, 0x43, 0x4f, 0x55, 0x4e, 0x54, 0x5f, 0x57, 0x49, 0x54, 0x48, 0x44, 0x52, 0x41, 0x57,
 	0x10, 0x02, 0x12, 0x0f, 0x0a, 0x0b, 0x41, 0x4c, 0x4c, 0x5f, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e,
-	0x53, 0x10, 0x03, 0x32, 0xd4, 0x16, 0x0a, 0x08, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72,
+	0x53, 0x10, 0x03, 0x32, 0x93, 0x17, 0x0a, 0x08, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72,
 	0x12, 0x2b, 0x0a, 0x07, 0x47, 0x65, 0x74, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x0f, 0x2e, 0x47, 0x65,
 	0x74, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0d, 0x2e, 0x47,
 	0x65, 0x74, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x3d, 0x0a,
@@ -5523,166 +5624,170 @@ var file_operator_proto_rawDesc = []byte{
 	0x6c, 0x79, 0x22, 0x00, 0x12, 0x31, 0x0a, 0x09, 0x4e, 0x65, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65,
 	0x74, 0x12, 0x11, 0x2e, 0x4e, 0x65, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x1a, 0x0f, 0x2e, 0x4e, 0x65, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74,
-	0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x46, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x4d, 0x61,
-	0x72, 0x6b, 0x65, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x18, 0x2e, 0x47, 0x65,
-	0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65,
-	0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12,
-	0x4f, 0x0a, 0x13, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x41, 0x64, 0x64,
-	0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x12, 0x1b, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72,
-	0x6b, 0x65, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74,
-	0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00,
-	0x12, 0x46, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x42, 0x61, 0x6c,
-	0x61, 0x6e, 0x63, 0x65, 0x12, 0x18, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74,
-	0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16,
-	0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63,
-	0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x4f, 0x0a, 0x13, 0x43, 0x6c, 0x61, 0x69,
-	0x6d, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x12,
-	0x1b, 0x2e, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x44, 0x65, 0x70,
-	0x6f, 0x73, 0x69, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x43,
-	0x6c, 0x61, 0x69, 0x6d, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69,
-	0x74, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x34, 0x0a, 0x0a, 0x4f, 0x70, 0x65,
-	0x6e, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x12, 0x12, 0x2e, 0x4f, 0x70, 0x65, 0x6e, 0x4d, 0x61,
-	0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x4f, 0x70,
-	0x65, 0x6e, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12,
-	0x37, 0x0a, 0x0b, 0x43, 0x6c, 0x6f, 0x73, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x12, 0x13,
-	0x2e, 0x43, 0x6c, 0x6f, 0x73, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x11, 0x2e, 0x43, 0x6c, 0x6f, 0x73, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65,
-	0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x34, 0x0a, 0x0a, 0x44, 0x72, 0x6f, 0x70,
-	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x12, 0x12, 0x2e, 0x44, 0x72, 0x6f, 0x70, 0x4d, 0x61, 0x72,
-	0x6b, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x44, 0x72, 0x6f,
-	0x70, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x64,
-	0x0a, 0x1a, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x43, 0x6f, 0x6c, 0x6c, 0x65,
-	0x63, 0x74, 0x65, 0x64, 0x53, 0x77, 0x61, 0x70, 0x46, 0x65, 0x65, 0x73, 0x12, 0x22, 0x2e, 0x47,
-	0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x43, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x65,
-	0x64, 0x53, 0x77, 0x61, 0x70, 0x46, 0x65, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x20, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x43, 0x6f, 0x6c, 0x6c,
-	0x65, 0x63, 0x74, 0x65, 0x64, 0x53, 0x77, 0x61, 0x70, 0x46, 0x65, 0x65, 0x73, 0x52, 0x65, 0x70,
-	0x6c, 0x79, 0x22, 0x00, 0x12, 0x40, 0x0a, 0x0e, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77,
-	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x12, 0x16, 0x2e, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61,
-	0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14,
-	0x2e, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52,
-	0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x57, 0x0a, 0x19, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
-	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x50, 0x65, 0x72, 0x63, 0x65, 0x6e, 0x74, 0x61, 0x67, 0x65,
-	0x46, 0x65, 0x65, 0x12, 0x21, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b,
-	0x65, 0x74, 0x50, 0x65, 0x72, 0x63, 0x65, 0x6e, 0x74, 0x61, 0x67, 0x65, 0x46, 0x65, 0x65, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x15, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d,
-	0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x65, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12,
-	0x4d, 0x0a, 0x14, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46,
-	0x69, 0x78, 0x65, 0x64, 0x46, 0x65, 0x65, 0x12, 0x1c, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
-	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x69, 0x78, 0x65, 0x64, 0x46, 0x65, 0x65, 0x52, 0x65,
+	0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x3d, 0x0a, 0x0d, 0x47, 0x65, 0x74, 0x4d, 0x61,
+	0x72, 0x6b, 0x65, 0x74, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x15, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61,
+	0x72, 0x6b, 0x65, 0x74, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x13, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x49, 0x6e, 0x66, 0x6f, 0x52,
+	0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x46, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72,
+	0x6b, 0x65, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x18, 0x2e, 0x47, 0x65, 0x74,
+	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74,
+	0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x4f,
+	0x0a, 0x13, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x41, 0x64, 0x64, 0x72,
+	0x65, 0x73, 0x73, 0x65, 0x73, 0x12, 0x1b, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b,
+	0x65, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x19, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x41,
+	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12,
+	0x46, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x42, 0x61, 0x6c, 0x61,
+	0x6e, 0x63, 0x65, 0x12, 0x18, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x42,
+	0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e,
+	0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65,
+	0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x4f, 0x0a, 0x13, 0x43, 0x6c, 0x61, 0x69, 0x6d,
+	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x12, 0x1b,
+	0x2e, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x44, 0x65, 0x70, 0x6f,
+	0x73, 0x69, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x43, 0x6c,
+	0x61, 0x69, 0x6d, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74,
+	0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x34, 0x0a, 0x0a, 0x4f, 0x70, 0x65, 0x6e,
+	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x12, 0x12, 0x2e, 0x4f, 0x70, 0x65, 0x6e, 0x4d, 0x61, 0x72,
+	0x6b, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x4f, 0x70, 0x65,
+	0x6e, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x37,
+	0x0a, 0x0b, 0x43, 0x6c, 0x6f, 0x73, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x12, 0x13, 0x2e,
+	0x43, 0x6c, 0x6f, 0x73, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x11, 0x2e, 0x43, 0x6c, 0x6f, 0x73, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74,
+	0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x34, 0x0a, 0x0a, 0x44, 0x72, 0x6f, 0x70, 0x4d,
+	0x61, 0x72, 0x6b, 0x65, 0x74, 0x12, 0x12, 0x2e, 0x44, 0x72, 0x6f, 0x70, 0x4d, 0x61, 0x72, 0x6b,
+	0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x44, 0x72, 0x6f, 0x70,
+	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x64, 0x0a,
+	0x1a, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x43, 0x6f, 0x6c, 0x6c, 0x65, 0x63,
+	0x74, 0x65, 0x64, 0x53, 0x77, 0x61, 0x70, 0x46, 0x65, 0x65, 0x73, 0x12, 0x22, 0x2e, 0x47, 0x65,
+	0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x43, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64,
+	0x53, 0x77, 0x61, 0x70, 0x46, 0x65, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x20, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x43, 0x6f, 0x6c, 0x6c, 0x65,
+	0x63, 0x74, 0x65, 0x64, 0x53, 0x77, 0x61, 0x70, 0x46, 0x65, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c,
+	0x79, 0x22, 0x00, 0x12, 0x40, 0x0a, 0x0e, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x4d,
+	0x61, 0x72, 0x6b, 0x65, 0x74, 0x12, 0x16, 0x2e, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77,
+	0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e,
+	0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x52, 0x65,
+	0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x57, 0x0a, 0x19, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d,
+	0x61, 0x72, 0x6b, 0x65, 0x74, 0x50, 0x65, 0x72, 0x63, 0x65, 0x6e, 0x74, 0x61, 0x67, 0x65, 0x46,
+	0x65, 0x65, 0x12, 0x21, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65,
+	0x74, 0x50, 0x65, 0x72, 0x63, 0x65, 0x6e, 0x74, 0x61, 0x67, 0x65, 0x46, 0x65, 0x65, 0x52, 0x65,
 	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x15, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61,
-	0x72, 0x6b, 0x65, 0x74, 0x46, 0x65, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x49,
-	0x0a, 0x11, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x50, 0x72,
-	0x69, 0x63, 0x65, 0x12, 0x19, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b,
-	0x65, 0x74, 0x50, 0x72, 0x69, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x17,
-	0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x50, 0x72, 0x69,
-	0x63, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x52, 0x0a, 0x14, 0x55, 0x70, 0x64,
-	0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67,
-	0x79, 0x12, 0x1c, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74,
-	0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
-	0x1a, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x53, 0x74,
-	0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x5b, 0x0a,
-	0x17, 0x47, 0x65, 0x74, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65,
-	0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x1f, 0x2e, 0x47, 0x65, 0x74, 0x46, 0x65,
+	0x72, 0x6b, 0x65, 0x74, 0x46, 0x65, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x4d,
+	0x0a, 0x14, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x69,
+	0x78, 0x65, 0x64, 0x46, 0x65, 0x65, 0x12, 0x1c, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d,
+	0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x69, 0x78, 0x65, 0x64, 0x46, 0x65, 0x65, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x15, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72,
+	0x6b, 0x65, 0x74, 0x46, 0x65, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x49, 0x0a,
+	0x11, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x50, 0x72, 0x69,
+	0x63, 0x65, 0x12, 0x19, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65,
+	0x74, 0x50, 0x72, 0x69, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x17, 0x2e,
+	0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x50, 0x72, 0x69, 0x63,
+	0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x52, 0x0a, 0x14, 0x55, 0x70, 0x64, 0x61,
+	0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79,
+	0x12, 0x1c, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x53,
+	0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a,
+	0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x53, 0x74, 0x72,
+	0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x5b, 0x0a, 0x17,
+	0x47, 0x65, 0x74, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72,
+	0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x1f, 0x2e, 0x47, 0x65, 0x74, 0x46, 0x65, 0x65,
+	0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73,
+	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x47, 0x65, 0x74, 0x46, 0x65,
 	0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65,
-	0x73, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x47, 0x65, 0x74, 0x46,
-	0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72,
-	0x65, 0x73, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x64, 0x0a, 0x1a, 0x4c, 0x69,
+	0x73, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x64, 0x0a, 0x1a, 0x4c, 0x69, 0x73,
+	0x74, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64,
+	0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x12, 0x22, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x46, 0x65,
+	0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65,
+	0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x4c, 0x69,
 	0x73, 0x74, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x12, 0x22, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x46,
-	0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72,
-	0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x4c,
-	0x69, 0x73, 0x74, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72,
-	0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00,
-	0x12, 0x5b, 0x0a, 0x17, 0x47, 0x65, 0x74, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65,
-	0x6e, 0x74, 0x65, 0x72, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x12, 0x1f, 0x2e, 0x47, 0x65,
+	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12,
+	0x5b, 0x0a, 0x17, 0x47, 0x65, 0x74, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e,
+	0x74, 0x65, 0x72, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x12, 0x1f, 0x2e, 0x47, 0x65, 0x74,
+	0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x42, 0x61, 0x6c,
+	0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x47, 0x65,
 	0x74, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x42, 0x61,
-	0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x47,
-	0x65, 0x74, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x42,
-	0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x5a, 0x0a,
-	0x17, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70,
-	0x6c, 0x69, 0x74, 0x46, 0x75, 0x6e, 0x64, 0x73, 0x12, 0x1f, 0x2e, 0x46, 0x65, 0x65, 0x46, 0x72,
-	0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46, 0x75, 0x6e,
-	0x64, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x46, 0x72, 0x61, 0x67,
-	0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46, 0x75, 0x6e, 0x64, 0x73,
-	0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x30, 0x01, 0x12, 0x55, 0x0a, 0x15, 0x57, 0x69, 0x74,
-	0x68, 0x64, 0x72, 0x61, 0x77, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74,
-	0x65, 0x72, 0x12, 0x1d, 0x2e, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x46, 0x65, 0x65,
-	0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x1b, 0x2e, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x46, 0x65, 0x65, 0x46,
-	0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00,
-	0x12, 0x64, 0x0a, 0x1a, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61,
-	0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x22,
-	0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65,
-	0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x1a, 0x20, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72,
-	0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52,
-	0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x6d, 0x0a, 0x1d, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61,
-	0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x12, 0x25, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61,
-	0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23,
-	0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d,
-	0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65,
-	0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x64, 0x0a, 0x1a, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b,
+	0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x5a, 0x0a, 0x17,
+	0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70, 0x6c,
+	0x69, 0x74, 0x46, 0x75, 0x6e, 0x64, 0x73, 0x12, 0x1f, 0x2e, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61,
+	0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46, 0x75, 0x6e, 0x64,
+	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x46, 0x72, 0x61, 0x67, 0x6d,
+	0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46, 0x75, 0x6e, 0x64, 0x73, 0x52,
+	0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x30, 0x01, 0x12, 0x55, 0x0a, 0x15, 0x57, 0x69, 0x74, 0x68,
+	0x64, 0x72, 0x61, 0x77, 0x46, 0x65, 0x65, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65,
+	0x72, 0x12, 0x1d, 0x2e, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x46, 0x65, 0x65, 0x46,
+	0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x1b, 0x2e, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x46, 0x65, 0x65, 0x46, 0x72,
+	0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12,
+	0x64, 0x0a, 0x1a, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67,
+	0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x22, 0x2e,
+	0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e,
+	0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x20, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61,
+	0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65,
+	0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x6d, 0x0a, 0x1d, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72,
+	0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64,
+	0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x12, 0x25, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72,
+	0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64,
+	0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e,
+	0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65,
+	0x6e, 0x74, 0x65, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52, 0x65, 0x70,
+	0x6c, 0x79, 0x22, 0x00, 0x12, 0x64, 0x0a, 0x1a, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65,
+	0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x42, 0x61, 0x6c, 0x61, 0x6e,
+	0x63, 0x65, 0x12, 0x22, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72,
+	0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b,
 	0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x42, 0x61, 0x6c, 0x61,
-	0x6e, 0x63, 0x65, 0x12, 0x22, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46,
-	0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x20, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x72,
-	0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x42, 0x61, 0x6c,
-	0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x60, 0x0a, 0x1a, 0x4d,
-	0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53,
-	0x70, 0x6c, 0x69, 0x74, 0x46, 0x75, 0x6e, 0x64, 0x73, 0x12, 0x22, 0x2e, 0x4d, 0x61, 0x72, 0x6b,
-	0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69,
-	0x74, 0x46, 0x75, 0x6e, 0x64, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e,
-	0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46,
-	0x75, 0x6e, 0x64, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x30, 0x01, 0x12, 0x5e, 0x0a,
-	0x18, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46,
-	0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x12, 0x20, 0x2e, 0x57, 0x69, 0x74, 0x68,
-	0x64, 0x72, 0x61, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65,
-	0x6e, 0x74, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x57, 0x69,
-	0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67,
-	0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x37, 0x0a,
-	0x0b, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x73, 0x12, 0x13, 0x2e, 0x4c,
-	0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x11, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x73, 0x52,
-	0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x34, 0x0a, 0x0a, 0x4c, 0x69, 0x73, 0x74, 0x54, 0x72,
-	0x61, 0x64, 0x65, 0x73, 0x12, 0x12, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x54, 0x72, 0x61, 0x64, 0x65,
-	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x54,
-	0x72, 0x61, 0x64, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x37, 0x0a, 0x0b,
-	0x52, 0x65, 0x6c, 0x6f, 0x61, 0x64, 0x55, 0x74, 0x78, 0x6f, 0x73, 0x12, 0x13, 0x2e, 0x52, 0x65,
-	0x6c, 0x6f, 0x61, 0x64, 0x55, 0x74, 0x78, 0x6f, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x11, 0x2e, 0x52, 0x65, 0x6c, 0x6f, 0x61, 0x64, 0x55, 0x74, 0x78, 0x6f, 0x73, 0x52, 0x65,
-	0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x31, 0x0a, 0x09, 0x4c, 0x69, 0x73, 0x74, 0x55, 0x74, 0x78,
-	0x6f, 0x73, 0x12, 0x11, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x55, 0x74, 0x78, 0x6f, 0x73, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0f, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x55, 0x74, 0x78, 0x6f,
-	0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x34, 0x0a, 0x0a, 0x41, 0x64, 0x64, 0x57,
-	0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x12, 0x12, 0x2e, 0x41, 0x64, 0x64, 0x57, 0x65, 0x62, 0x68,
-	0x6f, 0x6f, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x41, 0x64, 0x64,
-	0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x3d,
-	0x0a, 0x0d, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x12,
-	0x15, 0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x13, 0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x57,
-	0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x3a, 0x0a,
-	0x0c, 0x4c, 0x69, 0x73, 0x74, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x73, 0x12, 0x14, 0x2e,
-	0x4c, 0x69, 0x73, 0x74, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x73, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x12, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f,
-	0x6b, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x3a, 0x0a, 0x0c, 0x4c, 0x69, 0x73,
-	0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x12, 0x14, 0x2e, 0x4c, 0x69, 0x73, 0x74,
-	0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
-	0x12, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x52, 0x65,
-	0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x43, 0x0a, 0x0f, 0x4c, 0x69, 0x73, 0x74, 0x57, 0x69, 0x74,
-	0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x73, 0x12, 0x17, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x57,
-	0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x15, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77,
-	0x61, 0x6c, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x42, 0x44, 0x5a, 0x42, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x64, 0x65, 0x78, 0x2d, 0x6e, 0x65,
-	0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2f, 0x74, 0x64, 0x65, 0x78, 0x2d, 0x64, 0x61, 0x65, 0x6d, 0x6f,
-	0x6e, 0x2f, 0x61, 0x70, 0x69, 0x2d, 0x73, 0x70, 0x65, 0x63, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x62, 0x75, 0x66, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6e, 0x63, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x60, 0x0a, 0x1a, 0x4d, 0x61,
+	0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70,
+	0x6c, 0x69, 0x74, 0x46, 0x75, 0x6e, 0x64, 0x73, 0x12, 0x22, 0x2e, 0x4d, 0x61, 0x72, 0x6b, 0x65,
+	0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74,
+	0x46, 0x75, 0x6e, 0x64, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x46,
+	0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46, 0x75,
+	0x6e, 0x64, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x30, 0x01, 0x12, 0x5e, 0x0a, 0x18,
+	0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72,
+	0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x72, 0x12, 0x20, 0x2e, 0x57, 0x69, 0x74, 0x68, 0x64,
+	0x72, 0x61, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e,
+	0x74, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x57, 0x69, 0x74,
+	0x68, 0x64, 0x72, 0x61, 0x77, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x46, 0x72, 0x61, 0x67, 0x6d,
+	0x65, 0x6e, 0x74, 0x65, 0x72, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x37, 0x0a, 0x0b,
+	0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x73, 0x12, 0x13, 0x2e, 0x4c, 0x69,
+	0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x11, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x74, 0x73, 0x52, 0x65,
+	0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x34, 0x0a, 0x0a, 0x4c, 0x69, 0x73, 0x74, 0x54, 0x72, 0x61,
+	0x64, 0x65, 0x73, 0x12, 0x12, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x54, 0x72, 0x61, 0x64, 0x65, 0x73,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x54, 0x72,
+	0x61, 0x64, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x37, 0x0a, 0x0b, 0x52,
+	0x65, 0x6c, 0x6f, 0x61, 0x64, 0x55, 0x74, 0x78, 0x6f, 0x73, 0x12, 0x13, 0x2e, 0x52, 0x65, 0x6c,
+	0x6f, 0x61, 0x64, 0x55, 0x74, 0x78, 0x6f, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x11, 0x2e, 0x52, 0x65, 0x6c, 0x6f, 0x61, 0x64, 0x55, 0x74, 0x78, 0x6f, 0x73, 0x52, 0x65, 0x70,
+	0x6c, 0x79, 0x22, 0x00, 0x12, 0x31, 0x0a, 0x09, 0x4c, 0x69, 0x73, 0x74, 0x55, 0x74, 0x78, 0x6f,
+	0x73, 0x12, 0x11, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x55, 0x74, 0x78, 0x6f, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x0f, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x55, 0x74, 0x78, 0x6f, 0x73,
+	0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x34, 0x0a, 0x0a, 0x41, 0x64, 0x64, 0x57, 0x65,
+	0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x12, 0x12, 0x2e, 0x41, 0x64, 0x64, 0x57, 0x65, 0x62, 0x68, 0x6f,
+	0x6f, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x41, 0x64, 0x64, 0x57,
+	0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x3d, 0x0a,
+	0x0d, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x12, 0x15,
+	0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x13, 0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x57, 0x65,
+	0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x3a, 0x0a, 0x0c,
+	0x4c, 0x69, 0x73, 0x74, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x73, 0x12, 0x14, 0x2e, 0x4c,
+	0x69, 0x73, 0x74, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x12, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x57, 0x65, 0x62, 0x68, 0x6f, 0x6f, 0x6b,
+	0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x3a, 0x0a, 0x0c, 0x4c, 0x69, 0x73, 0x74,
+	0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x12, 0x14, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x44,
+	0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x12,
+	0x2e, 0x4c, 0x69, 0x73, 0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x52, 0x65, 0x70,
+	0x6c, 0x79, 0x22, 0x00, 0x12, 0x43, 0x0a, 0x0f, 0x4c, 0x69, 0x73, 0x74, 0x57, 0x69, 0x74, 0x68,
+	0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x73, 0x12, 0x17, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x57, 0x69,
+	0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x15, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61,
+	0x6c, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x42, 0x44, 0x5a, 0x42, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x64, 0x65, 0x78, 0x2d, 0x6e, 0x65, 0x74,
+	0x77, 0x6f, 0x72, 0x6b, 0x2f, 0x74, 0x64, 0x65, 0x78, 0x2d, 0x64, 0x61, 0x65, 0x6d, 0x6f, 0x6e,
+	0x2f, 0x61, 0x70, 0x69, 0x2d, 0x73, 0x70, 0x65, 0x63, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
+	0x75, 0x66, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -5698,7 +5803,7 @@ func file_operator_proto_rawDescGZIP() []byte {
 }
 
 var file_operator_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_operator_proto_msgTypes = make([]protoimpl.MessageInfo, 92)
+var file_operator_proto_msgTypes = make([]protoimpl.MessageInfo, 94)
 var file_operator_proto_goTypes = []interface{}{
 	(StrategyType)(0),                            // 0: StrategyType
 	(TradeStatus)(0),                             // 1: TradeStatus
@@ -5717,245 +5822,251 @@ var file_operator_proto_goTypes = []interface{}{
 	(*WithdrawFeeReply)(nil),                     // 14: WithdrawFeeReply
 	(*NewMarketRequest)(nil),                     // 15: NewMarketRequest
 	(*NewMarketReply)(nil),                       // 16: NewMarketReply
-	(*GetMarketAddressRequest)(nil),              // 17: GetMarketAddressRequest
-	(*GetMarketAddressReply)(nil),                // 18: GetMarketAddressReply
-	(*ListMarketAddressesRequest)(nil),           // 19: ListMarketAddressesRequest
-	(*ListMarketAddressesReply)(nil),             // 20: ListMarketAddressesReply
-	(*GetMarketBalanceRequest)(nil),              // 21: GetMarketBalanceRequest
-	(*GetMarketBalanceReply)(nil),                // 22: GetMarketBalanceReply
-	(*ClaimMarketDepositsRequest)(nil),           // 23: ClaimMarketDepositsRequest
-	(*ClaimMarketDepositsReply)(nil),             // 24: ClaimMarketDepositsReply
-	(*OpenMarketRequest)(nil),                    // 25: OpenMarketRequest
-	(*OpenMarketReply)(nil),                      // 26: OpenMarketReply
-	(*CloseMarketRequest)(nil),                   // 27: CloseMarketRequest
-	(*CloseMarketReply)(nil),                     // 28: CloseMarketReply
-	(*ListMarketsRequest)(nil),                   // 29: ListMarketsRequest
-	(*ListMarketsReply)(nil),                     // 30: ListMarketsReply
-	(*DropMarketRequest)(nil),                    // 31: DropMarketRequest
-	(*DropMarketReply)(nil),                      // 32: DropMarketReply
-	(*GetMarketCollectedSwapFeesRequest)(nil),    // 33: GetMarketCollectedSwapFeesRequest
-	(*GetMarketCollectedSwapFeesReply)(nil),      // 34: GetMarketCollectedSwapFeesReply
-	(*WithdrawMarketRequest)(nil),                // 35: WithdrawMarketRequest
-	(*WithdrawMarketReply)(nil),                  // 36: WithdrawMarketReply
-	(*UpdateMarketPercentageFeeRequest)(nil),     // 37: UpdateMarketPercentageFeeRequest
-	(*UpdateMarketFixedFeeRequest)(nil),          // 38: UpdateMarketFixedFeeRequest
-	(*UpdateMarketFeeReply)(nil),                 // 39: UpdateMarketFeeReply
-	(*UpdateMarketPriceRequest)(nil),             // 40: UpdateMarketPriceRequest
-	(*UpdateMarketPriceReply)(nil),               // 41: UpdateMarketPriceReply
-	(*UpdateMarketStrategyRequest)(nil),          // 42: UpdateMarketStrategyRequest
-	(*UpdateMarketStrategyReply)(nil),            // 43: UpdateMarketStrategyReply
-	(*GetFeeFragmenterAddressRequest)(nil),       // 44: GetFeeFragmenterAddressRequest
-	(*GetFeeFragmenterAddressReply)(nil),         // 45: GetFeeFragmenterAddressReply
-	(*ListFeeFragmenterAddressesRequest)(nil),    // 46: ListFeeFragmenterAddressesRequest
-	(*ListFeeFragmenterAddressesReply)(nil),      // 47: ListFeeFragmenterAddressesReply
-	(*GetFeeFragmenterBalanceRequest)(nil),       // 48: GetFeeFragmenterBalanceRequest
-	(*GetFeeFragmenterBalanceReply)(nil),         // 49: GetFeeFragmenterBalanceReply
-	(*FeeFragmenterSplitFundsRequest)(nil),       // 50: FeeFragmenterSplitFundsRequest
-	(*FragmenterSplitFundsReply)(nil),            // 51: FragmenterSplitFundsReply
-	(*WithdrawFeeFragmenterRequest)(nil),         // 52: WithdrawFeeFragmenterRequest
-	(*WithdrawFeeFragmenterReply)(nil),           // 53: WithdrawFeeFragmenterReply
-	(*GetMarketFragmenterAddressRequest)(nil),    // 54: GetMarketFragmenterAddressRequest
-	(*GetMarketFragmenterAddressReply)(nil),      // 55: GetMarketFragmenterAddressReply
-	(*ListMarketFragmenterAddressesRequest)(nil), // 56: ListMarketFragmenterAddressesRequest
-	(*ListMarketFragmenterAddressesReply)(nil),   // 57: ListMarketFragmenterAddressesReply
-	(*GetMarketFragmenterBalanceRequest)(nil),    // 58: GetMarketFragmenterBalanceRequest
-	(*GetMarketFragmenterBalanceReply)(nil),      // 59: GetMarketFragmenterBalanceReply
-	(*MarketFragmenterSplitFundsRequest)(nil),    // 60: MarketFragmenterSplitFundsRequest
-	(*WithdrawMarketFragmenterRequest)(nil),      // 61: WithdrawMarketFragmenterRequest
-	(*WithdrawMarketFragmenterReply)(nil),        // 62: WithdrawMarketFragmenterReply
-	(*ListTradesRequest)(nil),                    // 63: ListTradesRequest
-	(*ListTradesReply)(nil),                      // 64: ListTradesReply
-	(*ReloadUtxosRequest)(nil),                   // 65: ReloadUtxosRequest
-	(*ReloadUtxosReply)(nil),                     // 66: ReloadUtxosReply
-	(*ListUtxosRequest)(nil),                     // 67: ListUtxosRequest
-	(*ListUtxosReply)(nil),                       // 68: ListUtxosReply
-	(*AddWebhookRequest)(nil),                    // 69: AddWebhookRequest
-	(*AddWebhookReply)(nil),                      // 70: AddWebhookReply
-	(*RemoveWebhookRequest)(nil),                 // 71: RemoveWebhookRequest
-	(*RemoveWebhookReply)(nil),                   // 72: RemoveWebhookReply
-	(*ListWebhooksRequest)(nil),                  // 73: ListWebhooksRequest
-	(*ListWebhooksReply)(nil),                    // 74: ListWebhooksReply
-	(*ListDepositsRequest)(nil),                  // 75: ListDepositsRequest
-	(*ListDepositsReply)(nil),                    // 76: ListDepositsReply
-	(*ListWithdrawalsRequest)(nil),               // 77: ListWithdrawalsRequest
-	(*ListWithdrawalsReply)(nil),                 // 78: ListWithdrawalsReply
-	(*AccountInfo)(nil),                          // 79: AccountInfo
-	(*MarketInfo)(nil),                           // 80: MarketInfo
-	(*UtxoInfo)(nil),                             // 81: UtxoInfo
-	(*TradeStatusInfo)(nil),                      // 82: TradeStatusInfo
-	(*SwapInfo)(nil),                             // 83: SwapInfo
-	(*SwapFailInfo)(nil),                         // 84: SwapFailInfo
-	(*TradeInfo)(nil),                            // 85: TradeInfo
-	(*FeeInfo)(nil),                              // 86: FeeInfo
-	(*TxOutpoint)(nil),                           // 87: TxOutpoint
-	(*TradePrice)(nil),                           // 88: TradePrice
-	(*WebhookInfo)(nil),                          // 89: WebhookInfo
-	(*Withdrawal)(nil),                           // 90: Withdrawal
-	(*Page)(nil),                                 // 91: Page
-	nil,                                          // 92: GetMarketCollectedSwapFeesReply.TotalCollectedFeesPerAssetEntry
-	nil,                                          // 93: GetFeeFragmenterBalanceReply.BalanceEntry
-	nil,                                          // 94: GetMarketFragmenterBalanceReply.BalanceEntry
-	(*types.AddressWithBlindingKey)(nil),         // 95: AddressWithBlindingKey
-	(*types.Market)(nil),                         // 96: Market
-	(*types.Balance)(nil),                        // 97: Balance
-	(*types.Fixed)(nil),                          // 98: Fixed
-	(*types.MarketWithFee)(nil),                  // 99: MarketWithFee
-	(*types.Price)(nil),                          // 100: Price
-	(*types.Fee)(nil),                            // 101: Fee
-	(*wallet.BalanceInfo)(nil),                   // 102: BalanceInfo
+	(*GetMarketInfoRequest)(nil),                 // 17: GetMarketInfoRequest
+	(*GetMarketInfoReply)(nil),                   // 18: GetMarketInfoReply
+	(*GetMarketAddressRequest)(nil),              // 19: GetMarketAddressRequest
+	(*GetMarketAddressReply)(nil),                // 20: GetMarketAddressReply
+	(*ListMarketAddressesRequest)(nil),           // 21: ListMarketAddressesRequest
+	(*ListMarketAddressesReply)(nil),             // 22: ListMarketAddressesReply
+	(*GetMarketBalanceRequest)(nil),              // 23: GetMarketBalanceRequest
+	(*GetMarketBalanceReply)(nil),                // 24: GetMarketBalanceReply
+	(*ClaimMarketDepositsRequest)(nil),           // 25: ClaimMarketDepositsRequest
+	(*ClaimMarketDepositsReply)(nil),             // 26: ClaimMarketDepositsReply
+	(*OpenMarketRequest)(nil),                    // 27: OpenMarketRequest
+	(*OpenMarketReply)(nil),                      // 28: OpenMarketReply
+	(*CloseMarketRequest)(nil),                   // 29: CloseMarketRequest
+	(*CloseMarketReply)(nil),                     // 30: CloseMarketReply
+	(*ListMarketsRequest)(nil),                   // 31: ListMarketsRequest
+	(*ListMarketsReply)(nil),                     // 32: ListMarketsReply
+	(*DropMarketRequest)(nil),                    // 33: DropMarketRequest
+	(*DropMarketReply)(nil),                      // 34: DropMarketReply
+	(*GetMarketCollectedSwapFeesRequest)(nil),    // 35: GetMarketCollectedSwapFeesRequest
+	(*GetMarketCollectedSwapFeesReply)(nil),      // 36: GetMarketCollectedSwapFeesReply
+	(*WithdrawMarketRequest)(nil),                // 37: WithdrawMarketRequest
+	(*WithdrawMarketReply)(nil),                  // 38: WithdrawMarketReply
+	(*UpdateMarketPercentageFeeRequest)(nil),     // 39: UpdateMarketPercentageFeeRequest
+	(*UpdateMarketFixedFeeRequest)(nil),          // 40: UpdateMarketFixedFeeRequest
+	(*UpdateMarketFeeReply)(nil),                 // 41: UpdateMarketFeeReply
+	(*UpdateMarketPriceRequest)(nil),             // 42: UpdateMarketPriceRequest
+	(*UpdateMarketPriceReply)(nil),               // 43: UpdateMarketPriceReply
+	(*UpdateMarketStrategyRequest)(nil),          // 44: UpdateMarketStrategyRequest
+	(*UpdateMarketStrategyReply)(nil),            // 45: UpdateMarketStrategyReply
+	(*GetFeeFragmenterAddressRequest)(nil),       // 46: GetFeeFragmenterAddressRequest
+	(*GetFeeFragmenterAddressReply)(nil),         // 47: GetFeeFragmenterAddressReply
+	(*ListFeeFragmenterAddressesRequest)(nil),    // 48: ListFeeFragmenterAddressesRequest
+	(*ListFeeFragmenterAddressesReply)(nil),      // 49: ListFeeFragmenterAddressesReply
+	(*GetFeeFragmenterBalanceRequest)(nil),       // 50: GetFeeFragmenterBalanceRequest
+	(*GetFeeFragmenterBalanceReply)(nil),         // 51: GetFeeFragmenterBalanceReply
+	(*FeeFragmenterSplitFundsRequest)(nil),       // 52: FeeFragmenterSplitFundsRequest
+	(*FragmenterSplitFundsReply)(nil),            // 53: FragmenterSplitFundsReply
+	(*WithdrawFeeFragmenterRequest)(nil),         // 54: WithdrawFeeFragmenterRequest
+	(*WithdrawFeeFragmenterReply)(nil),           // 55: WithdrawFeeFragmenterReply
+	(*GetMarketFragmenterAddressRequest)(nil),    // 56: GetMarketFragmenterAddressRequest
+	(*GetMarketFragmenterAddressReply)(nil),      // 57: GetMarketFragmenterAddressReply
+	(*ListMarketFragmenterAddressesRequest)(nil), // 58: ListMarketFragmenterAddressesRequest
+	(*ListMarketFragmenterAddressesReply)(nil),   // 59: ListMarketFragmenterAddressesReply
+	(*GetMarketFragmenterBalanceRequest)(nil),    // 60: GetMarketFragmenterBalanceRequest
+	(*GetMarketFragmenterBalanceReply)(nil),      // 61: GetMarketFragmenterBalanceReply
+	(*MarketFragmenterSplitFundsRequest)(nil),    // 62: MarketFragmenterSplitFundsRequest
+	(*WithdrawMarketFragmenterRequest)(nil),      // 63: WithdrawMarketFragmenterRequest
+	(*WithdrawMarketFragmenterReply)(nil),        // 64: WithdrawMarketFragmenterReply
+	(*ListTradesRequest)(nil),                    // 65: ListTradesRequest
+	(*ListTradesReply)(nil),                      // 66: ListTradesReply
+	(*ReloadUtxosRequest)(nil),                   // 67: ReloadUtxosRequest
+	(*ReloadUtxosReply)(nil),                     // 68: ReloadUtxosReply
+	(*ListUtxosRequest)(nil),                     // 69: ListUtxosRequest
+	(*ListUtxosReply)(nil),                       // 70: ListUtxosReply
+	(*AddWebhookRequest)(nil),                    // 71: AddWebhookRequest
+	(*AddWebhookReply)(nil),                      // 72: AddWebhookReply
+	(*RemoveWebhookRequest)(nil),                 // 73: RemoveWebhookRequest
+	(*RemoveWebhookReply)(nil),                   // 74: RemoveWebhookReply
+	(*ListWebhooksRequest)(nil),                  // 75: ListWebhooksRequest
+	(*ListWebhooksReply)(nil),                    // 76: ListWebhooksReply
+	(*ListDepositsRequest)(nil),                  // 77: ListDepositsRequest
+	(*ListDepositsReply)(nil),                    // 78: ListDepositsReply
+	(*ListWithdrawalsRequest)(nil),               // 79: ListWithdrawalsRequest
+	(*ListWithdrawalsReply)(nil),                 // 80: ListWithdrawalsReply
+	(*AccountInfo)(nil),                          // 81: AccountInfo
+	(*MarketInfo)(nil),                           // 82: MarketInfo
+	(*UtxoInfo)(nil),                             // 83: UtxoInfo
+	(*TradeStatusInfo)(nil),                      // 84: TradeStatusInfo
+	(*SwapInfo)(nil),                             // 85: SwapInfo
+	(*SwapFailInfo)(nil),                         // 86: SwapFailInfo
+	(*TradeInfo)(nil),                            // 87: TradeInfo
+	(*FeeInfo)(nil),                              // 88: FeeInfo
+	(*TxOutpoint)(nil),                           // 89: TxOutpoint
+	(*TradePrice)(nil),                           // 90: TradePrice
+	(*WebhookInfo)(nil),                          // 91: WebhookInfo
+	(*Withdrawal)(nil),                           // 92: Withdrawal
+	(*Page)(nil),                                 // 93: Page
+	nil,                                          // 94: GetMarketCollectedSwapFeesReply.TotalCollectedFeesPerAssetEntry
+	nil,                                          // 95: GetFeeFragmenterBalanceReply.BalanceEntry
+	nil,                                          // 96: GetMarketFragmenterBalanceReply.BalanceEntry
+	(*types.AddressWithBlindingKey)(nil),         // 97: AddressWithBlindingKey
+	(*types.Market)(nil),                         // 98: Market
+	(*types.Balance)(nil),                        // 99: Balance
+	(*types.Fixed)(nil),                          // 100: Fixed
+	(*types.MarketWithFee)(nil),                  // 101: MarketWithFee
+	(*types.Price)(nil),                          // 102: Price
+	(*types.Fee)(nil),                            // 103: Fee
+	(*wallet.BalanceInfo)(nil),                   // 104: BalanceInfo
 }
 var file_operator_proto_depIdxs = []int32{
-	79,  // 0: GetInfoReply.account_info:type_name -> AccountInfo
-	95,  // 1: GetFeeAddressReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
-	95,  // 2: ListFeeAddressesReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
-	87,  // 3: ClaimFeeDepositsRequest.outpoints:type_name -> TxOutpoint
-	96,  // 4: NewMarketRequest.market:type_name -> Market
-	96,  // 5: GetMarketAddressRequest.market:type_name -> Market
-	95,  // 6: GetMarketAddressReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
-	96,  // 7: ListMarketAddressesRequest.market:type_name -> Market
-	95,  // 8: ListMarketAddressesReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
-	96,  // 9: GetMarketBalanceRequest.market:type_name -> Market
-	97,  // 10: GetMarketBalanceReply.available_balance:type_name -> Balance
-	97,  // 11: GetMarketBalanceReply.total_balance:type_name -> Balance
-	96,  // 12: ClaimMarketDepositsRequest.market:type_name -> Market
-	87,  // 13: ClaimMarketDepositsRequest.outpoints:type_name -> TxOutpoint
-	96,  // 14: OpenMarketRequest.market:type_name -> Market
-	96,  // 15: CloseMarketRequest.market:type_name -> Market
-	80,  // 16: ListMarketsReply.markets:type_name -> MarketInfo
-	96,  // 17: DropMarketRequest.market:type_name -> Market
-	96,  // 18: GetMarketCollectedSwapFeesRequest.market:type_name -> Market
-	91,  // 19: GetMarketCollectedSwapFeesRequest.page:type_name -> Page
-	86,  // 20: GetMarketCollectedSwapFeesReply.collected_fees:type_name -> FeeInfo
-	92,  // 21: GetMarketCollectedSwapFeesReply.total_collected_fees_per_asset:type_name -> GetMarketCollectedSwapFeesReply.TotalCollectedFeesPerAssetEntry
-	96,  // 22: WithdrawMarketRequest.market:type_name -> Market
-	97,  // 23: WithdrawMarketRequest.balance_to_withdraw:type_name -> Balance
-	96,  // 24: UpdateMarketPercentageFeeRequest.market:type_name -> Market
-	96,  // 25: UpdateMarketFixedFeeRequest.market:type_name -> Market
-	98,  // 26: UpdateMarketFixedFeeRequest.fixed:type_name -> Fixed
-	99,  // 27: UpdateMarketFeeReply.market_with_fee:type_name -> MarketWithFee
-	96,  // 28: UpdateMarketPriceRequest.market:type_name -> Market
-	100, // 29: UpdateMarketPriceRequest.price:type_name -> Price
-	96,  // 30: UpdateMarketStrategyRequest.market:type_name -> Market
-	0,   // 31: UpdateMarketStrategyRequest.strategy_type:type_name -> StrategyType
-	95,  // 32: GetFeeFragmenterAddressReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
-	95,  // 33: ListFeeFragmenterAddressesReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
-	93,  // 34: GetFeeFragmenterBalanceReply.balance:type_name -> GetFeeFragmenterBalanceReply.BalanceEntry
-	95,  // 35: GetMarketFragmenterAddressReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
-	95,  // 36: ListMarketFragmenterAddressesReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
-	94,  // 37: GetMarketFragmenterBalanceReply.balance:type_name -> GetMarketFragmenterBalanceReply.BalanceEntry
-	96,  // 38: MarketFragmenterSplitFundsRequest.market:type_name -> Market
-	96,  // 39: ListTradesRequest.market:type_name -> Market
-	91,  // 40: ListTradesRequest.page:type_name -> Page
-	85,  // 41: ListTradesReply.trades:type_name -> TradeInfo
-	91,  // 42: ListUtxosRequest.page:type_name -> Page
-	81,  // 43: ListUtxosReply.unspents:type_name -> UtxoInfo
-	81,  // 44: ListUtxosReply.spents:type_name -> UtxoInfo
-	81,  // 45: ListUtxosReply.locks:type_name -> UtxoInfo
-	2,   // 46: AddWebhookRequest.action:type_name -> ActionType
-	2,   // 47: ListWebhooksRequest.action:type_name -> ActionType
-	89,  // 48: ListWebhooksReply.webhook_info:type_name -> WebhookInfo
-	91,  // 49: ListDepositsRequest.page:type_name -> Page
-	81,  // 50: ListDepositsReply.deposits:type_name -> UtxoInfo
-	91,  // 51: ListWithdrawalsRequest.page:type_name -> Page
-	90,  // 52: ListWithdrawalsReply.withdrawals:type_name -> Withdrawal
-	96,  // 53: MarketInfo.market:type_name -> Market
-	101, // 54: MarketInfo.fee:type_name -> Fee
-	0,   // 55: MarketInfo.strategy_type:type_name -> StrategyType
-	100, // 56: MarketInfo.price:type_name -> Price
-	97,  // 57: MarketInfo.balance:type_name -> Balance
-	87,  // 58: UtxoInfo.outpoint:type_name -> TxOutpoint
-	1,   // 59: TradeStatusInfo.status:type_name -> TradeStatus
-	82,  // 60: TradeInfo.status:type_name -> TradeStatusInfo
-	83,  // 61: TradeInfo.swap_info:type_name -> SwapInfo
-	84,  // 62: TradeInfo.fail_info:type_name -> SwapFailInfo
-	99,  // 63: TradeInfo.market_with_fee:type_name -> MarketWithFee
-	88,  // 64: TradeInfo.price:type_name -> TradePrice
-	97,  // 65: Withdrawal.balance:type_name -> Balance
-	102, // 66: GetFeeFragmenterBalanceReply.BalanceEntry.value:type_name -> BalanceInfo
-	102, // 67: GetMarketFragmenterBalanceReply.BalanceEntry.value:type_name -> BalanceInfo
-	3,   // 68: Operator.GetInfo:input_type -> GetInfoRequest
-	5,   // 69: Operator.GetFeeAddress:input_type -> GetFeeAddressRequest
-	7,   // 70: Operator.ListFeeAddresses:input_type -> ListFeeAddressesRequest
-	9,   // 71: Operator.GetFeeBalance:input_type -> GetFeeBalanceRequest
-	11,  // 72: Operator.ClaimFeeDeposits:input_type -> ClaimFeeDepositsRequest
-	13,  // 73: Operator.WithdrawFee:input_type -> WithdrawFeeRequest
-	15,  // 74: Operator.NewMarket:input_type -> NewMarketRequest
-	17,  // 75: Operator.GetMarketAddress:input_type -> GetMarketAddressRequest
-	19,  // 76: Operator.ListMarketAddresses:input_type -> ListMarketAddressesRequest
-	21,  // 77: Operator.GetMarketBalance:input_type -> GetMarketBalanceRequest
-	23,  // 78: Operator.ClaimMarketDeposits:input_type -> ClaimMarketDepositsRequest
-	25,  // 79: Operator.OpenMarket:input_type -> OpenMarketRequest
-	27,  // 80: Operator.CloseMarket:input_type -> CloseMarketRequest
-	31,  // 81: Operator.DropMarket:input_type -> DropMarketRequest
-	33,  // 82: Operator.GetMarketCollectedSwapFees:input_type -> GetMarketCollectedSwapFeesRequest
-	35,  // 83: Operator.WithdrawMarket:input_type -> WithdrawMarketRequest
-	37,  // 84: Operator.UpdateMarketPercentageFee:input_type -> UpdateMarketPercentageFeeRequest
-	38,  // 85: Operator.UpdateMarketFixedFee:input_type -> UpdateMarketFixedFeeRequest
-	40,  // 86: Operator.UpdateMarketPrice:input_type -> UpdateMarketPriceRequest
-	42,  // 87: Operator.UpdateMarketStrategy:input_type -> UpdateMarketStrategyRequest
-	44,  // 88: Operator.GetFeeFragmenterAddress:input_type -> GetFeeFragmenterAddressRequest
-	46,  // 89: Operator.ListFeeFragmenterAddresses:input_type -> ListFeeFragmenterAddressesRequest
-	48,  // 90: Operator.GetFeeFragmenterBalance:input_type -> GetFeeFragmenterBalanceRequest
-	50,  // 91: Operator.FeeFragmenterSplitFunds:input_type -> FeeFragmenterSplitFundsRequest
-	52,  // 92: Operator.WithdrawFeeFragmenter:input_type -> WithdrawFeeFragmenterRequest
-	54,  // 93: Operator.GetMarketFragmenterAddress:input_type -> GetMarketFragmenterAddressRequest
-	56,  // 94: Operator.ListMarketFragmenterAddresses:input_type -> ListMarketFragmenterAddressesRequest
-	58,  // 95: Operator.GetMarketFragmenterBalance:input_type -> GetMarketFragmenterBalanceRequest
-	60,  // 96: Operator.MarketFragmenterSplitFunds:input_type -> MarketFragmenterSplitFundsRequest
-	61,  // 97: Operator.WithdrawMarketFragmenter:input_type -> WithdrawMarketFragmenterRequest
-	29,  // 98: Operator.ListMarkets:input_type -> ListMarketsRequest
-	63,  // 99: Operator.ListTrades:input_type -> ListTradesRequest
-	65,  // 100: Operator.ReloadUtxos:input_type -> ReloadUtxosRequest
-	67,  // 101: Operator.ListUtxos:input_type -> ListUtxosRequest
-	69,  // 102: Operator.AddWebhook:input_type -> AddWebhookRequest
-	71,  // 103: Operator.RemoveWebhook:input_type -> RemoveWebhookRequest
-	73,  // 104: Operator.ListWebhooks:input_type -> ListWebhooksRequest
-	75,  // 105: Operator.ListDeposits:input_type -> ListDepositsRequest
-	77,  // 106: Operator.ListWithdrawals:input_type -> ListWithdrawalsRequest
-	4,   // 107: Operator.GetInfo:output_type -> GetInfoReply
-	6,   // 108: Operator.GetFeeAddress:output_type -> GetFeeAddressReply
-	8,   // 109: Operator.ListFeeAddresses:output_type -> ListFeeAddressesReply
-	10,  // 110: Operator.GetFeeBalance:output_type -> GetFeeBalanceReply
-	12,  // 111: Operator.ClaimFeeDeposits:output_type -> ClaimFeeDepositsReply
-	14,  // 112: Operator.WithdrawFee:output_type -> WithdrawFeeReply
-	16,  // 113: Operator.NewMarket:output_type -> NewMarketReply
-	18,  // 114: Operator.GetMarketAddress:output_type -> GetMarketAddressReply
-	20,  // 115: Operator.ListMarketAddresses:output_type -> ListMarketAddressesReply
-	22,  // 116: Operator.GetMarketBalance:output_type -> GetMarketBalanceReply
-	24,  // 117: Operator.ClaimMarketDeposits:output_type -> ClaimMarketDepositsReply
-	26,  // 118: Operator.OpenMarket:output_type -> OpenMarketReply
-	28,  // 119: Operator.CloseMarket:output_type -> CloseMarketReply
-	32,  // 120: Operator.DropMarket:output_type -> DropMarketReply
-	34,  // 121: Operator.GetMarketCollectedSwapFees:output_type -> GetMarketCollectedSwapFeesReply
-	36,  // 122: Operator.WithdrawMarket:output_type -> WithdrawMarketReply
-	39,  // 123: Operator.UpdateMarketPercentageFee:output_type -> UpdateMarketFeeReply
-	39,  // 124: Operator.UpdateMarketFixedFee:output_type -> UpdateMarketFeeReply
-	41,  // 125: Operator.UpdateMarketPrice:output_type -> UpdateMarketPriceReply
-	43,  // 126: Operator.UpdateMarketStrategy:output_type -> UpdateMarketStrategyReply
-	45,  // 127: Operator.GetFeeFragmenterAddress:output_type -> GetFeeFragmenterAddressReply
-	47,  // 128: Operator.ListFeeFragmenterAddresses:output_type -> ListFeeFragmenterAddressesReply
-	49,  // 129: Operator.GetFeeFragmenterBalance:output_type -> GetFeeFragmenterBalanceReply
-	51,  // 130: Operator.FeeFragmenterSplitFunds:output_type -> FragmenterSplitFundsReply
-	53,  // 131: Operator.WithdrawFeeFragmenter:output_type -> WithdrawFeeFragmenterReply
-	55,  // 132: Operator.GetMarketFragmenterAddress:output_type -> GetMarketFragmenterAddressReply
-	57,  // 133: Operator.ListMarketFragmenterAddresses:output_type -> ListMarketFragmenterAddressesReply
-	59,  // 134: Operator.GetMarketFragmenterBalance:output_type -> GetMarketFragmenterBalanceReply
-	51,  // 135: Operator.MarketFragmenterSplitFunds:output_type -> FragmenterSplitFundsReply
-	62,  // 136: Operator.WithdrawMarketFragmenter:output_type -> WithdrawMarketFragmenterReply
-	30,  // 137: Operator.ListMarkets:output_type -> ListMarketsReply
-	64,  // 138: Operator.ListTrades:output_type -> ListTradesReply
-	66,  // 139: Operator.ReloadUtxos:output_type -> ReloadUtxosReply
-	68,  // 140: Operator.ListUtxos:output_type -> ListUtxosReply
-	70,  // 141: Operator.AddWebhook:output_type -> AddWebhookReply
-	72,  // 142: Operator.RemoveWebhook:output_type -> RemoveWebhookReply
-	74,  // 143: Operator.ListWebhooks:output_type -> ListWebhooksReply
-	76,  // 144: Operator.ListDeposits:output_type -> ListDepositsReply
-	78,  // 145: Operator.ListWithdrawals:output_type -> ListWithdrawalsReply
-	107, // [107:146] is the sub-list for method output_type
-	68,  // [68:107] is the sub-list for method input_type
-	68,  // [68:68] is the sub-list for extension type_name
-	68,  // [68:68] is the sub-list for extension extendee
-	0,   // [0:68] is the sub-list for field type_name
+	81,  // 0: GetInfoReply.account_info:type_name -> AccountInfo
+	97,  // 1: GetFeeAddressReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
+	97,  // 2: ListFeeAddressesReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
+	89,  // 3: ClaimFeeDepositsRequest.outpoints:type_name -> TxOutpoint
+	98,  // 4: NewMarketRequest.market:type_name -> Market
+	98,  // 5: GetMarketInfoRequest.market:type_name -> Market
+	82,  // 6: GetMarketInfoReply.info:type_name -> MarketInfo
+	98,  // 7: GetMarketAddressRequest.market:type_name -> Market
+	97,  // 8: GetMarketAddressReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
+	98,  // 9: ListMarketAddressesRequest.market:type_name -> Market
+	97,  // 10: ListMarketAddressesReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
+	98,  // 11: GetMarketBalanceRequest.market:type_name -> Market
+	99,  // 12: GetMarketBalanceReply.available_balance:type_name -> Balance
+	99,  // 13: GetMarketBalanceReply.total_balance:type_name -> Balance
+	98,  // 14: ClaimMarketDepositsRequest.market:type_name -> Market
+	89,  // 15: ClaimMarketDepositsRequest.outpoints:type_name -> TxOutpoint
+	98,  // 16: OpenMarketRequest.market:type_name -> Market
+	98,  // 17: CloseMarketRequest.market:type_name -> Market
+	82,  // 18: ListMarketsReply.markets:type_name -> MarketInfo
+	98,  // 19: DropMarketRequest.market:type_name -> Market
+	98,  // 20: GetMarketCollectedSwapFeesRequest.market:type_name -> Market
+	93,  // 21: GetMarketCollectedSwapFeesRequest.page:type_name -> Page
+	88,  // 22: GetMarketCollectedSwapFeesReply.collected_fees:type_name -> FeeInfo
+	94,  // 23: GetMarketCollectedSwapFeesReply.total_collected_fees_per_asset:type_name -> GetMarketCollectedSwapFeesReply.TotalCollectedFeesPerAssetEntry
+	98,  // 24: WithdrawMarketRequest.market:type_name -> Market
+	99,  // 25: WithdrawMarketRequest.balance_to_withdraw:type_name -> Balance
+	98,  // 26: UpdateMarketPercentageFeeRequest.market:type_name -> Market
+	98,  // 27: UpdateMarketFixedFeeRequest.market:type_name -> Market
+	100, // 28: UpdateMarketFixedFeeRequest.fixed:type_name -> Fixed
+	101, // 29: UpdateMarketFeeReply.market_with_fee:type_name -> MarketWithFee
+	98,  // 30: UpdateMarketPriceRequest.market:type_name -> Market
+	102, // 31: UpdateMarketPriceRequest.price:type_name -> Price
+	98,  // 32: UpdateMarketStrategyRequest.market:type_name -> Market
+	0,   // 33: UpdateMarketStrategyRequest.strategy_type:type_name -> StrategyType
+	97,  // 34: GetFeeFragmenterAddressReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
+	97,  // 35: ListFeeFragmenterAddressesReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
+	95,  // 36: GetFeeFragmenterBalanceReply.balance:type_name -> GetFeeFragmenterBalanceReply.BalanceEntry
+	97,  // 37: GetMarketFragmenterAddressReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
+	97,  // 38: ListMarketFragmenterAddressesReply.address_with_blinding_key:type_name -> AddressWithBlindingKey
+	96,  // 39: GetMarketFragmenterBalanceReply.balance:type_name -> GetMarketFragmenterBalanceReply.BalanceEntry
+	98,  // 40: MarketFragmenterSplitFundsRequest.market:type_name -> Market
+	98,  // 41: ListTradesRequest.market:type_name -> Market
+	93,  // 42: ListTradesRequest.page:type_name -> Page
+	87,  // 43: ListTradesReply.trades:type_name -> TradeInfo
+	93,  // 44: ListUtxosRequest.page:type_name -> Page
+	83,  // 45: ListUtxosReply.unspents:type_name -> UtxoInfo
+	83,  // 46: ListUtxosReply.spents:type_name -> UtxoInfo
+	83,  // 47: ListUtxosReply.locks:type_name -> UtxoInfo
+	2,   // 48: AddWebhookRequest.action:type_name -> ActionType
+	2,   // 49: ListWebhooksRequest.action:type_name -> ActionType
+	91,  // 50: ListWebhooksReply.webhook_info:type_name -> WebhookInfo
+	93,  // 51: ListDepositsRequest.page:type_name -> Page
+	83,  // 52: ListDepositsReply.deposits:type_name -> UtxoInfo
+	93,  // 53: ListWithdrawalsRequest.page:type_name -> Page
+	92,  // 54: ListWithdrawalsReply.withdrawals:type_name -> Withdrawal
+	98,  // 55: MarketInfo.market:type_name -> Market
+	103, // 56: MarketInfo.fee:type_name -> Fee
+	0,   // 57: MarketInfo.strategy_type:type_name -> StrategyType
+	102, // 58: MarketInfo.price:type_name -> Price
+	99,  // 59: MarketInfo.balance:type_name -> Balance
+	89,  // 60: UtxoInfo.outpoint:type_name -> TxOutpoint
+	1,   // 61: TradeStatusInfo.status:type_name -> TradeStatus
+	84,  // 62: TradeInfo.status:type_name -> TradeStatusInfo
+	85,  // 63: TradeInfo.swap_info:type_name -> SwapInfo
+	86,  // 64: TradeInfo.fail_info:type_name -> SwapFailInfo
+	101, // 65: TradeInfo.market_with_fee:type_name -> MarketWithFee
+	90,  // 66: TradeInfo.price:type_name -> TradePrice
+	99,  // 67: Withdrawal.balance:type_name -> Balance
+	104, // 68: GetFeeFragmenterBalanceReply.BalanceEntry.value:type_name -> BalanceInfo
+	104, // 69: GetMarketFragmenterBalanceReply.BalanceEntry.value:type_name -> BalanceInfo
+	3,   // 70: Operator.GetInfo:input_type -> GetInfoRequest
+	5,   // 71: Operator.GetFeeAddress:input_type -> GetFeeAddressRequest
+	7,   // 72: Operator.ListFeeAddresses:input_type -> ListFeeAddressesRequest
+	9,   // 73: Operator.GetFeeBalance:input_type -> GetFeeBalanceRequest
+	11,  // 74: Operator.ClaimFeeDeposits:input_type -> ClaimFeeDepositsRequest
+	13,  // 75: Operator.WithdrawFee:input_type -> WithdrawFeeRequest
+	15,  // 76: Operator.NewMarket:input_type -> NewMarketRequest
+	17,  // 77: Operator.GetMarketInfo:input_type -> GetMarketInfoRequest
+	19,  // 78: Operator.GetMarketAddress:input_type -> GetMarketAddressRequest
+	21,  // 79: Operator.ListMarketAddresses:input_type -> ListMarketAddressesRequest
+	23,  // 80: Operator.GetMarketBalance:input_type -> GetMarketBalanceRequest
+	25,  // 81: Operator.ClaimMarketDeposits:input_type -> ClaimMarketDepositsRequest
+	27,  // 82: Operator.OpenMarket:input_type -> OpenMarketRequest
+	29,  // 83: Operator.CloseMarket:input_type -> CloseMarketRequest
+	33,  // 84: Operator.DropMarket:input_type -> DropMarketRequest
+	35,  // 85: Operator.GetMarketCollectedSwapFees:input_type -> GetMarketCollectedSwapFeesRequest
+	37,  // 86: Operator.WithdrawMarket:input_type -> WithdrawMarketRequest
+	39,  // 87: Operator.UpdateMarketPercentageFee:input_type -> UpdateMarketPercentageFeeRequest
+	40,  // 88: Operator.UpdateMarketFixedFee:input_type -> UpdateMarketFixedFeeRequest
+	42,  // 89: Operator.UpdateMarketPrice:input_type -> UpdateMarketPriceRequest
+	44,  // 90: Operator.UpdateMarketStrategy:input_type -> UpdateMarketStrategyRequest
+	46,  // 91: Operator.GetFeeFragmenterAddress:input_type -> GetFeeFragmenterAddressRequest
+	48,  // 92: Operator.ListFeeFragmenterAddresses:input_type -> ListFeeFragmenterAddressesRequest
+	50,  // 93: Operator.GetFeeFragmenterBalance:input_type -> GetFeeFragmenterBalanceRequest
+	52,  // 94: Operator.FeeFragmenterSplitFunds:input_type -> FeeFragmenterSplitFundsRequest
+	54,  // 95: Operator.WithdrawFeeFragmenter:input_type -> WithdrawFeeFragmenterRequest
+	56,  // 96: Operator.GetMarketFragmenterAddress:input_type -> GetMarketFragmenterAddressRequest
+	58,  // 97: Operator.ListMarketFragmenterAddresses:input_type -> ListMarketFragmenterAddressesRequest
+	60,  // 98: Operator.GetMarketFragmenterBalance:input_type -> GetMarketFragmenterBalanceRequest
+	62,  // 99: Operator.MarketFragmenterSplitFunds:input_type -> MarketFragmenterSplitFundsRequest
+	63,  // 100: Operator.WithdrawMarketFragmenter:input_type -> WithdrawMarketFragmenterRequest
+	31,  // 101: Operator.ListMarkets:input_type -> ListMarketsRequest
+	65,  // 102: Operator.ListTrades:input_type -> ListTradesRequest
+	67,  // 103: Operator.ReloadUtxos:input_type -> ReloadUtxosRequest
+	69,  // 104: Operator.ListUtxos:input_type -> ListUtxosRequest
+	71,  // 105: Operator.AddWebhook:input_type -> AddWebhookRequest
+	73,  // 106: Operator.RemoveWebhook:input_type -> RemoveWebhookRequest
+	75,  // 107: Operator.ListWebhooks:input_type -> ListWebhooksRequest
+	77,  // 108: Operator.ListDeposits:input_type -> ListDepositsRequest
+	79,  // 109: Operator.ListWithdrawals:input_type -> ListWithdrawalsRequest
+	4,   // 110: Operator.GetInfo:output_type -> GetInfoReply
+	6,   // 111: Operator.GetFeeAddress:output_type -> GetFeeAddressReply
+	8,   // 112: Operator.ListFeeAddresses:output_type -> ListFeeAddressesReply
+	10,  // 113: Operator.GetFeeBalance:output_type -> GetFeeBalanceReply
+	12,  // 114: Operator.ClaimFeeDeposits:output_type -> ClaimFeeDepositsReply
+	14,  // 115: Operator.WithdrawFee:output_type -> WithdrawFeeReply
+	16,  // 116: Operator.NewMarket:output_type -> NewMarketReply
+	18,  // 117: Operator.GetMarketInfo:output_type -> GetMarketInfoReply
+	20,  // 118: Operator.GetMarketAddress:output_type -> GetMarketAddressReply
+	22,  // 119: Operator.ListMarketAddresses:output_type -> ListMarketAddressesReply
+	24,  // 120: Operator.GetMarketBalance:output_type -> GetMarketBalanceReply
+	26,  // 121: Operator.ClaimMarketDeposits:output_type -> ClaimMarketDepositsReply
+	28,  // 122: Operator.OpenMarket:output_type -> OpenMarketReply
+	30,  // 123: Operator.CloseMarket:output_type -> CloseMarketReply
+	34,  // 124: Operator.DropMarket:output_type -> DropMarketReply
+	36,  // 125: Operator.GetMarketCollectedSwapFees:output_type -> GetMarketCollectedSwapFeesReply
+	38,  // 126: Operator.WithdrawMarket:output_type -> WithdrawMarketReply
+	41,  // 127: Operator.UpdateMarketPercentageFee:output_type -> UpdateMarketFeeReply
+	41,  // 128: Operator.UpdateMarketFixedFee:output_type -> UpdateMarketFeeReply
+	43,  // 129: Operator.UpdateMarketPrice:output_type -> UpdateMarketPriceReply
+	45,  // 130: Operator.UpdateMarketStrategy:output_type -> UpdateMarketStrategyReply
+	47,  // 131: Operator.GetFeeFragmenterAddress:output_type -> GetFeeFragmenterAddressReply
+	49,  // 132: Operator.ListFeeFragmenterAddresses:output_type -> ListFeeFragmenterAddressesReply
+	51,  // 133: Operator.GetFeeFragmenterBalance:output_type -> GetFeeFragmenterBalanceReply
+	53,  // 134: Operator.FeeFragmenterSplitFunds:output_type -> FragmenterSplitFundsReply
+	55,  // 135: Operator.WithdrawFeeFragmenter:output_type -> WithdrawFeeFragmenterReply
+	57,  // 136: Operator.GetMarketFragmenterAddress:output_type -> GetMarketFragmenterAddressReply
+	59,  // 137: Operator.ListMarketFragmenterAddresses:output_type -> ListMarketFragmenterAddressesReply
+	61,  // 138: Operator.GetMarketFragmenterBalance:output_type -> GetMarketFragmenterBalanceReply
+	53,  // 139: Operator.MarketFragmenterSplitFunds:output_type -> FragmenterSplitFundsReply
+	64,  // 140: Operator.WithdrawMarketFragmenter:output_type -> WithdrawMarketFragmenterReply
+	32,  // 141: Operator.ListMarkets:output_type -> ListMarketsReply
+	66,  // 142: Operator.ListTrades:output_type -> ListTradesReply
+	68,  // 143: Operator.ReloadUtxos:output_type -> ReloadUtxosReply
+	70,  // 144: Operator.ListUtxos:output_type -> ListUtxosReply
+	72,  // 145: Operator.AddWebhook:output_type -> AddWebhookReply
+	74,  // 146: Operator.RemoveWebhook:output_type -> RemoveWebhookReply
+	76,  // 147: Operator.ListWebhooks:output_type -> ListWebhooksReply
+	78,  // 148: Operator.ListDeposits:output_type -> ListDepositsReply
+	80,  // 149: Operator.ListWithdrawals:output_type -> ListWithdrawalsReply
+	110, // [110:150] is the sub-list for method output_type
+	70,  // [70:110] is the sub-list for method input_type
+	70,  // [70:70] is the sub-list for extension type_name
+	70,  // [70:70] is the sub-list for extension extendee
+	0,   // [0:70] is the sub-list for field type_name
 }
 
 func init() { file_operator_proto_init() }
@@ -6133,7 +6244,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketAddressRequest); i {
+			switch v := v.(*GetMarketInfoRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6145,7 +6256,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketAddressReply); i {
+			switch v := v.(*GetMarketInfoReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6157,7 +6268,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListMarketAddressesRequest); i {
+			switch v := v.(*GetMarketAddressRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6169,7 +6280,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListMarketAddressesReply); i {
+			switch v := v.(*GetMarketAddressReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6181,7 +6292,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketBalanceRequest); i {
+			switch v := v.(*ListMarketAddressesRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6193,7 +6304,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketBalanceReply); i {
+			switch v := v.(*ListMarketAddressesReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6205,7 +6316,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ClaimMarketDepositsRequest); i {
+			switch v := v.(*GetMarketBalanceRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6217,7 +6328,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ClaimMarketDepositsReply); i {
+			switch v := v.(*GetMarketBalanceReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6229,7 +6340,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OpenMarketRequest); i {
+			switch v := v.(*ClaimMarketDepositsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6241,7 +6352,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OpenMarketReply); i {
+			switch v := v.(*ClaimMarketDepositsReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6253,7 +6364,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CloseMarketRequest); i {
+			switch v := v.(*OpenMarketRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6265,7 +6376,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CloseMarketReply); i {
+			switch v := v.(*OpenMarketReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6277,7 +6388,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListMarketsRequest); i {
+			switch v := v.(*CloseMarketRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6289,7 +6400,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListMarketsReply); i {
+			switch v := v.(*CloseMarketReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6301,7 +6412,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DropMarketRequest); i {
+			switch v := v.(*ListMarketsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6313,7 +6424,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DropMarketReply); i {
+			switch v := v.(*ListMarketsReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6325,7 +6436,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketCollectedSwapFeesRequest); i {
+			switch v := v.(*DropMarketRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6337,7 +6448,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketCollectedSwapFeesReply); i {
+			switch v := v.(*DropMarketReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6349,7 +6460,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WithdrawMarketRequest); i {
+			switch v := v.(*GetMarketCollectedSwapFeesRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6361,7 +6472,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WithdrawMarketReply); i {
+			switch v := v.(*GetMarketCollectedSwapFeesReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6373,7 +6484,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateMarketPercentageFeeRequest); i {
+			switch v := v.(*WithdrawMarketRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6385,7 +6496,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[35].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateMarketFixedFeeRequest); i {
+			switch v := v.(*WithdrawMarketReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6397,7 +6508,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[36].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateMarketFeeReply); i {
+			switch v := v.(*UpdateMarketPercentageFeeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6409,7 +6520,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[37].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateMarketPriceRequest); i {
+			switch v := v.(*UpdateMarketFixedFeeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6421,7 +6532,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[38].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateMarketPriceReply); i {
+			switch v := v.(*UpdateMarketFeeReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6433,7 +6544,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[39].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateMarketStrategyRequest); i {
+			switch v := v.(*UpdateMarketPriceRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6445,7 +6556,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[40].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateMarketStrategyReply); i {
+			switch v := v.(*UpdateMarketPriceReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6457,7 +6568,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[41].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetFeeFragmenterAddressRequest); i {
+			switch v := v.(*UpdateMarketStrategyRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6469,7 +6580,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[42].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetFeeFragmenterAddressReply); i {
+			switch v := v.(*UpdateMarketStrategyReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6481,7 +6592,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[43].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListFeeFragmenterAddressesRequest); i {
+			switch v := v.(*GetFeeFragmenterAddressRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6493,7 +6604,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[44].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListFeeFragmenterAddressesReply); i {
+			switch v := v.(*GetFeeFragmenterAddressReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6505,7 +6616,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[45].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetFeeFragmenterBalanceRequest); i {
+			switch v := v.(*ListFeeFragmenterAddressesRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6517,7 +6628,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[46].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetFeeFragmenterBalanceReply); i {
+			switch v := v.(*ListFeeFragmenterAddressesReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6529,7 +6640,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[47].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FeeFragmenterSplitFundsRequest); i {
+			switch v := v.(*GetFeeFragmenterBalanceRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6541,7 +6652,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[48].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FragmenterSplitFundsReply); i {
+			switch v := v.(*GetFeeFragmenterBalanceReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6553,7 +6664,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[49].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WithdrawFeeFragmenterRequest); i {
+			switch v := v.(*FeeFragmenterSplitFundsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6565,7 +6676,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[50].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WithdrawFeeFragmenterReply); i {
+			switch v := v.(*FragmenterSplitFundsReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6577,7 +6688,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[51].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketFragmenterAddressRequest); i {
+			switch v := v.(*WithdrawFeeFragmenterRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6589,7 +6700,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[52].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketFragmenterAddressReply); i {
+			switch v := v.(*WithdrawFeeFragmenterReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6601,7 +6712,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[53].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListMarketFragmenterAddressesRequest); i {
+			switch v := v.(*GetMarketFragmenterAddressRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6613,7 +6724,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[54].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListMarketFragmenterAddressesReply); i {
+			switch v := v.(*GetMarketFragmenterAddressReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6625,7 +6736,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[55].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketFragmenterBalanceRequest); i {
+			switch v := v.(*ListMarketFragmenterAddressesRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6637,7 +6748,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[56].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetMarketFragmenterBalanceReply); i {
+			switch v := v.(*ListMarketFragmenterAddressesReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6649,7 +6760,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[57].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MarketFragmenterSplitFundsRequest); i {
+			switch v := v.(*GetMarketFragmenterBalanceRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6661,7 +6772,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[58].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WithdrawMarketFragmenterRequest); i {
+			switch v := v.(*GetMarketFragmenterBalanceReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6673,7 +6784,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[59].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WithdrawMarketFragmenterReply); i {
+			switch v := v.(*MarketFragmenterSplitFundsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6685,7 +6796,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[60].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListTradesRequest); i {
+			switch v := v.(*WithdrawMarketFragmenterRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6697,7 +6808,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[61].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListTradesReply); i {
+			switch v := v.(*WithdrawMarketFragmenterReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6709,7 +6820,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[62].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReloadUtxosRequest); i {
+			switch v := v.(*ListTradesRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6721,7 +6832,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[63].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReloadUtxosReply); i {
+			switch v := v.(*ListTradesReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6733,7 +6844,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[64].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListUtxosRequest); i {
+			switch v := v.(*ReloadUtxosRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6745,7 +6856,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[65].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListUtxosReply); i {
+			switch v := v.(*ReloadUtxosReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6757,7 +6868,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[66].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddWebhookRequest); i {
+			switch v := v.(*ListUtxosRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6769,7 +6880,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[67].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddWebhookReply); i {
+			switch v := v.(*ListUtxosReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6781,7 +6892,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[68].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemoveWebhookRequest); i {
+			switch v := v.(*AddWebhookRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6793,7 +6904,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[69].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemoveWebhookReply); i {
+			switch v := v.(*AddWebhookReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6805,7 +6916,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[70].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListWebhooksRequest); i {
+			switch v := v.(*RemoveWebhookRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6817,7 +6928,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[71].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListWebhooksReply); i {
+			switch v := v.(*RemoveWebhookReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6829,7 +6940,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[72].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListDepositsRequest); i {
+			switch v := v.(*ListWebhooksRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6841,7 +6952,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[73].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListDepositsReply); i {
+			switch v := v.(*ListWebhooksReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6853,7 +6964,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[74].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListWithdrawalsRequest); i {
+			switch v := v.(*ListDepositsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6865,7 +6976,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[75].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListWithdrawalsReply); i {
+			switch v := v.(*ListDepositsReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6877,7 +6988,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[76].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AccountInfo); i {
+			switch v := v.(*ListWithdrawalsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6889,7 +7000,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[77].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MarketInfo); i {
+			switch v := v.(*ListWithdrawalsReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6901,7 +7012,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[78].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UtxoInfo); i {
+			switch v := v.(*AccountInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6913,7 +7024,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[79].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TradeStatusInfo); i {
+			switch v := v.(*MarketInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6925,7 +7036,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[80].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SwapInfo); i {
+			switch v := v.(*UtxoInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6937,7 +7048,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[81].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SwapFailInfo); i {
+			switch v := v.(*TradeStatusInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6949,7 +7060,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[82].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TradeInfo); i {
+			switch v := v.(*SwapInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6961,7 +7072,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[83].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FeeInfo); i {
+			switch v := v.(*SwapFailInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6973,7 +7084,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[84].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TxOutpoint); i {
+			switch v := v.(*TradeInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6985,7 +7096,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[85].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TradePrice); i {
+			switch v := v.(*FeeInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6997,7 +7108,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[86].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WebhookInfo); i {
+			switch v := v.(*TxOutpoint); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7009,7 +7120,7 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[87].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Withdrawal); i {
+			switch v := v.(*TradePrice); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7021,6 +7132,30 @@ func file_operator_proto_init() {
 			}
 		}
 		file_operator_proto_msgTypes[88].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*WebhookInfo); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_operator_proto_msgTypes[89].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Withdrawal); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_operator_proto_msgTypes[90].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Page); i {
 			case 0:
 				return &v.state
@@ -7039,7 +7174,7 @@ func file_operator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_operator_proto_rawDesc,
 			NumEnums:      3,
-			NumMessages:   92,
+			NumMessages:   94,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

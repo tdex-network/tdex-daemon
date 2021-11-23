@@ -81,6 +81,12 @@ func (o operatorHandler) NewMarket(
 	return o.newMarket(ctx, req)
 }
 
+func (o operatorHandler) GetMarketInfo(
+	ctx context.Context, req *pb.GetMarketInfoRequest,
+) (*pb.GetMarketInfoReply, error) {
+	return o.getMarketInfo(ctx, req)
+}
+
 func (o operatorHandler) GetMarketAddress(
 	ctx context.Context, req *pb.GetMarketAddressRequest,
 ) (*pb.GetMarketAddressReply, error) {
@@ -406,6 +412,49 @@ func (o operatorHandler) newMarket(
 	}
 
 	return &pb.NewMarketReply{}, nil
+}
+
+func (o operatorHandler) getMarketInfo(
+	ctx context.Context, req *pb.GetMarketInfoRequest,
+) (*pb.GetMarketInfoReply, error) {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	info, err := o.operatorSvc.GetMarketInfo(ctx, market)
+	if err != nil {
+		return nil, err
+	}
+	basePrice, _ := info.Price.BasePrice.BigFloat().Float32()
+	quotePrice, _ := info.Price.QuotePrice.BigFloat().Float32()
+
+	return &pb.GetMarketInfoReply{
+		Info: &pb.MarketInfo{
+			Market: &pbtypes.Market{
+				BaseAsset:  info.Market.BaseAsset,
+				QuoteAsset: info.Market.QuoteAsset,
+			},
+			Fee: &pbtypes.Fee{
+				BasisPoint: info.Fee.BasisPoint,
+				Fixed: &pbtypes.Fixed{
+					BaseFee:  info.Fee.FixedBaseFee,
+					QuoteFee: info.Fee.FixedQuoteFee,
+				},
+			},
+			Tradable:     info.Tradable,
+			StrategyType: pb.StrategyType(info.StrategyType),
+			AccountIndex: info.AccountIndex,
+			Price: &pbtypes.Price{
+				BasePrice:  basePrice,
+				QuotePrice: quotePrice,
+			},
+			Balance: &pbtypes.Balance{
+				BaseAmount:  info.Balance.BaseAmount,
+				QuoteAmount: info.Balance.QuoteAmount,
+			},
+		},
+	}, nil
 }
 
 func (o operatorHandler) getMarketAddress(

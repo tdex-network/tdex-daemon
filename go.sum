@@ -381,8 +381,6 @@ github.com/vulpemventures/fastsha256 v0.0.0-20160815193821-637e65642941/go.mod h
 github.com/vulpemventures/go-bip39 v1.0.2 h1:+BgKOVo04okKf1wA4Fhv8ccvql+qFyzVUdVJKkb48r0=
 github.com/vulpemventures/go-bip39 v1.0.2/go.mod h1:mjFmuv9D6BtANI6iscMmbHhmBOwjMCFfny3mxHnuDrk=
 github.com/vulpemventures/go-elements v0.1.1/go.mod h1:OtH2q9NiwybzT9X0AWvkNY+sbxy3okD+vC9oAu5hWhE=
-github.com/vulpemventures/go-elements v0.3.3 h1:ylUnZq+snFB1bpRX2avoN6pT8gJkycghf98akfc70No=
-github.com/vulpemventures/go-elements v0.3.3/go.mod h1:dr2bb8ydLAfAdubX4zodvh/1/Pc1tseE/3U8/d+oJhw=
 github.com/vulpemventures/go-elements v0.3.5 h1:BWOAVcsDjMBLlj6TbATx01E59xKVVv6gY9QU0yunZ4I=
 github.com/vulpemventures/go-elements v0.3.5/go.mod h1:dr2bb8ydLAfAdubX4zodvh/1/Pc1tseE/3U8/d+oJhw=
 github.com/vulpemventures/go-secp256k1-zkp v1.1.0/go.mod h1:zo7CpgkuPgoe7fAV+inyxsI9IhGmcoFgyD8nqZaPSOM=

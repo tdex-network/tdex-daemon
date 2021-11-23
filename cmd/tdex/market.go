@@ -15,7 +15,7 @@ var (
 		Name:  "market",
 		Usage: "manage a market account of the daemon's wallet",
 		Subcommands: []*cli.Command{
-			marketNewCmd, marketBalanceCmd, marketListAddressesCmd,
+			marketNewCmd, marketInfoCmd, marketBalanceCmd, marketListAddressesCmd,
 			marketDepositCmd, marketClaimCmd, marketWithdrawCmd,
 			marketOpenCmd, marketCloseCmd, marketDropCmd,
 			marketUpdateFixedFeeCmd, marketUpdatePercentageFeeCmd, marketReportFeeCmd,
@@ -39,6 +39,11 @@ var (
 			},
 		},
 		Action: newMarketAction,
+	}
+	marketInfoCmd = &cli.Command{
+		Name:   "info",
+		Usage:  "get info about the current market",
+		Action: marketInfoAction,
 	}
 	marketBalanceCmd = &cli.Command{
 		Name:   "balance",
@@ -218,6 +223,34 @@ func newMarketAction(ctx *cli.Context) error {
 
 	fmt.Println()
 	fmt.Println("market created")
+	return nil
+}
+
+func marketInfoAction(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.GetMarketInfo(
+		context.Background(), &pb.GetMarketInfoRequest{
+			Market: &pbtypes.Market{
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(resp)
 	return nil
 }
 
