@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -42,6 +43,13 @@ var (
 		"image": {},
 	}
 
+	rxDNSName = regexp.MustCompile(
+		`^([a-zA-Z]{1}[a-zA-Z0-9-]{0,62}){1}(\.[a-zA-Z0-9]{1}[a-zA-Z0-9-]{0,62})*[\.]?$`,
+	)
+	rxIP = regexp.MustCompile(
+		`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`,
+	)
+
 	rpcServerFlag = pflag.String(
 		rpcServerKey, defaultRPCServer, "the rpc address and port of tdexd",
 	)
@@ -74,7 +82,7 @@ func validateFlags(
 			return fmt.Errorf("%s must be a valid address in the form host:port", rpcServerKey)
 		}
 		if parts[0] != "" && parts[0] != "localhost" {
-			if net.ParseIP(parts[0]) == nil {
+			if !validateIp(parts[0]) && !validateDomain(parts[0]) {
 				return fmt.Errorf("%s host is invalid", rpcServerKey)
 			}
 		}
@@ -121,6 +129,18 @@ func validateFlags(
 	}
 
 	return nil
+}
+
+func validateIp(str string) bool {
+	return net.ParseIP(str) != nil && rxIP.MatchString(str)
+}
+
+func validateDomain(str string) bool {
+	if str == "" || len(strings.Replace(str, ".", "", -1)) > 255 {
+		// Domain must not be longer than 255 chars.
+		return false
+	}
+	return rxDNSName.MatchString(str)
 }
 
 func main() {
