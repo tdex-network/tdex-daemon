@@ -669,7 +669,7 @@ func (o *operatorService) DropMarket(ctx context.Context, market Market) error {
 	// If the account owns either some unlocked unspents it cannot be dropped
 	hasUnlockedUnspents := false
 	for _, u := range unspents {
-		if !u.IsLocked() {
+		if !u.Spent && !u.IsLocked() {
 			hasUnlockedUnspents = true
 			break
 		}
