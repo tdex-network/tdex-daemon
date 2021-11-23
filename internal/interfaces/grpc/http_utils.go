@@ -330,7 +330,8 @@ func isValidGrpcWebRequest(req *http.Request) bool {
 
 func isValidGrpcContentTypeHeader(contentType string) bool {
 	return strings.HasPrefix(contentType, "application/grpc-web-text") ||
-		strings.HasPrefix(contentType, "application/grpc-web")
+		strings.HasPrefix(contentType, "application/grpc-web") ||
+		strings.HasPrefix(contentType, "application/grpc+proxy>proto")
 }
 
 func isValidGrpcWebOptionRequest(req *http.Request) bool {
