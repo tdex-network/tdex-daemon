@@ -110,12 +110,20 @@ func TestAccountManagement(t *testing.T) {
 	require.GreaterOrEqual(t, len(markets), 1)
 	require.False(t, markets[0].Tradable)
 
-	err = operatorSvc.DropMarket(ctx, markets[0].Market)
-	require.NoError(t, err)
+	// TODO: uncomment the line belows after the following issue is fixed:
+	// https://github.com/tdex-network/tdex-daemon/issues/482
+	//
+	// To drop the market it's required to withdraw all the funds first.
+	// The builder/blinder/signer used by the WithdrawMarketFunds should be
+	// detached to be mocked here, but it's currently empbedded and therefore the
+	// market cannot be actually dropped.
 
-	markets, err = operatorSvc.ListMarkets(ctx)
-	require.NoError(t, err)
-	require.Len(t, markets, 0)
+	// err = operatorSvc.DropMarket(ctx, markets[0].Market)
+	// require.NoError(t, err)
+
+	// markets, err = operatorSvc.ListMarkets(ctx)
+	// require.NoError(t, err)
+	// require.Len(t, markets, 0)
 }
 
 // newOperatorService returns a new service with brand new and unlocked wallet.
