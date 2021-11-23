@@ -654,6 +654,30 @@ func (o *operatorService) DropMarket(ctx context.Context, market Market) error {
 		return ErrMarketNotExist
 	}
 
+	info, err := o.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(
+		ctx, accountIndex,
+	)
+	if err != nil {
+		return err
+	}
+
+	unspents, err := o.repoManager.UnspentRepository().GetAllUnspentsForAddresses(ctx, info.Addresses())
+	if err != nil {
+		return err
+	}
+
+	// If the account owns either some unlocked unspents it cannot be dropped
+	hasUnlockedUnspents := false
+	for _, u := range unspents {
+		if !u.IsLocked() {
+			hasUnlockedUnspents = true
+			break
+		}
+	}
+	if hasUnlockedUnspents {
+		return ErrMarketNonZeroBalance
+	}
+
 	_, err = o.repoManager.RunTransaction(
 		ctx, false, func(ctx context.Context) (interface{}, error) {
 			if err := o.repoManager.MarketRepository().DeleteMarket(
