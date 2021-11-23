@@ -208,14 +208,15 @@ func getNetworkFromState() (*network.Network, error) {
 		return nil, err
 	}
 
-	net, ok := state["network"]
-	if !ok {
+	net := state["network"]
+	switch net {
+	case network.Testnet.Name:
+		return &network.Testnet, nil
+	case network.Regtest.Name:
+		return &network.Regtest, nil
+	default:
 		return &network.Liquid, nil
 	}
-	if net == "regtest" {
-		return &network.Regtest, nil
-	}
-	return &network.Liquid, nil
 }
 
 func getMarketFromState() (string, string, error) {
