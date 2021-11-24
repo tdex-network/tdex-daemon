@@ -63,5 +63,5 @@ var (
 	ErrMissingWithdrawAddress = errors.New("address must not be null")
 	// ErrMarketNonZeroBalance is returned when trying to drop a market that still
 	// owns some base or quote asset funds.
-	ErrMarketNonZeroBalance = errors.New("market must not own funds to be dropped")
+	ErrMarketNonZeroBalance = errors.New("withdraw funds from market before deleting")
 )
