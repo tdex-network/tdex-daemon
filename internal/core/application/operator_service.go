@@ -53,6 +53,7 @@ type OperatorService interface {
 	) ([]byte, []byte, error)
 	// Market account
 	NewMarket(ctx context.Context, market Market) error
+	GetMarketInfo(ctx context.Context, market Market) (*MarketInfo, error)
 	GetMarketAddress(
 		ctx context.Context, market Market, numOfAddresses int,
 	) ([]AddressAndBlindingKey, error)
@@ -480,6 +481,40 @@ func (o *operatorService) NewMarket(ctx context.Context, mkt Market) error {
 	return err
 }
 
+func (o *operatorService) GetMarketInfo(ctx context.Context, mkt Market) (*MarketInfo, error) {
+	market, _, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, mkt.BaseAsset, mkt.QuoteAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if market == nil {
+		return nil, ErrMarketNotExist
+	}
+
+	balance, err := getUnlockedBalanceForMarket(o.repoManager, ctx, market)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MarketInfo{
+		AccountIndex: uint64(market.AccountIndex),
+		Market: Market{
+			BaseAsset:  market.BaseAsset,
+			QuoteAsset: market.QuoteAsset,
+		},
+		Tradable:     market.Tradable,
+		StrategyType: market.Strategy.Type,
+		Price:        market.Price,
+		Fee: Fee{
+			BasisPoint:    market.Fee,
+			FixedBaseFee:  market.FixedFee.BaseFee,
+			FixedQuoteFee: market.FixedFee.QuoteFee,
+		},
+		Balance: *balance,
+	}, nil
+}
+
 func (o *operatorService) GetMarketAddress(
 	ctx context.Context, mkt Market, numOfAddresses int,
 ) ([]AddressAndBlindingKey, error) {
@@ -652,6 +687,30 @@ func (o *operatorService) DropMarket(ctx context.Context, market Market) error {
 	}
 	if accountIndex < 0 {
 		return ErrMarketNotExist
+	}
+
+	info, err := o.repoManager.VaultRepository().GetAllDerivedAddressesInfoForAccount(
+		ctx, accountIndex,
+	)
+	if err != nil {
+		return err
+	}
+
+	unspents, err := o.repoManager.UnspentRepository().GetAllUnspentsForAddresses(ctx, info.Addresses())
+	if err != nil {
+		return err
+	}
+
+	// If the account owns either some unlocked unspents it cannot be dropped
+	hasUnlockedUnspents := false
+	for _, u := range unspents {
+		if !u.Spent && !u.IsLocked() {
+			hasUnlockedUnspents = true
+			break
+		}
+	}
+	if hasUnlockedUnspents {
+		return ErrMarketNonZeroBalance
 	}
 
 	_, err = o.repoManager.RunTransaction(

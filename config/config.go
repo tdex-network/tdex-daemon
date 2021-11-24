@@ -173,29 +173,20 @@ func GetBool(key string) bool {
 
 //GetNetwork ...
 func GetNetwork() (*network.Network, error) {
-	networkName := vip.GetString(NetworkKey)
-
-	if networkName == network.Liquid.Name {
+	switch vip.GetString(NetworkKey) {
+	case network.Liquid.Name:
 		return &network.Liquid, nil
-	}
-
-	if networkName == network.Regtest.Name {
+	case network.Testnet.Name:
+		return &network.Testnet, nil
+	case network.Regtest.Name:
 		net := network.Regtest
-		regtestNativeAssetHash := vip.GetString(NativeAssetKey)
-
-		if regtestNativeAssetHash == "" {
-			return &net, nil
+		if nativeAsset := vip.GetString(NativeAssetKey); nativeAsset != "" {
+			net.AssetID = nativeAsset
 		}
-
-		if err := validateAssetString(regtestNativeAssetHash); err != nil {
-			return nil, err
-		}
-
-		net.AssetID = regtestNativeAssetHash
 		return &net, nil
+	default:
+		return nil, fmt.Errorf("network is unknown")
 	}
-
-	return nil, fmt.Errorf("network is unknown")
 }
 
 // TODO: attach network name to datadir
@@ -247,12 +238,23 @@ func validate() error {
 
 	networkName := GetString(NetworkKey)
 	if networkName != network.Liquid.Name &&
+		networkName != network.Testnet.Name &&
 		networkName != network.Regtest.Name {
 		return fmt.Errorf(
-			"network must be either '%s' or '%s'",
+			"network must be either '%s' | '%s' | '%s'",
 			network.Liquid.Name,
+			network.Testnet.Name,
 			network.Regtest.Name,
 		)
+	}
+
+	// Check native asset only for regtest
+	if networkName == network.Regtest.Name {
+		if nativeAsset := GetString(NativeAssetKey); nativeAsset != "" {
+			if err := validateAssetString(nativeAsset); err != nil {
+				return err
+			}
+		}
 	}
 
 	tlsKey, tlsCert := GetString(TradeTLSKeyKey), GetString(TradeTLSCertKey)

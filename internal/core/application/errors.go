@@ -19,8 +19,6 @@ var (
 	ErrMarketNotExist = errors.New("market does not exist")
 	// ErrMarketNotFunded ...
 	ErrMarketNotFunded = errors.New("market account not funded")
-	// ErrMissingNonFundedMarkets ...
-	ErrMissingNonFundedMarkets = errors.New("no non-funded markets found")
 	// ErrInvalidOutpoint ...
 	ErrInvalidOutpoint = errors.New("outpoint refers to inexistent tx output")
 	// ErrInvalidOutpoints ...
@@ -63,4 +61,7 @@ var (
 	// ErrMissingWithdrawAddress is returned if the receiving address to is not
 	// set for a withdrawal.
 	ErrMissingWithdrawAddress = errors.New("address must not be null")
+	// ErrMarketNonZeroBalance is returned when trying to drop a market that still
+	// owns some base or quote asset funds.
+	ErrMarketNonZeroBalance = errors.New("withdraw funds from market before deleting")
 )

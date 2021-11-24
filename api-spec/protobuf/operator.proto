@@ -32,6 +32,8 @@ service Operator {
   // Creates a new market account in the daemon's wallet.
   rpc NewMarket(NewMarketRequest) returns (NewMarketReply) {}
   
+  rpc GetMarketInfo(GetMarketInfoRequest) returns (GetMarketInfoReply) {}
+  
   // Returns some new derived address(es) for the given market.
   rpc GetMarketAddress(GetMarketAddressRequest)
     returns (GetMarketAddressReply) {}
@@ -214,6 +216,13 @@ message NewMarketRequest {
   Market market = 1;
 }
 message NewMarketReply {}
+
+message GetMarketInfoRequest {
+  Market market = 1;
+}
+message GetMarketInfoReply {
+  MarketInfo info = 1;
+}
 
 message GetMarketAddressRequest {
   // The market for which deriving new addresses.
