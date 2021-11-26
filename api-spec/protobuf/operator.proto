@@ -676,9 +676,12 @@ message WebhookInfo {
 }
 
 message Deposit {
+  // The utxo deposited.
   UtxoInfo utxo = 1;
-  // The timestamp of the deposit transaction
-  uint64 timestamp = 2;
+  // The timestamp of the deposit transaction in Unix format.
+  uint64 timestamp_unix = 2;
+  // The timestamp of the deposit transaction in UTC format.
+  string timestamp_utc = 5;
 }
 
 message Withdrawal {
@@ -688,8 +691,10 @@ message Withdrawal {
   Balance balance = 2;
   // The address where the funds have been sent.
   string address = 3;
-  // The timestamp of the withdrawal transaction
-  uint64 timestamp = 4;
+  // The timestamp of the withdrawal transaction in Unix format.
+  uint64 timestamp_unix = 4;
+  // The timestamp of the withdrawal transaction in UTC format.
+  string timestamp_utc = 5;
 }
 
 message Page {
