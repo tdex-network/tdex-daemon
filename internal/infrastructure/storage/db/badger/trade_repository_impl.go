@@ -34,7 +34,8 @@ func (t tradeRepositoryImpl) GetOrCreateTrade(
 func (t tradeRepositoryImpl) GetAllTrades(
 	ctx context.Context,
 ) ([]*domain.Trade, error) {
-	return t.findTrades(ctx, nil)
+	query := &badgerhold.Query{}
+	return t.findTrades(ctx, query)
 }
 
 func (t tradeRepositoryImpl) GetAllTradesForPage(
@@ -183,6 +184,7 @@ func (t tradeRepositoryImpl) findTrades(
 	query *badgerhold.Query,
 ) ([]*domain.Trade, error) {
 	var tr []domain.Trade
+	query.SortBy("SwapRequest.Timestamp").Reverse()
 	var err error
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)

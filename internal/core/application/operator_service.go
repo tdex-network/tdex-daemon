@@ -2225,45 +2225,23 @@ func (o *operatorService) withdrawFragmenterAccount(
 
 func tradesToTradeInfo(trades []*domain.Trade, marketBaseAsset, network string) []TradeInfo {
 	tradeInfo := make([]TradeInfo, 0, len(trades))
-	chInfo := make(chan TradeInfo)
-	wg := &sync.WaitGroup{}
-	wg.Add(len(trades))
-
-	go func() {
-		wg.Wait()
-		close(chInfo)
-	}()
-
-	for i := range trades {
-		trade := trades[i]
-		go tradeToTradeInfo(trade, marketBaseAsset, network, chInfo, wg)
+	for _, trade := range trades {
+		info := tradeToTradeInfo(trade, marketBaseAsset, network)
+		if info != nil {
+			tradeInfo = append(tradeInfo, *info)
+		}
 	}
-
-	for info := range chInfo {
-		tradeInfo = append(tradeInfo, info)
-	}
-
-	// sort by request timestamp
-	sort.SliceStable(tradeInfo, func(i, j int) bool {
-		return tradeInfo[i].RequestTimeUnix < tradeInfo[j].RequestTimeUnix
-	})
 
 	return tradeInfo
 }
 
 func tradeToTradeInfo(
-	trade *domain.Trade,
-	marketBaseAsset, net string,
-	chInfo chan TradeInfo,
-	wg *sync.WaitGroup,
-) {
-	if wg != nil {
-		defer wg.Done()
+	trade *domain.Trade, marketBaseAsset, net string,
+) *TradeInfo {
+	if trade.IsEmpty() {
+		return nil
 	}
 
-	if trade.IsEmpty() {
-		return
-	}
 	// to maintain backward compatibility, since trade.MarketBaseAsset has been
 	// introduced only in versions above v0.7.1.
 	mktBaseAsset := trade.MarketBaseAsset
@@ -2271,7 +2249,7 @@ func tradeToTradeInfo(
 		mktBaseAsset = marketBaseAsset
 	}
 
-	info := TradeInfo{
+	info := &TradeInfo{
 		ID:     trade.ID.String(),
 		Status: trade.Status,
 		MarketWithFee: MarketWithFee{
@@ -2327,14 +2305,11 @@ func tradeToTradeInfo(
 		// remove trailing comma
 		blinded = strings.Trim(blinded, ",")
 
-		baseURL := "https://blockstream.info/liquid/tx"
-		if net == network.Regtest.Name {
-			baseURL = "http://localhost:3001/tx"
-		}
+		baseURL := fmt.Sprintf("%s/tx", esploraUrlByNetwork[net])
 		info.TxURL = fmt.Sprintf("%s/%s#blinded=%s", baseURL, trade.TxID, blinded)
 	}
 
-	chInfo <- info
+	return info
 }
 
 func groupAddressesInfoByScript(info domain.AddressesInfo) map[string]domain.AddressInfo {
