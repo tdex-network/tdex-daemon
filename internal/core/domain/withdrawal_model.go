@@ -8,4 +8,5 @@ type Withdrawal struct {
 	QuoteAmount     uint64
 	MillisatPerByte int64
 	Address         string
+	Timestamp       uint64
 }

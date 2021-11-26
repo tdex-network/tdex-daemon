@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -401,6 +402,7 @@ func (o *operatorService) WithdrawFeeFunds(
 					BaseAmount:      req.Amount,
 					MillisatPerByte: int64(req.MillisatPerByte),
 					Address:         req.Address,
+					Timestamp:       uint64(time.Now().Unix()),
 				},
 			},
 		)
@@ -990,6 +992,7 @@ func (o *operatorService) WithdrawMarketFunds(
 					QuoteAmount:     req.BalanceToWithdraw.QuoteAmount,
 					MillisatPerByte: req.MillisatPerByte,
 					Address:         req.Address,
+					Timestamp:       uint64(time.Now().Unix()),
 				},
 			},
 		)
@@ -1690,6 +1693,7 @@ func (o *operatorService) claimDeposit(
 				VOut:         v.Index,
 				Asset:        unconfidential.AssetHash,
 				Value:        unconfidential.Value,
+				Timestamp:    uint64(time.Now().Unix()),
 			})
 
 			if !confirmed {
