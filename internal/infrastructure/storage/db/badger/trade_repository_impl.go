@@ -184,8 +184,9 @@ func (t tradeRepositoryImpl) findTrades(
 	query *badgerhold.Query,
 ) ([]*domain.Trade, error) {
 	var tr []domain.Trade
-	query.SortBy("SwapRequest.Timestamp").Reverse()
 	var err error
+
+	query.SortBy("SwapRequest.Timestamp").Reverse()
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
 		err = t.store.TxFind(tx, &tr, query)
