@@ -43,7 +43,8 @@ func (d depositRepositoryImpl) ListDepositsForAccountAndPage(
 func (d depositRepositoryImpl) ListAllDeposits(
 	ctx context.Context,
 ) ([]domain.Deposit, error) {
-	return d.findDeposits(ctx, nil)
+	query := &badgerhold.Query{}
+	return d.findDeposits(ctx, query)
 }
 
 func (d depositRepositoryImpl) ListAllDepositsForPage(
@@ -99,6 +100,8 @@ func (d depositRepositoryImpl) findDeposits(
 ) ([]domain.Deposit, error) {
 	var deposits []domain.Deposit
 	var err error
+
+	query.SortBy("Timestamp").Reverse()
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
 		err = d.store.TxFind(tx, &deposits, query)

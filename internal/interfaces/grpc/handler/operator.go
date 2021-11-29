@@ -1209,16 +1209,23 @@ func (o operatorHandler) listDeposits(
 		return nil, err
 	}
 
-	depositsProto := make([]*pb.UtxoInfo, 0, len(deposits))
+	depositsProto := make([]*pb.Deposit, 0, len(deposits))
 	for _, v := range deposits {
-		depositsProto = append(depositsProto, &pb.UtxoInfo{
-			Outpoint: &pb.TxOutpoint{
-				Hash:  v.TxID,
-				Index: int32(v.VOut),
+		dd := &pb.Deposit{
+			Utxo: &pb.UtxoInfo{
+				Outpoint: &pb.TxOutpoint{
+					Hash:  v.TxID,
+					Index: int32(v.VOut),
+				},
+				Value: v.Value,
+				Asset: v.Asset,
 			},
-			Value: v.Value,
-			Asset: v.Asset,
-		})
+		}
+		if v.Timestamp > 0 {
+			dd.TimestampUnix = v.Timestamp
+			dd.TimestampUtc = time.Unix(int64(v.Timestamp), 0).UTC().String()
+		}
+		depositsProto = append(depositsProto, dd)
 	}
 
 	return &pb.ListDepositsReply{
@@ -1238,14 +1245,19 @@ func (o operatorHandler) listWithdrawals(
 
 	withdrawalsProto := make([]*pb.Withdrawal, 0, len(withdrawals))
 	for _, v := range withdrawals {
-		withdrawalsProto = append(withdrawalsProto, &pb.Withdrawal{
+		ww := &pb.Withdrawal{
 			TxId: v.TxID,
 			Balance: &pbtypes.Balance{
 				BaseAmount:  v.BaseAmount,
 				QuoteAmount: v.QuoteAmount,
 			},
 			Address: v.Address,
-		})
+		}
+		if v.Timestamp > 0 {
+			ww.TimestampUnix = v.Timestamp
+			ww.TimestampUtc = time.Unix(int64(v.Timestamp), 0).UTC().String()
+		}
+		withdrawalsProto = append(withdrawalsProto, ww)
 	}
 
 	return &pb.ListWithdrawalsReply{

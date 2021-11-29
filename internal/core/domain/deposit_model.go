@@ -7,6 +7,7 @@ type Deposit struct {
 	VOut         int
 	Asset        string
 	Value        uint64
+	Timestamp    uint64
 }
 
 // DepositKey represent the ID of an Deposit, composed by its txid and vout.

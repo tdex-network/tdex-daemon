@@ -45,7 +45,8 @@ func (w withdrawalRepositoryImpl) ListWithdrawalsForAccountAndPage(
 func (w withdrawalRepositoryImpl) ListAllWithdrawals(
 	ctx context.Context,
 ) ([]domain.Withdrawal, error) {
-	return w.findWithdrawals(ctx, nil)
+	query := &badgerhold.Query{}
+	return w.findWithdrawals(ctx, query)
 }
 
 func (w withdrawalRepositoryImpl) ListAllWithdrawalsForPage(
@@ -102,6 +103,8 @@ func (w withdrawalRepositoryImpl) findWithdrawals(
 ) ([]domain.Withdrawal, error) {
 	var withdrawals []domain.Withdrawal
 	var err error
+
+	query.SortBy("Timestamp").Reverse()
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
 		err = w.store.TxFind(tx, &withdrawals, query)
