@@ -35,6 +35,7 @@ var (
 		3: 10,
 		5: 2,
 	}
+	PollInterval = 1 * time.Second
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -1935,7 +1936,9 @@ func (o *operatorService) splitFeeFragmenterFunds(
 	chRes <- FragmenterSplitFundsReply{
 		Msg: "waiting for tx to appear at list in mempool",
 	}
-	if err := waitForTx(o.explorerSvc, txid); err != nil {
+	if _, err := o.explorerSvc.PollGetKnownTransaction(
+		txid, PollInterval,
+	); err != nil {
 		chRes <- FragmenterSplitFundsReply{
 			Err: fmt.Errorf("failed while waiting for tx: %s", err),
 		}
@@ -2130,7 +2133,9 @@ func (o *operatorService) splitMarketFragmenterFunds(
 	chRes <- FragmenterSplitFundsReply{
 		Msg: "waiting for tx to appear at list in mempool",
 	}
-	if err := waitForTx(o.explorerSvc, txid); err != nil {
+	if _, err := o.explorerSvc.PollGetKnownTransaction(
+		txid, PollInterval,
+	); err != nil {
 		chRes <- FragmenterSplitFundsReply{
 			Err: fmt.Errorf("failed while waiting for tx: %s", err),
 		}
