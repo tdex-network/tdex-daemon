@@ -1933,6 +1933,16 @@ func (o *operatorService) splitFeeFragmenterFunds(
 	}
 
 	chRes <- FragmenterSplitFundsReply{
+		Msg: "waiting for tx to appear at list in mempool",
+	}
+	if err := waitForTx(o.explorerSvc, txid); err != nil {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf("failed while waiting for tx: %s", err),
+		}
+		return
+	}
+
+	chRes <- FragmenterSplitFundsReply{
 		Msg: "claiming deposits for fee account",
 	}
 
@@ -2115,6 +2125,16 @@ func (o *operatorService) splitMarketFragmenterFunds(
 
 	chRes <- FragmenterSplitFundsReply{
 		Msg: fmt.Sprintf("market account funding transaction: %s", txid),
+	}
+
+	chRes <- FragmenterSplitFundsReply{
+		Msg: "waiting for tx to appear at list in mempool",
+	}
+	if err := waitForTx(o.explorerSvc, txid); err != nil {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf("failed while waiting for tx: %s", err),
+		}
+		return
 	}
 
 	chRes <- FragmenterSplitFundsReply{

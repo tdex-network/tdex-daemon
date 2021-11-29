@@ -2,6 +2,8 @@ package application
 
 import (
 	"context"
+	"strings"
+	"time"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
@@ -62,4 +64,19 @@ func getBalancesByAsset(unspents []explorer.Utxo) map[string]BalanceInfo {
 		balances[unspent.Asset()] = balance
 	}
 	return balances
+}
+
+func waitForTx(explorerSvc explorer.Service, txid string) error {
+	waitingTime := 1 * time.Second
+	for {
+		_, err := explorerSvc.GetTransaction(txid)
+		if err != nil {
+			if strings.Contains(err.Error(), "Transaction not found") {
+				time.Sleep(waitingTime)
+				continue
+			}
+			return err
+		}
+		return nil
+	}
 }
