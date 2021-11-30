@@ -2212,7 +2212,9 @@ func (o *operatorService) splitMarketFragmenterFunds(
 		if err != nil {
 			log.WithError(err).Warn("an error occured while locking fee account unspents")
 		}
-		log.Debugf("locked %d unspents for account %d", count, domain.FeeAccount)
+		if count > 0 {
+			log.Debugf("locked %d unspents for account %d", count, domain.FeeAccount)
+		}
 	}()
 
 	chRes <- FragmenterSplitFundsReply{
@@ -2450,7 +2452,7 @@ func (o *operatorService) withdrawMarketFragmenterFunds(
 			return
 		}
 		if count > 0 {
-			log.Debug("locked %d unspents for accoutn", count, domain.FeeAccount)
+			log.Debugf("locked %d unspents for account %d", count, domain.FeeAccount)
 		}
 
 		o.blockchainListener.StartObserveTx(txid, Market{})
