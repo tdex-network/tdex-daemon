@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -35,6 +36,8 @@ var (
 		3: 10,
 		5: 2,
 	}
+	PollInterval           = 1 * time.Second
+	MinFeeFragmenterAmount = 5000
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -1313,7 +1316,40 @@ func (o *operatorService) MarketFragmenterSplitFunds(
 		return
 	}
 
-	o.splitMarketFragmenterFunds(ctx, mkt, utxos, int(millisatsPerByte), chRes)
+	chRes <- FragmenterSplitFundsReply{
+		Msg: "fetching fee account funds",
+	}
+	feeUtxos, err := o.getAllUnspentsForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		errMsg := fmt.Errorf(
+			"error while fetching fee account funds: %s", err,
+		)
+		if err == domain.ErrVaultAccountNotFound {
+			errMsg = fmt.Errorf(
+				"no funds detected for fee account.\n" +
+					"You need to deposit some LBTC funds to this account used to " +
+					"pay for network fees of transactions",
+			)
+		}
+		chRes <- FragmenterSplitFundsReply{
+			Err: errMsg,
+		}
+		return
+	}
+	if len(feeUtxos) <= 0 {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf(
+				"no funds detected for fee account.\n" +
+					"You need to deposit some LBTC funds to this account used to " +
+					"pay for network fees of transactions",
+			),
+		}
+		return
+	}
+
+	o.splitMarketFragmenterFunds(
+		ctx, mkt, utxos, feeUtxos, int(millisatsPerByte), chRes,
+	)
 }
 
 func (o *operatorService) WithdrawMarketFragmenterFunds(
@@ -1842,6 +1878,15 @@ func (o *operatorService) splitFeeFragmenterFunds(
 		}
 		return
 	}
+	if int(amountPerAsset[lbtc]) < MinFeeFragmenterAmount {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf(
+				"amount to fragment is too small, should be at least %d sats of LBTC",
+				MinFeeFragmenterAmount,
+			),
+		}
+		return
+	}
 
 	chRes <- FragmenterSplitFundsReply{
 		Msg: "calculating fragments for LBTC funds",
@@ -1933,6 +1978,18 @@ func (o *operatorService) splitFeeFragmenterFunds(
 	}
 
 	chRes <- FragmenterSplitFundsReply{
+		Msg: "waiting for tx to appear at list in mempool",
+	}
+	if _, err := o.explorerSvc.PollGetKnownTransaction(
+		txid, PollInterval,
+	); err != nil {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf("failed while waiting for tx: %s", err),
+		}
+		return
+	}
+
+	chRes <- FragmenterSplitFundsReply{
 		Msg: "claiming deposits for fee account",
 	}
 
@@ -1961,7 +2018,7 @@ func (o *operatorService) splitFeeFragmenterFunds(
 
 func (o *operatorService) splitMarketFragmenterFunds(
 	ctx context.Context,
-	market *domain.Market, utxos []explorer.Utxo, millisatsPerByte int,
+	market *domain.Market, utxos, feeUtxos []explorer.Utxo, millisatsPerByte int,
 	chRes chan FragmenterSplitFundsReply,
 ) {
 	vault, _ := o.repoManager.VaultRepository().GetOrCreateVault(
@@ -2065,7 +2122,6 @@ func (o *operatorService) splitMarketFragmenterFunds(
 		Msg: "crafting market deposit transaction",
 	}
 
-	mnemonic, _ := vault.GetMnemonicSafe()
 	changePathsByAsset := make(map[string]string)
 	for asset := range amountPerAsset {
 		info, err := vault.DeriveNextInternalAddressForAccount(domain.MarketFragmenterAccount)
@@ -2077,18 +2133,31 @@ func (o *operatorService) splitMarketFragmenterFunds(
 		}
 		changePathsByAsset[asset] = info.DerivationPath
 	}
+	feeInfo, err := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+	if err != nil {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf("failed to generate fee change address: %s", err),
+		}
+		return
+	}
+	feeChangePathByAsset := map[string]string{
+		o.network.AssetID: feeInfo.DerivationPath,
+	}
+	mnemonic, _ := vault.GetMnemonicSafe()
 	outs := createOutputs(baseFragments, quoteFragments, addresses, assetValuePair)
 	outputs, outBlindKeys, _ := parseRequestOutputs(outs)
-	txHex, err := sendToManyWithoutFeeTopup(sendToManyWithoutFeeTopupOpts{
-		mnemonic:            mnemonic,
-		unspents:            utxos,
-		outputs:             outputs,
-		outputsBlindingKeys: outBlindKeys,
-		changePathsByAsset:  changePathsByAsset,
-		inputPathsByScript:  vault.Accounts[domain.MarketFragmenterAccount].DerivationPathByScript,
-		milliSatPerByte:     millisatsPerByte,
-		network:             o.network,
-		subtractFees:        true,
+	txHex, err := sendToManyWithFeeTopup(sendToManyWithFeeTopupOpts{
+		mnemonic:              mnemonic,
+		unspents:              utxos,
+		feeUnspents:           feeUtxos,
+		outputs:               outputs,
+		outputsBlindingKeys:   outBlindKeys,
+		changePathsByAsset:    changePathsByAsset,
+		feeChangePathByAsset:  feeChangePathByAsset,
+		inputPathsByScript:    vault.Accounts[domain.MarketFragmenterAccount].DerivationPathByScript,
+		feeInputPathsByScript: vault.Accounts[domain.FeeAccount].DerivationPathByScript,
+		milliSatPerByte:       millisatsPerByte,
+		network:               o.network,
 	})
 	if err != nil {
 		chRes <- FragmenterSplitFundsReply{
@@ -2117,6 +2186,49 @@ func (o *operatorService) splitMarketFragmenterFunds(
 		Msg: fmt.Sprintf("market account funding transaction: %s", txid),
 	}
 
+	go func() {
+		if err := o.repoManager.VaultRepository().UpdateVault(
+			ctx, func(_ *domain.Vault) (*domain.Vault, error) {
+				return vault, nil
+			},
+		); err != nil {
+			log.WithError(err).Warn("an error occured while updating vault")
+			return
+		}
+
+		_, unspentsToLock, err := extractUnspentsFromTx(
+			o.repoManager.VaultRepository(), o.network, txHex, domain.FeeAccount,
+		)
+		if err != nil {
+			log.WithError(err).Warnf(
+				"an error occured while extracting unspents to lock from tx %s", txid,
+			)
+			return
+		}
+
+		count, err := o.repoManager.UnspentRepository().LockUnspents(
+			ctx, unspentsToLock, uuid.UUID{},
+		)
+		if err != nil {
+			log.WithError(err).Warn("an error occured while locking fee account unspents")
+		}
+		if count > 0 {
+			log.Debugf("locked %d unspents for account %d", count, domain.FeeAccount)
+		}
+	}()
+
+	chRes <- FragmenterSplitFundsReply{
+		Msg: "waiting for tx to appear at list in mempool",
+	}
+	if _, err := o.explorerSvc.PollGetKnownTransaction(
+		txid, PollInterval,
+	); err != nil {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf("failed while waiting for tx: %s", err),
+		}
+		return
+	}
+
 	chRes <- FragmenterSplitFundsReply{
 		Msg: "claiming deposits for market account",
 	}
@@ -2132,16 +2244,6 @@ func (o *operatorService) splitMarketFragmenterFunds(
 	chRes <- FragmenterSplitFundsReply{
 		Msg: "fragmentation succeeded",
 	}
-
-	go func() {
-		if err := o.repoManager.VaultRepository().UpdateVault(
-			ctx, func(_ *domain.Vault) (*domain.Vault, error) {
-				return vault, nil
-			},
-		); err != nil {
-			log.WithError(err).Warn("an error occured while updating vault")
-		}
-	}()
 }
 
 func (o *operatorService) withdrawFragmenterAccount(
@@ -2156,6 +2258,18 @@ func (o *operatorService) withdrawFragmenterAccount(
 		return "", fmt.Errorf("address is not for network %s", o.network.Name)
 	}
 
+	if market != nil {
+		return o.withdrawMarketFragmenterFunds(
+			ctx, accountIndex, market, addr, millisatsPerByte,
+		)
+	}
+
+	return o.withdrawFeeFragmenterFunds(ctx, accountIndex, addr, millisatsPerByte)
+}
+
+func (o *operatorService) withdrawFeeFragmenterFunds(
+	ctx context.Context, accountIndex int, addr string, millisatsPerByte uint64,
+) (string, error) {
 	utxos, err := getAccountUtxosFromExplorer(
 		o.repoManager, o.explorerSvc, ctx, accountIndex,
 	)
@@ -2225,6 +2339,126 @@ func (o *operatorService) withdrawFragmenterAccount(
 	}
 
 	return iTxid.(string), nil
+}
+
+func (o *operatorService) withdrawMarketFragmenterFunds(
+	ctx context.Context, accountIndex int, market *Market,
+	addr string, millisatsPerByte uint64,
+) (string, error) {
+	utxos, err := getAccountUtxosFromExplorer(
+		o.repoManager, o.explorerSvc, ctx, accountIndex,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	feeUtxos, err := o.getAllUnspentsForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		return "", err
+	}
+	if len(feeUtxos) <= 0 {
+		return "", fmt.Errorf("")
+	}
+
+	vault, _ := o.repoManager.VaultRepository().GetOrCreateVault(
+		ctx, nil, "", nil,
+	)
+	mnemonic, _ := vault.GetMnemonicSafe()
+	if millisatsPerByte == 0 {
+		millisatsPerByte = domain.MinMilliSatPerByte
+	}
+
+	amountPerAsset := make(map[string]uint64)
+	for _, u := range utxos {
+		amountPerAsset[u.Asset()] += u.Value()
+	}
+
+	outs := make([]TxOut, 0, len(amountPerAsset))
+	for asset, amount := range amountPerAsset {
+		outs = append(outs, TxOut{
+			Asset:   asset,
+			Address: addr,
+			Value:   int64(amount),
+		})
+	}
+
+	changePathByAsset := make(map[string]string)
+	for asset := range amountPerAsset {
+		info, err := vault.DeriveNextInternalAddressForAccount(accountIndex)
+		if err != nil {
+			return "", err
+		}
+		changePathByAsset[asset] = info.DerivationPath
+	}
+	feeInfo, err := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+	if err != nil {
+		return "", err
+	}
+	feeChangePathByAsset := map[string]string{
+		o.network.AssetID: feeInfo.DerivationPath,
+	}
+	outputs, outBlindKeys, _ := parseRequestOutputs(outs)
+	txHex, err := sendToManyWithFeeTopup(sendToManyWithFeeTopupOpts{
+		mnemonic:              mnemonic,
+		unspents:              utxos,
+		feeUnspents:           feeUtxos,
+		outputs:               outputs,
+		outputsBlindingKeys:   outBlindKeys,
+		changePathsByAsset:    changePathByAsset,
+		feeChangePathByAsset:  feeChangePathByAsset,
+		inputPathsByScript:    vault.Accounts[accountIndex].DerivationPathByScript,
+		feeInputPathsByScript: vault.Accounts[domain.FeeAccount].DerivationPathByScript,
+		milliSatPerByte:       int(millisatsPerByte),
+		network:               o.network,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	cb := circuitbreaker.NewCircuitBreaker()
+	iTxid, err := cb.Execute(func() (interface{}, error) {
+		return o.explorerSvc.BroadcastTransaction(txHex)
+	})
+	if err != nil {
+		return "", err
+	}
+	txid := iTxid.(string)
+
+	go func() {
+		if err := o.repoManager.VaultRepository().UpdateVault(
+			ctx, func(_ *domain.Vault) (*domain.Vault, error) {
+				return vault, nil
+			},
+		); err != nil {
+			log.WithError(err).Warn("an error occured while updating vault")
+			return
+		}
+
+		_, unspentsToLock, err := extractUnspentsFromTx(
+			o.repoManager.VaultRepository(), o.network, txHex, domain.FeeAccount,
+		)
+		if err != nil {
+			log.WithError(err).Warnf(
+				"an error occured while extracting fee unspents from tx %s", txid,
+			)
+			return
+		}
+
+		count, err := o.repoManager.UnspentRepository().LockUnspents(
+			ctx, unspentsToLock, uuid.UUID{},
+		)
+		if err != nil {
+			log.WithError(err).Warn("an error occured while locking unspents")
+			return
+		}
+		if count > 0 {
+			log.Debugf("locked %d unspents for account %d", count, domain.FeeAccount)
+		}
+
+		o.blockchainListener.StartObserveTx(txid, Market{})
+	}()
+
+	return txid, nil
 }
 
 func tradesToTradeInfo(trades []*domain.Trade, marketBaseAsset, network string) []TradeInfo {

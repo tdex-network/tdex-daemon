@@ -3,6 +3,7 @@ package application_test
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -206,6 +207,18 @@ func (m *mockExplorer) BroadcastTransaction(txhex string) (string, error) {
 	var res string
 	if a := args.Get(0); a != nil {
 		res = a.(string)
+	}
+	return res, args.Error(1)
+}
+
+func (m *mockExplorer) PollGetKnownTransaction(
+	txid string, interval time.Duration,
+) (explorer.Transaction, error) {
+	args := m.Called(txid, interval)
+
+	var res explorer.Transaction
+	if a := args.Get(0); a != nil {
+		res = a.(explorer.Transaction)
 	}
 	return res, args.Error(1)
 }

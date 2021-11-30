@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 )
@@ -47,6 +49,23 @@ func (e *esplora) GetTransactionsForAddress(address string, _ []byte) ([]explore
 	}
 
 	return parseTransactions(resp)
+}
+
+func (o *esplora) PollGetKnownTransaction(
+	txid string, interval time.Duration,
+) (explorer.Transaction, error) {
+	t := time.NewTicker(interval)
+	for {
+		<-t.C
+		tx, err := o.GetTransaction(txid)
+		if err != nil {
+			if strings.Contains(err.Error(), "Transaction not found") {
+				continue
+			}
+			return nil, err
+		}
+		return tx, nil
+	}
 }
 
 func (e *esplora) BroadcastTransaction(txHex string) (string, error) {

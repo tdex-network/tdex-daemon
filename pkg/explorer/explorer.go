@@ -1,6 +1,8 @@
 package explorer
 
 import (
+	"time"
+
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -82,6 +84,11 @@ type Service interface {
 	BroadcastTransaction(txhex string) (txid string, err error)
 	// GetBlockHeight returns the the number of block of the blockchain.
 	GetBlockHeight() (int, error)
+	// PollGetKnownTransaction polls the GetTransaction method until the transaction
+	// is actualy returned by the explorer. It may be needed when the explorer
+	// suffers of delays to keep in sync with the mempool/blockchain.
+	PollGetKnownTransaction(txid string, interval time.Duration) (tx Transaction, err error)
+
 	/**** REGTEST ONLY ****/
 	// Faucet funds the given address with the amount (in BTC) of provided asset
 	Faucet(address string, amount float64, asset string) (txid string, err error)

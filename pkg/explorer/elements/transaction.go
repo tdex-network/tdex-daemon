@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/address"
@@ -161,6 +162,12 @@ func (e *elements) BroadcastTransaction(txhex string) (string, error) {
 		return "", fmt.Errorf("unmarshal: %w", err)
 	}
 	return txid, nil
+}
+
+func (e *elements) PollGetKnownTransaction(
+	_ string, _ time.Duration,
+) (explorer.Transaction, error) {
+	return nil, fmt.Errorf("unimplemented")
 }
 
 /**** Regtest only ****/
