@@ -249,7 +249,7 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 		}},
 		"/Operator/GetMarketInfo": {{
 			Entity: EntityMarket,
-			Action: "info",
+			Action: "read",
 		}},
 		"/Operator/GetMarketAddress": {{
 			Entity: EntityMarket,
