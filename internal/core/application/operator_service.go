@@ -1315,7 +1315,40 @@ func (o *operatorService) MarketFragmenterSplitFunds(
 		return
 	}
 
-	o.splitMarketFragmenterFunds(ctx, mkt, utxos, int(millisatsPerByte), chRes)
+	chRes <- FragmenterSplitFundsReply{
+		Msg: "fetching fee account funds",
+	}
+	feeUtxos, err := o.getAllUnspentsForAccount(ctx, domain.FeeAccount)
+	if err != nil {
+		errMsg := fmt.Errorf(
+			"error while fetching fee account funds: %s", err,
+		)
+		if err == domain.ErrVaultAccountNotFound {
+			errMsg = fmt.Errorf(
+				"no funds detected for fee account.\n" +
+					"You need to deposit some LBTC funds to this account used to " +
+					"pay for network fees of transactions",
+			)
+		}
+		chRes <- FragmenterSplitFundsReply{
+			Err: errMsg,
+		}
+		return
+	}
+	if len(feeUtxos) <= 0 {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf(
+				"no funds detected for fee account.\n" +
+					"You need to deposit some LBTC funds to this account used to " +
+					"pay for network fees of transactions",
+			),
+		}
+		return
+	}
+
+	o.splitMarketFragmenterFunds(
+		ctx, mkt, utxos, feeUtxos, int(millisatsPerByte), chRes,
+	)
 }
 
 func (o *operatorService) WithdrawMarketFragmenterFunds(
@@ -1984,7 +2017,7 @@ func (o *operatorService) splitFeeFragmenterFunds(
 
 func (o *operatorService) splitMarketFragmenterFunds(
 	ctx context.Context,
-	market *domain.Market, utxos []explorer.Utxo, millisatsPerByte int,
+	market *domain.Market, utxos, feeUtxos []explorer.Utxo, millisatsPerByte int,
 	chRes chan FragmenterSplitFundsReply,
 ) {
 	vault, _ := o.repoManager.VaultRepository().GetOrCreateVault(
@@ -2088,7 +2121,6 @@ func (o *operatorService) splitMarketFragmenterFunds(
 		Msg: "crafting market deposit transaction",
 	}
 
-	mnemonic, _ := vault.GetMnemonicSafe()
 	changePathsByAsset := make(map[string]string)
 	for asset := range amountPerAsset {
 		info, err := vault.DeriveNextInternalAddressForAccount(domain.MarketFragmenterAccount)
@@ -2100,18 +2132,31 @@ func (o *operatorService) splitMarketFragmenterFunds(
 		}
 		changePathsByAsset[asset] = info.DerivationPath
 	}
+	feeInfo, err := vault.DeriveNextInternalAddressForAccount(domain.FeeAccount)
+	if err != nil {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf("failed to generate fee change address: %s", err),
+		}
+		return
+	}
+	feeChangePathByAsset := map[string]string{
+		o.network.AssetID: feeInfo.DerivationPath,
+	}
+	mnemonic, _ := vault.GetMnemonicSafe()
 	outs := createOutputs(baseFragments, quoteFragments, addresses, assetValuePair)
 	outputs, outBlindKeys, _ := parseRequestOutputs(outs)
-	txHex, err := sendToManyWithoutFeeTopup(sendToManyWithoutFeeTopupOpts{
-		mnemonic:            mnemonic,
-		unspents:            utxos,
-		outputs:             outputs,
-		outputsBlindingKeys: outBlindKeys,
-		changePathsByAsset:  changePathsByAsset,
-		inputPathsByScript:  vault.Accounts[domain.MarketFragmenterAccount].DerivationPathByScript,
-		milliSatPerByte:     millisatsPerByte,
-		network:             o.network,
-		subtractFees:        true,
+	txHex, err := sendToManyWithFeeTopup(sendToManyWithFeeTopupOpts{
+		mnemonic:              mnemonic,
+		unspents:              utxos,
+		feeUnspents:           feeUtxos,
+		outputs:               outputs,
+		outputsBlindingKeys:   outBlindKeys,
+		changePathsByAsset:    changePathsByAsset,
+		feeChangePathByAsset:  feeChangePathByAsset,
+		inputPathsByScript:    vault.Accounts[domain.MarketFragmenterAccount].DerivationPathByScript,
+		feeInputPathsByScript: vault.Accounts[domain.FeeAccount].DerivationPathByScript,
+		milliSatPerByte:       millisatsPerByte,
+		network:               o.network,
 	})
 	if err != nil {
 		chRes <- FragmenterSplitFundsReply{
