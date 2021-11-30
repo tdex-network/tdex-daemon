@@ -35,7 +35,8 @@ var (
 		3: 10,
 		5: 2,
 	}
-	PollInterval = 1 * time.Second
+	PollInterval           = 1 * time.Second
+	MinFeeFragmenterAmount = 5000
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -1839,6 +1840,15 @@ func (o *operatorService) splitFeeFragmenterFunds(
 			Err: fmt.Errorf(
 				"found funds with asset different from LBTC. Use a recover address " +
 					"to get them back",
+			),
+		}
+		return
+	}
+	if int(amountPerAsset[lbtc]) < MinFeeFragmenterAmount {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf(
+				"amount to fragment is too small, should be at least %d sats of LBTC",
+				MinFeeFragmenterAmount,
 			),
 		}
 		return
