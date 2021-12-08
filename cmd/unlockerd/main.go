@@ -256,7 +256,12 @@ func getClientConn(
 		if !cp.AppendCertsFromPEM(tlsCertificate) {
 			return nil, fmt.Errorf("credentials: failed to append certificates")
 		}
-		tlsCreds := credentials.NewTLS(&tls.Config{RootCAs: cp})
+		tlsCreds := credentials.NewTLS(
+			&tls.Config{
+				MinVersion: tls.VersionTLS12,
+				RootCAs:    cp,
+			},
+		)
 		opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
 	}
 
