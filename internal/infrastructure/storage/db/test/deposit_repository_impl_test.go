@@ -13,12 +13,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 )
 
-func TestT(t *testing.T) {
-	for _, n := range []int{1, 2, 3, 4} {
-		fmt.Printf("%p\n", &n)
-	}
-}
-
 func TestDepositRepositoryImplementations(t *testing.T) {
 	repositories := createDepositRepositories(t)
 
