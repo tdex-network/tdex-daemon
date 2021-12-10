@@ -10,13 +10,15 @@ var (
 	ErrMarketFeeTooLow = errors.New("market fee too low, must be at least 1 bp (0.01%)")
 	// ErrMarketFeeTooHigh ...
 	ErrMarketFeeTooHigh = errors.New("market fee too high, must be at most 9999 bp (99,99%)")
+	// ErrMarketMissingFunds ...
+	ErrMarketMissingFunds = errors.New("missing funds of both base and quote asset")
 	// ErrMarketMissingBaseAsset ...
 	ErrMarketMissingBaseAsset = errors.New("base asset is missing")
 	// ErrMarketMissingQuoteAsset ...
 	ErrMarketMissingQuoteAsset = errors.New("quote asset is missing")
 	// ErrMarketTooManyAssets ...
 	ErrMarketTooManyAssets = errors.New(
-		"It's not possible to determine the correct asset pair of the market " +
+		"it's not possible to determine the correct asset pair of the market " +
 			"because more than 2 type of assets has been found in the outpoint list",
 	)
 	//ErrMarketNotFunded is thrown when a market requires being funded for a change

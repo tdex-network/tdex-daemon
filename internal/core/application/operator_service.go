@@ -1792,10 +1792,6 @@ func (o *operatorService) claimDeposit(
 func verifyMarketFunds(
 	market *domain.Market, unspents []domain.Unspent,
 ) error {
-	if !market.IsStrategyBalanced() {
-		return nil
-	}
-
 	outpoints := make([]domain.OutpointWithAsset, 0, len(unspents))
 	for _, u := range unspents {
 		outpoints = append(outpoints, u.ToOutpointWithAsset())

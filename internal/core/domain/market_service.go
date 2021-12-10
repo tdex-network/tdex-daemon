@@ -62,15 +62,28 @@ func (m *Market) VerifyMarketFunds(fundingTxs []OutpointWithAsset) error {
 		assetCount[o.Asset]++
 	}
 
-	if _, ok := assetCount[m.BaseAsset]; !ok {
-		return ErrMarketMissingBaseAsset
-	}
-	if len(assetCount) < 2 {
-		return ErrMarketMissingQuoteAsset
-	}
-
 	if len(assetCount) > 2 {
 		return ErrMarketTooManyAssets
+	}
+
+	_, baseFundsOk := assetCount[m.BaseAsset]
+	_, quoteFundsOk := assetCount[m.QuoteAsset]
+
+	// balanced strategy requires funds of both assets to be non zero.
+	if m.IsStrategyBalanced() {
+		if !baseFundsOk {
+			return ErrMarketMissingBaseAsset
+		}
+		if !quoteFundsOk {
+			return ErrMarketMissingQuoteAsset
+		}
+
+		return nil
+	}
+
+	// for other strategies, it's ok to have single asset funds instead.
+	if !baseFundsOk && !quoteFundsOk {
+		return ErrMarketMissingFunds
 	}
 
 	return nil
