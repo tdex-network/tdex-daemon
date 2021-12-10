@@ -39,6 +39,10 @@ func (m *Market) QuoteAssetPrice() decimal.Decimal {
 	return decimal.Decimal(quotePrice)
 }
 
+func (m *Market) IsStrategyBalanced() bool {
+	return m.Strategy.Type == int(StrategyTypeBalanced)
+}
+
 // IsStrategyPluggable returns true if the the startegy isn't automated.
 func (m *Market) IsStrategyPluggable() bool {
 	return !m.Strategy.IsZero() && m.Strategy.Type == int(StrategyTypePluggable)

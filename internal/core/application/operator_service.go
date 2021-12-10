@@ -1792,6 +1792,10 @@ func (o *operatorService) claimDeposit(
 func verifyMarketFunds(
 	market *domain.Market, unspents []domain.Unspent,
 ) error {
+	if !market.IsStrategyBalanced() {
+		return nil
+	}
+
 	outpoints := make([]domain.OutpointWithAsset, 0, len(unspents))
 	for _, u := range unspents {
 		outpoints = append(outpoints, u.ToOutpointWithAsset())
@@ -2060,7 +2064,8 @@ func (o *operatorService) splitMarketFragmenterFunds(
 	// asset to the market fragmenter account. Otherwise, it's possible to split
 	// funds of only one of the assets of the pair.
 	marketBalance, _ := getBalanceForMarket(o.repoManager, ctx, market, false)
-	if marketBalance.BaseAmount == 0 && marketBalance.QuoteAmount == 0 {
+	if market.IsStrategyBalanced() && marketBalance.BaseAmount == 0 &&
+		marketBalance.QuoteAmount == 0 {
 		if assetValuePair.baseValue == 0 {
 			chRes <- FragmenterSplitFundsReply{
 				Err: fmt.Errorf(

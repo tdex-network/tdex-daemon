@@ -141,11 +141,14 @@ func TestMakeStrategyPluggable(t *testing.T) {
 	t.Parallel()
 
 	m := newTestMarket()
+	require.True(t, m.IsStrategyBalanced())
+	require.False(t, m.IsStrategyPluggable())
 
 	err := m.MakeStrategyPluggable()
 	require.NoError(t, err)
 	require.True(t, m.IsStrategyPluggable())
 	require.False(t, m.IsStrategyPluggableInitialized())
+	require.False(t, m.IsStrategyBalanced())
 }
 
 func TestFailingMakeStrategyPluggable(t *testing.T) {
