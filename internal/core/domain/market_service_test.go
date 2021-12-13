@@ -232,13 +232,13 @@ func TestChangeFixedFee(t *testing.T) {
 
 	m := newTestMarket()
 	baseFee := int64(100)
-	err := m.ChangeFixedFee(baseFee, 0)
+	err := m.ChangeFixedFee(baseFee, -1)
 	require.NoError(t, err)
 	require.Equal(t, baseFee, m.FixedFee.BaseFee)
 	require.Zero(t, m.FixedFee.QuoteFee)
 
 	quoteFee := int64(200000)
-	err = m.ChangeFixedFee(0, quoteFee)
+	err = m.ChangeFixedFee(-1, quoteFee)
 	require.NoError(t, err)
 	require.Equal(t, baseFee, m.FixedFee.BaseFee)
 	require.Equal(t, quoteFee, m.FixedFee.QuoteFee)
@@ -261,7 +261,7 @@ func TestFailingChangeFixedFee(t *testing.T) {
 		{
 			name:          "invalid_fixed_base_fee",
 			market:        newTestMarket(),
-			baseFee:       -1,
+			baseFee:       -2,
 			quoteFee:      1000,
 			expectedError: domain.ErrInvalidFixedFee,
 		},
@@ -269,7 +269,7 @@ func TestFailingChangeFixedFee(t *testing.T) {
 			name:          "invalid_fixed_quote_fee",
 			market:        newTestMarket(),
 			baseFee:       100,
-			quoteFee:      -1,
+			quoteFee:      -2,
 			expectedError: domain.ErrInvalidFixedFee,
 		},
 	}

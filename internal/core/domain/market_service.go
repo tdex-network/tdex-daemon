@@ -156,10 +156,10 @@ func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
 		return err
 	}
 
-	if baseFee > 0 {
+	if baseFee >= 0 {
 		m.FixedFee.BaseFee = baseFee
 	}
-	if quoteFee > 0 {
+	if quoteFee >= 0 {
 		m.FixedFee.QuoteFee = quoteFee
 	}
 	return nil
@@ -383,7 +383,7 @@ func validateFee(basisPoint int64) error {
 }
 
 func validateFixedFee(baseFee, quoteFee int64) error {
-	if baseFee < 0 || quoteFee < 0 {
+	if baseFee < -1 || quoteFee < -1 {
 		return ErrInvalidFixedFee
 	}
 

@@ -133,10 +133,12 @@ var (
 			&cli.Int64Flag{
 				Name:  "base_fee",
 				Usage: "set the fixed fee for base asset",
+				Value: -1,
 			},
 			&cli.Int64Flag{
 				Name:  "quote_fee",
 				Usage: "set the fixed fee for quote asset",
+				Value: -1,
 			},
 		},
 		Action: marketUpdateFixedFeeAction,
