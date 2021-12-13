@@ -33,11 +33,11 @@ var (
 	//ErrMarketNotFunded is thrown when a market requires being funded for a change
 	ErrMarketNotFunded = errors.New("market must be funded")
 	//ErrMarketIsClosed is thrown when a market requires being tradable for a change
-	ErrMarketIsClosed = errors.New("market is closed")
+	ErrMarketIsClosed = errors.New("the market is paused, please open it first")
 	//ErrMarketMustBeClosed is thrown when a market requires being NOT tradable for a change
-	ErrMarketMustBeClosed = errors.New("market must be closed")
+	ErrMarketMustBeClosed = errors.New("the market is active, please pause it first")
 	//ErrMarketNotPriced is thrown when the price is still 0 (ie. not initialized)
-	ErrMarketNotPriced = errors.New("price must be inserted")
+	ErrMarketNotPriced = errors.New("the selected strategy mandates price to be updated manually")
 	//ErrMarketInvalidBasePrice is thrown when the amount for Base price is an invalid satoshis value.
 	ErrMarketInvalidBasePrice = errors.New("the amount for base price is invalid")
 	//ErrMarketInvalidQuotePrice is thrown when the amount for Quote price is an invalid satoshis value.
