@@ -196,7 +196,15 @@ func Whitelist() map[string][]bakery.Op {
 			Entity: EntityTrade,
 			Action: "write",
 		}},
+		"/Trade/ProposeTrade": {{
+			Entity: EntityTrade,
+			Action: "write",
+		}},
 		"/Trade/TradeComplete": {{
+			Entity: EntityTrade,
+			Action: "write",
+		}},
+		"/Trade/CompleteTrade": {{
 			Entity: EntityTrade,
 			Action: "write",
 		}},
