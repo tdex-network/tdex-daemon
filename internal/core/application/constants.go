@@ -30,6 +30,6 @@ var (
 	esploraUrlByNetwork = map[string]string{
 		"liquid":  "https://blockstream.info/liquid",
 		"testnet": "https://blockstream.info/liquidtestnet",
-		"regtest": "http://localhost:3001",
+		"regtest": "http://localhost:5001",
 	}
 )

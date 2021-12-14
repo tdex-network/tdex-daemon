@@ -39,6 +39,10 @@ func (m *Market) QuoteAssetPrice() decimal.Decimal {
 	return decimal.Decimal(quotePrice)
 }
 
+func (m *Market) IsStrategyBalanced() bool {
+	return m.Strategy.Type == int(StrategyTypeBalanced)
+}
+
 // IsStrategyPluggable returns true if the the startegy isn't automated.
 func (m *Market) IsStrategyPluggable() bool {
 	return !m.Strategy.IsZero() && m.Strategy.Type == int(StrategyTypePluggable)
@@ -58,15 +62,28 @@ func (m *Market) VerifyMarketFunds(fundingTxs []OutpointWithAsset) error {
 		assetCount[o.Asset]++
 	}
 
-	if _, ok := assetCount[m.BaseAsset]; !ok {
-		return ErrMarketMissingBaseAsset
-	}
-	if len(assetCount) < 2 {
-		return ErrMarketMissingQuoteAsset
-	}
-
 	if len(assetCount) > 2 {
 		return ErrMarketTooManyAssets
+	}
+
+	_, baseFundsOk := assetCount[m.BaseAsset]
+	_, quoteFundsOk := assetCount[m.QuoteAsset]
+
+	// balanced strategy requires funds of both assets to be non zero.
+	if m.IsStrategyBalanced() {
+		if !baseFundsOk {
+			return ErrMarketMissingBaseAsset
+		}
+		if !quoteFundsOk {
+			return ErrMarketMissingQuoteAsset
+		}
+
+		return nil
+	}
+
+	// for other strategies, it's ok to have single asset funds instead.
+	if !baseFundsOk && !quoteFundsOk {
+		return ErrMarketMissingFunds
 	}
 
 	return nil
@@ -139,10 +156,10 @@ func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
 		return err
 	}
 
-	if baseFee > 0 {
+	if baseFee >= 0 {
 		m.FixedFee.BaseFee = baseFee
 	}
-	if quoteFee > 0 {
+	if quoteFee >= 0 {
 		m.FixedFee.QuoteFee = quoteFee
 	}
 	return nil
@@ -366,7 +383,7 @@ func validateFee(basisPoint int64) error {
 }
 
 func validateFixedFee(baseFee, quoteFee int64) error {
-	if baseFee < 0 || quoteFee < 0 {
+	if baseFee < -1 || quoteFee < -1 {
 		return ErrInvalidFixedFee
 	}
 

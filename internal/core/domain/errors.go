@@ -10,23 +10,34 @@ var (
 	ErrMarketFeeTooLow = errors.New("market fee too low, must be at least 1 bp (0.01%)")
 	// ErrMarketFeeTooHigh ...
 	ErrMarketFeeTooHigh = errors.New("market fee too high, must be at most 9999 bp (99,99%)")
+	// ErrMarketMissingFunds ...
+	ErrMarketMissingFunds = errors.New("missing funds of both base and quote asset")
 	// ErrMarketMissingBaseAsset ...
-	ErrMarketMissingBaseAsset = errors.New("base asset is missing")
+	ErrMarketMissingBaseAsset = errors.New(
+		"missing funds for base asset. A market with zero balance and balanced " +
+			"strategy requires a deposit with funds of both assets. " +
+			"You should change strategy to be able to make a single asset deposit",
+	)
 	// ErrMarketMissingQuoteAsset ...
-	ErrMarketMissingQuoteAsset = errors.New("quote asset is missing")
+	ErrMarketMissingQuoteAsset = errors.New(
+		"quote asset is missing. A market with zero balance and balanced " +
+			"strategy requires a deposit with funds of both assets. " +
+			"You should change strategy to be able to make a single asset deposit",
+	)
 	// ErrMarketTooManyAssets ...
 	ErrMarketTooManyAssets = errors.New(
-		"It's not possible to determine the correct asset pair of the market " +
-			"because more than 2 type of assets has been found in the outpoint list",
+		"too many assets. This means among the deposited funds there are " +
+			"unspents with asset different from the market pair. " +
+			"They must be withdrawn to open the market",
 	)
 	//ErrMarketNotFunded is thrown when a market requires being funded for a change
 	ErrMarketNotFunded = errors.New("market must be funded")
 	//ErrMarketIsClosed is thrown when a market requires being tradable for a change
-	ErrMarketIsClosed = errors.New("market is closed")
+	ErrMarketIsClosed = errors.New("the market is paused, please open it first")
 	//ErrMarketMustBeClosed is thrown when a market requires being NOT tradable for a change
-	ErrMarketMustBeClosed = errors.New("market must be closed")
+	ErrMarketMustBeClosed = errors.New("the market is active, please pause it first")
 	//ErrMarketNotPriced is thrown when the price is still 0 (ie. not initialized)
-	ErrMarketNotPriced = errors.New("price must be inserted")
+	ErrMarketNotPriced = errors.New("the selected strategy mandates price to be updated manually")
 	//ErrMarketInvalidBasePrice is thrown when the amount for Base price is an invalid satoshis value.
 	ErrMarketInvalidBasePrice = errors.New("the amount for base price is invalid")
 	//ErrMarketInvalidQuotePrice is thrown when the amount for Quote price is an invalid satoshis value.

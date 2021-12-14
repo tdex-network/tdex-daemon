@@ -1740,7 +1740,11 @@ func (o *operatorService) claimDeposit(
 
 	if counter == len(outpoints) {
 		if market != nil {
-			if err := verifyMarketFunds(market, unspents); err != nil {
+			existingUnspents, _ := o.repoManager.UnspentRepository().GetAllUnspentsForAddresses(
+				ctx, accountInfo.Addresses(),
+			)
+			allUnspents := append(existingUnspents, unspents...)
+			if err := verifyMarketFunds(market, allUnspents); err != nil {
 				return err
 			}
 			log.Infof("funded market with account %d", accountIndex)
@@ -2001,10 +2005,6 @@ func (o *operatorService) splitFeeFragmenterFunds(
 		return
 	}
 
-	chRes <- FragmenterSplitFundsReply{
-		Msg: "fragmentation succeeded",
-	}
-
 	go func() {
 		if err := o.repoManager.VaultRepository().UpdateVault(
 			ctx, func(_ *domain.Vault) (*domain.Vault, error) {
@@ -2014,6 +2014,10 @@ func (o *operatorService) splitFeeFragmenterFunds(
 			log.WithError(err).Warn("an error occured while updating vault")
 		}
 	}()
+
+	chRes <- FragmenterSplitFundsReply{
+		Msg: "fragmentation succeeded",
+	}
 }
 
 func (o *operatorService) splitMarketFragmenterFunds(
@@ -2052,21 +2056,29 @@ func (o *operatorService) splitMarketFragmenterFunds(
 		}
 	}
 
-	if assetValuePair.baseValue == 0 {
-		chRes <- FragmenterSplitFundsReply{
-			Err: fmt.Errorf(
-				"missing base asset funds",
-			),
+	// If the market has zero balance, it's mandatory to send both base and quote
+	// asset to the market fragmenter account. Otherwise, it's possible to split
+	// funds of only one of the assets of the pair.
+	if market.IsStrategyBalanced() {
+		marketBalance, _ := getBalanceForMarket(o.repoManager, ctx, market, false)
+		if marketBalance.BaseAmount == 0 && marketBalance.QuoteAmount == 0 {
+			if assetValuePair.baseValue == 0 {
+				chRes <- FragmenterSplitFundsReply{
+					Err: fmt.Errorf(
+						"missing base asset funds",
+					),
+				}
+				return
+			}
+			if assetValuePair.quoteValue == 0 {
+				chRes <- FragmenterSplitFundsReply{
+					Err: fmt.Errorf(
+						"missing quote asset funds",
+					),
+				}
+				return
+			}
 		}
-		return
-	}
-	if assetValuePair.quoteValue == 0 {
-		chRes <- FragmenterSplitFundsReply{
-			Err: fmt.Errorf(
-				"missing quote asset funds",
-			),
-		}
-		return
 	}
 
 	chRes <- FragmenterSplitFundsReply{
@@ -2083,18 +2095,24 @@ func (o *operatorService) splitMarketFragmenterFunds(
 		Msg: fmt.Sprintf("detected %d funds", numIns),
 	}
 
-	chRes <- FragmenterSplitFundsReply{
-		Msg: fmt.Sprintf(
-			"splitting base asset amount %d into %d fragments",
-			assetValuePair.baseValue, len(baseFragments),
-		),
+	msg := fmt.Sprintf(
+		"splitting base asset amount %d into %d fragments",
+		assetValuePair.baseValue, len(baseFragments),
+	)
+	if len(baseFragments) <= 0 {
+		msg = "no base asset funds detected"
 	}
+	chRes <- FragmenterSplitFundsReply{Msg: msg}
 
+	msg = fmt.Sprintf(
+		"splitting quote asset amount %d into %d fragments",
+		assetValuePair.quoteValue, len(quoteFragments),
+	)
+	if len(quoteFragments) <= 0 {
+		msg = "no quote asset funds detected"
+	}
 	chRes <- FragmenterSplitFundsReply{
-		Msg: fmt.Sprintf(
-			"splitting quote asset amount %d into %d fragments",
-			assetValuePair.quoteValue, len(quoteFragments),
-		),
+		Msg: msg,
 	}
 
 	addresses := make([]string, 0, numOuts)
