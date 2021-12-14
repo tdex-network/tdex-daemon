@@ -26,7 +26,7 @@ import (
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
 	"github.com/tdex-network/tdex-daemon/pkg/stats"
 
-	_ "net/http/pprof"
+	_ "net/http/pprof" // #nosec
 )
 
 var (
