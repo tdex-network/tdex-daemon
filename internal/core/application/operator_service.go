@@ -2059,24 +2059,25 @@ func (o *operatorService) splitMarketFragmenterFunds(
 	// If the market has zero balance, it's mandatory to send both base and quote
 	// asset to the market fragmenter account. Otherwise, it's possible to split
 	// funds of only one of the assets of the pair.
-	marketBalance, _ := getBalanceForMarket(o.repoManager, ctx, market, false)
-	if market.IsStrategyBalanced() && marketBalance.BaseAmount == 0 &&
-		marketBalance.QuoteAmount == 0 {
-		if assetValuePair.baseValue == 0 {
-			chRes <- FragmenterSplitFundsReply{
-				Err: fmt.Errorf(
-					"missing base asset funds",
-				),
+	if market.IsStrategyBalanced() {
+		marketBalance, _ := getBalanceForMarket(o.repoManager, ctx, market, false)
+		if marketBalance.BaseAmount == 0 && marketBalance.QuoteAmount == 0 {
+			if assetValuePair.baseValue == 0 {
+				chRes <- FragmenterSplitFundsReply{
+					Err: fmt.Errorf(
+						"missing base asset funds",
+					),
+				}
+				return
 			}
-			return
-		}
-		if assetValuePair.quoteValue == 0 {
-			chRes <- FragmenterSplitFundsReply{
-				Err: fmt.Errorf(
-					"missing quote asset funds",
-				),
+			if assetValuePair.quoteValue == 0 {
+				chRes <- FragmenterSplitFundsReply{
+					Err: fmt.Errorf(
+						"missing quote asset funds",
+					),
+				}
+				return
 			}
-			return
 		}
 	}
 
