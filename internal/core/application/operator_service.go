@@ -2005,10 +2005,6 @@ func (o *operatorService) splitFeeFragmenterFunds(
 		return
 	}
 
-	chRes <- FragmenterSplitFundsReply{
-		Msg: "fragmentation succeeded",
-	}
-
 	go func() {
 		if err := o.repoManager.VaultRepository().UpdateVault(
 			ctx, func(_ *domain.Vault) (*domain.Vault, error) {
@@ -2018,6 +2014,10 @@ func (o *operatorService) splitFeeFragmenterFunds(
 			log.WithError(err).Warn("an error occured while updating vault")
 		}
 	}()
+
+	chRes <- FragmenterSplitFundsReply{
+		Msg: "fragmentation succeeded",
+	}
 }
 
 func (o *operatorService) splitMarketFragmenterFunds(
