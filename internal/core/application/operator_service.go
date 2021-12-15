@@ -287,7 +287,7 @@ func (o *operatorService) WithdrawFeeFunds(
 	if err != nil {
 		return nil, nil, err
 	}
-	if req.Amount > balance {
+	if asset == lbtcAsset && req.Amount > balance {
 		return nil, nil, ErrWithdrawAmountTooBig
 	}
 
@@ -347,6 +347,7 @@ func (o *operatorService) WithdrawFeeFunds(
 		inputPathsByScript:  feeAccount.DerivationPathByScript,
 		milliSatPerByte:     int(req.MillisatPerByte),
 		network:             o.network,
+		subtractFees:        asset == lbtcAsset && req.Amount == balance,
 	})
 	if err != nil {
 		return nil, nil, err
