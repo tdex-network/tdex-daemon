@@ -36,8 +36,9 @@ var (
 		3: 10,
 		5: 2,
 	}
-	PollInterval           = 1 * time.Second
-	MinFeeFragmenterAmount = 5000
+	PollInterval              = 1 * time.Second
+	MinFeeFragmenterAmount    = 5000
+	MinMarketFragmenterAmount = 100000
 )
 
 // OperatorService defines the methods of the application layer for the operator service.
@@ -2035,6 +2036,31 @@ func (o *operatorService) splitMarketFragmenterFunds(
 	amountPerAsset := make(map[string]uint64)
 	for _, u := range utxos {
 		amountPerAsset[u.Asset()] += u.Value()
+	}
+
+	if amountPerAsset[market.BaseAsset] > 0 &&
+		int(amountPerAsset[market.BaseAsset]) < MinMarketFragmenterAmount {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf(
+				"base asset amount to fragment is too small. "+
+					"Must be at least %d sats. Top-up with other funds to proceed with "+
+					"fragmentation or either withdraw those already deposited",
+				MinMarketFragmenterAmount,
+			),
+		}
+		return
+	}
+	if amountPerAsset[market.QuoteAsset] > 0 &&
+		int(amountPerAsset[market.QuoteAsset]) < MinMarketFragmenterAmount {
+		chRes <- FragmenterSplitFundsReply{
+			Err: fmt.Errorf(
+				"quote asset amount to fragment is too small. "+
+					"Must be at least %d sats. Top-up with other funds to proceed with "+
+					"fragmentation or either withdraw those already deposited",
+				MinMarketFragmenterAmount,
+			),
+		}
+		return
 	}
 
 	var assetValuePair pair
