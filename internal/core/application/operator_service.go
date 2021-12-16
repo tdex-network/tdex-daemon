@@ -1239,7 +1239,7 @@ func (o *operatorService) WithdrawFeeFragmenterFunds(
 	ctx context.Context, addr string, millisatsPerByte uint64,
 ) (string, error) {
 	return o.withdrawFragmenterAccount(
-		ctx, domain.FeeFragmenterAccount, nil, addr, millisatsPerByte,
+		ctx, domain.FeeFragmenterAccount, addr, millisatsPerByte,
 	)
 }
 
@@ -1356,7 +1356,7 @@ func (o *operatorService) WithdrawMarketFragmenterFunds(
 	ctx context.Context, addr string, millisatsPerByte uint64,
 ) (string, error) {
 	return o.withdrawFragmenterAccount(
-		ctx, domain.MarketFragmenterAccount, nil, addr, millisatsPerByte,
+		ctx, domain.MarketFragmenterAccount, addr, millisatsPerByte,
 	)
 }
 
@@ -2265,8 +2265,7 @@ func (o *operatorService) splitMarketFragmenterFunds(
 }
 
 func (o *operatorService) withdrawFragmenterAccount(
-	ctx context.Context, accountIndex int, market *Market,
-	addr string, millisatsPerByte uint64,
+	ctx context.Context, accountIndex int, addr string, millisatsPerByte uint64,
 ) (string, error) {
 	net, err := address.NetworkForAddress(addr)
 	if err != nil {
@@ -2276,9 +2275,9 @@ func (o *operatorService) withdrawFragmenterAccount(
 		return "", fmt.Errorf("address is not for network %s", o.network.Name)
 	}
 
-	if market != nil {
+	if accountIndex == domain.MarketFragmenterAccount {
 		return o.withdrawMarketFragmenterFunds(
-			ctx, accountIndex, market, addr, millisatsPerByte,
+			ctx, accountIndex, addr, millisatsPerByte,
 		)
 	}
 
@@ -2360,8 +2359,7 @@ func (o *operatorService) withdrawFeeFragmenterFunds(
 }
 
 func (o *operatorService) withdrawMarketFragmenterFunds(
-	ctx context.Context, accountIndex int, market *Market,
-	addr string, millisatsPerByte uint64,
+	ctx context.Context, accountIndex int, addr string, millisatsPerByte uint64,
 ) (string, error) {
 	utxos, err := getAccountUtxosFromExplorer(
 		o.repoManager, o.explorerSvc, ctx, accountIndex,
@@ -2375,7 +2373,7 @@ func (o *operatorService) withdrawMarketFragmenterFunds(
 		return "", err
 	}
 	if len(feeUtxos) <= 0 {
-		return "", fmt.Errorf("")
+		return "", ErrFeeAccountNotFunded
 	}
 
 	vault, _ := o.repoManager.VaultRepository().GetOrCreateVault(
