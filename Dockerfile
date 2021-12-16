@@ -56,9 +56,10 @@ RUN install /tdex /bin
 RUN install /unlockerd /bin
 RUN install /tdexdconnect /bin
 # Prevents `VOLUME $HOME/.tdex-daemon/` being created as owned by `root`
-RUN useradd -ms /bin/bash user
+RUN groupadd -r user && useradd -r -m -g user user
 USER user
-RUN mkdir -p "$HOME/.tdex-daemon/"
+RUN mkdir -p "$HOME/.tdex-daemon/" \
+  && chown -R user:user /home/user/.tdex-daemon
 
 # expose trader and operator interface ports
 EXPOSE 9945
