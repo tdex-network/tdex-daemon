@@ -295,18 +295,17 @@ func validate() error {
 		return fmt.Errorf("%s must be equal or greater than 0.1", TradeSatsPerByte)
 	}
 
-	if viper.IsSet(QuoteAssetKey) && viper.IsSet(BaseAssetKey) {
-		return fmt.Errorf(
-			"only one between %s and %s must be set", BaseAssetKey, QuoteAssetKey,
-		)
+	// If quote asset is set, automatically unset the base asset
+	if vip.IsSet(QuoteAssetKey) {
+		vip.Set(BaseAssetKey, "")
 	}
 
-	if baseAsset := viper.GetString(BaseAssetKey); len(baseAsset) > 0 {
+	if baseAsset := vip.GetString(BaseAssetKey); len(baseAsset) > 0 {
 		if err := validateAssetString(baseAsset); err != nil {
 			return err
 		}
 	}
-	if quoteAsset := viper.GetString(QuoteAssetKey); len(quoteAsset) > 0 {
+	if quoteAsset := vip.GetString(QuoteAssetKey); len(quoteAsset) > 0 {
 		if err := validateAssetString(quoteAsset); err != nil {
 			return err
 		}
