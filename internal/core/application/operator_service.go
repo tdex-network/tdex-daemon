@@ -1984,7 +1984,7 @@ func (o *operatorService) splitFeeFragmenterFunds(
 	}
 
 	chRes <- FragmenterSplitFundsReply{
-		Msg: "waiting for tx to appear at list in mempool",
+		Msg: "waiting for tx to appear at least in mempool",
 	}
 	if _, err := o.explorerSvc.PollGetKnownTransaction(
 		txid, PollInterval,
@@ -2263,7 +2263,7 @@ func (o *operatorService) splitMarketFragmenterFunds(
 	}()
 
 	chRes <- FragmenterSplitFundsReply{
-		Msg: "waiting for tx to appear at list in mempool",
+		Msg: "waiting for tx to appear at least in mempool",
 	}
 	if _, err := o.explorerSvc.PollGetKnownTransaction(
 		txid, PollInterval,
