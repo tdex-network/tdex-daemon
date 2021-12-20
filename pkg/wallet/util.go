@@ -189,7 +189,7 @@ func extractScriptTypesFromPset(ptx *pset.Pset) ([]int, []int, []int, []int, []i
 				scriptSize := 1 + (1+72)*m + 1 + varIntSerializeSize(uint64(scriptLen)) + scriptLen
 				inAuxiliaryWitnessSize = append(inAuxiliaryWitnessSize, scriptSize)
 			} else if in.RedeemScript != nil {
-				inScriptTypes[i] = P2SH_P2WPKH
+				inScriptTypes = append(inScriptTypes, P2SH_P2WPKH)
 			}
 		case address.P2WpkhScript:
 			inScriptTypes = append(inScriptTypes, P2WPKH)
