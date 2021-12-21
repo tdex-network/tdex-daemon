@@ -320,6 +320,7 @@ type FillProposalOpts struct {
 	FeeChangeInfo    domain.AddressInfo
 	Network          *network.Network
 	MilliSatsPerByte int
+	RemoteSigner     wallet.Signer
 }
 
 type FillProposalResult struct {

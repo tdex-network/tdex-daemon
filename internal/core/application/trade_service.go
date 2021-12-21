@@ -58,6 +58,7 @@ type tradeService struct {
 	network                    *network.Network
 	feeAccountBalanceThreshold uint64
 	milliSatsPerByte           int
+	remoteSigner               wallet.Signer
 
 	lock *sync.Mutex
 }
@@ -71,6 +72,7 @@ func NewTradeService(
 	priceSlippage decimal.Decimal,
 	net *network.Network,
 	feeAccountBalanceThreshold uint64,
+	remoteSigner wallet.Signer,
 ) TradeService {
 	return newTradeService(
 		repoManager,
@@ -81,6 +83,7 @@ func NewTradeService(
 		priceSlippage,
 		net,
 		feeAccountBalanceThreshold,
+		remoteSigner,
 	)
 }
 
@@ -93,6 +96,7 @@ func newTradeService(
 	priceSlippage decimal.Decimal,
 	net *network.Network,
 	feeAccountBalanceThreshold uint64,
+	remoteSigner wallet.Signer,
 ) *tradeService {
 	return &tradeService{
 		repoManager:                repoManager,
@@ -104,6 +108,7 @@ func newTradeService(
 		network:                    net,
 		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
 		lock:                       &sync.Mutex{},
+		remoteSigner:               remoteSigner,
 	}
 }
 
@@ -343,6 +348,7 @@ func (t *tradeService) TradePropose(
 		FeeChangeInfo:    *feeChangeInfo,
 		MilliSatsPerByte: t.milliSatsPerByte,
 		Network:          t.network,
+		RemoteSigner:     t.remoteSigner,
 	})
 	if err != nil {
 		trade.Fail(
@@ -641,6 +647,7 @@ func (t *tradeService) checkTradeExpiration(
 func fillProposal(opts FillProposalOpts) (*FillProposalResult, error) {
 	w, err := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
 		SigningMnemonic: opts.Mnemonic,
+		RemoteSigner:    opts.RemoteSigner,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wallet: %s", err)

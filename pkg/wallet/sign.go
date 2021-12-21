@@ -69,7 +69,7 @@ func (w *Wallet) SignTransaction(opts SignTransactionOpts) (string, error) {
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 	for i, in := range ptx.Inputs {
 		path := opts.DerivationPathMap[hex.EncodeToString(in.WitnessUtxo.Script)]
-		err := w.signInput(ptx, i, path)
+		err := w.signer.SignInput(ptx, i, path)
 		if err != nil {
 			return "", err
 		}
@@ -128,7 +128,7 @@ func (w *Wallet) SignInput(opts SignInputOpts) (string, error) {
 
 	ptx, _ := pset.NewPsetFromBase64(opts.PsetBase64)
 
-	err := w.signInput(ptx, int(opts.InIndex), opts.DerivationPath)
+	err := w.signer.SignInput(ptx, int(opts.InIndex), opts.DerivationPath)
 	if err != nil {
 		return "", err
 	}
@@ -136,15 +136,27 @@ func (w *Wallet) SignInput(opts SignInputOpts) (string, error) {
 	return ptx.ToBase64()
 }
 
-func (w *Wallet) signInput(ptx *pset.Pset, inIndex int, derivationPath string) error {
+type innerSigner struct {
+	signingMasterKey []byte
+}
+
+func NewInnerSigner(signingMasterKey []byte) (Signer, error) {
+	if len(signingMasterKey) <= 0 {
+		return nil, ErrNullSigningMasterKey
+	}
+
+	return &innerSigner{
+		signingMasterKey: signingMasterKey,
+	}, nil
+}
+
+func (i *innerSigner) SignInput(ptx *pset.Pset, inIndex int, derivationPath string) error {
 	updater, err := pset.NewUpdater(ptx)
 	if err != nil {
 		return err
 	}
 
-	prvkey, pubkey, err := w.DeriveSigningKeyPair(DeriveSigningKeyPairOpts{
-		DerivationPath: derivationPath,
-	})
+	prvkey, pubkey, err := deriveSigningKeyPair(i.signingMasterKey, derivationPath)
 	if err != nil {
 		return err
 	}

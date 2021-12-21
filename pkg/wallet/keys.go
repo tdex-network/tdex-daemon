@@ -84,7 +84,11 @@ type DeriveSigningKeyPairOpts struct {
 }
 
 func (o DeriveSigningKeyPairOpts) validate() error {
-	derivationPath, err := ParseDerivationPath(o.DerivationPath)
+	return validateDerivationPath(o.DerivationPath)
+}
+
+func validateDerivationPath(derivationPathStr string) error {
+	derivationPath, err := ParseDerivationPath(derivationPathStr)
 	if err != nil {
 		return err
 	}
@@ -110,14 +114,25 @@ func (w *Wallet) DeriveSigningKeyPair(opts DeriveSigningKeyPairOpts) (
 		return nil, nil, err
 	}
 
+	return deriveSigningKeyPair(w.signingMasterKey, opts.DerivationPath)
+}
+
+func deriveSigningKeyPair(
+	signingMasterKey []byte,
+	derivationPathStr string,
+) (*btcec.PrivateKey, *btcec.PublicKey, error) {
+	if err := validateDerivationPath(derivationPathStr); err != nil {
+		return nil, nil, err
+	}
+
 	hdNode, err := hdkeychain.NewKeyFromString(
-		base58.Encode(w.signingMasterKey),
+		base58.Encode(signingMasterKey),
 	)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	derivationPath, _ := ParseDerivationPath(opts.DerivationPath)
+	derivationPath, _ := ParseDerivationPath(derivationPathStr)
 	for _, step := range derivationPath {
 		hdNode, err = hdNode.Derive(step)
 		if err != nil {

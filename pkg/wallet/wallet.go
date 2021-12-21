@@ -1,5 +1,11 @@
 package wallet
 
+import "github.com/vulpemventures/go-elements/pset"
+
+type Signer interface {
+	SignInput(ptx *pset.Pset, inIndex int, derivationPath string) error
+}
+
 // Wallet data structure allows to create a new wallet from seed/mnemonic,
 // derive signing and blinding key pairs, and manage those keys to blind and
 // sign transactions
@@ -8,6 +14,7 @@ type Wallet struct {
 	signingMasterKey  []byte
 	blindingMnemonic  []string
 	blindingMasterKey []byte
+	signer            Signer
 }
 
 // NewWalletOpts is the struct given to the NewWallet method
@@ -55,6 +62,7 @@ func NewWallet(opts NewWalletOpts) (*Wallet, error) {
 type NewWalletFromMnemonicOpts struct {
 	SigningMnemonic  []string
 	BlindingMnemonic []string
+	RemoteSigner     Signer
 }
 
 func (o NewWalletFromMnemonicOpts) validate() error {
@@ -101,11 +109,20 @@ func NewWalletFromMnemonic(opts NewWalletFromMnemonicOpts) (*Wallet, error) {
 		return nil, err
 	}
 
+	signer, err := NewInnerSigner(signingMasterKey)
+	if err != nil {
+		return nil, err
+	}
+	if opts.RemoteSigner != nil {
+		signer = opts.RemoteSigner
+	}
+
 	return &Wallet{
 		signingMnemonic:   opts.SigningMnemonic,
 		signingMasterKey:  signingMasterKey,
 		blindingMnemonic:  blindingMnemonic,
 		blindingMasterKey: blindingMasterKey,
+		signer:            signer,
 	}, nil
 }
 

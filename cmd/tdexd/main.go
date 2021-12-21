@@ -129,6 +129,7 @@ func main() {
 		pricesSlippagePercentage,
 		network,
 		feeThreshold,
+		nil,
 	)
 	operatorSvc := application.NewOperatorService(
 		repoManager,
