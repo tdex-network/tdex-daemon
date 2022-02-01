@@ -366,6 +366,10 @@ github.com/tdex-network/tdex-daemon v0.2.1-0.20210324163246-ed408aba2ec6/go.mod 
 github.com/tdex-network/tdex-protobuf v0.0.0-20210322132201-a185bdfeb24f/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/tdex-network/tdex-protobuf v0.0.0-20211025103804-7ead2ca5a7b3 h1:VW+ulGTrvoYj1q6YEUy+q047GFqGWBfkijClZOxz6CQ=
 github.com/tdex-network/tdex-protobuf v0.0.0-20211025103804-7ead2ca5a7b3/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20220131164539-8888f639c3de h1:Fa2/WXH5b2F4upHH7Y2GqJ5zbdVRRazDMwWdl8Nb0zo=
+github.com/tdex-network/tdex-protobuf v0.0.0-20220131164539-8888f639c3de/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
+github.com/tdex-network/tdex-protobuf v0.0.0-20220201082630-6ec1f06f3535 h1:vLt0b0sIhYr2Osiy3gMeQpQgKsoDJZqXqaTAyD3O89I=
+github.com/tdex-network/tdex-protobuf v0.0.0-20220201082630-6ec1f06f3535/go.mod h1:tVWv01BSMH/neJOsixdDFU5T0ll0OZbPliLXBsYQjA8=
 github.com/thanhpk/randstr v1.0.4 h1:IN78qu/bR+My+gHCvMEXhR/i5oriVHcTB/BJJIRTsNo=
 github.com/thanhpk/randstr v1.0.4/go.mod h1:M/H2P1eNLZzlDwAzpkkkUvoyNNMbzRGhESZuEQk3r0U=
 github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4 h1:5g8lFrH34MM7MhZyluuTOJEuCjDHPgFZfNSHvOBLaNE=
