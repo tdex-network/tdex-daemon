@@ -5,13 +5,14 @@ import (
 )
 
 const (
-	EntityOperator = "operator"
-	EntityTrade    = "trade"
-	EntityMarket   = "market"
-	EntityPrice    = "price"
-	EntityUnlocker = "unlocker"
-	EntityWallet   = "wallet"
-	EntityWebhook  = "webhook"
+	EntityOperator  = "operator"
+	EntityTrade     = "trade"
+	EntityMarket    = "market"
+	EntityPrice     = "price"
+	EntityUnlocker  = "unlocker"
+	EntityWallet    = "wallet"
+	EntityWebhook   = "webhook"
+	EntityTransport = "transport"
 )
 
 // MarketPermissions returns the permissions of the macaroon market.macaroon.
@@ -208,6 +209,10 @@ func Whitelist() map[string][]bakery.Op {
 			Entity: EntityTrade,
 			Action: "write",
 		}},
+		"/Transport/SupportedContentTypes": {{
+			Entity: EntityTransport,
+			Action: "read",
+		}},
 	}
 }
 
@@ -385,6 +390,10 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 		}},
 		"/Operator/ListWebhooks": {{
 			Entity: EntityWebhook,
+			Action: "read",
+		}},
+		"/Transport/SupportedContentTypes": {{
+			Entity: EntityTransport,
 			Action: "read",
 		}},
 	}

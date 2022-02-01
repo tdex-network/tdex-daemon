@@ -24,7 +24,7 @@ func (t transportHandler) SupportedContentTypes(
 ) (*transport.SupportedContentTypesReply, error) {
 	return &transport.SupportedContentTypesReply{
 		AcceptedTypes: []transport.ContentType{
-			transport.ContentType_JSON,
+			//transport.ContentType_JSON,
 			transport.ContentType_GRPC,
 			transport.ContentType_GRPCWEB,
 			transport.ContentType_GRPCWEBTEXT,
