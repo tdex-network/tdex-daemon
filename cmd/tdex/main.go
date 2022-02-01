@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tdex-network/tdex-protobuf/generated/go/transport"
+
 	"github.com/btcsuite/btcutil"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
@@ -84,6 +86,7 @@ func main() {
 		&listwebhooks,
 		&listdeposits,
 		&listwithdrawals,
+		&contentType,
 		// TODO: deprecated commands, to be removed in next version.
 		&fragmentfee,
 		&fragmentmarket,
@@ -210,6 +213,16 @@ func printRespJSON(resp interface{}) {
 	}
 
 	fmt.Println(jsonStr)
+}
+
+func getTransportClient(ctx *cli.Context) (transport.TransportClient, func(), error) {
+	conn, err := getClientConn(false)
+	if err != nil {
+		return nil, nil, err
+	}
+	cleanup := func() { conn.Close() }
+
+	return transport.NewTransportClient(conn), cleanup, nil
 }
 
 func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(), error) {

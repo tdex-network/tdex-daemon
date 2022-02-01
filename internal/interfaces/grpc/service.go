@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/tdex-network/tdex-protobuf/generated/go/transport"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -294,6 +296,9 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	pbwalletunlocker.RegisterWalletUnlockerServer(
 		grpcOperatorServer, walletUnlockerHandler,
 	)
+
+	transportHandler := grpchandler.NewTransportHandler()
+	transport.RegisterTransportServer(grpcOperatorServer, transportHandler)
 
 	if !withUnlockerOnly {
 		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
