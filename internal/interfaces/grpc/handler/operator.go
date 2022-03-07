@@ -283,6 +283,13 @@ func (o operatorHandler) ListWithdrawals(
 	return o.listWithdrawals(ctx, req)
 }
 
+func (o operatorHandler) GetMarketReport(
+	ctx context.Context,
+	req *pb.GetMarketReportRequest,
+) (*pb.GetMarketReportsReply, error) {
+	return o.getMarketReport(ctx, req)
+}
+
 func (o operatorHandler) getInfo(
 	ctx context.Context, _ *pb.GetInfoRequest,
 ) (*pb.GetInfoReply, error) {
@@ -304,6 +311,7 @@ func (o operatorHandler) getInfo(
 		RootPath:          info.RootPath,
 		MasterBlindingKey: info.MasterBlindingKey,
 		AccountInfo:       accountInfo,
+		Network:           info.Network,
 	}, nil
 }
 
@@ -1266,6 +1274,27 @@ func (o operatorHandler) listWithdrawals(
 	}, err
 }
 
+func (o operatorHandler) getMarketReport(
+	ctx context.Context,
+	req *pb.GetMarketReportRequest,
+) (*pb.GetMarketReportsReply, error) {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return nil, err
+	}
+	report, err := o.operatorSvc.GetMarketReport(ctx, market, parseTimeRange(req.GetTimeRange()))
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetMarketReportsReply{
+		MarketReport: &pb.MarketReport{
+			TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
+			VolumePerAsset:             report.VolumePerAsset,
+		},
+	}, nil
+}
+
 func parseMarket(mkt *pbtypes.Market) (market application.Market, err error) {
 	var baseAsset, quoteAsset string
 	if mkt != nil {
@@ -1361,4 +1390,25 @@ func toUtxoInfoList(list []application.UtxoInfo) []*pb.UtxoInfo {
 		})
 	}
 	return res
+}
+
+func parseTimeRange(timeRange *pb.TimeRange) application.TimeRange {
+	var predefinedPeriod *application.PredefinedPeriod
+	if timeRange.GetPredefinedPeriod() > pb.PredefinedPeriod_NULL {
+		pp := application.PredefinedPeriod(timeRange.GetPredefinedPeriod())
+		predefinedPeriod = &pp
+	}
+
+	var customPeriod *application.CustomPeriod
+	if timeRange.GetCustomPeriod() != nil {
+		customPeriod = &application.CustomPeriod{
+			StartDate: timeRange.GetCustomPeriod().GetStartDate(),
+			EndDate:   timeRange.GetCustomPeriod().GetEndDate(),
+		}
+	}
+
+	return application.TimeRange{
+		PredefinedPeriod: predefinedPeriod,
+		CustomPeriod:     customPeriod,
+	}
 }
