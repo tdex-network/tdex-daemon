@@ -392,6 +392,10 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityWebhook,
 			Action: "read",
 		}},
+		"/Operator/GetMarketReport": {{
+			Entity: EntityMarket,
+			Action: "read",
+		}},
 		"/Transport/SupportedContentTypes": {{
 			Entity: EntityTransport,
 			Action: "read",
