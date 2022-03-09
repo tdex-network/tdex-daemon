@@ -472,8 +472,18 @@ func init() {
 }
 
 type MarketReport struct {
-	TotalCollectedFeesPerAsset map[string]int64
-	VolumePerAsset             map[string]int64
+	CollectedFees MarketCollectedFees
+	Volume        MarketVolume
+}
+
+type MarketCollectedFees struct {
+	BaseAmount  uint64
+	QuoteAmount uint64
+}
+
+type MarketVolume struct {
+	BaseVolume  uint64
+	QuoteVolume uint64
 }
 
 type TimeRange struct {
@@ -481,7 +491,7 @@ type TimeRange struct {
 	CustomPeriod     *CustomPeriod
 }
 
-func (t *TimeRange) validate() error {
+func (t *TimeRange) Validate() error {
 	if t.CustomPeriod == nil && t.PredefinedPeriod == nil {
 		return errors.New("both PredefinedPeriod period and CustomPeriod cant be null")
 	}
@@ -521,16 +531,26 @@ type CustomPeriod struct {
 }
 
 func (c *CustomPeriod) validate() error {
-	return validation.ValidateStruct(
+	if err := validation.ValidateStruct(
 		c,
 		validation.Field(&c.StartDate, validation.By(validateTimeFormat)),
 		validation.Field(&c.EndDate, validation.By(validateTimeFormat)),
-	)
+	); err != nil {
+		return err
+	}
+
+	start, _ := time.Parse(time.RFC3339, c.StartDate)
+	end, _ := time.Parse(time.RFC3339, c.EndDate)
+
+	if !start.Before(end) {
+		return errors.New("startTime must be before endTime")
+	}
+
+	return nil
 }
 
 func (t *TimeRange) getStartAndEndTime(now time.Time) (startTime time.Time, endTime time.Time, err error) {
-	if er := t.validate(); er != nil {
-		err = er
+	if err = t.Validate(); err != nil {
 		return
 	}
 

@@ -19,7 +19,7 @@ var (
 			marketDepositCmd, marketClaimCmd, marketWithdrawCmd,
 			marketOpenCmd, marketCloseCmd, marketDropCmd,
 			marketUpdateFixedFeeCmd, marketUpdatePercentageFeeCmd, marketReportFeeCmd,
-			marketUpdateStrategyCmd, marketUpdatePriceCmd, marketGetReportCmd,
+			marketUpdateStrategyCmd, marketUpdatePriceCmd, marketReportCmd,
 		},
 	}
 
@@ -201,10 +201,10 @@ var (
 		Action: marketUpdatePriceAction,
 	}
 
-	marketGetReportCmd = &cli.Command{
+	marketReportCmd = &cli.Command{
 		Name:   "report",
-		Usage:  "get market report",
-		Action: marketGetReport,
+		Usage:  "get market report about collected fees and trade volume for a specified time range",
+		Action: marketReportAction,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "start",
@@ -718,7 +718,7 @@ func marketUpdatePriceAction(ctx *cli.Context) error {
 	return nil
 }
 
-func marketGetReport(ctx *cli.Context) error {
+func marketReportAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
 		return err

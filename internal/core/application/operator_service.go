@@ -1638,8 +1638,10 @@ func (o *operatorService) GetMarketReport(
 	totalFees := make(map[string]int64)
 	volume := make(map[string]int64)
 	for _, trade := range trades {
-		if time.Unix(int64(trade.SwapRequest.Timestamp), 0).After(startTime) &&
-			time.Unix(int64(trade.SwapRequest.Timestamp), 0).Before(endTime) {
+		if (time.Unix(int64(trade.SwapRequest.Timestamp), 0).After(startTime) ||
+			time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(startTime)) &&
+			(time.Unix(int64(trade.SwapRequest.Timestamp), 0).Before(endTime) ||
+				time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(endTime)) {
 			feeBasisPoint := trade.MarketFee
 			swapRequest := trade.SwapRequestMessage()
 			feeAsset := swapRequest.GetAssetP()
@@ -1658,8 +1660,14 @@ func (o *operatorService) GetMarketReport(
 	}
 
 	return &MarketReport{
-		TotalCollectedFeesPerAsset: totalFees,
-		VolumePerAsset:             volume,
+		CollectedFees: MarketCollectedFees{
+			BaseAmount:  uint64(totalFees[market.BaseAsset]),
+			QuoteAmount: uint64(totalFees[market.QuoteAsset]),
+		},
+		Volume: MarketVolume{
+			BaseVolume:  uint64(volume[market.BaseAsset]),
+			QuoteVolume: uint64(volume[market.BaseAsset]),
+		},
 	}, nil
 }
 

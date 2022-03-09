@@ -286,7 +286,7 @@ func (o operatorHandler) ListWithdrawals(
 func (o operatorHandler) GetMarketReport(
 	ctx context.Context,
 	req *pb.GetMarketReportRequest,
-) (*pb.GetMarketReportsReply, error) {
+) (*pb.GetMarketReportReply, error) {
 	return o.getMarketReport(ctx, req)
 }
 
@@ -1275,22 +1275,32 @@ func (o operatorHandler) listWithdrawals(
 }
 
 func (o operatorHandler) getMarketReport(
-	ctx context.Context,
-	req *pb.GetMarketReportRequest,
-) (*pb.GetMarketReportsReply, error) {
+	ctx context.Context, req *pb.GetMarketReportRequest,
+) (*pb.GetMarketReportReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	report, err := o.operatorSvc.GetMarketReport(ctx, market, parseTimeRange(req.GetTimeRange()))
+	timeRange, err := parseTimeRange(req.GetTimeRange())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	report, err := o.operatorSvc.GetMarketReport(ctx, market, *timeRange)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.GetMarketReportsReply{
-		MarketReport: &pb.MarketReport{
-			TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
-			VolumePerAsset:             report.VolumePerAsset,
+	return &pb.GetMarketReportReply{
+		Report: &pb.MarketReport{
+			CollectedFees: &pb.MarketCollectedFees{
+				BaseAmount:  report.CollectedFees.BaseAmount,
+				QuoteAmount: report.CollectedFees.QuoteAmount,
+			},
+			Volume: &pb.MarketVolume{
+				BaseVolume:  report.Volume.BaseVolume,
+				QuoteVolume: report.Volume.QuoteVolume,
+			},
 		},
 	}, nil
 }
@@ -1392,13 +1402,12 @@ func toUtxoInfoList(list []application.UtxoInfo) []*pb.UtxoInfo {
 	return res
 }
 
-func parseTimeRange(timeRange *pb.TimeRange) application.TimeRange {
+func parseTimeRange(timeRange *pb.TimeRange) (*application.TimeRange, error) {
 	var predefinedPeriod *application.PredefinedPeriod
 	if timeRange.GetPredefinedPeriod() > pb.PredefinedPeriod_NULL {
 		pp := application.PredefinedPeriod(timeRange.GetPredefinedPeriod())
 		predefinedPeriod = &pp
 	}
-
 	var customPeriod *application.CustomPeriod
 	if timeRange.GetCustomPeriod() != nil {
 		customPeriod = &application.CustomPeriod{
@@ -1406,9 +1415,12 @@ func parseTimeRange(timeRange *pb.TimeRange) application.TimeRange {
 			EndDate:   timeRange.GetCustomPeriod().GetEndDate(),
 		}
 	}
-
-	return application.TimeRange{
+	tr := &application.TimeRange{
 		PredefinedPeriod: predefinedPeriod,
 		CustomPeriod:     customPeriod,
 	}
+	if err := tr.Validate(); err != nil {
+		return nil, err
+	}
+	return tr, nil
 }

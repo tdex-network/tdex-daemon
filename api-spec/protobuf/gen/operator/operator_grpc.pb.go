@@ -109,7 +109,7 @@ type OperatorClient interface {
 	// Returns the list of all withdrawals made for the given account.
 	ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsReply, error)
 	// Returns info about volume and collected fees for specific time range
-	GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportsReply, error)
+	GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportReply, error)
 }
 
 type operatorClient struct {
@@ -526,8 +526,8 @@ func (c *operatorClient) ListWithdrawals(ctx context.Context, in *ListWithdrawal
 	return out, nil
 }
 
-func (c *operatorClient) GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportsReply, error) {
-	out := new(GetMarketReportsReply)
+func (c *operatorClient) GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportReply, error) {
+	out := new(GetMarketReportReply)
 	err := c.cc.Invoke(ctx, "/Operator/GetMarketReport", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -626,7 +626,7 @@ type OperatorServer interface {
 	// Returns the list of all withdrawals made for the given account.
 	ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsReply, error)
 	// Returns info about volume and collected fees for specific time range
-	GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportsReply, error)
+	GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportReply, error)
 	mustEmbedUnimplementedOperatorServer()
 }
 
@@ -754,7 +754,7 @@ func (UnimplementedOperatorServer) ListDeposits(context.Context, *ListDepositsRe
 func (UnimplementedOperatorServer) ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWithdrawals not implemented")
 }
-func (UnimplementedOperatorServer) GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportsReply, error) {
+func (UnimplementedOperatorServer) GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketReport not implemented")
 }
 func (UnimplementedOperatorServer) mustEmbedUnimplementedOperatorServer() {}
