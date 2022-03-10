@@ -19,7 +19,7 @@ var (
 			marketDepositCmd, marketClaimCmd, marketWithdrawCmd,
 			marketOpenCmd, marketCloseCmd, marketDropCmd,
 			marketUpdateFixedFeeCmd, marketUpdatePercentageFeeCmd, marketReportFeeCmd,
-			marketUpdateStrategyCmd, marketUpdatePriceCmd,
+			marketUpdateStrategyCmd, marketUpdatePriceCmd, marketReportCmd,
 		},
 	}
 
@@ -199,6 +199,33 @@ var (
 			},
 		},
 		Action: marketUpdatePriceAction,
+	}
+
+	marketReportCmd = &cli.Command{
+		Name:   "report",
+		Usage:  "get market report about collected fees and trade volume for a specified time range",
+		Action: marketReportAction,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "start",
+				Usage: "fetch balances from specific time in the past, please provide end flag also",
+			},
+			&cli.StringFlag{
+				Name:  "end",
+				Usage: "fetch balances from specific time in the past til end date, use with start flag",
+			},
+			&cli.IntFlag{
+				Name: "predefined_period",
+				Usage: "time predefined periods:\n" +
+					"       1 -> last hour\n" +
+					"       2 -> last day\n" +
+					"       3 -> last month\n" +
+					"       4 -> last 3 months\n" +
+					"       5 -> year to date\n" +
+					"       6 -> all",
+				Value: 2,
+			},
+		},
 	}
 )
 
@@ -688,5 +715,54 @@ func marketUpdatePriceAction(ctx *cli.Context) error {
 
 	fmt.Println()
 	fmt.Println("price has been updated")
+	return nil
+}
+
+func marketReportAction(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
+	var customPeriod *pb.CustomPeriod
+	start := ctx.String("start")
+	end := ctx.String("end")
+	if start != "" && end != "" {
+		customPeriod = &pb.CustomPeriod{
+			StartDate: start,
+			EndDate:   end,
+		}
+	}
+
+	var predefinedPeriod pb.PredefinedPeriod
+	pp := ctx.Int("predefined_period")
+	if pp > 0 {
+		predefinedPeriod = pb.PredefinedPeriod(pp)
+	}
+
+	reply, err := client.GetMarketReport(
+		context.Background(),
+		&pb.GetMarketReportRequest{
+			Market: &pbtypes.Market{
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
+			},
+			TimeRange: &pb.TimeRange{
+				PredefinedPeriod: predefinedPeriod,
+				CustomPeriod:     customPeriod,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(reply)
 	return nil
 }

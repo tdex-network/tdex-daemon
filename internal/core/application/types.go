@@ -2,9 +2,12 @@ package application
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/btcsuite/btcd/btcec"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
@@ -16,12 +19,26 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
+const (
+	// NIL is added in proto file to recognised when predefined period is passed
+	NIL PredefinedPeriod = iota
+	LastHour
+	LastDay
+	LastMonth
+	LastThreeMonths
+	YearToDate
+	All
+
+	StartYear = 2021
+)
+
 // HDWalletInfo contains info about the internal wallet of the daemon and its
 // sub-accounts.
 type HDWalletInfo struct {
 	RootPath          string
 	MasterBlindingKey string
 	Accounts          []AccountInfo
+	Network           string
 }
 
 type HDWalletStatus struct {
@@ -452,4 +469,137 @@ func init() {
 	BlinderManager = blinderManager{}
 	TradeManager = tradeManager{}
 	TransactionManager = transactionManager{}
+}
+
+type MarketReport struct {
+	CollectedFees MarketCollectedFees
+	Volume        MarketVolume
+}
+
+type MarketCollectedFees struct {
+	BaseAmount  uint64
+	QuoteAmount uint64
+}
+
+type MarketVolume struct {
+	BaseVolume  uint64
+	QuoteVolume uint64
+}
+
+type TimeRange struct {
+	PredefinedPeriod *PredefinedPeriod
+	CustomPeriod     *CustomPeriod
+}
+
+func (t *TimeRange) Validate() error {
+	if t.CustomPeriod == nil && t.PredefinedPeriod == nil {
+		return errors.New("both PredefinedPeriod period and CustomPeriod cant be null")
+	}
+
+	if t.CustomPeriod != nil && t.PredefinedPeriod != nil {
+		return errors.New("both PredefinedPeriod period and CustomPeriod provided, please provide only one")
+	}
+
+	if t.CustomPeriod != nil {
+		if err := t.CustomPeriod.validate(); err != nil {
+			return err
+		}
+	}
+
+	if t.PredefinedPeriod != nil {
+		if err := t.PredefinedPeriod.validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type PredefinedPeriod int
+
+func (p *PredefinedPeriod) validate() error {
+	if *p > All {
+		return errors.New(fmt.Sprintf("PredefinedPeriod cant be > %v", All))
+	}
+
+	return nil
+}
+
+type CustomPeriod struct {
+	StartDate string
+	EndDate   string
+}
+
+func (c *CustomPeriod) validate() error {
+	if err := validation.ValidateStruct(
+		c,
+		validation.Field(&c.StartDate, validation.By(validateTimeFormat)),
+		validation.Field(&c.EndDate, validation.By(validateTimeFormat)),
+	); err != nil {
+		return err
+	}
+
+	start, _ := time.Parse(time.RFC3339, c.StartDate)
+	end, _ := time.Parse(time.RFC3339, c.EndDate)
+
+	if !start.Before(end) {
+		return errors.New("startTime must be before endTime")
+	}
+
+	return nil
+}
+
+func (t *TimeRange) getStartAndEndTime(now time.Time) (startTime time.Time, endTime time.Time, err error) {
+	if err = t.Validate(); err != nil {
+		return
+	}
+
+	if t.CustomPeriod != nil {
+		start, _ := time.Parse(time.RFC3339, t.CustomPeriod.StartDate)
+		startTime = start
+
+		endTime = now
+		if t.CustomPeriod.EndDate != "" {
+			end, _ := time.Parse(time.RFC3339, t.CustomPeriod.EndDate)
+			endTime = end
+		}
+		return
+	}
+
+	if t.PredefinedPeriod != nil {
+		var start time.Time
+		switch *t.PredefinedPeriod {
+		case LastHour:
+			start = now.Add(time.Duration(-60) * time.Minute)
+		case LastDay:
+			start = now.AddDate(0, 0, -1)
+		case LastMonth:
+			start = now.AddDate(0, -1, 0)
+		case LastThreeMonths:
+			start = now.AddDate(0, -3, 0)
+		case YearToDate:
+			y, _, _ := now.Date()
+			start = time.Date(y, time.January, 1, 0, 0, 0, 0, time.UTC)
+		case All:
+			start = time.Date(StartYear, time.January, 1, 0, 0, 0, 0, time.UTC)
+		}
+
+		startTime = start
+		endTime = now
+	}
+
+	return
+}
+
+func validateTimeFormat(t interface{}) error {
+	tm, ok := t.(string)
+	if !ok {
+		return ErrInvalidTime
+	}
+
+	if _, err := time.Parse(time.RFC3339, tm); err != nil {
+		return ErrInvalidTimeFormat
+	}
+
+	return nil
 }

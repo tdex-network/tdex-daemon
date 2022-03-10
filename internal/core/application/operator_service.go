@@ -139,6 +139,11 @@ type OperatorService interface {
 	AddWebhook(ctx context.Context, hook Webhook) (string, error)
 	RemoveWebhook(ctx context.Context, id string) error
 	ListWebhooks(ctx context.Context, actionType int) ([]WebhookInfo, error)
+	GetMarketReport(
+		ctx context.Context,
+		market Market,
+		timeRange TimeRange,
+	) (*MarketReport, error)
 }
 
 type operatorService struct {
@@ -230,6 +235,7 @@ func (o *operatorService) GetInfo(ctx context.Context) (*HDWalletInfo, error) {
 		RootPath:          rootPath.String(),
 		MasterBlindingKey: masterBlindingKey,
 		Accounts:          accountInfo,
+		Network:           o.network.Name,
 	}, nil
 }
 
@@ -1594,6 +1600,75 @@ func (o *operatorService) ListWebhooks(
 		})
 	}
 	return hooks, nil
+}
+
+func (o *operatorService) GetMarketReport(
+	ctx context.Context,
+	market Market,
+	timeRange TimeRange,
+) (*MarketReport, error) {
+	startTime, endTime, err := timeRange.getStartAndEndTime(time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	m, _, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if m == nil {
+		return nil, ErrMarketNotExist
+	}
+
+	trades, err := o.repoManager.TradeRepository().GetCompletedTradesByMarket(
+		ctx, market.QuoteAsset,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	//sort desc
+	sort.SliceStable(trades, func(i, j int) bool {
+		return trades[i].SwapRequest.Timestamp > trades[j].SwapRequest.Timestamp
+	})
+
+	totalFees := make(map[string]int64)
+	volume := make(map[string]int64)
+	for _, trade := range trades {
+		if (time.Unix(int64(trade.SwapRequest.Timestamp), 0).After(startTime) ||
+			time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(startTime)) &&
+			(time.Unix(int64(trade.SwapRequest.Timestamp), 0).Before(endTime) ||
+				time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(endTime)) {
+			feeBasisPoint := trade.MarketFee
+			swapRequest := trade.SwapRequestMessage()
+			feeAsset := swapRequest.GetAssetP()
+			amountP := swapRequest.GetAmountP()
+			_, percentageFeeAmount := mathutil.LessFee(amountP, uint64(feeBasisPoint))
+
+			fixedFeeAmount := uint64(trade.MarketFixedQuoteFee)
+			if feeAsset == m.BaseAsset {
+				fixedFeeAmount = uint64(trade.MarketFixedBaseFee)
+			}
+			totalFees[feeAsset] += int64(percentageFeeAmount) + int64(fixedFeeAmount)
+
+			volume[swapRequest.GetAssetR()] += int64(swapRequest.GetAmountR())
+			volume[swapRequest.GetAssetP()] += int64(swapRequest.GetAmountP())
+		}
+	}
+
+	return &MarketReport{
+		CollectedFees: MarketCollectedFees{
+			BaseAmount:  uint64(totalFees[market.BaseAsset]),
+			QuoteAmount: uint64(totalFees[market.QuoteAsset]),
+		},
+		Volume: MarketVolume{
+			BaseVolume:  uint64(volume[market.BaseAsset]),
+			QuoteVolume: uint64(volume[market.BaseAsset]),
+		},
+	}, nil
 }
 
 func (o *operatorService) generateAddressesForAccount(

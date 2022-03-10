@@ -64,4 +64,8 @@ var (
 	// ErrMarketNonZeroBalance is returned when trying to drop a market that still
 	// owns some base or quote asset funds.
 	ErrMarketNonZeroBalance = errors.New("withdraw funds from market before deleting")
+	// ErrInvalidTime used when validating if time is valid time.Time
+	ErrInvalidTime = errors.New("must be a valid time.Time")
+	// ErrInvalidTimeFormat used to validate time format
+	ErrInvalidTimeFormat = errors.New("fromTime must be valid RFC3339 format")
 )

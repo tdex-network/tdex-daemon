@@ -108,6 +108,8 @@ type OperatorClient interface {
 	ListDeposits(ctx context.Context, in *ListDepositsRequest, opts ...grpc.CallOption) (*ListDepositsReply, error)
 	// Returns the list of all withdrawals made for the given account.
 	ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsReply, error)
+	// Returns info about volume and collected fees for specific time range
+	GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportReply, error)
 }
 
 type operatorClient struct {
@@ -524,6 +526,15 @@ func (c *operatorClient) ListWithdrawals(ctx context.Context, in *ListWithdrawal
 	return out, nil
 }
 
+func (c *operatorClient) GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportReply, error) {
+	out := new(GetMarketReportReply)
+	err := c.cc.Invoke(ctx, "/Operator/GetMarketReport", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OperatorServer is the server API for Operator service.
 // All implementations must embed UnimplementedOperatorServer
 // for forward compatibility
@@ -614,6 +625,8 @@ type OperatorServer interface {
 	ListDeposits(context.Context, *ListDepositsRequest) (*ListDepositsReply, error)
 	// Returns the list of all withdrawals made for the given account.
 	ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsReply, error)
+	// Returns info about volume and collected fees for specific time range
+	GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportReply, error)
 	mustEmbedUnimplementedOperatorServer()
 }
 
@@ -740,6 +753,9 @@ func (UnimplementedOperatorServer) ListDeposits(context.Context, *ListDepositsRe
 }
 func (UnimplementedOperatorServer) ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWithdrawals not implemented")
+}
+func (UnimplementedOperatorServer) GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMarketReport not implemented")
 }
 func (UnimplementedOperatorServer) mustEmbedUnimplementedOperatorServer() {}
 
@@ -1480,6 +1496,24 @@ func _Operator_ListWithdrawals_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Operator_GetMarketReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMarketReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServer).GetMarketReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Operator/GetMarketReport",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServer).GetMarketReport(ctx, req.(*GetMarketReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Operator_ServiceDesc is the grpc.ServiceDesc for Operator service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1638,6 +1672,10 @@ var Operator_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListWithdrawals",
 			Handler:    _Operator_ListWithdrawals_Handler,
+		},
+		{
+			MethodName: "GetMarketReport",
+			Handler:    _Operator_GetMarketReport_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

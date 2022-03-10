@@ -13,6 +13,7 @@ require (
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/protobuf v1.5.2 // indirect

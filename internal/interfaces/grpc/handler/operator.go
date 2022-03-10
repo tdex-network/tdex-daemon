@@ -283,6 +283,13 @@ func (o operatorHandler) ListWithdrawals(
 	return o.listWithdrawals(ctx, req)
 }
 
+func (o operatorHandler) GetMarketReport(
+	ctx context.Context,
+	req *pb.GetMarketReportRequest,
+) (*pb.GetMarketReportReply, error) {
+	return o.getMarketReport(ctx, req)
+}
+
 func (o operatorHandler) getInfo(
 	ctx context.Context, _ *pb.GetInfoRequest,
 ) (*pb.GetInfoReply, error) {
@@ -304,6 +311,7 @@ func (o operatorHandler) getInfo(
 		RootPath:          info.RootPath,
 		MasterBlindingKey: info.MasterBlindingKey,
 		AccountInfo:       accountInfo,
+		Network:           info.Network,
 	}, nil
 }
 
@@ -1266,6 +1274,37 @@ func (o operatorHandler) listWithdrawals(
 	}, err
 }
 
+func (o operatorHandler) getMarketReport(
+	ctx context.Context, req *pb.GetMarketReportRequest,
+) (*pb.GetMarketReportReply, error) {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	timeRange, err := parseTimeRange(req.GetTimeRange())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	report, err := o.operatorSvc.GetMarketReport(ctx, market, *timeRange)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetMarketReportReply{
+		Report: &pb.MarketReport{
+			CollectedFees: &pb.MarketCollectedFees{
+				BaseAmount:  report.CollectedFees.BaseAmount,
+				QuoteAmount: report.CollectedFees.QuoteAmount,
+			},
+			Volume: &pb.MarketVolume{
+				BaseVolume:  report.Volume.BaseVolume,
+				QuoteVolume: report.Volume.QuoteVolume,
+			},
+		},
+	}, nil
+}
+
 func parseMarket(mkt *pbtypes.Market) (market application.Market, err error) {
 	var baseAsset, quoteAsset string
 	if mkt != nil {
@@ -1361,4 +1400,27 @@ func toUtxoInfoList(list []application.UtxoInfo) []*pb.UtxoInfo {
 		})
 	}
 	return res
+}
+
+func parseTimeRange(timeRange *pb.TimeRange) (*application.TimeRange, error) {
+	var predefinedPeriod *application.PredefinedPeriod
+	if timeRange.GetPredefinedPeriod() > pb.PredefinedPeriod_NULL {
+		pp := application.PredefinedPeriod(timeRange.GetPredefinedPeriod())
+		predefinedPeriod = &pp
+	}
+	var customPeriod *application.CustomPeriod
+	if timeRange.GetCustomPeriod() != nil {
+		customPeriod = &application.CustomPeriod{
+			StartDate: timeRange.GetCustomPeriod().GetStartDate(),
+			EndDate:   timeRange.GetCustomPeriod().GetEndDate(),
+		}
+	}
+	tr := &application.TimeRange{
+		PredefinedPeriod: predefinedPeriod,
+		CustomPeriod:     customPeriod,
+	}
+	if err := tr.Validate(); err != nil {
+		return nil, err
+	}
+	return tr, nil
 }
