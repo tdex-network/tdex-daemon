@@ -704,8 +704,8 @@ func marketUpdatePriceAction(ctx *cli.Context) error {
 				QuoteAsset: quoteAsset,
 			},
 			Price: &pbtypes.Price{
-				BasePrice:  float32(ctx.Float64("base_price")),
-				QuotePrice: float32(ctx.Float64("quote_price")),
+				BasePrice:  ctx.Float64("base_price"),
+				QuotePrice: ctx.Float64("quote_price"),
 			},
 		},
 	)
