@@ -181,8 +181,8 @@ func (t traderHandler) marketPrice(
 		Prices: []*pbtypes.PriceWithFee{
 			{
 				Price: &pbtypes.Price{
-					BasePrice:  float32(basePrice),
-					QuotePrice: float32(quotePrice),
+					BasePrice:  basePrice,
+					QuotePrice: quotePrice,
 				},
 				Fee: &pbtypes.Fee{
 					BasisPoint: preview.Fee.BasisPoint,

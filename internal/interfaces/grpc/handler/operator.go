@@ -434,8 +434,8 @@ func (o operatorHandler) getMarketInfo(
 	if err != nil {
 		return nil, err
 	}
-	basePrice, _ := info.Price.BasePrice.BigFloat().Float32()
-	quotePrice, _ := info.Price.QuotePrice.BigFloat().Float32()
+	basePrice, _ := info.Price.BasePrice.BigFloat().Float64()
+	quotePrice, _ := info.Price.QuotePrice.BigFloat().Float64()
 
 	return &pb.GetMarketInfoReply{
 		Info: &pb.MarketInfo{
@@ -1102,8 +1102,8 @@ func (o operatorHandler) listMarkets(
 	pbMarketInfos := make([]*pb.MarketInfo, 0, len(marketInfos))
 
 	for _, marketInfo := range marketInfos {
-		basePrice, _ := marketInfo.Price.BasePrice.BigFloat().Float32()
-		quotePrice, _ := marketInfo.Price.QuotePrice.BigFloat().Float32()
+		basePrice, _ := marketInfo.Price.BasePrice.BigFloat().Float64()
+		quotePrice, _ := marketInfo.Price.QuotePrice.BigFloat().Float64()
 
 		pbMarketInfos = append(pbMarketInfos, &pb.MarketInfo{
 			Market: &pbtypes.Market{
@@ -1364,8 +1364,8 @@ func parseFixedFee(fee *pbtypes.Fixed) application.Fee {
 func parsePrice(p *pbtypes.Price) (price application.Price, err error) {
 	var basePrice, quotePrice = decimal.NewFromInt(0), decimal.NewFromInt(0)
 	if p != nil {
-		basePrice = decimal.NewFromFloat32(p.GetBasePrice())
-		quotePrice = decimal.NewFromFloat32(p.GetQuotePrice())
+		basePrice = decimal.NewFromFloat(p.GetBasePrice())
+		quotePrice = decimal.NewFromFloat(p.GetQuotePrice())
 	}
 	pp := application.Price{
 		BasePrice:  basePrice,
