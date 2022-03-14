@@ -715,7 +715,7 @@ message GetMarketReportRequest {
   // time_range fetch market report from time range
   TimeRange time_range = 2;
   // level of detail for the specified time_range
-  TimeFrame timeframe = 3;
+  TimeFrame time_frame = 3;
 }
 message GetMarketReportReply {
   // MarketReport holds info about volume and collected fees
