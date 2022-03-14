@@ -775,6 +775,4 @@ enum Granularity {
   DAY = 2;
   WEEK = 3;
   MONTH = 4;
-  THREE_MONTHS = 5;
-  YEAR = 6;
 }
