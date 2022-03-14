@@ -715,7 +715,7 @@ message GetMarketReportRequest {
   // time_range fetch market report from time range
   TimeRange time_range = 2;
   // level of detail for the specified time_range
-  Granularity granularity = 3;
+  TimeFrame timeframe = 3;
 }
 message GetMarketReportReply {
   // MarketReport holds info about volume and collected fees
@@ -764,12 +764,12 @@ enum PredefinedPeriod {
   LAST_DAY = 2;
   LAST_WEEK = 3;
   LAST_MONTH = 4;
-  LAST_3_MONTHS = 5;
+  LAST_THREE_MONTHS = 5;
   YEAR_TO_DATE = 6;
   ALL = 7;
 }
 
-enum Granularity {
+enum TimeFrame {
   HOUR = 0;
   FOUR_HOURS = 1;
   DAY = 2;
