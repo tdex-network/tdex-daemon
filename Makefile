@@ -25,8 +25,7 @@ build-tdexdconnect:
 
 ## proto: compile proto files
 proto: install
-	chmod u+x ./scripts/compile_proto
-	./scripts/compile_proto
+	buf generate
 
 ## clean: cleans the binary
 clean:

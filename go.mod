@@ -34,7 +34,7 @@ require (
 	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20211001103242-a11e4485705a
 	github.com/tdex-network/tdex-daemon/pkg/macaroons v0.0.0-20210813140257-70d50a8b72a4
 	github.com/tdex-network/tdex-daemon/pkg/securestore v0.0.0-20210813140257-70d50a8b72a4
-	github.com/tdex-network/tdex-protobuf v0.0.0-20220201082630-6ec1f06f3535
+	github.com/tdex-network/tdex-protobuf v0.0.0-20220316092202-8fc12d2fc99b
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/urfave/cli/v2 v2.3.0
