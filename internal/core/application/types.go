@@ -24,6 +24,7 @@ const (
 	NIL PredefinedPeriod = iota
 	LastHour
 	LastDay
+	LastWeek
 	LastMonth
 	LastThreeMonths
 	YearToDate
@@ -474,16 +475,21 @@ func init() {
 type MarketReport struct {
 	CollectedFees MarketCollectedFees
 	Volume        MarketVolume
+	GroupedVolume []MarketVolume
 }
 
 type MarketCollectedFees struct {
 	BaseAmount  uint64
 	QuoteAmount uint64
+	StartTime   time.Time
+	EndTime     time.Time
 }
 
 type MarketVolume struct {
 	BaseVolume  uint64
 	QuoteVolume uint64
+	StartTime   time.Time
+	EndTime     time.Time
 }
 
 type TimeRange struct {
@@ -573,6 +579,8 @@ func (t *TimeRange) getStartAndEndTime(now time.Time) (startTime time.Time, endT
 			start = now.Add(time.Duration(-60) * time.Minute)
 		case LastDay:
 			start = now.AddDate(0, 0, -1)
+		case LastWeek:
+			start = now.AddDate(0, 0, -7)
 		case LastMonth:
 			start = now.AddDate(0, -1, 0)
 		case LastThreeMonths:

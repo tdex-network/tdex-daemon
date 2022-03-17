@@ -1,4 +1,4 @@
-package application_test
+package application
 
 import (
 	"encoding/base64"
@@ -12,7 +12,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
@@ -25,13 +24,13 @@ var (
 	tradePriceSlippage  = decimal.NewFromFloat(0.1)
 	tradeSatsPerByte    = 0.1
 
-	tradeFeeOutpoints = []application.TxOutpoint{
+	tradeFeeOutpoints = []TxOutpoint{
 		{Hash: randomHex(32), Index: 0},
 		{Hash: randomHex(32), Index: 0},
 		{Hash: randomHex(32), Index: 0},
 		{Hash: randomHex(32), Index: 0},
 	}
-	tradeMktOutpoints = []application.TxOutpoint{
+	tradeMktOutpoints = []TxOutpoint{
 		{Hash: randomHex(32), Index: 0},
 		{Hash: randomHex(32), Index: 0},
 		{Hash: randomHex(32), Index: 0},
@@ -79,7 +78,7 @@ func TestMarketTrading(t *testing.T) {
 	repoManager, explorerSvc, bcListener := newServices() //
 
 	t.Run("without fixed fees", func(t *testing.T) {
-		tradeSvc, err := newTradeService(
+		tradeSvc, err := newTradeServiceTest(
 			repoManager,
 			explorerSvc,
 			bcListener,
@@ -100,24 +99,24 @@ func TestMarketTrading(t *testing.T) {
 
 		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
 			t.Parallel()
-			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
+			marketOrder(t, tradeSvc, market, TradeBuy, 0.1, marketBaseAsset)
 		})
 		t.Run("buy LBTC fixed USDT", func(t *testing.T) {
 			t.Parallel()
-			marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
+			marketOrder(t, tradeSvc, market, TradeBuy, 900.0, marketQuoteAsset)
 		})
 		t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
 			t.Parallel()
-			marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
+			marketOrder(t, tradeSvc, market, TradeSell, 0.1, marketBaseAsset)
 		})
 		t.Run("sell LBTC fixed USDT", func(t *testing.T) {
 			t.Parallel()
-			marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
+			marketOrder(t, tradeSvc, market, TradeSell, 900.0, marketQuoteAsset)
 		})
 	})
 
 	t.Run("with fixed fees", func(t *testing.T) {
-		tradeSvc, err := newTradeService(
+		tradeSvc, err := newTradeServiceTest(
 			repoManager,
 			explorerSvc,
 			bcListener,
@@ -138,26 +137,26 @@ func TestMarketTrading(t *testing.T) {
 		require.True(t, balances.Balance.QuoteAmount > 0)
 
 		t.Run("buy LBTC fixed LBTC", func(t *testing.T) {
-			marketOrder(t, tradeSvc, market, application.TradeBuy, 0.1, marketBaseAsset)
+			marketOrder(t, tradeSvc, market, TradeBuy, 0.1, marketBaseAsset)
 		})
 		t.Run("buy LBTC fixed USDT", func(t *testing.T) {
-			marketOrder(t, tradeSvc, market, application.TradeBuy, 900.0, marketQuoteAsset)
+			marketOrder(t, tradeSvc, market, TradeBuy, 900.0, marketQuoteAsset)
 		})
 		t.Run("sell LBTC fixed LBTC", func(t *testing.T) {
-			marketOrder(t, tradeSvc, market, application.TradeSell, 0.1, marketBaseAsset)
+			marketOrder(t, tradeSvc, market, TradeSell, 0.1, marketBaseAsset)
 		})
 		t.Run("sell LBTC fixed USDT", func(t *testing.T) {
-			marketOrder(t, tradeSvc, market, application.TradeSell, 900.0, marketQuoteAsset)
+			marketOrder(t, tradeSvc, market, TradeSell, 900.0, marketQuoteAsset)
 		})
 	})
 }
 
-func newTradeService(
+func newTradeServiceTest(
 	repoManager ports.RepoManager,
 	explorerSvc explorer.Service,
-	bcListener application.BlockchainListener,
+	bcListener BlockchainListener,
 	withFixedFee bool,
-) (application.TradeService, error) {
+) (TradeService, error) {
 
 	v, err := repoManager.VaultRepository().GetOrCreateVault(
 		ctx, mnemonic, passphrase, regtest,
@@ -253,14 +252,14 @@ func newTradeService(
 	mockedTradeManager := newMockedTradeManager()
 	mockedTradeManager.
 		On("FillProposal", mock.AnythingOfType("application.FillProposalOpts")).
-		Return(&application.FillProposalResult{
+		Return(&FillProposalResult{
 			PsetBase64:         randomBase64(),
 			SelectedUnspents:   randomSelection(unspents, mockedTradeManager.counter),
 			InputBlindingKeys:  nil,
 			OutputBlindingKeys: nil,
 		}, nil)
 
-	application.TradeManager = mockedTradeManager
+	TradeManager = mockedTradeManager
 
 	explorerSvc.(*mockExplorer).
 		On("GetTransactionStatus", mock.AnythingOfType("string")).
@@ -277,7 +276,7 @@ func newTradeService(
 		On("BroadcastTransaction", mock.AnythingOfType("string")).
 		Return(randomHex(32), nil)
 
-	return application.NewTradeService(
+	return NewTradeService(
 		repoManager,
 		explorerSvc,
 		bcListener,
@@ -291,8 +290,8 @@ func newTradeService(
 
 func marketOrder(
 	t *testing.T,
-	tradeSvc application.TradeService,
-	market application.Market,
+	tradeSvc TradeService,
+	market Market,
 	tradeType int,
 	btcAmount float64,
 	asset string,
@@ -311,11 +310,11 @@ func marketOrder(
 	amountToSend := amount
 	assetToReceive := preview.Asset
 	amountToReceive := preview.Amount
-	if tradeType == application.TradeSell && asset == marketQuoteAsset {
+	if tradeType == TradeSell && asset == marketQuoteAsset {
 		assetToSend, assetToReceive = assetToReceive, assetToSend
 		amountToSend, amountToReceive = amountToReceive, amountToSend
 	}
-	if tradeType == application.TradeBuy && asset == marketBaseAsset {
+	if tradeType == TradeBuy && asset == marketBaseAsset {
 		assetToSend, assetToReceive = assetToReceive, assetToSend
 		amountToSend, amountToReceive = amountToReceive, amountToSend
 	}

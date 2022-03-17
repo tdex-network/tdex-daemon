@@ -1,4 +1,4 @@
-package application_test
+package application
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
@@ -86,7 +85,7 @@ func TestMain(m *testing.M) {
 	mockedTransactionManager.
 		On("ExtractUnspents", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, nil, nil)
-	application.TransactionManager = mockedTransactionManager
+	TransactionManager = mockedTransactionManager
 
 	os.Exit(m.Run())
 }
@@ -98,10 +97,10 @@ func TestInitWallet(t *testing.T) {
 	}
 
 	t.Run("wallet_from_scratch", func(t *testing.T) {
-		walletSvc := newWalletUnlockerService()
+		walletSvc := newWalletUnlockerServiceTest()
 		require.NotNil(t, walletSvc)
 
-		chReplies := make(chan application.InitWalletReply)
+		chReplies := make(chan InitWalletReply)
 
 		go walletSvc.InitWallet(
 			ctx,
@@ -132,7 +131,7 @@ func TestInitWallet(t *testing.T) {
 		walletSvc := newWalletUnlockerServiceRestore()
 		require.NotNil(t, walletSvc)
 
-		chReplies := make(chan application.InitWalletReply)
+		chReplies := make(chan InitWalletReply)
 
 		go walletSvc.InitWallet(
 			ctx,
@@ -148,10 +147,10 @@ func TestInitWallet(t *testing.T) {
 	})
 }
 
-func newWalletUnlockerService() application.WalletUnlockerService {
+func newWalletUnlockerServiceTest() WalletUnlockerService {
 	repoManager, explorerSvc, bcListener := newServices()
 
-	return application.NewWalletUnlockerService(
+	return NewWalletUnlockerService(
 		repoManager,
 		explorerSvc,
 		bcListener,
@@ -168,7 +167,7 @@ func newWalletUnlockerService() application.WalletUnlockerService {
 // restoring the utxo set if it finds a vault in the Vault repository.
 // This function creates a new vault in the repo before passing the db manager
 // down to the wallet service to simulate the described situation.
-func newWalletUnlockerServiceRestart() (application.WalletUnlockerService, error) {
+func newWalletUnlockerServiceRestart() (WalletUnlockerService, error) {
 	repoManager, explorerSvc, bcListener := newServices()
 	v, err := repoManager.VaultRepository().GetOrCreateVault(
 		ctx, mnemonic, passphrase, regtest,
@@ -183,7 +182,7 @@ func newWalletUnlockerServiceRestart() (application.WalletUnlockerService, error
 		On("GetUnspentsForAddresses", addresses, keys).
 		Return(randomUtxos(addresses), nil)
 
-	return application.NewWalletUnlockerService(
+	return NewWalletUnlockerService(
 		repoManager,
 		explorerSvc,
 		bcListener,
@@ -199,7 +198,7 @@ func newWalletUnlockerServiceRestart() (application.WalletUnlockerService, error
 // Restoring a wallet is an operation that depends almost entirely on the
 // explorer service. This function mocks explorer's responses in order to
 // emulate an already used wallet with some used Fee account's addresses.
-func newWalletUnlockerServiceRestore() application.WalletUnlockerService {
+func newWalletUnlockerServiceRestore() WalletUnlockerService {
 	repoManager, explorerSvc, bcListener := newServices()
 
 	v, _ := domain.NewVault(mnemonic, passphrase, regtest)
@@ -250,7 +249,7 @@ func newWalletUnlockerServiceRestore() application.WalletUnlockerService {
 			Return(nil, nil)
 	}
 
-	return application.NewWalletUnlockerService(
+	return NewWalletUnlockerService(
 		repoManager,
 		explorerSvc,
 		bcListener,
@@ -266,7 +265,7 @@ func newWalletUnlockerServiceRestore() application.WalletUnlockerService {
 func newServices() (
 	ports.RepoManager,
 	explorer.Service,
-	application.BlockchainListener,
+	BlockchainListener,
 ) {
 	repoManager, _ := dbbadger.NewRepoManager("", nil)
 	explorerSvc := &mockExplorer{}
@@ -274,7 +273,7 @@ func newServices() (
 		ExplorerSvc:     explorerSvc,
 		CrawlerInterval: 1000,
 	})
-	bcListener := application.NewBlockchainListener(
+	bcListener := NewBlockchainListener(
 		crawlerSvc,
 		repoManager,
 		nil,
@@ -284,9 +283,9 @@ func newServices() (
 }
 
 func listenToReplies(
-	chReplies chan application.InitWalletReply,
-) ([]application.InitWalletReply, error) {
-	replies := make([]application.InitWalletReply, 0)
+	chReplies chan InitWalletReply,
+) ([]InitWalletReply, error) {
+	replies := make([]InitWalletReply, 0)
 	for reply := range chReplies {
 		if reply.Err != nil {
 			return nil, reply.Err

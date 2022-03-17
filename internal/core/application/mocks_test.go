@@ -1,4 +1,4 @@
-package application_test
+package application
 
 import (
 	"strings"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/address"
@@ -22,12 +21,12 @@ type mockBlinderManager struct {
 func (m *mockBlinderManager) UnblindOutput(
 	txout *transaction.TxOutput,
 	key []byte,
-) (application.UnblindedResult, bool) {
+) (UnblindedResult, bool) {
 	args := m.Called(txout, key)
 
-	var res application.UnblindedResult
+	var res UnblindedResult
 	if a := args.Get(0); a != nil {
-		res = a.(application.UnblindedResult)
+		res = a.(UnblindedResult)
 	}
 	var res1 bool
 	if a := args.Get(1); a != nil {
@@ -51,17 +50,17 @@ func newMockedTradeManager() *mockTradeManager {
 }
 
 func (m *mockTradeManager) FillProposal(
-	opts application.FillProposalOpts,
-) (*application.FillProposalResult, error) {
+	opts FillProposalOpts,
+) (*FillProposalResult, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	m.counter++
 	args := m.Called(opts)
 
-	var res *application.FillProposalResult
+	var res *FillProposalResult
 	if a := args.Get(0); a != nil {
-		res = a.(*application.FillProposalResult)
+		res = a.(*FillProposalResult)
 	}
 	return res, args.Error(1)
 }
@@ -92,15 +91,15 @@ func (m *mockTransactionManager) ExtractUnspents(
 func (m *mockTransactionManager) ExtractBlindingData(
 	psetBase64 string,
 	inBlindingKeys, outBlindingData map[string][]byte,
-) (map[int]application.BlindingData, map[int]application.BlindingData, error) {
+) (map[int]BlindingData, map[int]BlindingData, error) {
 	args := m.Called(psetBase64, inBlindingKeys, outBlindingData)
-	var res map[int]application.BlindingData
+	var res map[int]BlindingData
 	if a := args.Get(0); a != nil {
-		res = a.(map[int]application.BlindingData)
+		res = a.(map[int]BlindingData)
 	}
-	var res1 map[int]application.BlindingData
+	var res1 map[int]BlindingData
 	if a := args.Get(1); a != nil {
-		res1 = a.(map[int]application.BlindingData)
+		res1 = a.(map[int]BlindingData)
 	}
 	return res, res1, args.Error(2)
 }

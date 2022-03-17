@@ -1281,26 +1281,44 @@ func (o operatorHandler) getMarketReport(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+
 	timeRange, err := parseTimeRange(req.GetTimeRange())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	report, err := o.operatorSvc.GetMarketReport(ctx, market, *timeRange)
+	groupByTimeFrame := parseTimeFrame(req.GetTimeFrame())
+
+	report, err := o.operatorSvc.GetMarketReport(ctx, market, *timeRange, groupByTimeFrame)
 	if err != nil {
 		return nil, err
 	}
 
+	groupedVolume := make([]*pb.MarketVolume, 0, len(report.GroupedVolume))
+	for _, v := range report.GroupedVolume {
+		groupedVolume = append(groupedVolume, &pb.MarketVolume{
+			BaseVolume:  v.BaseVolume,
+			QuoteVolume: v.QuoteVolume,
+			StartDate:   v.StartTime.String(),
+			EndDate:     v.EndTime.String(),
+		})
+	}
+
 	return &pb.GetMarketReportReply{
 		Report: &pb.MarketReport{
-			CollectedFees: &pb.MarketCollectedFees{
+			TotalCollectedFees: &pb.MarketCollectedFees{
 				BaseAmount:  report.CollectedFees.BaseAmount,
 				QuoteAmount: report.CollectedFees.QuoteAmount,
+				StartDate:   report.CollectedFees.StartTime.String(),
+				EndDate:     report.CollectedFees.EndTime.String(),
 			},
-			Volume: &pb.MarketVolume{
+			TotalVolume: &pb.MarketVolume{
 				BaseVolume:  report.Volume.BaseVolume,
 				QuoteVolume: report.Volume.QuoteVolume,
+				StartDate:   report.Volume.StartTime.String(),
+				EndDate:     report.Volume.EndTime.String(),
 			},
+			GroupedVolume: groupedVolume,
 		},
 	}, nil
 }
@@ -1423,4 +1441,23 @@ func parseTimeRange(timeRange *pb.TimeRange) (*application.TimeRange, error) {
 		return nil, err
 	}
 	return tr, nil
+}
+
+func parseTimeFrame(timeFrame pb.TimeFrame) int {
+	switch timeFrame {
+	case pb.TimeFrame_HOUR:
+		return 1
+	case pb.TimeFrame_FOUR_HOURS:
+		return 4
+	case pb.TimeFrame_DAY:
+		return 24
+	case pb.TimeFrame_WEEK:
+		return 24 * 7
+	case pb.TimeFrame_MONTH:
+		year, month, _ := time.Now().Date()
+		numOfDaysForCurrentMont := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+		return numOfDaysForCurrentMont
+	}
+
+	return 1
 }
