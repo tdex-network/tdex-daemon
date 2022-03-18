@@ -1299,8 +1299,8 @@ func (o operatorHandler) getMarketReport(
 		groupedVolume = append(groupedVolume, &pb.MarketVolume{
 			BaseVolume:  v.BaseVolume,
 			QuoteVolume: v.QuoteVolume,
-			StartDate:   v.StartTime.String(),
-			EndDate:     v.EndTime.String(),
+			StartDate:   v.StartTime.Format(time.RFC3339),
+			EndDate:     v.EndTime.Format(time.RFC3339),
 		})
 	}
 
@@ -1309,14 +1309,14 @@ func (o operatorHandler) getMarketReport(
 			TotalCollectedFees: &pb.MarketCollectedFees{
 				BaseAmount:  report.CollectedFees.BaseAmount,
 				QuoteAmount: report.CollectedFees.QuoteAmount,
-				StartDate:   report.CollectedFees.StartTime.String(),
-				EndDate:     report.CollectedFees.EndTime.String(),
+				StartDate:   report.CollectedFees.StartTime.Format(time.RFC3339),
+				EndDate:     report.CollectedFees.EndTime.Format(time.RFC3339),
 			},
 			TotalVolume: &pb.MarketVolume{
 				BaseVolume:  report.Volume.BaseVolume,
 				QuoteVolume: report.Volume.QuoteVolume,
-				StartDate:   report.Volume.StartTime.String(),
-				EndDate:     report.Volume.EndTime.String(),
+				StartDate:   report.Volume.StartTime.Format(time.RFC3339),
+				EndDate:     report.Volume.EndTime.Format(time.RFC3339),
 			},
 			GroupedVolume: groupedVolume,
 		},

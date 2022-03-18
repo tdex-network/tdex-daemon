@@ -192,13 +192,12 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 		groupByTimeFrame int
 	}
 	tests := []struct {
-		name                  string
-		fields                fields
-		args                  args
-		want                  func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error
-		wantBaseQuoteValuesAt []int
-		wantGroupedVolumeLen  int
-		wantErr               bool
+		name                 string
+		fields               fields
+		args                 args
+		want                 func(report *application.MarketReport, wantGroupedVolumeLen int) error
+		wantGroupedVolumeLen int
+		wantErr              bool
 	}{
 		{
 			name: "1",
@@ -219,22 +218,15 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 				},
 				groupByTimeFrame: 1,
 			},
-			want: func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
-				for _, v := range notNilAt {
-					if report.GroupedVolume[v].BaseVolume == 0 && report.GroupedVolume[v].QuoteVolume == 0 {
-						return errors.New(fmt.Sprintf("not expected to found volume with BaseVolume/QuoteVolume=0 at index: %v", v))
-					}
-				}
-
+			want: func(report *application.MarketReport, wantGroupedVolumeLen int) error {
 				if len(report.GroupedVolume) != wantGroupedVolumeLen {
 					return errors.New(fmt.Sprintf("expected grouped volume len: %v, got: %v", wantGroupedVolumeLen, len(report.GroupedVolume)))
 				}
 
 				return nil
 			},
-			wantBaseQuoteValuesAt: []int{0},
-			wantGroupedVolumeLen:  24,
-			wantErr:               false,
+			wantGroupedVolumeLen: 1,
+			wantErr:              false,
 		},
 		{
 			name: "2",
@@ -255,22 +247,44 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 				},
 				groupByTimeFrame: 4,
 			},
-			want: func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
-				for _, v := range notNilAt {
-					if report.GroupedVolume[v].BaseVolume == 0 && report.GroupedVolume[v].QuoteVolume == 0 {
-						return errors.New(fmt.Sprintf("not expected to found volume with BaseVolume/QuoteVolume=0 at index: %v", v))
-					}
-				}
-
+			want: func(report *application.MarketReport, wantGroupedVolumeLen int) error {
 				if len(report.GroupedVolume) != wantGroupedVolumeLen {
 					return errors.New(fmt.Sprintf("expected grouped volume len: %v, got: %v", wantGroupedVolumeLen, len(report.GroupedVolume)))
 				}
 
 				return nil
 			},
-			wantBaseQuoteValuesAt: []int{0, 5},
-			wantGroupedVolumeLen:  6,
-			wantErr:               false,
+			wantGroupedVolumeLen: 2,
+			wantErr:              false,
+		},
+		{
+			name: "3",
+			fields: fields{
+				trades: nil,
+			},
+			args: args{
+				ctx: ctx,
+				market: application.Market{
+					BaseAsset:  "b",
+					QuoteAsset: "q",
+				},
+				timeRange: application.TimeRange{
+					CustomPeriod: &application.CustomPeriod{
+						StartDate: "2022-03-16T15:00:05Z",
+						EndDate:   "2022-03-17T15:00:05Z",
+					},
+				},
+				groupByTimeFrame: 4,
+			},
+			want: func(report *application.MarketReport, wantGroupedVolumeLen int) error {
+				if len(report.GroupedVolume) != wantGroupedVolumeLen {
+					return errors.New(fmt.Sprintf("expected grouped volume len: %v, got: %v", wantGroupedVolumeLen, len(report.GroupedVolume)))
+				}
+
+				return nil
+			},
+			wantGroupedVolumeLen: 0,
+			wantErr:              false,
 		},
 	}
 	for _, tt := range tests {
@@ -286,7 +300,7 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 				return
 			}
 
-			if err := tt.want(got, tt.wantBaseQuoteValuesAt, tt.wantGroupedVolumeLen); err != nil {
+			if err := tt.want(got, tt.wantGroupedVolumeLen); err != nil {
 				t.Error(err)
 				return
 			}
@@ -335,20 +349,6 @@ func newOperatorServiceForMarketReport(trades []*domain.Trade) (application.Oper
 			return nil, err
 		}
 	}
-
-	rr, err := repoManager.TradeRepository().GetCompletedTradesByMarket(
-		ctx, "q",
-	)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println(rr)
-
-	rr1, err := repoManager.TradeRepository().GetAllTrades(ctx)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println(rr1)
 
 	if _, err := repoManager.VaultRepository().GetOrCreateVault(
 		ctx, mnemonic, passphrase, regtest,
