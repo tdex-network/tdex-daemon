@@ -1,4 +1,4 @@
-package application
+package application_test
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 
@@ -19,11 +21,11 @@ import (
 
 var (
 	marketQuoteAsset = randomHex(32)
-	feeOutpoints     = []TxOutpoint{
+	feeOutpoints     = []application.TxOutpoint{
 		{Hash: randomHex(32), Index: 0},
 		{Hash: randomHex(32), Index: 0},
 	}
-	mktOutpoints = []TxOutpoint{
+	mktOutpoints = []application.TxOutpoint{
 		{Hash: randomHex(32), Index: 0},
 		{Hash: randomHex(32), Index: 0},
 	}
@@ -41,7 +43,7 @@ func TestAccountManagement(t *testing.T) {
 		key, _ := hex.DecodeString(f.BlindingKey)
 		mockedBlinderManager.
 			On("UnblindOutput", mock.AnythingOfType("*transaction.TxOutput"), key).
-			Return(UnblindedResult(&transactionutil.UnblindedResult{
+			Return(application.UnblindedResult(&transactionutil.UnblindedResult{
 				AssetHash:    regtest.AssetID,
 				Value:        randomValue(),
 				AssetBlinder: randomBytes(32),
@@ -51,7 +53,7 @@ func TestAccountManagement(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	mkt := Market{
+	mkt := application.Market{
 		BaseAsset:  marketBaseAsset,
 		QuoteAsset: marketQuoteAsset,
 	}
@@ -70,7 +72,7 @@ func TestAccountManagement(t *testing.T) {
 		key, _ := hex.DecodeString(m.BlindingKey)
 		mockedBlinderManager.
 			On("UnblindOutput", mock.Anything, key).
-			Return(UnblindedResult(&transactionutil.UnblindedResult{
+			Return(application.UnblindedResult(&transactionutil.UnblindedResult{
 				AssetHash:    asset,
 				Value:        randomValue(),
 				AssetBlinder: randomBytes(32),
@@ -80,7 +82,7 @@ func TestAccountManagement(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	BlinderManager = mockedBlinderManager
+	application.BlinderManager = mockedBlinderManager
 
 	err = operatorSvc.ClaimFeeDeposits(ctx, feeOutpoints)
 	require.NoError(t, err)
@@ -130,7 +132,7 @@ func TestAccountManagement(t *testing.T) {
 }
 
 // newOperatorService returns a new service with brand new and unlocked wallet.
-func newOperatorService() (OperatorService, error) {
+func newOperatorService() (application.OperatorService, error) {
 	repoManager, explorerSvc, bcListener := newServices()
 
 	if _, err := repoManager.VaultRepository().GetOrCreateVault(
@@ -163,7 +165,7 @@ func newOperatorService() (OperatorService, error) {
 		On("IsTransactionConfirmed", mock.AnythingOfType("string")).
 		Return(true, nil)
 
-	return NewOperatorService(
+	return application.NewOperatorService(
 		repoManager,
 		explorerSvc,
 		bcListener,
@@ -175,47 +177,6 @@ func newOperatorService() (OperatorService, error) {
 	), nil
 }
 
-func TestInitGroupedVolume(t *testing.T) {
-	start := time.Now()
-	type args struct {
-		start            time.Time
-		end              time.Time
-		groupByTimeFrame int
-	}
-	tests := []struct {
-		name string
-		args args
-		want int
-	}{
-		{
-			name: "1",
-			args: args{
-				start:            start,
-				end:              start.Add(12 * time.Hour),
-				groupByTimeFrame: 4,
-			},
-			want: 3,
-		},
-		{
-			name: "2",
-			args: args{
-				start:            start,
-				end:              start.Add(12 * time.Hour),
-				groupByTimeFrame: 1,
-			},
-			want: 12,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := initGroupedVolume(tt.args.start, tt.args.end, tt.args.groupByTimeFrame); len(got) != tt.want {
-				t.Errorf("initGroupedVolume() = %v, want %v", got, tt.want)
-			}
-
-		})
-	}
-}
-
 func TestOperatorServiceGetMarketReport(t *testing.T) {
 	ctx := context.Background()
 
@@ -224,15 +185,15 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 	}
 	type args struct {
 		ctx              context.Context
-		market           Market
-		timeRange        TimeRange
+		market           application.Market
+		timeRange        application.TimeRange
 		groupByTimeFrame int
 	}
 	tests := []struct {
 		name                  string
 		fields                fields
 		args                  args
-		want                  func(report *MarketReport, notNilAt []int, wantGroupedVolumeLen int) error
+		want                  func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error
 		wantBaseQuoteValuesAt []int
 		wantGroupedVolumeLen  int
 		wantErr               bool
@@ -242,7 +203,7 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 			fields: fields{
 				repoManager: mockRepoManager(
 					ctx,
-					Market{
+					application.Market{
 						BaseAsset:  "b",
 						QuoteAsset: "q",
 					},
@@ -251,19 +212,19 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 			},
 			args: args{
 				ctx: ctx,
-				market: Market{
+				market: application.Market{
 					BaseAsset:  "b",
 					QuoteAsset: "q",
 				},
-				timeRange: TimeRange{
-					CustomPeriod: &CustomPeriod{
+				timeRange: application.TimeRange{
+					CustomPeriod: &application.CustomPeriod{
 						StartDate: "2022-03-16T15:00:05Z",
 						EndDate:   "2022-03-17T15:00:05Z",
 					},
 				},
 				groupByTimeFrame: 1,
 			},
-			want: func(report *MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
+			want: func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
 				for _, v := range notNilAt {
 					if report.GroupedVolume[v].BaseVolume == 0 && report.GroupedVolume[v].QuoteVolume == 0 {
 						return errors.New(fmt.Sprintf("not expected to found volume with BaseVolume/QuoteVolume=0 at index: %v", v))
@@ -285,7 +246,7 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 			fields: fields{
 				repoManager: mockRepoManager(
 					ctx,
-					Market{
+					application.Market{
 						BaseAsset:  "b",
 						QuoteAsset: "q",
 					},
@@ -294,19 +255,19 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 			},
 			args: args{
 				ctx: ctx,
-				market: Market{
+				market: application.Market{
 					BaseAsset:  "b",
 					QuoteAsset: "q",
 				},
-				timeRange: TimeRange{
-					CustomPeriod: &CustomPeriod{
+				timeRange: application.TimeRange{
+					CustomPeriod: &application.CustomPeriod{
 						StartDate: "2022-03-16T15:00:05Z",
 						EndDate:   "2022-03-17T15:00:05Z",
 					},
 				},
 				groupByTimeFrame: 4,
 			},
-			want: func(report *MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
+			want: func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
 				for _, v := range notNilAt {
 					if report.GroupedVolume[v].BaseVolume == 0 && report.GroupedVolume[v].QuoteVolume == 0 {
 						return errors.New(fmt.Sprintf("not expected to found volume with BaseVolume/QuoteVolume=0 at index: %v", v))
@@ -326,10 +287,16 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			o := &operatorService{
-				repoManager: tt.fields.repoManager,
-			}
-			got, err := o.GetMarketReport(tt.args.ctx, tt.args.market, tt.args.timeRange, tt.args.groupByTimeFrame)
+			operatorService := application.NewOperatorService(
+				tt.fields.repoManager,
+				nil,
+				nil,
+				"",
+				"",
+				0,
+				nil,
+				0)
+			got, err := operatorService.GetMarketReport(tt.args.ctx, tt.args.market, tt.args.timeRange, tt.args.groupByTimeFrame)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetMarketReport() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -343,7 +310,7 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 	}
 }
 
-func mockRepoManager(ctx context.Context, market Market, trades []*domain.Trade) ports.RepoManager {
+func mockRepoManager(ctx context.Context, market application.Market, trades []*domain.Trade) ports.RepoManager {
 	repoManagerMock := new(ports.MockRepoManager)
 
 	markerRepositoryMock := new(domain.MockMarketRepository)

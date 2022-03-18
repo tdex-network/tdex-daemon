@@ -1,9 +1,11 @@
-package application
+package application_test
 
 import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -21,12 +23,12 @@ type mockBlinderManager struct {
 func (m *mockBlinderManager) UnblindOutput(
 	txout *transaction.TxOutput,
 	key []byte,
-) (UnblindedResult, bool) {
+) (application.UnblindedResult, bool) {
 	args := m.Called(txout, key)
 
-	var res UnblindedResult
+	var res application.UnblindedResult
 	if a := args.Get(0); a != nil {
-		res = a.(UnblindedResult)
+		res = a.(application.UnblindedResult)
 	}
 	var res1 bool
 	if a := args.Get(1); a != nil {
@@ -50,17 +52,17 @@ func newMockedTradeManager() *mockTradeManager {
 }
 
 func (m *mockTradeManager) FillProposal(
-	opts FillProposalOpts,
-) (*FillProposalResult, error) {
+	opts application.FillProposalOpts,
+) (*application.FillProposalResult, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	m.counter++
 	args := m.Called(opts)
 
-	var res *FillProposalResult
+	var res *application.FillProposalResult
 	if a := args.Get(0); a != nil {
-		res = a.(*FillProposalResult)
+		res = a.(*application.FillProposalResult)
 	}
 	return res, args.Error(1)
 }
@@ -91,15 +93,15 @@ func (m *mockTransactionManager) ExtractUnspents(
 func (m *mockTransactionManager) ExtractBlindingData(
 	psetBase64 string,
 	inBlindingKeys, outBlindingData map[string][]byte,
-) (map[int]BlindingData, map[int]BlindingData, error) {
+) (map[int]application.BlindingData, map[int]application.BlindingData, error) {
 	args := m.Called(psetBase64, inBlindingKeys, outBlindingData)
-	var res map[int]BlindingData
+	var res map[int]application.BlindingData
 	if a := args.Get(0); a != nil {
-		res = a.(map[int]BlindingData)
+		res = a.(map[int]application.BlindingData)
 	}
-	var res1 map[int]BlindingData
+	var res1 map[int]application.BlindingData
 	if a := args.Get(1); a != nil {
-		res1 = a.(map[int]BlindingData)
+		res1 = a.(map[int]application.BlindingData)
 	}
 	return res, res1, args.Error(2)
 }

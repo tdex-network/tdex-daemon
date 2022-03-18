@@ -1708,19 +1708,31 @@ func (o *operatorService) GetMarketReport(
 	}, nil
 }
 
-// initGroupedVolume initialised list of MarketVolume with grouped time slots(start/end date)
-//ordered desc
+// initGroupedVolume splits the given time range (start, end) into a list of
+//MarketVolume, ie. smaller consecutive time ranges of numHours hours in descending order.
+// Example:
+// in: 2009-11-10 19:00:00 (start), 2009-11-11 00:00:00 (end), 2 (numHours)
+// out: [
+//   {end: 2009-11-11 00:00:00, start: 2009-11-10 22:00:01},
+//   {end: 2009-11-11 22:00:00, start: 2009-11-10 20:00:01},
+//   {end: 2009-11-10 20:00:00, start: 2009-11-10 19:00:00},
+// ]
 func initGroupedVolume(start, end time.Time, groupByHours int) []MarketVolume {
 	groupedVolume := make([]MarketVolume, 0)
 	for {
 		if end.Equal(start) || end.Before(start) {
 			return groupedVolume
 		} else {
+			nextEnd := end.Add(-time.Hour * time.Duration(groupByHours))
+			nextStart := start
+			if nextEnd.Sub(start).Seconds() > 0 {
+				nextStart = nextEnd.Add(time.Second)
+			}
 			groupedVolume = append(groupedVolume, MarketVolume{
-				StartTime: end.Add(-time.Hour * time.Duration(groupByHours)),
+				StartTime: nextStart,
 				EndTime:   end,
 			})
-			end = end.Add(-time.Hour * time.Duration(groupByHours))
+			end = nextEnd
 		}
 	}
 }
