@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	"github.com/google/uuid"
+
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -181,7 +183,7 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 	ctx := context.Background()
 
 	type fields struct {
-		repoManager ports.RepoManager
+		trades []*domain.Trade
 	}
 	type args struct {
 		ctx              context.Context
@@ -201,14 +203,7 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 		{
 			name: "1",
 			fields: fields{
-				repoManager: mockRepoManager(
-					ctx,
-					application.Market{
-						BaseAsset:  "b",
-						QuoteAsset: "q",
-					},
-					trades1(),
-				),
+				trades: trades1(),
 			},
 			args: args{
 				ctx: ctx,
@@ -244,14 +239,7 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 		{
 			name: "2",
 			fields: fields{
-				repoManager: mockRepoManager(
-					ctx,
-					application.Market{
-						BaseAsset:  "b",
-						QuoteAsset: "q",
-					},
-					trades2(),
-				),
+				trades: trades2(),
 			},
 			args: args{
 				ctx: ctx,
@@ -287,15 +275,11 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			operatorService := application.NewOperatorService(
-				tt.fields.repoManager,
-				nil,
-				nil,
-				"",
-				"",
-				0,
-				nil,
-				0)
+			operatorService, err := newOperatorServiceForMarketReport(tt.fields.trades)
+			if err != nil {
+				t.Error(err)
+				return
+			}
 			got, err := operatorService.GetMarketReport(tt.args.ctx, tt.args.market, tt.args.timeRange, tt.args.groupByTimeFrame)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetMarketReport() error = %v, wantErr %v", err, tt.wantErr)
@@ -310,31 +294,102 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 	}
 }
 
-func mockRepoManager(ctx context.Context, market application.Market, trades []*domain.Trade) ports.RepoManager {
-	repoManagerMock := new(ports.MockRepoManager)
+func newOperatorServiceForMarketReport(trades []*domain.Trade) (application.OperatorService, error) {
+	repoManager, explorerSvc, bcListener := newServices()
 
-	markerRepositoryMock := new(domain.MockMarketRepository)
-	markerRepositoryMock.On(
-		"GetMarketByAssets",
-		ctx,
-		market.BaseAsset,
-		market.QuoteAsset,
-	).Return(
-		&domain.Market{
-			BaseAsset:  market.BaseAsset,
-			QuoteAsset: market.QuoteAsset,
-		},
-		0,
-		nil,
+	if _, err := repoManager.MarketRepository().GetOrCreateMarket(context.Background(), &domain.Market{
+		AccountIndex: 0,
+		BaseAsset:    "b",
+		QuoteAsset:   "q",
+		Fee:          0,
+		FixedFee:     domain.FixedFee{},
+		Tradable:     false,
+		Strategy:     mm.MakingStrategy{},
+		Price:        domain.Prices{},
+	}); err != nil {
+		return nil, err
+	}
+
+	for _, v := range trades {
+		tradeID := uuid.New()
+		_, err := repoManager.TradeRepository().GetOrCreateTrade(context.Background(), &tradeID)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := repoManager.TradeRepository().UpdateTrade(
+			context.Background(),
+			&tradeID,
+			func(t *domain.Trade) (*domain.Trade, error) {
+				t.Status = v.Status
+				t.MarketBaseAsset = v.MarketBaseAsset
+				t.MarketQuoteAsset = v.MarketQuoteAsset
+				t.MarketFee = v.MarketFee
+				t.MarketFixedBaseFee = v.MarketFixedBaseFee
+				t.MarketFixedQuoteFee = v.MarketFixedQuoteFee
+				t.SwapRequest.Timestamp = v.SwapRequest.Timestamp
+
+				return t, nil
+			},
+		); err != nil {
+			return nil, err
+		}
+	}
+
+	rr, err := repoManager.TradeRepository().GetCompletedTradesByMarket(
+		ctx, "q",
 	)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(rr)
 
-	tradeRepositoryMock := new(domain.MockTradeRepository)
-	tradeRepositoryMock.On("GetCompletedTradesByMarket", ctx, market.QuoteAsset).Return(trades, nil)
+	rr1, err := repoManager.TradeRepository().GetAllTrades(ctx)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(rr1)
 
-	repoManagerMock.On("MarketRepository").Return(markerRepositoryMock)
-	repoManagerMock.On("TradeRepository").Return(tradeRepositoryMock)
+	if _, err := repoManager.VaultRepository().GetOrCreateVault(
+		ctx, mnemonic, passphrase, regtest,
+	); err != nil {
+		return nil, err
+	}
 
-	return repoManagerMock
+	w, _ := wallet.NewWalletFromMnemonic(wallet.NewWalletFromMnemonicOpts{
+		SigningMnemonic: mnemonic,
+	})
+
+	accounts := []int{domain.FeeAccount, domain.MarketAccountStart}
+	for _, accountIndex := range accounts {
+		for i := 0; i < 2; i++ {
+			addr, _, _ := w.DeriveConfidentialAddress(wallet.DeriveConfidentialAddressOpts{
+				DerivationPath: fmt.Sprintf("%d'/0/%d", accountIndex, i),
+				Network:        regtest,
+			})
+			txid := feeOutpoints[i].Hash
+			if accountIndex == domain.MarketAccountStart {
+				txid = mktOutpoints[i].Hash
+			}
+			explorerSvc.(*mockExplorer).On("GetTransaction", txid).
+				Return(randomTxs(addr)[0], nil)
+		}
+	}
+
+	explorerSvc.(*mockExplorer).
+		On("IsTransactionConfirmed", mock.AnythingOfType("string")).
+		Return(true, nil)
+
+	return application.NewOperatorService(
+		repoManager,
+		explorerSvc,
+		bcListener,
+		"b",
+		"q",
+		marketFee,
+		regtest,
+		feeBalanceThreshold,
+	), nil
 }
 
 func trades1() []*domain.Trade {
@@ -344,8 +399,9 @@ func trades1() []*domain.Trade {
 
 	for i := 0; i < 5; i++ {
 		trades = append(trades, &domain.Trade{
+			Status:              domain.CompletedStatus,
 			MarketBaseAsset:     "b",
-			MarketQuoteAsset:    "a",
+			MarketQuoteAsset:    "q",
 			MarketFee:           20,
 			MarketFixedBaseFee:  30,
 			MarketFixedQuoteFee: 40,
@@ -366,8 +422,9 @@ func trades2() []*domain.Trade {
 
 	for i := 0; i < 5; i++ {
 		trades = append(trades, &domain.Trade{
+			Status:              domain.CompletedStatus,
 			MarketBaseAsset:     "b",
-			MarketQuoteAsset:    "a",
+			MarketQuoteAsset:    "q",
 			MarketFee:           20,
 			MarketFixedBaseFee:  30,
 			MarketFixedQuoteFee: 40,
@@ -382,8 +439,9 @@ func trades2() []*domain.Trade {
 
 	for i := 0; i < 5; i++ {
 		trades = append(trades, &domain.Trade{
+			Status:              domain.CompletedStatus,
 			MarketBaseAsset:     "b",
-			MarketQuoteAsset:    "a",
+			MarketQuoteAsset:    "q",
 			MarketFee:           20,
 			MarketFixedBaseFee:  30,
 			MarketFixedQuoteFee: 40,
