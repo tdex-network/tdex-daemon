@@ -714,7 +714,7 @@ message GetMarketReportRequest {
   Market market = 1;
   // time_range fetch market report from time range
   TimeRange time_range = 2;
-  // level of detail for the specified time_range
+  // used to group volume by time_frame for the specified time_range
   TimeFrame time_frame = 3;
 }
 message GetMarketReportReply {
@@ -725,12 +725,16 @@ message GetMarketReportReply {
 message MarketReport {
   MarketCollectedFees total_collected_fees = 1;
   MarketVolume total_volume = 2;
-  repeated MarketVolume detail_volume = 3;
+  repeated MarketVolume grouped_volume = 3;
 }
 
 message MarketCollectedFees {
   uint64 base_amount = 1;
   uint64 quote_amount = 2;
+  // start_date in RFC3339 format of the aggregated volume calculation
+  string start_date = 3;
+  // end_date in RFC3339 format of the aggregated volume calculation
+  string end_date = 4;
 }
 
 message MarketVolume {

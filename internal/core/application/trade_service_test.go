@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
@@ -79,7 +80,7 @@ func TestMarketTrading(t *testing.T) {
 	repoManager, explorerSvc, bcListener := newServices() //
 
 	t.Run("without fixed fees", func(t *testing.T) {
-		tradeSvc, err := newTradeService(
+		tradeSvc, err := newTradeServiceTest(
 			repoManager,
 			explorerSvc,
 			bcListener,
@@ -117,7 +118,7 @@ func TestMarketTrading(t *testing.T) {
 	})
 
 	t.Run("with fixed fees", func(t *testing.T) {
-		tradeSvc, err := newTradeService(
+		tradeSvc, err := newTradeServiceTest(
 			repoManager,
 			explorerSvc,
 			bcListener,
@@ -152,7 +153,7 @@ func TestMarketTrading(t *testing.T) {
 	})
 }
 
-func newTradeService(
+func newTradeServiceTest(
 	repoManager ports.RepoManager,
 	explorerSvc explorer.Service,
 	bcListener application.BlockchainListener,
