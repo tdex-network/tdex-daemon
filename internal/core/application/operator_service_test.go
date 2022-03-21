@@ -192,12 +192,13 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 		groupByTimeFrame int
 	}
 	tests := []struct {
-		name                 string
-		fields               fields
-		args                 args
-		want                 func(report *application.MarketReport, wantGroupedVolumeLen int) error
-		wantGroupedVolumeLen int
-		wantErr              bool
+		name                  string
+		fields                fields
+		args                  args
+		want                  func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error
+		wantBaseQuoteValuesAt []int
+		wantGroupedVolumeLen  int
+		wantErr               bool
 	}{
 		{
 			name: "1",
@@ -218,15 +219,22 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 				},
 				groupByTimeFrame: 1,
 			},
-			want: func(report *application.MarketReport, wantGroupedVolumeLen int) error {
+			want: func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
+				for _, v := range notNilAt {
+					if report.GroupedVolume[v].BaseVolume == 0 && report.GroupedVolume[v].QuoteVolume == 0 {
+						return errors.New(fmt.Sprintf("not expected to found volume with BaseVolume/QuoteVolume=0 at index: %v", v))
+					}
+				}
+
 				if len(report.GroupedVolume) != wantGroupedVolumeLen {
 					return errors.New(fmt.Sprintf("expected grouped volume len: %v, got: %v", wantGroupedVolumeLen, len(report.GroupedVolume)))
 				}
 
 				return nil
 			},
-			wantGroupedVolumeLen: 1,
-			wantErr:              false,
+			wantBaseQuoteValuesAt: []int{0},
+			wantGroupedVolumeLen:  24,
+			wantErr:               false,
 		},
 		{
 			name: "2",
@@ -247,15 +255,22 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 				},
 				groupByTimeFrame: 4,
 			},
-			want: func(report *application.MarketReport, wantGroupedVolumeLen int) error {
+			want: func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
+				for _, v := range notNilAt {
+					if report.GroupedVolume[v].BaseVolume == 0 && report.GroupedVolume[v].QuoteVolume == 0 {
+						return errors.New(fmt.Sprintf("not expected to found volume with BaseVolume/QuoteVolume=0 at index: %v", v))
+					}
+				}
+
 				if len(report.GroupedVolume) != wantGroupedVolumeLen {
 					return errors.New(fmt.Sprintf("expected grouped volume len: %v, got: %v", wantGroupedVolumeLen, len(report.GroupedVolume)))
 				}
 
 				return nil
 			},
-			wantGroupedVolumeLen: 2,
-			wantErr:              false,
+			wantBaseQuoteValuesAt: []int{0, 5},
+			wantGroupedVolumeLen:  6,
+			wantErr:               false,
 		},
 		{
 			name: "3",
@@ -276,14 +291,22 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 				},
 				groupByTimeFrame: 4,
 			},
-			want: func(report *application.MarketReport, wantGroupedVolumeLen int) error {
+			want: func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
 				if len(report.GroupedVolume) != wantGroupedVolumeLen {
 					return errors.New(fmt.Sprintf("expected grouped volume len: %v, got: %v", wantGroupedVolumeLen, len(report.GroupedVolume)))
 				}
 
+				if notNilAt == nil {
+					for i, v := range report.GroupedVolume {
+						if v.BaseVolume != 0 && v.QuoteVolume != 0 {
+							return errors.New(fmt.Sprintf("expected base/quote values equal 0 at index: %v", i))
+						}
+					}
+				}
+
 				return nil
 			},
-			wantGroupedVolumeLen: 0,
+			wantGroupedVolumeLen: 6,
 			wantErr:              false,
 		},
 	}
@@ -300,7 +323,7 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 				return
 			}
 
-			if err := tt.want(got, tt.wantGroupedVolumeLen); err != nil {
+			if err := tt.want(got, tt.wantBaseQuoteValuesAt, tt.wantGroupedVolumeLen); err != nil {
 				t.Error(err)
 				return
 			}

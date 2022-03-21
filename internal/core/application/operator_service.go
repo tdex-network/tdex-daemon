@@ -1641,8 +1641,7 @@ func (o *operatorService) GetMarketReport(
 		return trades[i].SwapRequest.Timestamp > trades[j].SwapRequest.Timestamp
 	})
 
-	groupedVolumeTmp := initGroupedVolume(startTime, endTime, groupByHours)
-	groupedVolumeIndexes := make(map[int]bool, 0)
+	groupedVolume := initGroupedVolume(startTime, endTime, groupByHours)
 
 	totalFees := make(map[string]int64)
 	volume := make(map[string]int64)
@@ -1666,7 +1665,7 @@ func (o *operatorService) GetMarketReport(
 			volume[swapRequest.GetAssetR()] += int64(swapRequest.GetAmountR())
 			volume[swapRequest.GetAssetP()] += int64(swapRequest.GetAmountP())
 
-			for i, v := range groupedVolumeTmp {
+			for i, v := range groupedVolume {
 				//find time slot to which trade belongs to and calculate volume for that slot
 				if (time.Unix(int64(trade.SwapRequest.Timestamp), 0).After(v.StartTime) ||
 					time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(v.StartTime)) &&
@@ -1681,22 +1680,15 @@ func (o *operatorService) GetMarketReport(
 						volumeQuoteAmount = swapRequest.GetAmountR() + v.QuoteVolume
 					}
 
-					groupedVolumeTmp[i] = MarketVolume{
+					groupedVolume[i] = MarketVolume{
 						BaseVolume:  volumeBaseAmount,
 						QuoteVolume: volumeQuoteAmount,
 						StartTime:   v.StartTime,
 						EndTime:     v.EndTime,
 					}
-
-					groupedVolumeIndexes[i] = true
 				}
 			}
 		}
-	}
-
-	groupedVolume := make([]MarketVolume, 0)
-	for k, _ := range groupedVolumeIndexes {
-		groupedVolume = append(groupedVolume, groupedVolumeTmp[k])
 	}
 
 	return &MarketReport{
