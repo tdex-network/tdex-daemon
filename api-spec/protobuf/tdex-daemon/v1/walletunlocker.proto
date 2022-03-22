@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package tdex.daemon.v1;
+
 /**
  * Service for operators to manage the internal wallet of the daemon
  */

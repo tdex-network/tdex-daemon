@@ -7,9 +7,7 @@ import (
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	tradetype "github.com/tdex-network/tdex-daemon/pkg/trade/type"
 
-	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
-	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -30,7 +28,7 @@ func (o TradeProposeOpts) validate() error {
 	if err := o.Market.Validate(); err != nil {
 		return err
 	}
-	if err := proto.Unmarshal(o.SwapRequest, &pbswap.SwapRequest{}); err != nil {
+	if err := proto.Unmarshal(o.SwapRequest, &tdexv1.SwapRequest{}); err != nil {
 		return ErrMalformedSwapRequestMessage
 	}
 	if err := o.TradeType.Validate(); err != nil {
@@ -41,22 +39,22 @@ func (o TradeProposeOpts) validate() error {
 }
 
 // TradePropose crafts the request and calls the TradePropose rpc
-func (c *Client) TradePropose(opts TradeProposeOpts) (*pbtrade.ProposeTradeReply, error) {
+func (c *Client) TradePropose(opts TradeProposeOpts) (*tdexv1.ProposeTradeReply, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
 
-	market := &pbtypes.Market{
+	market := &tdexv1.Market{
 		BaseAsset:  opts.Market.BaseAsset,
 		QuoteAsset: opts.Market.QuoteAsset,
 	}
-	swapRequest := &pbswap.SwapRequest{}
+	swapRequest := &tdexv1.SwapRequest{}
 	proto.Unmarshal(opts.SwapRequest, swapRequest)
 
-	request := &pbtrade.ProposeTradeRequest{
+	request := &tdexv1.ProposeTradeRequest{
 		Market:      market,
 		SwapRequest: swapRequest,
-		Type:        pbtrade.TradeType(opts.TradeType),
+		Type:        tdexv1.TradeType(opts.TradeType),
 	}
 	return c.client.ProposeTrade(context.Background(), request)
 }

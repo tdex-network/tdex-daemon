@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "tdex/v1/types.proto",
+    "title": "tdex/v1/swap.proto",
     "version": "version not set"
   },
   "consumes": [

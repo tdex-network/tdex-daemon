@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 
 	"github.com/urfave/cli/v2"
 )
@@ -32,7 +32,7 @@ func removeWebhookAction(ctx *cli.Context) error {
 	hookID := ctx.String("id")
 
 	if _, err := client.RemoveWebhook(
-		context.Background(), &pboperator.RemoveWebhookRequest{
+		context.Background(), &daemonv1.RemoveWebhookRequest{
 			Id: hookID,
 		},
 	); err != nil {

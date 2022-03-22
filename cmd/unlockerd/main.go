@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	pbunlocker "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 )
 
 type providerFactory func() (provider, error)
@@ -187,7 +187,7 @@ func main() {
 
 	log.Info("Attempting to unlock it with provided password...")
 
-	if _, err := client.UnlockWallet(context.Background(), &pbunlocker.UnlockWalletRequest{
+	if _, err := client.UnlockWallet(context.Background(), &daemonv1.UnlockWalletRequest{
 		WalletPassword: password,
 	}); err != nil {
 		log.Fatalf("error while unlocking wallet: %s", err)
@@ -196,9 +196,9 @@ func main() {
 	log.Info("wallet unlocked successfully!")
 }
 
-func getWalletStatus(client pbunlocker.WalletUnlockerClient) (*pbunlocker.IsReadyReply, error) {
+func getWalletStatus(client daemonv1.WalletUnlockerClient) (*daemonv1.IsReadyReply, error) {
 	ctx := context.Background()
-	return client.IsReady(ctx, &pbunlocker.IsReadyRequest{})
+	return client.IsReady(ctx, &daemonv1.IsReadyRequest{})
 }
 
 func pathExists(path string) bool {
@@ -235,14 +235,14 @@ func cleanAndExpandPath(path string) string {
 
 func getUnlockerClient(
 	rpcAddress string, tlsCertificate []byte,
-) (pbunlocker.WalletUnlockerClient, func(), error) {
+) (daemonv1.WalletUnlockerClient, func(), error) {
 	conn, err := getClientConn(rpcAddress, tlsCertificate)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { _ = conn.Close() }
 
-	return pbunlocker.NewWalletUnlockerClient(conn), cleanup, nil
+	return daemonv1.NewWalletUnlockerClient(conn), cleanup, nil
 }
 
 func getClientConn(

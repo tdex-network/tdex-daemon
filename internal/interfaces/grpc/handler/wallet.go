@@ -9,17 +9,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 )
 
 type walletHandler struct {
-	pb.UnimplementedWalletServer
+	daemonv1.UnimplementedWalletServer
 	walletSvc application.WalletService
 }
 
 func NewWalletHandler(
 	walletSvc application.WalletService,
-) pb.WalletServer {
+) daemonv1.WalletServer {
 	return newWalletHandler(walletSvc)
 }
 
@@ -33,35 +33,35 @@ func newWalletHandler(
 
 func (w walletHandler) WalletAddress(
 	ctx context.Context,
-	req *pb.WalletAddressRequest,
-) (*pb.WalletAddressReply, error) {
+	req *daemonv1.WalletAddressRequest,
+) (*daemonv1.WalletAddressReply, error) {
 	return w.walletAddress(ctx, req)
 }
 
 func (w walletHandler) WalletBalance(
 	ctx context.Context,
-	req *pb.WalletBalanceRequest,
-) (*pb.WalletBalanceReply, error) {
+	req *daemonv1.WalletBalanceRequest,
+) (*daemonv1.WalletBalanceReply, error) {
 	return w.walletBalance(ctx, req)
 }
 
 func (w walletHandler) SendToMany(
 	ctx context.Context,
-	req *pb.SendToManyRequest,
-) (*pb.SendToManyReply, error) {
+	req *daemonv1.SendToManyRequest,
+) (*daemonv1.SendToManyReply, error) {
 	return w.sendToMany(ctx, req)
 }
 
 func (w walletHandler) walletAddress(
 	ctx context.Context,
-	req *pb.WalletAddressRequest,
-) (*pb.WalletAddressReply, error) {
+	req *daemonv1.WalletAddressRequest,
+) (*daemonv1.WalletAddressReply, error) {
 	addr, blindingKey, err := w.walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.WalletAddressReply{
+	return &daemonv1.WalletAddressReply{
 		Address:  addr,
 		Blinding: blindingKey,
 	}, nil
@@ -69,29 +69,29 @@ func (w walletHandler) walletAddress(
 
 func (w walletHandler) walletBalance(
 	ctx context.Context,
-	req *pb.WalletBalanceRequest,
-) (*pb.WalletBalanceReply, error) {
+	req *daemonv1.WalletBalanceRequest,
+) (*daemonv1.WalletBalanceReply, error) {
 	b, err := w.walletSvc.GetWalletBalance(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	balance := make(map[string]*pb.BalanceInfo)
+	balance := make(map[string]*daemonv1.BalanceInfo)
 	for k, v := range b {
-		balance[k] = &pb.BalanceInfo{
+		balance[k] = &daemonv1.BalanceInfo{
 			TotalBalance:       v.TotalBalance,
 			ConfirmedBalance:   v.ConfirmedBalance,
 			UnconfirmedBalance: v.UnconfirmedBalance,
 		}
 	}
 
-	return &pb.WalletBalanceReply{Balance: balance}, nil
+	return &daemonv1.WalletBalanceReply{Balance: balance}, nil
 }
 
 func (w walletHandler) sendToMany(
 	ctx context.Context,
-	req *pb.SendToManyRequest,
-) (*pb.SendToManyReply, error) {
+	req *daemonv1.SendToManyRequest,
+) (*daemonv1.SendToManyReply, error) {
 	outs := req.GetOutputs()
 	if err := validateOutputs(outs); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -120,10 +120,10 @@ func (w walletHandler) sendToMany(
 		return nil, err
 	}
 
-	return &pb.SendToManyReply{RawTx: rawTx, Txid: txid}, nil
+	return &daemonv1.SendToManyReply{RawTx: rawTx, Txid: txid}, nil
 }
 
-func validateOutputs(outputs []*pb.TxOut) error {
+func validateOutputs(outputs []*daemonv1.TxOut) error {
 	if len(outputs) <= 0 {
 		return errors.New("output list is empty")
 	}

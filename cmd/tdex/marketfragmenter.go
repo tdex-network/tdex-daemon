@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -74,7 +74,7 @@ func marketFragmenterBalanceAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.GetMarketFragmenterBalance(
-		context.Background(), &pb.GetMarketFragmenterBalanceRequest{},
+		context.Background(), &daemonv1.GetMarketFragmenterBalanceRequest{},
 	)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func marketFragmenterDepositAction(ctx *cli.Context) error {
 
 	numOfAddresses := ctx.Int64("num_of_addresses")
 	resp, err := client.GetMarketFragmenterAddress(
-		context.Background(), &pb.GetMarketFragmenterAddressRequest{
+		context.Background(), &daemonv1.GetMarketFragmenterAddressRequest{
 			NumOfAddresses: numOfAddresses,
 		},
 	)
@@ -115,7 +115,7 @@ func marketFragmenterListAddressesAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.ListMarketFragmenterAddresses(
-		context.Background(), &pb.ListMarketFragmenterAddressesRequest{},
+		context.Background(), &daemonv1.ListMarketFragmenterAddressesRequest{},
 	)
 	if err != nil {
 		return err
@@ -146,8 +146,8 @@ func marketFragmenterSplitFundsAction(ctx *cli.Context) error {
 	}
 
 	stream, err := client.MarketFragmenterSplitFunds(
-		context.Background(), &pb.MarketFragmenterSplitFundsRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.MarketFragmenterSplitFundsRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -184,7 +184,7 @@ func marketFragmenterWithdrawAction(ctx *cli.Context) error {
 	mSatsPerByte := ctx.Uint64("millisatsperbyte")
 
 	reply, err := client.WithdrawMarketFragmenter(
-		context.Background(), &pb.WithdrawMarketFragmenterRequest{
+		context.Background(), &daemonv1.WithdrawMarketFragmenterRequest{
 			Address:          addr,
 			MillisatsPerByte: mSatsPerByte,
 		},

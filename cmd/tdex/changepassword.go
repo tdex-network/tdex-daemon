@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -41,7 +41,7 @@ func changePasswordAction(ctx *cli.Context) error {
 	curPwd := ctx.String(curPwdFlagName)
 	newPwd := ctx.String(newPwdFlagName)
 
-	if _, err := client.ChangePassword(context.Background(), &pb.ChangePasswordRequest{
+	if _, err := client.ChangePassword(context.Background(), &daemonv1.ChangePasswordRequest{
 		CurrentPassword: []byte(curPwd),
 		NewPassword:     []byte(newPwd),
 	}); err != nil {

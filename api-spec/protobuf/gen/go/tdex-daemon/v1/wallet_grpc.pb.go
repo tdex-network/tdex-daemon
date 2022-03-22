@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: tdex-daemon/v1/wallet.proto
 
-package v1
+package daemonv1
 
 import (
 	context "context"
@@ -44,7 +44,7 @@ func NewWalletClient(cc grpc.ClientConnInterface) WalletClient {
 
 func (c *walletClient) WalletAddress(ctx context.Context, in *WalletAddressRequest, opts ...grpc.CallOption) (*WalletAddressReply, error) {
 	out := new(WalletAddressReply)
-	err := c.cc.Invoke(ctx, "/Wallet/WalletAddress", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Wallet/WalletAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (c *walletClient) WalletAddress(ctx context.Context, in *WalletAddressReque
 
 func (c *walletClient) WalletBalance(ctx context.Context, in *WalletBalanceRequest, opts ...grpc.CallOption) (*WalletBalanceReply, error) {
 	out := new(WalletBalanceReply)
-	err := c.cc.Invoke(ctx, "/Wallet/WalletBalance", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Wallet/WalletBalance", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (c *walletClient) WalletBalance(ctx context.Context, in *WalletBalanceReque
 
 func (c *walletClient) SendToMany(ctx context.Context, in *SendToManyRequest, opts ...grpc.CallOption) (*SendToManyReply, error) {
 	out := new(SendToManyReply)
-	err := c.cc.Invoke(ctx, "/Wallet/SendToMany", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Wallet/SendToMany", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func _Wallet_WalletAddress_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Wallet/WalletAddress",
+		FullMethod: "/tdex.daemon.v1.Wallet/WalletAddress",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WalletServer).WalletAddress(ctx, req.(*WalletAddressRequest))
@@ -138,7 +138,7 @@ func _Wallet_WalletBalance_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Wallet/WalletBalance",
+		FullMethod: "/tdex.daemon.v1.Wallet/WalletBalance",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WalletServer).WalletBalance(ctx, req.(*WalletBalanceRequest))
@@ -156,7 +156,7 @@ func _Wallet_SendToMany_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Wallet/SendToMany",
+		FullMethod: "/tdex.daemon.v1.Wallet/SendToMany",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WalletServer).SendToMany(ctx, req.(*SendToManyRequest))
@@ -168,7 +168,7 @@ func _Wallet_SendToMany_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Wallet_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "Wallet",
+	ServiceName: "tdex.daemon.v1.Wallet",
 	HandlerType: (*WalletServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

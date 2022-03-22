@@ -17,60 +17,6 @@
   ],
   "paths": {},
   "definitions": {
-    "ChangePasswordReply": {
-      "type": "object"
-    },
-    "GenSeedReply": {
-      "type": "object",
-      "properties": {
-        "seedMnemonic": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "InitWalletReply": {
-      "type": "object",
-      "properties": {
-        "account": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "status": {
-          "$ref": "#/definitions/InitWalletReplyStatus"
-        },
-        "data": {
-          "type": "string"
-        }
-      }
-    },
-    "InitWalletReplyStatus": {
-      "type": "string",
-      "enum": [
-        "PROCESSING",
-        "DONE"
-      ],
-      "default": "PROCESSING"
-    },
-    "IsReadyReply": {
-      "type": "object",
-      "properties": {
-        "initialized": {
-          "type": "boolean"
-        },
-        "unlocked": {
-          "type": "boolean"
-        },
-        "synced": {
-          "type": "boolean"
-        }
-      }
-    },
-    "UnlockWalletReply": {
-      "type": "object"
-    },
     "googlerpcStatus": {
       "type": "object",
       "properties": {
@@ -97,6 +43,60 @@
         }
       },
       "additionalProperties": {}
+    },
+    "v1ChangePasswordReply": {
+      "type": "object"
+    },
+    "v1GenSeedReply": {
+      "type": "object",
+      "properties": {
+        "seedMnemonic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1InitWalletReply": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "status": {
+          "$ref": "#/definitions/v1InitWalletReplyStatus"
+        },
+        "data": {
+          "type": "string"
+        }
+      }
+    },
+    "v1InitWalletReplyStatus": {
+      "type": "string",
+      "enum": [
+        "PROCESSING",
+        "DONE"
+      ],
+      "default": "PROCESSING"
+    },
+    "v1IsReadyReply": {
+      "type": "object",
+      "properties": {
+        "initialized": {
+          "type": "boolean"
+        },
+        "unlocked": {
+          "type": "boolean"
+        },
+        "synced": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1UnlockWalletReply": {
+      "type": "object"
     }
   }
 }

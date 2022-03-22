@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 
 	"github.com/urfave/cli/v2"
 )
@@ -47,14 +47,14 @@ func initWalletAction(ctx *cli.Context) error {
 		return err
 	}
 
-	req := &pbwallet.InitWalletRequest{}
+	req := &daemonv1.InitWalletRequest{}
 
 	password := ctx.String("password")
 	seed := ctx.String("seed")
 	restore := ctx.Bool("restore")
 
 	if len(password) > 0 && len(seed) > 0 {
-		req = &pbwallet.InitWalletRequest{
+		req = &daemonv1.InitWalletRequest{
 			WalletPassword: []byte(password),
 			SeedMnemonic:   strings.Split(seed, " "),
 			Restore:        restore,

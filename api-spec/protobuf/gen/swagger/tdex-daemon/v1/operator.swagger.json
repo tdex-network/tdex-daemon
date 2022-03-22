@@ -17,7 +17,34 @@
   ],
   "paths": {},
   "definitions": {
-    "AccountInfo": {
+    "googlerpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "v1AccountInfo": {
       "type": "object",
       "properties": {
         "accountIndex": {
@@ -45,7 +72,7 @@
         }
       }
     },
-    "ActionType": {
+    "v1ActionType": {
       "type": "string",
       "enum": [
         "TRADE_SETTLED",
@@ -55,7 +82,7 @@
       ],
       "default": "TRADE_SETTLED"
     },
-    "AddWebhookReply": {
+    "v1AddWebhookReply": {
       "type": "object",
       "properties": {
         "id": {
@@ -64,7 +91,33 @@
         }
       }
     },
-    "BalanceInfo": {
+    "v1AddressWithBlindingKey": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "The confidential address encoded using a blech32 format."
+        },
+        "blinding": {
+          "type": "string",
+          "title": "The blinding private key for the given address encoded in hex format"
+        }
+      }
+    },
+    "v1Balance": {
+      "type": "object",
+      "properties": {
+        "baseAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "quoteAmount": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1BalanceInfo": {
       "type": "object",
       "properties": {
         "totalBalance": {
@@ -84,16 +137,16 @@
         }
       }
     },
-    "ClaimFeeDepositsReply": {
+    "v1ClaimFeeDepositsReply": {
       "type": "object"
     },
-    "ClaimMarketDepositsReply": {
+    "v1ClaimMarketDepositsReply": {
       "type": "object"
     },
-    "CloseMarketReply": {
+    "v1CloseMarketReply": {
       "type": "object"
     },
-    "CustomPeriod": {
+    "v1CustomPeriod": {
       "type": "object",
       "properties": {
         "startDate": {
@@ -106,11 +159,11 @@
         }
       }
     },
-    "Deposit": {
+    "v1Deposit": {
       "type": "object",
       "properties": {
         "utxo": {
-          "$ref": "#/definitions/UtxoInfo",
+          "$ref": "#/definitions/v1UtxoInfo",
           "description": "The utxo deposited."
         },
         "timestampUnix": {
@@ -124,10 +177,23 @@
         }
       }
     },
-    "DropMarketReply": {
+    "v1DropMarketReply": {
       "type": "object"
     },
-    "FeeInfo": {
+    "v1Fee": {
+      "type": "object",
+      "properties": {
+        "basisPoint": {
+          "type": "string",
+          "format": "int64"
+        },
+        "fixed": {
+          "$ref": "#/definitions/v1Fixed"
+        }
+      },
+      "title": "Custom Types"
+    },
+    "v1FeeInfo": {
       "type": "object",
       "properties": {
         "tradeId": {
@@ -160,7 +226,20 @@
         }
       }
     },
-    "FragmenterSplitFundsReply": {
+    "v1Fixed": {
+      "type": "object",
+      "properties": {
+        "baseFee": {
+          "type": "string",
+          "format": "int64"
+        },
+        "quoteFee": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1FragmenterSplitFundsReply": {
       "type": "object",
       "properties": {
         "message": {
@@ -169,7 +248,7 @@
         }
       }
     },
-    "GetFeeAddressReply": {
+    "v1GetFeeAddressReply": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -181,7 +260,7 @@
         }
       }
     },
-    "GetFeeBalanceReply": {
+    "v1GetFeeBalanceReply": {
       "type": "object",
       "properties": {
         "availableBalance": {
@@ -196,7 +275,7 @@
         }
       }
     },
-    "GetFeeFragmenterAddressReply": {
+    "v1GetFeeFragmenterAddressReply": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -207,19 +286,19 @@
         }
       }
     },
-    "GetFeeFragmenterBalanceReply": {
+    "v1GetFeeFragmenterBalanceReply": {
       "type": "object",
       "properties": {
         "balance": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/BalanceInfo"
+            "$ref": "#/definitions/v1BalanceInfo"
           },
           "description": "The balance info (total, confirmed, unconfirmed) of the account grouped by\nasset."
         }
       }
     },
-    "GetInfoReply": {
+    "v1GetInfoReply": {
       "type": "object",
       "properties": {
         "rootPath": {
@@ -233,7 +312,7 @@
         "accountInfo": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/AccountInfo"
+            "$ref": "#/definitions/v1AccountInfo"
           },
           "description": "The list of info related to every account."
         },
@@ -243,7 +322,7 @@
         }
       }
     },
-    "GetMarketAddressReply": {
+    "v1GetMarketAddressReply": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -255,7 +334,7 @@
         }
       }
     },
-    "GetMarketBalanceReply": {
+    "v1GetMarketBalanceReply": {
       "type": "object",
       "properties": {
         "availableBalance": {
@@ -268,13 +347,13 @@
         }
       }
     },
-    "GetMarketCollectedSwapFeesReply": {
+    "v1GetMarketCollectedSwapFeesReply": {
       "type": "object",
       "properties": {
         "collectedFees": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/FeeInfo"
+            "$ref": "#/definitions/v1FeeInfo"
           },
           "description": "The list of info about the collected fees per each trade."
         },
@@ -288,7 +367,7 @@
         }
       }
     },
-    "GetMarketFragmenterAddressReply": {
+    "v1GetMarketFragmenterAddressReply": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -299,36 +378,36 @@
         }
       }
     },
-    "GetMarketFragmenterBalanceReply": {
+    "v1GetMarketFragmenterBalanceReply": {
       "type": "object",
       "properties": {
         "balance": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/BalanceInfo"
+            "$ref": "#/definitions/v1BalanceInfo"
           },
           "description": "The balance info (total, confirmed, unconfirmed) of the account grouped by\nasset."
         }
       }
     },
-    "GetMarketInfoReply": {
+    "v1GetMarketInfoReply": {
       "type": "object",
       "properties": {
         "info": {
-          "$ref": "#/definitions/MarketInfo"
+          "$ref": "#/definitions/v1MarketInfo"
         }
       }
     },
-    "GetMarketReportReply": {
+    "v1GetMarketReportReply": {
       "type": "object",
       "properties": {
         "report": {
-          "$ref": "#/definitions/MarketReport",
+          "$ref": "#/definitions/v1MarketReport",
           "title": "MarketReport holds info about volume and collected fees"
         }
       }
     },
-    "ListDepositsReply": {
+    "v1ListDepositsReply": {
       "type": "object",
       "properties": {
         "accountIndex": {
@@ -339,13 +418,13 @@
         "deposits": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Deposit"
+            "$ref": "#/definitions/v1Deposit"
           },
           "description": "The list of info about the deposits."
         }
       }
     },
-    "ListFeeAddressesReply": {
+    "v1ListFeeAddressesReply": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -357,7 +436,7 @@
         }
       }
     },
-    "ListFeeFragmenterAddressesReply": {
+    "v1ListFeeFragmenterAddressesReply": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -368,7 +447,7 @@
         }
       }
     },
-    "ListMarketAddressesReply": {
+    "v1ListMarketAddressesReply": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -380,7 +459,7 @@
         }
       }
     },
-    "ListMarketFragmenterAddressesReply": {
+    "v1ListMarketFragmenterAddressesReply": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -391,69 +470,69 @@
         }
       }
     },
-    "ListMarketsReply": {
+    "v1ListMarketsReply": {
       "type": "object",
       "properties": {
         "markets": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/MarketInfo"
+            "$ref": "#/definitions/v1MarketInfo"
           },
           "description": "The list of info about all the created markets."
         }
       }
     },
-    "ListTradesReply": {
+    "v1ListTradesReply": {
       "type": "object",
       "properties": {
         "trades": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/TradeInfo"
+            "$ref": "#/definitions/v1TradeInfo"
           },
           "description": "The list of info about all trades or all trades for a market depending on\nthe request."
         }
       }
     },
-    "ListUtxosReply": {
+    "v1ListUtxosReply": {
       "type": "object",
       "properties": {
         "unspents": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/UtxoInfo"
+            "$ref": "#/definitions/v1UtxoInfo"
           },
           "description": "The list of all unspent utxos."
         },
         "spents": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/UtxoInfo"
+            "$ref": "#/definitions/v1UtxoInfo"
           },
           "description": "The list of all spent utxos."
         },
         "locks": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/UtxoInfo"
+            "$ref": "#/definitions/v1UtxoInfo"
           },
           "description": "The list of all currently locked utxos."
         }
       }
     },
-    "ListWebhooksReply": {
+    "v1ListWebhooksReply": {
       "type": "object",
       "properties": {
         "webhookInfo": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/WebhookInfo"
+            "$ref": "#/definitions/v1WebhookInfo"
           },
           "description": "The list of info about the webhooks regitered for an action."
         }
       }
     },
-    "ListWithdrawalsReply": {
+    "v1ListWithdrawalsReply": {
       "type": "object",
       "properties": {
         "accountIndex": {
@@ -464,13 +543,24 @@
         "withdrawals": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Withdrawal"
+            "$ref": "#/definitions/v1Withdrawal"
           },
           "description": "The list of info about the withdrawals."
         }
       }
     },
-    "MarketCollectedFees": {
+    "v1Market": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string"
+        },
+        "quoteAsset": {
+          "type": "string"
+        }
+      }
+    },
+    "v1MarketCollectedFees": {
       "type": "object",
       "properties": {
         "baseAmount": {
@@ -480,10 +570,18 @@
         "quoteAmount": {
           "type": "string",
           "format": "uint64"
+        },
+        "startDate": {
+          "type": "string",
+          "title": "start_date in RFC3339 format of the aggregated volume calculation"
+        },
+        "endDate": {
+          "type": "string",
+          "title": "end_date in RFC3339 format of the aggregated volume calculation"
         }
       }
     },
-    "MarketInfo": {
+    "v1MarketInfo": {
       "type": "object",
       "properties": {
         "market": {
@@ -499,7 +597,7 @@
           "description": "Whether the market is opened or closed."
         },
         "strategyType": {
-          "$ref": "#/definitions/StrategyType",
+          "$ref": "#/definitions/v1StrategyType",
           "description": "The making strategy."
         },
         "accountIndex": {
@@ -517,18 +615,24 @@
         }
       }
     },
-    "MarketReport": {
+    "v1MarketReport": {
       "type": "object",
       "properties": {
-        "collectedFees": {
-          "$ref": "#/definitions/MarketCollectedFees"
+        "totalCollectedFees": {
+          "$ref": "#/definitions/v1MarketCollectedFees"
         },
-        "volume": {
-          "$ref": "#/definitions/MarketVolume"
+        "totalVolume": {
+          "$ref": "#/definitions/v1MarketVolume"
+        },
+        "groupedVolume": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1MarketVolume"
+          }
         }
       }
     },
-    "MarketVolume": {
+    "v1MarketVolume": {
       "type": "object",
       "properties": {
         "baseVolume": {
@@ -538,16 +642,35 @@
         "quoteVolume": {
           "type": "string",
           "format": "uint64"
+        },
+        "startDate": {
+          "type": "string",
+          "title": "start_date in RFC3339 format of the aggregated volume calculation"
+        },
+        "endDate": {
+          "type": "string",
+          "title": "end_date in RFC3339 format of the aggregated volume calculation"
         }
       }
     },
-    "NewMarketReply": {
+    "v1MarketWithFee": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        },
+        "fee": {
+          "$ref": "#/definitions/v1Fee"
+        }
+      }
+    },
+    "v1NewMarketReply": {
       "type": "object"
     },
-    "OpenMarketReply": {
+    "v1OpenMarketReply": {
       "type": "object"
     },
-    "Page": {
+    "v1Page": {
       "type": "object",
       "properties": {
         "pageNumber": {
@@ -562,26 +685,48 @@
         }
       }
     },
-    "PredefinedPeriod": {
+    "v1PredefinedPeriod": {
       "type": "string",
       "enum": [
         "NULL",
         "LAST_HOUR",
         "LAST_DAY",
+        "LAST_WEEK",
         "LAST_MONTH",
-        "LAST_3_MONTHS",
+        "LAST_THREE_MONTHS",
         "YEAR_TO_DATE",
         "ALL"
       ],
       "default": "NULL"
     },
-    "ReloadUtxosReply": {
+    "v1Price": {
+      "type": "object",
+      "properties": {
+        "basePriceDeprecated": {
+          "type": "number",
+          "format": "float"
+        },
+        "quotePriceDeprecated": {
+          "type": "number",
+          "format": "float"
+        },
+        "basePrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "v1ReloadUtxosReply": {
       "type": "object"
     },
-    "RemoveWebhookReply": {
+    "v1RemoveWebhookReply": {
       "type": "object"
     },
-    "StrategyType": {
+    "v1StrategyType": {
       "type": "string",
       "enum": [
         "PLUGGABLE",
@@ -590,7 +735,7 @@
       ],
       "default": "PLUGGABLE"
     },
-    "SwapFailInfo": {
+    "v1SwapFailInfo": {
       "type": "object",
       "properties": {
         "failureCode": {
@@ -604,7 +749,7 @@
         }
       }
     },
-    "SwapInfo": {
+    "v1SwapInfo": {
       "type": "object",
       "properties": {
         "amountP": {
@@ -627,21 +772,32 @@
         }
       }
     },
-    "TimeRange": {
+    "v1TimeFrame": {
+      "type": "string",
+      "enum": [
+        "HOUR",
+        "FOUR_HOURS",
+        "DAY",
+        "WEEK",
+        "MONTH"
+      ],
+      "default": "HOUR"
+    },
+    "v1TimeRange": {
       "type": "object",
       "properties": {
         "predefinedPeriod": {
-          "$ref": "#/definitions/PredefinedPeriod",
+          "$ref": "#/definitions/v1PredefinedPeriod",
           "title": "predefined time_period till now"
         },
         "customPeriod": {
-          "$ref": "#/definitions/CustomPeriod",
-          "title": "granular time range"
+          "$ref": "#/definitions/v1CustomPeriod",
+          "title": "custom time range"
         }
       },
       "description": "TimeRange is flexible type used to determine time span for which specific\napi will fetch data, either one of predefined_period or custom_period should be provided."
     },
-    "TradeInfo": {
+    "v1TradeInfo": {
       "type": "object",
       "properties": {
         "tradeId": {
@@ -649,15 +805,15 @@
           "description": "The id of the trade."
         },
         "status": {
-          "$ref": "#/definitions/TradeStatusInfo",
+          "$ref": "#/definitions/v1TradeStatusInfo",
           "description": "The info about the status of the trade."
         },
         "swapInfo": {
-          "$ref": "#/definitions/SwapInfo",
+          "$ref": "#/definitions/v1SwapInfo",
           "description": "The info about the swap."
         },
         "failInfo": {
-          "$ref": "#/definitions/SwapFailInfo",
+          "$ref": "#/definitions/v1SwapFailInfo",
           "description": "The info of an eventually failed swap."
         },
         "marketWithFee": {
@@ -665,7 +821,7 @@
           "description": "The collected fee on the current swap."
         },
         "price": {
-          "$ref": "#/definitions/TradePrice",
+          "$ref": "#/definitions/v1TradePrice",
           "description": "The prices of the trade at request time."
         },
         "txUrl": {
@@ -719,7 +875,7 @@
         }
       }
     },
-    "TradePrice": {
+    "v1TradePrice": {
       "type": "object",
       "properties": {
         "basePrice": {
@@ -732,7 +888,7 @@
         }
       }
     },
-    "TradeStatus": {
+    "v1TradeStatus": {
       "type": "string",
       "enum": [
         "UNDEFINED",
@@ -744,11 +900,11 @@
       ],
       "default": "UNDEFINED"
     },
-    "TradeStatusInfo": {
+    "v1TradeStatusInfo": {
       "type": "object",
       "properties": {
         "status": {
-          "$ref": "#/definitions/TradeStatus",
+          "$ref": "#/definitions/v1TradeStatus",
           "description": "The status of the trade."
         },
         "failed": {
@@ -757,7 +913,7 @@
         }
       }
     },
-    "TxOutpoint": {
+    "v1TxOutpoint": {
       "type": "object",
       "properties": {
         "hash": {
@@ -771,7 +927,7 @@
         }
       }
     },
-    "UpdateMarketFeeReply": {
+    "v1UpdateMarketFeeReply": {
       "type": "object",
       "properties": {
         "marketWithFee": {
@@ -780,17 +936,17 @@
         }
       }
     },
-    "UpdateMarketPriceReply": {
+    "v1UpdateMarketPriceReply": {
       "type": "object"
     },
-    "UpdateMarketStrategyReply": {
+    "v1UpdateMarketStrategyReply": {
       "type": "object"
     },
-    "UtxoInfo": {
+    "v1UtxoInfo": {
       "type": "object",
       "properties": {
         "outpoint": {
-          "$ref": "#/definitions/TxOutpoint",
+          "$ref": "#/definitions/v1TxOutpoint",
           "title": "The outpoint \u003chash, index\u003e"
         },
         "value": {
@@ -804,7 +960,7 @@
         }
       }
     },
-    "WebhookInfo": {
+    "v1WebhookInfo": {
       "type": "object",
       "properties": {
         "id": {
@@ -821,7 +977,7 @@
         }
       }
     },
-    "WithdrawFeeFragmenterReply": {
+    "v1WithdrawFeeFragmenterReply": {
       "type": "object",
       "properties": {
         "txid": {
@@ -829,7 +985,7 @@
         }
       }
     },
-    "WithdrawFeeReply": {
+    "v1WithdrawFeeReply": {
       "type": "object",
       "properties": {
         "txid": {
@@ -838,7 +994,7 @@
         }
       }
     },
-    "WithdrawMarketFragmenterReply": {
+    "v1WithdrawMarketFragmenterReply": {
       "type": "object",
       "properties": {
         "txid": {
@@ -846,7 +1002,7 @@
         }
       }
     },
-    "WithdrawMarketReply": {
+    "v1WithdrawMarketReply": {
       "type": "object",
       "properties": {
         "txid": {
@@ -855,7 +1011,7 @@
         }
       }
     },
-    "Withdrawal": {
+    "v1Withdrawal": {
       "type": "object",
       "properties": {
         "txId": {
@@ -878,128 +1034,6 @@
         "timestampUtc": {
           "type": "string",
           "description": "The timestamp of the withdrawal transaction in UTC format."
-        }
-      }
-    },
-    "googlerpcStatus": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "message": {
-          "type": "string"
-        },
-        "details": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/protobufAny"
-          }
-        }
-      }
-    },
-    "protobufAny": {
-      "type": "object",
-      "properties": {
-        "@type": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": {}
-    },
-    "v1AddressWithBlindingKey": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string",
-          "description": "The confidential address encoded using a blech32 format."
-        },
-        "blinding": {
-          "type": "string",
-          "title": "The blinding private key for the given address encoded in hex format"
-        }
-      }
-    },
-    "v1Balance": {
-      "type": "object",
-      "properties": {
-        "baseAmount": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "quoteAmount": {
-          "type": "string",
-          "format": "uint64"
-        }
-      }
-    },
-    "v1Fee": {
-      "type": "object",
-      "properties": {
-        "basisPoint": {
-          "type": "string",
-          "format": "int64"
-        },
-        "fixed": {
-          "$ref": "#/definitions/v1Fixed"
-        }
-      },
-      "title": "Custom Types"
-    },
-    "v1Fixed": {
-      "type": "object",
-      "properties": {
-        "baseFee": {
-          "type": "string",
-          "format": "int64"
-        },
-        "quoteFee": {
-          "type": "string",
-          "format": "int64"
-        }
-      }
-    },
-    "v1Market": {
-      "type": "object",
-      "properties": {
-        "baseAsset": {
-          "type": "string"
-        },
-        "quoteAsset": {
-          "type": "string"
-        }
-      }
-    },
-    "v1MarketWithFee": {
-      "type": "object",
-      "properties": {
-        "market": {
-          "$ref": "#/definitions/v1Market"
-        },
-        "fee": {
-          "$ref": "#/definitions/v1Fee"
-        }
-      }
-    },
-    "v1Price": {
-      "type": "object",
-      "properties": {
-        "basePriceDeprecated": {
-          "type": "number",
-          "format": "float"
-        },
-        "quotePriceDeprecated": {
-          "type": "number",
-          "format": "float"
-        },
-        "basePrice": {
-          "type": "number",
-          "format": "double"
-        },
-        "quotePrice": {
-          "type": "number",
-          "format": "double"
         }
       }
     }

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/tdex-network/tdex-protobuf/generated/go/transport"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 
 	"github.com/urfave/cli/v2"
 )
@@ -22,7 +22,7 @@ func listContentTypes(ctx *cli.Context) error {
 	defer cleanup()
 
 	resp, err := client.SupportedContentTypes(
-		context.Background(), &transport.SupportedContentTypesRequest{},
+		context.Background(), &tdexv1.SupportedContentTypesRequest{},
 	)
 	if err != nil {
 		return err

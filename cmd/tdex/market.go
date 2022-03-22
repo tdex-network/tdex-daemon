@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -240,8 +240,8 @@ func newMarketAction(ctx *cli.Context) error {
 	quoteAsset := ctx.String("quote_asset")
 
 	if _, err := client.NewMarket(
-		context.Background(), &pb.NewMarketRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.NewMarketRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -268,8 +268,8 @@ func marketInfoAction(ctx *cli.Context) error {
 	}
 
 	resp, err := client.GetMarketInfo(
-		context.Background(), &pb.GetMarketInfoRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.GetMarketInfoRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -296,8 +296,8 @@ func marketBalanceAction(ctx *cli.Context) error {
 	}
 
 	resp, err := client.GetMarketBalance(
-		context.Background(), &pb.GetMarketBalanceRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.GetMarketBalanceRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -330,8 +330,8 @@ func marketDepositAction(ctx *cli.Context) error {
 	numOfAddresses := ctx.Int64("num_of_addresses")
 	resp, err := client.GetMarketAddress(
 		context.Background(),
-		&pb.GetMarketAddressRequest{
-			Market: &pbtypes.Market{
+		&daemonv1.GetMarketAddressRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -364,8 +364,8 @@ func marketListAddressesAction(ctx *cli.Context) error {
 	}
 
 	resp, err := client.ListMarketAddresses(
-		context.Background(), &pb.ListMarketAddressesRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.ListMarketAddressesRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -404,8 +404,8 @@ func marketClaimAction(ctx *cli.Context) error {
 	}
 
 	if _, err := client.ClaimMarketDeposits(
-		context.Background(), &pb.ClaimMarketDepositsRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.ClaimMarketDepositsRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -436,12 +436,12 @@ func marketWithdrawAction(ctx *cli.Context) error {
 	addr := ctx.String("address")
 	mSatsPerByte := ctx.Int64("millisatsperbyte")
 
-	reply, err := client.WithdrawMarket(context.Background(), &pb.WithdrawMarketRequest{
-		Market: &pbtypes.Market{
+	reply, err := client.WithdrawMarket(context.Background(), &daemonv1.WithdrawMarketRequest{
+		Market: &tdexv1.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
 		},
-		BalanceToWithdraw: &pbtypes.Balance{
+		BalanceToWithdraw: &tdexv1.Balance{
 			BaseAmount:  baseAmount,
 			QuoteAmount: quoteAmount,
 		},
@@ -469,8 +469,8 @@ func marketOpenAction(ctx *cli.Context) error {
 	}
 
 	_, err = client.OpenMarket(
-		context.Background(), &pb.OpenMarketRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.OpenMarketRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -498,8 +498,8 @@ func marketCloseAction(ctx *cli.Context) error {
 	}
 
 	_, err = client.CloseMarket(
-		context.Background(), &pb.CloseMarketRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.CloseMarketRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -527,8 +527,8 @@ func marketDropAction(ctx *cli.Context) error {
 	}
 
 	_, err = client.DropMarket(
-		context.Background(), &pb.DropMarketRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.DropMarketRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -557,12 +557,12 @@ func marketUpdateFixedFeeAction(ctx *cli.Context) error {
 
 	baseFee := ctx.Int64("base_fee")
 	quoteFee := ctx.Int64("quote_fee")
-	req := &pb.UpdateMarketFixedFeeRequest{
-		Market: &pbtypes.Market{
+	req := &daemonv1.UpdateMarketFixedFeeRequest{
+		Market: &tdexv1.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
 		},
-		Fixed: &pbtypes.Fixed{
+		Fixed: &tdexv1.Fixed{
 			BaseFee:  baseFee,
 			QuoteFee: quoteFee,
 		},
@@ -592,8 +592,8 @@ func marketUpdatePercentageFeeAction(ctx *cli.Context) error {
 	}
 
 	basisPoint := ctx.Int64("basis_point")
-	req := &pb.UpdateMarketPercentageFeeRequest{
-		Market: &pbtypes.Market{
+	req := &daemonv1.UpdateMarketPercentageFeeRequest{
+		Market: &tdexv1.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
 		},
@@ -625,17 +625,17 @@ func marketReportFeeAction(ctx *cli.Context) error {
 
 	pageNumber := ctx.Int64("page")
 	pageSize := ctx.Int64("page_size")
-	var page *pb.Page
+	var page *daemonv1.Page
 	if pageNumber > 0 {
-		page = &pb.Page{
+		page = &daemonv1.Page{
 			PageNumber: pageNumber,
 			PageSize:   pageSize,
 		}
 	}
 
 	reply, err := client.GetMarketCollectedSwapFees(
-		context.Background(), &pb.GetMarketCollectedSwapFeesRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.GetMarketCollectedSwapFeesRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -662,14 +662,14 @@ func marketUpdateStrategyAction(ctx *cli.Context) error {
 		return err
 	}
 
-	strategy := pb.StrategyType_BALANCED
+	strategy := daemonv1.StrategyType_BALANCED
 	if ctx.Bool("pluggable") {
-		strategy = pb.StrategyType_PLUGGABLE
+		strategy = daemonv1.StrategyType_PLUGGABLE
 	}
 
 	_, err = client.UpdateMarketStrategy(
-		context.Background(), &pb.UpdateMarketStrategyRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.UpdateMarketStrategyRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -698,14 +698,14 @@ func marketUpdatePriceAction(ctx *cli.Context) error {
 	}
 
 	_, err = client.UpdateMarketPrice(
-		context.Background(), &pb.UpdateMarketPriceRequest{
-			Market: &pbtypes.Market{
+		context.Background(), &daemonv1.UpdateMarketPriceRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
-			Price: &pbtypes.Price{
-				BasePrice:  float32(ctx.Float64("base_price")),
-				QuotePrice: float32(ctx.Float64("quote_price")),
+			Price: &tdexv1.Price{
+				BasePrice:  ctx.Float64("base_price"),
+				QuotePrice: ctx.Float64("quote_price"),
 			},
 		},
 	)
@@ -730,30 +730,30 @@ func marketReportAction(ctx *cli.Context) error {
 		return err
 	}
 
-	var customPeriod *pb.CustomPeriod
+	var customPeriod *daemonv1.CustomPeriod
 	start := ctx.String("start")
 	end := ctx.String("end")
 	if start != "" && end != "" {
-		customPeriod = &pb.CustomPeriod{
+		customPeriod = &daemonv1.CustomPeriod{
 			StartDate: start,
 			EndDate:   end,
 		}
 	}
 
-	var predefinedPeriod pb.PredefinedPeriod
+	var predefinedPeriod daemonv1.PredefinedPeriod
 	pp := ctx.Int("predefined_period")
 	if pp > 0 {
-		predefinedPeriod = pb.PredefinedPeriod(pp)
+		predefinedPeriod = daemonv1.PredefinedPeriod(pp)
 	}
 
 	reply, err := client.GetMarketReport(
 		context.Background(),
-		&pb.GetMarketReportRequest{
-			Market: &pbtypes.Market{
+		&daemonv1.GetMarketReportRequest{
+			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
-			TimeRange: &pb.TimeRange{
+			TimeRange: &daemonv1.TimeRange{
 				PredefinedPeriod: predefinedPeriod,
 				CustomPeriod:     customPeriod,
 			},

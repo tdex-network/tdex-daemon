@@ -3,7 +3,7 @@ package swap
 import (
 	"fmt"
 
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	"github.com/thanhpk/randstr"
 	"google.golang.org/protobuf/proto"
 )
@@ -31,14 +31,14 @@ func Accept(opts AcceptOpts) (string, []byte, error) {
 		return "", nil, err
 	}
 
-	var msgRequest pb.SwapRequest
+	var msgRequest tdexv1.SwapRequest
 	err := proto.Unmarshal(opts.Message, &msgRequest)
 	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal swap request %w", err)
 	}
 
 	randomID := randstr.Hex(8)
-	msgAccept := &pb.SwapAccept{
+	msgAccept := &tdexv1.SwapAccept{
 		Id:                randomID,
 		RequestId:         msgRequest.GetId(),
 		Transaction:       opts.PsetBase64,

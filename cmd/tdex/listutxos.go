@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -39,16 +39,16 @@ func listUtxosAction(ctx *cli.Context) error {
 	accountIndex := ctx.Uint64("account_index")
 	pageNumber := ctx.Int64("page")
 	pageSize := ctx.Int64("page_size")
-	var page *pboperator.Page
+	var page *daemonv1.Page
 	if pageNumber > 0 {
-		page = &pboperator.Page{
+		page = &daemonv1.Page{
 			PageNumber: pageNumber,
 			PageSize:   pageSize,
 		}
 	}
 
 	resp, err := client.ListUtxos(
-		context.Background(), &pboperator.ListUtxosRequest{
+		context.Background(), &daemonv1.ListUtxosRequest{
 			AccountIndex: accountIndex,
 			Page:         page,
 		},

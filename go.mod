@@ -16,9 +16,9 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang-jwt/jwt v3.2.1+incompatible
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.0
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/mdp/qrterminal/v3 v3.0.0
 	github.com/prometheus/client_golang v1.0.0
@@ -34,18 +34,17 @@ require (
 	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20211001103242-a11e4485705a
 	github.com/tdex-network/tdex-daemon/pkg/macaroons v0.0.0-20210813140257-70d50a8b72a4
 	github.com/tdex-network/tdex-daemon/pkg/securestore v0.0.0-20210813140257-70d50a8b72a4
-	github.com/tdex-network/tdex-protobuf v0.0.0-20220316092202-8fc12d2fc99b
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/vulpemventures/go-bip39 v1.0.2
 	github.com/vulpemventures/go-elements v0.3.5
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	golang.org/x/sys v0.0.0-20210908233432-aa78b53d3365 // indirect
-	google.golang.org/grpc v1.40.0
-	google.golang.org/protobuf v1.26.0
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	google.golang.org/genproto v0.0.0-20220317150908-0efb43f6373e
+	google.golang.org/grpc v1.45.0
+	google.golang.org/protobuf v1.27.1
 	gopkg.in/macaroon-bakery.v2 v2.3.0
 	gopkg.in/macaroon.v2 v2.1.0
 )

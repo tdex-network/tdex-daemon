@@ -5,8 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+
+	"github.com/stretchr/testify/mock"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/address"

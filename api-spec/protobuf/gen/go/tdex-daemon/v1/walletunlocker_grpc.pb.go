@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: tdex-daemon/v1/walletunlocker.proto
 
-package v1
+package daemonv1
 
 import (
 	context "context"
@@ -71,7 +71,7 @@ func NewWalletUnlockerClient(cc grpc.ClientConnInterface) WalletUnlockerClient {
 
 func (c *walletUnlockerClient) GenSeed(ctx context.Context, in *GenSeedRequest, opts ...grpc.CallOption) (*GenSeedReply, error) {
 	out := new(GenSeedReply)
-	err := c.cc.Invoke(ctx, "/WalletUnlocker/GenSeed", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.WalletUnlocker/GenSeed", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (c *walletUnlockerClient) GenSeed(ctx context.Context, in *GenSeedRequest, 
 }
 
 func (c *walletUnlockerClient) InitWallet(ctx context.Context, in *InitWalletRequest, opts ...grpc.CallOption) (WalletUnlocker_InitWalletClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WalletUnlocker_ServiceDesc.Streams[0], "/WalletUnlocker/InitWallet", opts...)
+	stream, err := c.cc.NewStream(ctx, &WalletUnlocker_ServiceDesc.Streams[0], "/tdex.daemon.v1.WalletUnlocker/InitWallet", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (x *walletUnlockerInitWalletClient) Recv() (*InitWalletReply, error) {
 
 func (c *walletUnlockerClient) UnlockWallet(ctx context.Context, in *UnlockWalletRequest, opts ...grpc.CallOption) (*UnlockWalletReply, error) {
 	out := new(UnlockWalletReply)
-	err := c.cc.Invoke(ctx, "/WalletUnlocker/UnlockWallet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.WalletUnlocker/UnlockWallet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (c *walletUnlockerClient) UnlockWallet(ctx context.Context, in *UnlockWalle
 
 func (c *walletUnlockerClient) ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordReply, error) {
 	out := new(ChangePasswordReply)
-	err := c.cc.Invoke(ctx, "/WalletUnlocker/ChangePassword", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.WalletUnlocker/ChangePassword", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (c *walletUnlockerClient) ChangePassword(ctx context.Context, in *ChangePas
 
 func (c *walletUnlockerClient) IsReady(ctx context.Context, in *IsReadyRequest, opts ...grpc.CallOption) (*IsReadyReply, error) {
 	out := new(IsReadyReply)
-	err := c.cc.Invoke(ctx, "/WalletUnlocker/IsReady", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.WalletUnlocker/IsReady", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func _WalletUnlocker_GenSeed_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/WalletUnlocker/GenSeed",
+		FullMethod: "/tdex.daemon.v1.WalletUnlocker/GenSeed",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WalletUnlockerServer).GenSeed(ctx, req.(*GenSeedRequest))
@@ -260,7 +260,7 @@ func _WalletUnlocker_UnlockWallet_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/WalletUnlocker/UnlockWallet",
+		FullMethod: "/tdex.daemon.v1.WalletUnlocker/UnlockWallet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WalletUnlockerServer).UnlockWallet(ctx, req.(*UnlockWalletRequest))
@@ -278,7 +278,7 @@ func _WalletUnlocker_ChangePassword_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/WalletUnlocker/ChangePassword",
+		FullMethod: "/tdex.daemon.v1.WalletUnlocker/ChangePassword",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WalletUnlockerServer).ChangePassword(ctx, req.(*ChangePasswordRequest))
@@ -296,7 +296,7 @@ func _WalletUnlocker_IsReady_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/WalletUnlocker/IsReady",
+		FullMethod: "/tdex.daemon.v1.WalletUnlocker/IsReady",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WalletUnlockerServer).IsReady(ctx, req.(*IsReadyRequest))
@@ -308,7 +308,7 @@ func _WalletUnlocker_IsReady_Handler(srv interface{}, ctx context.Context, dec f
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var WalletUnlocker_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "WalletUnlocker",
+	ServiceName: "tdex.daemon.v1.WalletUnlocker",
 	HandlerType: (*WalletUnlockerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

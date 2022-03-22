@@ -68,4 +68,6 @@ var (
 	ErrInvalidTime = errors.New("must be a valid time.Time")
 	// ErrInvalidTimeFormat used to validate time format
 	ErrInvalidTimeFormat = errors.New("fromTime must be valid RFC3339 format")
+	// ErrInvalidTimeFrame
+	ErrInvalidTimeFrame = errors.New("timeFrame must be smaller than timePeriod")
 )

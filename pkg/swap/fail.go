@@ -3,7 +3,7 @@ package swap
 import (
 	"fmt"
 
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	"github.com/thanhpk/randstr"
 	"google.golang.org/protobuf/proto"
 )
@@ -30,7 +30,7 @@ type FailOpts struct {
 
 func Fail(opts FailOpts) (string, []byte, error) {
 	randomID := randstr.Hex(8)
-	msgFail := &pb.SwapFail{
+	msgFail := &tdexv1.SwapFail{
 		Id:             randomID,
 		MessageId:      opts.MessageID,
 		FailureCode:    uint32(opts.ErrCode),

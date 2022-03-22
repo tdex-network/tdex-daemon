@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -103,7 +103,7 @@ func feeBalanceAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	reply, err := client.GetFeeBalance(context.Background(), &pb.GetFeeBalanceRequest{})
+	reply, err := client.GetFeeBalance(context.Background(), &daemonv1.GetFeeBalanceRequest{})
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func feeDepositAction(ctx *cli.Context) error {
 
 	numOfAddresses := ctx.Int64("num_of_addresses")
 	resp, err := client.GetFeeAddress(
-		context.Background(), &pb.GetFeeAddressRequest{
+		context.Background(), &daemonv1.GetFeeAddressRequest{
 			NumOfAddresses: numOfAddresses,
 		},
 	)
@@ -152,7 +152,7 @@ func feeListAddressesAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.ListFeeAddresses(
-		context.Background(), &pb.ListFeeAddressesRequest{},
+		context.Background(), &daemonv1.ListFeeAddressesRequest{},
 	)
 	if err != nil {
 		return err
@@ -183,7 +183,7 @@ func feeClaimAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	if _, err := client.ClaimFeeDeposits(
-		context.Background(), &pb.ClaimFeeDepositsRequest{
+		context.Background(), &daemonv1.ClaimFeeDepositsRequest{
 			Outpoints: outpoints,
 		},
 	); err != nil {
@@ -196,8 +196,8 @@ func feeClaimAction(ctx *cli.Context) error {
 	return nil
 }
 
-func parseOutpoints(str string) ([]*pb.TxOutpoint, error) {
-	var outpoints []*pb.TxOutpoint
+func parseOutpoints(str string) ([]*daemonv1.TxOutpoint, error) {
+	var outpoints []*daemonv1.TxOutpoint
 	if err := json.Unmarshal([]byte(str), &outpoints); err != nil {
 		return nil, errors.New("unable to parse provided outpoints")
 	}
@@ -216,7 +216,7 @@ func feeWithdrawAction(ctx *cli.Context) error {
 	mSatsPerByte := ctx.Uint64("millisatsperbyte")
 	asset := ctx.String("asset")
 
-	reply, err := client.WithdrawFee(context.Background(), &pb.WithdrawFeeRequest{
+	reply, err := client.WithdrawFee(context.Background(), &daemonv1.WithdrawFeeRequest{
 		Amount:           amount,
 		Address:          addr,
 		Asset:            asset,

@@ -11,11 +11,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 )
 
 type walletUnlockerHandler struct {
-	pb.UnimplementedWalletUnlockerServer
+	daemonv1.UnimplementedWalletUnlockerServer
 	walletUnlockerSvc application.WalletUnlockerService
 	adminMacaroonPath string
 }
@@ -23,7 +23,7 @@ type walletUnlockerHandler struct {
 func NewWalletUnlockerHandler(
 	walletUnlockerSvc application.WalletUnlockerService,
 	adminMacPath string,
-) pb.WalletUnlockerServer {
+) daemonv1.WalletUnlockerServer {
 	return newWalletUnlockerHandler(walletUnlockerSvc, adminMacPath)
 }
 
@@ -38,47 +38,47 @@ func newWalletUnlockerHandler(
 }
 
 func (w *walletUnlockerHandler) GenSeed(
-	ctx context.Context, req *pb.GenSeedRequest,
-) (*pb.GenSeedReply, error) {
+	ctx context.Context, req *daemonv1.GenSeedRequest,
+) (*daemonv1.GenSeedReply, error) {
 	return w.genSeed(ctx, req)
 }
 
 func (w *walletUnlockerHandler) InitWallet(
-	req *pb.InitWalletRequest, stream pb.WalletUnlocker_InitWalletServer,
+	req *daemonv1.InitWalletRequest, stream daemonv1.WalletUnlocker_InitWalletServer,
 ) error {
 	return w.initWallet(req, stream)
 }
 
 func (w *walletUnlockerHandler) UnlockWallet(
-	ctx context.Context, req *pb.UnlockWalletRequest,
-) (*pb.UnlockWalletReply, error) {
+	ctx context.Context, req *daemonv1.UnlockWalletRequest,
+) (*daemonv1.UnlockWalletReply, error) {
 	return w.unlockWallet(ctx, req)
 }
 
 func (w *walletUnlockerHandler) ChangePassword(
-	ctx context.Context, req *pb.ChangePasswordRequest,
-) (*pb.ChangePasswordReply, error) {
+	ctx context.Context, req *daemonv1.ChangePasswordRequest,
+) (*daemonv1.ChangePasswordReply, error) {
 	return w.changePassword(ctx, req)
 }
 
 func (w *walletUnlockerHandler) IsReady(
-	ctx context.Context, req *pb.IsReadyRequest,
-) (*pb.IsReadyReply, error) {
+	ctx context.Context, req *daemonv1.IsReadyRequest,
+) (*daemonv1.IsReadyReply, error) {
 	return w.isReady(ctx, req)
 }
 
 func (w *walletUnlockerHandler) genSeed(
-	ctx context.Context, req *pb.GenSeedRequest,
-) (*pb.GenSeedReply, error) {
+	ctx context.Context, req *daemonv1.GenSeedRequest,
+) (*daemonv1.GenSeedReply, error) {
 	mnemonic, err := w.walletUnlockerSvc.GenSeed(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	return &pb.GenSeedReply{SeedMnemonic: mnemonic}, nil
+	return &daemonv1.GenSeedReply{SeedMnemonic: mnemonic}, nil
 }
 
 func (w *walletUnlockerHandler) initWallet(
-	req *pb.InitWalletRequest, stream pb.WalletUnlocker_InitWalletServer,
+	req *daemonv1.InitWalletRequest, stream daemonv1.WalletUnlocker_InitWalletServer,
 ) error {
 	mnemonic := req.GetSeedMnemonic()
 	if err := validateMnemonic(mnemonic); err != nil {
@@ -105,9 +105,9 @@ func (w *walletUnlockerHandler) initWallet(
 		}
 
 		noReplies = false
-		if err := stream.Send(&pb.InitWalletReply{
+		if err := stream.Send(&daemonv1.InitWalletReply{
 			Account: reply.AccountIndex,
-			Status:  pb.InitWalletReply_Status(reply.Status),
+			Status:  daemonv1.InitWalletReply_Status(reply.Status),
 			Data:    reply.Data,
 		}); err != nil {
 			return err
@@ -134,7 +134,7 @@ func (w *walletUnlockerHandler) initWallet(
 			break
 		}
 		macStr := hex.EncodeToString(mac)
-		if err := stream.Send(&pb.InitWalletReply{
+		if err := stream.Send(&daemonv1.InitWalletReply{
 			Data:    macStr,
 			Account: -1,
 		}); err != nil {
@@ -146,8 +146,8 @@ func (w *walletUnlockerHandler) initWallet(
 }
 
 func (w *walletUnlockerHandler) unlockWallet(
-	ctx context.Context, req *pb.UnlockWalletRequest,
-) (*pb.UnlockWalletReply, error) {
+	ctx context.Context, req *daemonv1.UnlockWalletRequest,
+) (*daemonv1.UnlockWalletReply, error) {
 	password := req.GetWalletPassword()
 	if err := validatePassword(password); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -157,12 +157,12 @@ func (w *walletUnlockerHandler) unlockWallet(
 		return nil, err
 	}
 
-	return &pb.UnlockWalletReply{}, nil
+	return &daemonv1.UnlockWalletReply{}, nil
 }
 
 func (w *walletUnlockerHandler) changePassword(
-	ctx context.Context, req *pb.ChangePasswordRequest,
-) (*pb.ChangePasswordReply, error) {
+	ctx context.Context, req *daemonv1.ChangePasswordRequest,
+) (*daemonv1.ChangePasswordReply, error) {
 	currentPwd := req.GetCurrentPassword()
 	if err := validatePassword(currentPwd); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -180,15 +180,15 @@ func (w *walletUnlockerHandler) changePassword(
 		return nil, err
 	}
 
-	return &pb.ChangePasswordReply{}, nil
+	return &daemonv1.ChangePasswordReply{}, nil
 }
 
 func (w *walletUnlockerHandler) isReady(
-	ctx context.Context, _ *pb.IsReadyRequest,
-) (*pb.IsReadyReply, error) {
+	ctx context.Context, _ *daemonv1.IsReadyRequest,
+) (*daemonv1.IsReadyReply, error) {
 	status := w.walletUnlockerSvc.IsReady(ctx)
 
-	return &pb.IsReadyReply{
+	return &daemonv1.IsReadyReply{
 		Initialized: status.Initialized,
 		Unlocked:    status.Unlocked,
 		Synced:      status.Synced,

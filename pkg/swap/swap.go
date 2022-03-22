@@ -4,14 +4,14 @@ import (
 	"encoding/hex"
 	"errors"
 
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
-func compareMessagesAndTransaction(request *pb.SwapRequest, accept *pb.SwapAccept) error {
+func compareMessagesAndTransaction(request *tdexv1.SwapRequest, accept *tdexv1.SwapAccept) error {
 	decodedFromRequest, err := pset.NewPsetFromBase64(request.GetTransaction())
 	if err != nil {
 		return err

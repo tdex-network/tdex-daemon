@@ -143,6 +143,7 @@ type OperatorService interface {
 		ctx context.Context,
 		market Market,
 		timeRange TimeRange,
+		groupByHours int,
 	) (*MarketReport, error)
 }
 
@@ -1606,10 +1607,15 @@ func (o *operatorService) GetMarketReport(
 	ctx context.Context,
 	market Market,
 	timeRange TimeRange,
+	groupByHours int,
 ) (*MarketReport, error) {
 	startTime, endTime, err := timeRange.getStartAndEndTime(time.Now())
 	if err != nil {
 		return nil, err
+	}
+
+	if int(endTime.Sub(startTime).Hours()) <= groupByHours {
+		return nil, ErrInvalidTimeFrame
 	}
 
 	m, _, err := o.repoManager.MarketRepository().GetMarketByAssets(
@@ -1635,6 +1641,8 @@ func (o *operatorService) GetMarketReport(
 		return trades[i].SwapRequest.Timestamp > trades[j].SwapRequest.Timestamp
 	})
 
+	groupedVolume := initGroupedVolume(startTime, endTime, groupByHours)
+
 	totalFees := make(map[string]int64)
 	volume := make(map[string]int64)
 	for _, trade := range trades {
@@ -1656,6 +1664,30 @@ func (o *operatorService) GetMarketReport(
 
 			volume[swapRequest.GetAssetR()] += int64(swapRequest.GetAmountR())
 			volume[swapRequest.GetAssetP()] += int64(swapRequest.GetAmountP())
+
+			for i, v := range groupedVolume {
+				//find time slot to which trade belongs to and calculate volume for that slot
+				if (time.Unix(int64(trade.SwapRequest.Timestamp), 0).After(v.StartTime) ||
+					time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(v.StartTime)) &&
+					(time.Unix(int64(trade.SwapRequest.Timestamp), 0).Before(v.EndTime) ||
+						time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(v.EndTime)) {
+
+					//assume AmountR is base asset, AmountP(FeeAsset) is quote asset
+					volumeBaseAmount := swapRequest.GetAmountR() + v.BaseVolume
+					volumeQuoteAmount := swapRequest.GetAmountP() + v.QuoteVolume
+					if swapRequest.GetAssetR() == market.QuoteAsset {
+						volumeBaseAmount = swapRequest.GetAmountP() + v.BaseVolume
+						volumeQuoteAmount = swapRequest.GetAmountR() + v.QuoteVolume
+					}
+
+					groupedVolume[i] = MarketVolume{
+						BaseVolume:  volumeBaseAmount,
+						QuoteVolume: volumeQuoteAmount,
+						StartTime:   v.StartTime,
+						EndTime:     v.EndTime,
+					}
+				}
+			}
 		}
 	}
 
@@ -1663,12 +1695,46 @@ func (o *operatorService) GetMarketReport(
 		CollectedFees: MarketCollectedFees{
 			BaseAmount:  uint64(totalFees[market.BaseAsset]),
 			QuoteAmount: uint64(totalFees[market.QuoteAsset]),
+			StartTime:   startTime,
+			EndTime:     endTime,
 		},
 		Volume: MarketVolume{
 			BaseVolume:  uint64(volume[market.BaseAsset]),
-			QuoteVolume: uint64(volume[market.BaseAsset]),
+			QuoteVolume: uint64(volume[market.QuoteAsset]),
+			StartTime:   startTime,
+			EndTime:     endTime,
 		},
+		GroupedVolume: groupedVolume,
 	}, nil
+}
+
+// initGroupedVolume splits the given time range (start, end) into a list of
+//MarketVolume, ie. smaller consecutive time ranges of numHours hours in descending order.
+// Example:
+// in: 2009-11-10 19:00:00 (start), 2009-11-11 00:00:00 (end), 2 (numHours)
+// out: [
+//   {end: 2009-11-11 00:00:00, start: 2009-11-10 22:00:01},
+//   {end: 2009-11-11 22:00:00, start: 2009-11-10 20:00:01},
+//   {end: 2009-11-10 20:00:00, start: 2009-11-10 19:00:00},
+// ]
+func initGroupedVolume(start, end time.Time, groupByHours int) []MarketVolume {
+	groupedVolume := make([]MarketVolume, 0)
+	for {
+		if end.Equal(start) || end.Before(start) {
+			return groupedVolume
+		} else {
+			nextEnd := end.Add(-time.Hour * time.Duration(groupByHours))
+			nextStart := start
+			if nextEnd.Sub(start).Seconds() > 0 {
+				nextStart = nextEnd.Add(time.Second)
+			}
+			groupedVolume = append(groupedVolume, MarketVolume{
+				StartTime: nextStart,
+				EndTime:   end,
+			})
+			end = nextEnd
+		}
+	}
 }
 
 func (o *operatorService) generateAddressesForAccount(
