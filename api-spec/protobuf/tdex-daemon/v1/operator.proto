@@ -1,5 +1,4 @@
 syntax = "proto3";
-option go_package = "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator";
 
 import "tdex-daemon/v1/wallet.proto";
 import "tdex/v1/types.proto";
@@ -31,9 +30,9 @@ service Operator {
 
   // Creates a new market account in the daemon's wallet.
   rpc NewMarket(NewMarketRequest) returns (NewMarketReply) {}
-  
+
   rpc GetMarketInfo(GetMarketInfoRequest) returns (GetMarketInfoReply) {}
-  
+
   // Returns some new derived address(es) for the given market.
   rpc GetMarketAddress(GetMarketAddressRequest)
     returns (GetMarketAddressReply) {}
@@ -51,7 +50,7 @@ service Operator {
 
   // Makes the given market tradable.
   rpc OpenMarket(OpenMarketRequest) returns (OpenMarketReply) {}
-  
+
   // Makes the given market NOT tradabale.
   rpc CloseMarket(CloseMarketRequest) returns (CloseMarketReply) {}
 
@@ -68,7 +67,7 @@ service Operator {
   // Changes the Liquidity Provider percentage fee for the given market.
   rpc UpdateMarketPercentageFee(UpdateMarketPercentageFeeRequest)
     returns (UpdateMarketFeeReply) {}
-  
+
   // Changes the Liquidity provider fixed fees for the given market.
   rpc UpdateMarketFixedFee(UpdateMarketFixedFeeRequest)
     returns (UpdateMarketFeeReply) {}
@@ -98,7 +97,7 @@ service Operator {
   // fragments that then becomes deposits of the Fee account.
   rpc FeeFragmenterSplitFunds(FeeFragmenterSplitFundsRequest)
     returns (stream FragmenterSplitFundsReply) {}
-  
+
   // Allows to withdraw funds from the fee fragmenter account to a given address.
   rpc WithdrawFeeFragmenter(WithdrawFeeFragmenterRequest)
     returns (WithdrawFeeFragmenterReply) {}
@@ -119,7 +118,7 @@ service Operator {
   // fragments that then becomes deposits of the given market.
   rpc MarketFragmenterSplitFunds(MarketFragmenterSplitFundsRequest)
     returns (stream FragmenterSplitFundsReply) {}
-  
+
   // Allows to withdraw funds from the market fragmenter account to a given address.
   rpc WithdrawMarketFragmenter(WithdrawMarketFragmenterRequest)
     returns (WithdrawMarketFragmenterReply) {}
@@ -139,7 +138,7 @@ service Operator {
 
   // Adds a webhook registered for some kind of event.
   rpc AddWebhook(AddWebhookRequest) returns(AddWebhookReply){}
-  
+
   // Removes some previously added webhook.
   rpc RemoveWebhook(RemoveWebhookRequest) returns(RemoveWebhookReply){}
 
@@ -162,7 +161,7 @@ message GetInfoReply{
   string root_path = 1;
   // The SLIP-77 master blinding key from which every keypair is derived.
   string master_blinding_key = 2;
-  // The list of info related to every account. 
+  // The list of info related to every account.
   repeated AccountInfo account_info = 3;
   // Network daemon running on
   string network = 4;
@@ -205,7 +204,7 @@ message WithdrawFeeRequest {
   // The number of millisatoshis per byte that should be paid for network fees.
   uint64 millisats_per_byte = 2;
   // The address to send the funds to.
-  string address = 3; 
+  string address = 3;
   // The asset to withdraw. To leave blank for LBTC. This is aimed for
   // those cases where the operator deposits funds with assets diffent from LBTC
   // into the Fee account and than needs to withdraw'em.
@@ -416,7 +415,7 @@ message GetMarketFragmenterBalanceReply {
 }
 
 message MarketFragmenterSplitFundsRequest {
-  // The market to which to deposit the fragmented funds owned by the market 
+  // The market to which to deposit the fragmented funds owned by the market
   // fragmenter.
   tdex.v1.Market market = 1;
   uint64 millisats_per_byte = 2;
@@ -563,7 +562,7 @@ message MarketInfo {
   tdex.v1.Fee fee = 2;
   // Whether the market is opened or closed.
   bool tradable = 3;
-  // The making strategy. 
+  // The making strategy.
   StrategyType strategy_type = 4;
   // The index of the wallet account.
   uint64 account_index = 5;
@@ -621,7 +620,7 @@ message TradeInfo {
   // The prices of the trade at request time.
   TradePrice price = 6;
   // The eventual tx url with blinders in case the trade is settled.
-  string tx_url = 7; 
+  string tx_url = 7;
   // The unix timestamp of the SwapRequest.
   uint64 request_time_unix = 8;
   // The unix timestamp SwapAccept.

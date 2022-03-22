@@ -1,0 +1,1007 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "tdex-daemon/v1/operator.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "Operator"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "AccountInfo": {
+      "type": "object",
+      "properties": {
+        "accountIndex": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The index of the wallet account."
+        },
+        "derivationPath": {
+          "type": "string",
+          "description": "The full derivation path."
+        },
+        "xpub": {
+          "type": "string",
+          "description": "The master public key."
+        },
+        "lastExternalDerived": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The index of the last external address derived."
+        },
+        "lastInternalDerived": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The index of the last internal address derived."
+        }
+      }
+    },
+    "ActionType": {
+      "type": "string",
+      "enum": [
+        "TRADE_SETTLED",
+        "ACCOUNT_LOW_BALANCE",
+        "ACCOUNT_WITHDRAW",
+        "ALL_ACTIONS"
+      ],
+      "default": "TRADE_SETTLED"
+    },
+    "AddWebhookReply": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the new webhook."
+        }
+      }
+    },
+    "BalanceInfo": {
+      "type": "object",
+      "properties": {
+        "totalBalance": {
+          "type": "string",
+          "format": "uint64",
+          "title": "The balance of the wallet"
+        },
+        "confirmedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "title": "The confirmed balance of a wallet(with \u003e= 1 confirmations)"
+        },
+        "unconfirmedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "title": "The unconfirmed balance of a wallet(with 0 confirmations)"
+        }
+      }
+    },
+    "ClaimFeeDepositsReply": {
+      "type": "object"
+    },
+    "ClaimMarketDepositsReply": {
+      "type": "object"
+    },
+    "CloseMarketReply": {
+      "type": "object"
+    },
+    "CustomPeriod": {
+      "type": "object",
+      "properties": {
+        "startDate": {
+          "type": "string",
+          "title": "start_date in RFC3339 format"
+        },
+        "endDate": {
+          "type": "string",
+          "title": "end_date in RFC3339 format"
+        }
+      }
+    },
+    "Deposit": {
+      "type": "object",
+      "properties": {
+        "utxo": {
+          "$ref": "#/definitions/UtxoInfo",
+          "description": "The utxo deposited."
+        },
+        "timestampUnix": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The timestamp of the deposit transaction in Unix format."
+        },
+        "timestampUtc": {
+          "type": "string",
+          "description": "The timestamp of the deposit transaction in UTC format."
+        }
+      }
+    },
+    "DropMarketReply": {
+      "type": "object"
+    },
+    "FeeInfo": {
+      "type": "object",
+      "properties": {
+        "tradeId": {
+          "type": "string",
+          "description": "The id of the trade."
+        },
+        "basisPoint": {
+          "type": "string",
+          "format": "int64",
+          "description": "The percentage fee applied to the trade."
+        },
+        "asset": {
+          "type": "string",
+          "description": "The asset in which fees are collected."
+        },
+        "percentageFeeAmount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The amount in satoshi of the percentage fee."
+        },
+        "fixedFeeAmount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The amount in satoshi of the fixed fee."
+        },
+        "marketPrice": {
+          "type": "number",
+          "format": "float",
+          "description": "The market price when the trade propoal was accepted."
+        }
+      }
+    },
+    "FragmenterSplitFundsReply": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "A sequence of string messages returned during the process."
+        }
+      }
+    },
+    "GetFeeAddressReply": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          },
+          "description": "The list of new confidential addresses and related private blinding keys."
+        }
+      }
+    },
+    "GetFeeBalanceReply": {
+      "type": "object",
+      "properties": {
+        "availableBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The balance of all unlocked unspents."
+        },
+        "totalBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The balance of all unspents included those locked."
+        }
+      }
+    },
+    "GetFeeFragmenterAddressReply": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          }
+        }
+      }
+    },
+    "GetFeeFragmenterBalanceReply": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/BalanceInfo"
+          },
+          "description": "The balance info (total, confirmed, unconfirmed) of the account grouped by\nasset."
+        }
+      }
+    },
+    "GetInfoReply": {
+      "type": "object",
+      "properties": {
+        "rootPath": {
+          "type": "string",
+          "description": "The root path of the wallet of the daemon."
+        },
+        "masterBlindingKey": {
+          "type": "string",
+          "description": "The SLIP-77 master blinding key from which every keypair is derived."
+        },
+        "accountInfo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AccountInfo"
+          },
+          "description": "The list of info related to every account."
+        },
+        "network": {
+          "type": "string",
+          "title": "Network daemon running on"
+        }
+      }
+    },
+    "GetMarketAddressReply": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          },
+          "description": "The list of new confidential addresses and related private blinding keys."
+        }
+      }
+    },
+    "GetMarketBalanceReply": {
+      "type": "object",
+      "properties": {
+        "availableBalance": {
+          "$ref": "#/definitions/v1Balance",
+          "description": "The balance of all unlocked unspents."
+        },
+        "totalBalance": {
+          "$ref": "#/definitions/v1Balance",
+          "description": "The balance of all unspents included those locked."
+        }
+      }
+    },
+    "GetMarketCollectedSwapFeesReply": {
+      "type": "object",
+      "properties": {
+        "collectedFees": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FeeInfo"
+          },
+          "description": "The list of info about the collected fees per each trade."
+        },
+        "totalCollectedFeesPerAsset": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "int64"
+          },
+          "description": "The map of total fees collected per asset."
+        }
+      }
+    },
+    "GetMarketFragmenterAddressReply": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          }
+        }
+      }
+    },
+    "GetMarketFragmenterBalanceReply": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/BalanceInfo"
+          },
+          "description": "The balance info (total, confirmed, unconfirmed) of the account grouped by\nasset."
+        }
+      }
+    },
+    "GetMarketInfoReply": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/MarketInfo"
+        }
+      }
+    },
+    "GetMarketReportReply": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "$ref": "#/definitions/MarketReport",
+          "title": "MarketReport holds info about volume and collected fees"
+        }
+      }
+    },
+    "ListDepositsReply": {
+      "type": "object",
+      "properties": {
+        "accountIndex": {
+          "type": "string",
+          "format": "int64",
+          "description": "The index of the wallet account."
+        },
+        "deposits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Deposit"
+          },
+          "description": "The list of info about the deposits."
+        }
+      }
+    },
+    "ListFeeAddressesReply": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          },
+          "description": "The list of derived confidential addresses and related private blinding\nkeys."
+        }
+      }
+    },
+    "ListFeeFragmenterAddressesReply": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          }
+        }
+      }
+    },
+    "ListMarketAddressesReply": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          },
+          "description": "The list of derived confidential addresses and related private blinding\nkeys."
+        }
+      }
+    },
+    "ListMarketFragmenterAddressesReply": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          }
+        }
+      }
+    },
+    "ListMarketsReply": {
+      "type": "object",
+      "properties": {
+        "markets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MarketInfo"
+          },
+          "description": "The list of info about all the created markets."
+        }
+      }
+    },
+    "ListTradesReply": {
+      "type": "object",
+      "properties": {
+        "trades": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TradeInfo"
+          },
+          "description": "The list of info about all trades or all trades for a market depending on\nthe request."
+        }
+      }
+    },
+    "ListUtxosReply": {
+      "type": "object",
+      "properties": {
+        "unspents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/UtxoInfo"
+          },
+          "description": "The list of all unspent utxos."
+        },
+        "spents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/UtxoInfo"
+          },
+          "description": "The list of all spent utxos."
+        },
+        "locks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/UtxoInfo"
+          },
+          "description": "The list of all currently locked utxos."
+        }
+      }
+    },
+    "ListWebhooksReply": {
+      "type": "object",
+      "properties": {
+        "webhookInfo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WebhookInfo"
+          },
+          "description": "The list of info about the webhooks regitered for an action."
+        }
+      }
+    },
+    "ListWithdrawalsReply": {
+      "type": "object",
+      "properties": {
+        "accountIndex": {
+          "type": "string",
+          "format": "int64",
+          "description": "The index of the wallet account."
+        },
+        "withdrawals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Withdrawal"
+          },
+          "description": "The list of info about the withdrawals."
+        }
+      }
+    },
+    "MarketCollectedFees": {
+      "type": "object",
+      "properties": {
+        "baseAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "quoteAmount": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "MarketInfo": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market",
+          "title": "The asset pair of the market"
+        },
+        "fee": {
+          "$ref": "#/definitions/v1Fee",
+          "title": "The percentage and fixed fees"
+        },
+        "tradable": {
+          "type": "boolean",
+          "description": "Whether the market is opened or closed."
+        },
+        "strategyType": {
+          "$ref": "#/definitions/StrategyType",
+          "description": "The making strategy."
+        },
+        "accountIndex": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The index of the wallet account."
+        },
+        "price": {
+          "$ref": "#/definitions/v1Price",
+          "description": "The current price in case the strategy is PLUGGABLE."
+        },
+        "balance": {
+          "$ref": "#/definitions/v1Balance",
+          "description": "The current unlocked balance."
+        }
+      }
+    },
+    "MarketReport": {
+      "type": "object",
+      "properties": {
+        "collectedFees": {
+          "$ref": "#/definitions/MarketCollectedFees"
+        },
+        "volume": {
+          "$ref": "#/definitions/MarketVolume"
+        }
+      }
+    },
+    "MarketVolume": {
+      "type": "object",
+      "properties": {
+        "baseVolume": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "quoteVolume": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "NewMarketReply": {
+      "type": "object"
+    },
+    "OpenMarketReply": {
+      "type": "object"
+    },
+    "Page": {
+      "type": "object",
+      "properties": {
+        "pageNumber": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of the page."
+        },
+        "pageSize": {
+          "type": "string",
+          "format": "int64",
+          "description": "The size of the page, ie the max length the returning list can have."
+        }
+      }
+    },
+    "PredefinedPeriod": {
+      "type": "string",
+      "enum": [
+        "NULL",
+        "LAST_HOUR",
+        "LAST_DAY",
+        "LAST_MONTH",
+        "LAST_3_MONTHS",
+        "YEAR_TO_DATE",
+        "ALL"
+      ],
+      "default": "NULL"
+    },
+    "ReloadUtxosReply": {
+      "type": "object"
+    },
+    "RemoveWebhookReply": {
+      "type": "object"
+    },
+    "StrategyType": {
+      "type": "string",
+      "enum": [
+        "PLUGGABLE",
+        "BALANCED",
+        "UNBALANCED"
+      ],
+      "default": "PLUGGABLE"
+    },
+    "SwapFailInfo": {
+      "type": "object",
+      "properties": {
+        "failureCode": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The error code."
+        },
+        "failureMessage": {
+          "type": "string",
+          "description": "The error message."
+        }
+      }
+    },
+    "SwapInfo": {
+      "type": "object",
+      "properties": {
+        "amountP": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The proposer's quantity."
+        },
+        "assetP": {
+          "type": "string",
+          "description": "The proposer's asset hash."
+        },
+        "amountR": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The responder's quantity."
+        },
+        "assetR": {
+          "type": "string",
+          "description": "The responder's asset hash."
+        }
+      }
+    },
+    "TimeRange": {
+      "type": "object",
+      "properties": {
+        "predefinedPeriod": {
+          "$ref": "#/definitions/PredefinedPeriod",
+          "title": "predefined time_period till now"
+        },
+        "customPeriod": {
+          "$ref": "#/definitions/CustomPeriod",
+          "title": "granular time range"
+        }
+      },
+      "description": "TimeRange is flexible type used to determine time span for which specific\napi will fetch data, either one of predefined_period or custom_period should be provided."
+    },
+    "TradeInfo": {
+      "type": "object",
+      "properties": {
+        "tradeId": {
+          "type": "string",
+          "description": "The id of the trade."
+        },
+        "status": {
+          "$ref": "#/definitions/TradeStatusInfo",
+          "description": "The info about the status of the trade."
+        },
+        "swapInfo": {
+          "$ref": "#/definitions/SwapInfo",
+          "description": "The info about the swap."
+        },
+        "failInfo": {
+          "$ref": "#/definitions/SwapFailInfo",
+          "description": "The info of an eventually failed swap."
+        },
+        "marketWithFee": {
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The collected fee on the current swap."
+        },
+        "price": {
+          "$ref": "#/definitions/TradePrice",
+          "description": "The prices of the trade at request time."
+        },
+        "txUrl": {
+          "type": "string",
+          "description": "The eventual tx url with blinders in case the trade is settled."
+        },
+        "requestTimeUnix": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The unix timestamp of the SwapRequest."
+        },
+        "acceptTimeUnix": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The unix timestamp SwapAccept."
+        },
+        "completeTimeUnix": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The unix timestamp of the SwapComplete."
+        },
+        "settleTimeUnix": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The unix timestamp of the settlement date."
+        },
+        "expiryTimeUnix": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The unix timestamp of the expiration date."
+        },
+        "requestTimeUtc": {
+          "type": "string",
+          "description": "The UTC timestamp of the SwapRequest."
+        },
+        "acceptTimeUtc": {
+          "type": "string",
+          "description": "The UTC timestamp of the SwapAccept."
+        },
+        "completeTimeUtc": {
+          "type": "string",
+          "description": "The UTC timestamp of the SwapComplete."
+        },
+        "settleTimeUtc": {
+          "type": "string",
+          "description": "The UTC timestamp of the settlement date."
+        },
+        "expiryTimeUtc": {
+          "type": "string",
+          "description": "The UTC timestamp of the expiration date."
+        }
+      }
+    },
+    "TradePrice": {
+      "type": "object",
+      "properties": {
+        "basePrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "TradeStatus": {
+      "type": "string",
+      "enum": [
+        "UNDEFINED",
+        "REQUEST",
+        "ACCEPT",
+        "COMPLETE",
+        "SETTLED",
+        "EXPIRED"
+      ],
+      "default": "UNDEFINED"
+    },
+    "TradeStatusInfo": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/TradeStatus",
+          "description": "The status of the trade."
+        },
+        "failed": {
+          "type": "boolean",
+          "description": "Whether it is failed in the current status."
+        }
+      }
+    },
+    "TxOutpoint": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "description": "The hash of the transaction."
+        },
+        "index": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The index of the output."
+        }
+      }
+    },
+    "UpdateMarketFeeReply": {
+      "type": "object",
+      "properties": {
+        "marketWithFee": {
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The market with updated fees."
+        }
+      }
+    },
+    "UpdateMarketPriceReply": {
+      "type": "object"
+    },
+    "UpdateMarketStrategyReply": {
+      "type": "object"
+    },
+    "UtxoInfo": {
+      "type": "object",
+      "properties": {
+        "outpoint": {
+          "$ref": "#/definitions/TxOutpoint",
+          "title": "The outpoint \u003chash, index\u003e"
+        },
+        "value": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The unblinded value."
+        },
+        "asset": {
+          "type": "string",
+          "description": "The unblinded asset."
+        }
+      }
+    },
+    "WebhookInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the webhook."
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "The endpoint of the external service to reach."
+        },
+        "isSecured": {
+          "type": "boolean",
+          "description": "Whether the outgoing requests are authenticated."
+        }
+      }
+    },
+    "WithdrawFeeFragmenterReply": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string"
+        }
+      }
+    },
+    "WithdrawFeeReply": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string",
+          "description": "The transaction hash in mempool/blockchain."
+        }
+      }
+    },
+    "WithdrawMarketFragmenterReply": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string"
+        }
+      }
+    },
+    "WithdrawMarketReply": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string",
+          "description": "The transaction hash in mempool/blockchain."
+        }
+      }
+    },
+    "Withdrawal": {
+      "type": "object",
+      "properties": {
+        "txId": {
+          "type": "string",
+          "description": "The hash of the transaction included in mempool/blockchain."
+        },
+        "balance": {
+          "$ref": "#/definitions/v1Balance",
+          "description": "The balance withdrawn from the wallet account."
+        },
+        "address": {
+          "type": "string",
+          "description": "The address where the funds have been sent."
+        },
+        "timestampUnix": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The timestamp of the withdrawal transaction in Unix format."
+        },
+        "timestampUtc": {
+          "type": "string",
+          "description": "The timestamp of the withdrawal transaction in UTC format."
+        }
+      }
+    },
+    "googlerpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "v1AddressWithBlindingKey": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "The confidential address encoded using a blech32 format."
+        },
+        "blinding": {
+          "type": "string",
+          "title": "The blinding private key for the given address encoded in hex format"
+        }
+      }
+    },
+    "v1Balance": {
+      "type": "object",
+      "properties": {
+        "baseAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "quoteAmount": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1Fee": {
+      "type": "object",
+      "properties": {
+        "basisPoint": {
+          "type": "string",
+          "format": "int64"
+        },
+        "fixed": {
+          "$ref": "#/definitions/v1Fixed"
+        }
+      },
+      "title": "Custom Types"
+    },
+    "v1Fixed": {
+      "type": "object",
+      "properties": {
+        "baseFee": {
+          "type": "string",
+          "format": "int64"
+        },
+        "quoteFee": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1Market": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string"
+        },
+        "quoteAsset": {
+          "type": "string"
+        }
+      }
+    },
+    "v1MarketWithFee": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        },
+        "fee": {
+          "$ref": "#/definitions/v1Fee"
+        }
+      }
+    },
+    "v1Price": {
+      "type": "object",
+      "properties": {
+        "basePriceDeprecated": {
+          "type": "number",
+          "format": "float"
+        },
+        "quotePriceDeprecated": {
+          "type": "number",
+          "format": "float"
+        },
+        "basePrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    }
+  }
+}

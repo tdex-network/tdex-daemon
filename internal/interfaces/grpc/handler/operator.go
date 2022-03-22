@@ -12,9 +12,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbw "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
+	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
+	pbtypes "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 )
 
 const readOnlyTx = true
@@ -831,9 +830,9 @@ func (o operatorHandler) getFeeFragmenterBalance(
 		return nil, err
 	}
 
-	balance := make(map[string]*pbw.BalanceInfo)
+	balance := make(map[string]*pb.BalanceInfo)
 	for a, b := range info {
-		balance[a] = &pbw.BalanceInfo{
+		balance[a] = &pb.BalanceInfo{
 			ConfirmedBalance:   b.ConfirmedBalance,
 			UnconfirmedBalance: b.UnconfirmedBalance,
 			TotalBalance:       b.TotalBalance,
@@ -937,9 +936,9 @@ func (o operatorHandler) getMarketFragmenterBalance(
 		return nil, err
 	}
 
-	balance := make(map[string]*pbw.BalanceInfo)
+	balance := make(map[string]*pb.BalanceInfo)
 	for a, b := range info {
-		balance[a] = &pbw.BalanceInfo{
+		balance[a] = &pb.BalanceInfo{
 			ConfirmedBalance:   b.ConfirmedBalance,
 			UnconfirmedBalance: b.UnconfirmedBalance,
 			TotalBalance:       b.TotalBalance,

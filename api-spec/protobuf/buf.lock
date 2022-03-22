@@ -2,12 +2,19 @@
 version: v1
 deps:
   - remote: buf.build
+    owner: acme
+    repository: paymentapis
+    branch: main
+    commit: 6e230f46113f498392c82d12b1a07b70
+    digest: b1-kURgwJ5BZi3AM654TkWMArHoktwHiQEDo_1goLg6tLE=
+    create_time: 2021-08-17T18:17:47.225022Z
+  - remote: buf.build
     owner: googleapis
     repository: googleapis
     branch: main
-    commit: 7629d38b907142a2a548d74ed881c985
-    digest: b1--eG0gevta1dMVe5atuK8ULEsADlEAZhz4lXEersQGTY=
-    create_time: 2022-03-15T15:05:03.884435Z
+    commit: 74ce074c5dc540d5b9bcd9992bb0c147
+    digest: b1-q1Y1o5WHb9MnNsBkGjMCRd7SUp_AGZp1LaIyjUVN65g=
+    create_time: 2022-03-19T15:03:27.862817Z
   - remote: buf.build
     owner: tdex-network
     repository: tdex-protobuf

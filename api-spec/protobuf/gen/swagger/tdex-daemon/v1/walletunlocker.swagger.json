@@ -1,0 +1,102 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "tdex-daemon/v1/walletunlocker.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "WalletUnlocker"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "ChangePasswordReply": {
+      "type": "object"
+    },
+    "GenSeedReply": {
+      "type": "object",
+      "properties": {
+        "seedMnemonic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "InitWalletReply": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "status": {
+          "$ref": "#/definitions/InitWalletReplyStatus"
+        },
+        "data": {
+          "type": "string"
+        }
+      }
+    },
+    "InitWalletReplyStatus": {
+      "type": "string",
+      "enum": [
+        "PROCESSING",
+        "DONE"
+      ],
+      "default": "PROCESSING"
+    },
+    "IsReadyReply": {
+      "type": "object",
+      "properties": {
+        "initialized": {
+          "type": "boolean"
+        },
+        "unlocked": {
+          "type": "boolean"
+        },
+        "synced": {
+          "type": "boolean"
+        }
+      }
+    },
+    "UnlockWalletReply": {
+      "type": "object"
+    },
+    "googlerpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    }
+  }
+}
