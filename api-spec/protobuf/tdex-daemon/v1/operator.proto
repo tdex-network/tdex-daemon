@@ -772,6 +772,7 @@ enum PredefinedPeriod {
   LAST_THREE_MONTHS = 5;
   YEAR_TO_DATE = 6;
   ALL = 7;
+  LAST_YEAR = 8;
 }
 
 enum TimeFrame {

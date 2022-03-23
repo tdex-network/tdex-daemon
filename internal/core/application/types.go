@@ -29,6 +29,7 @@ const (
 	LastThreeMonths
 	YearToDate
 	All
+	LastYear
 
 	StartYear = 2021
 )
@@ -524,8 +525,13 @@ func (t *TimeRange) Validate() error {
 type PredefinedPeriod int
 
 func (p *PredefinedPeriod) validate() error {
-	if *p > All {
-		return errors.New(fmt.Sprintf("PredefinedPeriod cant be > %v", All))
+	if *p > LastYear {
+		return errors.New(fmt.Sprintf("PredefinedPeriod cant be > %v", LastYear))
+	}
+
+	lastYear := time.Now().Year() - 1
+	if lastYear < StartYear {
+		return errors.New(fmt.Sprintf("no available data prior to year: %v", StartYear))
 	}
 
 	return nil
@@ -590,6 +596,11 @@ func (t *TimeRange) getStartAndEndTime(now time.Time) (startTime time.Time, endT
 			start = time.Date(y, time.January, 1, 0, 0, 0, 0, time.UTC)
 		case All:
 			start = time.Date(StartYear, time.January, 1, 0, 0, 0, 0, time.UTC)
+		case LastYear:
+			y, _, _ := now.Date()
+			startTime = time.Date(y-1, time.January, 1, 0, 0, 0, 0, time.UTC)
+			endTime = time.Date(y-1, time.December, 31, 23, 59, 59, 0, time.UTC)
+			return
 		}
 
 		startTime = start
