@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	"github.com/thanhpk/randstr"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -41,7 +41,7 @@ func Request(opts RequestOpts) ([]byte, error) {
 	if len(id) <= 0 {
 		id = randstr.Hex(8)
 	}
-	msg := &pb.SwapRequest{
+	msg := &tdexv1.SwapRequest{
 		Id: id,
 		// Proposer
 		AssetP:  opts.AssetToSend,

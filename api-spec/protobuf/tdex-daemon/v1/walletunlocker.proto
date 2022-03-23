@@ -1,5 +1,6 @@
 syntax = "proto3";
-option go_package = "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker";
+
+package tdex.daemon.v1;
 
 /**
  * Service for operators to manage the internal wallet of the daemon

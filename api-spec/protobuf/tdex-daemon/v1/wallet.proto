@@ -1,5 +1,6 @@
 syntax = "proto3";
-option go_package = "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet";
+
+package tdex.daemon.v1;
 
 /**
  * Service for Liquidity Providers to manage funds via wallet RPC

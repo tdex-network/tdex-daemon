@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/tdex-network/tdex-protobuf/generated/go/transport"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -21,10 +19,8 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
-	pbwalletunlocker "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
-	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 )
 
 const (
@@ -293,18 +289,18 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	walletUnlockerHandler := grpchandler.NewWalletUnlockerHandler(
 		s.opts.WalletUnlockerSvc, adminMacaroonPath,
 	)
-	pbwalletunlocker.RegisterWalletUnlockerServer(
+	daemonv1.RegisterWalletUnlockerServer(
 		grpcOperatorServer, walletUnlockerHandler,
 	)
 
 	transportHandler := grpchandler.NewTransportHandler()
-	transport.RegisterTransportServer(grpcOperatorServer, transportHandler)
+	tdexv1.RegisterTransportServer(grpcOperatorServer, transportHandler)
 
 	if !withUnlockerOnly {
 		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
 		operatorHandler := grpchandler.NewOperatorHandler(s.opts.OperatorSvc)
-		pboperator.RegisterOperatorServer(grpcOperatorServer, operatorHandler)
-		pbwallet.RegisterWalletServer(grpcOperatorServer, walletHandler)
+		daemonv1.RegisterOperatorServer(grpcOperatorServer, operatorHandler)
+		daemonv1.RegisterWalletServer(grpcOperatorServer, walletHandler)
 	}
 
 	// http Operator server for grpc-web
@@ -332,7 +328,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 			streamInterceptor,
 		)
 		tradeHandler := grpchandler.NewTraderHandler(s.opts.TradeSvc)
-		pbtrade.RegisterTradeServer(grpcTradeServer, tradeHandler)
+		tdexv1.RegisterTradeServer(grpcTradeServer, tradeHandler)
 		http1TradeServer, http2TradeServer = newGRPCWrappedServer(tradeAddr, grpcTradeServer)
 		muxTrade, err = serveMux(
 			tradeAddr, tradeTLSKey, tradeTLSCert,

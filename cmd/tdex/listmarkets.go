@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 
 	"github.com/urfave/cli/v2"
 )
@@ -22,7 +22,7 @@ func listMarketsAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	resp, err := client.ListMarkets(
-		context.Background(), &pboperator.ListMarketsRequest{},
+		context.Background(), &daemonv1.ListMarketsRequest{},
 	)
 	if err != nil {
 		return err

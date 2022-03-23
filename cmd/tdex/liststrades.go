@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 
 	"github.com/urfave/cli/v2"
 )
@@ -40,25 +40,25 @@ func listTradesAction(ctx *cli.Context) error {
 	allTrades := ctx.Bool("all")
 	pageNumber := ctx.Int64("page")
 	pageSize := ctx.Int64("page_size")
-	var page *pboperator.Page
+	var page *daemonv1.Page
 	if pageNumber > 0 {
-		page = &pboperator.Page{
+		page = &daemonv1.Page{
 			PageNumber: pageNumber,
 			PageSize:   pageSize,
 		}
 	}
 
 	baseAsset, quoteAsset, _ := getMarketFromState()
-	var market *pbtypes.Market
+	var market *tdexv1.Market
 	if baseAsset != "" && !allTrades {
-		market = &pbtypes.Market{
+		market = &tdexv1.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
 		}
 	}
 
 	resp, err := client.ListTrades(
-		context.Background(), &pboperator.ListTradesRequest{
+		context.Background(), &daemonv1.ListTradesRequest{
 			Market: market,
 			Page:   page,
 		},

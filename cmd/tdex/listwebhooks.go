@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 
 	"github.com/urfave/cli/v2"
 )
@@ -28,14 +28,14 @@ func listWebhooksAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	action, ok := pboperator.ActionType_value[ctx.String("action")]
+	action, ok := daemonv1.ActionType_value[ctx.String("action")]
 	if !ok {
 		return fmt.Errorf("unknown action type")
 	}
 
 	reply, err := client.ListWebhooks(
-		context.Background(), &pboperator.ListWebhooksRequest{
-			Action: pboperator.ActionType(action),
+		context.Background(), &daemonv1.ListWebhooksRequest{
+			Action: daemonv1.ActionType(action),
 		},
 	)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 
 	"github.com/urfave/cli/v2"
 )
@@ -25,7 +25,7 @@ func genSeedAction(ctx *cli.Context) error {
 
 	resp, err := client.GenSeed(
 		context.Background(),
-		&pbwallet.GenSeedRequest{},
+		&tdexv1.GenSeedRequest{},
 	)
 	if err != nil {
 		return err

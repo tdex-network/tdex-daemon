@@ -12,22 +12,21 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbw "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 )
 
 const readOnlyTx = true
 
 type operatorHandler struct {
-	pb.UnimplementedOperatorServer
+	daemonv1.UnimplementedOperatorServer
 	operatorSvc application.OperatorService
 }
 
 // NewOperatorHandler is a constructor function returning an protobuf OperatorServer.
 func NewOperatorHandler(
 	operatorSvc application.OperatorService,
-) pb.OperatorServer {
+) daemonv1.OperatorServer {
 	return newOperatorHandler(operatorSvc)
 }
 
@@ -40,266 +39,266 @@ func newOperatorHandler(
 }
 
 func (o operatorHandler) GetInfo(
-	ctx context.Context, req *pb.GetInfoRequest,
-) (*pb.GetInfoReply, error) {
+	ctx context.Context, req *daemonv1.GetInfoRequest,
+) (*daemonv1.GetInfoReply, error) {
 	return o.getInfo(ctx, req)
 }
 
 func (o operatorHandler) GetFeeAddress(
-	ctx context.Context, req *pb.GetFeeAddressRequest,
-) (*pb.GetFeeAddressReply, error) {
+	ctx context.Context, req *daemonv1.GetFeeAddressRequest,
+) (*daemonv1.GetFeeAddressReply, error) {
 	return o.getFeeAddress(ctx, req)
 }
 
 func (o operatorHandler) ListFeeAddresses(
-	ctx context.Context, req *pb.ListFeeAddressesRequest,
-) (*pb.ListFeeAddressesReply, error) {
+	ctx context.Context, req *daemonv1.ListFeeAddressesRequest,
+) (*daemonv1.ListFeeAddressesReply, error) {
 	return o.listFeeAddresses(ctx, req)
 }
 
 func (o operatorHandler) GetFeeBalance(
-	ctx context.Context, req *pb.GetFeeBalanceRequest,
-) (*pb.GetFeeBalanceReply, error) {
+	ctx context.Context, req *daemonv1.GetFeeBalanceRequest,
+) (*daemonv1.GetFeeBalanceReply, error) {
 	return o.getFeeBalance(ctx, req)
 }
 
 func (o operatorHandler) ClaimFeeDeposits(
-	ctx context.Context, req *pb.ClaimFeeDepositsRequest,
-) (*pb.ClaimFeeDepositsReply, error) {
+	ctx context.Context, req *daemonv1.ClaimFeeDepositsRequest,
+) (*daemonv1.ClaimFeeDepositsReply, error) {
 	return o.claimFeeDeposits(ctx, req)
 }
 
 func (o operatorHandler) WithdrawFee(
-	ctx context.Context, req *pb.WithdrawFeeRequest,
-) (*pb.WithdrawFeeReply, error) {
+	ctx context.Context, req *daemonv1.WithdrawFeeRequest,
+) (*daemonv1.WithdrawFeeReply, error) {
 	return o.withdrawFee(ctx, req)
 }
 
 func (o operatorHandler) NewMarket(
-	ctx context.Context, req *pb.NewMarketRequest,
-) (*pb.NewMarketReply, error) {
+	ctx context.Context, req *daemonv1.NewMarketRequest,
+) (*daemonv1.NewMarketReply, error) {
 	return o.newMarket(ctx, req)
 }
 
 func (o operatorHandler) GetMarketInfo(
-	ctx context.Context, req *pb.GetMarketInfoRequest,
-) (*pb.GetMarketInfoReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketInfoRequest,
+) (*daemonv1.GetMarketInfoReply, error) {
 	return o.getMarketInfo(ctx, req)
 }
 
 func (o operatorHandler) GetMarketAddress(
-	ctx context.Context, req *pb.GetMarketAddressRequest,
-) (*pb.GetMarketAddressReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketAddressRequest,
+) (*daemonv1.GetMarketAddressReply, error) {
 	return o.getMarketAddress(ctx, req)
 }
 
 func (o operatorHandler) ListMarketAddresses(
-	ctx context.Context, req *pb.ListMarketAddressesRequest,
-) (*pb.ListMarketAddressesReply, error) {
+	ctx context.Context, req *daemonv1.ListMarketAddressesRequest,
+) (*daemonv1.ListMarketAddressesReply, error) {
 	return o.listMarketAddresses(ctx, req)
 }
 
 func (o operatorHandler) GetMarketBalance(
-	ctx context.Context, req *pb.GetMarketBalanceRequest,
-) (*pb.GetMarketBalanceReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketBalanceRequest,
+) (*daemonv1.GetMarketBalanceReply, error) {
 	return o.getMarketBalance(ctx, req)
 }
 
 func (o operatorHandler) ClaimMarketDeposits(
-	ctx context.Context, req *pb.ClaimMarketDepositsRequest,
-) (*pb.ClaimMarketDepositsReply, error) {
+	ctx context.Context, req *daemonv1.ClaimMarketDepositsRequest,
+) (*daemonv1.ClaimMarketDepositsReply, error) {
 	return o.claimMarketDeposits(ctx, req)
 }
 
 func (o operatorHandler) OpenMarket(
-	ctx context.Context, req *pb.OpenMarketRequest,
-) (*pb.OpenMarketReply, error) {
+	ctx context.Context, req *daemonv1.OpenMarketRequest,
+) (*daemonv1.OpenMarketReply, error) {
 	return o.openMarket(ctx, req)
 }
 
 func (o operatorHandler) CloseMarket(
-	ctx context.Context, req *pb.CloseMarketRequest,
-) (*pb.CloseMarketReply, error) {
+	ctx context.Context, req *daemonv1.CloseMarketRequest,
+) (*daemonv1.CloseMarketReply, error) {
 	return o.closeMarket(ctx, req)
 }
 
 func (o operatorHandler) DropMarket(
-	ctx context.Context, req *pb.DropMarketRequest,
-) (*pb.DropMarketReply, error) {
+	ctx context.Context, req *daemonv1.DropMarketRequest,
+) (*daemonv1.DropMarketReply, error) {
 	return o.dropMarket(ctx, req)
 }
 
 func (o operatorHandler) GetMarketCollectedSwapFees(
-	ctx context.Context, req *pb.GetMarketCollectedSwapFeesRequest,
-) (*pb.GetMarketCollectedSwapFeesReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketCollectedSwapFeesRequest,
+) (*daemonv1.GetMarketCollectedSwapFeesReply, error) {
 	return o.getMarketCollectedSwapFees(ctx, req)
 }
 
 func (o operatorHandler) WithdrawMarket(
-	ctx context.Context, req *pb.WithdrawMarketRequest,
-) (*pb.WithdrawMarketReply, error) {
+	ctx context.Context, req *daemonv1.WithdrawMarketRequest,
+) (*daemonv1.WithdrawMarketReply, error) {
 	return o.withdrawMarket(ctx, req)
 }
 
 func (o operatorHandler) UpdateMarketPercentageFee(
-	ctx context.Context, req *pb.UpdateMarketPercentageFeeRequest,
-) (*pb.UpdateMarketFeeReply, error) {
+	ctx context.Context, req *daemonv1.UpdateMarketPercentageFeeRequest,
+) (*daemonv1.UpdateMarketFeeReply, error) {
 	return o.updateMarketPercentageFee(ctx, req)
 }
 
 func (o operatorHandler) UpdateMarketFixedFee(
-	ctx context.Context, req *pb.UpdateMarketFixedFeeRequest,
-) (*pb.UpdateMarketFeeReply, error) {
+	ctx context.Context, req *daemonv1.UpdateMarketFixedFeeRequest,
+) (*daemonv1.UpdateMarketFeeReply, error) {
 	return o.updateMarketFixedFee(ctx, req)
 }
 
 func (o operatorHandler) UpdateMarketPrice(
-	ctx context.Context, req *pb.UpdateMarketPriceRequest,
-) (*pb.UpdateMarketPriceReply, error) {
+	ctx context.Context, req *daemonv1.UpdateMarketPriceRequest,
+) (*daemonv1.UpdateMarketPriceReply, error) {
 	return o.updateMarketPrice(ctx, req)
 }
 
 func (o operatorHandler) UpdateMarketStrategy(
-	ctx context.Context, req *pb.UpdateMarketStrategyRequest,
-) (*pb.UpdateMarketStrategyReply, error) {
+	ctx context.Context, req *daemonv1.UpdateMarketStrategyRequest,
+) (*daemonv1.UpdateMarketStrategyReply, error) {
 	return o.updateMarketStrategy(ctx, req)
 }
 
 func (o operatorHandler) GetFeeFragmenterAddress(
-	ctx context.Context, req *pb.GetFeeFragmenterAddressRequest,
-) (*pb.GetFeeFragmenterAddressReply, error) {
+	ctx context.Context, req *daemonv1.GetFeeFragmenterAddressRequest,
+) (*daemonv1.GetFeeFragmenterAddressReply, error) {
 	return o.getFeeFragmenterAddress(ctx, req)
 }
 
 func (o operatorHandler) ListFeeFragmenterAddresses(
-	ctx context.Context, req *pb.ListFeeFragmenterAddressesRequest,
-) (*pb.ListFeeFragmenterAddressesReply, error) {
+	ctx context.Context, req *daemonv1.ListFeeFragmenterAddressesRequest,
+) (*daemonv1.ListFeeFragmenterAddressesReply, error) {
 	return o.listFeeFragmenterAddresses(ctx, req)
 }
 
 func (o operatorHandler) GetFeeFragmenterBalance(
 	ctx context.Context,
-	req *pb.GetFeeFragmenterBalanceRequest,
-) (*pb.GetFeeFragmenterBalanceReply, error) {
+	req *daemonv1.GetFeeFragmenterBalanceRequest,
+) (*daemonv1.GetFeeFragmenterBalanceReply, error) {
 	return o.getFeeFragmenterBalance(ctx, req)
 }
 
 func (o operatorHandler) FeeFragmenterSplitFunds(
-	req *pb.FeeFragmenterSplitFundsRequest, stream pb.Operator_FeeFragmenterSplitFundsServer,
+	req *daemonv1.FeeFragmenterSplitFundsRequest, stream daemonv1.Operator_FeeFragmenterSplitFundsServer,
 ) error {
 	return o.feeFragmenterSplitFunds(req, stream)
 }
 
 func (o operatorHandler) WithdrawFeeFragmenter(
-	ctx context.Context, req *pb.WithdrawFeeFragmenterRequest,
-) (*pb.WithdrawFeeFragmenterReply, error) {
+	ctx context.Context, req *daemonv1.WithdrawFeeFragmenterRequest,
+) (*daemonv1.WithdrawFeeFragmenterReply, error) {
 	return o.withdrawFeeFragmenter(ctx, req)
 }
 
 func (o operatorHandler) GetMarketFragmenterAddress(
-	ctx context.Context, req *pb.GetMarketFragmenterAddressRequest,
-) (*pb.GetMarketFragmenterAddressReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketFragmenterAddressRequest,
+) (*daemonv1.GetMarketFragmenterAddressReply, error) {
 	return o.getMarketFragmenterAddress(ctx, req)
 }
 
 func (o operatorHandler) ListMarketFragmenterAddresses(
-	ctx context.Context, req *pb.ListMarketFragmenterAddressesRequest,
-) (*pb.ListMarketFragmenterAddressesReply, error) {
+	ctx context.Context, req *daemonv1.ListMarketFragmenterAddressesRequest,
+) (*daemonv1.ListMarketFragmenterAddressesReply, error) {
 	return o.listMarketFragmenterAddresses(ctx, req)
 }
 
 func (o operatorHandler) GetMarketFragmenterBalance(
 	ctx context.Context,
-	req *pb.GetMarketFragmenterBalanceRequest,
-) (*pb.GetMarketFragmenterBalanceReply, error) {
+	req *daemonv1.GetMarketFragmenterBalanceRequest,
+) (*daemonv1.GetMarketFragmenterBalanceReply, error) {
 	return o.getMarketFragmenterBalance(ctx, req)
 }
 
 func (o operatorHandler) MarketFragmenterSplitFunds(
-	req *pb.MarketFragmenterSplitFundsRequest, stream pb.Operator_MarketFragmenterSplitFundsServer,
+	req *daemonv1.MarketFragmenterSplitFundsRequest, stream daemonv1.Operator_MarketFragmenterSplitFundsServer,
 ) error {
 	return o.marketFragmenterSplitFunds(req, stream)
 }
 
 func (o operatorHandler) WithdrawMarketFragmenter(
-	ctx context.Context, req *pb.WithdrawMarketFragmenterRequest,
-) (*pb.WithdrawMarketFragmenterReply, error) {
+	ctx context.Context, req *daemonv1.WithdrawMarketFragmenterRequest,
+) (*daemonv1.WithdrawMarketFragmenterReply, error) {
 	return o.withdrawMarketFragmenter(ctx, req)
 }
 
 func (o operatorHandler) ListMarkets(
-	ctx context.Context, req *pb.ListMarketsRequest,
-) (*pb.ListMarketsReply, error) {
+	ctx context.Context, req *daemonv1.ListMarketsRequest,
+) (*daemonv1.ListMarketsReply, error) {
 	return o.listMarkets(ctx, req)
 }
 
 func (o operatorHandler) ListTrades(
-	ctx context.Context, req *pb.ListTradesRequest,
-) (*pb.ListTradesReply, error) {
+	ctx context.Context, req *daemonv1.ListTradesRequest,
+) (*daemonv1.ListTradesReply, error) {
 	return o.listTrades(ctx, req)
 }
 
 func (o operatorHandler) ReloadUtxos(
-	ctx context.Context, rew *pb.ReloadUtxosRequest,
-) (*pb.ReloadUtxosReply, error) {
+	ctx context.Context, rew *daemonv1.ReloadUtxosRequest,
+) (*daemonv1.ReloadUtxosReply, error) {
 	if err := o.operatorSvc.ReloadUtxos(ctx); err != nil {
 		return nil, err
 	}
-	return &pb.ReloadUtxosReply{}, nil
+	return &daemonv1.ReloadUtxosReply{}, nil
 }
 
 func (o operatorHandler) ListUtxos(
-	ctx context.Context, req *pb.ListUtxosRequest,
-) (*pb.ListUtxosReply, error) {
+	ctx context.Context, req *daemonv1.ListUtxosRequest,
+) (*daemonv1.ListUtxosReply, error) {
 	return o.listUtxos(ctx, req)
 }
 
 func (o operatorHandler) AddWebhook(
-	ctx context.Context, req *pb.AddWebhookRequest,
-) (*pb.AddWebhookReply, error) {
+	ctx context.Context, req *daemonv1.AddWebhookRequest,
+) (*daemonv1.AddWebhookReply, error) {
 	return o.addWebhook(ctx, req)
 }
 
 func (o operatorHandler) RemoveWebhook(
-	ctx context.Context, req *pb.RemoveWebhookRequest,
-) (*pb.RemoveWebhookReply, error) {
+	ctx context.Context, req *daemonv1.RemoveWebhookRequest,
+) (*daemonv1.RemoveWebhookReply, error) {
 	return o.removeWebhook(ctx, req)
 }
 func (o operatorHandler) ListWebhooks(
-	ctx context.Context, req *pb.ListWebhooksRequest,
-) (*pb.ListWebhooksReply, error) {
+	ctx context.Context, req *daemonv1.ListWebhooksRequest,
+) (*daemonv1.ListWebhooksReply, error) {
 	return o.listWebhooks(ctx, req)
 }
 
 func (o operatorHandler) ListDeposits(
-	ctx context.Context, req *pb.ListDepositsRequest,
-) (*pb.ListDepositsReply, error) {
+	ctx context.Context, req *daemonv1.ListDepositsRequest,
+) (*daemonv1.ListDepositsReply, error) {
 	return o.listDeposits(ctx, req)
 }
 
 func (o operatorHandler) ListWithdrawals(
-	ctx context.Context, req *pb.ListWithdrawalsRequest,
-) (*pb.ListWithdrawalsReply, error) {
+	ctx context.Context, req *daemonv1.ListWithdrawalsRequest,
+) (*daemonv1.ListWithdrawalsReply, error) {
 	return o.listWithdrawals(ctx, req)
 }
 
 func (o operatorHandler) GetMarketReport(
 	ctx context.Context,
-	req *pb.GetMarketReportRequest,
-) (*pb.GetMarketReportReply, error) {
+	req *daemonv1.GetMarketReportRequest,
+) (*daemonv1.GetMarketReportReply, error) {
 	return o.getMarketReport(ctx, req)
 }
 
 func (o operatorHandler) getInfo(
-	ctx context.Context, _ *pb.GetInfoRequest,
-) (*pb.GetInfoReply, error) {
+	ctx context.Context, _ *daemonv1.GetInfoRequest,
+) (*daemonv1.GetInfoReply, error) {
 	info, err := o.operatorSvc.GetInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
-	accountInfo := make([]*pb.AccountInfo, 0, len(info.Accounts))
+	accountInfo := make([]*daemonv1.AccountInfo, 0, len(info.Accounts))
 	for _, a := range info.Accounts {
-		accountInfo = append(accountInfo, &pb.AccountInfo{
+		accountInfo = append(accountInfo, &daemonv1.AccountInfo{
 			AccountIndex:        a.Index,
 			DerivationPath:      a.DerivationPath,
 			Xpub:                a.Xpub,
@@ -307,7 +306,7 @@ func (o operatorHandler) getInfo(
 			LastInternalDerived: a.LastInternalDerived,
 		})
 	}
-	return &pb.GetInfoReply{
+	return &daemonv1.GetInfoReply{
 		RootPath:          info.RootPath,
 		MasterBlindingKey: info.MasterBlindingKey,
 		AccountInfo:       accountInfo,
@@ -316,8 +315,8 @@ func (o operatorHandler) getInfo(
 }
 
 func (o operatorHandler) getFeeAddress(
-	ctx context.Context, req *pb.GetFeeAddressRequest,
-) (*pb.GetFeeAddressReply, error) {
+	ctx context.Context, req *daemonv1.GetFeeAddressRequest,
+) (*daemonv1.GetFeeAddressReply, error) {
 	info, err := o.operatorSvc.GetFeeAddress(
 		ctx, int(req.GetNumOfAddresses()),
 	)
@@ -325,69 +324,69 @@ func (o operatorHandler) getFeeAddress(
 		return nil, err
 	}
 
-	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	addressesAndKeys := make([]*tdexv1.AddressWithBlindingKey, 0, len(info))
 	for _, d := range info {
-		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+		addressesAndKeys = append(addressesAndKeys, &tdexv1.AddressWithBlindingKey{
 			Address:  d.Address,
 			Blinding: d.BlindingKey,
 		})
 	}
 
-	return &pb.GetFeeAddressReply{
+	return &daemonv1.GetFeeAddressReply{
 		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
 func (o operatorHandler) listFeeAddresses(
-	ctx context.Context, _ *pb.ListFeeAddressesRequest,
-) (*pb.ListFeeAddressesReply, error) {
+	ctx context.Context, _ *daemonv1.ListFeeAddressesRequest,
+) (*daemonv1.ListFeeAddressesReply, error) {
 	info, err := o.operatorSvc.ListFeeExternalAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	addressesAndKeys := make([]*tdexv1.AddressWithBlindingKey, 0, len(info))
 	for _, i := range info {
-		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+		addressesAndKeys = append(addressesAndKeys, &tdexv1.AddressWithBlindingKey{
 			Address:  i.Address,
 			Blinding: i.BlindingKey,
 		})
 	}
 
-	return &pb.ListFeeAddressesReply{
+	return &daemonv1.ListFeeAddressesReply{
 		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
 func (o operatorHandler) getFeeBalance(
-	ctx context.Context, req *pb.GetFeeBalanceRequest,
-) (*pb.GetFeeBalanceReply, error) {
+	ctx context.Context, req *daemonv1.GetFeeBalanceRequest,
+) (*daemonv1.GetFeeBalanceReply, error) {
 	unlockedBalance, totalBalance, err := o.operatorSvc.GetFeeBalance(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.GetFeeBalanceReply{
+	return &daemonv1.GetFeeBalanceReply{
 		AvailableBalance: uint64(unlockedBalance),
 		TotalBalance:     uint64(totalBalance),
 	}, nil
 }
 
 func (o operatorHandler) claimFeeDeposits(
-	ctx context.Context, req *pb.ClaimFeeDepositsRequest,
-) (*pb.ClaimFeeDepositsReply, error) {
+	ctx context.Context, req *daemonv1.ClaimFeeDepositsRequest,
+) (*daemonv1.ClaimFeeDepositsReply, error) {
 	outpoints := parseOutpoints(req.GetOutpoints())
 
 	if err := o.operatorSvc.ClaimFeeDeposits(ctx, outpoints); err != nil {
 		return nil, err
 	}
 
-	return &pb.ClaimFeeDepositsReply{}, nil
+	return &daemonv1.ClaimFeeDepositsReply{}, nil
 }
 
 func (o operatorHandler) withdrawFee(
-	ctx context.Context, req *pb.WithdrawFeeRequest,
-) (*pb.WithdrawFeeReply, error) {
+	ctx context.Context, req *daemonv1.WithdrawFeeRequest,
+) (*daemonv1.WithdrawFeeReply, error) {
 	args := application.WithdrawFeeReq{
 		Amount:          req.GetAmount(),
 		Address:         req.GetAddress(),
@@ -404,12 +403,12 @@ func (o operatorHandler) withdrawFee(
 		return nil, err
 	}
 
-	return &pb.WithdrawFeeReply{Txid: hex.EncodeToString(txid)}, nil
+	return &daemonv1.WithdrawFeeReply{Txid: hex.EncodeToString(txid)}, nil
 }
 
 func (o operatorHandler) newMarket(
-	ctx context.Context, req *pb.NewMarketRequest,
-) (*pb.NewMarketReply, error) {
+	ctx context.Context, req *daemonv1.NewMarketRequest,
+) (*daemonv1.NewMarketReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -419,12 +418,12 @@ func (o operatorHandler) newMarket(
 		return nil, err
 	}
 
-	return &pb.NewMarketReply{}, nil
+	return &daemonv1.NewMarketReply{}, nil
 }
 
 func (o operatorHandler) getMarketInfo(
-	ctx context.Context, req *pb.GetMarketInfoRequest,
-) (*pb.GetMarketInfoReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketInfoRequest,
+) (*daemonv1.GetMarketInfoReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -437,27 +436,27 @@ func (o operatorHandler) getMarketInfo(
 	basePrice, _ := info.Price.BasePrice.BigFloat().Float64()
 	quotePrice, _ := info.Price.QuotePrice.BigFloat().Float64()
 
-	return &pb.GetMarketInfoReply{
-		Info: &pb.MarketInfo{
-			Market: &pbtypes.Market{
+	return &daemonv1.GetMarketInfoReply{
+		Info: &daemonv1.MarketInfo{
+			Market: &tdexv1.Market{
 				BaseAsset:  info.Market.BaseAsset,
 				QuoteAsset: info.Market.QuoteAsset,
 			},
-			Fee: &pbtypes.Fee{
+			Fee: &tdexv1.Fee{
 				BasisPoint: info.Fee.BasisPoint,
-				Fixed: &pbtypes.Fixed{
+				Fixed: &tdexv1.Fixed{
 					BaseFee:  info.Fee.FixedBaseFee,
 					QuoteFee: info.Fee.FixedQuoteFee,
 				},
 			},
 			Tradable:     info.Tradable,
-			StrategyType: pb.StrategyType(info.StrategyType),
+			StrategyType: daemonv1.StrategyType(info.StrategyType),
 			AccountIndex: info.AccountIndex,
-			Price: &pbtypes.Price{
+			Price: &tdexv1.Price{
 				BasePrice:  basePrice,
 				QuotePrice: quotePrice,
 			},
-			Balance: &pbtypes.Balance{
+			Balance: &tdexv1.Balance{
 				BaseAmount:  info.Balance.BaseAmount,
 				QuoteAmount: info.Balance.QuoteAmount,
 			},
@@ -466,8 +465,8 @@ func (o operatorHandler) getMarketInfo(
 }
 
 func (o operatorHandler) getMarketAddress(
-	ctx context.Context, req *pb.GetMarketAddressRequest,
-) (*pb.GetMarketAddressReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketAddressRequest,
+) (*daemonv1.GetMarketAddressReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -480,22 +479,22 @@ func (o operatorHandler) getMarketAddress(
 		return nil, err
 	}
 
-	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	addressesAndKeys := make([]*tdexv1.AddressWithBlindingKey, 0, len(info))
 	for _, d := range info {
-		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+		addressesAndKeys = append(addressesAndKeys, &tdexv1.AddressWithBlindingKey{
 			Address:  d.Address,
 			Blinding: d.BlindingKey,
 		})
 	}
 
-	return &pb.GetMarketAddressReply{
+	return &daemonv1.GetMarketAddressReply{
 		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
 func (o operatorHandler) listMarketAddresses(
-	ctx context.Context, req *pb.ListMarketAddressesRequest,
-) (*pb.ListMarketAddressesReply, error) {
+	ctx context.Context, req *daemonv1.ListMarketAddressesRequest,
+) (*daemonv1.ListMarketAddressesReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -506,22 +505,22 @@ func (o operatorHandler) listMarketAddresses(
 		return nil, err
 	}
 
-	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	addressesAndKeys := make([]*tdexv1.AddressWithBlindingKey, 0, len(info))
 	for _, i := range info {
-		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+		addressesAndKeys = append(addressesAndKeys, &tdexv1.AddressWithBlindingKey{
 			Address:  i.Address,
 			Blinding: i.BlindingKey,
 		})
 	}
 
-	return &pb.ListMarketAddressesReply{
+	return &daemonv1.ListMarketAddressesReply{
 		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
 func (o operatorHandler) getMarketBalance(
-	ctx context.Context, req *pb.GetMarketBalanceRequest,
-) (*pb.GetMarketBalanceReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketBalanceRequest,
+) (*daemonv1.GetMarketBalanceReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -534,12 +533,12 @@ func (o operatorHandler) getMarketBalance(
 		return nil, err
 	}
 
-	return &pb.GetMarketBalanceReply{
-		AvailableBalance: &pbtypes.Balance{
+	return &daemonv1.GetMarketBalanceReply{
+		AvailableBalance: &tdexv1.Balance{
 			BaseAmount:  unlockedBalance.BaseAmount,
 			QuoteAmount: unlockedBalance.QuoteAmount,
 		},
-		TotalBalance: &pbtypes.Balance{
+		TotalBalance: &tdexv1.Balance{
 			BaseAmount:  totalBalance.BaseAmount,
 			QuoteAmount: totalBalance.QuoteAmount,
 		},
@@ -548,8 +547,8 @@ func (o operatorHandler) getMarketBalance(
 
 func (o operatorHandler) claimMarketDeposits(
 	ctx context.Context,
-	req *pb.ClaimMarketDepositsRequest,
-) (*pb.ClaimMarketDepositsReply, error) {
+	req *daemonv1.ClaimMarketDepositsRequest,
+) (*daemonv1.ClaimMarketDepositsReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -562,12 +561,12 @@ func (o operatorHandler) claimMarketDeposits(
 		return nil, err
 	}
 
-	return &pb.ClaimMarketDepositsReply{}, nil
+	return &daemonv1.ClaimMarketDepositsReply{}, nil
 }
 
 func (o operatorHandler) openMarket(
-	ctx context.Context, req *pb.OpenMarketRequest,
-) (*pb.OpenMarketReply, error) {
+	ctx context.Context, req *daemonv1.OpenMarketRequest,
+) (*daemonv1.OpenMarketReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -577,12 +576,12 @@ func (o operatorHandler) openMarket(
 		return nil, err
 	}
 
-	return &pb.OpenMarketReply{}, nil
+	return &daemonv1.OpenMarketReply{}, nil
 }
 
 func (o operatorHandler) closeMarket(
-	ctx context.Context, req *pb.CloseMarketRequest,
-) (*pb.CloseMarketReply, error) {
+	ctx context.Context, req *daemonv1.CloseMarketRequest,
+) (*daemonv1.CloseMarketReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -592,12 +591,12 @@ func (o operatorHandler) closeMarket(
 		return nil, err
 	}
 
-	return &pb.CloseMarketReply{}, nil
+	return &daemonv1.CloseMarketReply{}, nil
 }
 
 func (o operatorHandler) dropMarket(
-	ctx context.Context, req *pb.DropMarketRequest,
-) (*pb.DropMarketReply, error) {
+	ctx context.Context, req *daemonv1.DropMarketRequest,
+) (*daemonv1.DropMarketReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -607,12 +606,12 @@ func (o operatorHandler) dropMarket(
 		return nil, err
 	}
 
-	return &pb.DropMarketReply{}, nil
+	return &daemonv1.DropMarketReply{}, nil
 }
 
 func (o operatorHandler) getMarketCollectedSwapFees(
-	ctx context.Context, req *pb.GetMarketCollectedSwapFeesRequest,
-) (*pb.GetMarketCollectedSwapFeesReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketCollectedSwapFeesRequest,
+) (*daemonv1.GetMarketCollectedSwapFeesReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -624,10 +623,10 @@ func (o operatorHandler) getMarketCollectedSwapFees(
 		return nil, err
 	}
 
-	collectedFees := make([]*pb.FeeInfo, 0)
+	collectedFees := make([]*daemonv1.FeeInfo, 0)
 	for _, fee := range report.CollectedFees {
 		marketPrice, _ := fee.MarketPrice.BigFloat().Float32()
-		collectedFees = append(collectedFees, &pb.FeeInfo{
+		collectedFees = append(collectedFees, &daemonv1.FeeInfo{
 			TradeId:             fee.TradeID,
 			BasisPoint:          fee.BasisPoint,
 			Asset:               fee.Asset,
@@ -637,15 +636,15 @@ func (o operatorHandler) getMarketCollectedSwapFees(
 		})
 	}
 
-	return &pb.GetMarketCollectedSwapFeesReply{
+	return &daemonv1.GetMarketCollectedSwapFeesReply{
 		CollectedFees:              collectedFees,
 		TotalCollectedFeesPerAsset: report.TotalCollectedFeesPerAsset,
 	}, nil
 }
 
 func (o operatorHandler) withdrawMarket(
-	ctx context.Context, req *pb.WithdrawMarketRequest,
-) (*pb.WithdrawMarketReply, error) {
+	ctx context.Context, req *daemonv1.WithdrawMarketRequest,
+) (*daemonv1.WithdrawMarketReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -668,12 +667,12 @@ func (o operatorHandler) withdrawMarket(
 		return nil, err
 	}
 
-	return &pb.WithdrawMarketReply{Txid: hex.EncodeToString(txid)}, nil
+	return &daemonv1.WithdrawMarketReply{Txid: hex.EncodeToString(txid)}, nil
 }
 
 func (o operatorHandler) updateMarketPercentageFee(
-	ctx context.Context, req *pb.UpdateMarketPercentageFeeRequest,
-) (*pb.UpdateMarketFeeReply, error) {
+	ctx context.Context, req *daemonv1.UpdateMarketPercentageFeeRequest,
+) (*daemonv1.UpdateMarketFeeReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -690,15 +689,15 @@ func (o operatorHandler) updateMarketPercentageFee(
 		return nil, err
 	}
 
-	return &pb.UpdateMarketFeeReply{
-		MarketWithFee: &pbtypes.MarketWithFee{
-			Market: &pbtypes.Market{
+	return &daemonv1.UpdateMarketFeeReply{
+		MarketWithFee: &tdexv1.MarketWithFee{
+			Market: &tdexv1.Market{
 				BaseAsset:  result.BaseAsset,
 				QuoteAsset: result.QuoteAsset,
 			},
-			Fee: &pbtypes.Fee{
+			Fee: &tdexv1.Fee{
 				BasisPoint: result.Fee.BasisPoint,
-				Fixed: &pbtypes.Fixed{
+				Fixed: &tdexv1.Fixed{
 					BaseFee:  result.FixedBaseFee,
 					QuoteFee: result.FixedQuoteFee,
 				},
@@ -708,8 +707,8 @@ func (o operatorHandler) updateMarketPercentageFee(
 }
 
 func (o operatorHandler) updateMarketFixedFee(
-	ctx context.Context, req *pb.UpdateMarketFixedFeeRequest,
-) (*pb.UpdateMarketFeeReply, error) {
+	ctx context.Context, req *daemonv1.UpdateMarketFixedFeeRequest,
+) (*daemonv1.UpdateMarketFeeReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -722,15 +721,15 @@ func (o operatorHandler) updateMarketFixedFee(
 		return nil, err
 	}
 
-	return &pb.UpdateMarketFeeReply{
-		MarketWithFee: &pbtypes.MarketWithFee{
-			Market: &pbtypes.Market{
+	return &daemonv1.UpdateMarketFeeReply{
+		MarketWithFee: &tdexv1.MarketWithFee{
+			Market: &tdexv1.Market{
 				BaseAsset:  result.BaseAsset,
 				QuoteAsset: result.QuoteAsset,
 			},
-			Fee: &pbtypes.Fee{
+			Fee: &tdexv1.Fee{
 				BasisPoint: result.BasisPoint,
-				Fixed: &pbtypes.Fixed{
+				Fixed: &tdexv1.Fixed{
 					BaseFee:  result.FixedBaseFee,
 					QuoteFee: result.FixedQuoteFee,
 				},
@@ -740,8 +739,8 @@ func (o operatorHandler) updateMarketFixedFee(
 }
 
 func (o operatorHandler) updateMarketPrice(
-	ctx context.Context, req *pb.UpdateMarketPriceRequest,
-) (*pb.UpdateMarketPriceReply, error) {
+	ctx context.Context, req *daemonv1.UpdateMarketPriceRequest,
+) (*daemonv1.UpdateMarketPriceReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -756,12 +755,12 @@ func (o operatorHandler) updateMarketPrice(
 		return nil, err
 	}
 
-	return &pb.UpdateMarketPriceReply{}, nil
+	return &daemonv1.UpdateMarketPriceReply{}, nil
 }
 
 func (o operatorHandler) updateMarketStrategy(
-	ctx context.Context, req *pb.UpdateMarketStrategyRequest,
-) (*pb.UpdateMarketStrategyReply, error) {
+	ctx context.Context, req *daemonv1.UpdateMarketStrategyRequest,
+) (*daemonv1.UpdateMarketStrategyReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -776,12 +775,12 @@ func (o operatorHandler) updateMarketStrategy(
 		return nil, err
 	}
 
-	return &pb.UpdateMarketStrategyReply{}, nil
+	return &daemonv1.UpdateMarketStrategyReply{}, nil
 }
 
 func (o operatorHandler) getFeeFragmenterAddress(
-	ctx context.Context, req *pb.GetFeeFragmenterAddressRequest,
-) (*pb.GetFeeFragmenterAddressReply, error) {
+	ctx context.Context, req *daemonv1.GetFeeFragmenterAddressRequest,
+) (*daemonv1.GetFeeFragmenterAddressReply, error) {
 	info, err := o.operatorSvc.GetFeeFragmenterAddress(
 		ctx, int(req.GetNumOfAddresses()),
 	)
@@ -789,65 +788,65 @@ func (o operatorHandler) getFeeFragmenterAddress(
 		return nil, err
 	}
 
-	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	addressesAndKeys := make([]*tdexv1.AddressWithBlindingKey, 0, len(info))
 	for _, d := range info {
-		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+		addressesAndKeys = append(addressesAndKeys, &tdexv1.AddressWithBlindingKey{
 			Address:  d.Address,
 			Blinding: d.BlindingKey,
 		})
 	}
 
-	return &pb.GetFeeFragmenterAddressReply{
+	return &daemonv1.GetFeeFragmenterAddressReply{
 		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
 func (o operatorHandler) listFeeFragmenterAddresses(
-	ctx context.Context, req *pb.ListFeeFragmenterAddressesRequest,
-) (*pb.ListFeeFragmenterAddressesReply, error) {
+	ctx context.Context, req *daemonv1.ListFeeFragmenterAddressesRequest,
+) (*daemonv1.ListFeeFragmenterAddressesReply, error) {
 	info, err := o.operatorSvc.ListFeeFragmenterExternalAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	addressesAndKeys := make([]*tdexv1.AddressWithBlindingKey, 0, len(info))
 	for _, d := range info {
-		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+		addressesAndKeys = append(addressesAndKeys, &tdexv1.AddressWithBlindingKey{
 			Address:  d.Address,
 			Blinding: d.BlindingKey,
 		})
 	}
 
-	return &pb.ListFeeFragmenterAddressesReply{
+	return &daemonv1.ListFeeFragmenterAddressesReply{
 		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
 func (o operatorHandler) getFeeFragmenterBalance(
-	ctx context.Context, req *pb.GetFeeFragmenterBalanceRequest,
-) (*pb.GetFeeFragmenterBalanceReply, error) {
+	ctx context.Context, req *daemonv1.GetFeeFragmenterBalanceRequest,
+) (*daemonv1.GetFeeFragmenterBalanceReply, error) {
 	info, err := o.operatorSvc.GetFeeFragmenterBalance(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	balance := make(map[string]*pbw.BalanceInfo)
+	balance := make(map[string]*daemonv1.BalanceInfo)
 	for a, b := range info {
-		balance[a] = &pbw.BalanceInfo{
+		balance[a] = &daemonv1.BalanceInfo{
 			ConfirmedBalance:   b.ConfirmedBalance,
 			UnconfirmedBalance: b.UnconfirmedBalance,
 			TotalBalance:       b.TotalBalance,
 		}
 	}
 
-	return &pb.GetFeeFragmenterBalanceReply{
+	return &daemonv1.GetFeeFragmenterBalanceReply{
 		Balance: balance,
 	}, nil
 }
 
 func (o operatorHandler) feeFragmenterSplitFunds(
-	req *pb.FeeFragmenterSplitFundsRequest,
-	stream pb.Operator_FeeFragmenterSplitFundsServer,
+	req *daemonv1.FeeFragmenterSplitFundsRequest,
+	stream daemonv1.Operator_FeeFragmenterSplitFundsServer,
 ) error {
 	chReplies := make(chan application.FragmenterSplitFundsReply)
 	go o.operatorSvc.FeeFragmenterSplitFunds(
@@ -860,7 +859,7 @@ func (o operatorHandler) feeFragmenterSplitFunds(
 			return reply.Err
 		}
 
-		if err := stream.Send(&pb.FragmenterSplitFundsReply{
+		if err := stream.Send(&daemonv1.FragmenterSplitFundsReply{
 			Message: reply.Msg,
 		}); err != nil {
 			return err
@@ -871,8 +870,8 @@ func (o operatorHandler) feeFragmenterSplitFunds(
 }
 
 func (o operatorHandler) withdrawFeeFragmenter(
-	ctx context.Context, req *pb.WithdrawFeeFragmenterRequest,
-) (*pb.WithdrawFeeFragmenterReply, error) {
+	ctx context.Context, req *daemonv1.WithdrawFeeFragmenterRequest,
+) (*daemonv1.WithdrawFeeFragmenterReply, error) {
 	txid, err := o.operatorSvc.WithdrawFeeFragmenterFunds(
 		ctx, req.GetAddress(), req.GetMillisatsPerByte(),
 	)
@@ -880,14 +879,14 @@ func (o operatorHandler) withdrawFeeFragmenter(
 		return nil, err
 	}
 
-	return &pb.WithdrawFeeFragmenterReply{
+	return &daemonv1.WithdrawFeeFragmenterReply{
 		Txid: txid,
 	}, nil
 }
 
 func (o operatorHandler) getMarketFragmenterAddress(
-	ctx context.Context, req *pb.GetMarketFragmenterAddressRequest,
-) (*pb.GetMarketFragmenterAddressReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketFragmenterAddressRequest,
+) (*daemonv1.GetMarketFragmenterAddressReply, error) {
 	info, err := o.operatorSvc.GetMarketFragmenterAddress(
 		ctx, int(req.GetNumOfAddresses()),
 	)
@@ -895,65 +894,65 @@ func (o operatorHandler) getMarketFragmenterAddress(
 		return nil, err
 	}
 
-	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	addressesAndKeys := make([]*tdexv1.AddressWithBlindingKey, 0, len(info))
 	for _, d := range info {
-		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+		addressesAndKeys = append(addressesAndKeys, &tdexv1.AddressWithBlindingKey{
 			Address:  d.Address,
 			Blinding: d.BlindingKey,
 		})
 	}
 
-	return &pb.GetMarketFragmenterAddressReply{
+	return &daemonv1.GetMarketFragmenterAddressReply{
 		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
 func (o operatorHandler) listMarketFragmenterAddresses(
-	ctx context.Context, req *pb.ListMarketFragmenterAddressesRequest,
-) (*pb.ListMarketFragmenterAddressesReply, error) {
+	ctx context.Context, req *daemonv1.ListMarketFragmenterAddressesRequest,
+) (*daemonv1.ListMarketFragmenterAddressesReply, error) {
 	info, err := o.operatorSvc.ListMarketFragmenterExternalAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	addressesAndKeys := make([]*pbtypes.AddressWithBlindingKey, 0, len(info))
+	addressesAndKeys := make([]*tdexv1.AddressWithBlindingKey, 0, len(info))
 	for _, d := range info {
-		addressesAndKeys = append(addressesAndKeys, &pbtypes.AddressWithBlindingKey{
+		addressesAndKeys = append(addressesAndKeys, &tdexv1.AddressWithBlindingKey{
 			Address:  d.Address,
 			Blinding: d.BlindingKey,
 		})
 	}
 
-	return &pb.ListMarketFragmenterAddressesReply{
+	return &daemonv1.ListMarketFragmenterAddressesReply{
 		AddressWithBlindingKey: addressesAndKeys,
 	}, nil
 }
 
 func (o operatorHandler) getMarketFragmenterBalance(
-	ctx context.Context, req *pb.GetMarketFragmenterBalanceRequest,
-) (*pb.GetMarketFragmenterBalanceReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketFragmenterBalanceRequest,
+) (*daemonv1.GetMarketFragmenterBalanceReply, error) {
 	info, err := o.operatorSvc.GetMarketFragmenterBalance(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	balance := make(map[string]*pbw.BalanceInfo)
+	balance := make(map[string]*daemonv1.BalanceInfo)
 	for a, b := range info {
-		balance[a] = &pbw.BalanceInfo{
+		balance[a] = &daemonv1.BalanceInfo{
 			ConfirmedBalance:   b.ConfirmedBalance,
 			UnconfirmedBalance: b.UnconfirmedBalance,
 			TotalBalance:       b.TotalBalance,
 		}
 	}
 
-	return &pb.GetMarketFragmenterBalanceReply{
+	return &daemonv1.GetMarketFragmenterBalanceReply{
 		Balance: balance,
 	}, nil
 }
 
 func (o operatorHandler) marketFragmenterSplitFunds(
-	req *pb.MarketFragmenterSplitFundsRequest,
-	stream pb.Operator_MarketFragmenterSplitFundsServer,
+	req *daemonv1.MarketFragmenterSplitFundsRequest,
+	stream daemonv1.Operator_MarketFragmenterSplitFundsServer,
 ) error {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
@@ -970,7 +969,7 @@ func (o operatorHandler) marketFragmenterSplitFunds(
 			return reply.Err
 		}
 
-		if err := stream.Send(&pb.FragmenterSplitFundsReply{
+		if err := stream.Send(&daemonv1.FragmenterSplitFundsReply{
 			Message: reply.Msg,
 		}); err != nil {
 			return err
@@ -981,8 +980,8 @@ func (o operatorHandler) marketFragmenterSplitFunds(
 }
 
 func (o operatorHandler) withdrawMarketFragmenter(
-	ctx context.Context, req *pb.WithdrawMarketFragmenterRequest,
-) (*pb.WithdrawMarketFragmenterReply, error) {
+	ctx context.Context, req *daemonv1.WithdrawMarketFragmenterRequest,
+) (*daemonv1.WithdrawMarketFragmenterReply, error) {
 	txid, err := o.operatorSvc.WithdrawMarketFragmenterFunds(
 		ctx, req.GetAddress(), req.GetMillisatsPerByte(),
 	)
@@ -990,14 +989,14 @@ func (o operatorHandler) withdrawMarketFragmenter(
 		return nil, err
 	}
 
-	return &pb.WithdrawMarketFragmenterReply{
+	return &daemonv1.WithdrawMarketFragmenterReply{
 		Txid: txid,
 	}, nil
 }
 
 func (o operatorHandler) listTrades(
-	ctx context.Context, req *pb.ListTradesRequest,
-) (*pb.ListTradesReply, error) {
+	ctx context.Context, req *daemonv1.ListTradesRequest,
+) (*daemonv1.ListTradesReply, error) {
 	page := parsePage(req.GetPage())
 
 	var tradeInfo []application.TradeInfo
@@ -1015,31 +1014,31 @@ func (o operatorHandler) listTrades(
 		return nil, err
 	}
 
-	pbTradeInfo := make([]*pb.TradeInfo, 0, len(tradeInfo))
+	pbTradeInfo := make([]*daemonv1.TradeInfo, 0, len(tradeInfo))
 	for _, info := range tradeInfo {
 		basePrice, _ := info.Price.BasePrice.Float64()
 		quotePrice, _ := info.Price.QuotePrice.Float64()
 
-		pbInfo := &pb.TradeInfo{
+		pbInfo := &daemonv1.TradeInfo{
 			TradeId: info.ID,
-			Status: &pb.TradeStatusInfo{
-				Status: pb.TradeStatus(info.Status.Code),
+			Status: &daemonv1.TradeStatusInfo{
+				Status: daemonv1.TradeStatus(info.Status.Code),
 				Failed: info.Status.Failed,
 			},
-			MarketWithFee: &pbtypes.MarketWithFee{
-				Market: &pbtypes.Market{
+			MarketWithFee: &tdexv1.MarketWithFee{
+				Market: &tdexv1.Market{
 					BaseAsset:  info.MarketWithFee.BaseAsset,
 					QuoteAsset: info.MarketWithFee.QuoteAsset,
 				},
-				Fee: &pbtypes.Fee{
+				Fee: &tdexv1.Fee{
 					BasisPoint: info.MarketWithFee.BasisPoint,
-					Fixed: &pbtypes.Fixed{
+					Fixed: &tdexv1.Fixed{
 						BaseFee:  info.MarketWithFee.FixedBaseFee,
 						QuoteFee: info.MarketWithFee.FixedQuoteFee,
 					},
 				},
 			},
-			Price: &pb.TradePrice{
+			Price: &daemonv1.TradePrice{
 				BasePrice:  basePrice,
 				QuotePrice: quotePrice,
 			},
@@ -1053,7 +1052,7 @@ func (o operatorHandler) listTrades(
 
 		swapInfoEmpty := info.SwapInfo == application.SwapInfo{}
 		if !swapInfoEmpty {
-			pbInfo.SwapInfo = &pb.SwapInfo{
+			pbInfo.SwapInfo = &daemonv1.SwapInfo{
 				AssetP:  info.SwapInfo.AssetP,
 				AmountP: info.SwapInfo.AmountP,
 				AssetR:  info.SwapInfo.AssetR,
@@ -1063,7 +1062,7 @@ func (o operatorHandler) listTrades(
 
 		failInfoEmpty := info.SwapFailInfo == application.SwapFailInfo{}
 		if !failInfoEmpty {
-			pbInfo.FailInfo = &pb.SwapFailInfo{
+			pbInfo.FailInfo = &daemonv1.SwapFailInfo{
 				FailureCode:    uint32(info.SwapFailInfo.Code),
 				FailureMessage: info.SwapFailInfo.Message,
 			}
@@ -1088,55 +1087,55 @@ func (o operatorHandler) listTrades(
 		pbTradeInfo = append(pbTradeInfo, pbInfo)
 	}
 
-	return &pb.ListTradesReply{Trades: pbTradeInfo}, nil
+	return &daemonv1.ListTradesReply{Trades: pbTradeInfo}, nil
 }
 
 func (o operatorHandler) listMarkets(
-	ctx context.Context, req *pb.ListMarketsRequest,
-) (*pb.ListMarketsReply, error) {
+	ctx context.Context, req *daemonv1.ListMarketsRequest,
+) (*daemonv1.ListMarketsReply, error) {
 	marketInfos, err := o.operatorSvc.ListMarkets(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	pbMarketInfos := make([]*pb.MarketInfo, 0, len(marketInfos))
+	pbMarketInfos := make([]*daemonv1.MarketInfo, 0, len(marketInfos))
 
 	for _, marketInfo := range marketInfos {
 		basePrice, _ := marketInfo.Price.BasePrice.BigFloat().Float64()
 		quotePrice, _ := marketInfo.Price.QuotePrice.BigFloat().Float64()
 
-		pbMarketInfos = append(pbMarketInfos, &pb.MarketInfo{
-			Market: &pbtypes.Market{
+		pbMarketInfos = append(pbMarketInfos, &daemonv1.MarketInfo{
+			Market: &tdexv1.Market{
 				BaseAsset:  marketInfo.Market.BaseAsset,
 				QuoteAsset: marketInfo.Market.QuoteAsset,
 			},
-			Fee: &pbtypes.Fee{
+			Fee: &tdexv1.Fee{
 				BasisPoint: marketInfo.Fee.BasisPoint,
-				Fixed: &pbtypes.Fixed{
+				Fixed: &tdexv1.Fixed{
 					BaseFee:  marketInfo.Fee.FixedBaseFee,
 					QuoteFee: marketInfo.Fee.FixedQuoteFee,
 				},
 			},
 			Tradable:     marketInfo.Tradable,
-			StrategyType: pb.StrategyType(marketInfo.StrategyType),
+			StrategyType: daemonv1.StrategyType(marketInfo.StrategyType),
 			AccountIndex: marketInfo.AccountIndex,
-			Price: &pbtypes.Price{
+			Price: &tdexv1.Price{
 				BasePrice:  basePrice,
 				QuotePrice: quotePrice,
 			},
-			Balance: &pbtypes.Balance{
+			Balance: &tdexv1.Balance{
 				BaseAmount:  marketInfo.Balance.BaseAmount,
 				QuoteAmount: marketInfo.Balance.QuoteAmount,
 			},
 		})
 	}
 
-	return &pb.ListMarketsReply{Markets: pbMarketInfos}, nil
+	return &daemonv1.ListMarketsReply{Markets: pbMarketInfos}, nil
 }
 
 func (o operatorHandler) listUtxos(
-	ctx context.Context, req *pb.ListUtxosRequest,
-) (*pb.ListUtxosReply, error) {
+	ctx context.Context, req *daemonv1.ListUtxosRequest,
+) (*daemonv1.ListUtxosReply, error) {
 	var page *application.Page
 	if pg := req.GetPage(); pg != nil {
 		page = &application.Page{
@@ -1155,7 +1154,7 @@ func (o operatorHandler) listUtxos(
 	spents := toUtxoInfoList(utxoInfo.Spents)
 	locks := toUtxoInfoList(utxoInfo.Locks)
 
-	return &pb.ListUtxosReply{
+	return &daemonv1.ListUtxosReply{
 		Unspents: unspents,
 		Spents:   spents,
 		Locks:    locks,
@@ -1163,8 +1162,8 @@ func (o operatorHandler) listUtxos(
 }
 
 func (o operatorHandler) addWebhook(
-	ctx context.Context, req *pb.AddWebhookRequest,
-) (*pb.AddWebhookReply, error) {
+	ctx context.Context, req *daemonv1.AddWebhookRequest,
+) (*daemonv1.AddWebhookReply, error) {
 	hook := application.Webhook{
 		ActionType: int(req.GetAction()),
 		Endpoint:   req.GetEndpoint(),
@@ -1174,41 +1173,41 @@ func (o operatorHandler) addWebhook(
 	if err != nil {
 		return nil, err
 	}
-	return &pb.AddWebhookReply{Id: hookID}, nil
+	return &daemonv1.AddWebhookReply{Id: hookID}, nil
 }
 
 func (o operatorHandler) removeWebhook(
-	ctx context.Context, req *pb.RemoveWebhookRequest,
-) (*pb.RemoveWebhookReply, error) {
+	ctx context.Context, req *daemonv1.RemoveWebhookRequest,
+) (*daemonv1.RemoveWebhookReply, error) {
 	if err := o.operatorSvc.RemoveWebhook(ctx, req.GetId()); err != nil {
 		return nil, err
 	}
-	return &pb.RemoveWebhookReply{}, nil
+	return &daemonv1.RemoveWebhookReply{}, nil
 }
 
 func (o operatorHandler) listWebhooks(
-	ctx context.Context, req *pb.ListWebhooksRequest,
-) (*pb.ListWebhooksReply, error) {
+	ctx context.Context, req *daemonv1.ListWebhooksRequest,
+) (*daemonv1.ListWebhooksReply, error) {
 	hooks, err := o.operatorSvc.ListWebhooks(ctx, int(req.GetAction()))
 	if err != nil {
 		return nil, err
 	}
-	hooksInfo := make([]*pb.WebhookInfo, 0, len(hooks))
+	hooksInfo := make([]*daemonv1.WebhookInfo, 0, len(hooks))
 	for _, h := range hooks {
-		hooksInfo = append(hooksInfo, &pb.WebhookInfo{
+		hooksInfo = append(hooksInfo, &daemonv1.WebhookInfo{
 			Id:        h.Id,
 			Endpoint:  h.Endpoint,
 			IsSecured: h.IsSecured,
 		})
 	}
-	return &pb.ListWebhooksReply{
+	return &daemonv1.ListWebhooksReply{
 		WebhookInfo: hooksInfo,
 	}, nil
 }
 
 func (o operatorHandler) listDeposits(
-	ctx context.Context, req *pb.ListDepositsRequest,
-) (*pb.ListDepositsReply, error) {
+	ctx context.Context, req *daemonv1.ListDepositsRequest,
+) (*daemonv1.ListDepositsReply, error) {
 	page := parsePage(req.GetPage())
 	deposits, err := o.operatorSvc.ListDeposits(
 		ctx, int(req.GetAccountIndex()), page,
@@ -1217,11 +1216,11 @@ func (o operatorHandler) listDeposits(
 		return nil, err
 	}
 
-	depositsProto := make([]*pb.Deposit, 0, len(deposits))
+	depositsProto := make([]*daemonv1.Deposit, 0, len(deposits))
 	for _, v := range deposits {
-		dd := &pb.Deposit{
-			Utxo: &pb.UtxoInfo{
-				Outpoint: &pb.TxOutpoint{
+		dd := &daemonv1.Deposit{
+			Utxo: &daemonv1.UtxoInfo{
+				Outpoint: &daemonv1.TxOutpoint{
 					Hash:  v.TxID,
 					Index: int32(v.VOut),
 				},
@@ -1236,26 +1235,26 @@ func (o operatorHandler) listDeposits(
 		depositsProto = append(depositsProto, dd)
 	}
 
-	return &pb.ListDepositsReply{
+	return &daemonv1.ListDepositsReply{
 		AccountIndex: req.GetAccountIndex(),
 		Deposits:     depositsProto,
 	}, err
 }
 
 func (o operatorHandler) listWithdrawals(
-	ctx context.Context, req *pb.ListWithdrawalsRequest,
-) (*pb.ListWithdrawalsReply, error) {
+	ctx context.Context, req *daemonv1.ListWithdrawalsRequest,
+) (*daemonv1.ListWithdrawalsReply, error) {
 	page := parsePage(req.GetPage())
 
 	withdrawals, err := o.operatorSvc.ListWithdrawals(
 		ctx, int(req.GetAccountIndex()), page,
 	)
 
-	withdrawalsProto := make([]*pb.Withdrawal, 0, len(withdrawals))
+	withdrawalsProto := make([]*daemonv1.Withdrawal, 0, len(withdrawals))
 	for _, v := range withdrawals {
-		ww := &pb.Withdrawal{
+		ww := &daemonv1.Withdrawal{
 			TxId: v.TxID,
-			Balance: &pbtypes.Balance{
+			Balance: &tdexv1.Balance{
 				BaseAmount:  v.BaseAmount,
 				QuoteAmount: v.QuoteAmount,
 			},
@@ -1268,15 +1267,15 @@ func (o operatorHandler) listWithdrawals(
 		withdrawalsProto = append(withdrawalsProto, ww)
 	}
 
-	return &pb.ListWithdrawalsReply{
+	return &daemonv1.ListWithdrawalsReply{
 		AccountIndex: req.GetAccountIndex(),
 		Withdrawals:  withdrawalsProto,
 	}, err
 }
 
 func (o operatorHandler) getMarketReport(
-	ctx context.Context, req *pb.GetMarketReportRequest,
-) (*pb.GetMarketReportReply, error) {
+	ctx context.Context, req *daemonv1.GetMarketReportRequest,
+) (*daemonv1.GetMarketReportReply, error) {
 	market, err := parseMarket(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -1294,9 +1293,9 @@ func (o operatorHandler) getMarketReport(
 		return nil, err
 	}
 
-	groupedVolume := make([]*pb.MarketVolume, 0, len(report.GroupedVolume))
+	groupedVolume := make([]*daemonv1.MarketVolume, 0, len(report.GroupedVolume))
 	for _, v := range report.GroupedVolume {
-		groupedVolume = append(groupedVolume, &pb.MarketVolume{
+		groupedVolume = append(groupedVolume, &daemonv1.MarketVolume{
 			BaseVolume:  v.BaseVolume,
 			QuoteVolume: v.QuoteVolume,
 			StartDate:   v.StartTime.Format(time.RFC3339),
@@ -1304,15 +1303,15 @@ func (o operatorHandler) getMarketReport(
 		})
 	}
 
-	return &pb.GetMarketReportReply{
-		Report: &pb.MarketReport{
-			TotalCollectedFees: &pb.MarketCollectedFees{
+	return &daemonv1.GetMarketReportReply{
+		Report: &daemonv1.MarketReport{
+			TotalCollectedFees: &daemonv1.MarketCollectedFees{
 				BaseAmount:  report.CollectedFees.BaseAmount,
 				QuoteAmount: report.CollectedFees.QuoteAmount,
 				StartDate:   report.CollectedFees.StartTime.Format(time.RFC3339),
 				EndDate:     report.CollectedFees.EndTime.Format(time.RFC3339),
 			},
-			TotalVolume: &pb.MarketVolume{
+			TotalVolume: &daemonv1.MarketVolume{
 				BaseVolume:  report.Volume.BaseVolume,
 				QuoteVolume: report.Volume.QuoteVolume,
 				StartDate:   report.Volume.StartTime.Format(time.RFC3339),
@@ -1323,7 +1322,7 @@ func (o operatorHandler) getMarketReport(
 	}, nil
 }
 
-func parseMarket(mkt *pbtypes.Market) (market application.Market, err error) {
+func parseMarket(mkt *tdexv1.Market) (market application.Market, err error) {
 	var baseAsset, quoteAsset string
 	if mkt != nil {
 		baseAsset, quoteAsset = mkt.GetBaseAsset(), mkt.GetQuoteAsset()
@@ -1337,7 +1336,7 @@ func parseMarket(mkt *pbtypes.Market) (market application.Market, err error) {
 	return
 }
 
-func parseOutpoints(outs []*pb.TxOutpoint) []application.TxOutpoint {
+func parseOutpoints(outs []*daemonv1.TxOutpoint) []application.TxOutpoint {
 	outpoints := make([]application.TxOutpoint, 0, len(outs))
 	for _, v := range outs {
 		outpoints = append(outpoints, application.TxOutpoint{
@@ -1348,7 +1347,7 @@ func parseOutpoints(outs []*pb.TxOutpoint) []application.TxOutpoint {
 	return outpoints
 }
 
-func parsePage(p *pb.Page) *application.Page {
+func parsePage(p *daemonv1.Page) *application.Page {
 	if p == nil {
 		return nil
 	}
@@ -1358,7 +1357,7 @@ func parsePage(p *pb.Page) *application.Page {
 	}
 }
 
-func parseBalance(bal *pbtypes.Balance) application.Balance {
+func parseBalance(bal *tdexv1.Balance) application.Balance {
 	var baseAmount, quoteAmount uint64
 	if bal != nil {
 		baseAmount = bal.GetBaseAmount()
@@ -1367,7 +1366,7 @@ func parseBalance(bal *pbtypes.Balance) application.Balance {
 	return application.Balance{baseAmount, quoteAmount}
 }
 
-func parseFixedFee(fee *pbtypes.Fixed) application.Fee {
+func parseFixedFee(fee *tdexv1.Fixed) application.Fee {
 	var baseFee, quoteFee int64
 	if fee != nil {
 		baseFee = fee.GetBaseFee()
@@ -1379,7 +1378,7 @@ func parseFixedFee(fee *pbtypes.Fixed) application.Fee {
 	}
 }
 
-func parsePrice(p *pbtypes.Price) (price application.Price, err error) {
+func parsePrice(p *tdexv1.Price) (price application.Price, err error) {
 	var basePrice, quotePrice = decimal.NewFromInt(0), decimal.NewFromInt(0)
 	if p != nil {
 		basePrice = decimal.NewFromFloat(p.GetBasePrice())
@@ -1396,7 +1395,7 @@ func parsePrice(p *pbtypes.Price) (price application.Price, err error) {
 	return
 }
 
-func parseStrategy(sType pb.StrategyType) (domain.StrategyType, error) {
+func parseStrategy(sType daemonv1.StrategyType) (domain.StrategyType, error) {
 	strategyType := domain.StrategyType(sType)
 	if strategyType < domain.StrategyTypePluggable ||
 		strategyType > domain.StrategyTypeUnbalanced {
@@ -1405,11 +1404,11 @@ func parseStrategy(sType pb.StrategyType) (domain.StrategyType, error) {
 	return strategyType, nil
 }
 
-func toUtxoInfoList(list []application.UtxoInfo) []*pb.UtxoInfo {
-	res := make([]*pb.UtxoInfo, 0, len(list))
+func toUtxoInfoList(list []application.UtxoInfo) []*daemonv1.UtxoInfo {
+	res := make([]*daemonv1.UtxoInfo, 0, len(list))
 	for _, u := range list {
-		res = append(res, &pb.UtxoInfo{
-			Outpoint: &pb.TxOutpoint{
+		res = append(res, &daemonv1.UtxoInfo{
+			Outpoint: &daemonv1.TxOutpoint{
 				Hash:  u.Outpoint.Hash,
 				Index: int32(u.Outpoint.Index),
 			},
@@ -1420,9 +1419,9 @@ func toUtxoInfoList(list []application.UtxoInfo) []*pb.UtxoInfo {
 	return res
 }
 
-func parseTimeRange(timeRange *pb.TimeRange) (*application.TimeRange, error) {
+func parseTimeRange(timeRange *daemonv1.TimeRange) (*application.TimeRange, error) {
 	var predefinedPeriod *application.PredefinedPeriod
-	if timeRange.GetPredefinedPeriod() > pb.PredefinedPeriod_NULL {
+	if timeRange.GetPredefinedPeriod() > daemonv1.PredefinedPeriod_NULL {
 		pp := application.PredefinedPeriod(timeRange.GetPredefinedPeriod())
 		predefinedPeriod = &pp
 	}
@@ -1443,17 +1442,17 @@ func parseTimeRange(timeRange *pb.TimeRange) (*application.TimeRange, error) {
 	return tr, nil
 }
 
-func parseTimeFrame(timeFrame pb.TimeFrame) int {
+func parseTimeFrame(timeFrame daemonv1.TimeFrame) int {
 	switch timeFrame {
-	case pb.TimeFrame_HOUR:
+	case daemonv1.TimeFrame_HOUR:
 		return 1
-	case pb.TimeFrame_FOUR_HOURS:
+	case daemonv1.TimeFrame_FOUR_HOURS:
 		return 4
-	case pb.TimeFrame_DAY:
+	case daemonv1.TimeFrame_DAY:
 		return 24
-	case pb.TimeFrame_WEEK:
+	case daemonv1.TimeFrame_WEEK:
 		return 24 * 7
-	case pb.TimeFrame_MONTH:
+	case daemonv1.TimeFrame_MONTH:
 		year, month, _ := time.Now().Date()
 		numOfDaysForCurrentMont := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
 		return numOfDaysForCurrentMont

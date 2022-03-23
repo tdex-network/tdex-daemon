@@ -1,0 +1,702 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "tdex/v1/trade.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "Trade"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/trade/balance": {
+      "post": {
+        "summary": "Balances: Gets the balances of the two current reserves in the given\nmarket.",
+        "operationId": "Trade_Balances",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1BalancesReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1BalancesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Trade"
+        ]
+      }
+    },
+    "/v1/trade/markets": {
+      "get": {
+        "summary": "Markets: List all the markets open for trading.",
+        "operationId": "Trade_Markets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1MarketsReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Trade"
+        ]
+      }
+    },
+    "/v1/trade/price": {
+      "post": {
+        "summary": "MarketPrice: Gets the current market price. In case of AMM startegy, the\ntrade type and\nthe amount of asset to be either sent or received.",
+        "description": "BUY = quote asset as input\nSELL = base asset as input\n\nIf the type of the trade is BUY it means the base asset will be received by\nthe trader.\n\nIf the type of the trade is SELL it means the base asset will be sent by\nthe trader.",
+        "operationId": "Trade_MarketPrice",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1MarketPriceReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "market.baseAsset",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "market.quoteAsset",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "BUY",
+              "SELL"
+            ],
+            "default": "BUY"
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "asset",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Trade"
+        ]
+      }
+    },
+    "/v1/trade/stream/complete": {
+      "post": {
+        "summary": "DEPRECATED TradeComplete: Sends the trader's counter-signed transaction to the\nprovider. If something wrong, a swap fail message is sent. It returns the\ntransaction hash of the broadcasted transaction.",
+        "operationId": "Trade_TradeComplete",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/v1TradeCompleteReply"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of v1TradeCompleteReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1TradeCompleteRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Trade"
+        ]
+      }
+    },
+    "/v1/trade/stream/propose": {
+      "post": {
+        "summary": "DEPRECATED TradePropose: Sends a swap request message containing a partial signed\ntransaction.",
+        "description": "BUY = quote asset as input\nSELL = base asset as input\n\n\nIf the type of the trade is BUY it means the base asset will be received by\nthe trader.\n\nIf the type of the trade is SELL it means the base asset will be sent by\nthe trader.",
+        "operationId": "Trade_TradePropose",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/v1TradeProposeReply"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of v1TradeProposeReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1TradeProposeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Trade"
+        ]
+      }
+    },
+    "/v1/trade/unary/complete": {
+      "post": {
+        "summary": "Unary RPC for TradeComplete.",
+        "operationId": "Trade_CompleteTrade",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CompleteTradeReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CompleteTradeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Trade"
+        ]
+      }
+    },
+    "/v1/trade/unary/propose": {
+      "post": {
+        "summary": "Unary RPC for TradePropose.",
+        "operationId": "Trade_ProposeTrade",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ProposeTradeReply"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ProposeTradeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Trade"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1Balance": {
+      "type": "object",
+      "properties": {
+        "baseAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "quoteAmount": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1BalanceWithFee": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "$ref": "#/definitions/v1Balance"
+        },
+        "fee": {
+          "$ref": "#/definitions/v1Fee"
+        }
+      }
+    },
+    "v1BalancesReply": {
+      "type": "object",
+      "properties": {
+        "balances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1BalanceWithFee"
+          }
+        }
+      }
+    },
+    "v1BalancesRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        }
+      }
+    },
+    "v1CompleteTradeReply": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string"
+        },
+        "swapFail": {
+          "$ref": "#/definitions/v1SwapFail"
+        }
+      }
+    },
+    "v1CompleteTradeRequest": {
+      "type": "object",
+      "properties": {
+        "swapComplete": {
+          "$ref": "#/definitions/v1SwapComplete"
+        },
+        "swapFail": {
+          "$ref": "#/definitions/v1SwapFail"
+        }
+      }
+    },
+    "v1Fee": {
+      "type": "object",
+      "properties": {
+        "basisPoint": {
+          "type": "string",
+          "format": "int64"
+        },
+        "fixed": {
+          "$ref": "#/definitions/v1Fixed"
+        }
+      },
+      "title": "Custom Types"
+    },
+    "v1Fixed": {
+      "type": "object",
+      "properties": {
+        "baseFee": {
+          "type": "string",
+          "format": "int64"
+        },
+        "quoteFee": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1Market": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string"
+        },
+        "quoteAsset": {
+          "type": "string"
+        }
+      }
+    },
+    "v1MarketPriceReply": {
+      "type": "object",
+      "properties": {
+        "prices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1PriceWithFee"
+          }
+        }
+      }
+    },
+    "v1MarketWithFee": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        },
+        "fee": {
+          "$ref": "#/definitions/v1Fee"
+        }
+      }
+    },
+    "v1MarketsReply": {
+      "type": "object",
+      "properties": {
+        "markets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1MarketWithFee"
+          }
+        }
+      }
+    },
+    "v1Price": {
+      "type": "object",
+      "properties": {
+        "basePriceDeprecated": {
+          "type": "number",
+          "format": "float"
+        },
+        "quotePriceDeprecated": {
+          "type": "number",
+          "format": "float"
+        },
+        "basePrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "v1PriceWithFee": {
+      "type": "object",
+      "properties": {
+        "price": {
+          "$ref": "#/definitions/v1Price"
+        },
+        "fee": {
+          "$ref": "#/definitions/v1Fee"
+        },
+        "amount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "asset": {
+          "type": "string"
+        },
+        "balance": {
+          "$ref": "#/definitions/v1Balance"
+        }
+      }
+    },
+    "v1ProposeTradeReply": {
+      "type": "object",
+      "properties": {
+        "swapAccept": {
+          "$ref": "#/definitions/v1SwapAccept"
+        },
+        "swapFail": {
+          "$ref": "#/definitions/v1SwapFail"
+        },
+        "expiryTimeUnix": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1ProposeTradeRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        },
+        "type": {
+          "$ref": "#/definitions/v1TradeType"
+        },
+        "swapRequest": {
+          "$ref": "#/definitions/v1SwapRequest"
+        }
+      }
+    },
+    "v1SwapAccept": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Random unique identifier for the current message"
+        },
+        "requestId": {
+          "type": "string",
+          "title": "indetifier of the SwapRequest message"
+        },
+        "transaction": {
+          "type": "string",
+          "title": "The partial signed transaction base64 encoded containing the Responder's\nsigned inputs in a PSBT format"
+        },
+        "inputBlindingKey": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "byte"
+          },
+          "description": "In case of a confidential transaction the blinding key of each confidential\ninput is included. Each blinding key is identified by the prevout script\nhex encoded."
+        },
+        "outputBlindingKey": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "byte"
+          },
+          "description": "In case of a confidential transaction the blinding key of each confidential\noutput is included. Each blinding key is identified by the output script\nhex encoded."
+        }
+      }
+    },
+    "v1SwapComplete": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Random unique identifier for the current message"
+        },
+        "acceptId": {
+          "type": "string",
+          "title": "indetifier of the SwapAccept message"
+        },
+        "transaction": {
+          "type": "string",
+          "title": "The signed transaction base64 encoded containing the Proposers's signed\ninputs in a PSBT format"
+        }
+      }
+    },
+    "v1SwapFail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Random unique identifier for the current message"
+        },
+        "messageId": {
+          "type": "string",
+          "title": "indetifier of either SwapRequest or SwapAccept message. It can be empty"
+        },
+        "failureCode": {
+          "type": "integer",
+          "format": "int64",
+          "title": "The failure code. It can be empty"
+        },
+        "failureMessage": {
+          "type": "string",
+          "title": "The failure reason messaged"
+        }
+      }
+    },
+    "v1SwapRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Random unique identifier for the current message"
+        },
+        "amountP": {
+          "type": "string",
+          "format": "uint64",
+          "title": "The proposer's quantity"
+        },
+        "assetP": {
+          "type": "string",
+          "title": "The proposer's asset hash"
+        },
+        "amountR": {
+          "type": "string",
+          "format": "uint64",
+          "title": "The responder's quantity"
+        },
+        "assetR": {
+          "type": "string",
+          "title": "The responder's asset hash"
+        },
+        "transaction": {
+          "type": "string",
+          "title": "The proposer's unsigned transaction in PSBT format (base64 string)"
+        },
+        "inputBlindingKey": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "byte"
+          },
+          "description": "In case of a confidential transaction the blinding key of each confidential\ninput is included. Each blinding key is identified by the prevout script\nhex encoded."
+        },
+        "outputBlindingKey": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "byte"
+          },
+          "description": "In case of a confidential transaction the blinding key of each confidential\noutput is included. Each blinding key is identified by the output script\nhex encoded."
+        }
+      }
+    },
+    "v1TradeCompleteReply": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string"
+        },
+        "swapFail": {
+          "$ref": "#/definitions/v1SwapFail"
+        }
+      }
+    },
+    "v1TradeCompleteRequest": {
+      "type": "object",
+      "properties": {
+        "swapComplete": {
+          "$ref": "#/definitions/v1SwapComplete"
+        },
+        "swapFail": {
+          "$ref": "#/definitions/v1SwapFail"
+        }
+      }
+    },
+    "v1TradeProposeReply": {
+      "type": "object",
+      "properties": {
+        "swapAccept": {
+          "$ref": "#/definitions/v1SwapAccept"
+        },
+        "swapFail": {
+          "$ref": "#/definitions/v1SwapFail"
+        },
+        "expiryTimeUnix": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1TradeProposeRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        },
+        "type": {
+          "$ref": "#/definitions/v1TradeType"
+        },
+        "swapRequest": {
+          "$ref": "#/definitions/v1SwapRequest"
+        }
+      }
+    },
+    "v1TradeType": {
+      "type": "string",
+      "enum": [
+        "BUY",
+        "SELL"
+      ],
+      "default": "BUY"
+    }
+  }
+}

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -58,7 +58,7 @@ func walletBalanceAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	reply, err := client.WalletBalance(context.Background(), &pb.WalletBalanceRequest{})
+	reply, err := client.WalletBalance(context.Background(), &daemonv1.WalletBalanceRequest{})
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func walletReceiveAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	reply, err := client.WalletAddress(context.Background(), &pb.WalletAddressRequest{})
+	reply, err := client.WalletAddress(context.Background(), &daemonv1.WalletAddressRequest{})
 	if err != nil {
 		return err
 	}
@@ -104,14 +104,14 @@ func walletSendAction(ctx *cli.Context) error {
 	addr := ctx.String("address")
 	mSatsPerByte := ctx.Int64("millisatsperbyte")
 
-	out := &pb.TxOut{
+	out := &daemonv1.TxOut{
 		Asset:   asset,
 		Value:   amount,
 		Address: addr,
 	}
 
-	reply, err := client.SendToMany(context.Background(), &pb.SendToManyRequest{
-		Outputs:         []*pb.TxOut{out},
+	reply, err := client.SendToMany(context.Background(), &daemonv1.SendToManyRequest{
+		Outputs:         []*daemonv1.TxOut{out},
 		MillisatPerByte: mSatsPerByte,
 		Push:            true,
 	})

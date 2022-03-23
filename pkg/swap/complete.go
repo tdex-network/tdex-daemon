@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	"github.com/thanhpk/randstr"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -20,7 +20,7 @@ type CompleteOpts struct {
 // Complete takes a CompleteOpts and returns the id of the SwapComplete entity
 // and its serialized version
 func Complete(complete CompleteOpts) (string, []byte, error) {
-	var msgAccept pb.SwapAccept
+	var msgAccept tdexv1.SwapAccept
 	err := proto.Unmarshal(complete.Message, &msgAccept)
 	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal swap accept %w", err)
@@ -46,7 +46,7 @@ func Complete(complete CompleteOpts) (string, []byte, error) {
 	}
 
 	randomID := randstr.Hex(8)
-	msgComplete := &pb.SwapComplete{
+	msgComplete := &tdexv1.SwapComplete{
 		Id:          randomID,
 		AcceptId:    msgAccept.GetId(),
 		Transaction: complete.Transaction,
@@ -65,7 +65,7 @@ type ValidateCompletePsetOpts struct {
 	PsetBase64         string
 	InputBlindingKeys  map[string][]byte
 	OutputBlindingKeys map[string][]byte
-	SwapRequest        *pb.SwapRequest
+	SwapRequest        *tdexv1.SwapRequest
 }
 
 // ValidateCompletePset takes a VerifyCompeltePsetOpts and returns whether the

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -20,7 +20,7 @@ func getStatusAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	reply, err := client.IsReady(context.Background(), &pb.IsReadyRequest{})
+	reply, err := client.IsReady(context.Background(), &daemonv1.IsReadyRequest{})
 	if err != nil {
 		return err
 	}

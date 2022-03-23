@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	tradetype "github.com/tdex-network/tdex-daemon/pkg/trade/type"
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/vulpemventures/go-elements/address"
@@ -202,7 +202,7 @@ func (t *Trade) marketOrderRequest(
 }
 
 func (t *Trade) marketOrderComplete(swapAcceptMsg []byte, w *Wallet) (string, error) {
-	swapAccept := &pb.SwapAccept{}
+	swapAccept := &tdexv1.SwapAccept{}
 	proto.Unmarshal(swapAcceptMsg, swapAccept)
 
 	psetBase64 := swapAccept.GetTransaction()

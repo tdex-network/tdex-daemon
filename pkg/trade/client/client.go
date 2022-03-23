@@ -4,14 +4,14 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 
 	"google.golang.org/grpc"
 )
 
 // Client allows to connect with a trader service and to call its RPCs
 type Client struct {
-	client pb.TradeClient
+	client tdexv1.TradeClient
 	conn   *grpc.ClientConn
 }
 
@@ -25,7 +25,7 @@ func NewTradeClient(host string, port int) (*Client, error) {
 		return nil, err
 	}
 
-	client := pb.NewTradeClient(conn)
+	client := tdexv1.NewTradeClient(conn)
 	return &Client{client, conn}, nil
 }
 
@@ -41,6 +41,6 @@ func isValidAsset(asset string) bool {
 }
 
 func isValidTradeType(tradeType int) bool {
-	return tradeType != int(pb.TradeType_BUY) &&
-		tradeType != int(pb.TradeType_SELL)
+	return tradeType != int(tdexv1.TradeType_BUY) &&
+		tradeType != int(tdexv1.TradeType_SELL)
 }

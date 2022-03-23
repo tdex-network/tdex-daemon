@@ -24,9 +24,8 @@ build-tdexdconnect:
 	./scripts/build-tdexdconnect
 
 ## proto: compile proto files
-proto: install
-	chmod u+x ./scripts/compile_proto
-	./scripts/compile_proto
+proto:
+	cd api-spec/protobuf; buf mod update; buf build; cd ../../; buf generate buf.build/tdex-network/tdex-protobuf; buf generate; make install
 
 ## clean: cleans the binary
 clean:

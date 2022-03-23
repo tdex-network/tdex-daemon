@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -21,7 +21,7 @@ func reloadUtxos(ctx *cli.Context) error {
 	defer cleanup()
 
 	resp, err := client.ReloadUtxos(
-		context.Background(), &pboperator.ReloadUtxosRequest{},
+		context.Background(), &daemonv1.ReloadUtxosRequest{},
 	)
 	if err != nil {
 		return err

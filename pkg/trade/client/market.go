@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
+
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	tradetype "github.com/tdex-network/tdex-daemon/pkg/trade/type"
-
-	pbtrade "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 )
 
 // Markets calls the Markets rpc and returns its response
-func (c *Client) Markets() (*pbtrade.MarketsReply, error) {
-	return c.client.Markets(context.Background(), &pbtrade.MarketsRequest{})
+func (c *Client) Markets() (*tdexv1.MarketsReply, error) {
+	return c.client.Markets(context.Background(), &tdexv1.MarketsRequest{})
 }
 
 // BalancesOpts is the struct given to Balances method
@@ -30,13 +29,13 @@ func (o BalancesOpts) validate() error {
 }
 
 // Balances crafts the request and calls the Balances rpc
-func (c *Client) Balances(opts BalancesOpts) (*pbtrade.BalancesReply, error) {
+func (c *Client) Balances(opts BalancesOpts) (*tdexv1.BalancesReply, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
 
-	request := &pbtrade.BalancesRequest{
-		Market: &pbtypes.Market{
+	request := &tdexv1.BalancesRequest{
+		Market: &tdexv1.Market{
 			BaseAsset:  opts.Market.BaseAsset,
 			QuoteAsset: opts.Market.QuoteAsset,
 		},
@@ -69,17 +68,17 @@ func (o MarketPriceOpts) validate() error {
 }
 
 // MarketPrice crafts the request and calls the MarketPrice rpc
-func (c *Client) MarketPrice(opts MarketPriceOpts) (*pbtrade.MarketPriceReply, error) {
+func (c *Client) MarketPrice(opts MarketPriceOpts) (*tdexv1.MarketPriceReply, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
 
-	request := &pbtrade.MarketPriceRequest{
-		Market: &pbtypes.Market{
+	request := &tdexv1.MarketPriceRequest{
+		Market: &tdexv1.Market{
 			BaseAsset:  opts.Market.BaseAsset,
 			QuoteAsset: opts.Market.QuoteAsset,
 		},
-		Type:   pbtrade.TradeType(opts.TradeType),
+		Type:   tdexv1.TradeType(opts.TradeType),
 		Amount: opts.Amount,
 		Asset:  opts.Asset,
 	}

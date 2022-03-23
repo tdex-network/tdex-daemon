@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -20,7 +20,7 @@ func infoAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	resp, err := client.GetInfo(context.Background(), &pb.GetInfoRequest{})
+	resp, err := client.GetInfo(context.Background(), &daemonv1.GetInfoRequest{})
 	if err != nil {
 		return err
 	}

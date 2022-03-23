@@ -14,11 +14,11 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/trade"
-	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 )
 
 var (
@@ -352,7 +352,7 @@ func marketOrder(
 		hex.EncodeToString(script): wallet.BlindingKey(),
 	}
 
-	swapRequest := &pbswap.SwapRequest{
+	swapRequest := &tdexv1.SwapRequest{
 		Id:                randomId(),
 		AssetP:            assetToSend,
 		AmountP:           amountToSend,
@@ -369,7 +369,7 @@ func marketOrder(
 	require.NotNil(t, swapAccept)
 	require.True(t, time.Now().Before(time.Unix(int64(expiryTimestamp), 0)))
 
-	swapComplete := &pbswap.SwapComplete{
+	swapComplete := &tdexv1.SwapComplete{
 		Id:          randomId(),
 		AcceptId:    swapAccept.GetId(),
 		Transaction: swapAccept.GetTransaction(),

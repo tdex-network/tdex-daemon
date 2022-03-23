@@ -5,10 +5,10 @@ import (
 	"reflect"
 
 	"github.com/google/uuid"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -161,7 +161,7 @@ func (p swapParser) SerializeFail(id string, errCode int, errMsg string) (string
 }
 
 func (p swapParser) DeserializeRequest(msg []byte) (SwapRequest, error) {
-	s := &pbswap.SwapRequest{}
+	s := &tdexv1.SwapRequest{}
 	if err := proto.Unmarshal(msg, s); err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (p swapParser) DeserializeRequest(msg []byte) (SwapRequest, error) {
 }
 
 func (p swapParser) DeserializeAccept(msg []byte) (SwapAccept, error) {
-	s := &pbswap.SwapAccept{}
+	s := &tdexv1.SwapAccept{}
 	if err := proto.Unmarshal(msg, s); err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (p swapParser) DeserializeAccept(msg []byte) (SwapAccept, error) {
 }
 
 func (p swapParser) DeserializeComplete(msg []byte) (SwapComplete, error) {
-	s := &pbswap.SwapComplete{}
+	s := &tdexv1.SwapComplete{}
 	if err := proto.Unmarshal(msg, s); err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (p swapParser) DeserializeComplete(msg []byte) (SwapComplete, error) {
 }
 
 func (p swapParser) DeserializeFail(msg []byte) (SwapFail, error) {
-	s := &pbswap.SwapFail{}
+	s := &tdexv1.SwapFail{}
 	if err := proto.Unmarshal(msg, s); err != nil {
 		return nil, err
 	}

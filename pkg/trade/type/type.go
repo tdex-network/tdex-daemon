@@ -3,7 +3,7 @@ package tradetype
 import (
 	"errors"
 
-	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 )
 
 const (
@@ -22,7 +22,7 @@ type TradeType int
 
 // Validate makes sure that the current trade type is either BUY or SELL
 func (t TradeType) Validate() error {
-	if t != TradeType(pb.TradeType_BUY) && t != TradeType(pb.TradeType_SELL) {
+	if t != TradeType(tdexv1.TradeType_BUY) && t != TradeType(tdexv1.TradeType_SELL) {
 		return ErrInvalidTradeType
 	}
 	return nil
@@ -30,15 +30,15 @@ func (t TradeType) Validate() error {
 
 // IsBuy returns whether the current trade type is BUY
 func (t TradeType) IsBuy() bool {
-	return t == TradeType(pb.TradeType_BUY)
+	return t == TradeType(tdexv1.TradeType_BUY)
 }
 
 // IsSell returns whether the current trade type is SELL
 func (t TradeType) IsSell() bool {
-	return t == TradeType(pb.TradeType_SELL)
+	return t == TradeType(tdexv1.TradeType_SELL)
 }
 
 // String formats the type to a human-readable form
 func (t TradeType) String() string {
-	return pb.TradeType(t).String()
+	return tdexv1.TradeType(t).String()
 }

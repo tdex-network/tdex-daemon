@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	"github.com/urfave/cli/v2"
 )
 
@@ -73,7 +73,7 @@ func feeFragmenterBalanceAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.GetFeeFragmenterBalance(
-		context.Background(), &pb.GetFeeFragmenterBalanceRequest{},
+		context.Background(), &daemonv1.GetFeeFragmenterBalanceRequest{},
 	)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func feeFragmenterDepositAction(ctx *cli.Context) error {
 
 	numOfAddresses := ctx.Int64("num_of_addresses")
 	resp, err := client.GetFeeFragmenterAddress(
-		context.Background(), &pb.GetFeeFragmenterAddressRequest{
+		context.Background(), &daemonv1.GetFeeFragmenterAddressRequest{
 			NumOfAddresses: numOfAddresses,
 		},
 	)
@@ -114,7 +114,7 @@ func feeFragmenterListAddressesAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.ListFeeFragmenterAddresses(
-		context.Background(), &pb.ListFeeFragmenterAddressesRequest{},
+		context.Background(), &daemonv1.ListFeeFragmenterAddressesRequest{},
 	)
 	if err != nil {
 		return err
@@ -142,7 +142,7 @@ func feeFragmenterSplitFundsAction(ctx *cli.Context) error {
 	maxFragments := ctx.Uint64("max_fragments")
 
 	stream, err := client.FeeFragmenterSplitFunds(
-		context.Background(), &pb.FeeFragmenterSplitFundsRequest{
+		context.Background(), &daemonv1.FeeFragmenterSplitFundsRequest{
 			MaxFragments: uint32(maxFragments),
 		})
 	if err != nil {
@@ -177,7 +177,7 @@ func feeFragmenterWithdrawAction(ctx *cli.Context) error {
 	mSatsPerByte := ctx.Uint64("millisatsperbyte")
 
 	reply, err := client.WithdrawFeeFragmenter(
-		context.Background(), &pb.WithdrawFeeFragmenterRequest{
+		context.Background(), &daemonv1.WithdrawFeeFragmenterRequest{
 			Address:          addr,
 			MillisatsPerByte: mSatsPerByte,
 		},

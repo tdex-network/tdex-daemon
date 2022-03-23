@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tdex-network/tdex-protobuf/generated/go/transport"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/gogo/protobuf/jsonpb"
@@ -21,9 +21,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"gopkg.in/macaroon.v2"
 
-	pboperator "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/operator"
-	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/wallet"
-	pbunlocker "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 )
 
@@ -215,44 +213,44 @@ func printRespJSON(resp interface{}) {
 	fmt.Println(jsonStr)
 }
 
-func getTransportClient(ctx *cli.Context) (transport.TransportClient, func(), error) {
+func getTransportClient(ctx *cli.Context) (tdexv1.TransportClient, func(), error) {
 	conn, err := getClientConn(false)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { conn.Close() }
 
-	return transport.NewTransportClient(conn), cleanup, nil
+	return tdexv1.NewTransportClient(conn), cleanup, nil
 }
 
-func getOperatorClient(ctx *cli.Context) (pboperator.OperatorClient, func(), error) {
+func getOperatorClient(ctx *cli.Context) (daemonv1.OperatorClient, func(), error) {
 	conn, err := getClientConn(false)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { conn.Close() }
 
-	return pboperator.NewOperatorClient(conn), cleanup, nil
+	return daemonv1.NewOperatorClient(conn), cleanup, nil
 }
 
-func getUnlockerClient(ctx *cli.Context) (pbunlocker.WalletUnlockerClient, func(), error) {
+func getUnlockerClient(ctx *cli.Context) (daemonv1.WalletUnlockerClient, func(), error) {
 	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { _ = conn.Close() }
 
-	return pbunlocker.NewWalletUnlockerClient(conn), cleanup, nil
+	return daemonv1.NewWalletUnlockerClient(conn), cleanup, nil
 }
 
-func getWalletClient(ctx *cli.Context) (pbwallet.WalletClient, func(), error) {
+func getWalletClient(ctx *cli.Context) (daemonv1.WalletClient, func(), error) {
 	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { _ = conn.Close() }
 
-	return pbwallet.NewWalletClient(conn), cleanup, nil
+	return daemonv1.NewWalletClient(conn), cleanup, nil
 }
 
 func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {

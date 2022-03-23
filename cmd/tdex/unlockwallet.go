@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pbwallet "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/walletunlocker"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 
 	"github.com/urfave/cli/v2"
 )
@@ -30,7 +30,7 @@ func unlockWalletAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	_, err = client.UnlockWallet(
-		context.Background(), &pbwallet.UnlockWalletRequest{
+		context.Background(), &daemonv1.UnlockWalletRequest{
 			WalletPassword: []byte(ctx.String("password")),
 		},
 	)
