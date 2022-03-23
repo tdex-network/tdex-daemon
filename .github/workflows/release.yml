@@ -73,3 +73,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+
+      - uses: bufbuild/buf-push-action@v1        
+        with:          
+          input: api-spec/protobuf
+          buf_token: ${{ secrets.BUF_TOKEN }}
