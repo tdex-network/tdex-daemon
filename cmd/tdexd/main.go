@@ -58,6 +58,7 @@ var (
 	cbFailingRatio                = config.GetFloat(config.CBFailingRatioKey)
 	rescanRangeStart              = config.GetInt(config.RescanRangeStartKey)
 	rescanGapLimit                = config.GetInt(config.RescanGapLimitKey)
+	walletUnlockPasswordFile      = config.GetString(config.WalletUnlockPasswordFile)
 )
 
 func main() {
@@ -161,21 +162,22 @@ func main() {
 
 	// Init gRPC interfaces.
 	opts := grpcinterface.ServiceOpts{
-		NoMacaroons:          noMacaroons,
-		Datadir:              datadir,
-		DBLocation:           config.DbLocation,
-		TLSLocation:          config.TLSLocation,
-		MacaroonsLocation:    config.MacaroonsLocation,
-		OperatorExtraIPs:     operatorTLSExtraIPs,
-		OperatorExtraDomains: operatorTLSExtraDomains,
-		OperatorAddress:      fmt.Sprintf(":%d", operatorSvcPort),
-		TradeAddress:         fmt.Sprintf(":%d", tradeSvcPort),
-		TradeTLSKey:          tradeTLSKey,
-		TradeTLSCert:         tradeTLSCert,
-		WalletSvc:            walletSvc,
-		WalletUnlockerSvc:    walletUnlockerSvc,
-		OperatorSvc:          operatorSvc,
-		TradeSvc:             tradeSvc,
+		NoMacaroons:              noMacaroons,
+		Datadir:                  datadir,
+		DBLocation:               config.DbLocation,
+		TLSLocation:              config.TLSLocation,
+		MacaroonsLocation:        config.MacaroonsLocation,
+		OperatorExtraIPs:         operatorTLSExtraIPs,
+		OperatorExtraDomains:     operatorTLSExtraDomains,
+		OperatorAddress:          fmt.Sprintf(":%d", operatorSvcPort),
+		TradeAddress:             fmt.Sprintf(":%d", tradeSvcPort),
+		TradeTLSKey:              tradeTLSKey,
+		TradeTLSCert:             tradeTLSCert,
+		WalletSvc:                walletSvc,
+		WalletUnlockerSvc:        walletUnlockerSvc,
+		OperatorSvc:              operatorSvc,
+		TradeSvc:                 tradeSvc,
+		WalletUnlockPasswordFile: walletUnlockPasswordFile,
 	}
 	svc, err := grpcinterface.NewService(opts)
 	if err != nil {

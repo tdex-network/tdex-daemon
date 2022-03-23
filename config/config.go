@@ -91,6 +91,10 @@ const (
 	// 20 consecutive unused addresses, or those not involved in any transaction
 	// in the blockchain.
 	RescanGapLimitKey = "RESCAN_GAP_LIMIT"
+	// WalletUnlockPasswordFile defines full path to a file  that contains the
+	//password for unlocking the wallet, if provided wallet will be unlocked
+	//automatically
+	WalletUnlockPasswordFile = "WALLET_UNLOCK_PASSWORD_FILE"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
