@@ -1,6 +1,7 @@
 package grpcinterface
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -8,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
@@ -168,7 +168,7 @@ func (o ServiceOpts) validate() error {
 
 	if o.WalletUnlockPasswordFile != "" {
 		if !pathExists(o.WalletUnlockPasswordFile) {
-			return fmt.Errorf("wallet unlock password file not found: %v", o.WalletUnlockPasswordFile)
+			return fmt.Errorf("wallet unlock password file not found")
 		}
 	}
 
@@ -237,7 +237,11 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 			return nil, err
 		}
 
-		walletPassword = strings.TrimSpace(string(walletPasswordBytes))
+		trimmedPass := bytes.TrimFunc(walletPasswordBytes, func(r rune) bool {
+			return r == 10 || r == 32
+		})
+
+		walletPassword = string(trimmedPass)
 	}
 
 	return &service{
@@ -460,6 +464,8 @@ func (s *service) startListeningToReadyChan() {
 		if err := s.opts.WalletUnlockerSvc.UnlockWallet(context.Background(), s.walletPassword); err != nil {
 			panic(err)
 		}
+
+		s.walletPassword = ""
 	}
 
 	withoutUnlockerOnly := false
