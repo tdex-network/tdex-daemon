@@ -52,14 +52,6 @@ Builds `tdex` as static binary in the `./build` folder
 $ make build-cli
 ```
 
-### Build unlocker
-
-Builds `unlockerd` as static binary in the `./build` folder
-
-```bash
-$ make build-unlocker
-```
-
 ### Build tdexdconnect
 
 Builds `tdexdconnect` as a static binary in the `./build` folder
@@ -90,12 +82,6 @@ $ docker run -d -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex
 
 ```bash
 $ alias tdex="docker exec -it tdexd tdex"
-```
-
-#### Use the unlocker
-
-```bash
-$ alias unlockerd="docker exec -it tdexd unlockerd"
 ```
 
 ### Use tdexdconnect
