@@ -1,8 +1,10 @@
 package grpcinterface
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"net"
 	"net/http"
@@ -79,6 +81,7 @@ type service struct {
 	http2TradeServer    *http.Server
 	muxOperator         cmux.CMux
 	muxTrade            cmux.CMux
+	walletPassword      string
 
 	passphraseChan chan application.PassphraseMsg
 	readyChan      chan bool
@@ -87,12 +90,13 @@ type service struct {
 type ServiceOpts struct {
 	NoMacaroons bool
 
-	Datadir              string
-	DBLocation           string
-	TLSLocation          string
-	MacaroonsLocation    string
-	OperatorExtraIPs     []string
-	OperatorExtraDomains []string
+	Datadir                  string
+	DBLocation               string
+	TLSLocation              string
+	MacaroonsLocation        string
+	OperatorExtraIPs         []string
+	OperatorExtraDomains     []string
+	WalletUnlockPasswordFile string
 
 	OperatorAddress string
 	TradeAddress    string
@@ -162,6 +166,12 @@ func (o ServiceOpts) validate() error {
 		)
 	}
 
+	if o.WalletUnlockPasswordFile != "" {
+		if !pathExists(o.WalletUnlockPasswordFile) {
+			return fmt.Errorf("wallet unlock password file not found")
+		}
+	}
+
 	if o.WalletUnlockerSvc == nil {
 		return fmt.Errorf("wallet unlocker app service must not be null")
 	}
@@ -220,11 +230,26 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 		}
 	}
 
+	var walletPassword string
+	if opts.WalletUnlockPasswordFile != "" {
+		walletPasswordBytes, err := ioutil.ReadFile(opts.WalletUnlockPasswordFile)
+		if err != nil {
+			return nil, err
+		}
+
+		trimmedPass := bytes.TrimFunc(walletPasswordBytes, func(r rune) bool {
+			return r == 10 || r == 32
+		})
+
+		walletPassword = string(trimmedPass)
+	}
+
 	return &service{
 		opts:           opts,
 		macaroonSvc:    macaroonSvc,
 		passphraseChan: opts.WalletUnlockerSvc.PassphraseChan(),
 		readyChan:      opts.WalletUnlockerSvc.ReadyChan(),
+		walletPassword: walletPassword,
 	}, nil
 }
 
@@ -433,6 +458,14 @@ func (s *service) startListeningToReadyChan() {
 
 	if !isReady {
 		panic("failed to initialize wallet")
+	}
+
+	if s.walletPassword != "" {
+		if err := s.opts.WalletUnlockerSvc.UnlockWallet(context.Background(), s.walletPassword); err != nil {
+			panic(err)
+		}
+
+		s.walletPassword = ""
 	}
 
 	withoutUnlockerOnly := false
