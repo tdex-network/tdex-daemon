@@ -10,6 +10,10 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"google.golang.org/grpc/credentials"
+
+	"google.golang.org/grpc/credentials/insecure"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -23,6 +27,8 @@ import (
 
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
 
 const (
@@ -329,7 +335,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	}
 
 	// http Operator server for grpc-web
-	http1OperatorServer, http2OperatorServer := newGRPCWrappedServer(operatorAddr, grpcOperatorServer)
+	http1OperatorServer, http2OperatorServer := newGRPCWrappedServer(operatorAddr, grpcOperatorServer, nil)
 
 	// Serve grpc and grpc-web multiplexed on the same port
 	muxOperator, err := serveMux(
@@ -354,7 +360,13 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		)
 		tradeHandler := grpchandler.NewTraderHandler(s.opts.TradeSvc)
 		tdexv1.RegisterTradeServer(grpcTradeServer, tradeHandler)
-		http1TradeServer, http2TradeServer = newGRPCWrappedServer(tradeAddr, grpcTradeServer)
+
+		tradeGrpcGateway, err := s.tradeGrpcGateway(context.Background(), tradeTLSKey, tradeTLSCert)
+		if err != nil {
+			return nil, err
+		}
+
+		http1TradeServer, http2TradeServer = newGRPCWrappedServer(tradeAddr, grpcTradeServer, tradeGrpcGateway)
 		muxTrade, err = serveMux(
 			tradeAddr, tradeTLSKey, tradeTLSCert,
 			grpcTradeServer, http1TradeServer, http2TradeServer,
@@ -466,6 +478,7 @@ func (s *service) startListeningToReadyChan() {
 		}
 
 		s.walletPassword = ""
+		log.Infoln("wallet unlocked")
 	}
 
 	withoutUnlockerOnly := false
@@ -488,4 +501,30 @@ func (s *service) startListeningToReadyChan() {
 	s.http2TradeServer = services.http2Trade
 	s.muxOperator = services.muxOperator
 	s.muxTrade = services.muxTrade
+}
+
+func (s *service) tradeGrpcGateway(ctx context.Context, tlsKey, tlsCert string) (http.Handler, error) {
+	creds := grpc.WithTransportCredentials(insecure.NewCredentials())
+	if tlsKey != "" {
+		tlsConfig, err := getTlsConfig(tlsKey, tlsCert)
+		if err != nil {
+			return nil, err
+		}
+
+		creds = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
+	}
+
+	conn, err := grpc.DialContext(ctx, s.opts.TradeAddress, []grpc.DialOption{creds}...)
+	if err != nil {
+		return nil, err
+	}
+
+	grpcGatewayMux := runtime.NewServeMux()
+	if err := tdexv1.RegisterTradeHandler(ctx, grpcGatewayMux, conn); err != nil {
+		return nil, err
+	}
+
+	grpcGatewayHandler := http.Handler(grpcGatewayMux)
+
+	return grpcGatewayHandler, nil
 }
