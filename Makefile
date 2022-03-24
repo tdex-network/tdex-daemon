@@ -14,11 +14,6 @@ build-cli:
 	chmod u+x ./scripts/build-cli
 	./scripts/build-cli
 
-## build-unlocker: build unlockerd for all platforms
-build-unlocker: 
-	chmod u+x ./scripts/build-unlocker
-	./scripts/build-unlocker
-
 build-tdexdconnect:
 	chmod u+x ./scripts/build-tdexdconnect
 	./scripts/build-tdexdconnect

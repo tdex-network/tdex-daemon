@@ -71,21 +71,6 @@ builds:
       - arm64
     binary: tdex-darwin
 
-  # unlocker
-  - id: "unlockerd"
-    main: ./cmd/unlockerd
-    ldflags:
-      - -s -w
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    binary: unlockerd
-
   # tdexdconnect
   - id: "tdexdconnect"
     main: ./cmd/tdexdconnect
@@ -141,12 +126,6 @@ archives:
     builds:
       - tdex
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    
-  - id: unlockerd
-    format: binary
-    builds:
-      - unlockerd
-    name_template: "unlockerd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
   - id: tdexdconnect
     format: binary
