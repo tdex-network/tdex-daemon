@@ -41,6 +41,15 @@ type HDWalletInfo struct {
 	MasterBlindingKey string
 	Accounts          []AccountInfo
 	Network           string
+	BuildInfo         BuildInfo
+	BaseAsset         string
+	QuoteAsset        string
+}
+
+type BuildInfo struct {
+	Version string
+	Commit  string
+	Date    string
 }
 
 type HDWalletStatus struct {

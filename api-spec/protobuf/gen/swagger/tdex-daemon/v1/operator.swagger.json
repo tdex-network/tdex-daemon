@@ -137,6 +137,23 @@
         }
       }
     },
+    "v1BuildInfo": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "title": "Version"
+        },
+        "commit": {
+          "type": "string",
+          "title": "Commit"
+        },
+        "date": {
+          "type": "string",
+          "title": "Date"
+        }
+      }
+    },
     "v1ClaimFeeDepositsReply": {
       "type": "object"
     },
@@ -319,6 +336,18 @@
         "network": {
           "type": "string",
           "title": "Network daemon running on"
+        },
+        "buildData": {
+          "$ref": "#/definitions/v1BuildInfo",
+          "title": "Daemon build information"
+        },
+        "baseAsset": {
+          "type": "string",
+          "title": "Base fixed asset"
+        },
+        "quoteAsset": {
+          "type": "string",
+          "title": "Quote fixed asset"
         }
       }
     },

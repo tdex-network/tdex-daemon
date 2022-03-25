@@ -59,6 +59,10 @@ var (
 	rescanRangeStart              = config.GetInt(config.RescanRangeStartKey)
 	rescanGapLimit                = config.GetInt(config.RescanGapLimitKey)
 	walletUnlockPasswordFile      = config.GetString(config.WalletUnlockPasswordFile)
+
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 func main() {
@@ -140,6 +144,11 @@ func main() {
 		marketsFee,
 		network,
 		feeThreshold,
+		application.BuildInfo{
+			Version: version,
+			Commit:  commit,
+			Date:    date,
+		},
 	)
 	walletSvc := application.NewWalletService(
 		repoManager,

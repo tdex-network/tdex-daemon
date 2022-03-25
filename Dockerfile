@@ -13,7 +13,7 @@ WORKDIR /tdex-daemon
 COPY . .
 RUN go mod download
 
-RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w " -o tdexd-linux cmd/tdexd/main.go
+RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-X 'main.Version=${COMMIT}' -X 'main.Commit=${COMMIT}' -X 'main.Date=${COMMIT}'" -o tdexd-linux cmd/tdexd/main.go
 RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o tdex cmd/tdex/*
 RUN go build -ldflags="-s -w " -o tdexdconnect cmd/tdexdconnect/*
 

@@ -167,6 +167,21 @@ message GetInfoReply{
   repeated AccountInfo account_info = 3;
   // Network daemon running on
   string network = 4;
+  // Daemon build information
+  BuildInfo build_data = 5;
+  // Base asset
+  string base_asset = 6;
+  // Quote asset
+  string quote_asset = 7;
+}
+
+message BuildInfo {
+  // Version
+  string version = 1;
+  // Commit
+  string commit = 2;
+  // Date
+  string date = 3;
 }
 
 message GetFeeAddressRequest {

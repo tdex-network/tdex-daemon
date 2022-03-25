@@ -5,9 +5,9 @@ deps:
     owner: googleapis
     repository: googleapis
     branch: main
-    commit: 2de8fdf478b545239f089219bf532912
-    digest: b1-8pfrYEi1AMHlTqsEo1vcBZQ0DwB8PYQdmYGm8m3PRr0=
-    create_time: 2022-03-22T15:09:37.061763Z
+    commit: ba86f78e5fd240acadd0c52c7c88c3d9
+    digest: b1-P62S308h2auXFuWjKGddF1wYrpyNy_Agf4OD24qqah4=
+    create_time: 2022-03-24T15:11:51.212314Z
   - remote: buf.build
     owner: tdex-network
     repository: tdex-protobuf

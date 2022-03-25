@@ -176,6 +176,7 @@ func newOperatorService() (application.OperatorService, error) {
 		marketFee,
 		regtest,
 		feeBalanceThreshold,
+		application.BuildInfo{},
 	), nil
 }
 
@@ -412,6 +413,7 @@ func newOperatorServiceForMarketReport(trades []*domain.Trade) (application.Oper
 		marketFee,
 		regtest,
 		feeBalanceThreshold,
+		application.BuildInfo{},
 	), nil
 }
 
