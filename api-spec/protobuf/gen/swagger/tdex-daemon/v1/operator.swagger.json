@@ -341,13 +341,13 @@
           "$ref": "#/definitions/v1BuildInfo",
           "title": "Daemon build information"
         },
-        "baseAsset": {
+        "fixedBaseAsset": {
           "type": "string",
-          "title": "Base fixed asset"
+          "title": "Fixed base asset"
         },
-        "quoteAsset": {
+        "fixedQuoteAsset": {
           "type": "string",
-          "title": "Quote fixed asset"
+          "title": "Fixed quote asset"
         }
       }
     },

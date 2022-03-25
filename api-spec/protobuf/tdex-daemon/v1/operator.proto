@@ -169,10 +169,10 @@ message GetInfoReply{
   string network = 4;
   // Daemon build information
   BuildInfo build_data = 5;
-  // Base asset
-  string base_asset = 6;
-  // Quote asset
-  string quote_asset = 7;
+  // Fixed base asset
+  string fixed_base_asset = 6;
+  // Fixed quote asset
+  string fixed_quote_asset = 7;
 }
 
 message BuildInfo {

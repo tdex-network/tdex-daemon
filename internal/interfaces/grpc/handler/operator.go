@@ -316,8 +316,8 @@ func (o operatorHandler) getInfo(
 			Commit:  info.BuildInfo.Commit,
 			Date:    info.BuildInfo.Date,
 		},
-		BaseAsset:  info.BaseAsset,
-		QuoteAsset: info.QuoteAsset,
+		FixedBaseAsset:  info.BaseAsset,
+		FixedQuoteAsset: info.QuoteAsset,
 	}, nil
 }
 
