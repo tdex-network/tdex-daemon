@@ -333,7 +333,7 @@ func isValidGrpcWebOptionRequest(req *http.Request) bool {
 }
 
 func isHttpRequest(req *http.Request) bool {
-	return strings.ToLower(req.Method) == "get" ||
+	return strings.ToLower(req.Method) == "get" || strings.ToLower(req.Method) == "post" ||
 		strings.Contains(req.Header.Get("Content-Type"), "application/json")
 }
 

@@ -514,7 +514,7 @@ func (s *service) tradeGrpcGateway(ctx context.Context, tlsKey, tlsCert string) 
 		creds = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
 	}
 
-	conn, err := grpc.DialContext(ctx, s.opts.TradeAddress, []grpc.DialOption{creds}...)
+	conn, err := grpc.Dial(s.opts.TradeAddress, []grpc.DialOption{creds}...)
 	if err != nil {
 		return nil, err
 	}
