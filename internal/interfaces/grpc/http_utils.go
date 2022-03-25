@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -194,23 +195,12 @@ func serveMux(
 	}
 
 	if tlsKey != "" {
-		certificate, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+		tlsConfig, err := getTlsConfig(tlsKey, tlsCert)
 		if err != nil {
 			return nil, err
 		}
 
-		config := &tls.Config{
-			MinVersion:   tls.VersionTLS12,
-			NextProtos:   []string{"http/1.1", http2.NextProtoTLS, "h2-14"}, // h2-14 is just for compatibility. will be eventually removed.
-			Certificates: []tls.Certificate{certificate},
-			CipherSuites: []uint16{
-				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			},
-		}
-		config.Rand = rand.Reader
-
-		lis = tls.NewListener(lis, config)
+		lis = tls.NewListener(lis, tlsConfig)
 	}
 
 	mux := cmux.New(lis)
@@ -280,7 +270,7 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 	gRPC web wrapper
 */
 
-func newGRPCWrappedServer(addr string, grpcServer *grpc.Server) (httpSrv *http.Server, http2Srv *http.Server) {
+func newGRPCWrappedServer(addr string, grpcServer *grpc.Server, grpcGateway http.Handler) (httpSrv *http.Server, http2Srv *http.Server) {
 	grpcWebServer := grpcweb.WrapServer(
 		grpcServer,
 		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
@@ -291,6 +281,13 @@ func newGRPCWrappedServer(addr string, grpcServer *grpc.Server) (httpSrv *http.S
 		if isValidRequest(req) {
 			grpcWebServer.ServeHTTP(w, req)
 			return
+		}
+
+		if grpcGateway != nil {
+			if isHttpRequest(req) {
+				grpcGateway.ServeHTTP(w, req)
+				return
+			}
 		}
 
 		msg := "received a request that could not be matched to grpc or grpc-web"
@@ -333,4 +330,33 @@ func isValidGrpcWebOptionRequest(req *http.Request) bool {
 	return req.Method == http.MethodOptions &&
 		strings.Contains(accessControlHeader, "x-grpc-web") &&
 		strings.Contains(accessControlHeader, "content-type")
+}
+
+func isHttpRequest(req *http.Request) bool {
+	return strings.ToLower(req.Method) == "get" ||
+		strings.Contains(req.Header.Get("Content-Type"), "application/json")
+}
+
+func getTlsConfig(tlsKey, tlsCert string) (*tls.Config, error) {
+	if tlsKey == "" || tlsCert == "" {
+		return nil, errors.New("tls_key and tls_cert both needs to be provided")
+	}
+
+	certificate, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+	if err != nil {
+		return nil, err
+	}
+
+	config := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		NextProtos:   []string{"http/1.1", http2.NextProtoTLS, "h2-14"}, // h2-14 is just for compatibility. will be eventually removed.
+		Certificates: []tls.Certificate{certificate},
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		},
+	}
+	config.Rand = rand.Reader
+
+	return config, nil
 }
