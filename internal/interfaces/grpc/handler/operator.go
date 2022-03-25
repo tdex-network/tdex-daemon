@@ -311,6 +311,13 @@ func (o operatorHandler) getInfo(
 		MasterBlindingKey: info.MasterBlindingKey,
 		AccountInfo:       accountInfo,
 		Network:           info.Network,
+		BuildData: &daemonv1.BuildInfo{
+			Version: info.BuildInfo.Version,
+			Commit:  info.BuildInfo.Commit,
+			Date:    info.BuildInfo.Date,
+		},
+		FixedBaseAsset:  info.BaseAsset,
+		FixedQuoteAsset: info.QuoteAsset,
 	}, nil
 }
 

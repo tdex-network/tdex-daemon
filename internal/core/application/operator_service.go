@@ -156,8 +156,8 @@ type operatorService struct {
 	marketFee                  int64
 	network                    *network.Network
 	feeAccountBalanceThreshold uint64
-
-	fragmenterLock *sync.RWMutex
+	buildInfo                  BuildInfo
+	fragmenterLock             *sync.RWMutex
 }
 
 // NewOperatorService is a constructor function for OperatorService.
@@ -169,6 +169,7 @@ func NewOperatorService(
 	marketFee int64,
 	net *network.Network,
 	feeAccountBalanceThreshold uint64,
+	buildInfo BuildInfo,
 ) OperatorService {
 	return &operatorService{
 		repoManager:                repoManager,
@@ -179,6 +180,7 @@ func NewOperatorService(
 		marketFee:                  marketFee,
 		network:                    net,
 		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
+		buildInfo:                  buildInfo,
 		fragmenterLock:             &sync.RWMutex{},
 	}
 }
@@ -237,6 +239,9 @@ func (o *operatorService) GetInfo(ctx context.Context) (*HDWalletInfo, error) {
 		MasterBlindingKey: masterBlindingKey,
 		Accounts:          accountInfo,
 		Network:           o.network.Name,
+		BuildInfo:         o.buildInfo,
+		BaseAsset:         o.marketBaseAsset,
+		QuoteAsset:        o.marketQuoteAsset,
 	}, nil
 }
 

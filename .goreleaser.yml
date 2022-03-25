@@ -5,7 +5,7 @@ builds:
   - id: "tdexd-linux-amd64"
     main: ./cmd/tdexd
     ldflags:
-      - -s -w
+      - -s -X './cmd/tdexd/main.version={{.Version}}' -X './cmd/tdexd/main.commit={{.Commit}}' -X './cmd/tdexd/main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
     goos:
@@ -17,7 +17,7 @@ builds:
   - id: "tdexd-linux-arm64"
     main: ./cmd/tdexd
     ldflags:
-      - -s -w
+      - -s -X './cmd/tdexd/main.version={{.Version}}' -X './cmd/tdexd/main.commit={{.Commit}}' -X './cmd/tdexd/main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
       - CC=aarch64-linux-gnu-gcc
@@ -47,7 +47,7 @@ builds:
   - id: "tdexd-darwin-arm64"
     main: ./cmd/tdexd
     ldflags:
-      - -s -w
+      - -s -X './cmd/tdexd/main.version={{.Version}}' -X './cmd/tdexd/main.commit={{.Commit}}' -X './cmd/tdexd/main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
       - CC=/home/runner/work/osxcross/target/bin/oa64-clang
