@@ -14,7 +14,7 @@ require (
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
-	github.com/gogo/protobuf v1.2.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/google/uuid v1.1.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4
@@ -41,7 +41,7 @@ require (
 	github.com/vulpemventures/go-elements v0.3.5
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
-	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	google.golang.org/genproto v0.0.0-20220317150908-0efb43f6373e
 	google.golang.org/grpc v1.45.0
 	google.golang.org/protobuf v1.27.1
