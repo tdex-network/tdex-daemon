@@ -74,6 +74,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
 
+      # Install the `buf` CLI
+      - uses: bufbuild/buf-setup-action@v1.3.0
+      # Push module to the BSR
       - uses: bufbuild/buf-push-action@v1        
         with:          
           input: api-spec/protobuf
