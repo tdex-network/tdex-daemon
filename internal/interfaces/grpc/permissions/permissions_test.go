@@ -42,3 +42,9 @@ func TestWhitelistedMethods(t *testing.T) {
 		require.True(t, ok, fmt.Sprintf("missing %s in whitelist", m))
 	}
 }
+
+func TestValidatePermissions(t *testing.T) {
+	if err := permissions.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}

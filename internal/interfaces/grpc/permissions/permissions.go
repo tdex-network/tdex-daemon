@@ -3,8 +3,6 @@ package permissions
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
@@ -22,13 +20,7 @@ const (
 	EntityTransport = "transport"
 )
 
-func init() {
-	if err := validatePermissions(); err != nil {
-		log.Fatalln(err)
-	}
-}
-
-func validatePermissions() error {
+func Validate() error {
 	methodsThatNeedsAuth := AllPermissionsByMethod()
 	publicRoutes := Whitelist()
 
