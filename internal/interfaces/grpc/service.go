@@ -234,6 +234,10 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 		); err != nil {
 			return nil, err
 		}
+
+		if err := permissions.Validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	var walletPassword string

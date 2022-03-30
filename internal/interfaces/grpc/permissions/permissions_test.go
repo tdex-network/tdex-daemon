@@ -13,10 +13,10 @@ import (
 func TestRestrictedMethods(t *testing.T) {
 	allMethods := make([]string, 0)
 	for _, m := range daemonv1.Operator_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/Operator/%s", m.MethodName))
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv1.Operator_ServiceDesc.ServiceName, m.MethodName))
 	}
 	for _, m := range daemonv1.Wallet_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/Wallet/%s", m.MethodName))
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv1.Wallet_ServiceDesc.ServiceName, m.MethodName))
 	}
 
 	allPermissions := permissions.AllPermissionsByMethod()
@@ -29,17 +29,22 @@ func TestRestrictedMethods(t *testing.T) {
 func TestWhitelistedMethods(t *testing.T) {
 	allMethods := make([]string, 0)
 	for _, m := range daemonv1.WalletUnlocker_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/WalletUnlocker/%s", m.MethodName))
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv1.WalletUnlocker_ServiceDesc.ServiceName, m.MethodName))
 	}
-	tradeMethods := tdexv1.File_tdex_v1_trade_proto.Services().ByName("Trade").Methods()
-	for i := 0; i < tradeMethods.Len(); i++ {
-		m := tradeMethods.Get(i)
-		allMethods = append(allMethods, fmt.Sprintf("/Trade/%s", m.Name()))
+
+	for _, v := range tdexv1.Trade_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv1.Trade_ServiceDesc.ServiceName, v.MethodName))
 	}
 
 	whitelist := permissions.Whitelist()
 	for _, m := range allMethods {
 		_, ok := whitelist[m]
 		require.True(t, ok, fmt.Sprintf("missing %s in whitelist", m))
+	}
+}
+
+func TestValidatePermissions(t *testing.T) {
+	if err := permissions.Validate(); err != nil {
+		t.Fatal(err)
 	}
 }
