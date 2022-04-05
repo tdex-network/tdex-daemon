@@ -14,76 +14,76 @@ import (
 
 const ErrCannotServeRequest = "cannot serve request, please retry"
 
-type traderHandler struct {
+type tradeHandler struct {
 	tdexv1.UnimplementedTradeServer
-	traderSvc application.TradeService
+	tradeSvc application.TradeService
 }
 
-func NewTraderHandler(
-	traderSvc application.TradeService,
+func NewTradeHandler(
+	tradeSvc application.TradeService,
 ) tdexv1.TradeServer {
-	return newTraderHandler(traderSvc)
+	return newTradeHandler(tradeSvc)
 }
 
-func newTraderHandler(
-	traderSvc application.TradeService,
-) *traderHandler {
-	return &traderHandler{
-		traderSvc: traderSvc,
+func newTradeHandler(
+	tradeSvc application.TradeService,
+) *tradeHandler {
+	return &tradeHandler{
+		tradeSvc: tradeSvc,
 	}
 }
 
-func (t traderHandler) Markets(
+func (t tradeHandler) Markets(
 	ctx context.Context,
 	req *tdexv1.MarketsRequest,
 ) (*tdexv1.MarketsReply, error) {
 	return t.markets(ctx, req)
 }
 
-func (t traderHandler) Balances(
+func (t tradeHandler) Balances(
 	ctx context.Context,
 	req *tdexv1.BalancesRequest,
 ) (*tdexv1.BalancesReply, error) {
 	return t.balances(ctx, req)
 }
 
-func (t traderHandler) MarketPrice(
+func (t tradeHandler) MarketPrice(
 	ctx context.Context,
 	req *tdexv1.MarketPriceRequest,
 ) (*tdexv1.MarketPriceReply, error) {
 	return t.marketPrice(ctx, req)
 }
 
-func (t traderHandler) TradePropose(
+func (t tradeHandler) TradePropose(
 	req *tdexv1.TradeProposeRequest,
 	stream tdexv1.Trade_TradeProposeServer,
 ) error {
 	return t.tradePropose(stream, req)
 }
 
-func (t traderHandler) ProposeTrade(
+func (t tradeHandler) ProposeTrade(
 	ctx context.Context, req *tdexv1.ProposeTradeRequest,
 ) (*tdexv1.ProposeTradeReply, error) {
 	return t.proposeTrade(ctx, req)
 }
 
-func (t traderHandler) TradeComplete(
+func (t tradeHandler) TradeComplete(
 	req *tdexv1.TradeCompleteRequest, stream tdexv1.Trade_TradeCompleteServer,
 ) error {
 	return t.tradeComplete(stream, req)
 }
 
-func (t traderHandler) CompleteTrade(
+func (t tradeHandler) CompleteTrade(
 	ctx context.Context, req *tdexv1.CompleteTradeRequest,
 ) (*tdexv1.CompleteTradeReply, error) {
 	return t.completeTrade(ctx, req)
 }
 
-func (t traderHandler) markets(
+func (t tradeHandler) markets(
 	ctx context.Context,
 	req *tdexv1.MarketsRequest,
 ) (*tdexv1.MarketsReply, error) {
-	markets, err := t.traderSvc.GetTradableMarkets(ctx)
+	markets, err := t.tradeSvc.GetTradableMarkets(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (t traderHandler) markets(
 	return &tdexv1.MarketsReply{Markets: marketsWithFee}, nil
 }
 
-func (t traderHandler) balances(
+func (t tradeHandler) balances(
 	ctx context.Context,
 	req *tdexv1.BalancesRequest,
 ) (*tdexv1.BalancesReply, error) {
@@ -118,7 +118,7 @@ func (t traderHandler) balances(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	balance, err := t.traderSvc.GetMarketBalance(ctx, market)
+	balance, err := t.tradeSvc.GetMarketBalance(ctx, market)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (t traderHandler) balances(
 	}, nil
 }
 
-func (t traderHandler) marketPrice(
+func (t tradeHandler) marketPrice(
 	ctx context.Context,
 	req *tdexv1.MarketPriceRequest,
 ) (*tdexv1.MarketPriceReply, error) {
@@ -164,7 +164,7 @@ func (t traderHandler) marketPrice(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	preview, err := t.traderSvc.GetMarketPrice(
+	preview, err := t.tradeSvc.GetMarketPrice(
 		ctx, market, int(tradeType), amount, asset,
 	)
 	if err != nil {
@@ -199,7 +199,7 @@ func (t traderHandler) marketPrice(
 	}, nil
 }
 
-func (t traderHandler) proposeTrade(
+func (t tradeHandler) proposeTrade(
 	ctx context.Context, req *tdexv1.ProposeTradeRequest,
 ) (*tdexv1.ProposeTradeReply, error) {
 	market, err := parseMarket(req.GetMarket())
@@ -215,7 +215,7 @@ func (t traderHandler) proposeTrade(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	accept, fail, swapExpiryTime, err := t.traderSvc.TradePropose(
+	accept, fail, swapExpiryTime, err := t.tradeSvc.TradePropose(
 		ctx, market, int(tradeType), swapRequest,
 	)
 	if err != nil {
@@ -250,7 +250,7 @@ func (t traderHandler) proposeTrade(
 	}, nil
 }
 
-func (t traderHandler) completeTrade(
+func (t tradeHandler) completeTrade(
 	ctx context.Context, req *tdexv1.CompleteTradeRequest,
 ) (*tdexv1.CompleteTradeReply, error) {
 	var swapComplete domain.SwapComplete
@@ -261,7 +261,7 @@ func (t traderHandler) completeTrade(
 	if s := req.SwapFail; s != nil {
 		swapFail = s
 	}
-	txID, fail, err := t.traderSvc.TradeComplete(
+	txID, fail, err := t.tradeSvc.TradeComplete(
 		ctx, swapComplete, swapFail,
 	)
 	if err != nil {
@@ -284,7 +284,7 @@ func (t traderHandler) completeTrade(
 	}, nil
 }
 
-func (t traderHandler) tradePropose(
+func (t tradeHandler) tradePropose(
 	stream tdexv1.Trade_TradeProposeServer, req *tdexv1.TradeProposeRequest,
 ) error {
 	rr := &tdexv1.ProposeTradeRequest{
@@ -308,7 +308,7 @@ func (t traderHandler) tradePropose(
 	return nil
 }
 
-func (t traderHandler) tradeComplete(
+func (t tradeHandler) tradeComplete(
 	stream tdexv1.Trade_TradeCompleteServer, req *tdexv1.TradeCompleteRequest,
 ) error {
 	rr := &tdexv1.CompleteTradeRequest{
