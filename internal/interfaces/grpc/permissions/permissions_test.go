@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
+
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
-	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
+	tdexold "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 )
 
 func TestRestrictedMethods(t *testing.T) {
@@ -34,6 +36,11 @@ func TestWhitelistedMethods(t *testing.T) {
 
 	for _, v := range tdexv1.Trade_ServiceDesc.Methods {
 		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv1.Trade_ServiceDesc.ServiceName, v.MethodName))
+	}
+	tradeMethods := tdexold.File_trade_proto.Services().ByName("Trade").Methods()
+	for i := 0; i < tradeMethods.Len(); i++ {
+		m := tradeMethods.Get(i)
+		allMethods = append(allMethods, fmt.Sprintf("/Trade/%s", m.Name()))
 	}
 
 	whitelist := permissions.Whitelist()

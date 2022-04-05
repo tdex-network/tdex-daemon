@@ -3,10 +3,11 @@ package permissions
 import (
 	"fmt"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
+	"gopkg.in/macaroon-bakery.v2/bakery"
 
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
-	"gopkg.in/macaroon-bakery.v2/bakery"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
+	tdexold "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 )
 
 const (
@@ -273,6 +274,35 @@ func Whitelist() map[string][]bakery.Op {
 		fmt.Sprintf("/%v/SupportedContentTypes", tdexv1.Transport_ServiceDesc.ServiceName): {{
 			Entity: EntityTransport,
 			Action: "read",
+		}},
+		// Tdex old proto
+		fmt.Sprintf("/%s/Markets", tdexold.File_trade_proto.Services().Get(0).FullName()): {{
+			Entity: EntityTrade,
+			Action: "read",
+		}},
+		fmt.Sprintf("/%s/Balances", tdexold.File_trade_proto.Services().Get(0).FullName()): {{
+			Entity: EntityTrade,
+			Action: "read",
+		}},
+		fmt.Sprintf("/%s/MarketPrice", tdexold.File_trade_proto.Services().Get(0).FullName()): {{
+			Entity: EntityTrade,
+			Action: "read",
+		}},
+		fmt.Sprintf("/%s/TradePropose", tdexold.File_trade_proto.Services().Get(0).FullName()): {{
+			Entity: EntityTrade,
+			Action: "write",
+		}},
+		fmt.Sprintf("/%s/ProposeTrade", tdexold.File_trade_proto.Services().Get(0).FullName()): {{
+			Entity: EntityTrade,
+			Action: "write",
+		}},
+		fmt.Sprintf("/%s/TradeComplete", tdexold.File_trade_proto.Services().Get(0).FullName()): {{
+			Entity: EntityTrade,
+			Action: "write",
+		}},
+		fmt.Sprintf("/%s/CompleteTrade", tdexold.File_trade_proto.Services().Get(0).FullName()): {{
+			Entity: EntityTrade,
+			Action: "write",
 		}},
 	}
 }
