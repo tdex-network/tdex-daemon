@@ -27,6 +27,7 @@ import (
 
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
+	tdexold "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
@@ -362,8 +363,10 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 			unaryInterceptor,
 			streamInterceptor,
 		)
-		tradeHandler := grpchandler.NewTraderHandler(s.opts.TradeSvc)
+		tradeHandler := grpchandler.NewTradeHandler(s.opts.TradeSvc)
+		tradeOldHandler := grpchandler.NewTradeOldHandler(s.opts.TradeSvc)
 		tdexv1.RegisterTradeServer(grpcTradeServer, tradeHandler)
+		tdexold.RegisterTradeServer(grpcTradeServer, tradeOldHandler)
 
 		tradeGrpcGateway, err := s.tradeGrpcGateway(context.Background(), tradeTLSKey, tradeTLSCert)
 		if err != nil {

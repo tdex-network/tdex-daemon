@@ -2,102 +2,101 @@ package grpchandler
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	pbswap "github.com/tdex-network/tdex-protobuf/generated/go/swap"
+	pb "github.com/tdex-network/tdex-protobuf/generated/go/trade"
+	pbtypes "github.com/tdex-network/tdex-protobuf/generated/go/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-const ErrCannotServeRequest = "cannot serve request, please retry"
-
-type tradeHandler struct {
-	tdexv1.UnimplementedTradeServer
+type tradeOldHandler struct {
+	pb.UnimplementedTradeServer
 	tradeSvc application.TradeService
 }
 
-func NewTradeHandler(
+func NewTradeOldHandler(
 	tradeSvc application.TradeService,
-) tdexv1.TradeServer {
-	return newTradeHandler(tradeSvc)
+) pb.TradeServer {
+	return newTradeOldHandler(tradeSvc)
 }
 
-func newTradeHandler(
+func newTradeOldHandler(
 	tradeSvc application.TradeService,
-) *tradeHandler {
-	return &tradeHandler{
+) *tradeOldHandler {
+	return &tradeOldHandler{
 		tradeSvc: tradeSvc,
 	}
 }
 
-func (t tradeHandler) Markets(
+func (t tradeOldHandler) Markets(
 	ctx context.Context,
-	req *tdexv1.MarketsRequest,
-) (*tdexv1.MarketsReply, error) {
+	req *pb.MarketsRequest,
+) (*pb.MarketsReply, error) {
 	return t.markets(ctx, req)
 }
 
-func (t tradeHandler) Balances(
+func (t tradeOldHandler) Balances(
 	ctx context.Context,
-	req *tdexv1.BalancesRequest,
-) (*tdexv1.BalancesReply, error) {
+	req *pb.BalancesRequest,
+) (*pb.BalancesReply, error) {
 	return t.balances(ctx, req)
 }
 
-func (t tradeHandler) MarketPrice(
+func (t tradeOldHandler) MarketPrice(
 	ctx context.Context,
-	req *tdexv1.MarketPriceRequest,
-) (*tdexv1.MarketPriceReply, error) {
+	req *pb.MarketPriceRequest,
+) (*pb.MarketPriceReply, error) {
 	return t.marketPrice(ctx, req)
 }
 
-func (t tradeHandler) TradePropose(
-	req *tdexv1.TradeProposeRequest,
-	stream tdexv1.Trade_TradeProposeServer,
+func (t tradeOldHandler) TradePropose(
+	req *pb.TradeProposeRequest,
+	stream pb.Trade_TradeProposeServer,
 ) error {
 	return t.tradePropose(stream, req)
 }
 
-func (t tradeHandler) ProposeTrade(
-	ctx context.Context, req *tdexv1.ProposeTradeRequest,
-) (*tdexv1.ProposeTradeReply, error) {
+func (t tradeOldHandler) ProposeTrade(
+	ctx context.Context, req *pb.ProposeTradeRequest,
+) (*pb.ProposeTradeReply, error) {
 	return t.proposeTrade(ctx, req)
 }
 
-func (t tradeHandler) TradeComplete(
-	req *tdexv1.TradeCompleteRequest, stream tdexv1.Trade_TradeCompleteServer,
+func (t tradeOldHandler) TradeComplete(
+	req *pb.TradeCompleteRequest, stream pb.Trade_TradeCompleteServer,
 ) error {
 	return t.tradeComplete(stream, req)
 }
 
-func (t tradeHandler) CompleteTrade(
-	ctx context.Context, req *tdexv1.CompleteTradeRequest,
-) (*tdexv1.CompleteTradeReply, error) {
+func (t tradeOldHandler) CompleteTrade(
+	ctx context.Context, req *pb.CompleteTradeRequest,
+) (*pb.CompleteTradeReply, error) {
 	return t.completeTrade(ctx, req)
 }
 
-func (t tradeHandler) markets(
+func (t tradeOldHandler) markets(
 	ctx context.Context,
-	req *tdexv1.MarketsRequest,
-) (*tdexv1.MarketsReply, error) {
+	req *pb.MarketsRequest,
+) (*pb.MarketsReply, error) {
 	markets, err := t.tradeSvc.GetTradableMarkets(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	marketsWithFee := make([]*tdexv1.MarketWithFee, 0, len(markets))
+	marketsWithFee := make([]*pbtypes.MarketWithFee, 0, len(markets))
 	for _, v := range markets {
-		m := &tdexv1.MarketWithFee{
-			Market: &tdexv1.Market{
+		m := &pbtypes.MarketWithFee{
+			Market: &pbtypes.Market{
 				BaseAsset:  v.BaseAsset,
 				QuoteAsset: v.QuoteAsset,
 			},
-			Fee: &tdexv1.Fee{
+			Fee: &pbtypes.Fee{
 				BasisPoint: v.BasisPoint,
-				Fixed: &tdexv1.Fixed{
+				Fixed: &pbtypes.Fixed{
 					BaseFee:  v.FixedBaseFee,
 					QuoteFee: v.FixedQuoteFee,
 				},
@@ -106,14 +105,14 @@ func (t tradeHandler) markets(
 		marketsWithFee = append(marketsWithFee, m)
 	}
 
-	return &tdexv1.MarketsReply{Markets: marketsWithFee}, nil
+	return &pb.MarketsReply{Markets: marketsWithFee}, nil
 }
 
-func (t tradeHandler) balances(
+func (t tradeOldHandler) balances(
 	ctx context.Context,
-	req *tdexv1.BalancesRequest,
-) (*tdexv1.BalancesReply, error) {
-	market, err := parseMarket(req.GetMarket())
+	req *pb.BalancesRequest,
+) (*pb.BalancesReply, error) {
+	market, err := parseMarketOld(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -123,36 +122,36 @@ func (t tradeHandler) balances(
 		return nil, err
 	}
 
-	balancesWithFee := make([]*tdexv1.BalanceWithFee, 0)
-	balancesWithFee = append(balancesWithFee, &tdexv1.BalanceWithFee{
-		Balance: &tdexv1.Balance{
+	balancesWithFee := make([]*pbtypes.BalanceWithFee, 0)
+	balancesWithFee = append(balancesWithFee, &pbtypes.BalanceWithFee{
+		Balance: &pbtypes.Balance{
 			BaseAmount:  balance.Balance.BaseAmount,
 			QuoteAmount: balance.Balance.QuoteAmount,
 		},
-		Fee: &tdexv1.Fee{
+		Fee: &pbtypes.Fee{
 			BasisPoint: balance.Fee.BasisPoint,
-			Fixed: &tdexv1.Fixed{
+			Fixed: &pbtypes.Fixed{
 				BaseFee:  balance.Fee.FixedBaseFee,
 				QuoteFee: balance.Fee.FixedQuoteFee,
 			},
 		},
 	})
 
-	return &tdexv1.BalancesReply{
+	return &pb.BalancesReply{
 		Balances: balancesWithFee,
 	}, nil
 }
 
-func (t tradeHandler) marketPrice(
+func (t tradeOldHandler) marketPrice(
 	ctx context.Context,
-	req *tdexv1.MarketPriceRequest,
-) (*tdexv1.MarketPriceReply, error) {
-	market, err := parseMarket(req.GetMarket())
+	req *pb.MarketPriceRequest,
+) (*pb.MarketPriceReply, error) {
+	market, err := parseMarketOld(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	tradeType := req.GetType()
-	if err := validateTradeType(tradeType); err != nil {
+	if err := validateTradeTypeOld(tradeType); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	amount := req.GetAmount()
@@ -174,23 +173,23 @@ func (t tradeHandler) marketPrice(
 	basePrice, _ := preview.Price.BasePrice.Float64()
 	quotePrice, _ := preview.Price.QuotePrice.Float64()
 
-	return &tdexv1.MarketPriceReply{
-		Prices: []*tdexv1.PriceWithFee{
+	return &pb.MarketPriceReply{
+		Prices: []*pbtypes.PriceWithFee{
 			{
-				Price: &tdexv1.Price{
+				Price: &pbtypes.Price{
 					BasePrice:  basePrice,
 					QuotePrice: quotePrice,
 				},
-				Fee: &tdexv1.Fee{
+				Fee: &pbtypes.Fee{
 					BasisPoint: preview.Fee.BasisPoint,
-					Fixed: &tdexv1.Fixed{
+					Fixed: &pbtypes.Fixed{
 						BaseFee:  preview.Fee.FixedBaseFee,
 						QuoteFee: preview.Fee.FixedQuoteFee,
 					},
 				},
 				Amount: preview.Amount,
 				Asset:  preview.Asset,
-				Balance: &tdexv1.Balance{
+				Balance: &pbtypes.Balance{
 					BaseAmount:  preview.Balance.BaseAmount,
 					QuoteAmount: preview.Balance.QuoteAmount,
 				},
@@ -199,19 +198,19 @@ func (t tradeHandler) marketPrice(
 	}, nil
 }
 
-func (t tradeHandler) proposeTrade(
-	ctx context.Context, req *tdexv1.ProposeTradeRequest,
-) (*tdexv1.ProposeTradeReply, error) {
-	market, err := parseMarket(req.GetMarket())
+func (t tradeOldHandler) proposeTrade(
+	ctx context.Context, req *pb.ProposeTradeRequest,
+) (*pb.ProposeTradeReply, error) {
+	market, err := parseMarketOld(req.GetMarket())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	tradeType := req.GetType()
-	if err := validateTradeType(tradeType); err != nil {
+	if err := validateTradeTypeOld(tradeType); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	swapRequest := req.GetSwapRequest()
-	if err := validateSwapRequest(swapRequest); err != nil {
+	if err := validateSwapRequestOld(swapRequest); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -222,11 +221,11 @@ func (t tradeHandler) proposeTrade(
 		return nil, err
 	}
 
-	var swapAccept *tdexv1.SwapAccept
-	var swapFail *tdexv1.SwapFail
+	var swapAccept *pbswap.SwapAccept
+	var swapFail *pbswap.SwapFail
 
 	if accept != nil {
-		swapAccept = &tdexv1.SwapAccept{
+		swapAccept = &pbswap.SwapAccept{
 			Id:                accept.GetId(),
 			RequestId:         accept.GetRequestId(),
 			Transaction:       accept.GetTransaction(),
@@ -235,7 +234,7 @@ func (t tradeHandler) proposeTrade(
 		}
 	}
 	if fail != nil {
-		swapFail = &tdexv1.SwapFail{
+		swapFail = &pbswap.SwapFail{
 			Id:             fail.GetId(),
 			MessageId:      fail.GetMessageId(),
 			FailureCode:    fail.GetFailureCode(),
@@ -243,16 +242,16 @@ func (t tradeHandler) proposeTrade(
 		}
 	}
 
-	return &tdexv1.ProposeTradeReply{
+	return &pb.ProposeTradeReply{
 		SwapAccept:     swapAccept,
 		SwapFail:       swapFail,
 		ExpiryTimeUnix: swapExpiryTime,
 	}, nil
 }
 
-func (t tradeHandler) completeTrade(
-	ctx context.Context, req *tdexv1.CompleteTradeRequest,
-) (*tdexv1.CompleteTradeReply, error) {
+func (t tradeOldHandler) completeTrade(
+	ctx context.Context, req *pb.CompleteTradeRequest,
+) (*pb.CompleteTradeReply, error) {
 	var swapComplete domain.SwapComplete
 	if s := req.SwapComplete; s != nil {
 		swapComplete = s
@@ -268,9 +267,9 @@ func (t tradeHandler) completeTrade(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	var swapFailStub *tdexv1.SwapFail
+	var swapFailStub *pbswap.SwapFail
 	if fail != nil {
-		swapFailStub = &tdexv1.SwapFail{
+		swapFailStub = &pbswap.SwapFail{
 			Id:             fail.GetId(),
 			MessageId:      fail.GetMessageId(),
 			FailureCode:    fail.GetFailureCode(),
@@ -278,16 +277,16 @@ func (t tradeHandler) completeTrade(
 		}
 	}
 
-	return &tdexv1.CompleteTradeReply{
+	return &pb.CompleteTradeReply{
 		Txid:     txID,
 		SwapFail: swapFailStub,
 	}, nil
 }
 
-func (t tradeHandler) tradePropose(
-	stream tdexv1.Trade_TradeProposeServer, req *tdexv1.TradeProposeRequest,
+func (t tradeOldHandler) tradePropose(
+	stream pb.Trade_TradeProposeServer, req *pb.TradeProposeRequest,
 ) error {
-	rr := &tdexv1.ProposeTradeRequest{
+	rr := &pb.ProposeTradeRequest{
 		Market:      req.GetMarket(),
 		Type:        req.GetType(),
 		SwapRequest: req.GetSwapRequest(),
@@ -296,7 +295,7 @@ func (t tradeHandler) tradePropose(
 	if err != nil {
 		return err
 	}
-	resp := &tdexv1.TradeProposeReply{
+	resp := &pb.TradeProposeReply{
 		SwapAccept:     reply.GetSwapAccept(),
 		SwapFail:       reply.GetSwapFail(),
 		ExpiryTimeUnix: reply.GetExpiryTimeUnix(),
@@ -308,10 +307,10 @@ func (t tradeHandler) tradePropose(
 	return nil
 }
 
-func (t tradeHandler) tradeComplete(
-	stream tdexv1.Trade_TradeCompleteServer, req *tdexv1.TradeCompleteRequest,
+func (t tradeOldHandler) tradeComplete(
+	stream pb.Trade_TradeCompleteServer, req *pb.TradeCompleteRequest,
 ) error {
-	rr := &tdexv1.CompleteTradeRequest{
+	rr := &pb.CompleteTradeRequest{
 		SwapComplete: req.GetSwapComplete(),
 		SwapFail:     req.GetSwapFail(),
 	}
@@ -320,7 +319,7 @@ func (t tradeHandler) tradeComplete(
 		return err
 	}
 
-	resp := &tdexv1.TradeCompleteReply{
+	resp := &pb.TradeCompleteReply{
 		Txid:     reply.GetTxid(),
 		SwapFail: reply.GetSwapFail(),
 	}
@@ -330,21 +329,28 @@ func (t tradeHandler) tradeComplete(
 	return nil
 }
 
-func validateTradeType(tType tdexv1.TradeType) error {
+func parseMarketOld(mkt *pbtypes.Market) (market application.Market, err error) {
+	var baseAsset, quoteAsset string
+	if mkt != nil {
+		baseAsset, quoteAsset = mkt.GetBaseAsset(), mkt.GetQuoteAsset()
+	}
+	m := application.Market{baseAsset, quoteAsset}
+	if err = m.Validate(); err != nil {
+		return
+	}
+
+	market = m
+	return
+}
+
+func validateTradeTypeOld(tType pb.TradeType) error {
 	if int(tType) < application.TradeBuy || int(tType) > application.TradeSell {
 		return errors.New("trade type is unknown")
 	}
 	return nil
 }
 
-func validateAmount(amount uint64) error {
-	if amount <= 0 {
-		return errors.New("amount is too low")
-	}
-	return nil
-}
-
-func validateSwapRequest(swapRequest *tdexv1.SwapRequest) error {
+func validateSwapRequestOld(swapRequest *pbswap.SwapRequest) error {
 	if swapRequest == nil {
 		return errors.New("swap request is null")
 	}
@@ -356,13 +362,6 @@ func validateSwapRequest(swapRequest *tdexv1.SwapRequest) error {
 		len(swapRequest.GetInputBlindingKey()) <= 0 ||
 		len(swapRequest.GetOutputBlindingKey()) <= 0 {
 		return errors.New("swap request is malformed")
-	}
-	return nil
-}
-
-func validateAsset(asset string) error {
-	if buf, err := hex.DecodeString(asset); err != nil || len(buf) != 32 {
-		return errors.New("invalid asset")
 	}
 	return nil
 }
