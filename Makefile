@@ -1,4 +1,4 @@
-.PHONY: build build-cli build-unlocker build-tdexdconnect proto clean cov fmt help install integrationtest run test trade-cert vet
+.PHONY: build build-cli build-unlocker build-tdexdconnect proto proto-lint clean cov fmt help install integrationtest run test trade-cert vet
 
 install:
 	go mod download
@@ -18,9 +18,16 @@ build-tdexdconnect:
 	chmod u+x ./scripts/build-tdexdconnect
 	./scripts/build-tdexdconnect
 
-## proto: compile proto files
-proto:
-	cd api-spec/protobuf; buf mod update; buf build; cd ../../; buf generate buf.build/tdex-network/tdex-protobuf; buf generate; make install
+## proto: compile proto stubs
+proto: proto-lint
+	@echo "Compiling stubs..."
+	@buf generate buf.build/tdex-network/tdex-protobuf
+	@buf generate && rm -rf api-spec/protobuf/gen/swagger/tdex-daemon
+
+## proto-lint: lint protos
+proto-lint:
+	@echo "Linting protos..."
+	@buf lint
 
 ## clean: cleans the binary
 clean:

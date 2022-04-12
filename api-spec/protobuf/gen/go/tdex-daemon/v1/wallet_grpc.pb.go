@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: tdex-daemon/v1/wallet.proto
 
-package daemonv1
+package tdex_daemonv1
 
 import (
 	context "context"
@@ -18,170 +18,166 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// WalletClient is the client API for Wallet service.
+// WalletServiceClient is the client API for WalletService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type WalletClient interface {
-	//
+type WalletServiceClient interface {
 	// WalletAddress returns a Liquid confidential p2wpkh address (BLECH32)
-	WalletAddress(ctx context.Context, in *WalletAddressRequest, opts ...grpc.CallOption) (*WalletAddressReply, error)
-	//
-	// WalletBalance returns total unspent outputs (confirmed and unconfirmed), all
-	// confirmed unspent outputs and all unconfirmed unspent outputs under control
-	// of the wallet.
-	WalletBalance(ctx context.Context, in *WalletBalanceRequest, opts ...grpc.CallOption) (*WalletBalanceReply, error)
-	//SendToMany sends funds to many outputs
-	SendToMany(ctx context.Context, in *SendToManyRequest, opts ...grpc.CallOption) (*SendToManyReply, error)
+	WalletAddress(ctx context.Context, in *WalletAddressRequest, opts ...grpc.CallOption) (*WalletAddressResponse, error)
+	// WalletBalance returns total unspent outputs (confirmed and unconfirmed),
+	// all confirmed unspent outputs and all unconfirmed unspent outputs under
+	// controll of the wallet.
+	WalletBalance(ctx context.Context, in *WalletBalanceRequest, opts ...grpc.CallOption) (*WalletBalanceResponse, error)
+	// SendToMany sends funds to many outputs
+	SendToMany(ctx context.Context, in *SendToManyRequest, opts ...grpc.CallOption) (*SendToManyResponse, error)
 }
 
-type walletClient struct {
+type walletServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewWalletClient(cc grpc.ClientConnInterface) WalletClient {
-	return &walletClient{cc}
+func NewWalletServiceClient(cc grpc.ClientConnInterface) WalletServiceClient {
+	return &walletServiceClient{cc}
 }
 
-func (c *walletClient) WalletAddress(ctx context.Context, in *WalletAddressRequest, opts ...grpc.CallOption) (*WalletAddressReply, error) {
-	out := new(WalletAddressReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Wallet/WalletAddress", in, out, opts...)
+func (c *walletServiceClient) WalletAddress(ctx context.Context, in *WalletAddressRequest, opts ...grpc.CallOption) (*WalletAddressResponse, error) {
+	out := new(WalletAddressResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.WalletService/WalletAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *walletClient) WalletBalance(ctx context.Context, in *WalletBalanceRequest, opts ...grpc.CallOption) (*WalletBalanceReply, error) {
-	out := new(WalletBalanceReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Wallet/WalletBalance", in, out, opts...)
+func (c *walletServiceClient) WalletBalance(ctx context.Context, in *WalletBalanceRequest, opts ...grpc.CallOption) (*WalletBalanceResponse, error) {
+	out := new(WalletBalanceResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.WalletService/WalletBalance", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *walletClient) SendToMany(ctx context.Context, in *SendToManyRequest, opts ...grpc.CallOption) (*SendToManyReply, error) {
-	out := new(SendToManyReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Wallet/SendToMany", in, out, opts...)
+func (c *walletServiceClient) SendToMany(ctx context.Context, in *SendToManyRequest, opts ...grpc.CallOption) (*SendToManyResponse, error) {
+	out := new(SendToManyResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.WalletService/SendToMany", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// WalletServer is the server API for Wallet service.
-// All implementations should embed UnimplementedWalletServer
+// WalletServiceServer is the server API for WalletService service.
+// All implementations should embed UnimplementedWalletServiceServer
 // for forward compatibility
-type WalletServer interface {
-	//
+type WalletServiceServer interface {
 	// WalletAddress returns a Liquid confidential p2wpkh address (BLECH32)
-	WalletAddress(context.Context, *WalletAddressRequest) (*WalletAddressReply, error)
-	//
-	// WalletBalance returns total unspent outputs (confirmed and unconfirmed), all
-	// confirmed unspent outputs and all unconfirmed unspent outputs under control
-	// of the wallet.
-	WalletBalance(context.Context, *WalletBalanceRequest) (*WalletBalanceReply, error)
-	//SendToMany sends funds to many outputs
-	SendToMany(context.Context, *SendToManyRequest) (*SendToManyReply, error)
+	WalletAddress(context.Context, *WalletAddressRequest) (*WalletAddressResponse, error)
+	// WalletBalance returns total unspent outputs (confirmed and unconfirmed),
+	// all confirmed unspent outputs and all unconfirmed unspent outputs under
+	// controll of the wallet.
+	WalletBalance(context.Context, *WalletBalanceRequest) (*WalletBalanceResponse, error)
+	// SendToMany sends funds to many outputs
+	SendToMany(context.Context, *SendToManyRequest) (*SendToManyResponse, error)
 }
 
-// UnimplementedWalletServer should be embedded to have forward compatible implementations.
-type UnimplementedWalletServer struct {
+// UnimplementedWalletServiceServer should be embedded to have forward compatible implementations.
+type UnimplementedWalletServiceServer struct {
 }
 
-func (UnimplementedWalletServer) WalletAddress(context.Context, *WalletAddressRequest) (*WalletAddressReply, error) {
+func (UnimplementedWalletServiceServer) WalletAddress(context.Context, *WalletAddressRequest) (*WalletAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WalletAddress not implemented")
 }
-func (UnimplementedWalletServer) WalletBalance(context.Context, *WalletBalanceRequest) (*WalletBalanceReply, error) {
+func (UnimplementedWalletServiceServer) WalletBalance(context.Context, *WalletBalanceRequest) (*WalletBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WalletBalance not implemented")
 }
-func (UnimplementedWalletServer) SendToMany(context.Context, *SendToManyRequest) (*SendToManyReply, error) {
+func (UnimplementedWalletServiceServer) SendToMany(context.Context, *SendToManyRequest) (*SendToManyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendToMany not implemented")
 }
 
-// UnsafeWalletServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to WalletServer will
+// UnsafeWalletServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to WalletServiceServer will
 // result in compilation errors.
-type UnsafeWalletServer interface {
-	mustEmbedUnimplementedWalletServer()
+type UnsafeWalletServiceServer interface {
+	mustEmbedUnimplementedWalletServiceServer()
 }
 
-func RegisterWalletServer(s grpc.ServiceRegistrar, srv WalletServer) {
-	s.RegisterService(&Wallet_ServiceDesc, srv)
+func RegisterWalletServiceServer(s grpc.ServiceRegistrar, srv WalletServiceServer) {
+	s.RegisterService(&WalletService_ServiceDesc, srv)
 }
 
-func _Wallet_WalletAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _WalletService_WalletAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(WalletAddressRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WalletServer).WalletAddress(ctx, in)
+		return srv.(WalletServiceServer).WalletAddress(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Wallet/WalletAddress",
+		FullMethod: "/tdex_daemon.v1.WalletService/WalletAddress",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletServer).WalletAddress(ctx, req.(*WalletAddressRequest))
+		return srv.(WalletServiceServer).WalletAddress(ctx, req.(*WalletAddressRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Wallet_WalletBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _WalletService_WalletBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(WalletBalanceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WalletServer).WalletBalance(ctx, in)
+		return srv.(WalletServiceServer).WalletBalance(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Wallet/WalletBalance",
+		FullMethod: "/tdex_daemon.v1.WalletService/WalletBalance",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletServer).WalletBalance(ctx, req.(*WalletBalanceRequest))
+		return srv.(WalletServiceServer).WalletBalance(ctx, req.(*WalletBalanceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Wallet_SendToMany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _WalletService_SendToMany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SendToManyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WalletServer).SendToMany(ctx, in)
+		return srv.(WalletServiceServer).SendToMany(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Wallet/SendToMany",
+		FullMethod: "/tdex_daemon.v1.WalletService/SendToMany",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletServer).SendToMany(ctx, req.(*SendToManyRequest))
+		return srv.(WalletServiceServer).SendToMany(ctx, req.(*SendToManyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Wallet_ServiceDesc is the grpc.ServiceDesc for Wallet service.
+// WalletService_ServiceDesc is the grpc.ServiceDesc for WalletService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Wallet_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "tdex.daemon.v1.Wallet",
-	HandlerType: (*WalletServer)(nil),
+var WalletService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "tdex_daemon.v1.WalletService",
+	HandlerType: (*WalletServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "WalletAddress",
-			Handler:    _Wallet_WalletAddress_Handler,
+			Handler:    _WalletService_WalletAddress_Handler,
 		},
 		{
 			MethodName: "WalletBalance",
-			Handler:    _Wallet_WalletBalance_Handler,
+			Handler:    _WalletService_WalletBalance_Handler,
 		},
 		{
 			MethodName: "SendToMany",
-			Handler:    _Wallet_SendToMany_Handler,
+			Handler:    _WalletService_SendToMany_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -18,84 +18,84 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// TransportClient is the client API for Transport service.
+// TransportServiceClient is the client API for TransportService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type TransportClient interface {
-	SupportedContentTypes(ctx context.Context, in *SupportedContentTypesRequest, opts ...grpc.CallOption) (*SupportedContentTypesReply, error)
+type TransportServiceClient interface {
+	SupportedContentTypes(ctx context.Context, in *SupportedContentTypesRequest, opts ...grpc.CallOption) (*SupportedContentTypesResponse, error)
 }
 
-type transportClient struct {
+type transportServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewTransportClient(cc grpc.ClientConnInterface) TransportClient {
-	return &transportClient{cc}
+func NewTransportServiceClient(cc grpc.ClientConnInterface) TransportServiceClient {
+	return &transportServiceClient{cc}
 }
 
-func (c *transportClient) SupportedContentTypes(ctx context.Context, in *SupportedContentTypesRequest, opts ...grpc.CallOption) (*SupportedContentTypesReply, error) {
-	out := new(SupportedContentTypesReply)
-	err := c.cc.Invoke(ctx, "/tdex.v1.Transport/SupportedContentTypes", in, out, opts...)
+func (c *transportServiceClient) SupportedContentTypes(ctx context.Context, in *SupportedContentTypesRequest, opts ...grpc.CallOption) (*SupportedContentTypesResponse, error) {
+	out := new(SupportedContentTypesResponse)
+	err := c.cc.Invoke(ctx, "/tdex.v1.TransportService/SupportedContentTypes", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// TransportServer is the server API for Transport service.
-// All implementations should embed UnimplementedTransportServer
+// TransportServiceServer is the server API for TransportService service.
+// All implementations should embed UnimplementedTransportServiceServer
 // for forward compatibility
-type TransportServer interface {
-	SupportedContentTypes(context.Context, *SupportedContentTypesRequest) (*SupportedContentTypesReply, error)
+type TransportServiceServer interface {
+	SupportedContentTypes(context.Context, *SupportedContentTypesRequest) (*SupportedContentTypesResponse, error)
 }
 
-// UnimplementedTransportServer should be embedded to have forward compatible implementations.
-type UnimplementedTransportServer struct {
+// UnimplementedTransportServiceServer should be embedded to have forward compatible implementations.
+type UnimplementedTransportServiceServer struct {
 }
 
-func (UnimplementedTransportServer) SupportedContentTypes(context.Context, *SupportedContentTypesRequest) (*SupportedContentTypesReply, error) {
+func (UnimplementedTransportServiceServer) SupportedContentTypes(context.Context, *SupportedContentTypesRequest) (*SupportedContentTypesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SupportedContentTypes not implemented")
 }
 
-// UnsafeTransportServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to TransportServer will
+// UnsafeTransportServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to TransportServiceServer will
 // result in compilation errors.
-type UnsafeTransportServer interface {
-	mustEmbedUnimplementedTransportServer()
+type UnsafeTransportServiceServer interface {
+	mustEmbedUnimplementedTransportServiceServer()
 }
 
-func RegisterTransportServer(s grpc.ServiceRegistrar, srv TransportServer) {
-	s.RegisterService(&Transport_ServiceDesc, srv)
+func RegisterTransportServiceServer(s grpc.ServiceRegistrar, srv TransportServiceServer) {
+	s.RegisterService(&TransportService_ServiceDesc, srv)
 }
 
-func _Transport_SupportedContentTypes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _TransportService_SupportedContentTypes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SupportedContentTypesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TransportServer).SupportedContentTypes(ctx, in)
+		return srv.(TransportServiceServer).SupportedContentTypes(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.v1.Transport/SupportedContentTypes",
+		FullMethod: "/tdex.v1.TransportService/SupportedContentTypes",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TransportServer).SupportedContentTypes(ctx, req.(*SupportedContentTypesRequest))
+		return srv.(TransportServiceServer).SupportedContentTypes(ctx, req.(*SupportedContentTypesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Transport_ServiceDesc is the grpc.ServiceDesc for Transport service.
+// TransportService_ServiceDesc is the grpc.ServiceDesc for TransportService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Transport_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "tdex.v1.Transport",
-	HandlerType: (*TransportServer)(nil),
+var TransportService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "tdex.v1.TransportService",
+	HandlerType: (*TransportServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "SupportedContentTypes",
-			Handler:    _Transport_SupportedContentTypes_Handler,
+			Handler:    _TransportService_SupportedContentTypes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

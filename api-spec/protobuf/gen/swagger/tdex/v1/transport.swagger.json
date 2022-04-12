@@ -6,7 +6,7 @@
   },
   "tags": [
     {
-      "name": "Transport"
+      "name": "TransportService"
     }
   ],
   "consumes": [
@@ -18,12 +18,12 @@
   "paths": {
     "/v1/transport": {
       "get": {
-        "operationId": "Transport_SupportedContentTypes",
+        "operationId": "TransportService_SupportedContentTypes",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1SupportedContentTypesReply"
+              "$ref": "#/definitions/v1SupportedContentTypesResponse"
             }
           },
           "default": {
@@ -34,7 +34,7 @@
           }
         },
         "tags": [
-          "Transport"
+          "TransportService"
         ]
       }
     }
@@ -70,14 +70,14 @@
     "v1ContentType": {
       "type": "string",
       "enum": [
-        "JSON",
-        "GRPC",
-        "GRPCWEB",
-        "GRPCWEBTEXT"
+        "CONTENT_TYPE_JSON",
+        "CONTENT_TYPE_GRPC",
+        "CONTENT_TYPE_GRPCWEB",
+        "CONTENT_TYPE_GRPCWEBTEXT"
       ],
-      "default": "JSON"
+      "default": "CONTENT_TYPE_JSON"
     },
-    "v1SupportedContentTypesReply": {
+    "v1SupportedContentTypesResponse": {
       "type": "object",
       "properties": {
         "acceptedTypes": {
