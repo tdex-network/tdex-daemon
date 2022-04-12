@@ -11,14 +11,21 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17.2
-        id: go
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+      - name: Setup Go 1.x
+        uses: actions/setup-go@v3
+        with:
+          go-version: '>=1.17.2'
+
+      - name: Setup buf
+        uses: bufbuild/buf-setup-action@v1.3.1
+      
+      - name: Lint protos
+        uses: bufbuild/buf-lint-action@v1
+        with:
+          input: 'api-spec/protobuf'
 
       - name: Run Gosec Security Scanner
         run: |
@@ -32,7 +39,7 @@ jobs:
       - name: Get dependencies
         run: go get -v -t -d ./...
 
-      - name: Test
+      - name: Run Tests
         run: |
           export TEST_ELEMENTS_ENDPOINT='http://admin1:123@localhost:18884'
           make test

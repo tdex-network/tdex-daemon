@@ -16,18 +16,16 @@ jobs:
     permissions: write-all
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v3
       
-      - name: Set up QEMU
+      - name: Setup QEMU
         uses: docker/setup-qemu-action@v1
         
-      - name: Set up Go
-        uses: actions/setup-go@v2
+      - name: Setup Go
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.16.x
+          go-version: '>1.17.2'
 
       - name: Cache Go modules
         uses: actions/cache@v1
@@ -74,9 +72,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
 
-      # Install the `buf` CLI
-      - uses: bufbuild/buf-setup-action@v1.3.0
-      # Push module to the BSR
+      - name: Setup buf
+        uses: bufbuild/buf-setup-action@v1.3.1
+
+      - name: Lint protos
+        uses: bufbuild/buf-lint-action@v1
+        with:
+          input: 'api-spec/protobuf'
+
+      - name: Publish protos to Buf Schema Registry
       - uses: bufbuild/buf-push-action@v1        
         with:          
           input: api-spec/protobuf
