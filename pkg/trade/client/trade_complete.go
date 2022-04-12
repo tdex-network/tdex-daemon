@@ -48,7 +48,7 @@ func (o TradeCompleteOpts) validate() error {
 }
 
 // TradeComplete crafts the request and calls the TradeComplete rpc
-func (c *Client) TradeComplete(opts TradeCompleteOpts) (*tdexv1.CompleteTradeReply, error) {
+func (c *Client) TradeComplete(opts TradeCompleteOpts) (*tdexv1.CompleteTradeResponse, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}

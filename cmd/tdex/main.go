@@ -213,44 +213,44 @@ func printRespJSON(resp interface{}) {
 	fmt.Println(jsonStr)
 }
 
-func getTransportClient(ctx *cli.Context) (tdexv1.TransportClient, func(), error) {
+func getTransportClient(ctx *cli.Context) (tdexv1.TransportServiceClient, func(), error) {
 	conn, err := getClientConn(false)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { conn.Close() }
 
-	return tdexv1.NewTransportClient(conn), cleanup, nil
+	return tdexv1.NewTransportServiceClient(conn), cleanup, nil
 }
 
-func getOperatorClient(ctx *cli.Context) (daemonv1.OperatorClient, func(), error) {
+func getOperatorClient(ctx *cli.Context) (daemonv1.OperatorServiceClient, func(), error) {
 	conn, err := getClientConn(false)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { conn.Close() }
 
-	return daemonv1.NewOperatorClient(conn), cleanup, nil
+	return daemonv1.NewOperatorServiceClient(conn), cleanup, nil
 }
 
-func getUnlockerClient(ctx *cli.Context) (daemonv1.WalletUnlockerClient, func(), error) {
+func getUnlockerClient(ctx *cli.Context) (daemonv1.WalletUnlockerServiceClient, func(), error) {
 	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { _ = conn.Close() }
 
-	return daemonv1.NewWalletUnlockerClient(conn), cleanup, nil
+	return daemonv1.NewWalletUnlockerServiceClient(conn), cleanup, nil
 }
 
-func getWalletClient(ctx *cli.Context) (daemonv1.WalletClient, func(), error) {
+func getWalletClient(ctx *cli.Context) (daemonv1.WalletServiceClient, func(), error) {
 	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { _ = conn.Close() }
 
-	return daemonv1.NewWalletClient(conn), cleanup, nil
+	return daemonv1.NewWalletServiceClient(conn), cleanup, nil
 }
 
 func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {

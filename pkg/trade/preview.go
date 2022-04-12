@@ -60,7 +60,7 @@ func (t *Trade) Preview(opts PreviewOpts) (*PreviewResult, error) {
 	}
 
 	tradeType := tradetype.TradeType(opts.TradeType)
-	reply, err := t.client.MarketPrice(tradeclient.MarketPriceOpts{
+	reply, err := t.client.PreviewTrade(tradeclient.PreviewTradeOpts{
 		Market:    opts.Market,
 		TradeType: tradeType,
 		Amount:    opts.Amount,
@@ -69,7 +69,7 @@ func (t *Trade) Preview(opts PreviewOpts) (*PreviewResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	preview := reply.GetPrices()[0]
+	preview := reply.GetPreviews()[0]
 
 	assetToSend := preview.GetAsset()
 	amountToSend := preview.GetAmount()

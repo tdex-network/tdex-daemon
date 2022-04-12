@@ -13,13 +13,12 @@ import (
 )
 
 type walletHandler struct {
-	daemonv1.UnimplementedWalletServer
 	walletSvc application.WalletService
 }
 
 func NewWalletHandler(
 	walletSvc application.WalletService,
-) daemonv1.WalletServer {
+) daemonv1.WalletServiceServer {
 	return newWalletHandler(walletSvc)
 }
 
@@ -34,34 +33,34 @@ func newWalletHandler(
 func (w walletHandler) WalletAddress(
 	ctx context.Context,
 	req *daemonv1.WalletAddressRequest,
-) (*daemonv1.WalletAddressReply, error) {
+) (*daemonv1.WalletAddressResponse, error) {
 	return w.walletAddress(ctx, req)
 }
 
 func (w walletHandler) WalletBalance(
 	ctx context.Context,
 	req *daemonv1.WalletBalanceRequest,
-) (*daemonv1.WalletBalanceReply, error) {
+) (*daemonv1.WalletBalanceResponse, error) {
 	return w.walletBalance(ctx, req)
 }
 
 func (w walletHandler) SendToMany(
 	ctx context.Context,
 	req *daemonv1.SendToManyRequest,
-) (*daemonv1.SendToManyReply, error) {
+) (*daemonv1.SendToManyResponse, error) {
 	return w.sendToMany(ctx, req)
 }
 
 func (w walletHandler) walletAddress(
 	ctx context.Context,
 	req *daemonv1.WalletAddressRequest,
-) (*daemonv1.WalletAddressReply, error) {
+) (*daemonv1.WalletAddressResponse, error) {
 	addr, blindingKey, err := w.walletSvc.GenerateAddressAndBlindingKey(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &daemonv1.WalletAddressReply{
+	return &daemonv1.WalletAddressResponse{
 		Address:  addr,
 		Blinding: blindingKey,
 	}, nil
@@ -70,7 +69,7 @@ func (w walletHandler) walletAddress(
 func (w walletHandler) walletBalance(
 	ctx context.Context,
 	req *daemonv1.WalletBalanceRequest,
-) (*daemonv1.WalletBalanceReply, error) {
+) (*daemonv1.WalletBalanceResponse, error) {
 	b, err := w.walletSvc.GetWalletBalance(ctx)
 	if err != nil {
 		return nil, err
@@ -85,13 +84,13 @@ func (w walletHandler) walletBalance(
 		}
 	}
 
-	return &daemonv1.WalletBalanceReply{Balance: balance}, nil
+	return &daemonv1.WalletBalanceResponse{Balance: balance}, nil
 }
 
 func (w walletHandler) sendToMany(
 	ctx context.Context,
 	req *daemonv1.SendToManyRequest,
-) (*daemonv1.SendToManyReply, error) {
+) (*daemonv1.SendToManyResponse, error) {
 	outs := req.GetOutputs()
 	if err := validateOutputs(outs); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -120,10 +119,10 @@ func (w walletHandler) sendToMany(
 		return nil, err
 	}
 
-	return &daemonv1.SendToManyReply{RawTx: rawTx, Txid: txid}, nil
+	return &daemonv1.SendToManyResponse{RawTx: rawTx, Txid: txid}, nil
 }
 
-func validateOutputs(outputs []*daemonv1.TxOut) error {
+func validateOutputs(outputs []*daemonv1.TxOutput) error {
 	if len(outputs) <= 0 {
 		return errors.New("output list is empty")
 	}

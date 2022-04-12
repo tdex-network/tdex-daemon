@@ -196,8 +196,8 @@ func feeClaimAction(ctx *cli.Context) error {
 	return nil
 }
 
-func parseOutpoints(str string) ([]*daemonv1.TxOutpoint, error) {
-	var outpoints []*daemonv1.TxOutpoint
+func parseOutpoints(str string) ([]*daemonv1.Outpoint, error) {
+	var outpoints []*daemonv1.Outpoint
 	if err := json.Unmarshal([]byte(str), &outpoints); err != nil {
 		return nil, errors.New("unable to parse provided outpoints")
 	}

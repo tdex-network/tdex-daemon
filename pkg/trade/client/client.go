@@ -11,7 +11,7 @@ import (
 
 // Client allows to connect with a trader service and to call its RPCs
 type Client struct {
-	client tdexv1.TradeClient
+	client tdexv1.TradeServiceClient
 	conn   *grpc.ClientConn
 }
 
@@ -25,7 +25,7 @@ func NewTradeClient(host string, port int) (*Client, error) {
 		return nil, err
 	}
 
-	client := tdexv1.NewTradeClient(conn)
+	client := tdexv1.NewTradeServiceClient(conn)
 	return &Client{client, conn}, nil
 }
 
@@ -41,6 +41,6 @@ func isValidAsset(asset string) bool {
 }
 
 func isValidTradeType(tradeType int) bool {
-	return tradeType != int(tdexv1.TradeType_BUY) &&
-		tradeType != int(tdexv1.TradeType_SELL)
+	return tradeType != int(tdexv1.TradeType_TRADE_TYPE_BUY) &&
+		tradeType != int(tdexv1.TradeType_TRADE_TYPE_BUY)
 }
