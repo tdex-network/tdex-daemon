@@ -28,10 +28,9 @@ jobs:
           input: 'api-spec/protobuf'
 
       - name: Run Gosec Security Scanner
-        run: |
-          export PATH=$PATH:$(go env GOPATH)/bin
-          curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.9.3
-          gosec -severity high -quiet ./...
+        uses: securego/gosec@master
+        with:
+          args: '-severity high -quiet ./...'
 
       - name: Run Nigiri
         uses: vulpemventures/nigiri-github-action@v1
