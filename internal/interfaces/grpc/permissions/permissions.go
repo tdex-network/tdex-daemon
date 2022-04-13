@@ -243,27 +243,19 @@ func Whitelist() map[string][]bakery.Op {
 			Entity: EntityUnlocker,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/Markets", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListMarkets", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/Balances", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketBalance", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/MarketPrice", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/PreviewTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
-		}},
-		fmt.Sprintf("/%s/TradePropose", tdexv1.TradeService_ServiceDesc.ServiceName): {{
-			Entity: EntityTrade,
-			Action: "write",
 		}},
 		fmt.Sprintf("/%s/ProposeTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
-			Entity: EntityTrade,
-			Action: "write",
-		}},
-		fmt.Sprintf("/%s/TradeComplete", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "write",
 		}},
