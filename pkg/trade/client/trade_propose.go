@@ -39,7 +39,7 @@ func (o TradeProposeOpts) validate() error {
 }
 
 // TradePropose crafts the request and calls the TradePropose rpc
-func (c *Client) TradePropose(opts TradeProposeOpts) (*tdexv1.ProposeTradeReply, error) {
+func (c *Client) TradePropose(opts TradeProposeOpts) (*tdexv1.ProposeTradeResponse, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}

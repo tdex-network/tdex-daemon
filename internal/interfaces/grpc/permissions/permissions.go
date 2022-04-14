@@ -40,24 +40,24 @@ func findUnhandledMethods(publicRoutes, methodsThatNeedsAuth map[string][]bakery
 	result := make([]string, 0)
 	allMethods := make([]string, 0)
 
-	for _, v := range daemonv1.Operator_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv1.Operator_ServiceDesc.ServiceName, v.MethodName))
+	for _, v := range daemonv1.OperatorService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv1.OperatorService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
-	for _, v := range daemonv1.Wallet_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv1.Wallet_ServiceDesc.ServiceName, v.MethodName))
+	for _, v := range daemonv1.WalletService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv1.WalletService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
-	for _, v := range daemonv1.WalletUnlocker_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv1.WalletUnlocker_ServiceDesc.ServiceName, v.MethodName))
+	for _, v := range daemonv1.WalletUnlockerService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv1.WalletUnlockerService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
-	for _, v := range tdexv1.Trade_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv1.Trade_ServiceDesc.ServiceName, v.MethodName))
+	for _, v := range tdexv1.TradeService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv1.TradeService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
-	for _, v := range tdexv1.Transport_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv1.Transport_ServiceDesc.ServiceName, v.MethodName))
+	for _, v := range tdexv1.TransportService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv1.TransportService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
 	for _, v := range allMethods {
@@ -223,55 +223,47 @@ func AdminPermissions() []bakery.Op {
 // entity and action.
 func Whitelist() map[string][]bakery.Op {
 	return map[string][]bakery.Op{
-		fmt.Sprintf("/%s/IsReady", daemonv1.WalletUnlocker_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/IsReady", daemonv1.WalletUnlockerService_ServiceDesc.ServiceName): {{
 			Entity: EntityUnlocker,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GenSeed", daemonv1.WalletUnlocker_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GenSeed", daemonv1.WalletUnlockerService_ServiceDesc.ServiceName): {{
 			Entity: EntityUnlocker,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/InitWallet", daemonv1.WalletUnlocker_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/InitWallet", daemonv1.WalletUnlockerService_ServiceDesc.ServiceName): {{
 			Entity: EntityUnlocker,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/UnlockWallet", daemonv1.WalletUnlocker_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/UnlockWallet", daemonv1.WalletUnlockerService_ServiceDesc.ServiceName): {{
 			Entity: EntityUnlocker,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ChangePassword", daemonv1.WalletUnlocker_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ChangePassword", daemonv1.WalletUnlockerService_ServiceDesc.ServiceName): {{
 			Entity: EntityUnlocker,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/Markets", tdexv1.Trade_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListMarkets", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/Balances", tdexv1.Trade_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketBalance", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/MarketPrice", tdexv1.Trade_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/PreviewTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/TradePropose", tdexv1.Trade_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ProposeTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ProposeTrade", tdexv1.Trade_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/CompleteTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/TradeComplete", tdexv1.Trade_ServiceDesc.ServiceName): {{
-			Entity: EntityTrade,
-			Action: "write",
-		}},
-		fmt.Sprintf("/%s/CompleteTrade", tdexv1.Trade_ServiceDesc.ServiceName): {{
-			Entity: EntityTrade,
-			Action: "write",
-		}},
-		fmt.Sprintf("/%v/SupportedContentTypes", tdexv1.Transport_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%v/SupportedContentTypes", tdexv1.TransportService_ServiceDesc.ServiceName): {{
 			Entity: EntityTransport,
 			Action: "read",
 		}},
@@ -311,179 +303,179 @@ func Whitelist() map[string][]bakery.Op {
 // permissions they require.
 func AllPermissionsByMethod() map[string][]bakery.Op {
 	return map[string][]bakery.Op{
-		fmt.Sprintf("/%s/WalletAddress", daemonv1.Wallet_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/WalletAddress", daemonv1.WalletService_ServiceDesc.ServiceName): {{
 			Entity: EntityWallet,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/SendToMany", daemonv1.Wallet_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/SendToMany", daemonv1.WalletService_ServiceDesc.ServiceName): {{
 			Entity: EntityWallet,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/WalletBalance", daemonv1.Wallet_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/WalletBalance", daemonv1.WalletService_ServiceDesc.ServiceName): {{
 			Entity: EntityWallet,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetInfo", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetInfo", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityOperator,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetFeeAddress", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetFeeAddress", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ListFeeAddresses", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListFeeAddresses", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetFeeBalance", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetFeeBalance", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/ClaimFeeDeposits", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ClaimFeeDeposits", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/WithdrawFee", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/WithdrawFee", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityOperator,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/NewMarket", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/NewMarket", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/GetMarketInfo", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketInfo", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetMarketAddress", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketAddress", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ListMarketAddresses", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListMarketAddresses", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetMarketBalance", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketBalance", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/ClaimMarketDeposits", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ClaimMarketDeposits", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/OpenMarket", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/OpenMarket", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/CloseMarket", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/CloseMarket", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/DropMarket", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/DropMarket", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityOperator,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/GetMarketCollectedSwapFees", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketCollectedSwapFees", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/WithdrawMarket", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/WithdrawMarket", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityOperator,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/UpdateMarketPercentageFee", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/UpdateMarketPercentageFee", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/UpdateMarketFixedFee", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/UpdateMarketFixedFee", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/UpdateMarketPrice", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/UpdateMarketPrice", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityPrice,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/UpdateMarketStrategy", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/UpdateMarketStrategy", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/GetFeeFragmenterAddress", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetFeeFragmenterAddress", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ListFeeFragmenterAddresses", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListFeeFragmenterAddresses", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetFeeFragmenterBalance", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetFeeFragmenterBalance", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/FeeFragmenterSplitFunds", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/FeeFragmenterSplitFunds", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/WithdrawFeeFragmenter", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/WithdrawFeeFragmenter", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/GetMarketFragmenterAddress", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketFragmenterAddress", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ListMarketFragmenterAddresses", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListMarketFragmenterAddresses", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetMarketFragmenterBalance", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketFragmenterBalance", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/MarketFragmenterSplitFunds", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/MarketFragmenterSplitFunds", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/WithdrawMarketFragmenter", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/WithdrawMarketFragmenter", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ListMarkets", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListMarkets", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityPrice,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/ListTrades", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListTrades", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/ListDeposits", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListDeposits", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/ListWithdrawals", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListWithdrawals", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/ReloadUtxos", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ReloadUtxos", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityOperator,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ListUtxos", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListUtxos", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityOperator,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/AddWebhook", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/AddWebhook", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityWebhook,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/RemoveWebhook", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/RemoveWebhook", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityWebhook,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ListWebhooks", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListWebhooks", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityWebhook,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetMarketReport", daemonv1.Operator_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketReport", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
 		}},

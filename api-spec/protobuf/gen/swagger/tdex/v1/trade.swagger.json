@@ -6,7 +6,7 @@
   },
   "tags": [
     {
-      "name": "Trade"
+      "name": "TradeService"
     }
   ],
   "consumes": [
@@ -16,15 +16,15 @@
     "application/json"
   ],
   "paths": {
-    "/v1/trade/balance": {
+    "/v1/market/balance": {
       "post": {
-        "summary": "Balances: Gets the balances of the two current reserves in the given\nmarket.",
-        "operationId": "Trade_Balances",
+        "summary": "GetMarketBalance retutns the balance of the two current reserves of the\ngiven market.",
+        "operationId": "TradeService_GetMarketBalance",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1BalancesReply"
+              "$ref": "#/definitions/v1GetMarketBalanceResponse"
             }
           },
           "default": {
@@ -40,24 +40,24 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1BalancesRequest"
+              "$ref": "#/definitions/v1GetMarketBalanceRequest"
             }
           }
         ],
         "tags": [
-          "Trade"
+          "TradeService"
         ]
       }
     },
-    "/v1/trade/markets": {
-      "get": {
-        "summary": "Markets: List all the markets open for trading.",
-        "operationId": "Trade_Markets",
+    "/v1/markets": {
+      "post": {
+        "summary": "ListMarkets lists all the markets open for trading.",
+        "operationId": "TradeService_ListMarkets",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1MarketsReply"
+              "$ref": "#/definitions/v1ListMarketsResponse"
             }
           },
           "default": {
@@ -68,166 +68,19 @@
           }
         },
         "tags": [
-          "Trade"
+          "TradeService"
         ]
       }
     },
-    "/v1/trade/price": {
+    "/v1/trade/complete": {
       "post": {
-        "summary": "MarketPrice: Gets the current market price. In case of AMM startegy, the\ntrade type and\nthe amount of asset to be either sent or received.",
-        "description": "BUY = quote asset as input\nSELL = base asset as input\n\nIf the type of the trade is BUY it means the base asset will be received by\nthe trader.\n\nIf the type of the trade is SELL it means the base asset will be sent by\nthe trader.",
-        "operationId": "Trade_MarketPrice",
+        "summary": "CompleteTrade can be used by the trader to let the daemon finalizing,\nextracting, and broadcasting the swap transaction, once he's signed his\ninputs.\nThis is not mandatory, the trader can do the steps above on his own\nalternatively.",
+        "operationId": "TradeService_CompleteTrade",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1MarketPriceReply"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "market.baseAsset",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "market.quoteAsset",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "type",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "BUY",
-              "SELL"
-            ],
-            "default": "BUY"
-          },
-          {
-            "name": "amount",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "uint64"
-          },
-          {
-            "name": "asset",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "Trade"
-        ]
-      }
-    },
-    "/v1/trade/stream/complete": {
-      "post": {
-        "summary": "DEPRECATED TradeComplete: Sends the trader's counter-signed transaction to the\nprovider. If something wrong, a swap fail message is sent. It returns the\ntransaction hash of the broadcasted transaction.",
-        "operationId": "Trade_TradeComplete",
-        "responses": {
-          "200": {
-            "description": "A successful response.(streaming responses)",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "result": {
-                  "$ref": "#/definitions/v1TradeCompleteReply"
-                },
-                "error": {
-                  "$ref": "#/definitions/rpcStatus"
-                }
-              },
-              "title": "Stream result of v1TradeCompleteReply"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1TradeCompleteRequest"
-            }
-          }
-        ],
-        "tags": [
-          "Trade"
-        ]
-      }
-    },
-    "/v1/trade/stream/propose": {
-      "post": {
-        "summary": "DEPRECATED TradePropose: Sends a swap request message containing a partial signed\ntransaction.",
-        "description": "BUY = quote asset as input\nSELL = base asset as input\n\n\nIf the type of the trade is BUY it means the base asset will be received by\nthe trader.\n\nIf the type of the trade is SELL it means the base asset will be sent by\nthe trader.",
-        "operationId": "Trade_TradePropose",
-        "responses": {
-          "200": {
-            "description": "A successful response.(streaming responses)",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "result": {
-                  "$ref": "#/definitions/v1TradeProposeReply"
-                },
-                "error": {
-                  "$ref": "#/definitions/rpcStatus"
-                }
-              },
-              "title": "Stream result of v1TradeProposeReply"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1TradeProposeRequest"
-            }
-          }
-        ],
-        "tags": [
-          "Trade"
-        ]
-      }
-    },
-    "/v1/trade/unary/complete": {
-      "post": {
-        "summary": "Unary RPC for TradeComplete.",
-        "operationId": "Trade_CompleteTrade",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1CompleteTradeReply"
+              "$ref": "#/definitions/v1CompleteTradeResponse"
             }
           },
           "default": {
@@ -248,19 +101,53 @@
           }
         ],
         "tags": [
-          "Trade"
+          "TradeService"
         ]
       }
     },
-    "/v1/trade/unary/propose": {
+    "/v1/trade/preview": {
       "post": {
-        "summary": "Unary RPC for TradePropose.",
-        "operationId": "Trade_ProposeTrade",
+        "summary": "PreviewTrade returns a counter amount and asset in response to the\nprovided ones and a trade type for a market.",
+        "description": "The trade type can assume values BUY or SELL and it always refer to the\nfixed base asset.\nFor example:\n * if trade type is BUY, it means the trader wants to buy base asset funds.\n * if trade type is SELL, it means the trader wants to sell base asset funds.",
+        "operationId": "TradeService_PreviewTrade",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1ProposeTradeReply"
+              "$ref": "#/definitions/v1PreviewTradeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1PreviewTradeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TradeService"
+        ]
+      }
+    },
+    "/v1/trade/propose": {
+      "post": {
+        "summary": "ProposeTrade allows a trader to present a SwapRequest. The service answers\nwith a SwapAccept, filling the request's partial transaction, + an\nexpiration time to complete the swap when accepting the swap, or,\notherwise, with a SwapFail containg the reason for the rejection of the\nproposal.",
+        "operationId": "TradeService_ProposeTrade",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ProposeTradeResponse"
             }
           },
           "default": {
@@ -281,7 +168,7 @@
           }
         ],
         "tags": [
-          "Trade"
+          "TradeService"
         ]
       }
     }
@@ -338,41 +225,22 @@
         }
       }
     },
-    "v1BalancesReply": {
+    "v1CompleteTradeRequest": {
       "type": "object",
       "properties": {
-        "balances": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1BalanceWithFee"
-          }
-        }
-      }
-    },
-    "v1BalancesRequest": {
-      "type": "object",
-      "properties": {
-        "market": {
-          "$ref": "#/definitions/v1Market"
-        }
-      }
-    },
-    "v1CompleteTradeReply": {
-      "type": "object",
-      "properties": {
-        "txid": {
-          "type": "string"
+        "swapComplete": {
+          "$ref": "#/definitions/v1SwapComplete"
         },
         "swapFail": {
           "$ref": "#/definitions/v1SwapFail"
         }
       }
     },
-    "v1CompleteTradeRequest": {
+    "v1CompleteTradeResponse": {
       "type": "object",
       "properties": {
-        "swapComplete": {
-          "$ref": "#/definitions/v1SwapComplete"
+        "txid": {
+          "type": "string"
         },
         "swapFail": {
           "$ref": "#/definitions/v1SwapFail"
@@ -405,6 +273,33 @@
         }
       }
     },
+    "v1GetMarketBalanceRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        }
+      }
+    },
+    "v1GetMarketBalanceResponse": {
+      "type": "object",
+      "properties": {
+        "balances": {
+          "$ref": "#/definitions/v1BalanceWithFee"
+        }
+      }
+    },
+    "v1ListMarketsResponse": {
+      "type": "object",
+      "properties": {
+        "markets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1MarketWithFee"
+          }
+        }
+      }
+    },
     "v1Market": {
       "type": "object",
       "properties": {
@@ -413,17 +308,6 @@
         },
         "quoteAsset": {
           "type": "string"
-        }
-      }
-    },
-    "v1MarketPriceReply": {
-      "type": "object",
-      "properties": {
-        "prices": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1PriceWithFee"
-          }
         }
       }
     },
@@ -438,39 +322,7 @@
         }
       }
     },
-    "v1MarketsReply": {
-      "type": "object",
-      "properties": {
-        "markets": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1MarketWithFee"
-          }
-        }
-      }
-    },
-    "v1Price": {
-      "type": "object",
-      "properties": {
-        "basePriceDeprecated": {
-          "type": "number",
-          "format": "float"
-        },
-        "quotePriceDeprecated": {
-          "type": "number",
-          "format": "float"
-        },
-        "basePrice": {
-          "type": "number",
-          "format": "double"
-        },
-        "quotePrice": {
-          "type": "number",
-          "format": "double"
-        }
-      }
-    },
-    "v1PriceWithFee": {
+    "v1Preview": {
       "type": "object",
       "properties": {
         "price": {
@@ -491,18 +343,45 @@
         }
       }
     },
-    "v1ProposeTradeReply": {
+    "v1PreviewTradeRequest": {
       "type": "object",
       "properties": {
-        "swapAccept": {
-          "$ref": "#/definitions/v1SwapAccept"
+        "market": {
+          "$ref": "#/definitions/v1Market"
         },
-        "swapFail": {
-          "$ref": "#/definitions/v1SwapFail"
+        "type": {
+          "$ref": "#/definitions/v1TradeType"
         },
-        "expiryTimeUnix": {
+        "amount": {
           "type": "string",
           "format": "uint64"
+        },
+        "asset": {
+          "type": "string"
+        }
+      }
+    },
+    "v1PreviewTradeResponse": {
+      "type": "object",
+      "properties": {
+        "previews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Preview"
+          }
+        }
+      }
+    },
+    "v1Price": {
+      "type": "object",
+      "properties": {
+        "basePrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double"
         }
       }
     },
@@ -517,6 +396,21 @@
         },
         "swapRequest": {
           "$ref": "#/definitions/v1SwapRequest"
+        }
+      }
+    },
+    "v1ProposeTradeResponse": {
+      "type": "object",
+      "properties": {
+        "swapAccept": {
+          "$ref": "#/definitions/v1SwapAccept"
+        },
+        "swapFail": {
+          "$ref": "#/definitions/v1SwapFail"
+        },
+        "expiryTimeUnix": {
+          "type": "string",
+          "format": "uint64"
         }
       }
     },
@@ -639,64 +533,13 @@
         }
       }
     },
-    "v1TradeCompleteReply": {
-      "type": "object",
-      "properties": {
-        "txid": {
-          "type": "string"
-        },
-        "swapFail": {
-          "$ref": "#/definitions/v1SwapFail"
-        }
-      }
-    },
-    "v1TradeCompleteRequest": {
-      "type": "object",
-      "properties": {
-        "swapComplete": {
-          "$ref": "#/definitions/v1SwapComplete"
-        },
-        "swapFail": {
-          "$ref": "#/definitions/v1SwapFail"
-        }
-      }
-    },
-    "v1TradeProposeReply": {
-      "type": "object",
-      "properties": {
-        "swapAccept": {
-          "$ref": "#/definitions/v1SwapAccept"
-        },
-        "swapFail": {
-          "$ref": "#/definitions/v1SwapFail"
-        },
-        "expiryTimeUnix": {
-          "type": "string",
-          "format": "uint64"
-        }
-      }
-    },
-    "v1TradeProposeRequest": {
-      "type": "object",
-      "properties": {
-        "market": {
-          "$ref": "#/definitions/v1Market"
-        },
-        "type": {
-          "$ref": "#/definitions/v1TradeType"
-        },
-        "swapRequest": {
-          "$ref": "#/definitions/v1SwapRequest"
-        }
-      }
-    },
     "v1TradeType": {
       "type": "string",
       "enum": [
-        "BUY",
-        "SELL"
+        "TRADE_TYPE_BUY",
+        "TRADE_TYPE_SELL"
       ],
-      "default": "BUY"
+      "default": "TRADE_TYPE_BUY"
     }
   }
 }

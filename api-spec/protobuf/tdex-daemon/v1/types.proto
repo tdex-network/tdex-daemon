@@ -1,0 +1,281 @@
+syntax = "proto3";
+
+package tdex_daemon.v1;
+
+import "tdex/v1/types.proto";
+
+enum StrategyType {
+  STRATEGY_TYPE_PLUGGABLE = 0;
+  STRATEGY_TYPE_BALANCED = 1;
+  STRATEGY_TYPE_UNBALANCED = 2;
+}
+
+enum TradeStatus {
+  TRADE_STATUS_UNDEFINED = 0;
+  TRADE_STATUS_REQUEST = 1;
+  TRADE_STATUS_ACCEPT = 2;
+  TRADE_STATUS_COMPLETE = 3;
+  TRADE_STATUS_SETTLED = 4;
+  TRADE_STATUS_EXPIRED = 5;
+}
+
+enum ActionType {
+  ACTION_TYPE_TRADE_SETTLED = 0;
+  ACTION_TYPE_ACCOUNT_LOW_BALANCE = 1;
+  ACTION_TYPE_ACCOUNT_WITHDRAW = 2;
+  ACTION_TYPE_ALL_ACTIONS = 3;
+}
+
+enum PredefinedPeriod {
+  PREDEFINED_PERIOD_UNSPECIFIED = 0;
+  PREDEFINED_PERIOD_LAST_HOUR = 1;
+  PREDEFINED_PERIOD_LAST_DAY = 2;
+  PREDEFINED_PERIOD_LAST_WEEK = 3;
+  PREDEFINED_PERIOD_LAST_MONTH = 4;
+  PREDEFINED_PERIOD_LAST_THREE_MONTHS = 5;
+  PREDEFINED_PERIOD_YEAR_TO_DATE = 6;
+  PREDEFINED_PERIOD_LAST_YEAR = 7;
+  PREDEFINED_PERIOD_ALL = 8;
+}
+
+enum TimeFrame {
+  TIME_FRAME_HOUR = 0;
+  TIME_FRAME_FOUR_HOURS = 1;
+  TIME_FRAME_DAY = 2;
+  TIME_FRAME_WEEK = 3;
+  TIME_FRAME_MONTH = 4;
+}
+
+message AccountInfo {
+  // The index of the wallet account.
+  uint32 account_index = 1;
+  // The full derivation path.
+  string derivation_path = 2;
+  // The master public key.
+  string xpub = 3;
+  // The index of the last external address derived.
+  uint32 last_external_derived = 4;
+  // The index of the last internal address derived.
+  uint32 last_internal_derived = 5;
+}
+
+message MarketInfo {
+  // The asset pair of the market
+  tdex.v1.Market market = 1;
+  // The percentage and fixed fees
+  tdex.v1.Fee fee = 2;
+  // Whether the market is opened or closed.
+  bool tradable = 3;
+  // The making strategy.
+  StrategyType strategy_type = 4;
+  // The index of the wallet account.
+  uint64 account_index = 5;
+  // The current price in case the strategy is PLUGGABLE.
+  tdex.v1.Price price = 6;
+  // The current unlocked balance.
+  tdex.v1.Balance balance = 7;
+}
+
+message UtxoInfo {
+  // The outpoint <hash, index>
+  Outpoint outpoint = 1;
+  // The unblinded value.
+  uint64 value = 2;
+  // The unblinded asset.
+  string asset = 3;
+}
+
+message TradeStatusInfo {
+  // The status of the trade.
+  TradeStatus status = 1;
+  // Whether it is failed in the current status.
+  bool failed = 2;
+}
+
+message SwapInfo {
+  // The proposer's quantity.
+  uint64 amount_p = 1;
+  // The proposer's asset hash.
+  string asset_p = 2;
+  // The responder's quantity.
+  uint64 amount_r = 3;
+  // The responder's asset hash.
+  string asset_r = 4;
+}
+
+message SwapFailInfo {
+  // The error code.
+  uint32 failure_code = 1;
+  // The error message.
+  string failure_message = 2;
+}
+
+message TradeInfo {
+  // The id of the trade.
+  string trade_id = 1;
+  // The info about the status of the trade.
+  TradeStatusInfo status = 2;
+  // The info about the swap.
+  SwapInfo swap_info = 3;
+  // The info of an eventually failed swap.
+  SwapFailInfo fail_info = 4;
+  // The collected fee on the current swap.
+  tdex.v1.MarketWithFee market_with_fee = 5;
+  // The prices of the trade at request time.
+  TradePrice price = 6;
+  // The eventual tx url with blinders in case the trade is settled.
+  string tx_url = 7;
+  // The unix timestamp of the SwapRequest.
+  uint64 request_time_unix = 8;
+  // The unix timestamp SwapAccept.
+  uint64 accept_time_unix = 9;
+  // The unix timestamp of the SwapComplete.
+  uint64 complete_time_unix = 10;
+  // The unix timestamp of the settlement date.
+  uint64 settle_time_unix = 11;
+  // The unix timestamp of the expiration date.
+  uint64 expiry_time_unix = 12;
+  // The UTC timestamp of the SwapRequest.
+  string request_time_utc = 13;
+  // The UTC timestamp of the SwapAccept.
+  string accept_time_utc = 14;
+  // The UTC timestamp of the SwapComplete.
+  string complete_time_utc = 15;
+  // The UTC timestamp of the settlement date.
+  string settle_time_utc = 16;
+  // The UTC timestamp of the expiration date.
+  string expiry_time_utc = 17;
+}
+
+message FeeInfo {
+  // The id of the trade.
+  string trade_id = 1;
+  // The percentage fee applied to the trade.
+  int64 basis_point = 2;
+  // The asset in which fees are collected.
+  string asset = 3;
+  // The amount in satoshi of the percentage fee.
+  uint64 percentage_fee_amount = 4;
+  // The amount in satoshi of the fixed fee.
+  uint64 fixed_fee_amount = 5;
+  // The market price when the trade propoal was accepted.
+  float market_price = 6;
+}
+
+message BalanceInfo {
+  // The balance of the wallet
+  uint64 total_balance = 1;
+
+  // The confirmed balance of a wallet(with >= 1 confirmations)
+  uint64 confirmed_balance = 2;
+
+  // The unconfirmed balance of a wallet(with 0 confirmations)
+  uint64 unconfirmed_balance = 3;
+}
+
+message TxOutput {
+  // The asset being spent
+  string asset = 1;
+  // The value of the output being spent.
+  int64 value = 2;
+  // The confidential address of the output being spent.
+  string address = 3;
+}
+
+
+message AddressWithBlindingKey {
+  // The confidential address encoded using a blech32 format.
+  string address = 1;
+  // The blinding private key for the given address encoded in hex format
+  string blinding = 2;
+}
+
+message Outpoint {
+  // The hash of the transaction.
+  string hash = 1;
+  // The index of the output.
+  int32 index = 2;
+}
+
+message TradePrice {
+  double base_price = 1;
+  double quote_price = 2;
+}
+
+message WebhookInfo {
+  // The id of the webhook.
+  string id = 1;
+  // The endpoint of the external service to reach.
+  string endpoint = 2;
+  // Whether the outgoing requests are authenticated.
+  bool is_secured = 3;
+}
+
+message Deposit {
+  // The utxo deposited.
+  UtxoInfo utxo = 1;
+  // The timestamp of the deposit transaction in Unix format.
+  uint64 timestamp_unix = 2;
+  // The timestamp of the deposit transaction in UTC format.
+  string timestamp_utc = 5;
+}
+
+message Withdrawal {
+  // The hash of the transaction included in mempool/blockchain.
+  string tx_id = 1;
+  // The balance withdrawn from the wallet account.
+  tdex.v1.Balance balance = 2;
+  // The address where the funds have been sent.
+  string address = 3;
+  // The timestamp of the withdrawal transaction in Unix format.
+  uint64 timestamp_unix = 4;
+  // The timestamp of the withdrawal transaction in UTC format.
+  string timestamp_utc = 5;
+}
+
+message Page {
+  // The number of the page.
+  int64 page_number = 1;
+  // The size of the page, ie the max length the returning list can have.
+  int64 page_size = 2;
+}
+
+message MarketReport {
+  MarketCollectedFees total_collected_fees = 1;
+  MarketVolume total_volume = 2;
+  repeated MarketVolume grouped_volume = 3;
+}
+
+message MarketCollectedFees {
+  uint64 base_amount = 1;
+  uint64 quote_amount = 2;
+  // start_date in RFC3339 format of the aggregated volume calculation
+  string start_date = 3;
+  // end_date in RFC3339 format of the aggregated volume calculation
+  string end_date = 4;
+}
+
+message MarketVolume {
+  uint64 base_volume = 1;
+  uint64 quote_volume = 2;
+  // start_date in RFC3339 format of the aggregated volume calculation
+  string start_date = 3;
+  // end_date in RFC3339 format of the aggregated volume calculation
+  string end_date = 4;
+}
+
+// TimeRange is flexible type used to determine time span for which specific
+// api will fetch data, either one of predefined_period or custom_period should be provided.
+message TimeRange {
+  // predefined time_period till now
+  PredefinedPeriod predefined_period = 1;
+  // custom time range
+  CustomPeriod custom_period = 2;
+}
+
+message CustomPeriod {
+  // start_date in RFC3339 format
+  string start_date = 1;
+  // end_date in RFC3339 format
+  string end_date = 2;
+}

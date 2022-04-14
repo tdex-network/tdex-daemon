@@ -1,84 +1,51 @@
 syntax = "proto3";
 
-package tdex.daemon.v1;
+package tdex_daemon.v1;
+
+import "tdex-daemon/v1/types.proto";
 
 /**
  * Service for Liquidity Providers to manage funds via wallet RPC
  */
-service Wallet {
-  /*
-  WalletAddress returns a Liquid confidential p2wpkh address (BLECH32)
-  */
-  rpc WalletAddress(WalletAddressRequest) returns (WalletAddressReply);
+service WalletService {
+  // WalletAddress returns a Liquid confidential p2wpkh address (BLECH32)
+  rpc WalletAddress(WalletAddressRequest) returns (WalletAddressResponse);
 
-  /*
-  WalletBalance returns total unspent outputs (confirmed and unconfirmed), all
-  confirmed unspent outputs and all unconfirmed unspent outputs under control
-  of the wallet.
-  */
-  rpc WalletBalance(WalletBalanceRequest) returns (WalletBalanceReply);
+  // WalletBalance returns total unspent outputs (confirmed and unconfirmed),
+  // all confirmed unspent outputs and all unconfirmed unspent outputs under
+  // controll of the wallet.
+  rpc WalletBalance(WalletBalanceRequest) returns (WalletBalanceResponse);
 
-  /*SendToMany sends funds to many outputs */
-  rpc SendToMany(SendToManyRequest) returns (SendToManyReply);
+  // SendToMany sends funds to many outputs
+  rpc SendToMany(SendToManyRequest) returns (SendToManyResponse);
 }
 
 message SendToManyRequest {
-  /*
-  A slice of the outputs that should be created in the transaction produced.
-  */
-  repeated TxOut outputs = 1;
-  /*
-   The number of millisatoshis per byte that should be used when crafting
-   this transaction.
-   */
+  // A slice of the outputs that should be created in the transaction produced.
+  repeated TxOutput outputs = 1;
+  // The number of millisatoshis per byte that should be used when crafting
+  // this transaction.
   int64 millisat_per_byte = 2;
-
-  // Optional: if true the transaction will be pushed to the network
-  bool push = 3;
 }
 
-message SendToManyReply {
-  /*
-    The serialized transaction sent out on the network.
-    */
+message SendToManyResponse {
+  // The serialized transaction sent out on the network.
   bytes raw_tx = 1;
-  /*
-    The id of the broadcasted transaction.
-  */
+  // The id of the broadcasted transaction.
   bytes txid = 2;
 }
 
 message WalletAddressRequest {}
-message WalletAddressReply {
+message WalletAddressResponse {
   // The confidential address encoded using a blech32 format.
   string address = 1;
   // The blinding private key for the given address encoded in hex format
   string blinding = 2;
 }
 
-message BalanceInfo {
-  // The balance of the wallet
-  uint64 total_balance = 1;
-
-  // The confirmed balance of a wallet(with >= 1 confirmations)
-  uint64 confirmed_balance = 2;
-
-  // The unconfirmed balance of a wallet(with 0 confirmations)
-  uint64 unconfirmed_balance = 3;
-}
-
 message WalletBalanceRequest {}
-message WalletBalanceReply {
+message WalletBalanceResponse {
   // The balance info (total, confirmed, unconfirmed) of the wallet grouped by
   // asset
   map<string, BalanceInfo> balance = 1;
-}
-
-message TxOut {
-  // The asset being spent
-  string asset = 1;
-  // The value of the output being spent.
-  int64 value = 2;
-  // The confidential address of the output being spent.
-  string address = 3;
 }

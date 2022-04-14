@@ -662,9 +662,9 @@ func marketUpdateStrategyAction(ctx *cli.Context) error {
 		return err
 	}
 
-	strategy := daemonv1.StrategyType_BALANCED
+	strategy := daemonv1.StrategyType_STRATEGY_TYPE_BALANCED
 	if ctx.Bool("pluggable") {
-		strategy = daemonv1.StrategyType_PLUGGABLE
+		strategy = daemonv1.StrategyType_STRATEGY_TYPE_PLUGGABLE
 	}
 
 	_, err = client.UpdateMarketStrategy(

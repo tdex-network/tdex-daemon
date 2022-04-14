@@ -1,17 +1,17 @@
 package tradeclient
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Client allows to connect with a trader service and to call its RPCs
 type Client struct {
-	client tdexv1.TradeClient
+	client tdexv1.TradeServiceClient
 	conn   *grpc.ClientConn
 }
 
@@ -19,13 +19,13 @@ type Client struct {
 // host and port through an insecure connection
 func NewTradeClient(host string, port int) (*Client, error) {
 	opts := []grpc.DialOption{}
-	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", host, port), opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	client := tdexv1.NewTradeClient(conn)
+	client := tdexv1.NewTradeServiceClient(conn)
 	return &Client{client, conn}, nil
 }
 
@@ -33,14 +33,4 @@ func NewTradeClient(host string, port int) (*Client, error) {
 // server
 func (c *Client) CloseConnection() error {
 	return c.conn.Close()
-}
-
-func isValidAsset(asset string) bool {
-	buf, err := hex.DecodeString(asset)
-	return err != nil || len(buf) != 32
-}
-
-func isValidTradeType(tradeType int) bool {
-	return tradeType != int(tdexv1.TradeType_BUY) &&
-		tradeType != int(tdexv1.TradeType_SELL)
 }

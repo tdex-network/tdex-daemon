@@ -325,18 +325,18 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	walletUnlockerHandler := grpchandler.NewWalletUnlockerHandler(
 		s.opts.WalletUnlockerSvc, adminMacaroonPath,
 	)
-	daemonv1.RegisterWalletUnlockerServer(
+	daemonv1.RegisterWalletUnlockerServiceServer(
 		grpcOperatorServer, walletUnlockerHandler,
 	)
 
 	transportHandler := grpchandler.NewTransportHandler()
-	tdexv1.RegisterTransportServer(grpcOperatorServer, transportHandler)
+	tdexv1.RegisterTransportServiceServer(grpcOperatorServer, transportHandler)
 
 	if !withUnlockerOnly {
 		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
 		operatorHandler := grpchandler.NewOperatorHandler(s.opts.OperatorSvc)
-		daemonv1.RegisterOperatorServer(grpcOperatorServer, operatorHandler)
-		daemonv1.RegisterWalletServer(grpcOperatorServer, walletHandler)
+		daemonv1.RegisterOperatorServiceServer(grpcOperatorServer, operatorHandler)
+		daemonv1.RegisterWalletServiceServer(grpcOperatorServer, walletHandler)
 	}
 
 	// http Operator server for grpc-web
@@ -365,7 +365,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		)
 		tradeHandler := grpchandler.NewTradeHandler(s.opts.TradeSvc)
 		tradeOldHandler := grpchandler.NewTradeOldHandler(s.opts.TradeSvc)
-		tdexv1.RegisterTradeServer(grpcTradeServer, tradeHandler)
+		tdexv1.RegisterTradeServiceServer(grpcTradeServer, tradeHandler)
 		tdexold.RegisterTradeServer(grpcTradeServer, tradeOldHandler)
 
 		tradeGrpcGateway, err := s.tradeGrpcGateway(context.Background(), tradeTLSKey, tradeTLSCert)
@@ -527,7 +527,7 @@ func (s *service) tradeGrpcGateway(ctx context.Context, tlsKey, tlsCert string) 
 	}
 
 	grpcGatewayMux := runtime.NewServeMux()
-	if err := tdexv1.RegisterTradeHandler(ctx, grpcGatewayMux, conn); err != nil {
+	if err := tdexv1.RegisterTradeServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
 		return nil, err
 	}
 

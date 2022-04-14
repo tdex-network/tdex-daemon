@@ -104,16 +104,15 @@ func walletSendAction(ctx *cli.Context) error {
 	addr := ctx.String("address")
 	mSatsPerByte := ctx.Int64("millisatsperbyte")
 
-	out := &daemonv1.TxOut{
+	out := &daemonv1.TxOutput{
 		Asset:   asset,
 		Value:   amount,
 		Address: addr,
 	}
 
 	reply, err := client.SendToMany(context.Background(), &daemonv1.SendToManyRequest{
-		Outputs:         []*daemonv1.TxOut{out},
+		Outputs:         []*daemonv1.TxOutput{out},
 		MillisatPerByte: mSatsPerByte,
-		Push:            true,
 	})
 	if err != nil {
 		return err

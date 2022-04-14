@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: tdex-daemon/v1/operator.proto
 
-package daemonv1
+package tdex_daemonv1
 
 import (
 	context "context"
@@ -18,330 +18,330 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// OperatorClient is the client API for Operator service.
+// OperatorServiceClient is the client API for OperatorService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type OperatorClient interface {
+type OperatorServiceClient interface {
 	// Returns info about the internal wallet of the daemon.
-	GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoReply, error)
+	GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoResponse, error)
 	// Returns some new derived address(es) from the fee account.
 	// This is only used to deposit some LBTC to subsidize blockchain fees.
-	GetFeeAddress(ctx context.Context, in *GetFeeAddressRequest, opts ...grpc.CallOption) (*GetFeeAddressReply, error)
+	GetFeeAddress(ctx context.Context, in *GetFeeAddressRequest, opts ...grpc.CallOption) (*GetFeeAddressResponse, error)
 	// Returns the list of all derived addresses for the fee account.
-	ListFeeAddresses(ctx context.Context, in *ListFeeAddressesRequest, opts ...grpc.CallOption) (*ListFeeAddressesReply, error)
+	ListFeeAddresses(ctx context.Context, in *ListFeeAddressesRequest, opts ...grpc.CallOption) (*ListFeeAddressesResponse, error)
 	// Returns info about the balance of LBTC held in the fee account.
-	GetFeeBalance(ctx context.Context, in *GetFeeBalanceRequest, opts ...grpc.CallOption) (*GetFeeBalanceReply, error)
+	GetFeeBalance(ctx context.Context, in *GetFeeBalanceRequest, opts ...grpc.CallOption) (*GetFeeBalanceResponse, error)
 	// Allows to provide transaction(s) outpoints of deposits made to fund the fee account.
 	// The transaction(s) must be already included in blockchain.
-	ClaimFeeDeposits(ctx context.Context, in *ClaimFeeDepositsRequest, opts ...grpc.CallOption) (*ClaimFeeDepositsReply, error)
+	ClaimFeeDeposits(ctx context.Context, in *ClaimFeeDepositsRequest, opts ...grpc.CallOption) (*ClaimFeeDepositsResponse, error)
 	// Allows to withdraw funds from the fee account to a given address.
-	WithdrawFee(ctx context.Context, in *WithdrawFeeRequest, opts ...grpc.CallOption) (*WithdrawFeeReply, error)
+	WithdrawFee(ctx context.Context, in *WithdrawFeeRequest, opts ...grpc.CallOption) (*WithdrawFeeResponse, error)
 	// Creates a new market account in the daemon's wallet.
-	NewMarket(ctx context.Context, in *NewMarketRequest, opts ...grpc.CallOption) (*NewMarketReply, error)
-	GetMarketInfo(ctx context.Context, in *GetMarketInfoRequest, opts ...grpc.CallOption) (*GetMarketInfoReply, error)
+	NewMarket(ctx context.Context, in *NewMarketRequest, opts ...grpc.CallOption) (*NewMarketResponse, error)
+	GetMarketInfo(ctx context.Context, in *GetMarketInfoRequest, opts ...grpc.CallOption) (*GetMarketInfoResponse, error)
 	// Returns some new derived address(es) for the given market.
-	GetMarketAddress(ctx context.Context, in *GetMarketAddressRequest, opts ...grpc.CallOption) (*GetMarketAddressReply, error)
+	GetMarketAddress(ctx context.Context, in *GetMarketAddressRequest, opts ...grpc.CallOption) (*GetMarketAddressResponse, error)
 	// Returns the list of all derived addresses for the given market.
-	ListMarketAddresses(ctx context.Context, in *ListMarketAddressesRequest, opts ...grpc.CallOption) (*ListMarketAddressesReply, error)
+	ListMarketAddresses(ctx context.Context, in *ListMarketAddressesRequest, opts ...grpc.CallOption) (*ListMarketAddressesResponse, error)
 	// Returns info about the balance of the given market.
-	GetMarketBalance(ctx context.Context, in *GetMarketBalanceRequest, opts ...grpc.CallOption) (*GetMarketBalanceReply, error)
+	GetMarketBalance(ctx context.Context, in *GetMarketBalanceRequest, opts ...grpc.CallOption) (*GetMarketBalanceResponse, error)
 	// Allows to provide transaction(s) outpoints of deposits made to fund a market.
 	// The transaction(s) provided must be already included in blockchain.
-	ClaimMarketDeposits(ctx context.Context, in *ClaimMarketDepositsRequest, opts ...grpc.CallOption) (*ClaimMarketDepositsReply, error)
+	ClaimMarketDeposits(ctx context.Context, in *ClaimMarketDepositsRequest, opts ...grpc.CallOption) (*ClaimMarketDepositsResponse, error)
 	// Makes the given market tradable.
-	OpenMarket(ctx context.Context, in *OpenMarketRequest, opts ...grpc.CallOption) (*OpenMarketReply, error)
+	OpenMarket(ctx context.Context, in *OpenMarketRequest, opts ...grpc.CallOption) (*OpenMarketResponse, error)
 	// Makes the given market NOT tradabale.
-	CloseMarket(ctx context.Context, in *CloseMarketRequest, opts ...grpc.CallOption) (*CloseMarketReply, error)
+	CloseMarket(ctx context.Context, in *CloseMarketRequest, opts ...grpc.CallOption) (*CloseMarketResponse, error)
 	// Deletes a market.
-	DropMarket(ctx context.Context, in *DropMarketRequest, opts ...grpc.CallOption) (*DropMarketReply, error)
+	DropMarket(ctx context.Context, in *DropMarketRequest, opts ...grpc.CallOption) (*DropMarketResponse, error)
 	// Displays a report of the colected fees for the given market.
-	GetMarketCollectedSwapFees(ctx context.Context, in *GetMarketCollectedSwapFeesRequest, opts ...grpc.CallOption) (*GetMarketCollectedSwapFeesReply, error)
+	GetMarketCollectedSwapFees(ctx context.Context, in *GetMarketCollectedSwapFeesRequest, opts ...grpc.CallOption) (*GetMarketCollectedSwapFeesResponse, error)
 	// Allows to withdraw funds from the given market to a given address.
-	WithdrawMarket(ctx context.Context, in *WithdrawMarketRequest, opts ...grpc.CallOption) (*WithdrawMarketReply, error)
+	WithdrawMarket(ctx context.Context, in *WithdrawMarketRequest, opts ...grpc.CallOption) (*WithdrawMarketResponse, error)
 	// Changes the Liquidity Provider percentage fee for the given market.
-	UpdateMarketPercentageFee(ctx context.Context, in *UpdateMarketPercentageFeeRequest, opts ...grpc.CallOption) (*UpdateMarketFeeReply, error)
+	UpdateMarketPercentageFee(ctx context.Context, in *UpdateMarketPercentageFeeRequest, opts ...grpc.CallOption) (*UpdateMarketPercentageFeeResponse, error)
 	// Changes the Liquidity provider fixed fees for the given market.
-	UpdateMarketFixedFee(ctx context.Context, in *UpdateMarketFixedFeeRequest, opts ...grpc.CallOption) (*UpdateMarketFeeReply, error)
+	UpdateMarketFixedFee(ctx context.Context, in *UpdateMarketFixedFeeRequest, opts ...grpc.CallOption) (*UpdateMarketFixedFeeResponse, error)
 	// Updates the price for the given market.
-	UpdateMarketPrice(ctx context.Context, in *UpdateMarketPriceRequest, opts ...grpc.CallOption) (*UpdateMarketPriceReply, error)
+	UpdateMarketPrice(ctx context.Context, in *UpdateMarketPriceRequest, opts ...grpc.CallOption) (*UpdateMarketPriceResponse, error)
 	// Updates the current market making strategy, either using an automated
 	// market making formula or a pluggable price feed.
-	UpdateMarketStrategy(ctx context.Context, in *UpdateMarketStrategyRequest, opts ...grpc.CallOption) (*UpdateMarketStrategyReply, error)
+	UpdateMarketStrategy(ctx context.Context, in *UpdateMarketStrategyRequest, opts ...grpc.CallOption) (*UpdateMarketStrategyResponse, error)
 	// Returns some new derived address(es) for the fee fragmenter account.
-	GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressReply, error)
+	GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressResponse, error)
 	// Returns the list of all derived addresses for the fee fragmenter account.
-	ListFeeFragmenterAddresses(ctx context.Context, in *ListFeeFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListFeeFragmenterAddressesReply, error)
+	ListFeeFragmenterAddresses(ctx context.Context, in *ListFeeFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListFeeFragmenterAddressesResponse, error)
 	// Returns info about the balance of the fee fragmenter account.
-	GetFeeFragmenterBalance(ctx context.Context, in *GetFeeFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetFeeFragmenterBalanceReply, error)
+	GetFeeFragmenterBalance(ctx context.Context, in *GetFeeFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetFeeFragmenterBalanceResponse, error)
 	// Splits the funds sent to the fee fragmenter account into multiple
 	// fragments that then becomes deposits of the Fee account.
-	FeeFragmenterSplitFunds(ctx context.Context, in *FeeFragmenterSplitFundsRequest, opts ...grpc.CallOption) (Operator_FeeFragmenterSplitFundsClient, error)
+	FeeFragmenterSplitFunds(ctx context.Context, in *FeeFragmenterSplitFundsRequest, opts ...grpc.CallOption) (OperatorService_FeeFragmenterSplitFundsClient, error)
 	// Allows to withdraw funds from the fee fragmenter account to a given address.
-	WithdrawFeeFragmenter(ctx context.Context, in *WithdrawFeeFragmenterRequest, opts ...grpc.CallOption) (*WithdrawFeeFragmenterReply, error)
+	WithdrawFeeFragmenter(ctx context.Context, in *WithdrawFeeFragmenterRequest, opts ...grpc.CallOption) (*WithdrawFeeFragmenterResponse, error)
 	// Returns some new derived address(es) for the market fragmenter account.
-	GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressReply, error)
+	GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressResponse, error)
 	// Returns the list of all derived addresses for the market fragmenter account.
-	ListMarketFragmenterAddresses(ctx context.Context, in *ListMarketFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListMarketFragmenterAddressesReply, error)
+	ListMarketFragmenterAddresses(ctx context.Context, in *ListMarketFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListMarketFragmenterAddressesResponse, error)
 	// Returns info about the balance of the market fragmenter account.
-	GetMarketFragmenterBalance(ctx context.Context, in *GetMarketFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetMarketFragmenterBalanceReply, error)
+	GetMarketFragmenterBalance(ctx context.Context, in *GetMarketFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetMarketFragmenterBalanceResponse, error)
 	// Splits the funds sent to the market fragmenter account into multiple
 	// fragments that then becomes deposits of the given market.
-	MarketFragmenterSplitFunds(ctx context.Context, in *MarketFragmenterSplitFundsRequest, opts ...grpc.CallOption) (Operator_MarketFragmenterSplitFundsClient, error)
+	MarketFragmenterSplitFunds(ctx context.Context, in *MarketFragmenterSplitFundsRequest, opts ...grpc.CallOption) (OperatorService_MarketFragmenterSplitFundsClient, error)
 	// Allows to withdraw funds from the market fragmenter account to a given address.
-	WithdrawMarketFragmenter(ctx context.Context, in *WithdrawMarketFragmenterRequest, opts ...grpc.CallOption) (*WithdrawMarketFragmenterReply, error)
+	WithdrawMarketFragmenter(ctx context.Context, in *WithdrawMarketFragmenterRequest, opts ...grpc.CallOption) (*WithdrawMarketFragmenterResponse, error)
 	// Get extended details for each market either open, closed or to be funded.
-	ListMarkets(ctx context.Context, in *ListMarketsRequest, opts ...grpc.CallOption) (*ListMarketsReply, error)
+	ListMarkets(ctx context.Context, in *ListMarketsRequest, opts ...grpc.CallOption) (*ListMarketsResponse, error)
 	// Returs all the trades processed by the daemon (ongoing, completed and
 	// failed/rejected) or all those filtered by market.
-	ListTrades(ctx context.Context, in *ListTradesRequest, opts ...grpc.CallOption) (*ListTradesReply, error)
+	ListTrades(ctx context.Context, in *ListTradesRequest, opts ...grpc.CallOption) (*ListTradesResponse, error)
 	// Causes the daemon to re-sync the whole utxo set.
-	ReloadUtxos(ctx context.Context, in *ReloadUtxosRequest, opts ...grpc.CallOption) (*ReloadUtxosReply, error)
+	ReloadUtxos(ctx context.Context, in *ReloadUtxosRequest, opts ...grpc.CallOption) (*ReloadUtxosResponse, error)
 	// Returns all the utxos, whether unspents, spents or locked.
-	ListUtxos(ctx context.Context, in *ListUtxosRequest, opts ...grpc.CallOption) (*ListUtxosReply, error)
+	ListUtxos(ctx context.Context, in *ListUtxosRequest, opts ...grpc.CallOption) (*ListUtxosResponse, error)
 	// Adds a webhook registered for some kind of event.
-	AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookReply, error)
+	AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookResponse, error)
 	// Removes some previously added webhook.
-	RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookReply, error)
+	RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookResponse, error)
 	// Returns registered webhooks
-	ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksReply, error)
+	ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksResponse, error)
 	// Returns the list of all claimed deposits for the given account.
-	ListDeposits(ctx context.Context, in *ListDepositsRequest, opts ...grpc.CallOption) (*ListDepositsReply, error)
+	ListDeposits(ctx context.Context, in *ListDepositsRequest, opts ...grpc.CallOption) (*ListDepositsResponse, error)
 	// Returns the list of all withdrawals made for the given account.
-	ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsReply, error)
+	ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsResponse, error)
 	// Returns info about volume and collected fees for specific time range
-	GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportReply, error)
+	GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportResponse, error)
 }
 
-type operatorClient struct {
+type operatorServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewOperatorClient(cc grpc.ClientConnInterface) OperatorClient {
-	return &operatorClient{cc}
+func NewOperatorServiceClient(cc grpc.ClientConnInterface) OperatorServiceClient {
+	return &operatorServiceClient{cc}
 }
 
-func (c *operatorClient) GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoReply, error) {
-	out := new(GetInfoReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetInfo", in, out, opts...)
+func (c *operatorServiceClient) GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoResponse, error) {
+	out := new(GetInfoResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetFeeAddress(ctx context.Context, in *GetFeeAddressRequest, opts ...grpc.CallOption) (*GetFeeAddressReply, error) {
-	out := new(GetFeeAddressReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetFeeAddress", in, out, opts...)
+func (c *operatorServiceClient) GetFeeAddress(ctx context.Context, in *GetFeeAddressRequest, opts ...grpc.CallOption) (*GetFeeAddressResponse, error) {
+	out := new(GetFeeAddressResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetFeeAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListFeeAddresses(ctx context.Context, in *ListFeeAddressesRequest, opts ...grpc.CallOption) (*ListFeeAddressesReply, error) {
-	out := new(ListFeeAddressesReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListFeeAddresses", in, out, opts...)
+func (c *operatorServiceClient) ListFeeAddresses(ctx context.Context, in *ListFeeAddressesRequest, opts ...grpc.CallOption) (*ListFeeAddressesResponse, error) {
+	out := new(ListFeeAddressesResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListFeeAddresses", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetFeeBalance(ctx context.Context, in *GetFeeBalanceRequest, opts ...grpc.CallOption) (*GetFeeBalanceReply, error) {
-	out := new(GetFeeBalanceReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetFeeBalance", in, out, opts...)
+func (c *operatorServiceClient) GetFeeBalance(ctx context.Context, in *GetFeeBalanceRequest, opts ...grpc.CallOption) (*GetFeeBalanceResponse, error) {
+	out := new(GetFeeBalanceResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetFeeBalance", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ClaimFeeDeposits(ctx context.Context, in *ClaimFeeDepositsRequest, opts ...grpc.CallOption) (*ClaimFeeDepositsReply, error) {
-	out := new(ClaimFeeDepositsReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ClaimFeeDeposits", in, out, opts...)
+func (c *operatorServiceClient) ClaimFeeDeposits(ctx context.Context, in *ClaimFeeDepositsRequest, opts ...grpc.CallOption) (*ClaimFeeDepositsResponse, error) {
+	out := new(ClaimFeeDepositsResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ClaimFeeDeposits", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) WithdrawFee(ctx context.Context, in *WithdrawFeeRequest, opts ...grpc.CallOption) (*WithdrawFeeReply, error) {
-	out := new(WithdrawFeeReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/WithdrawFee", in, out, opts...)
+func (c *operatorServiceClient) WithdrawFee(ctx context.Context, in *WithdrawFeeRequest, opts ...grpc.CallOption) (*WithdrawFeeResponse, error) {
+	out := new(WithdrawFeeResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/WithdrawFee", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) NewMarket(ctx context.Context, in *NewMarketRequest, opts ...grpc.CallOption) (*NewMarketReply, error) {
-	out := new(NewMarketReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/NewMarket", in, out, opts...)
+func (c *operatorServiceClient) NewMarket(ctx context.Context, in *NewMarketRequest, opts ...grpc.CallOption) (*NewMarketResponse, error) {
+	out := new(NewMarketResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/NewMarket", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetMarketInfo(ctx context.Context, in *GetMarketInfoRequest, opts ...grpc.CallOption) (*GetMarketInfoReply, error) {
-	out := new(GetMarketInfoReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetMarketInfo", in, out, opts...)
+func (c *operatorServiceClient) GetMarketInfo(ctx context.Context, in *GetMarketInfoRequest, opts ...grpc.CallOption) (*GetMarketInfoResponse, error) {
+	out := new(GetMarketInfoResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetMarketInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetMarketAddress(ctx context.Context, in *GetMarketAddressRequest, opts ...grpc.CallOption) (*GetMarketAddressReply, error) {
-	out := new(GetMarketAddressReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetMarketAddress", in, out, opts...)
+func (c *operatorServiceClient) GetMarketAddress(ctx context.Context, in *GetMarketAddressRequest, opts ...grpc.CallOption) (*GetMarketAddressResponse, error) {
+	out := new(GetMarketAddressResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetMarketAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListMarketAddresses(ctx context.Context, in *ListMarketAddressesRequest, opts ...grpc.CallOption) (*ListMarketAddressesReply, error) {
-	out := new(ListMarketAddressesReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListMarketAddresses", in, out, opts...)
+func (c *operatorServiceClient) ListMarketAddresses(ctx context.Context, in *ListMarketAddressesRequest, opts ...grpc.CallOption) (*ListMarketAddressesResponse, error) {
+	out := new(ListMarketAddressesResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListMarketAddresses", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetMarketBalance(ctx context.Context, in *GetMarketBalanceRequest, opts ...grpc.CallOption) (*GetMarketBalanceReply, error) {
-	out := new(GetMarketBalanceReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetMarketBalance", in, out, opts...)
+func (c *operatorServiceClient) GetMarketBalance(ctx context.Context, in *GetMarketBalanceRequest, opts ...grpc.CallOption) (*GetMarketBalanceResponse, error) {
+	out := new(GetMarketBalanceResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetMarketBalance", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ClaimMarketDeposits(ctx context.Context, in *ClaimMarketDepositsRequest, opts ...grpc.CallOption) (*ClaimMarketDepositsReply, error) {
-	out := new(ClaimMarketDepositsReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ClaimMarketDeposits", in, out, opts...)
+func (c *operatorServiceClient) ClaimMarketDeposits(ctx context.Context, in *ClaimMarketDepositsRequest, opts ...grpc.CallOption) (*ClaimMarketDepositsResponse, error) {
+	out := new(ClaimMarketDepositsResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ClaimMarketDeposits", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) OpenMarket(ctx context.Context, in *OpenMarketRequest, opts ...grpc.CallOption) (*OpenMarketReply, error) {
-	out := new(OpenMarketReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/OpenMarket", in, out, opts...)
+func (c *operatorServiceClient) OpenMarket(ctx context.Context, in *OpenMarketRequest, opts ...grpc.CallOption) (*OpenMarketResponse, error) {
+	out := new(OpenMarketResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/OpenMarket", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) CloseMarket(ctx context.Context, in *CloseMarketRequest, opts ...grpc.CallOption) (*CloseMarketReply, error) {
-	out := new(CloseMarketReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/CloseMarket", in, out, opts...)
+func (c *operatorServiceClient) CloseMarket(ctx context.Context, in *CloseMarketRequest, opts ...grpc.CallOption) (*CloseMarketResponse, error) {
+	out := new(CloseMarketResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/CloseMarket", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) DropMarket(ctx context.Context, in *DropMarketRequest, opts ...grpc.CallOption) (*DropMarketReply, error) {
-	out := new(DropMarketReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/DropMarket", in, out, opts...)
+func (c *operatorServiceClient) DropMarket(ctx context.Context, in *DropMarketRequest, opts ...grpc.CallOption) (*DropMarketResponse, error) {
+	out := new(DropMarketResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/DropMarket", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetMarketCollectedSwapFees(ctx context.Context, in *GetMarketCollectedSwapFeesRequest, opts ...grpc.CallOption) (*GetMarketCollectedSwapFeesReply, error) {
-	out := new(GetMarketCollectedSwapFeesReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetMarketCollectedSwapFees", in, out, opts...)
+func (c *operatorServiceClient) GetMarketCollectedSwapFees(ctx context.Context, in *GetMarketCollectedSwapFeesRequest, opts ...grpc.CallOption) (*GetMarketCollectedSwapFeesResponse, error) {
+	out := new(GetMarketCollectedSwapFeesResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetMarketCollectedSwapFees", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) WithdrawMarket(ctx context.Context, in *WithdrawMarketRequest, opts ...grpc.CallOption) (*WithdrawMarketReply, error) {
-	out := new(WithdrawMarketReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/WithdrawMarket", in, out, opts...)
+func (c *operatorServiceClient) WithdrawMarket(ctx context.Context, in *WithdrawMarketRequest, opts ...grpc.CallOption) (*WithdrawMarketResponse, error) {
+	out := new(WithdrawMarketResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/WithdrawMarket", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) UpdateMarketPercentageFee(ctx context.Context, in *UpdateMarketPercentageFeeRequest, opts ...grpc.CallOption) (*UpdateMarketFeeReply, error) {
-	out := new(UpdateMarketFeeReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/UpdateMarketPercentageFee", in, out, opts...)
+func (c *operatorServiceClient) UpdateMarketPercentageFee(ctx context.Context, in *UpdateMarketPercentageFeeRequest, opts ...grpc.CallOption) (*UpdateMarketPercentageFeeResponse, error) {
+	out := new(UpdateMarketPercentageFeeResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/UpdateMarketPercentageFee", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) UpdateMarketFixedFee(ctx context.Context, in *UpdateMarketFixedFeeRequest, opts ...grpc.CallOption) (*UpdateMarketFeeReply, error) {
-	out := new(UpdateMarketFeeReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/UpdateMarketFixedFee", in, out, opts...)
+func (c *operatorServiceClient) UpdateMarketFixedFee(ctx context.Context, in *UpdateMarketFixedFeeRequest, opts ...grpc.CallOption) (*UpdateMarketFixedFeeResponse, error) {
+	out := new(UpdateMarketFixedFeeResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/UpdateMarketFixedFee", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) UpdateMarketPrice(ctx context.Context, in *UpdateMarketPriceRequest, opts ...grpc.CallOption) (*UpdateMarketPriceReply, error) {
-	out := new(UpdateMarketPriceReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/UpdateMarketPrice", in, out, opts...)
+func (c *operatorServiceClient) UpdateMarketPrice(ctx context.Context, in *UpdateMarketPriceRequest, opts ...grpc.CallOption) (*UpdateMarketPriceResponse, error) {
+	out := new(UpdateMarketPriceResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/UpdateMarketPrice", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) UpdateMarketStrategy(ctx context.Context, in *UpdateMarketStrategyRequest, opts ...grpc.CallOption) (*UpdateMarketStrategyReply, error) {
-	out := new(UpdateMarketStrategyReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/UpdateMarketStrategy", in, out, opts...)
+func (c *operatorServiceClient) UpdateMarketStrategy(ctx context.Context, in *UpdateMarketStrategyRequest, opts ...grpc.CallOption) (*UpdateMarketStrategyResponse, error) {
+	out := new(UpdateMarketStrategyResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/UpdateMarketStrategy", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressReply, error) {
-	out := new(GetFeeFragmenterAddressReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetFeeFragmenterAddress", in, out, opts...)
+func (c *operatorServiceClient) GetFeeFragmenterAddress(ctx context.Context, in *GetFeeFragmenterAddressRequest, opts ...grpc.CallOption) (*GetFeeFragmenterAddressResponse, error) {
+	out := new(GetFeeFragmenterAddressResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetFeeFragmenterAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListFeeFragmenterAddresses(ctx context.Context, in *ListFeeFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListFeeFragmenterAddressesReply, error) {
-	out := new(ListFeeFragmenterAddressesReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListFeeFragmenterAddresses", in, out, opts...)
+func (c *operatorServiceClient) ListFeeFragmenterAddresses(ctx context.Context, in *ListFeeFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListFeeFragmenterAddressesResponse, error) {
+	out := new(ListFeeFragmenterAddressesResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListFeeFragmenterAddresses", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetFeeFragmenterBalance(ctx context.Context, in *GetFeeFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetFeeFragmenterBalanceReply, error) {
-	out := new(GetFeeFragmenterBalanceReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetFeeFragmenterBalance", in, out, opts...)
+func (c *operatorServiceClient) GetFeeFragmenterBalance(ctx context.Context, in *GetFeeFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetFeeFragmenterBalanceResponse, error) {
+	out := new(GetFeeFragmenterBalanceResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetFeeFragmenterBalance", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) FeeFragmenterSplitFunds(ctx context.Context, in *FeeFragmenterSplitFundsRequest, opts ...grpc.CallOption) (Operator_FeeFragmenterSplitFundsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Operator_ServiceDesc.Streams[0], "/tdex.daemon.v1.Operator/FeeFragmenterSplitFunds", opts...)
+func (c *operatorServiceClient) FeeFragmenterSplitFunds(ctx context.Context, in *FeeFragmenterSplitFundsRequest, opts ...grpc.CallOption) (OperatorService_FeeFragmenterSplitFundsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &OperatorService_ServiceDesc.Streams[0], "/tdex_daemon.v1.OperatorService/FeeFragmenterSplitFunds", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &operatorFeeFragmenterSplitFundsClient{stream}
+	x := &operatorServiceFeeFragmenterSplitFundsClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -351,65 +351,65 @@ func (c *operatorClient) FeeFragmenterSplitFunds(ctx context.Context, in *FeeFra
 	return x, nil
 }
 
-type Operator_FeeFragmenterSplitFundsClient interface {
-	Recv() (*FragmenterSplitFundsReply, error)
+type OperatorService_FeeFragmenterSplitFundsClient interface {
+	Recv() (*FeeFragmenterSplitFundsResponse, error)
 	grpc.ClientStream
 }
 
-type operatorFeeFragmenterSplitFundsClient struct {
+type operatorServiceFeeFragmenterSplitFundsClient struct {
 	grpc.ClientStream
 }
 
-func (x *operatorFeeFragmenterSplitFundsClient) Recv() (*FragmenterSplitFundsReply, error) {
-	m := new(FragmenterSplitFundsReply)
+func (x *operatorServiceFeeFragmenterSplitFundsClient) Recv() (*FeeFragmenterSplitFundsResponse, error) {
+	m := new(FeeFragmenterSplitFundsResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *operatorClient) WithdrawFeeFragmenter(ctx context.Context, in *WithdrawFeeFragmenterRequest, opts ...grpc.CallOption) (*WithdrawFeeFragmenterReply, error) {
-	out := new(WithdrawFeeFragmenterReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/WithdrawFeeFragmenter", in, out, opts...)
+func (c *operatorServiceClient) WithdrawFeeFragmenter(ctx context.Context, in *WithdrawFeeFragmenterRequest, opts ...grpc.CallOption) (*WithdrawFeeFragmenterResponse, error) {
+	out := new(WithdrawFeeFragmenterResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/WithdrawFeeFragmenter", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressReply, error) {
-	out := new(GetMarketFragmenterAddressReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetMarketFragmenterAddress", in, out, opts...)
+func (c *operatorServiceClient) GetMarketFragmenterAddress(ctx context.Context, in *GetMarketFragmenterAddressRequest, opts ...grpc.CallOption) (*GetMarketFragmenterAddressResponse, error) {
+	out := new(GetMarketFragmenterAddressResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetMarketFragmenterAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListMarketFragmenterAddresses(ctx context.Context, in *ListMarketFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListMarketFragmenterAddressesReply, error) {
-	out := new(ListMarketFragmenterAddressesReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListMarketFragmenterAddresses", in, out, opts...)
+func (c *operatorServiceClient) ListMarketFragmenterAddresses(ctx context.Context, in *ListMarketFragmenterAddressesRequest, opts ...grpc.CallOption) (*ListMarketFragmenterAddressesResponse, error) {
+	out := new(ListMarketFragmenterAddressesResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListMarketFragmenterAddresses", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetMarketFragmenterBalance(ctx context.Context, in *GetMarketFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetMarketFragmenterBalanceReply, error) {
-	out := new(GetMarketFragmenterBalanceReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetMarketFragmenterBalance", in, out, opts...)
+func (c *operatorServiceClient) GetMarketFragmenterBalance(ctx context.Context, in *GetMarketFragmenterBalanceRequest, opts ...grpc.CallOption) (*GetMarketFragmenterBalanceResponse, error) {
+	out := new(GetMarketFragmenterBalanceResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetMarketFragmenterBalance", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) MarketFragmenterSplitFunds(ctx context.Context, in *MarketFragmenterSplitFundsRequest, opts ...grpc.CallOption) (Operator_MarketFragmenterSplitFundsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Operator_ServiceDesc.Streams[1], "/tdex.daemon.v1.Operator/MarketFragmenterSplitFunds", opts...)
+func (c *operatorServiceClient) MarketFragmenterSplitFunds(ctx context.Context, in *MarketFragmenterSplitFundsRequest, opts ...grpc.CallOption) (OperatorService_MarketFragmenterSplitFundsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &OperatorService_ServiceDesc.Streams[1], "/tdex_daemon.v1.OperatorService/MarketFragmenterSplitFunds", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &operatorMarketFragmenterSplitFundsClient{stream}
+	x := &operatorServiceMarketFragmenterSplitFundsClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -419,1272 +419,1272 @@ func (c *operatorClient) MarketFragmenterSplitFunds(ctx context.Context, in *Mar
 	return x, nil
 }
 
-type Operator_MarketFragmenterSplitFundsClient interface {
-	Recv() (*FragmenterSplitFundsReply, error)
+type OperatorService_MarketFragmenterSplitFundsClient interface {
+	Recv() (*MarketFragmenterSplitFundsResponse, error)
 	grpc.ClientStream
 }
 
-type operatorMarketFragmenterSplitFundsClient struct {
+type operatorServiceMarketFragmenterSplitFundsClient struct {
 	grpc.ClientStream
 }
 
-func (x *operatorMarketFragmenterSplitFundsClient) Recv() (*FragmenterSplitFundsReply, error) {
-	m := new(FragmenterSplitFundsReply)
+func (x *operatorServiceMarketFragmenterSplitFundsClient) Recv() (*MarketFragmenterSplitFundsResponse, error) {
+	m := new(MarketFragmenterSplitFundsResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *operatorClient) WithdrawMarketFragmenter(ctx context.Context, in *WithdrawMarketFragmenterRequest, opts ...grpc.CallOption) (*WithdrawMarketFragmenterReply, error) {
-	out := new(WithdrawMarketFragmenterReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/WithdrawMarketFragmenter", in, out, opts...)
+func (c *operatorServiceClient) WithdrawMarketFragmenter(ctx context.Context, in *WithdrawMarketFragmenterRequest, opts ...grpc.CallOption) (*WithdrawMarketFragmenterResponse, error) {
+	out := new(WithdrawMarketFragmenterResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/WithdrawMarketFragmenter", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListMarkets(ctx context.Context, in *ListMarketsRequest, opts ...grpc.CallOption) (*ListMarketsReply, error) {
-	out := new(ListMarketsReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListMarkets", in, out, opts...)
+func (c *operatorServiceClient) ListMarkets(ctx context.Context, in *ListMarketsRequest, opts ...grpc.CallOption) (*ListMarketsResponse, error) {
+	out := new(ListMarketsResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListMarkets", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListTrades(ctx context.Context, in *ListTradesRequest, opts ...grpc.CallOption) (*ListTradesReply, error) {
-	out := new(ListTradesReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListTrades", in, out, opts...)
+func (c *operatorServiceClient) ListTrades(ctx context.Context, in *ListTradesRequest, opts ...grpc.CallOption) (*ListTradesResponse, error) {
+	out := new(ListTradesResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListTrades", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ReloadUtxos(ctx context.Context, in *ReloadUtxosRequest, opts ...grpc.CallOption) (*ReloadUtxosReply, error) {
-	out := new(ReloadUtxosReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ReloadUtxos", in, out, opts...)
+func (c *operatorServiceClient) ReloadUtxos(ctx context.Context, in *ReloadUtxosRequest, opts ...grpc.CallOption) (*ReloadUtxosResponse, error) {
+	out := new(ReloadUtxosResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ReloadUtxos", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListUtxos(ctx context.Context, in *ListUtxosRequest, opts ...grpc.CallOption) (*ListUtxosReply, error) {
-	out := new(ListUtxosReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListUtxos", in, out, opts...)
+func (c *operatorServiceClient) ListUtxos(ctx context.Context, in *ListUtxosRequest, opts ...grpc.CallOption) (*ListUtxosResponse, error) {
+	out := new(ListUtxosResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListUtxos", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookReply, error) {
-	out := new(AddWebhookReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/AddWebhook", in, out, opts...)
+func (c *operatorServiceClient) AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookResponse, error) {
+	out := new(AddWebhookResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/AddWebhook", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookReply, error) {
-	out := new(RemoveWebhookReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/RemoveWebhook", in, out, opts...)
+func (c *operatorServiceClient) RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookResponse, error) {
+	out := new(RemoveWebhookResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/RemoveWebhook", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksReply, error) {
-	out := new(ListWebhooksReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListWebhooks", in, out, opts...)
+func (c *operatorServiceClient) ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksResponse, error) {
+	out := new(ListWebhooksResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListWebhooks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListDeposits(ctx context.Context, in *ListDepositsRequest, opts ...grpc.CallOption) (*ListDepositsReply, error) {
-	out := new(ListDepositsReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListDeposits", in, out, opts...)
+func (c *operatorServiceClient) ListDeposits(ctx context.Context, in *ListDepositsRequest, opts ...grpc.CallOption) (*ListDepositsResponse, error) {
+	out := new(ListDepositsResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListDeposits", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsReply, error) {
-	out := new(ListWithdrawalsReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/ListWithdrawals", in, out, opts...)
+func (c *operatorServiceClient) ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsResponse, error) {
+	out := new(ListWithdrawalsResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListWithdrawals", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *operatorClient) GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportReply, error) {
-	out := new(GetMarketReportReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.Operator/GetMarketReport", in, out, opts...)
+func (c *operatorServiceClient) GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportResponse, error) {
+	out := new(GetMarketReportResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/GetMarketReport", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// OperatorServer is the server API for Operator service.
-// All implementations should embed UnimplementedOperatorServer
+// OperatorServiceServer is the server API for OperatorService service.
+// All implementations should embed UnimplementedOperatorServiceServer
 // for forward compatibility
-type OperatorServer interface {
+type OperatorServiceServer interface {
 	// Returns info about the internal wallet of the daemon.
-	GetInfo(context.Context, *GetInfoRequest) (*GetInfoReply, error)
+	GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error)
 	// Returns some new derived address(es) from the fee account.
 	// This is only used to deposit some LBTC to subsidize blockchain fees.
-	GetFeeAddress(context.Context, *GetFeeAddressRequest) (*GetFeeAddressReply, error)
+	GetFeeAddress(context.Context, *GetFeeAddressRequest) (*GetFeeAddressResponse, error)
 	// Returns the list of all derived addresses for the fee account.
-	ListFeeAddresses(context.Context, *ListFeeAddressesRequest) (*ListFeeAddressesReply, error)
+	ListFeeAddresses(context.Context, *ListFeeAddressesRequest) (*ListFeeAddressesResponse, error)
 	// Returns info about the balance of LBTC held in the fee account.
-	GetFeeBalance(context.Context, *GetFeeBalanceRequest) (*GetFeeBalanceReply, error)
+	GetFeeBalance(context.Context, *GetFeeBalanceRequest) (*GetFeeBalanceResponse, error)
 	// Allows to provide transaction(s) outpoints of deposits made to fund the fee account.
 	// The transaction(s) must be already included in blockchain.
-	ClaimFeeDeposits(context.Context, *ClaimFeeDepositsRequest) (*ClaimFeeDepositsReply, error)
+	ClaimFeeDeposits(context.Context, *ClaimFeeDepositsRequest) (*ClaimFeeDepositsResponse, error)
 	// Allows to withdraw funds from the fee account to a given address.
-	WithdrawFee(context.Context, *WithdrawFeeRequest) (*WithdrawFeeReply, error)
+	WithdrawFee(context.Context, *WithdrawFeeRequest) (*WithdrawFeeResponse, error)
 	// Creates a new market account in the daemon's wallet.
-	NewMarket(context.Context, *NewMarketRequest) (*NewMarketReply, error)
-	GetMarketInfo(context.Context, *GetMarketInfoRequest) (*GetMarketInfoReply, error)
+	NewMarket(context.Context, *NewMarketRequest) (*NewMarketResponse, error)
+	GetMarketInfo(context.Context, *GetMarketInfoRequest) (*GetMarketInfoResponse, error)
 	// Returns some new derived address(es) for the given market.
-	GetMarketAddress(context.Context, *GetMarketAddressRequest) (*GetMarketAddressReply, error)
+	GetMarketAddress(context.Context, *GetMarketAddressRequest) (*GetMarketAddressResponse, error)
 	// Returns the list of all derived addresses for the given market.
-	ListMarketAddresses(context.Context, *ListMarketAddressesRequest) (*ListMarketAddressesReply, error)
+	ListMarketAddresses(context.Context, *ListMarketAddressesRequest) (*ListMarketAddressesResponse, error)
 	// Returns info about the balance of the given market.
-	GetMarketBalance(context.Context, *GetMarketBalanceRequest) (*GetMarketBalanceReply, error)
+	GetMarketBalance(context.Context, *GetMarketBalanceRequest) (*GetMarketBalanceResponse, error)
 	// Allows to provide transaction(s) outpoints of deposits made to fund a market.
 	// The transaction(s) provided must be already included in blockchain.
-	ClaimMarketDeposits(context.Context, *ClaimMarketDepositsRequest) (*ClaimMarketDepositsReply, error)
+	ClaimMarketDeposits(context.Context, *ClaimMarketDepositsRequest) (*ClaimMarketDepositsResponse, error)
 	// Makes the given market tradable.
-	OpenMarket(context.Context, *OpenMarketRequest) (*OpenMarketReply, error)
+	OpenMarket(context.Context, *OpenMarketRequest) (*OpenMarketResponse, error)
 	// Makes the given market NOT tradabale.
-	CloseMarket(context.Context, *CloseMarketRequest) (*CloseMarketReply, error)
+	CloseMarket(context.Context, *CloseMarketRequest) (*CloseMarketResponse, error)
 	// Deletes a market.
-	DropMarket(context.Context, *DropMarketRequest) (*DropMarketReply, error)
+	DropMarket(context.Context, *DropMarketRequest) (*DropMarketResponse, error)
 	// Displays a report of the colected fees for the given market.
-	GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesReply, error)
+	GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesResponse, error)
 	// Allows to withdraw funds from the given market to a given address.
-	WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketReply, error)
+	WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketResponse, error)
 	// Changes the Liquidity Provider percentage fee for the given market.
-	UpdateMarketPercentageFee(context.Context, *UpdateMarketPercentageFeeRequest) (*UpdateMarketFeeReply, error)
+	UpdateMarketPercentageFee(context.Context, *UpdateMarketPercentageFeeRequest) (*UpdateMarketPercentageFeeResponse, error)
 	// Changes the Liquidity provider fixed fees for the given market.
-	UpdateMarketFixedFee(context.Context, *UpdateMarketFixedFeeRequest) (*UpdateMarketFeeReply, error)
+	UpdateMarketFixedFee(context.Context, *UpdateMarketFixedFeeRequest) (*UpdateMarketFixedFeeResponse, error)
 	// Updates the price for the given market.
-	UpdateMarketPrice(context.Context, *UpdateMarketPriceRequest) (*UpdateMarketPriceReply, error)
+	UpdateMarketPrice(context.Context, *UpdateMarketPriceRequest) (*UpdateMarketPriceResponse, error)
 	// Updates the current market making strategy, either using an automated
 	// market making formula or a pluggable price feed.
-	UpdateMarketStrategy(context.Context, *UpdateMarketStrategyRequest) (*UpdateMarketStrategyReply, error)
+	UpdateMarketStrategy(context.Context, *UpdateMarketStrategyRequest) (*UpdateMarketStrategyResponse, error)
 	// Returns some new derived address(es) for the fee fragmenter account.
-	GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressReply, error)
+	GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressResponse, error)
 	// Returns the list of all derived addresses for the fee fragmenter account.
-	ListFeeFragmenterAddresses(context.Context, *ListFeeFragmenterAddressesRequest) (*ListFeeFragmenterAddressesReply, error)
+	ListFeeFragmenterAddresses(context.Context, *ListFeeFragmenterAddressesRequest) (*ListFeeFragmenterAddressesResponse, error)
 	// Returns info about the balance of the fee fragmenter account.
-	GetFeeFragmenterBalance(context.Context, *GetFeeFragmenterBalanceRequest) (*GetFeeFragmenterBalanceReply, error)
+	GetFeeFragmenterBalance(context.Context, *GetFeeFragmenterBalanceRequest) (*GetFeeFragmenterBalanceResponse, error)
 	// Splits the funds sent to the fee fragmenter account into multiple
 	// fragments that then becomes deposits of the Fee account.
-	FeeFragmenterSplitFunds(*FeeFragmenterSplitFundsRequest, Operator_FeeFragmenterSplitFundsServer) error
+	FeeFragmenterSplitFunds(*FeeFragmenterSplitFundsRequest, OperatorService_FeeFragmenterSplitFundsServer) error
 	// Allows to withdraw funds from the fee fragmenter account to a given address.
-	WithdrawFeeFragmenter(context.Context, *WithdrawFeeFragmenterRequest) (*WithdrawFeeFragmenterReply, error)
+	WithdrawFeeFragmenter(context.Context, *WithdrawFeeFragmenterRequest) (*WithdrawFeeFragmenterResponse, error)
 	// Returns some new derived address(es) for the market fragmenter account.
-	GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressReply, error)
+	GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressResponse, error)
 	// Returns the list of all derived addresses for the market fragmenter account.
-	ListMarketFragmenterAddresses(context.Context, *ListMarketFragmenterAddressesRequest) (*ListMarketFragmenterAddressesReply, error)
+	ListMarketFragmenterAddresses(context.Context, *ListMarketFragmenterAddressesRequest) (*ListMarketFragmenterAddressesResponse, error)
 	// Returns info about the balance of the market fragmenter account.
-	GetMarketFragmenterBalance(context.Context, *GetMarketFragmenterBalanceRequest) (*GetMarketFragmenterBalanceReply, error)
+	GetMarketFragmenterBalance(context.Context, *GetMarketFragmenterBalanceRequest) (*GetMarketFragmenterBalanceResponse, error)
 	// Splits the funds sent to the market fragmenter account into multiple
 	// fragments that then becomes deposits of the given market.
-	MarketFragmenterSplitFunds(*MarketFragmenterSplitFundsRequest, Operator_MarketFragmenterSplitFundsServer) error
+	MarketFragmenterSplitFunds(*MarketFragmenterSplitFundsRequest, OperatorService_MarketFragmenterSplitFundsServer) error
 	// Allows to withdraw funds from the market fragmenter account to a given address.
-	WithdrawMarketFragmenter(context.Context, *WithdrawMarketFragmenterRequest) (*WithdrawMarketFragmenterReply, error)
+	WithdrawMarketFragmenter(context.Context, *WithdrawMarketFragmenterRequest) (*WithdrawMarketFragmenterResponse, error)
 	// Get extended details for each market either open, closed or to be funded.
-	ListMarkets(context.Context, *ListMarketsRequest) (*ListMarketsReply, error)
+	ListMarkets(context.Context, *ListMarketsRequest) (*ListMarketsResponse, error)
 	// Returs all the trades processed by the daemon (ongoing, completed and
 	// failed/rejected) or all those filtered by market.
-	ListTrades(context.Context, *ListTradesRequest) (*ListTradesReply, error)
+	ListTrades(context.Context, *ListTradesRequest) (*ListTradesResponse, error)
 	// Causes the daemon to re-sync the whole utxo set.
-	ReloadUtxos(context.Context, *ReloadUtxosRequest) (*ReloadUtxosReply, error)
+	ReloadUtxos(context.Context, *ReloadUtxosRequest) (*ReloadUtxosResponse, error)
 	// Returns all the utxos, whether unspents, spents or locked.
-	ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosReply, error)
+	ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosResponse, error)
 	// Adds a webhook registered for some kind of event.
-	AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookReply, error)
+	AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookResponse, error)
 	// Removes some previously added webhook.
-	RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookReply, error)
+	RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookResponse, error)
 	// Returns registered webhooks
-	ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksReply, error)
+	ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksResponse, error)
 	// Returns the list of all claimed deposits for the given account.
-	ListDeposits(context.Context, *ListDepositsRequest) (*ListDepositsReply, error)
+	ListDeposits(context.Context, *ListDepositsRequest) (*ListDepositsResponse, error)
 	// Returns the list of all withdrawals made for the given account.
-	ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsReply, error)
+	ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsResponse, error)
 	// Returns info about volume and collected fees for specific time range
-	GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportReply, error)
+	GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportResponse, error)
 }
 
-// UnimplementedOperatorServer should be embedded to have forward compatible implementations.
-type UnimplementedOperatorServer struct {
+// UnimplementedOperatorServiceServer should be embedded to have forward compatible implementations.
+type UnimplementedOperatorServiceServer struct {
 }
 
-func (UnimplementedOperatorServer) GetInfo(context.Context, *GetInfoRequest) (*GetInfoReply, error) {
+func (UnimplementedOperatorServiceServer) GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetInfo not implemented")
 }
-func (UnimplementedOperatorServer) GetFeeAddress(context.Context, *GetFeeAddressRequest) (*GetFeeAddressReply, error) {
+func (UnimplementedOperatorServiceServer) GetFeeAddress(context.Context, *GetFeeAddressRequest) (*GetFeeAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFeeAddress not implemented")
 }
-func (UnimplementedOperatorServer) ListFeeAddresses(context.Context, *ListFeeAddressesRequest) (*ListFeeAddressesReply, error) {
+func (UnimplementedOperatorServiceServer) ListFeeAddresses(context.Context, *ListFeeAddressesRequest) (*ListFeeAddressesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListFeeAddresses not implemented")
 }
-func (UnimplementedOperatorServer) GetFeeBalance(context.Context, *GetFeeBalanceRequest) (*GetFeeBalanceReply, error) {
+func (UnimplementedOperatorServiceServer) GetFeeBalance(context.Context, *GetFeeBalanceRequest) (*GetFeeBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFeeBalance not implemented")
 }
-func (UnimplementedOperatorServer) ClaimFeeDeposits(context.Context, *ClaimFeeDepositsRequest) (*ClaimFeeDepositsReply, error) {
+func (UnimplementedOperatorServiceServer) ClaimFeeDeposits(context.Context, *ClaimFeeDepositsRequest) (*ClaimFeeDepositsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClaimFeeDeposits not implemented")
 }
-func (UnimplementedOperatorServer) WithdrawFee(context.Context, *WithdrawFeeRequest) (*WithdrawFeeReply, error) {
+func (UnimplementedOperatorServiceServer) WithdrawFee(context.Context, *WithdrawFeeRequest) (*WithdrawFeeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WithdrawFee not implemented")
 }
-func (UnimplementedOperatorServer) NewMarket(context.Context, *NewMarketRequest) (*NewMarketReply, error) {
+func (UnimplementedOperatorServiceServer) NewMarket(context.Context, *NewMarketRequest) (*NewMarketResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewMarket not implemented")
 }
-func (UnimplementedOperatorServer) GetMarketInfo(context.Context, *GetMarketInfoRequest) (*GetMarketInfoReply, error) {
+func (UnimplementedOperatorServiceServer) GetMarketInfo(context.Context, *GetMarketInfoRequest) (*GetMarketInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketInfo not implemented")
 }
-func (UnimplementedOperatorServer) GetMarketAddress(context.Context, *GetMarketAddressRequest) (*GetMarketAddressReply, error) {
+func (UnimplementedOperatorServiceServer) GetMarketAddress(context.Context, *GetMarketAddressRequest) (*GetMarketAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketAddress not implemented")
 }
-func (UnimplementedOperatorServer) ListMarketAddresses(context.Context, *ListMarketAddressesRequest) (*ListMarketAddressesReply, error) {
+func (UnimplementedOperatorServiceServer) ListMarketAddresses(context.Context, *ListMarketAddressesRequest) (*ListMarketAddressesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListMarketAddresses not implemented")
 }
-func (UnimplementedOperatorServer) GetMarketBalance(context.Context, *GetMarketBalanceRequest) (*GetMarketBalanceReply, error) {
+func (UnimplementedOperatorServiceServer) GetMarketBalance(context.Context, *GetMarketBalanceRequest) (*GetMarketBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketBalance not implemented")
 }
-func (UnimplementedOperatorServer) ClaimMarketDeposits(context.Context, *ClaimMarketDepositsRequest) (*ClaimMarketDepositsReply, error) {
+func (UnimplementedOperatorServiceServer) ClaimMarketDeposits(context.Context, *ClaimMarketDepositsRequest) (*ClaimMarketDepositsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClaimMarketDeposits not implemented")
 }
-func (UnimplementedOperatorServer) OpenMarket(context.Context, *OpenMarketRequest) (*OpenMarketReply, error) {
+func (UnimplementedOperatorServiceServer) OpenMarket(context.Context, *OpenMarketRequest) (*OpenMarketResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OpenMarket not implemented")
 }
-func (UnimplementedOperatorServer) CloseMarket(context.Context, *CloseMarketRequest) (*CloseMarketReply, error) {
+func (UnimplementedOperatorServiceServer) CloseMarket(context.Context, *CloseMarketRequest) (*CloseMarketResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CloseMarket not implemented")
 }
-func (UnimplementedOperatorServer) DropMarket(context.Context, *DropMarketRequest) (*DropMarketReply, error) {
+func (UnimplementedOperatorServiceServer) DropMarket(context.Context, *DropMarketRequest) (*DropMarketResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropMarket not implemented")
 }
-func (UnimplementedOperatorServer) GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesReply, error) {
+func (UnimplementedOperatorServiceServer) GetMarketCollectedSwapFees(context.Context, *GetMarketCollectedSwapFeesRequest) (*GetMarketCollectedSwapFeesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketCollectedSwapFees not implemented")
 }
-func (UnimplementedOperatorServer) WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketReply, error) {
+func (UnimplementedOperatorServiceServer) WithdrawMarket(context.Context, *WithdrawMarketRequest) (*WithdrawMarketResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WithdrawMarket not implemented")
 }
-func (UnimplementedOperatorServer) UpdateMarketPercentageFee(context.Context, *UpdateMarketPercentageFeeRequest) (*UpdateMarketFeeReply, error) {
+func (UnimplementedOperatorServiceServer) UpdateMarketPercentageFee(context.Context, *UpdateMarketPercentageFeeRequest) (*UpdateMarketPercentageFeeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMarketPercentageFee not implemented")
 }
-func (UnimplementedOperatorServer) UpdateMarketFixedFee(context.Context, *UpdateMarketFixedFeeRequest) (*UpdateMarketFeeReply, error) {
+func (UnimplementedOperatorServiceServer) UpdateMarketFixedFee(context.Context, *UpdateMarketFixedFeeRequest) (*UpdateMarketFixedFeeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMarketFixedFee not implemented")
 }
-func (UnimplementedOperatorServer) UpdateMarketPrice(context.Context, *UpdateMarketPriceRequest) (*UpdateMarketPriceReply, error) {
+func (UnimplementedOperatorServiceServer) UpdateMarketPrice(context.Context, *UpdateMarketPriceRequest) (*UpdateMarketPriceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMarketPrice not implemented")
 }
-func (UnimplementedOperatorServer) UpdateMarketStrategy(context.Context, *UpdateMarketStrategyRequest) (*UpdateMarketStrategyReply, error) {
+func (UnimplementedOperatorServiceServer) UpdateMarketStrategy(context.Context, *UpdateMarketStrategyRequest) (*UpdateMarketStrategyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMarketStrategy not implemented")
 }
-func (UnimplementedOperatorServer) GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressReply, error) {
+func (UnimplementedOperatorServiceServer) GetFeeFragmenterAddress(context.Context, *GetFeeFragmenterAddressRequest) (*GetFeeFragmenterAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFeeFragmenterAddress not implemented")
 }
-func (UnimplementedOperatorServer) ListFeeFragmenterAddresses(context.Context, *ListFeeFragmenterAddressesRequest) (*ListFeeFragmenterAddressesReply, error) {
+func (UnimplementedOperatorServiceServer) ListFeeFragmenterAddresses(context.Context, *ListFeeFragmenterAddressesRequest) (*ListFeeFragmenterAddressesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListFeeFragmenterAddresses not implemented")
 }
-func (UnimplementedOperatorServer) GetFeeFragmenterBalance(context.Context, *GetFeeFragmenterBalanceRequest) (*GetFeeFragmenterBalanceReply, error) {
+func (UnimplementedOperatorServiceServer) GetFeeFragmenterBalance(context.Context, *GetFeeFragmenterBalanceRequest) (*GetFeeFragmenterBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFeeFragmenterBalance not implemented")
 }
-func (UnimplementedOperatorServer) FeeFragmenterSplitFunds(*FeeFragmenterSplitFundsRequest, Operator_FeeFragmenterSplitFundsServer) error {
+func (UnimplementedOperatorServiceServer) FeeFragmenterSplitFunds(*FeeFragmenterSplitFundsRequest, OperatorService_FeeFragmenterSplitFundsServer) error {
 	return status.Errorf(codes.Unimplemented, "method FeeFragmenterSplitFunds not implemented")
 }
-func (UnimplementedOperatorServer) WithdrawFeeFragmenter(context.Context, *WithdrawFeeFragmenterRequest) (*WithdrawFeeFragmenterReply, error) {
+func (UnimplementedOperatorServiceServer) WithdrawFeeFragmenter(context.Context, *WithdrawFeeFragmenterRequest) (*WithdrawFeeFragmenterResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WithdrawFeeFragmenter not implemented")
 }
-func (UnimplementedOperatorServer) GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressReply, error) {
+func (UnimplementedOperatorServiceServer) GetMarketFragmenterAddress(context.Context, *GetMarketFragmenterAddressRequest) (*GetMarketFragmenterAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketFragmenterAddress not implemented")
 }
-func (UnimplementedOperatorServer) ListMarketFragmenterAddresses(context.Context, *ListMarketFragmenterAddressesRequest) (*ListMarketFragmenterAddressesReply, error) {
+func (UnimplementedOperatorServiceServer) ListMarketFragmenterAddresses(context.Context, *ListMarketFragmenterAddressesRequest) (*ListMarketFragmenterAddressesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListMarketFragmenterAddresses not implemented")
 }
-func (UnimplementedOperatorServer) GetMarketFragmenterBalance(context.Context, *GetMarketFragmenterBalanceRequest) (*GetMarketFragmenterBalanceReply, error) {
+func (UnimplementedOperatorServiceServer) GetMarketFragmenterBalance(context.Context, *GetMarketFragmenterBalanceRequest) (*GetMarketFragmenterBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketFragmenterBalance not implemented")
 }
-func (UnimplementedOperatorServer) MarketFragmenterSplitFunds(*MarketFragmenterSplitFundsRequest, Operator_MarketFragmenterSplitFundsServer) error {
+func (UnimplementedOperatorServiceServer) MarketFragmenterSplitFunds(*MarketFragmenterSplitFundsRequest, OperatorService_MarketFragmenterSplitFundsServer) error {
 	return status.Errorf(codes.Unimplemented, "method MarketFragmenterSplitFunds not implemented")
 }
-func (UnimplementedOperatorServer) WithdrawMarketFragmenter(context.Context, *WithdrawMarketFragmenterRequest) (*WithdrawMarketFragmenterReply, error) {
+func (UnimplementedOperatorServiceServer) WithdrawMarketFragmenter(context.Context, *WithdrawMarketFragmenterRequest) (*WithdrawMarketFragmenterResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WithdrawMarketFragmenter not implemented")
 }
-func (UnimplementedOperatorServer) ListMarkets(context.Context, *ListMarketsRequest) (*ListMarketsReply, error) {
+func (UnimplementedOperatorServiceServer) ListMarkets(context.Context, *ListMarketsRequest) (*ListMarketsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListMarkets not implemented")
 }
-func (UnimplementedOperatorServer) ListTrades(context.Context, *ListTradesRequest) (*ListTradesReply, error) {
+func (UnimplementedOperatorServiceServer) ListTrades(context.Context, *ListTradesRequest) (*ListTradesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTrades not implemented")
 }
-func (UnimplementedOperatorServer) ReloadUtxos(context.Context, *ReloadUtxosRequest) (*ReloadUtxosReply, error) {
+func (UnimplementedOperatorServiceServer) ReloadUtxos(context.Context, *ReloadUtxosRequest) (*ReloadUtxosResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReloadUtxos not implemented")
 }
-func (UnimplementedOperatorServer) ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosReply, error) {
+func (UnimplementedOperatorServiceServer) ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUtxos not implemented")
 }
-func (UnimplementedOperatorServer) AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookReply, error) {
+func (UnimplementedOperatorServiceServer) AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddWebhook not implemented")
 }
-func (UnimplementedOperatorServer) RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookReply, error) {
+func (UnimplementedOperatorServiceServer) RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveWebhook not implemented")
 }
-func (UnimplementedOperatorServer) ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksReply, error) {
+func (UnimplementedOperatorServiceServer) ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWebhooks not implemented")
 }
-func (UnimplementedOperatorServer) ListDeposits(context.Context, *ListDepositsRequest) (*ListDepositsReply, error) {
+func (UnimplementedOperatorServiceServer) ListDeposits(context.Context, *ListDepositsRequest) (*ListDepositsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListDeposits not implemented")
 }
-func (UnimplementedOperatorServer) ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsReply, error) {
+func (UnimplementedOperatorServiceServer) ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWithdrawals not implemented")
 }
-func (UnimplementedOperatorServer) GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportReply, error) {
+func (UnimplementedOperatorServiceServer) GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketReport not implemented")
 }
 
-// UnsafeOperatorServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to OperatorServer will
+// UnsafeOperatorServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to OperatorServiceServer will
 // result in compilation errors.
-type UnsafeOperatorServer interface {
-	mustEmbedUnimplementedOperatorServer()
+type UnsafeOperatorServiceServer interface {
+	mustEmbedUnimplementedOperatorServiceServer()
 }
 
-func RegisterOperatorServer(s grpc.ServiceRegistrar, srv OperatorServer) {
-	s.RegisterService(&Operator_ServiceDesc, srv)
+func RegisterOperatorServiceServer(s grpc.ServiceRegistrar, srv OperatorServiceServer) {
+	s.RegisterService(&OperatorService_ServiceDesc, srv)
 }
 
-func _Operator_GetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetInfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetInfo(ctx, in)
+		return srv.(OperatorServiceServer).GetInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetInfo",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetInfo(ctx, req.(*GetInfoRequest))
+		return srv.(OperatorServiceServer).GetInfo(ctx, req.(*GetInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetFeeAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetFeeAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetFeeAddressRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetFeeAddress(ctx, in)
+		return srv.(OperatorServiceServer).GetFeeAddress(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetFeeAddress",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetFeeAddress",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetFeeAddress(ctx, req.(*GetFeeAddressRequest))
+		return srv.(OperatorServiceServer).GetFeeAddress(ctx, req.(*GetFeeAddressRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListFeeAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListFeeAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListFeeAddressesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListFeeAddresses(ctx, in)
+		return srv.(OperatorServiceServer).ListFeeAddresses(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListFeeAddresses",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListFeeAddresses",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListFeeAddresses(ctx, req.(*ListFeeAddressesRequest))
+		return srv.(OperatorServiceServer).ListFeeAddresses(ctx, req.(*ListFeeAddressesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetFeeBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetFeeBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetFeeBalanceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetFeeBalance(ctx, in)
+		return srv.(OperatorServiceServer).GetFeeBalance(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetFeeBalance",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetFeeBalance",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetFeeBalance(ctx, req.(*GetFeeBalanceRequest))
+		return srv.(OperatorServiceServer).GetFeeBalance(ctx, req.(*GetFeeBalanceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ClaimFeeDeposits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ClaimFeeDeposits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClaimFeeDepositsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ClaimFeeDeposits(ctx, in)
+		return srv.(OperatorServiceServer).ClaimFeeDeposits(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ClaimFeeDeposits",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ClaimFeeDeposits",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ClaimFeeDeposits(ctx, req.(*ClaimFeeDepositsRequest))
+		return srv.(OperatorServiceServer).ClaimFeeDeposits(ctx, req.(*ClaimFeeDepositsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_WithdrawFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_WithdrawFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(WithdrawFeeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).WithdrawFee(ctx, in)
+		return srv.(OperatorServiceServer).WithdrawFee(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/WithdrawFee",
+		FullMethod: "/tdex_daemon.v1.OperatorService/WithdrawFee",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).WithdrawFee(ctx, req.(*WithdrawFeeRequest))
+		return srv.(OperatorServiceServer).WithdrawFee(ctx, req.(*WithdrawFeeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_NewMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_NewMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(NewMarketRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).NewMarket(ctx, in)
+		return srv.(OperatorServiceServer).NewMarket(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/NewMarket",
+		FullMethod: "/tdex_daemon.v1.OperatorService/NewMarket",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).NewMarket(ctx, req.(*NewMarketRequest))
+		return srv.(OperatorServiceServer).NewMarket(ctx, req.(*NewMarketRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetMarketInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetMarketInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMarketInfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetMarketInfo(ctx, in)
+		return srv.(OperatorServiceServer).GetMarketInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetMarketInfo",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetMarketInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetMarketInfo(ctx, req.(*GetMarketInfoRequest))
+		return srv.(OperatorServiceServer).GetMarketInfo(ctx, req.(*GetMarketInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetMarketAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetMarketAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMarketAddressRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetMarketAddress(ctx, in)
+		return srv.(OperatorServiceServer).GetMarketAddress(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetMarketAddress",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetMarketAddress",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetMarketAddress(ctx, req.(*GetMarketAddressRequest))
+		return srv.(OperatorServiceServer).GetMarketAddress(ctx, req.(*GetMarketAddressRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListMarketAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListMarketAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListMarketAddressesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListMarketAddresses(ctx, in)
+		return srv.(OperatorServiceServer).ListMarketAddresses(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListMarketAddresses",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListMarketAddresses",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListMarketAddresses(ctx, req.(*ListMarketAddressesRequest))
+		return srv.(OperatorServiceServer).ListMarketAddresses(ctx, req.(*ListMarketAddressesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetMarketBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetMarketBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMarketBalanceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetMarketBalance(ctx, in)
+		return srv.(OperatorServiceServer).GetMarketBalance(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetMarketBalance",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetMarketBalance",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetMarketBalance(ctx, req.(*GetMarketBalanceRequest))
+		return srv.(OperatorServiceServer).GetMarketBalance(ctx, req.(*GetMarketBalanceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ClaimMarketDeposits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ClaimMarketDeposits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClaimMarketDepositsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ClaimMarketDeposits(ctx, in)
+		return srv.(OperatorServiceServer).ClaimMarketDeposits(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ClaimMarketDeposits",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ClaimMarketDeposits",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ClaimMarketDeposits(ctx, req.(*ClaimMarketDepositsRequest))
+		return srv.(OperatorServiceServer).ClaimMarketDeposits(ctx, req.(*ClaimMarketDepositsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_OpenMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_OpenMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(OpenMarketRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).OpenMarket(ctx, in)
+		return srv.(OperatorServiceServer).OpenMarket(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/OpenMarket",
+		FullMethod: "/tdex_daemon.v1.OperatorService/OpenMarket",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).OpenMarket(ctx, req.(*OpenMarketRequest))
+		return srv.(OperatorServiceServer).OpenMarket(ctx, req.(*OpenMarketRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_CloseMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_CloseMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CloseMarketRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).CloseMarket(ctx, in)
+		return srv.(OperatorServiceServer).CloseMarket(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/CloseMarket",
+		FullMethod: "/tdex_daemon.v1.OperatorService/CloseMarket",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).CloseMarket(ctx, req.(*CloseMarketRequest))
+		return srv.(OperatorServiceServer).CloseMarket(ctx, req.(*CloseMarketRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_DropMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_DropMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DropMarketRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).DropMarket(ctx, in)
+		return srv.(OperatorServiceServer).DropMarket(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/DropMarket",
+		FullMethod: "/tdex_daemon.v1.OperatorService/DropMarket",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).DropMarket(ctx, req.(*DropMarketRequest))
+		return srv.(OperatorServiceServer).DropMarket(ctx, req.(*DropMarketRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetMarketCollectedSwapFees_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetMarketCollectedSwapFees_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMarketCollectedSwapFeesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetMarketCollectedSwapFees(ctx, in)
+		return srv.(OperatorServiceServer).GetMarketCollectedSwapFees(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetMarketCollectedSwapFees",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetMarketCollectedSwapFees",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetMarketCollectedSwapFees(ctx, req.(*GetMarketCollectedSwapFeesRequest))
+		return srv.(OperatorServiceServer).GetMarketCollectedSwapFees(ctx, req.(*GetMarketCollectedSwapFeesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_WithdrawMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_WithdrawMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(WithdrawMarketRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).WithdrawMarket(ctx, in)
+		return srv.(OperatorServiceServer).WithdrawMarket(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/WithdrawMarket",
+		FullMethod: "/tdex_daemon.v1.OperatorService/WithdrawMarket",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).WithdrawMarket(ctx, req.(*WithdrawMarketRequest))
+		return srv.(OperatorServiceServer).WithdrawMarket(ctx, req.(*WithdrawMarketRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_UpdateMarketPercentageFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_UpdateMarketPercentageFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateMarketPercentageFeeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).UpdateMarketPercentageFee(ctx, in)
+		return srv.(OperatorServiceServer).UpdateMarketPercentageFee(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/UpdateMarketPercentageFee",
+		FullMethod: "/tdex_daemon.v1.OperatorService/UpdateMarketPercentageFee",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).UpdateMarketPercentageFee(ctx, req.(*UpdateMarketPercentageFeeRequest))
+		return srv.(OperatorServiceServer).UpdateMarketPercentageFee(ctx, req.(*UpdateMarketPercentageFeeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_UpdateMarketFixedFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_UpdateMarketFixedFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateMarketFixedFeeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).UpdateMarketFixedFee(ctx, in)
+		return srv.(OperatorServiceServer).UpdateMarketFixedFee(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/UpdateMarketFixedFee",
+		FullMethod: "/tdex_daemon.v1.OperatorService/UpdateMarketFixedFee",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).UpdateMarketFixedFee(ctx, req.(*UpdateMarketFixedFeeRequest))
+		return srv.(OperatorServiceServer).UpdateMarketFixedFee(ctx, req.(*UpdateMarketFixedFeeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_UpdateMarketPrice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_UpdateMarketPrice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateMarketPriceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).UpdateMarketPrice(ctx, in)
+		return srv.(OperatorServiceServer).UpdateMarketPrice(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/UpdateMarketPrice",
+		FullMethod: "/tdex_daemon.v1.OperatorService/UpdateMarketPrice",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).UpdateMarketPrice(ctx, req.(*UpdateMarketPriceRequest))
+		return srv.(OperatorServiceServer).UpdateMarketPrice(ctx, req.(*UpdateMarketPriceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_UpdateMarketStrategy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_UpdateMarketStrategy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateMarketStrategyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).UpdateMarketStrategy(ctx, in)
+		return srv.(OperatorServiceServer).UpdateMarketStrategy(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/UpdateMarketStrategy",
+		FullMethod: "/tdex_daemon.v1.OperatorService/UpdateMarketStrategy",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).UpdateMarketStrategy(ctx, req.(*UpdateMarketStrategyRequest))
+		return srv.(OperatorServiceServer).UpdateMarketStrategy(ctx, req.(*UpdateMarketStrategyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetFeeFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetFeeFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetFeeFragmenterAddressRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetFeeFragmenterAddress(ctx, in)
+		return srv.(OperatorServiceServer).GetFeeFragmenterAddress(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetFeeFragmenterAddress",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetFeeFragmenterAddress",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetFeeFragmenterAddress(ctx, req.(*GetFeeFragmenterAddressRequest))
+		return srv.(OperatorServiceServer).GetFeeFragmenterAddress(ctx, req.(*GetFeeFragmenterAddressRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListFeeFragmenterAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListFeeFragmenterAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListFeeFragmenterAddressesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListFeeFragmenterAddresses(ctx, in)
+		return srv.(OperatorServiceServer).ListFeeFragmenterAddresses(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListFeeFragmenterAddresses",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListFeeFragmenterAddresses",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListFeeFragmenterAddresses(ctx, req.(*ListFeeFragmenterAddressesRequest))
+		return srv.(OperatorServiceServer).ListFeeFragmenterAddresses(ctx, req.(*ListFeeFragmenterAddressesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetFeeFragmenterBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetFeeFragmenterBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetFeeFragmenterBalanceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetFeeFragmenterBalance(ctx, in)
+		return srv.(OperatorServiceServer).GetFeeFragmenterBalance(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetFeeFragmenterBalance",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetFeeFragmenterBalance",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetFeeFragmenterBalance(ctx, req.(*GetFeeFragmenterBalanceRequest))
+		return srv.(OperatorServiceServer).GetFeeFragmenterBalance(ctx, req.(*GetFeeFragmenterBalanceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_FeeFragmenterSplitFunds_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _OperatorService_FeeFragmenterSplitFunds_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(FeeFragmenterSplitFundsRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(OperatorServer).FeeFragmenterSplitFunds(m, &operatorFeeFragmenterSplitFundsServer{stream})
+	return srv.(OperatorServiceServer).FeeFragmenterSplitFunds(m, &operatorServiceFeeFragmenterSplitFundsServer{stream})
 }
 
-type Operator_FeeFragmenterSplitFundsServer interface {
-	Send(*FragmenterSplitFundsReply) error
+type OperatorService_FeeFragmenterSplitFundsServer interface {
+	Send(*FeeFragmenterSplitFundsResponse) error
 	grpc.ServerStream
 }
 
-type operatorFeeFragmenterSplitFundsServer struct {
+type operatorServiceFeeFragmenterSplitFundsServer struct {
 	grpc.ServerStream
 }
 
-func (x *operatorFeeFragmenterSplitFundsServer) Send(m *FragmenterSplitFundsReply) error {
+func (x *operatorServiceFeeFragmenterSplitFundsServer) Send(m *FeeFragmenterSplitFundsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Operator_WithdrawFeeFragmenter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_WithdrawFeeFragmenter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(WithdrawFeeFragmenterRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).WithdrawFeeFragmenter(ctx, in)
+		return srv.(OperatorServiceServer).WithdrawFeeFragmenter(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/WithdrawFeeFragmenter",
+		FullMethod: "/tdex_daemon.v1.OperatorService/WithdrawFeeFragmenter",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).WithdrawFeeFragmenter(ctx, req.(*WithdrawFeeFragmenterRequest))
+		return srv.(OperatorServiceServer).WithdrawFeeFragmenter(ctx, req.(*WithdrawFeeFragmenterRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetMarketFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetMarketFragmenterAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMarketFragmenterAddressRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetMarketFragmenterAddress(ctx, in)
+		return srv.(OperatorServiceServer).GetMarketFragmenterAddress(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetMarketFragmenterAddress",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetMarketFragmenterAddress",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetMarketFragmenterAddress(ctx, req.(*GetMarketFragmenterAddressRequest))
+		return srv.(OperatorServiceServer).GetMarketFragmenterAddress(ctx, req.(*GetMarketFragmenterAddressRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListMarketFragmenterAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListMarketFragmenterAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListMarketFragmenterAddressesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListMarketFragmenterAddresses(ctx, in)
+		return srv.(OperatorServiceServer).ListMarketFragmenterAddresses(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListMarketFragmenterAddresses",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListMarketFragmenterAddresses",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListMarketFragmenterAddresses(ctx, req.(*ListMarketFragmenterAddressesRequest))
+		return srv.(OperatorServiceServer).ListMarketFragmenterAddresses(ctx, req.(*ListMarketFragmenterAddressesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetMarketFragmenterBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetMarketFragmenterBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMarketFragmenterBalanceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetMarketFragmenterBalance(ctx, in)
+		return srv.(OperatorServiceServer).GetMarketFragmenterBalance(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetMarketFragmenterBalance",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetMarketFragmenterBalance",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetMarketFragmenterBalance(ctx, req.(*GetMarketFragmenterBalanceRequest))
+		return srv.(OperatorServiceServer).GetMarketFragmenterBalance(ctx, req.(*GetMarketFragmenterBalanceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_MarketFragmenterSplitFunds_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _OperatorService_MarketFragmenterSplitFunds_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(MarketFragmenterSplitFundsRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(OperatorServer).MarketFragmenterSplitFunds(m, &operatorMarketFragmenterSplitFundsServer{stream})
+	return srv.(OperatorServiceServer).MarketFragmenterSplitFunds(m, &operatorServiceMarketFragmenterSplitFundsServer{stream})
 }
 
-type Operator_MarketFragmenterSplitFundsServer interface {
-	Send(*FragmenterSplitFundsReply) error
+type OperatorService_MarketFragmenterSplitFundsServer interface {
+	Send(*MarketFragmenterSplitFundsResponse) error
 	grpc.ServerStream
 }
 
-type operatorMarketFragmenterSplitFundsServer struct {
+type operatorServiceMarketFragmenterSplitFundsServer struct {
 	grpc.ServerStream
 }
 
-func (x *operatorMarketFragmenterSplitFundsServer) Send(m *FragmenterSplitFundsReply) error {
+func (x *operatorServiceMarketFragmenterSplitFundsServer) Send(m *MarketFragmenterSplitFundsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Operator_WithdrawMarketFragmenter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_WithdrawMarketFragmenter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(WithdrawMarketFragmenterRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).WithdrawMarketFragmenter(ctx, in)
+		return srv.(OperatorServiceServer).WithdrawMarketFragmenter(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/WithdrawMarketFragmenter",
+		FullMethod: "/tdex_daemon.v1.OperatorService/WithdrawMarketFragmenter",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).WithdrawMarketFragmenter(ctx, req.(*WithdrawMarketFragmenterRequest))
+		return srv.(OperatorServiceServer).WithdrawMarketFragmenter(ctx, req.(*WithdrawMarketFragmenterRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListMarkets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListMarkets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListMarketsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListMarkets(ctx, in)
+		return srv.(OperatorServiceServer).ListMarkets(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListMarkets",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListMarkets",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListMarkets(ctx, req.(*ListMarketsRequest))
+		return srv.(OperatorServiceServer).ListMarkets(ctx, req.(*ListMarketsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListTrades_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListTrades_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListTradesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListTrades(ctx, in)
+		return srv.(OperatorServiceServer).ListTrades(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListTrades",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListTrades",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListTrades(ctx, req.(*ListTradesRequest))
+		return srv.(OperatorServiceServer).ListTrades(ctx, req.(*ListTradesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ReloadUtxos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ReloadUtxos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReloadUtxosRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ReloadUtxos(ctx, in)
+		return srv.(OperatorServiceServer).ReloadUtxos(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ReloadUtxos",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ReloadUtxos",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ReloadUtxos(ctx, req.(*ReloadUtxosRequest))
+		return srv.(OperatorServiceServer).ReloadUtxos(ctx, req.(*ReloadUtxosRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListUtxos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListUtxos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListUtxosRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListUtxos(ctx, in)
+		return srv.(OperatorServiceServer).ListUtxos(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListUtxos",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListUtxos",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListUtxos(ctx, req.(*ListUtxosRequest))
+		return srv.(OperatorServiceServer).ListUtxos(ctx, req.(*ListUtxosRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_AddWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_AddWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddWebhookRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).AddWebhook(ctx, in)
+		return srv.(OperatorServiceServer).AddWebhook(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/AddWebhook",
+		FullMethod: "/tdex_daemon.v1.OperatorService/AddWebhook",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).AddWebhook(ctx, req.(*AddWebhookRequest))
+		return srv.(OperatorServiceServer).AddWebhook(ctx, req.(*AddWebhookRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_RemoveWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_RemoveWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveWebhookRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).RemoveWebhook(ctx, in)
+		return srv.(OperatorServiceServer).RemoveWebhook(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/RemoveWebhook",
+		FullMethod: "/tdex_daemon.v1.OperatorService/RemoveWebhook",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).RemoveWebhook(ctx, req.(*RemoveWebhookRequest))
+		return srv.(OperatorServiceServer).RemoveWebhook(ctx, req.(*RemoveWebhookRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListWebhooks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListWebhooks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListWebhooksRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListWebhooks(ctx, in)
+		return srv.(OperatorServiceServer).ListWebhooks(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListWebhooks",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListWebhooks",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListWebhooks(ctx, req.(*ListWebhooksRequest))
+		return srv.(OperatorServiceServer).ListWebhooks(ctx, req.(*ListWebhooksRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListDeposits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListDeposits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListDepositsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListDeposits(ctx, in)
+		return srv.(OperatorServiceServer).ListDeposits(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListDeposits",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListDeposits",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListDeposits(ctx, req.(*ListDepositsRequest))
+		return srv.(OperatorServiceServer).ListDeposits(ctx, req.(*ListDepositsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_ListWithdrawals_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_ListWithdrawals_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListWithdrawalsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).ListWithdrawals(ctx, in)
+		return srv.(OperatorServiceServer).ListWithdrawals(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/ListWithdrawals",
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListWithdrawals",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).ListWithdrawals(ctx, req.(*ListWithdrawalsRequest))
+		return srv.(OperatorServiceServer).ListWithdrawals(ctx, req.(*ListWithdrawalsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Operator_GetMarketReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OperatorService_GetMarketReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMarketReportRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OperatorServer).GetMarketReport(ctx, in)
+		return srv.(OperatorServiceServer).GetMarketReport(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.Operator/GetMarketReport",
+		FullMethod: "/tdex_daemon.v1.OperatorService/GetMarketReport",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServer).GetMarketReport(ctx, req.(*GetMarketReportRequest))
+		return srv.(OperatorServiceServer).GetMarketReport(ctx, req.(*GetMarketReportRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Operator_ServiceDesc is the grpc.ServiceDesc for Operator service.
+// OperatorService_ServiceDesc is the grpc.ServiceDesc for OperatorService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Operator_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "tdex.daemon.v1.Operator",
-	HandlerType: (*OperatorServer)(nil),
+var OperatorService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "tdex_daemon.v1.OperatorService",
+	HandlerType: (*OperatorServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetInfo",
-			Handler:    _Operator_GetInfo_Handler,
+			Handler:    _OperatorService_GetInfo_Handler,
 		},
 		{
 			MethodName: "GetFeeAddress",
-			Handler:    _Operator_GetFeeAddress_Handler,
+			Handler:    _OperatorService_GetFeeAddress_Handler,
 		},
 		{
 			MethodName: "ListFeeAddresses",
-			Handler:    _Operator_ListFeeAddresses_Handler,
+			Handler:    _OperatorService_ListFeeAddresses_Handler,
 		},
 		{
 			MethodName: "GetFeeBalance",
-			Handler:    _Operator_GetFeeBalance_Handler,
+			Handler:    _OperatorService_GetFeeBalance_Handler,
 		},
 		{
 			MethodName: "ClaimFeeDeposits",
-			Handler:    _Operator_ClaimFeeDeposits_Handler,
+			Handler:    _OperatorService_ClaimFeeDeposits_Handler,
 		},
 		{
 			MethodName: "WithdrawFee",
-			Handler:    _Operator_WithdrawFee_Handler,
+			Handler:    _OperatorService_WithdrawFee_Handler,
 		},
 		{
 			MethodName: "NewMarket",
-			Handler:    _Operator_NewMarket_Handler,
+			Handler:    _OperatorService_NewMarket_Handler,
 		},
 		{
 			MethodName: "GetMarketInfo",
-			Handler:    _Operator_GetMarketInfo_Handler,
+			Handler:    _OperatorService_GetMarketInfo_Handler,
 		},
 		{
 			MethodName: "GetMarketAddress",
-			Handler:    _Operator_GetMarketAddress_Handler,
+			Handler:    _OperatorService_GetMarketAddress_Handler,
 		},
 		{
 			MethodName: "ListMarketAddresses",
-			Handler:    _Operator_ListMarketAddresses_Handler,
+			Handler:    _OperatorService_ListMarketAddresses_Handler,
 		},
 		{
 			MethodName: "GetMarketBalance",
-			Handler:    _Operator_GetMarketBalance_Handler,
+			Handler:    _OperatorService_GetMarketBalance_Handler,
 		},
 		{
 			MethodName: "ClaimMarketDeposits",
-			Handler:    _Operator_ClaimMarketDeposits_Handler,
+			Handler:    _OperatorService_ClaimMarketDeposits_Handler,
 		},
 		{
 			MethodName: "OpenMarket",
-			Handler:    _Operator_OpenMarket_Handler,
+			Handler:    _OperatorService_OpenMarket_Handler,
 		},
 		{
 			MethodName: "CloseMarket",
-			Handler:    _Operator_CloseMarket_Handler,
+			Handler:    _OperatorService_CloseMarket_Handler,
 		},
 		{
 			MethodName: "DropMarket",
-			Handler:    _Operator_DropMarket_Handler,
+			Handler:    _OperatorService_DropMarket_Handler,
 		},
 		{
 			MethodName: "GetMarketCollectedSwapFees",
-			Handler:    _Operator_GetMarketCollectedSwapFees_Handler,
+			Handler:    _OperatorService_GetMarketCollectedSwapFees_Handler,
 		},
 		{
 			MethodName: "WithdrawMarket",
-			Handler:    _Operator_WithdrawMarket_Handler,
+			Handler:    _OperatorService_WithdrawMarket_Handler,
 		},
 		{
 			MethodName: "UpdateMarketPercentageFee",
-			Handler:    _Operator_UpdateMarketPercentageFee_Handler,
+			Handler:    _OperatorService_UpdateMarketPercentageFee_Handler,
 		},
 		{
 			MethodName: "UpdateMarketFixedFee",
-			Handler:    _Operator_UpdateMarketFixedFee_Handler,
+			Handler:    _OperatorService_UpdateMarketFixedFee_Handler,
 		},
 		{
 			MethodName: "UpdateMarketPrice",
-			Handler:    _Operator_UpdateMarketPrice_Handler,
+			Handler:    _OperatorService_UpdateMarketPrice_Handler,
 		},
 		{
 			MethodName: "UpdateMarketStrategy",
-			Handler:    _Operator_UpdateMarketStrategy_Handler,
+			Handler:    _OperatorService_UpdateMarketStrategy_Handler,
 		},
 		{
 			MethodName: "GetFeeFragmenterAddress",
-			Handler:    _Operator_GetFeeFragmenterAddress_Handler,
+			Handler:    _OperatorService_GetFeeFragmenterAddress_Handler,
 		},
 		{
 			MethodName: "ListFeeFragmenterAddresses",
-			Handler:    _Operator_ListFeeFragmenterAddresses_Handler,
+			Handler:    _OperatorService_ListFeeFragmenterAddresses_Handler,
 		},
 		{
 			MethodName: "GetFeeFragmenterBalance",
-			Handler:    _Operator_GetFeeFragmenterBalance_Handler,
+			Handler:    _OperatorService_GetFeeFragmenterBalance_Handler,
 		},
 		{
 			MethodName: "WithdrawFeeFragmenter",
-			Handler:    _Operator_WithdrawFeeFragmenter_Handler,
+			Handler:    _OperatorService_WithdrawFeeFragmenter_Handler,
 		},
 		{
 			MethodName: "GetMarketFragmenterAddress",
-			Handler:    _Operator_GetMarketFragmenterAddress_Handler,
+			Handler:    _OperatorService_GetMarketFragmenterAddress_Handler,
 		},
 		{
 			MethodName: "ListMarketFragmenterAddresses",
-			Handler:    _Operator_ListMarketFragmenterAddresses_Handler,
+			Handler:    _OperatorService_ListMarketFragmenterAddresses_Handler,
 		},
 		{
 			MethodName: "GetMarketFragmenterBalance",
-			Handler:    _Operator_GetMarketFragmenterBalance_Handler,
+			Handler:    _OperatorService_GetMarketFragmenterBalance_Handler,
 		},
 		{
 			MethodName: "WithdrawMarketFragmenter",
-			Handler:    _Operator_WithdrawMarketFragmenter_Handler,
+			Handler:    _OperatorService_WithdrawMarketFragmenter_Handler,
 		},
 		{
 			MethodName: "ListMarkets",
-			Handler:    _Operator_ListMarkets_Handler,
+			Handler:    _OperatorService_ListMarkets_Handler,
 		},
 		{
 			MethodName: "ListTrades",
-			Handler:    _Operator_ListTrades_Handler,
+			Handler:    _OperatorService_ListTrades_Handler,
 		},
 		{
 			MethodName: "ReloadUtxos",
-			Handler:    _Operator_ReloadUtxos_Handler,
+			Handler:    _OperatorService_ReloadUtxos_Handler,
 		},
 		{
 			MethodName: "ListUtxos",
-			Handler:    _Operator_ListUtxos_Handler,
+			Handler:    _OperatorService_ListUtxos_Handler,
 		},
 		{
 			MethodName: "AddWebhook",
-			Handler:    _Operator_AddWebhook_Handler,
+			Handler:    _OperatorService_AddWebhook_Handler,
 		},
 		{
 			MethodName: "RemoveWebhook",
-			Handler:    _Operator_RemoveWebhook_Handler,
+			Handler:    _OperatorService_RemoveWebhook_Handler,
 		},
 		{
 			MethodName: "ListWebhooks",
-			Handler:    _Operator_ListWebhooks_Handler,
+			Handler:    _OperatorService_ListWebhooks_Handler,
 		},
 		{
 			MethodName: "ListDeposits",
-			Handler:    _Operator_ListDeposits_Handler,
+			Handler:    _OperatorService_ListDeposits_Handler,
 		},
 		{
 			MethodName: "ListWithdrawals",
-			Handler:    _Operator_ListWithdrawals_Handler,
+			Handler:    _OperatorService_ListWithdrawals_Handler,
 		},
 		{
 			MethodName: "GetMarketReport",
-			Handler:    _Operator_GetMarketReport_Handler,
+			Handler:    _OperatorService_GetMarketReport_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "FeeFragmenterSplitFunds",
-			Handler:       _Operator_FeeFragmenterSplitFunds_Handler,
+			Handler:       _OperatorService_FeeFragmenterSplitFunds_Handler,
 			ServerStreams: true,
 		},
 		{
 			StreamName:    "MarketFragmenterSplitFunds",
-			Handler:       _Operator_MarketFragmenterSplitFunds_Handler,
+			Handler:       _OperatorService_MarketFragmenterSplitFunds_Handler,
 			ServerStreams: true,
 		},
 	},

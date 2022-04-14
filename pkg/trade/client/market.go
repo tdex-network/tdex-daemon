@@ -12,8 +12,8 @@ import (
 )
 
 // Markets calls the Markets rpc and returns its response
-func (c *Client) Markets() (*tdexv1.MarketsReply, error) {
-	return c.client.Markets(context.Background(), &tdexv1.MarketsRequest{})
+func (c *Client) Markets() (*tdexv1.ListMarketsResponse, error) {
+	return c.client.ListMarkets(context.Background(), &tdexv1.ListMarketsRequest{})
 }
 
 // BalancesOpts is the struct given to Balances method
@@ -29,29 +29,29 @@ func (o BalancesOpts) validate() error {
 }
 
 // Balances crafts the request and calls the Balances rpc
-func (c *Client) Balances(opts BalancesOpts) (*tdexv1.BalancesReply, error) {
+func (c *Client) GetMarketBalance(opts BalancesOpts) (*tdexv1.GetMarketBalanceResponse, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
 
-	request := &tdexv1.BalancesRequest{
+	request := &tdexv1.GetMarketBalanceRequest{
 		Market: &tdexv1.Market{
 			BaseAsset:  opts.Market.BaseAsset,
 			QuoteAsset: opts.Market.QuoteAsset,
 		},
 	}
-	return c.client.Balances(context.Background(), request)
+	return c.client.GetMarketBalance(context.Background(), request)
 }
 
-// MarketPriceOpts is the struct given to MarketPrice method
-type MarketPriceOpts struct {
+// PreviewTradeOpts is the struct given to PreviewTrade method
+type PreviewTradeOpts struct {
 	Market    trademarket.Market
 	TradeType tradetype.TradeType
 	Amount    uint64
 	Asset     string
 }
 
-func (o MarketPriceOpts) validate() error {
+func (o PreviewTradeOpts) validate() error {
 	if err := o.Market.Validate(); err != nil {
 		return err
 	}
@@ -67,13 +67,13 @@ func (o MarketPriceOpts) validate() error {
 	return nil
 }
 
-// MarketPrice crafts the request and calls the MarketPrice rpc
-func (c *Client) MarketPrice(opts MarketPriceOpts) (*tdexv1.MarketPriceReply, error) {
+// PreviewTrade crafts the request and calls the PreviewTrade rpc
+func (c *Client) PreviewTrade(opts PreviewTradeOpts) (*tdexv1.PreviewTradeResponse, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
 
-	request := &tdexv1.MarketPriceRequest{
+	request := &tdexv1.PreviewTradeRequest{
 		Market: &tdexv1.Market{
 			BaseAsset:  opts.Market.BaseAsset,
 			QuoteAsset: opts.Market.QuoteAsset,
@@ -82,5 +82,5 @@ func (c *Client) MarketPrice(opts MarketPriceOpts) (*tdexv1.MarketPriceReply, er
 		Amount: opts.Amount,
 		Asset:  opts.Asset,
 	}
-	return c.client.MarketPrice(context.Background(), request)
+	return c.client.PreviewTrade(context.Background(), request)
 }

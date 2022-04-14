@@ -10,3 +10,6 @@ breaking:
 lint:
   use:
     - DEFAULT
+  except:
+    - ENUM_ZERO_VALUE_SUFFIX
+    - PACKAGE_DIRECTORY_MATCH

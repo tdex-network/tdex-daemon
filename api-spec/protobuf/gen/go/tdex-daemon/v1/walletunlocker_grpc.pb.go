@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: tdex-daemon/v1/walletunlocker.proto
 
-package daemonv1
+package tdex_daemonv1
 
 import (
 	context "context"
@@ -18,18 +18,16 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// WalletUnlockerClient is the client API for WalletUnlocker service.
+// WalletUnlockerServiceClient is the client API for WalletUnlockerService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type WalletUnlockerClient interface {
-	//
+type WalletUnlockerServiceClient interface {
 	// GenSeed is the first method that should be used to instantiate a new tdexd
 	// instance. This method allows a caller to generate a new HD Wallet.
 	// Once the seed is obtained and verified by the user, the InitWallet
 	// method should be used to commit the newly generated seed, and create the
 	// wallet.
-	GenSeed(ctx context.Context, in *GenSeedRequest, opts ...grpc.CallOption) (*GenSeedReply, error)
-	//
+	GenSeed(ctx context.Context, in *GenSeedRequest, opts ...grpc.CallOption) (*GenSeedResponse, error)
 	// InitWallet is used when tdexd is starting up for the first time to fully
 	// initialize the daemon and its internal wallet.
 	// The wallet in the tdexd context is a database file on the disk that can be
@@ -39,51 +37,48 @@ type WalletUnlockerClient interface {
 	// Once initialized the wallet is locked and since the password is never stored
 	// on the disk, it's required to pass it into the Unlock RPC request to be able
 	// to manage the daemon for operations like depositing funds or opening a market.
-	InitWallet(ctx context.Context, in *InitWalletRequest, opts ...grpc.CallOption) (WalletUnlocker_InitWalletClient, error)
-	//
+	InitWallet(ctx context.Context, in *InitWalletRequest, opts ...grpc.CallOption) (WalletUnlockerService_InitWalletClient, error)
 	// UnlockWallet is used at startup of tdexd to provide a password to unlock
 	// the wallet database. Once unlocked, the only way to lock the wallet again is
 	// shutting it down.
-	UnlockWallet(ctx context.Context, in *UnlockWalletRequest, opts ...grpc.CallOption) (*UnlockWalletReply, error)
-	//
+	UnlockWallet(ctx context.Context, in *UnlockWalletRequest, opts ...grpc.CallOption) (*UnlockWalletResponse, error)
 	// ChangePassword changes the password of the encrypted wallet. This RPC
 	// requires the internal wallet to be locked. It doesn't change the wallet state
 	// in any case, therefore, like after calling InitWallet, it is required to
 	// unlock the walket with UnlockWallet RPC after this operation succeeds.
-	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordReply, error)
-	//
+	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordResponse, error)
 	// IsReady is useful for external applications interacting with tdexd to know
 	// whether its ready, meaning that also the wallet, operator trade services
 	// are able to serve requests.
 	// Restarting tdexd or initiliazing it by restoring an existing wallet can be
 	// time-expensive operations causing tdexd to not be ready until they haven't
 	// finished.
-	IsReady(ctx context.Context, in *IsReadyRequest, opts ...grpc.CallOption) (*IsReadyReply, error)
+	IsReady(ctx context.Context, in *IsReadyRequest, opts ...grpc.CallOption) (*IsReadyResponse, error)
 }
 
-type walletUnlockerClient struct {
+type walletUnlockerServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewWalletUnlockerClient(cc grpc.ClientConnInterface) WalletUnlockerClient {
-	return &walletUnlockerClient{cc}
+func NewWalletUnlockerServiceClient(cc grpc.ClientConnInterface) WalletUnlockerServiceClient {
+	return &walletUnlockerServiceClient{cc}
 }
 
-func (c *walletUnlockerClient) GenSeed(ctx context.Context, in *GenSeedRequest, opts ...grpc.CallOption) (*GenSeedReply, error) {
-	out := new(GenSeedReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.WalletUnlocker/GenSeed", in, out, opts...)
+func (c *walletUnlockerServiceClient) GenSeed(ctx context.Context, in *GenSeedRequest, opts ...grpc.CallOption) (*GenSeedResponse, error) {
+	out := new(GenSeedResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.WalletUnlockerService/GenSeed", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *walletUnlockerClient) InitWallet(ctx context.Context, in *InitWalletRequest, opts ...grpc.CallOption) (WalletUnlocker_InitWalletClient, error) {
-	stream, err := c.cc.NewStream(ctx, &WalletUnlocker_ServiceDesc.Streams[0], "/tdex.daemon.v1.WalletUnlocker/InitWallet", opts...)
+func (c *walletUnlockerServiceClient) InitWallet(ctx context.Context, in *InitWalletRequest, opts ...grpc.CallOption) (WalletUnlockerService_InitWalletClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WalletUnlockerService_ServiceDesc.Streams[0], "/tdex_daemon.v1.WalletUnlockerService/InitWallet", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &walletUnlockerInitWalletClient{stream}
+	x := &walletUnlockerServiceInitWalletClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -93,62 +88,60 @@ func (c *walletUnlockerClient) InitWallet(ctx context.Context, in *InitWalletReq
 	return x, nil
 }
 
-type WalletUnlocker_InitWalletClient interface {
-	Recv() (*InitWalletReply, error)
+type WalletUnlockerService_InitWalletClient interface {
+	Recv() (*InitWalletResponse, error)
 	grpc.ClientStream
 }
 
-type walletUnlockerInitWalletClient struct {
+type walletUnlockerServiceInitWalletClient struct {
 	grpc.ClientStream
 }
 
-func (x *walletUnlockerInitWalletClient) Recv() (*InitWalletReply, error) {
-	m := new(InitWalletReply)
+func (x *walletUnlockerServiceInitWalletClient) Recv() (*InitWalletResponse, error) {
+	m := new(InitWalletResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *walletUnlockerClient) UnlockWallet(ctx context.Context, in *UnlockWalletRequest, opts ...grpc.CallOption) (*UnlockWalletReply, error) {
-	out := new(UnlockWalletReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.WalletUnlocker/UnlockWallet", in, out, opts...)
+func (c *walletUnlockerServiceClient) UnlockWallet(ctx context.Context, in *UnlockWalletRequest, opts ...grpc.CallOption) (*UnlockWalletResponse, error) {
+	out := new(UnlockWalletResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.WalletUnlockerService/UnlockWallet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *walletUnlockerClient) ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordReply, error) {
-	out := new(ChangePasswordReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.WalletUnlocker/ChangePassword", in, out, opts...)
+func (c *walletUnlockerServiceClient) ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordResponse, error) {
+	out := new(ChangePasswordResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.WalletUnlockerService/ChangePassword", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *walletUnlockerClient) IsReady(ctx context.Context, in *IsReadyRequest, opts ...grpc.CallOption) (*IsReadyReply, error) {
-	out := new(IsReadyReply)
-	err := c.cc.Invoke(ctx, "/tdex.daemon.v1.WalletUnlocker/IsReady", in, out, opts...)
+func (c *walletUnlockerServiceClient) IsReady(ctx context.Context, in *IsReadyRequest, opts ...grpc.CallOption) (*IsReadyResponse, error) {
+	out := new(IsReadyResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.WalletUnlockerService/IsReady", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// WalletUnlockerServer is the server API for WalletUnlocker service.
-// All implementations should embed UnimplementedWalletUnlockerServer
+// WalletUnlockerServiceServer is the server API for WalletUnlockerService service.
+// All implementations should embed UnimplementedWalletUnlockerServiceServer
 // for forward compatibility
-type WalletUnlockerServer interface {
-	//
+type WalletUnlockerServiceServer interface {
 	// GenSeed is the first method that should be used to instantiate a new tdexd
 	// instance. This method allows a caller to generate a new HD Wallet.
 	// Once the seed is obtained and verified by the user, the InitWallet
 	// method should be used to commit the newly generated seed, and create the
 	// wallet.
-	GenSeed(context.Context, *GenSeedRequest) (*GenSeedReply, error)
-	//
+	GenSeed(context.Context, *GenSeedRequest) (*GenSeedResponse, error)
 	// InitWallet is used when tdexd is starting up for the first time to fully
 	// initialize the daemon and its internal wallet.
 	// The wallet in the tdexd context is a database file on the disk that can be
@@ -158,180 +151,177 @@ type WalletUnlockerServer interface {
 	// Once initialized the wallet is locked and since the password is never stored
 	// on the disk, it's required to pass it into the Unlock RPC request to be able
 	// to manage the daemon for operations like depositing funds or opening a market.
-	InitWallet(*InitWalletRequest, WalletUnlocker_InitWalletServer) error
-	//
+	InitWallet(*InitWalletRequest, WalletUnlockerService_InitWalletServer) error
 	// UnlockWallet is used at startup of tdexd to provide a password to unlock
 	// the wallet database. Once unlocked, the only way to lock the wallet again is
 	// shutting it down.
-	UnlockWallet(context.Context, *UnlockWalletRequest) (*UnlockWalletReply, error)
-	//
+	UnlockWallet(context.Context, *UnlockWalletRequest) (*UnlockWalletResponse, error)
 	// ChangePassword changes the password of the encrypted wallet. This RPC
 	// requires the internal wallet to be locked. It doesn't change the wallet state
 	// in any case, therefore, like after calling InitWallet, it is required to
 	// unlock the walket with UnlockWallet RPC after this operation succeeds.
-	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordReply, error)
-	//
+	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error)
 	// IsReady is useful for external applications interacting with tdexd to know
 	// whether its ready, meaning that also the wallet, operator trade services
 	// are able to serve requests.
 	// Restarting tdexd or initiliazing it by restoring an existing wallet can be
 	// time-expensive operations causing tdexd to not be ready until they haven't
 	// finished.
-	IsReady(context.Context, *IsReadyRequest) (*IsReadyReply, error)
+	IsReady(context.Context, *IsReadyRequest) (*IsReadyResponse, error)
 }
 
-// UnimplementedWalletUnlockerServer should be embedded to have forward compatible implementations.
-type UnimplementedWalletUnlockerServer struct {
+// UnimplementedWalletUnlockerServiceServer should be embedded to have forward compatible implementations.
+type UnimplementedWalletUnlockerServiceServer struct {
 }
 
-func (UnimplementedWalletUnlockerServer) GenSeed(context.Context, *GenSeedRequest) (*GenSeedReply, error) {
+func (UnimplementedWalletUnlockerServiceServer) GenSeed(context.Context, *GenSeedRequest) (*GenSeedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenSeed not implemented")
 }
-func (UnimplementedWalletUnlockerServer) InitWallet(*InitWalletRequest, WalletUnlocker_InitWalletServer) error {
+func (UnimplementedWalletUnlockerServiceServer) InitWallet(*InitWalletRequest, WalletUnlockerService_InitWalletServer) error {
 	return status.Errorf(codes.Unimplemented, "method InitWallet not implemented")
 }
-func (UnimplementedWalletUnlockerServer) UnlockWallet(context.Context, *UnlockWalletRequest) (*UnlockWalletReply, error) {
+func (UnimplementedWalletUnlockerServiceServer) UnlockWallet(context.Context, *UnlockWalletRequest) (*UnlockWalletResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnlockWallet not implemented")
 }
-func (UnimplementedWalletUnlockerServer) ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordReply, error) {
+func (UnimplementedWalletUnlockerServiceServer) ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ChangePassword not implemented")
 }
-func (UnimplementedWalletUnlockerServer) IsReady(context.Context, *IsReadyRequest) (*IsReadyReply, error) {
+func (UnimplementedWalletUnlockerServiceServer) IsReady(context.Context, *IsReadyRequest) (*IsReadyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IsReady not implemented")
 }
 
-// UnsafeWalletUnlockerServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to WalletUnlockerServer will
+// UnsafeWalletUnlockerServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to WalletUnlockerServiceServer will
 // result in compilation errors.
-type UnsafeWalletUnlockerServer interface {
-	mustEmbedUnimplementedWalletUnlockerServer()
+type UnsafeWalletUnlockerServiceServer interface {
+	mustEmbedUnimplementedWalletUnlockerServiceServer()
 }
 
-func RegisterWalletUnlockerServer(s grpc.ServiceRegistrar, srv WalletUnlockerServer) {
-	s.RegisterService(&WalletUnlocker_ServiceDesc, srv)
+func RegisterWalletUnlockerServiceServer(s grpc.ServiceRegistrar, srv WalletUnlockerServiceServer) {
+	s.RegisterService(&WalletUnlockerService_ServiceDesc, srv)
 }
 
-func _WalletUnlocker_GenSeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _WalletUnlockerService_GenSeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GenSeedRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WalletUnlockerServer).GenSeed(ctx, in)
+		return srv.(WalletUnlockerServiceServer).GenSeed(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.WalletUnlocker/GenSeed",
+		FullMethod: "/tdex_daemon.v1.WalletUnlockerService/GenSeed",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletUnlockerServer).GenSeed(ctx, req.(*GenSeedRequest))
+		return srv.(WalletUnlockerServiceServer).GenSeed(ctx, req.(*GenSeedRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WalletUnlocker_InitWallet_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _WalletUnlockerService_InitWallet_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(InitWalletRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(WalletUnlockerServer).InitWallet(m, &walletUnlockerInitWalletServer{stream})
+	return srv.(WalletUnlockerServiceServer).InitWallet(m, &walletUnlockerServiceInitWalletServer{stream})
 }
 
-type WalletUnlocker_InitWalletServer interface {
-	Send(*InitWalletReply) error
+type WalletUnlockerService_InitWalletServer interface {
+	Send(*InitWalletResponse) error
 	grpc.ServerStream
 }
 
-type walletUnlockerInitWalletServer struct {
+type walletUnlockerServiceInitWalletServer struct {
 	grpc.ServerStream
 }
 
-func (x *walletUnlockerInitWalletServer) Send(m *InitWalletReply) error {
+func (x *walletUnlockerServiceInitWalletServer) Send(m *InitWalletResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _WalletUnlocker_UnlockWallet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _WalletUnlockerService_UnlockWallet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UnlockWalletRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WalletUnlockerServer).UnlockWallet(ctx, in)
+		return srv.(WalletUnlockerServiceServer).UnlockWallet(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.WalletUnlocker/UnlockWallet",
+		FullMethod: "/tdex_daemon.v1.WalletUnlockerService/UnlockWallet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletUnlockerServer).UnlockWallet(ctx, req.(*UnlockWalletRequest))
+		return srv.(WalletUnlockerServiceServer).UnlockWallet(ctx, req.(*UnlockWalletRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WalletUnlocker_ChangePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _WalletUnlockerService_ChangePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ChangePasswordRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WalletUnlockerServer).ChangePassword(ctx, in)
+		return srv.(WalletUnlockerServiceServer).ChangePassword(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.WalletUnlocker/ChangePassword",
+		FullMethod: "/tdex_daemon.v1.WalletUnlockerService/ChangePassword",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletUnlockerServer).ChangePassword(ctx, req.(*ChangePasswordRequest))
+		return srv.(WalletUnlockerServiceServer).ChangePassword(ctx, req.(*ChangePasswordRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WalletUnlocker_IsReady_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _WalletUnlockerService_IsReady_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(IsReadyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WalletUnlockerServer).IsReady(ctx, in)
+		return srv.(WalletUnlockerServiceServer).IsReady(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex.daemon.v1.WalletUnlocker/IsReady",
+		FullMethod: "/tdex_daemon.v1.WalletUnlockerService/IsReady",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletUnlockerServer).IsReady(ctx, req.(*IsReadyRequest))
+		return srv.(WalletUnlockerServiceServer).IsReady(ctx, req.(*IsReadyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// WalletUnlocker_ServiceDesc is the grpc.ServiceDesc for WalletUnlocker service.
+// WalletUnlockerService_ServiceDesc is the grpc.ServiceDesc for WalletUnlockerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var WalletUnlocker_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "tdex.daemon.v1.WalletUnlocker",
-	HandlerType: (*WalletUnlockerServer)(nil),
+var WalletUnlockerService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "tdex_daemon.v1.WalletUnlockerService",
+	HandlerType: (*WalletUnlockerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GenSeed",
-			Handler:    _WalletUnlocker_GenSeed_Handler,
+			Handler:    _WalletUnlockerService_GenSeed_Handler,
 		},
 		{
 			MethodName: "UnlockWallet",
-			Handler:    _WalletUnlocker_UnlockWallet_Handler,
+			Handler:    _WalletUnlockerService_UnlockWallet_Handler,
 		},
 		{
 			MethodName: "ChangePassword",
-			Handler:    _WalletUnlocker_ChangePassword_Handler,
+			Handler:    _WalletUnlockerService_ChangePassword_Handler,
 		},
 		{
 			MethodName: "IsReady",
-			Handler:    _WalletUnlocker_IsReady_Handler,
+			Handler:    _WalletUnlockerService_IsReady_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "InitWallet",
-			Handler:       _WalletUnlocker_InitWallet_Handler,
+			Handler:       _WalletUnlockerService_InitWallet_Handler,
 			ServerStreams: true,
 		},
 	},
