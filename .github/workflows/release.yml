@@ -5,7 +5,6 @@ on:
   push:
     tags:
       - "*"
-  
 
 jobs:
   goreleaser:
@@ -13,19 +12,17 @@ jobs:
     env:
       DOCKER_CLI_EXPERIMENTAL: "enabled"
 
-    permissions: write-all
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
+
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v1
-        
+
       - name: Setup Go
         uses: actions/setup-go@v3
         with:
-          go-version: '>1.17.2'
+          go-version: ">1.17.2"
 
       - name: Cache Go modules
         uses: actions/cache@v1
@@ -34,7 +31,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      
+
       # This because https://github.com/plentico/osxcross-target/issues/2#issuecomment-815850611
       - name: Downgrade libssl
         run: |
@@ -78,10 +75,10 @@ jobs:
       - name: Lint protos
         uses: bufbuild/buf-lint-action@v1
         with:
-          input: 'api-spec/protobuf'
+          input: "api-spec/protobuf"
 
       - name: Publish protos to Buf Schema Registry
-      - uses: bufbuild/buf-push-action@v1        
-        with:          
+        uses: bufbuild/buf-push-action@v1
+        with:
           input: api-spec/protobuf
           buf_token: ${{ secrets.BUF_TOKEN }}
