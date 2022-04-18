@@ -43,7 +43,7 @@ builds:
     goarch:
       - amd64
     binary: tdexd-darwin-amd64
-    
+
   - id: "tdexd-darwin-arm64"
     main: ./cmd/tdexd
     ldflags:
@@ -109,8 +109,8 @@ snapshot:
   name_template: "{{ .Tag }}-next"
 
 changelog:
-  use: github-native
-  
+  use: github
+
 archives:
   - id: tdexd
     format: binary
@@ -120,7 +120,7 @@ archives:
       - tdexd-darwin-amd64
       - tdexd-darwin-arm64
     name_template: "tdexd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    
+
   - id: tdex
     format: binary
     builds:
@@ -134,15 +134,14 @@ archives:
     name_template: "tdexdconnect-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
 dockers:
-
-  ########################### 
+  ###########################
   # tag latest & prerelease #
-  ########################### 
+  ###########################
 
   #amd64
   - image_templates:
-    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64"
-     # push always either release or prerelease with a docker tag with the semver only
+      - "ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64"
+        # push always either release or prerelease with a docker tag with the semver only
     skip_push: false
     use: buildx
     dockerfile: Dockerfile
@@ -173,8 +172,8 @@ dockers:
 
   # arm64
   - image_templates:
-    - "ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8"
-     # push always either release or prerelease with a docker tag with the semver only
+      - "ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8"
+        # push always either release or prerelease with a docker tag with the semver only
     skip_push: false
     use: buildx
     dockerfile: Dockerfile
@@ -206,13 +205,12 @@ dockers:
 docker_manifests:
   - name_template: ghcr.io/tdex-network/tdexd:{{ .Tag }}
     image_templates:
-    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64
-    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8
+      - ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64
+      - ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8
     skip_push: false
 
   - name_template: ghcr.io/tdex-network/tdexd:latest
     image_templates:
-    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64
-    - ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8
+      - ghcr.io/tdex-network/tdexd:{{ .Tag }}-amd64
+      - ghcr.io/tdex-network/tdexd:{{ .Tag }}-arm64v8
     skip_push: auto
-  
