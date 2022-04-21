@@ -72,10 +72,6 @@ jobs:
       - name: Setup buf
         uses: bufbuild/buf-setup-action@v1.3.1
 
-      - name: Lint protos
-        uses: bufbuild/buf-lint-action@v1
-        with:
-          input: "api-spec/protobuf"
 
       - name: Publish protos to Buf Schema Registry
         uses: bufbuild/buf-push-action@v1
