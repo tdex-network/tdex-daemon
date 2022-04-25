@@ -42,11 +42,9 @@ jobs:
         run: |
           export TEST_ELEMENTS_ENDPOINT='http://admin1:123@localhost:18884'
           make test
-      
-      - name: Setup buf
-        uses: bufbuild/buf-setup-action@v1.3.1
 
-      - name: Lint protos
-        uses: bufbuild/buf-lint-action@v1
-        with:
-          input: "api-spec/protobuf"
+      - name: compile
+        run: |
+          make proto
+          make build
+          make build-cli
