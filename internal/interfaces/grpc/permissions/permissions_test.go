@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemonmon/v1"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	tdexold "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 )
