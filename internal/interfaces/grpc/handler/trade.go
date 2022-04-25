@@ -103,7 +103,7 @@ func (t tradeHandler) getMarketBalance(
 	}
 
 	return &tdexv1.GetMarketBalanceResponse{
-		Balances: &tdexv1.BalanceWithFee{
+		Balance: &tdexv1.BalanceWithFee{
 			Balance: &tdexv1.Balance{
 				BaseAmount:  balance.Balance.BaseAmount,
 				QuoteAmount: balance.Balance.QuoteAmount,
