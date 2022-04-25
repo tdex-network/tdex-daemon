@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/gogo/protobuf/jsonpb"
@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"gopkg.in/macaroon.v2"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 )
 

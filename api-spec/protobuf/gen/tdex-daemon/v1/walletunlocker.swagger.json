@@ -1,0 +1,105 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "tdex-daemon/v1/walletunlocker.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "WalletUnlockerService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "googlerpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "v1ChangePasswordResponse": {
+      "type": "object"
+    },
+    "v1GenSeedResponse": {
+      "type": "object",
+      "properties": {
+        "seedMnemonic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1InitWalletResponse": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "status": {
+          "$ref": "#/definitions/v1InitWalletResponseStatus"
+        },
+        "data": {
+          "type": "string"
+        }
+      }
+    },
+    "v1InitWalletResponseStatus": {
+      "type": "string",
+      "enum": [
+        "STATUS_PROCESSING",
+        "STATUS_DONE"
+      ],
+      "default": "STATUS_PROCESSING"
+    },
+    "v1IsReadyResponse": {
+      "type": "object",
+      "properties": {
+        "initialized": {
+          "type": "boolean",
+          "description": "whether the daemon is initialized with an HD wallet."
+        },
+        "unlocked": {
+          "type": "boolean",
+          "description": "whether the daemon's wallet is unlocked."
+        },
+        "synced": {
+          "type": "boolean",
+          "description": "whether the daemon's wallet utxo set is up-to-date'."
+        }
+      }
+    },
+    "v1UnlockWalletResponse": {
+      "type": "object"
+    }
+  }
+}

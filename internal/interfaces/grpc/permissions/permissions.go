@@ -5,8 +5,8 @@ import (
 
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex-daemon/v1"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/go/tdex/v1"
+	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	tdexold "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 )
 
