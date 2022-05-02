@@ -94,7 +94,7 @@ func newTradeService(
 	net *network.Network,
 	feeAccountBalanceThreshold uint64,
 ) *tradeService {
-	return &tradeService{
+	svc := &tradeService{
 		repoManager:                repoManager,
 		explorerSvc:                explorerSvc,
 		blockchainListener:         bcListener,
@@ -105,6 +105,37 @@ func newTradeService(
 		feeAccountBalanceThreshold: feeAccountBalanceThreshold,
 		lock:                       &sync.Mutex{},
 	}
+
+	// In case of restart, restore watching trades/outpoints: start observing the
+	// inputs of each trade even if it's already expired.
+	// The idea is to wait at least for a minute to give the time to the bc
+	// listener to make sure the trade has been settled.
+	// Otherwise, the trade will expire and the utxos will be unlocked.
+	trades, _ := svc.repoManager.TradeRepository().GetAllTrades(context.Background())
+	for i := range trades {
+		trade := trades[i]
+		if !trade.Status.Failed && trade.IsAccepted() {
+			ptx, _ := pset.NewPsetFromBase64(trade.PsetBase64)
+			utxos := make([]explorer.Utxo, 0, len(ptx.Inputs))
+			for _, in := range ptx.UnsignedTx.Inputs {
+				utxos = append(utxos, utxoKey{bufferutil.TxIDFromBytes(in.Hash), in.Index})
+			}
+
+			svc.blockchainListener.StartObserveOutpoints(utxos, trade.ID.String())
+			waitingTime := time.Minute
+
+			if !trade.IsExpired() {
+				waitingTime += time.Duration(trade.ExpiryTime-uint64(time.Now().Unix())) * time.Second
+			}
+			log.Debugf("trade with id %s will expire in ~%s", trade.ID, waitingTime)
+			go func() {
+				time.Sleep(waitingTime)
+				svc.checkTradeExpiration(trade.ID, utxos)
+			}()
+		}
+	}
+
+	return svc
 }
 
 func (t *tradeService) GetTradableMarkets(ctx context.Context) (
@@ -381,10 +412,12 @@ end:
 		)
 		log.Debugf("locked %d unspents", lockedUnspents)
 
+		// admit a tollerance of 1 minute past the expiration time.
+		waitingTime := t.expiryDuration + time.Minute
+		log.Debugf("trade with id %s will expire in ~%s", trade.ID, waitingTime)
 		// set timer for trade expiration
 		go func() {
-			// admit a tollerance of 1 minute past the expiration time.
-			time.Sleep(t.expiryDuration + time.Minute)
+			time.Sleep(waitingTime)
 			t.checkTradeExpiration(trade.ID, fillProposalResult.SelectedUnspents)
 		}()
 
