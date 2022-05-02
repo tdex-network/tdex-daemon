@@ -210,22 +210,24 @@ func (t tradeRepositoryImpl) getTrade(
 	ctx context.Context,
 	ID uuid.UUID,
 ) (*domain.Trade, error) {
-	var trade domain.Trade
+	var trades []domain.Trade
 	var err error
+	query := badgerhold.Where("ID").Eq(ID)
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		err = t.store.TxGet(tx, ID, &trade)
+		err = t.store.TxFind(tx, &trades, query)
 	} else {
-		err = t.store.Get(ID, &trade)
+		err = t.store.Find(&trades, query)
 	}
 	if err != nil {
-		if err == badgerhold.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
 
-	return &trade, nil
+	if len(trades) <= 0 {
+		return nil, nil
+	}
+
+	return &trades[0], nil
 }
 
 func (t tradeRepositoryImpl) updateTrade(
@@ -233,11 +235,20 @@ func (t tradeRepositoryImpl) updateTrade(
 	ID uuid.UUID,
 	trade domain.Trade,
 ) error {
+	query := badgerhold.Where("ID").Eq(ID)
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
-		return t.store.TxUpdate(tx, ID, trade)
+		return t.store.TxUpdateMatching(tx, &domain.Trade{}, query, func(record interface{}) error {
+			tr := record.(*domain.Trade)
+			*tr = trade
+			return nil
+		})
 	}
-	return t.store.Update(ID, trade)
+	return t.store.UpdateMatching(&domain.Trade{}, query, func(record interface{}) error {
+		tr := record.(*domain.Trade)
+		*tr = trade
+		return nil
+	})
 }
 
 func (t tradeRepositoryImpl) insertTrade(
