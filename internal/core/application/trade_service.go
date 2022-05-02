@@ -71,6 +71,7 @@ func NewTradeService(
 	priceSlippage decimal.Decimal,
 	net *network.Network,
 	feeAccountBalanceThreshold uint64,
+	skipCheckTrades bool,
 ) TradeService {
 	return newTradeService(
 		repoManager,
@@ -81,6 +82,7 @@ func NewTradeService(
 		priceSlippage,
 		net,
 		feeAccountBalanceThreshold,
+		skipCheckTrades,
 	)
 }
 
@@ -93,6 +95,7 @@ func newTradeService(
 	priceSlippage decimal.Decimal,
 	net *network.Network,
 	feeAccountBalanceThreshold uint64,
+	skipCheckTrades bool,
 ) *tradeService {
 	svc := &tradeService{
 		repoManager:                repoManager,
@@ -106,6 +109,9 @@ func newTradeService(
 		lock:                       &sync.Mutex{},
 	}
 
+	if skipCheckTrades {
+		return svc
+	}
 	// In case of restart, restore watching trades/outpoints: start observing the
 	// inputs of each trade even if it's already expired.
 	// The idea is to wait at least for a minute to give the time to the bc

@@ -287,6 +287,7 @@ func newTradeServiceTest(
 		tradePriceSlippage,
 		regtest,
 		feeBalanceThreshold,
+		true,
 	), nil
 }
 
