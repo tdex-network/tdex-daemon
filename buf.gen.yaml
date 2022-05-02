@@ -18,4 +18,4 @@ plugins:
     opt: paths=source_relative
   #OpenApi
   - remote: buf.build/grpc-ecosystem/plugins/openapiv2
-    out: api-spec/protobuf/gen
+    out: api-spec/openapi/swagger
