@@ -109,7 +109,7 @@ snapshot:
   name_template: "{{ .Tag }}-next"
 
 changelog:
-  use: github
+  use: github-native
 
 archives:
   - id: tdexd
