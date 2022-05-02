@@ -3,6 +3,7 @@ package grpcinterface
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -11,7 +12,6 @@ import (
 	"path/filepath"
 
 	"google.golang.org/grpc/credentials"
-
 	"google.golang.org/grpc/credentials/insecure"
 
 	log "github.com/sirupsen/logrus"
@@ -359,16 +359,14 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		tradeAddr := s.opts.TradeAddress
 		tradeTLSKey := s.opts.TradeTLSKey
 		tradeTLSCert := s.opts.TradeTLSCert
-		grpcTradeServer = grpc.NewServer(
-			unaryInterceptor,
-			streamInterceptor,
-		)
+		grpcTradeServer = grpc.NewServer(unaryInterceptor, streamInterceptor)
 		tradeHandler := grpchandler.NewTradeHandler(s.opts.TradeSvc)
 		tradeOldHandler := grpchandler.NewTradeOldHandler(s.opts.TradeSvc)
 		tdexv1.RegisterTradeServiceServer(grpcTradeServer, tradeHandler)
 		tdexold.RegisterTradeServer(grpcTradeServer, tradeOldHandler)
 
-		tradeGrpcGateway, err := s.tradeGrpcGateway(context.Background(), tradeTLSKey, tradeTLSCert)
+		insecure := len(tradeTLSCert) <= 0
+		tradeGrpcGateway, err := s.tradeGrpcGateway(context.Background(), insecure)
 		if err != nil {
 			return nil, err
 		}
@@ -510,18 +508,21 @@ func (s *service) startListeningToReadyChan() {
 	s.muxTrade = services.muxTrade
 }
 
-func (s *service) tradeGrpcGateway(ctx context.Context, tlsKey, tlsCert string) (http.Handler, error) {
-	creds := grpc.WithTransportCredentials(insecure.NewCredentials())
-	if tlsKey != "" {
-		tlsConfig, err := getTlsConfig(tlsKey, tlsCert)
-		if err != nil {
-			return nil, err
-		}
-
-		creds = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
+func (s *service) tradeGrpcGateway(
+	ctx context.Context, insecureConn bool,
+) (http.Handler, error) {
+	creds := make([]grpc.DialOption, 0)
+	if insecureConn {
+		creds = append(creds, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	} else {
+		creds = append(creds, grpc.WithTransportCredentials(
+			credentials.NewTLS(&tls.Config{
+				InsecureSkipVerify: true,
+			}),
+		))
 	}
 
-	conn, err := grpc.Dial(s.opts.TradeAddress, []grpc.DialOption{creds}...)
+	conn, err := grpc.Dial(s.opts.TradeAddress, creds...)
 	if err != nil {
 		return nil, err
 	}
