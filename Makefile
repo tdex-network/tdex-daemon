@@ -21,8 +21,10 @@ build-tdexdconnect:
 ## proto: compile proto stubs
 proto: proto-lint
 	@echo "Compiling stubs..."
+	@cd api-spec/protobuf; buf mod update; buf build
 	@buf generate buf.build/tdex-network/tdex-protobuf
-	@buf generate && rm -rf api-spec/protobuf/gen/swagger/tdex-daemon
+	@buf generate
+	@make install
 
 ## proto-lint: lint protos
 proto-lint:
