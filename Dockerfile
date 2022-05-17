@@ -45,5 +45,5 @@ VOLUME $DIR/.tdex-daemon/
 EXPOSE 9945
 EXPOSE 9000
 
-ENTRYPOINT [ "/usr/local/bin/tdexd" ]
+ENTRYPOINT [ "tdexd" ]
 
