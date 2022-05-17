@@ -213,6 +213,7 @@ func (t tradeRepositoryImpl) getTrade(
 	var trades []domain.Trade
 	var err error
 	query := badgerhold.Where("ID").Eq(ID)
+	// TODO: revert to Get once we fix using a string key instead of uuid.UUID struct.
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
 		err = t.store.TxFind(tx, &trades, query)
@@ -236,6 +237,7 @@ func (t tradeRepositoryImpl) updateTrade(
 	trade domain.Trade,
 ) error {
 	query := badgerhold.Where("ID").Eq(ID)
+	// TODO: revert to Update once we fix using a string key instead of uuid.UUID struct.
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
 		return t.store.TxUpdateMatching(tx, &domain.Trade{}, query, func(record interface{}) error {
