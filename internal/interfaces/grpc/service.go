@@ -516,6 +516,7 @@ func (s *service) tradeGrpcGateway(
 		creds = append(creds, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
 		creds = append(creds, grpc.WithTransportCredentials(
+			/* #nosec */
 			credentials.NewTLS(&tls.Config{
 				InsecureSkipVerify: true,
 			}),
