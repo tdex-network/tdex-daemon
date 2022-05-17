@@ -12,7 +12,7 @@ WORKDIR /app
 COPY . .
 RUN go mod download
 
-RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-X 'main.Version=${COMMIT}' -X 'main.Commit=${COMMIT}' -X 'main.Date=${COMMIT}'" -o bin/tdexd cmd/tdexd/*
+RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}' -X 'main.Date=${DATE}'" -o bin/tdexd cmd/tdexd/*
 RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o bin/tdex cmd/tdex/*
 RUN go build -ldflags="-s -w " -o bin/tdexdconnect cmd/tdexdconnect/*
 
