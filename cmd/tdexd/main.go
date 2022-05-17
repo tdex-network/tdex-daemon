@@ -125,6 +125,7 @@ func main() {
 	)
 
 	// Init application services
+	skipCheckTrades := true
 	tradeSvc := application.NewTradeService(
 		repoManager,
 		explorerSvc,
@@ -134,6 +135,7 @@ func main() {
 		pricesSlippagePercentage,
 		network,
 		feeThreshold,
+		!skipCheckTrades,
 	)
 	operatorSvc := application.NewOperatorService(
 		repoManager,

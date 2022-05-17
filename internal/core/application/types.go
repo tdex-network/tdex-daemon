@@ -631,3 +631,57 @@ func validateTimeFormat(t interface{}) error {
 
 	return nil
 }
+
+type utxoKey struct {
+	txid  string
+	index uint32
+}
+
+func (u utxoKey) Hash() string {
+	return u.txid
+}
+func (u utxoKey) Index() uint32 {
+	return u.index
+}
+func (u utxoKey) Value() uint64 {
+	return 0
+}
+func (u utxoKey) Asset() string {
+	return ""
+}
+func (u utxoKey) ValueCommitment() string {
+	return ""
+}
+func (u utxoKey) AssetCommitment() string {
+	return ""
+}
+func (u utxoKey) ValueBlinder() []byte {
+	return nil
+}
+func (u utxoKey) AssetBlinder() []byte {
+	return nil
+}
+func (u utxoKey) Script() []byte {
+	return nil
+}
+func (u utxoKey) Nonce() []byte {
+	return nil
+}
+func (u utxoKey) RangeProof() []byte {
+	return nil
+}
+func (u utxoKey) SurjectionProof() []byte {
+	return nil
+}
+func (u utxoKey) IsConfidential() bool {
+	return false
+}
+func (u utxoKey) IsConfirmed() bool {
+	return false
+}
+func (u utxoKey) IsRevealed() bool {
+	return false
+}
+func (u utxoKey) Parse() (*transaction.TxInput, *transaction.TxOutput, error) {
+	return nil, nil, nil
+}
