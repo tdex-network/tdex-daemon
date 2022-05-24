@@ -1,5 +1,5 @@
 # first image used to build the sources
-FROM golang:1.16-buster AS builder
+FROM golang:1.18-buster AS builder
 
 ARG VERSION
 ARG COMMIT
@@ -7,58 +7,43 @@ ARG DATE
 ARG TARGETOS
 ARG TARGETARCH
 
-
-WORKDIR /tdex-daemon
+WORKDIR /app
 
 COPY . .
 RUN go mod download
 
-RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-X 'main.Version=${COMMIT}' -X 'main.Commit=${COMMIT}' -X 'main.Date=${COMMIT}'" -o tdexd-linux cmd/tdexd/main.go
-RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o tdex cmd/tdex/*
-RUN go build -ldflags="-s -w " -o tdexdconnect cmd/tdexdconnect/*
+RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o bin/tdexd cmd/tdexd/*
+RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o bin/tdex cmd/tdex/*
+RUN go build -ldflags="-s -w " -o bin/tdexdconnect cmd/tdexdconnect/*
 
-WORKDIR /build
-
-RUN cp /tdex-daemon/tdexd-linux .
-RUN cp /tdex-daemon/tdex .
-RUN cp /tdex-daemon/tdexdconnect .
 
 # Second image, running the tdexd executable
-FROM debian:buster
+FROM debian:buster-slim
 
-# TDEX environment variables 
-# others ENV variables are initialized to empty values: viper will initialize them.
-ENV TDEX_DATA_DIR_PATH= \
-    TDEX_EXPLORER_ENDPOINT= \
-    TDEX_LOG_LEVEL= \
-    TDEX_DEFAULT_FEE= \
-    TDEX_NETWORK= \
-    TDEX_BASE_ASSET= \
-    TDEX_CRAWL_INTERVAL= \
-    TDEX_FEE_ACCOUNT_BALANCE_TRESHOLD= \
-    TDEX_TRADE_EXPIRY_TIME= \
-    TDEX_PRICE_SLIPPAGE= \
-    TDEX_MNEMONIC= \
-    TDEX_UNSPENT_TTL= \
-    TDEX_SSL_KEY= \
-    TDEX_SSL_CERT=
+# $USER name, and data $DIR to be used in the `final` image
+ARG USER=tdex
+ARG DIR=/home/tdex
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
-COPY --from=builder /build/tdexd-linux /
-COPY --from=builder /build/tdex /
-COPY --from=builder /build/tdexdconnect /
+COPY --from=builder /app/bin/* /usr/local/bin/
 
-RUN install /tdex /bin
-RUN install /tdexdconnect /bin
-# Prevents `VOLUME $HOME/.tdex-daemon/` being created as owned by `root`
-RUN useradd -ms /bin/bash user
-USER user
-RUN mkdir -p "$HOME/.tdex-daemon/"
+# NOTE: Default GID == UID == 1000
+RUN adduser --disabled-password \
+            --home "$DIR/" \
+            --gecos "" \
+            "$USER"
+USER $USER
+
+# Prevents `VOLUME $DIR/.tdex-daemon/` being created as owned by `root`
+RUN mkdir -p "$DIR/.tdex-daemon/"
+
+# Expose volume containing all `tdexd` data
+VOLUME $DIR/.tdex-daemon/
 
 # expose trader and operator interface ports
 EXPOSE 9945
 EXPOSE 9000
 
-CMD /tdexd-linux
+ENTRYPOINT [ "tdexd" ]
 
