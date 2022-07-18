@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY . .
 
+# Build info args
 ARG OS
 ARG ARCH
 
