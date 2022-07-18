@@ -165,6 +165,7 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--build-arg=OS={{.Runtime.Goos}}"
       - "--build-arg=ARCH={{.Runtime.Goarch}}"
+      - "--build-arg=TAG={{.Tag}}"
 
     extra_files:
       - go.mod
@@ -196,6 +197,7 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--build-arg=OS={{.Runtime.Goos}}"
       - "--build-arg=ARCH={{.Runtime.Goarch}}"
+      - "--build-arg=TAG={{.Tag}}"
 
     extra_files:
       - go.mod

@@ -7,8 +7,9 @@ COPY . .
 # Build info args
 ARG OS
 ARG ARCH
+ARG TAG
 
-ENV TDEXD="tdexd-${OS}-${ARCH}"
+ENV TDEXD="tdexd-${TAG}-${OS}-${ARCH}"
 
 # $USER name, and data $DIR to be used in the `final` image
 ARG USER=tdex
