@@ -5,19 +5,19 @@ builds:
   - id: "tdexd-linux-amd64"
     main: ./cmd/tdexd
     ldflags:
-      - -s -X './cmd/tdexd/main.version={{.Version}}' -X './cmd/tdexd/main.commit={{.Commit}}' -X './cmd/tdexd/main.date={{.Date}}'
+      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
     goos:
       - linux
     goarch:
       - amd64
-    binary: tdexd-linux-amd64
+    binary: tdexd-{{ .Os }}-{{ .Arch }}
 
   - id: "tdexd-linux-arm64"
     main: ./cmd/tdexd
     ldflags:
-      - -s -X './cmd/tdexd/main.version={{.Version}}' -X './cmd/tdexd/main.commit={{.Commit}}' -X './cmd/tdexd/main.date={{.Date}}'
+      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
       - CC=aarch64-linux-gnu-gcc
@@ -26,14 +26,14 @@ builds:
       - linux
     goarch:
       - arm64
-    binary: tdexd-linux-arm64
+    binary: tdexd-{{ .Os }}-{{ .Arch }}
 
   ### Darwin
 
   - id: "tdexd-darwin-amd64"
     main: ./cmd/tdexd
     ldflags:
-      - -s -w
+      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
       - CC=/home/runner/work/osxcross/target/bin/o64-clang
@@ -42,12 +42,12 @@ builds:
       - darwin
     goarch:
       - amd64
-    binary: tdexd-darwin-amd64
+    binary: tdexd-{{ .Os }}-{{ .Arch }}
 
   - id: "tdexd-darwin-arm64"
     main: ./cmd/tdexd
     ldflags:
-      - -s -X './cmd/tdexd/main.version={{.Version}}' -X './cmd/tdexd/main.commit={{.Commit}}' -X './cmd/tdexd/main.date={{.Date}}'
+      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
     env:
       - CGO_ENABLED=1
       - CC=/home/runner/work/osxcross/target/bin/oa64-clang
@@ -56,7 +56,7 @@ builds:
       - darwin
     goarch:
       - arm64
-    binary: tdexd-darwin-arm64
+    binary: tdexd-{{ .Os }}-{{ .Arch }}
 
   # CLI
   - id: "tdex"
@@ -69,7 +69,7 @@ builds:
     goarch:
       - amd64
       - arm64
-    binary: tdex-darwin
+    binary: tdex-{{ .Os }}-{{ .Arch }}
 
   # tdexdconnect
   - id: "tdexdconnect"
@@ -84,7 +84,7 @@ builds:
     goarch:
       - amd64
       - arm64
-    binary: tdexdconnect
+    binary: tdexdconnect-{{ .Os }}-{{ .Arch }}
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
   prerelease: auto
@@ -124,13 +124,19 @@ archives:
   - id: tdex
     format: binary
     builds:
-      - tdex
+      - tdex-linux-amd64
+      - tdex-linux-arm64
+      - tdex-darwin-amd64
+      - tdex-darwin-arm64
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
   - id: tdexdconnect
     format: binary
     builds:
-      - tdexdconnect
+      - tdexdconnect-linux-amd64
+      - tdexdconnect-linux-arm64
+      - tdexdconnect-darwin-amd64
+      - tdexdconnect-darwin-arm64
     name_template: "tdexdconnect-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
 dockers:
@@ -144,7 +150,7 @@ dockers:
         # push always either release or prerelease with a docker tag with the semver only
     skip_push: "false"
     use: buildx
-    dockerfile: Dockerfile
+    dockerfile: goreleaser.Dockerfile
     # GOOS of the built binaries/packages that should be used.
     goos: linux
     # GOARCH of the built binaries/packages that should be used.
@@ -157,9 +163,8 @@ dockers:
       - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--build-arg=VERSION={{.Version}}"
-      - "--build-arg=COMMIT={{.Commit}}"
-      - "--build-arg=DATE={{.Date}}"
+      - "--build-arg=OS={{.Runtime.Goos}}"
+      - "--build-arg=ARCH={{.Runtime.Goarch}}"
 
     extra_files:
       - go.mod
@@ -176,7 +181,7 @@ dockers:
         # push always either release or prerelease with a docker tag with the semver only
     skip_push: "false"
     use: buildx
-    dockerfile: Dockerfile
+    dockerfile: goreleaser.Dockerfile
     # GOOS of the built binaries/packages that should be used.
     goos: linux
     # GOARCH of the built binaries/packages that should be used.
@@ -189,9 +194,8 @@ dockers:
       - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--build-arg=VERSION={{.Version}}"
-      - "--build-arg=COMMIT={{.Commit}}"
-      - "--build-arg=DATE={{.Date}}"
+      - "--build-arg=OS={{.Runtime.Goos}}"
+      - "--build-arg=ARCH={{.Runtime.Goarch}}"
 
     extra_files:
       - go.mod
