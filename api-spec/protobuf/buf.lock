@@ -4,7 +4,7 @@ deps:
   - remote: buf.build
     owner: googleapis
     repository: googleapis
-    commit: f3590c56d388417ebbedefae77ac12bf
+    commit: bab7e2fd165a45d2a08d4f2fd277c224
   - remote: buf.build
     owner: tdex-network
     repository: tdex-protobuf
