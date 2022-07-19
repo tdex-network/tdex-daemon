@@ -1,8 +1,17 @@
 FROM debian:buster-slim
 
+ARG TARGETPLATFORM
+
+RUN set -ex \
+  && if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then export TARGETPLATFORM=amd64; fi \
+  && if [ "${TARGETPLATFORM}" = "linux/arm64" ]; then export TARGETPLATFORM=arm64; fi 
+
 WORKDIR /app
 
-COPY . /usr/local/bin/
+ADD tdex /usr/local/bin/tdex
+ADD "tdexd-linux-$TARGETPLATFORM" /usr/local/bin/tdexd
+ADD tdexdconnect /usr/local/bin/tdexdconnect
+
 
 # $USER name, and data $DIR to be used in the `final` image
 ARG USER=tdex
