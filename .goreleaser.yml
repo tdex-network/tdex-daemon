@@ -12,7 +12,7 @@ builds:
       - linux
     goarch:
       - amd64
-    binary: tdexd-{{ .Os }}-{{ .Arch }}
+    binary: tdexd-linux-amd64
 
   - id: "tdexd-linux-arm64"
     main: ./cmd/tdexd
@@ -26,7 +26,7 @@ builds:
       - linux
     goarch:
       - arm64
-    binary: tdexd-{{ .Os }}-{{ .Arch }}
+    binary: tdexd-linux-arm64
 
   ### Darwin
 
@@ -42,7 +42,7 @@ builds:
       - darwin
     goarch:
       - amd64
-    binary: tdexd-{{ .Os }}-{{ .Arch }}
+    binary: tdexd-darwin-amd64
 
   - id: "tdexd-darwin-arm64"
     main: ./cmd/tdexd
@@ -56,7 +56,7 @@ builds:
       - darwin
     goarch:
       - arm64
-    binary: tdexd-{{ .Os }}-{{ .Arch }}
+    binary: tdexd-darwin-arm64
 
   # CLI
   - id: "tdex"
@@ -69,7 +69,7 @@ builds:
     goarch:
       - amd64
       - arm64
-    binary: tdex-{{ .Os }}-{{ .Arch }}
+    binary: tdex
 
   # tdexdconnect
   - id: "tdexdconnect"
@@ -84,7 +84,7 @@ builds:
     goarch:
       - amd64
       - arm64
-    binary: tdexdconnect-{{ .Os }}-{{ .Arch }}
+    binary: tdexdconnect
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
   prerelease: auto
