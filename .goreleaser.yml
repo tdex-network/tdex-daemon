@@ -115,28 +115,19 @@ archives:
   - id: tdexd
     format: binary
     builds:
-      - tdexd-linux-amd64
-      - tdexd-linux-arm64
-      - tdexd-darwin-amd64
-      - tdexd-darwin-arm64
+      - tdexd
     name_template: "tdexd-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
   - id: tdex
     format: binary
     builds:
-      - tdex-linux-amd64
-      - tdex-linux-arm64
-      - tdex-darwin-amd64
-      - tdex-darwin-arm64
+      - tdex
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
   - id: tdexdconnect
     format: binary
     builds:
-      - tdexdconnect-linux-amd64
-      - tdexdconnect-linux-arm64
-      - tdexdconnect-darwin-amd64
-      - tdexdconnect-darwin-arm64
+      - tdexdconnect
     name_template: "tdexdconnect-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
 dockers:
@@ -163,9 +154,6 @@ dockers:
       - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--build-arg=OS={{.Runtime.Goos}}"
-      - "--build-arg=ARCH={{.Runtime.Goarch}}"
-      - "--build-arg=TAG={{.Tag}}"
 
     extra_files:
       - go.mod
@@ -195,9 +183,6 @@ dockers:
       - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--build-arg=OS={{.Runtime.Goos}}"
-      - "--build-arg=ARCH={{.Runtime.Goarch}}"
-      - "--build-arg=TAG={{.Tag}}"
 
     extra_files:
       - go.mod
