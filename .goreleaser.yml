@@ -170,7 +170,7 @@ dockers:
     use: buildx
     ids:
       - tdex
-      - tdexd
+      - tdexdconnect
       - tdexd-linux-arm64
     dockerfile: goreleaser.Dockerfile
     # GOOS of the built binaries/packages that should be used.
