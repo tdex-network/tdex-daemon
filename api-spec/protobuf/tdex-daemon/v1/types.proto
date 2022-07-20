@@ -209,6 +209,8 @@ message WebhookInfo {
   string endpoint = 2;
   // Whether the outgoing requests are authenticated.
   bool is_secured = 3;
+  // The type of the action.
+  ActionType action_type = 4;
 }
 
 message Deposit {

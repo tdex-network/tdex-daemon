@@ -1201,9 +1201,10 @@ func (o operatorHandler) listWebhooks(
 	hooksInfo := make([]*daemonv1.WebhookInfo, 0, len(hooks))
 	for _, h := range hooks {
 		hooksInfo = append(hooksInfo, &daemonv1.WebhookInfo{
-			Id:        h.Id,
-			Endpoint:  h.Endpoint,
-			IsSecured: h.IsSecured,
+			Id:         h.Id,
+			Endpoint:   h.Endpoint,
+			IsSecured:  h.IsSecured,
+			ActionType: daemonv1.ActionType(h.ActionType),
 		})
 	}
 	return &daemonv1.ListWebhooksResponse{

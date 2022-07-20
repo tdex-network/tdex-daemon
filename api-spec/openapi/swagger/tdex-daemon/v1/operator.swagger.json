@@ -1014,6 +1014,10 @@
         "isSecured": {
           "type": "boolean",
           "description": "Whether the outgoing requests are authenticated."
+        },
+        "actionType": {
+          "$ref": "#/definitions/v1ActionType",
+          "description": "The type of the action."
         }
       }
     },
