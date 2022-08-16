@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	tdexConnectHtmlTitle       = "Tdex Daemon"
+	tdexConnectHtmlTitle       = "TDEX Daemon"
 	tdexConnectTemplateFile    = "web/layout.html"
 	tdexConnectTemplateCssFile = "web/bulma.min.css"
 )
