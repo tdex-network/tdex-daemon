@@ -270,7 +270,12 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 	gRPC web wrapper
 */
 
-func newGRPCWrappedServer(addr string, grpcServer *grpc.Server, grpcGateway http.Handler) (httpSrv *http.Server, http2Srv *http.Server) {
+func newGRPCWrappedServer(
+	addr string,
+	grpcServer *grpc.Server,
+	grpcGateway http.Handler,
+	httpHandlers map[string]func(w http.ResponseWriter, req *http.Request),
+) (httpSrv *http.Server, http2Srv *http.Server) {
 	grpcWebServer := grpcweb.WrapServer(
 		grpcServer,
 		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
@@ -298,6 +303,9 @@ func newGRPCWrappedServer(addr string, grpcServer *grpc.Server, grpcGateway http
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handler)
+	for k, v := range httpHandlers {
+		mux.HandleFunc(k, v)
+	}
 
 	httpSrv = &http.Server{
 		Addr:    addr,

@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
+
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -339,8 +341,22 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		daemonv1.RegisterWalletServiceServer(grpcOperatorServer, walletHandler)
 	}
 
+	tdexConnectSvc := httpinterface.NewTdexConnectService(
+		s.opts.WalletUnlockerSvc,
+		adminMacaroonPath,
+		s.opts.operatorTLSCert(),
+		operatorAddr,
+	)
+
 	// http Operator server for grpc-web
-	http1OperatorServer, http2OperatorServer := newGRPCWrappedServer(operatorAddr, grpcOperatorServer, nil)
+	http1OperatorServer, http2OperatorServer := newGRPCWrappedServer(
+		operatorAddr,
+		grpcOperatorServer,
+		nil,
+		map[string]func(w http.ResponseWriter, req *http.Request){
+			"/tdexconnect": tdexConnectSvc.TdexConnectHandler,
+		},
+	)
 
 	// Serve grpc and grpc-web multiplexed on the same port
 	muxOperator, err := serveMux(
@@ -371,7 +387,12 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 			return nil, err
 		}
 
-		http1TradeServer, http2TradeServer = newGRPCWrappedServer(tradeAddr, grpcTradeServer, tradeGrpcGateway)
+		http1TradeServer, http2TradeServer = newGRPCWrappedServer(
+			tradeAddr,
+			grpcTradeServer,
+			tradeGrpcGateway,
+			nil,
+		)
 		muxTrade, err = serveMux(
 			tradeAddr, tradeTLSKey, tradeTLSCert,
 			grpcTradeServer, http1TradeServer, http2TradeServer,
