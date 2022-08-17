@@ -6,8 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{.Title}}</title>
     <style>{{.Style}}</style>
+    <script>{{.Js}}</script>
 </head>
 
+{{if .IsWalletInitialised}}
+<body onload="postPass()">
+<section class="section">
+    <div class="container">
+        <h1 class="title is-1">🔌TDEX Connect URL</h1>
+        <div class="box">
+            <strong>URL:</strong>
+            <div class="content" id="url">
+            </div>
+        </div>
+    </div>
+</section>
+{{else}}
 <body>
 <section class="section">
     <div class="container">
@@ -19,6 +33,7 @@
         </div>
     </div>
 </section>
+{{end}}
 <footer class="footer">
     <div class="container">
         <div class="content has-text-centered">

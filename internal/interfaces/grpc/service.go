@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+
 	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
 
 	"google.golang.org/grpc/credentials"
@@ -116,6 +118,8 @@ type ServiceOpts struct {
 	WalletSvc         application.WalletService
 	OperatorSvc       application.OperatorService
 	TradeSvc          application.TradeService
+
+	RepoManager ports.RepoManager
 }
 
 func (o ServiceOpts) validate() error {
@@ -342,6 +346,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	}
 
 	tdexConnectSvc := httpinterface.NewTdexConnectService(
+		s.opts.RepoManager,
 		s.opts.WalletUnlockerSvc,
 		adminMacaroonPath,
 		s.opts.operatorTLSCert(),
@@ -354,7 +359,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		grpcOperatorServer,
 		nil,
 		map[string]func(w http.ResponseWriter, req *http.Request){
-			"/": tdexConnectSvc.TdexConnectHandler,
+			"/tdexconnect": tdexConnectSvc.TdexConnectHandler,
 		},
 	)
 

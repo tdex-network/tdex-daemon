@@ -189,6 +189,7 @@ func main() {
 		OperatorSvc:              operatorSvc,
 		TradeSvc:                 tradeSvc,
 		WalletUnlockPasswordFile: walletUnlockPasswordFile,
+		RepoManager:              repoManager,
 	}
 	svc, err := grpcinterface.NewService(opts)
 	if err != nil {
