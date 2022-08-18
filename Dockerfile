@@ -27,6 +27,7 @@ ARG DIR=/home/tdex
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 COPY --from=builder /app/bin/* /usr/local/bin/
+COPY web/layout.html /usr/local/bin/web/layout.html
 
 # NOTE: Default GID == UID == 1000
 RUN adduser --disabled-password \
