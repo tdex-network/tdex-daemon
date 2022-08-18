@@ -28,6 +28,8 @@ RUN adduser --disabled-password \
             "$USER"
 USER $USER
 
+COPY web/layout.html web/layout.html
+
 # Prevents `VOLUME $DIR/.tdex-daemon/` being created as owned by `root`
 RUN mkdir -p "$DIR/.tdex-daemon/"
 
