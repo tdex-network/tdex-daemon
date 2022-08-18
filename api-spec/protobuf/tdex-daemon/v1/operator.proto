@@ -186,7 +186,7 @@ message BuildInfo {
 
 message GetFeeAddressRequest {
   // The number of addresses to generate.
-  int64 num_of_addresses = 1;
+  int64 num_of_addresses = 1 [jstype = JS_NUMBER];
 }
 message GetFeeAddressResponse {
   // The list of new confidential addresses and related private blinding keys.
@@ -249,7 +249,7 @@ message GetMarketAddressRequest {
   // The market for which deriving new addresses.
   tdex.v1.Market market = 1;
   // The number of addresses to generate.
-  int64 num_of_addresses = 2;
+  int64 num_of_addresses = 2 [jstype = JS_NUMBER];
 }
 message GetMarketAddressResponse {
   // The list of new confidential addresses and related private blinding keys.
@@ -341,7 +341,7 @@ message UpdateMarketPercentageFeeRequest {
   // The market for which updating the percentage fee.
   tdex.v1.Market market = 1;
   // The new percentage fee expresses in basis point.
-  int64 basis_point = 2;
+  int64 basis_point = 2 [jstype = JS_NUMBER];
 }
 message UpdateMarketPercentageFeeResponse {
   // The market with updated fees.
@@ -378,7 +378,7 @@ message UpdateMarketStrategyRequest {
 message UpdateMarketStrategyResponse {}
 
 message GetFeeFragmenterAddressRequest {
-  int64 num_of_addresses = 1;
+  int64 num_of_addresses = 1 [jstype = JS_NUMBER];
 }
 message GetFeeFragmenterAddressResponse {
   repeated AddressWithBlindingKey address_with_blinding_key = 1;
@@ -418,7 +418,7 @@ message WithdrawFeeFragmenterResponse {
 }
 
 message GetMarketFragmenterAddressRequest{
-  int64 num_of_addresses = 1;
+  int64 num_of_addresses = 1 [jstype = JS_NUMBER];
 }
 message GetMarketFragmenterAddressResponse {
   repeated AddressWithBlindingKey address_with_blinding_key = 1;
@@ -474,7 +474,7 @@ message ReloadUtxosResponse {}
 
 message ListUtxosRequest {
   // Optional: request all utxos owned by a specific wallet account.
-  uint64 account_index = 1;
+  uint64 account_index = 1 [jstype = JS_NUMBER];
   // The page for a paginated reply.
   Page page = 2;
 }
@@ -518,26 +518,26 @@ message ListWebhooksResponse {
 
 message ListDepositsRequest{
   // The index of the wallet account for which listing the deposits.
-  int64 account_index = 1;
+  int64 account_index = 1 [jstype = JS_NUMBER];
   // The page for a paginated reply.
   Page page = 2;
 }
 message ListDepositsResponse{
   // The index of the wallet account.
-  int64 account_index = 1;
+  int64 account_index = 1 [jstype = JS_NUMBER];
   // The list of info about the deposits.
   repeated Deposit deposits = 2;
 }
 
 message ListWithdrawalsRequest{
   // The index of the wallet account for which listing the withdrawals.
-  int64 account_index = 1;
+  int64 account_index = 1 [jstype = JS_NUMBER];
   // The page for a paginated reply.
   Page page = 2;
 }
 message ListWithdrawalsResponse{
   // The index of the wallet account.
-  int64 account_index = 1;
+  int64 account_index = 1 [jstype = JS_NUMBER];
   // The list of info about the withdrawals.
   repeated Withdrawal withdrawals = 2;
 }
