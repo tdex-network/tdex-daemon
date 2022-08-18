@@ -171,26 +171,8 @@ func main() {
 		rescanGapLimit,
 	)
 
-	// Init gRPC interfaces.
-	opts := grpcinterface.ServiceOpts{
-		NoMacaroons:              noMacaroons,
-		Datadir:                  datadir,
-		DBLocation:               config.DbLocation,
-		TLSLocation:              config.TLSLocation,
-		MacaroonsLocation:        config.MacaroonsLocation,
-		OperatorExtraIPs:         operatorTLSExtraIPs,
-		OperatorExtraDomains:     operatorTLSExtraDomains,
-		OperatorAddress:          fmt.Sprintf(":%d", operatorSvcPort),
-		TradeAddress:             fmt.Sprintf(":%d", tradeSvcPort),
-		TradeTLSKey:              tradeTLSKey,
-		TradeTLSCert:             tradeTLSCert,
-		WalletSvc:                walletSvc,
-		WalletUnlockerSvc:        walletUnlockerSvc,
-		OperatorSvc:              operatorSvc,
-		TradeSvc:                 tradeSvc,
-		WalletUnlockPasswordFile: walletUnlockPasswordFile,
-	}
-	svc, err := grpcinterface.NewService(opts)
+	runOnOnePort := operatorSvcPort == tradeSvcPort
+	svc, err := NewGrpcService(runOnOnePort, walletUnlockerSvc, walletSvc, operatorSvc, tradeSvc)
 	if err != nil {
 		crawlerSvc.Stop()
 		repoManager.Close()
@@ -261,4 +243,49 @@ func newWebhookPubSubService(
 	}
 	httpClient := esplora.NewHTTPClient(time.Duration(reqTimeout) * time.Second)
 	return webhookpubsub.NewWebhookPubSubService(secureStore, httpClient)
+}
+
+func NewGrpcService(
+	runOnOnePort bool,
+	walletUnlockerSvc application.WalletUnlockerService,
+	walletSvc application.WalletService,
+	operatorSvc application.OperatorService,
+	tradeSvc application.TradeService,
+) (interfaces.Service, error) {
+	if runOnOnePort {
+		opts := grpcinterface.ServiceOptsOnePort{
+			NoMacaroons:              noMacaroons,
+			Datadir:                  datadir,
+			DBLocation:               config.DbLocation,
+			MacaroonsLocation:        config.MacaroonsLocation,
+			WalletUnlockPasswordFile: walletUnlockPasswordFile,
+			Address:                  fmt.Sprintf(":%d", operatorSvcPort),
+			WalletUnlockerSvc:        walletUnlockerSvc,
+			WalletSvc:                walletSvc,
+			OperatorSvc:              operatorSvc,
+			TradeSvc:                 tradeSvc,
+		}
+
+		return grpcinterface.NewServiceOnePort(opts)
+	}
+
+	opts := grpcinterface.ServiceOpts{
+		NoMacaroons:              noMacaroons,
+		Datadir:                  datadir,
+		DBLocation:               config.DbLocation,
+		TLSLocation:              config.TLSLocation,
+		MacaroonsLocation:        config.MacaroonsLocation,
+		OperatorExtraIPs:         operatorTLSExtraIPs,
+		OperatorExtraDomains:     operatorTLSExtraDomains,
+		OperatorAddress:          fmt.Sprintf(":%d", operatorSvcPort),
+		TradeAddress:             fmt.Sprintf(":%d", tradeSvcPort),
+		TradeTLSKey:              tradeTLSKey,
+		TradeTLSCert:             tradeTLSCert,
+		WalletSvc:                walletSvc,
+		WalletUnlockerSvc:        walletUnlockerSvc,
+		OperatorSvc:              operatorSvc,
+		TradeSvc:                 tradeSvc,
+		WalletUnlockPasswordFile: walletUnlockPasswordFile,
+	}
+	return grpcinterface.NewService(opts)
 }
