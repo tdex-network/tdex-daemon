@@ -283,6 +283,13 @@ func newGRPCWrappedServer(
 	)
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
+		if isGetRequest(req) {
+			if handler, ok := httpHandlers[req.URL.Path]; ok {
+				handler(w, req)
+				return
+			}
+		}
+
 		if isValidRequest(req) {
 			grpcWebServer.ServeHTTP(w, req)
 			return
@@ -303,9 +310,6 @@ func newGRPCWrappedServer(
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handler)
-	for k, v := range httpHandlers {
-		mux.HandleFunc(k, v)
-	}
 
 	httpSrv = &http.Server{
 		Addr:    addr,
@@ -318,6 +322,10 @@ func newGRPCWrappedServer(
 	}
 
 	return
+}
+
+func isGetRequest(req *http.Request) bool {
+	return req.Method == http.MethodGet
 }
 
 func isValidRequest(req *http.Request) bool {

@@ -359,7 +359,8 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		grpcOperatorServer,
 		nil,
 		map[string]func(w http.ResponseWriter, req *http.Request){
-			"/tdexconnect": tdexConnectSvc.TdexConnectHandler,
+			"/":             tdexConnectSvc.RootHandler,
+			"/tdexdconnect": tdexConnectSvc.AuthHandler,
 		},
 	)
 

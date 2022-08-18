@@ -9,9 +9,8 @@ import (
 
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-
 	"github.com/tdex-network/tdex-daemon/pkg/tdexdconnect"
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 
 	log "github.com/sirupsen/logrus"
 
@@ -19,14 +18,13 @@ import (
 )
 
 const (
-	tdexConnectHtmlTitle       = "TDEX Daemon"
-	tdexConnectTemplateFile    = "web/layout.html"
-	tdexConnectTemplateCssFile = "web/bulma.min.css"
-	tdexConnectTemplateJsFile  = "web/app.js"
+	templateFile = "web/layout.html"
+	cssFile      = "web/bulma.min.css"
 )
 
 type TdexConnectService interface {
-	TdexConnectHandler(w http.ResponseWriter, req *http.Request)
+	RootHandler(w http.ResponseWriter, req *http.Request)
+	AuthHandler(w http.ResponseWriter, req *http.Request)
 }
 
 type tdexConnect struct {
@@ -58,94 +56,94 @@ func NewTdexConnectService(
 	}
 }
 
-func (t *tdexConnect) TdexConnectHandler(w http.ResponseWriter, req *http.Request) {
+func (h *tdexConnect) RootHandler(w http.ResponseWriter, req *http.Request) {
+	data := Page{
+		Title: "TDEX Daemon",
+	}
+
+	if err := template.Must(template.ParseFiles(templateFile)).Execute(w, data); err != nil {
+		log.Errorln(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
+
 	ctx := context.Background()
-	walletStatus := t.walletUnlockerSvc.IsReady(ctx)
+
 	cert := t.certBytes
 	if t.certBytes == nil {
 		cert = readFile(t.certPath)
 		t.certBytes = cert
 	}
 
+	// start building the TDEXD connect URL
 	connectUrl, err := tdexdconnect.EncodeToString(
 		t.serverPort, cert, nil,
 	)
 	if err != nil {
 		log.Errorln(err.Error())
-		http.Error(w, http.StatusText(500), 500)
-	}
-
-	method := req.Method
-	if method == http.MethodGet {
-		styleFile, err := ioutil.ReadFile(tdexConnectTemplateCssFile)
-		if err != nil {
-			log.Errorln(err.Error())
-			http.Error(w, http.StatusText(500), 500)
-
-			return
-		}
-
-		jsFile, err := ioutil.ReadFile(tdexConnectTemplateJsFile)
-		if err != nil {
-			log.Errorln(err.Error())
-			http.Error(w, http.StatusText(500), 500)
-
-			return
-		}
-
-		data := Page{
-			Title:               tdexConnectHtmlTitle,
-			Style:               template.CSS(styleFile),
-			Js:                  template.JS(jsFile),
-			Url:                 template.URL(connectUrl),
-			IsWalletInitialised: walletStatus.Initialized,
-		}
-
-		if err = template.Must(template.ParseFiles(tdexConnectTemplateFile)).Execute(w, data); err != nil {
-			log.Errorln(err.Error())
-			http.Error(w, http.StatusText(500), 500)
-		}
-
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
-	} else {
-		if walletStatus.Initialized {
-			password := req.Header.Get("password")
-
-			vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
-			if err != nil {
-				log.Errorln(err.Error())
-				http.Error(w, http.StatusText(500), 500)
-
-				return
-			}
-
-			if _, err := wallet.Decrypt(wallet.DecryptOpts{
-				CypherText: vault.EncryptedMnemonic,
-				Passphrase: password,
-			}); err != nil {
-				log.Debugf(err.Error())
-				http.Error(w, "wrong password", 500)
-
-				return
-			}
-
-			macaroon := t.macaroonBytes
-			if t.macaroonBytes == nil {
-				macaroon = readFile(t.macaroonPath)
-				t.macaroonBytes = macaroon
-			}
-
-			connectUrl, err = tdexdconnect.EncodeToString(
-				t.serverPort, cert, nil,
-			)
-			if err != nil {
-				log.Errorln(err.Error())
-				http.Error(w, http.StatusText(500), 500)
-			}
-		}
-
-		w.Write([]byte(connectUrl))
 	}
+
+	walletStatus := t.walletUnlockerSvc.IsReady(ctx)
+	if !walletStatus.Initialized {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Write([]byte(connectUrl))
+		return
+	}
+
+	// if is initialized then we need to check auth before appending the macaroon
+	username, password, ok := req.BasicAuth()
+	if !ok {
+		log.Debugln("http: basic auth not provided")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+	if username != "tdex" {
+		log.Debugln("http: invalid username")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
+	if err != nil {
+		log.Errorln(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := wallet.Decrypt(wallet.DecryptOpts{
+		CypherText: vault.EncryptedMnemonic,
+		Passphrase: password,
+	}); err != nil {
+		log.Debugln("http: invalid password")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	// serialize the macaroon and append it to the connect URL
+	macaroon := t.macaroonBytes
+	if t.macaroonBytes == nil {
+		macaroon = readFile(t.macaroonPath)
+		t.macaroonBytes = macaroon
+	}
+
+	// append the macaroon
+	connectUrl, err = tdexdconnect.EncodeToString(
+		t.serverPort, cert, macaroon,
+	)
+	if err != nil {
+		log.Errorln(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Write([]byte(connectUrl))
 }
 
 func readFile(filePath string) []byte {
@@ -166,9 +164,5 @@ func readFile(filePath string) []byte {
 }
 
 type Page struct {
-	Title               string
-	Style               template.CSS
-	Js                  template.JS
-	Url                 template.URL
-	IsWalletInitialised bool
+	Title string
 }
