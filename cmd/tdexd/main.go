@@ -172,7 +172,14 @@ func main() {
 	)
 
 	runOnOnePort := operatorSvcPort == tradeSvcPort
-	svc, err := NewGrpcService(runOnOnePort, walletUnlockerSvc, walletSvc, operatorSvc, tradeSvc)
+	svc, err := NewGrpcService(
+		runOnOnePort,
+		walletUnlockerSvc,
+		walletSvc,
+		operatorSvc,
+		tradeSvc,
+		repoManager,
+	)
 	if err != nil {
 		crawlerSvc.Stop()
 		repoManager.Close()
@@ -251,6 +258,7 @@ func NewGrpcService(
 	walletSvc application.WalletService,
 	operatorSvc application.OperatorService,
 	tradeSvc application.TradeService,
+	repoManager ports.RepoManager,
 ) (interfaces.Service, error) {
 	if runOnOnePort {
 		opts := grpcinterface.ServiceOptsOnePort{
@@ -264,6 +272,7 @@ func NewGrpcService(
 			WalletSvc:                walletSvc,
 			OperatorSvc:              operatorSvc,
 			TradeSvc:                 tradeSvc,
+			RepoManager:              repoManager,
 		}
 
 		return grpcinterface.NewServiceOnePort(opts)
@@ -286,6 +295,7 @@ func NewGrpcService(
 		OperatorSvc:              operatorSvc,
 		TradeSvc:                 tradeSvc,
 		WalletUnlockPasswordFile: walletUnlockPasswordFile,
+		RepoManager:              repoManager,
 	}
 	return grpcinterface.NewService(opts)
 }

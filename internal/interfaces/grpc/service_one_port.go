@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -42,6 +45,8 @@ type ServiceOptsOnePort struct {
 	WalletSvc         application.WalletService
 	OperatorSvc       application.OperatorService
 	TradeSvc          application.TradeService
+
+	RepoManager ports.RepoManager
 }
 
 type serviceOnePort struct {
@@ -261,7 +266,23 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 		grpcGateway = tradeGrpcGateway
 	}
 
-	http1Server, http2Server := newGRPCWrappedServer(address, grpcServer, grpcGateway)
+	tdexConnectSvc := httpinterface.NewTdexConnectService(
+		s.opts.RepoManager,
+		s.opts.WalletUnlockerSvc,
+		adminMacaroonPath,
+		"",
+		address,
+	)
+
+	http1Server, http2Server := newGRPCWrappedServer(
+		address,
+		grpcServer,
+		grpcGateway,
+		map[string]func(w http.ResponseWriter, req *http.Request){
+			"/":             tdexConnectSvc.RootHandler,
+			"/tdexdconnect": tdexConnectSvc.AuthHandler,
+		},
+	)
 	mux, err := serveMux(
 		s.opts.Address, "", "",
 		grpcServer, http1Server, http2Server,

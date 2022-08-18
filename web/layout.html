@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TDEX Daemon</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <script type="module">
+
+
+
+    function attachOnClickLogin() {
+      const unlockButton = document.getElementById('unlockButton');
+      if (!unlockButton) return;
+
+      unlockButton.onclick = async () => {
+        const password = document.getElementById("password").value;
+        await getConnectURL(password);
+      }
+    }
+
+    function attachOnClickCopy(connectURL) {
+      const copyButton = document.getElementById("copyButton");
+      if (!copyButton) return;
+
+      copyButton.onclick = async () => {
+        const clipText = await navigator.clipboard.writeText(connectURL);
+      }
+    }
+
+    async function getConnectURL(password) {
+
+      let headers = new Headers();
+      if (password) {
+        const authString = `tdex:${password}`
+        headers.set('Authorization', 'Basic ' + window.btoa(unescape(encodeURIComponent(authString))))
+      }
+
+      const response = await window.fetch("/tdexdconnect", { method: 'GET', headers,});
+      if (!response.ok) {
+        render(showLogin(password ? "Invalid password" : ""), document.getElementById("root"));
+        attachOnClickLogin();
+        return;
+      }
+      const data = await response.text();
+      render(showConnect(data), document.getElementById("root"));
+      attachOnClickCopy(data);
+    }
+
+
+    function render(template, node) {
+      if (!node) return;
+      node.innerHTML = (typeof template === 'function' ? template() : template);
+    };
+
+
+    function showConnect(connectURL) {
+      return `
+          <h1 class="title is-1">🔌 TDEX Connect URL</h1>
+          <div class="box">
+            <div class="content">
+              <article class="message">
+                <div class="message-header">
+                  <p>URL</p>
+                </div>
+                <div id="connectURL" class="message-body" style="word-break: break-all;">
+                  ${connectURL}
+                </div>
+              </article>
+              <div class="field">
+                <div class="control">
+                  <button class="button is-primary" id="copyButton" onclick="copyToClipboard('${connectURL}')">Copy</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+    };
+
+    function showLogin(errorMessage) {
+      return `
+          <h1 class="title is-1">🔓 Unlock</h1>
+          <div class="content">
+            <div class="columns">
+              <div class="column has-text-centered is-offset-4 is-4 has">
+                <label for="Password">
+                  <strong>Enter your password</strong>
+                </label>
+                <input id="password" type="password" class="input mt-3" placeholder="Password">
+                <p id="error" class="subtitle is-6 has-text-danger">
+                  ${errorMessage || ''}
+                </p>
+                <hr />
+                <button id="unlockButton" class="button is-dark is-fullwidth" type="submit">Login</button>
+              </div>
+            </div>
+          </div>
+        `;
+    };
+
+    window.onload = async () => {
+      await getConnectURL();
+    };
+  </script>
+</head>
+
+<body>
+  <section class="section">
+    <div class="container">
+      <div id="root" class="has-text-centered"></div>
+    </div>
+  </section>
+
+</body>
+
+</html>
