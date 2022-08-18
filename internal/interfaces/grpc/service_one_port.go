@@ -261,7 +261,7 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 		grpcGateway = tradeGrpcGateway
 	}
 
-	http1Server, http2Server := newGRPCWrappedServer(address, grpcServer, grpcGateway)
+	http1Server, http2Server := newGRPCWrappedServer(address, grpcServer, grpcGateway, nil)
 	mux, err := serveMux(
 		s.opts.Address, "", "",
 		grpcServer, http1Server, http2Server,
