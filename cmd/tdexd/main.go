@@ -59,7 +59,6 @@ var (
 	rescanRangeStart              = config.GetInt(config.RescanRangeStartKey)
 	rescanGapLimit                = config.GetInt(config.RescanGapLimitKey)
 	walletUnlockPasswordFile      = config.GetString(config.WalletUnlockPasswordFile)
-	runOnOnePort                  = config.GetBool(config.RunOnOnePortKey)
 
 	version = "dev"
 	commit  = "none"
@@ -172,6 +171,7 @@ func main() {
 		rescanGapLimit,
 	)
 
+	runOnOnePort := operatorSvcPort == tradeSvcPort
 	svc, err := NewGrpcService(runOnOnePort, walletUnlockerSvc, walletSvc, operatorSvc, tradeSvc)
 	if err != nil {
 		crawlerSvc.Stop()
