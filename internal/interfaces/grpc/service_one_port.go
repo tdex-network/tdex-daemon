@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"path/filepath"
 
@@ -47,6 +48,11 @@ type ServiceOptsOnePort struct {
 	TradeSvc          application.TradeService
 
 	RepoManager ports.RepoManager
+
+	TLSLocation  string
+	NoTls        bool
+	ExtraIPs     []string
+	ExtraDomains []string
 }
 
 type serviceOnePort struct {
@@ -74,6 +80,14 @@ func NewServiceOnePort(opts ServiceOptsOnePort) (interfaces.Service, error) {
 		macaroonSvc, _ = macaroons.NewService(
 			opts.dbDatadir(), Location, DBFile, false, macaroons.IPLockChecker,
 		)
+
+		if !opts.NoMacaroons {
+			if err := generateOperatorTLSKeyCert(
+				opts.tlsDatadir(), opts.ExtraIPs, opts.ExtraDomains,
+			); err != nil {
+				return nil, err
+			}
+		}
 
 		if err := permissions.Validate(); err != nil {
 			return nil, err
@@ -266,11 +280,18 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 		grpcGateway = tradeGrpcGateway
 	}
 
+	operatorTlsCert := ""
+	operatorTlsKey := ""
+	if !s.opts.NoTls {
+		operatorTlsCert = s.opts.tlsCert()
+		operatorTlsKey = s.opts.tlsKey()
+	}
+
 	tdexConnectSvc := httpinterface.NewTdexConnectService(
 		s.opts.RepoManager,
 		s.opts.WalletUnlockerSvc,
 		adminMacaroonPath,
-		"",
+		operatorTlsCert,
 		address,
 	)
 
@@ -284,7 +305,7 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 		},
 	)
 	mux, err := serveMux(
-		s.opts.Address, "", "",
+		s.opts.Address, operatorTlsKey, operatorTlsCert,
 		grpcServer, http1Server, http2Server,
 	)
 	if err != nil {
@@ -362,6 +383,28 @@ func (o ServiceOptsOnePort) validate() error {
 				"all macaroons must be either existing or not in path %s", macDir,
 			)
 		}
+
+		if !o.NoTls {
+			// TLS over operator interface is automatically enabled if macaroons auth
+			// is active.
+			tlsDir := o.tlsDatadir()
+			tlsKeyExists := pathExists(filepath.Join(tlsDir, OperatorTLSKeyFile))
+			tlsCertExists := pathExists(filepath.Join(tlsDir, OperatorTLSCertFile))
+			if !tlsKeyExists && tlsCertExists {
+				return fmt.Errorf(
+					"found %s file but %s is missing. Please delete %s to have the daemon recreate both in path %s",
+					OperatorTLSCertFile, OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
+				)
+			}
+
+			if len(o.ExtraIPs) > 0 {
+				for _, ip := range o.ExtraIPs {
+					if net.ParseIP(ip) == nil {
+						return fmt.Errorf("invalid operator extra ip %s", ip)
+					}
+				}
+			}
+		}
 	}
 
 	if ok := isValidAddress(o.Address); !ok {
@@ -391,4 +434,22 @@ func (o ServiceOptsOnePort) validate() error {
 
 func (o ServiceOptsOnePort) dbDatadir() string {
 	return filepath.Join(o.Datadir, o.DBLocation)
+}
+
+func (o ServiceOptsOnePort) tlsDatadir() string {
+	return filepath.Join(o.Datadir, o.TLSLocation)
+}
+
+func (o ServiceOptsOnePort) tlsKey() string {
+	if o.NoMacaroons {
+		return ""
+	}
+	return filepath.Join(o.tlsDatadir(), OperatorTLSKeyFile)
+}
+
+func (o ServiceOptsOnePort) tlsCert() string {
+	if o.NoMacaroons {
+		return ""
+	}
+	return filepath.Join(o.tlsDatadir(), OperatorTLSCertFile)
 }

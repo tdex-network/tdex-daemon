@@ -274,6 +274,10 @@ func NewGrpcService(
 			OperatorSvc:              operatorSvc,
 			TradeSvc:                 tradeSvc,
 			RepoManager:              repoManager,
+			TLSLocation:              config.TLSLocation,
+			NoTls:                    noOperatorTls,
+			ExtraIPs:                 operatorTLSExtraIPs,
+			ExtraDomains:             operatorTLSExtraDomains,
 		}
 
 		return grpcinterface.NewServiceOnePort(opts)
