@@ -20,6 +20,7 @@ const (
 	noMacaroonsKey   = "no_macaroons"
 	macaroonsPathKey = "macaroons_path"
 	tlsCertPathKey   = "tls_cert_path"
+	noOperatorTlsKey = "no_operator_tls"
 )
 
 var (
@@ -30,6 +31,7 @@ var (
 	defaultNoMacaroonsAuth = false
 	defaultTLSCertPath     = filepath.Join(daemonDatadir, "tls", "cert.pem")
 	defaultMacaroonsPath   = filepath.Join(daemonDatadir, "macaroons", "admin.macaroon")
+	defaultNoOperatorTLS   = false
 
 	networkFlag = cli.StringFlag{
 		Name:  "network, n",
@@ -47,6 +49,12 @@ var (
 		Name:  tlsCertPathKey,
 		Usage: "the path of the TLS certificate file to use",
 		Value: defaultTLSCertPath,
+	}
+
+	noOperatorCertFlag = cli.BoolFlag{
+		Name:  noOperatorTlsKey,
+		Usage: "used to disable operator TLS certificate",
+		Value: defaultNoOperatorTLS,
 	}
 
 	noMacaroonsFlag = cli.BoolFlag{
@@ -82,6 +90,7 @@ var cliConfig = cli.Command{
 				&tlsCertFlag,
 				&noMacaroonsFlag,
 				&macaroonsFlag,
+				&noOperatorCertFlag,
 			},
 		},
 		{
@@ -107,11 +116,12 @@ func configAction(ctx *cli.Context) error {
 
 func configInitAction(c *cli.Context) error {
 	return setState(map[string]string{
-		"network":        c.String("network"),
-		"rpcserver":      c.String("rpcserver"),
-		"no_macaroons":   c.String(noMacaroonsKey),
-		"tls_cert_path":  cleanAndExpandPath(c.String(tlsCertPathKey)),
-		"macaroons_path": cleanAndExpandPath(c.String(macaroonsPathKey)),
+		"network":         c.String("network"),
+		"rpcserver":       c.String("rpcserver"),
+		"no_macaroons":    c.String(noMacaroonsKey),
+		"no_operator_tls": c.String(noOperatorTlsKey),
+		"tls_cert_path":   cleanAndExpandPath(c.String(tlsCertPathKey)),
+		"macaroons_path":  cleanAndExpandPath(c.String(macaroonsPathKey)),
 	})
 }
 
