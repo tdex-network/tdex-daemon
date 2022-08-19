@@ -120,6 +120,8 @@ type ServiceOpts struct {
 	TradeSvc          application.TradeService
 
 	RepoManager ports.RepoManager
+
+	NoOperatorTls bool
 }
 
 func (o ServiceOpts) validate() error {
@@ -142,22 +144,24 @@ func (o ServiceOpts) validate() error {
 			)
 		}
 
-		// TLS over operator interface is automatically enabled if macaroons auth
-		// is active.
-		tlsDir := o.tlsDatadir()
-		tlsKeyExists := pathExists(filepath.Join(tlsDir, OperatorTLSKeyFile))
-		tlsCertExists := pathExists(filepath.Join(tlsDir, OperatorTLSCertFile))
-		if !tlsKeyExists && tlsCertExists {
-			return fmt.Errorf(
-				"found %s file but %s is missing. Please delete %s to have the daemon recreate both in path %s",
-				OperatorTLSCertFile, OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
-			)
-		}
+		if !o.NoOperatorTls {
+			// TLS over operator interface is automatically enabled if macaroons auth
+			// is active.
+			tlsDir := o.tlsDatadir()
+			tlsKeyExists := pathExists(filepath.Join(tlsDir, OperatorTLSKeyFile))
+			tlsCertExists := pathExists(filepath.Join(tlsDir, OperatorTLSCertFile))
+			if !tlsKeyExists && tlsCertExists {
+				return fmt.Errorf(
+					"found %s file but %s is missing. Please delete %s to have the daemon recreate both in path %s",
+					OperatorTLSCertFile, OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
+				)
+			}
 
-		if len(o.OperatorExtraIPs) > 0 {
-			for _, ip := range o.OperatorExtraIPs {
-				if net.ParseIP(ip) == nil {
-					return fmt.Errorf("invalid operator extra ip %s", ip)
+			if len(o.OperatorExtraIPs) > 0 {
+				for _, ip := range o.OperatorExtraIPs {
+					if net.ParseIP(ip) == nil {
+						return fmt.Errorf("invalid operator extra ip %s", ip)
+					}
 				}
 			}
 		}
@@ -236,10 +240,13 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 		macaroonSvc, _ = macaroons.NewService(
 			opts.dbDatadir(), Location, DBFile, false, macaroons.IPLockChecker,
 		)
-		if err := generateOperatorTLSKeyCert(
-			opts.tlsDatadir(), opts.OperatorExtraIPs, opts.OperatorExtraDomains,
-		); err != nil {
-			return nil, err
+
+		if !opts.NoOperatorTls {
+			if err := generateOperatorTLSKeyCert(
+				opts.tlsDatadir(), opts.OperatorExtraIPs, opts.OperatorExtraDomains,
+			); err != nil {
+				return nil, err
+			}
 		}
 
 		if err := permissions.Validate(); err != nil {
@@ -345,11 +352,18 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		daemonv1.RegisterWalletServiceServer(grpcOperatorServer, walletHandler)
 	}
 
+	operatorTlsCert := ""
+	operatorTlsKey := ""
+	if !s.opts.NoOperatorTls {
+		operatorTlsCert = s.opts.operatorTLSCert()
+		operatorTlsKey = s.opts.operatorTLSKey()
+	}
+
 	tdexConnectSvc := httpinterface.NewTdexConnectService(
 		s.opts.RepoManager,
 		s.opts.WalletUnlockerSvc,
 		adminMacaroonPath,
-		s.opts.operatorTLSCert(),
+		operatorTlsCert,
 		operatorAddr,
 	)
 
@@ -366,7 +380,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 
 	// Serve grpc and grpc-web multiplexed on the same port
 	muxOperator, err := serveMux(
-		operatorAddr, s.opts.operatorTLSKey(), s.opts.operatorTLSCert(),
+		operatorAddr, operatorTlsKey, operatorTlsCert,
 		grpcOperatorServer, http1OperatorServer, http2OperatorServer,
 	)
 	if err != nil {

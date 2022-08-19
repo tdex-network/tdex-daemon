@@ -95,6 +95,8 @@ const (
 	//password for unlocking the wallet, if provided wallet will be unlocked
 	//automatically
 	WalletUnlockPasswordFile = "WALLET_UNLOCK_PASSWORD_FILE"
+	// NoOperatorTlsKey is used to start the daemon without using TLS for the operator service
+	NoOperatorTlsKey = "NO_OPERATOR_TLS"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
@@ -134,6 +136,7 @@ func init() {
 	vip.SetDefault(CBFailingRatioKey, 0.7)
 	vip.SetDefault(RescanRangeStartKey, 0)
 	vip.SetDefault(RescanGapLimitKey, 50)
+	vip.SetDefault(NoOperatorTlsKey, false)
 
 	if err := validate(); err != nil {
 		log.Fatalf("error while validating config: %s", err)

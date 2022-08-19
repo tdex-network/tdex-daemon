@@ -11,6 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	"google.golang.org/grpc/credentials/insecure"
+
+	"google.golang.org/grpc/credentials"
+
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 
 	"github.com/btcsuite/btcutil"
@@ -18,7 +22,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"gopkg.in/macaroon.v2"
 
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
@@ -267,23 +270,28 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 
 	noMacaroons, _ := strconv.ParseBool(state["no_macaroons"])
 	if noMacaroons {
-		opts = append(opts, grpc.WithInsecure())
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
-		// Load TLS cert for operator interface (enabled automatically when using
-		// macaroon auth)
-		certPath, ok := state["tls_cert_path"]
-		if !ok {
-			return nil, fmt.Errorf(
-				"TLS certificate filepath is missing. Try " +
-					"'tdex config set tls_cert_path path/to/tls/certificate'",
-			)
-		}
+		withTls := false
+		noOperatorTls, _ := strconv.ParseBool(state[noOperatorTlsKey])
+		if !noOperatorTls {
+			withTls = true
+			certPath, ok := state["tls_cert_path"]
+			if !ok {
+				return nil, fmt.Errorf(
+					"TLS certificate filepath is missing. Try " +
+						"'tdex config set tls_cert_path path/to/tls/certificate'",
+				)
+			}
 
-		tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
-		if err != nil {
-			return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
+			tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
+			if err != nil {
+				return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
+			}
+			opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
+		} else {
+			opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		}
-		opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
 
 		// Load macaroons and add credentials to dialer
 		if !skipMacaroon {
@@ -302,7 +310,7 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 			if err := mac.UnmarshalBinary(macBytes); err != nil {
 				return nil, fmt.Errorf("could not parse macaroon %s: %s", macPath, err)
 			}
-			macCreds := macaroons.NewMacaroonCredential(mac, true)
+			macCreds := macaroons.NewMacaroonCredential(mac, withTls)
 			opts = append(opts, grpc.WithPerRPCCredentials(macCreds))
 		}
 	}
