@@ -26,13 +26,13 @@ const (
 	outputKey      = "out"
 	noTlsKey       = "no_tls"
 	noMacaroonsKey = "no_macaroons"
-	schema         = "schema"
+	protoKey       = "proto"
 
 	qrFilename = "tdexdconnect-qr.png"
 )
 
 var (
-	defaultSchema        = "https"
+	defaultProto         = "https"
 	defaultRPCServer     = "localhost:9000"
 	defaultDatadir       = btcutil.AppDataDir("tdex-daemon", false)
 	defaultTLSCertPath   = filepath.Join(defaultDatadir, "tls", "cert.pem")
@@ -54,8 +54,8 @@ var (
 		`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`,
 	)
 
-	schemaFlag = pflag.String(
-		schema, defaultSchema, "http or https protocol",
+	protoFlag = pflag.String(
+		protoKey, defaultProto, "http or https protocol",
 	)
 	rpcServerFlag = pflag.String(
 		rpcServerKey, defaultRPCServer, "the rpc address and port of tdexd",
@@ -159,7 +159,7 @@ func main() {
 	pflag.Parse()
 	viper.BindPFlags(pflag.CommandLine)
 
-	schema := viper.GetString(schema)
+	proto := viper.GetString(protoKey)
 	rpcServerAddr := viper.GetString(rpcServerKey)
 	tlsCertPath := viper.GetString(tlsCertKey)
 	macaroonsPath := viper.GetString(macaroonsKey)
@@ -187,7 +187,7 @@ func main() {
 	}
 
 	connectUrl, err := tdexdconnect.EncodeToString(
-		schema, rpcServerAddr, certBytes, macBytes,
+		rpcServerAddr, proto, certBytes, macBytes,
 	)
 	if err != nil {
 		log.Fatalf("failed to encode url string: %s", err)

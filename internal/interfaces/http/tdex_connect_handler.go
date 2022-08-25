@@ -37,8 +37,8 @@ type tdexConnect struct {
 	certBytes         []byte
 	macaroonPath      string
 	certPath          string
-	scheme            string
 	serverAddress     string
+	protocol          string
 }
 
 func NewTdexConnectService(
@@ -49,13 +49,18 @@ func NewTdexConnectService(
 	macBytes := readFile(macaroonPath)
 	certBytes := readFile(certPath)
 
-	scheme := protocol
+	p := protocol
 	if len(certBytes) > 0 {
 		if protocol == "" || protocol == httpsProtocol {
-			scheme = httpsProtocol
+			p = httpsProtocol
 		} else if protocol == httpProtocol {
 			return nil, errors.New("http protocol invalid with cert provided")
 		}
+	}
+
+	h := host
+	if host == "" {
+		h = "localhost"
 	}
 
 	return &tdexConnect{
@@ -65,8 +70,8 @@ func NewTdexConnectService(
 		macaroonPath:      macaroonPath,
 		certPath:          certPath,
 		repoManager:       repoManager,
-		scheme:            scheme,
-		serverAddress:     fmt.Sprintf("%s:%s", host, serverPort),
+		protocol:          p,
+		serverAddress:     fmt.Sprintf("%s:%s", h, serverPort),
 	}, nil
 }
 
@@ -92,7 +97,7 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 
 	// start building the TDEXD connect URL
 	connectUrl, err := tdexdconnect.EncodeToString(
-		t.scheme, t.serverAddress, cert, nil,
+		t.serverAddress, t.protocol, cert, nil,
 	)
 	if err != nil {
 		log.Errorln(err.Error())
@@ -146,7 +151,7 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 
 	// append the macaroon
 	connectUrl, err = tdexdconnect.EncodeToString(
-		t.scheme, t.serverAddress, cert, macaroon,
+		t.serverAddress, t.protocol, cert, macaroon,
 	)
 	if err != nil {
 		log.Errorln(err.Error())
