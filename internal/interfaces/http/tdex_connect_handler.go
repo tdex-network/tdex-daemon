@@ -50,7 +50,7 @@ func NewTdexConnectService(
 	certBytes := readFile(certPath)
 
 	scheme := protocol
-	if certBytes != nil {
+	if len(certBytes) > 0 {
 		if protocol == "" || protocol == httpsProtocol {
 			scheme = httpsProtocol
 		} else if protocol == httpProtocol {

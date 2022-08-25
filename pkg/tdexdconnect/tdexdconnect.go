@@ -38,7 +38,7 @@ func Encode(
 func EncodeToString(
 	scheme, rpcServerAddr string, certBytes, macBytes []byte,
 ) (string, error) {
-	if certBytes != nil && scheme == "http" {
+	if len(certBytes) > 0 && scheme == "http" {
 		return "nil", errors.New("http protocol invalid with cert provided")
 	}
 
@@ -52,7 +52,7 @@ func EncodeToString(
 // Decode decodes a base64 string URL and returns its query parameters.
 func Decode(
 	connectUrl string,
-) (schema, rpcAddress string, certBytes, macBytes []byte, err error) {
+) (scheme, rpcAddress string, certBytes, macBytes []byte, err error) {
 	u, err := url.Parse(connectUrl)
 	if err != nil {
 		return
@@ -72,9 +72,14 @@ func Decode(
 		return
 	}
 
-	schema = u.Scheme
+	scheme = u.Scheme
 	rpcAddress = u.Host
 	certBytes = cBytes
 	macBytes = mBytes
+
+	if len(certBytes) > 0 && scheme == "http" {
+		err = errors.New("http protocol invalid with cert provided")
+	}
+
 	return
 }
