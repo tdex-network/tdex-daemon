@@ -13,6 +13,10 @@ func Encode(
 	rpcServerAddr, proto string,
 	certBytes, macBytes []byte,
 ) (*url.URL, error) {
+	if len(certBytes) > 0 && proto == "http" {
+		return nil, errors.New("http protocol invalid with cert provided")
+	}
+
 	u := url.URL{Scheme: "tdexdconnect", Host: rpcServerAddr}
 	q := u.Query()
 
@@ -42,10 +46,6 @@ func Encode(
 func EncodeToString(
 	rpcServerAddr, proto string, certBytes, macBytes []byte,
 ) (string, error) {
-	if len(certBytes) > 0 && proto == "http" {
-		return "nil", errors.New("http protocol invalid with cert provided")
-	}
-
 	u, err := Encode(rpcServerAddr, proto, certBytes, macBytes)
 	if err != nil {
 		return "", err
