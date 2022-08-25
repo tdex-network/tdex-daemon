@@ -97,6 +97,12 @@ const (
 	WalletUnlockPasswordFile = "WALLET_UNLOCK_PASSWORD_FILE"
 	// NoOperatorTlsKey is used to start the daemon without using TLS for the operator service
 	NoOperatorTlsKey = "NO_OPERATOR_TLS"
+	// ConnectUrlHost ectUrlHost is the host of the tdex-daemon service to connect to
+	//used by tdexconnect to create connection url
+	ConnectUrlHost = "CONNECT_URL_HOST"
+	// ConnectUrlProto is the http/https protocol of the tdex-daemon service to connect to
+	//used by tdexconnect to create connection url
+	ConnectUrlProto = "CONNECT_URL_PROTO"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
@@ -105,6 +111,8 @@ const (
 
 	MinDefaultPercentageFee = 0.01
 	MaxDefaultPercentageFee = float64(99)
+
+	httpsProtocol = "https"
 )
 
 var vip *viper.Viper
@@ -137,6 +145,7 @@ func init() {
 	vip.SetDefault(RescanRangeStartKey, 0)
 	vip.SetDefault(RescanGapLimitKey, 50)
 	vip.SetDefault(NoOperatorTlsKey, false)
+	vip.SetDefault(ConnectUrlProto, httpsProtocol)
 
 	if err := validate(); err != nil {
 		log.Fatalf("error while validating config: %s", err)

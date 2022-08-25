@@ -7,9 +7,6 @@
   <title>TDEX Daemon</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
   <script type="module">
-
-
-
     function attachOnClickLogin() {
       const unlockButton = document.getElementById('unlockButton');
       if (!unlockButton) return;
@@ -30,7 +27,6 @@
     }
 
     async function getConnectURL(password) {
-
       let headers = new Headers();
       if (password) {
         const authString = `tdex:${password}`

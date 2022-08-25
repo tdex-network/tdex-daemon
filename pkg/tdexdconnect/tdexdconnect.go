@@ -9,9 +9,10 @@ import (
 
 // Encode encodes the given args as query parameters of the returned *url.URL.
 func Encode(
-	rpcServerAddr string, certBytes, macBytes []byte,
+	schema, rpcServerAddr string,
+	certBytes, macBytes []byte,
 ) (*url.URL, error) {
-	u := url.URL{Scheme: "tdexdconnect", Host: rpcServerAddr}
+	u := url.URL{Scheme: schema, Host: rpcServerAddr}
 	q := u.Query()
 
 	if len(certBytes) > 0 {
@@ -34,9 +35,9 @@ func Encode(
 
 // EncodeToString encodes the given args into a base64 string URL.
 func EncodeToString(
-	rpcServerAddr string, certBytes, macBytes []byte,
+	schema, rpcServerAddr string, certBytes, macBytes []byte,
 ) (string, error) {
-	u, err := Encode(rpcServerAddr, certBytes, macBytes)
+	u, err := Encode(schema, rpcServerAddr, certBytes, macBytes)
 	if err != nil {
 		return "", err
 	}
@@ -46,7 +47,7 @@ func EncodeToString(
 // Decode decodes a base64 string URL and returns its query parameters.
 func Decode(
 	connectUrl string,
-) (rpcAddress string, certBytes, macBytes []byte, err error) {
+) (schema, rpcAddress string, certBytes, macBytes []byte, err error) {
 	u, err := url.Parse(connectUrl)
 	if err != nil {
 		return
@@ -66,6 +67,7 @@ func Decode(
 		return
 	}
 
+	schema = u.Scheme
 	rpcAddress = u.Host
 	certBytes = cBytes
 	macBytes = mBytes

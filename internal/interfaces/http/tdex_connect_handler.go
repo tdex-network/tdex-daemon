@@ -2,6 +2,8 @@ package httpinterface
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -18,8 +20,9 @@ import (
 )
 
 const (
-	templateFile = "web/layout.html"
-	cssFile      = "web/bulma.min.css"
+	templateFile  = "web/layout.html"
+	httpProtocol  = "http"
+	httpsProtocol = "https"
 )
 
 type TdexConnectService interface {
@@ -32,31 +35,42 @@ type tdexConnect struct {
 	walletUnlockerSvc application.WalletUnlockerService
 	macaroonBytes     []byte
 	certBytes         []byte
-	serverPort        string
 	macaroonPath      string
 	certPath          string
+	scheme            string
+	serverAddress     string
 }
 
 func NewTdexConnectService(
 	repoManager ports.RepoManager,
 	walletUnlockerSvc application.WalletUnlockerService,
-	macaroonPath, certPath, serverPort string,
-) TdexConnectService {
+	macaroonPath, certPath, serverPort, host, protocol string,
+) (TdexConnectService, error) {
 	macBytes := readFile(macaroonPath)
 	certBytes := readFile(certPath)
+
+	scheme := protocol
+	if certBytes != nil {
+		if protocol == "" || protocol == httpsProtocol {
+			scheme = httpsProtocol
+		} else if protocol == httpProtocol {
+			return nil, errors.New("http protocol invalid with cert provided")
+		}
+	}
 
 	return &tdexConnect{
 		walletUnlockerSvc: walletUnlockerSvc,
 		macaroonBytes:     macBytes,
 		certBytes:         certBytes,
-		serverPort:        serverPort,
 		macaroonPath:      macaroonPath,
 		certPath:          certPath,
 		repoManager:       repoManager,
-	}
+		scheme:            scheme,
+		serverAddress:     fmt.Sprintf("%s:%s", host, serverPort),
+	}, nil
 }
 
-func (h *tdexConnect) RootHandler(w http.ResponseWriter, req *http.Request) {
+func (t *tdexConnect) RootHandler(w http.ResponseWriter, req *http.Request) {
 	data := Page{
 		Title: "TDEX Daemon",
 	}
@@ -68,7 +82,6 @@ func (h *tdexConnect) RootHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
-
 	ctx := context.Background()
 
 	cert := t.certBytes
@@ -79,7 +92,7 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 
 	// start building the TDEXD connect URL
 	connectUrl, err := tdexdconnect.EncodeToString(
-		t.serverPort, cert, nil,
+		t.scheme, t.serverAddress, cert, nil,
 	)
 	if err != nil {
 		log.Errorln(err.Error())
@@ -133,7 +146,7 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 
 	// append the macaroon
 	connectUrl, err = tdexdconnect.EncodeToString(
-		t.serverPort, cert, macaroon,
+		t.scheme, t.serverAddress, cert, macaroon,
 	)
 	if err != nil {
 		log.Errorln(err.Error())
