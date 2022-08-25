@@ -60,7 +60,6 @@ var (
 	rescanGapLimit                = config.GetInt(config.RescanGapLimitKey)
 	walletUnlockPasswordFile      = config.GetString(config.WalletUnlockPasswordFile)
 	noOperatorTls                 = config.GetBool(config.NoOperatorTlsKey)
-	host                          = config.GetString(config.ConnectUrlHost)
 	protocol                      = config.GetString(config.ConnectUrlProto)
 
 	version = "dev"
@@ -280,7 +279,7 @@ func NewGrpcService(
 			NoTls:                    noOperatorTls,
 			ExtraIPs:                 operatorTLSExtraIPs,
 			ExtraDomains:             operatorTLSExtraDomains,
-			Host:                     host,
+			Host:                     config.GetHost(),
 			Protocol:                 protocol,
 		}
 
@@ -306,7 +305,7 @@ func NewGrpcService(
 		WalletUnlockPasswordFile: walletUnlockPasswordFile,
 		RepoManager:              repoManager,
 		NoOperatorTls:            noOperatorTls,
-		Host:                     host,
+		Host:                     config.GetHost(),
 		Protocol:                 protocol,
 	}
 

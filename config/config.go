@@ -327,7 +327,33 @@ func validate() error {
 		}
 	}
 
+	if vip.GetString(OperatorExtraDomainKey) != "" ||
+		vip.GetString(OperatorExtraIPKey) != "" {
+		if vip.GetString(ConnectUrlHost) != "" {
+			return fmt.Errorf("%s and %s/%s cannot be set together",
+				ConnectUrlHost, OperatorExtraDomainKey, OperatorExtraIPKey)
+		}
+	}
+
 	return nil
+}
+
+func GetHost() string {
+	host := GetString(ConnectUrlHost)
+
+	if vip.GetString(OperatorExtraIPKey) != "" {
+		host = vip.GetString(OperatorExtraIPKey)
+	}
+
+	if vip.GetString(OperatorExtraDomainKey) != "" {
+		host = vip.GetString(OperatorExtraDomainKey)
+	}
+
+	if host == "" {
+		host = "localhost"
+	}
+
+	return host
 }
 
 func initDatadir() error {

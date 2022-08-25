@@ -58,11 +58,6 @@ func NewTdexConnectService(
 		}
 	}
 
-	h := host
-	if host == "" {
-		h = "localhost"
-	}
-
 	return &tdexConnect{
 		walletUnlockerSvc: walletUnlockerSvc,
 		macaroonBytes:     macBytes,
@@ -71,7 +66,7 @@ func NewTdexConnectService(
 		certPath:          certPath,
 		repoManager:       repoManager,
 		protocol:          p,
-		serverAddress:     fmt.Sprintf("%s:%s", h, serverPort),
+		serverAddress:     fmt.Sprintf("%s:%s", host, serverPort),
 	}, nil
 }
 
