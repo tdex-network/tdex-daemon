@@ -3,16 +3,17 @@ package tdexdconnect
 import (
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/url"
 )
 
 // Encode encodes the given args as query parameters of the returned *url.URL.
 func Encode(
-	schema, rpcServerAddr string,
+	scheme, rpcServerAddr string,
 	certBytes, macBytes []byte,
 ) (*url.URL, error) {
-	u := url.URL{Scheme: schema, Host: rpcServerAddr}
+	u := url.URL{Scheme: scheme, Host: rpcServerAddr}
 	q := u.Query()
 
 	if len(certBytes) > 0 {
@@ -35,9 +36,13 @@ func Encode(
 
 // EncodeToString encodes the given args into a base64 string URL.
 func EncodeToString(
-	schema, rpcServerAddr string, certBytes, macBytes []byte,
+	scheme, rpcServerAddr string, certBytes, macBytes []byte,
 ) (string, error) {
-	u, err := Encode(schema, rpcServerAddr, certBytes, macBytes)
+	if certBytes != nil && scheme == "http" {
+		return "nil", errors.New("http protocol invalid with cert provided")
+	}
+
+	u, err := Encode(scheme, rpcServerAddr, certBytes, macBytes)
 	if err != nil {
 		return "", err
 	}
