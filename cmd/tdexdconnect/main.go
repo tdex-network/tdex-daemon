@@ -20,12 +20,13 @@ import (
 )
 
 const (
-	rpcServerKey = "rpcserver"
-	tlsCertKey   = "tls_cert_path"
-	macaroonsKey = "macaroons_path"
-	outputKey    = "out"
-	insecureKey  = "insecure"
-	schema       = "schema"
+	rpcServerKey   = "rpcserver"
+	tlsCertKey     = "tls_cert_path"
+	macaroonsKey   = "macaroons_path"
+	outputKey      = "out"
+	noTlsKey       = "no_tls"
+	noMacaroonsKey = "no_macaroons"
+	schema         = "schema"
 
 	qrFilename = "tdexdconnect-qr.png"
 )
@@ -37,7 +38,8 @@ var (
 	defaultTLSCertPath   = filepath.Join(defaultDatadir, "tls", "cert.pem")
 	defaultMacaroonsPath = filepath.Join(defaultDatadir, "macaroons", "admin.macaroon")
 	defaultOutput        = "qr"
-	defaultInsecure      = false
+	defaultNoTls         = false
+	defaultNoMacaroon    = false
 
 	supportedOutputs = map[string]struct{}{
 		"qr":    {},
@@ -69,13 +71,16 @@ var (
 		"whether 'qr' to display QRCode, 'url' to display string URL, "+
 			"or 'image' to save QRCode to file",
 	)
-	insecureFlag = pflag.Bool(
-		insecureKey, defaultInsecure, "to be used in case the daemon has macaroon/TLS auth disabled",
+	noTlsFlag = pflag.Bool(
+		noTlsKey, defaultNoTls, "to be used in case the daemon has TLS disabled",
+	)
+	noMacaroonFlag = pflag.Bool(
+		noMacaroonsKey, defaultNoMacaroon, "to be used in case the daemon has macaroon auth disabled",
 	)
 )
 
 func validateFlags(
-	rpcServerAddr, tlsCertPath, macaroonsPath, out string, insecure bool,
+	rpcServerAddr, tlsCertPath, macaroonsPath, out string, noTls, noMacaroon bool,
 ) error {
 	// Validate rpc server address
 	if rpcServerAddr == "" {
@@ -97,7 +102,7 @@ func validateFlags(
 		}
 	}
 
-	if !insecure {
+	if !noTls {
 		// Make sure the TLS cert filepath is defined and that the file exists.
 		if tlsCertPath == "" {
 			return fmt.Errorf("%s must not be null", tlsCertKey)
@@ -108,7 +113,9 @@ func validateFlags(
 			}
 			return fmt.Errorf("%s is not a valid path", tlsCertPath)
 		}
+	}
 
+	if !noMacaroon {
 		if macaroonsPath == "" {
 			return fmt.Errorf("%s must not be null", macaroonsPath)
 		}
@@ -157,22 +164,26 @@ func main() {
 	tlsCertPath := viper.GetString(tlsCertKey)
 	macaroonsPath := viper.GetString(macaroonsKey)
 	out := strings.ToLower(viper.GetString(outputKey))
-	insecure := viper.GetBool(insecureKey)
+	noTls := viper.GetBool(noTlsKey)
+	noMacaroons := viper.GetBool(noMacaroonsKey)
 
 	if err := validateFlags(
-		rpcServerAddr, tlsCertPath, macaroonsPath, out, insecure,
+		rpcServerAddr, tlsCertPath, macaroonsPath, out, noTls, noMacaroons,
 	); err != nil {
 		log.Fatal(err)
 	}
 
 	var macBytes, certBytes []byte
-	if !insecure {
+	if !noTls {
 		var err error
-		macBytes, _ = ioutil.ReadFile(macaroonsPath)
 		certBytes, err = ioutil.ReadFile(tlsCertPath)
 		if err != nil {
 			log.Fatalf("failed to read TLS certificate file: %s", err)
 		}
+	}
+
+	if !noMacaroons {
+		macBytes, _ = ioutil.ReadFile(macaroonsPath)
 	}
 
 	connectUrl, err := tdexdconnect.EncodeToString(
