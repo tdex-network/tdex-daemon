@@ -262,6 +262,11 @@ func NewGrpcService(
 	tradeSvc application.TradeService,
 	repoManager ports.RepoManager,
 ) (interfaces.Service, error) {
+	hostname, err := config.GetHostname()
+	if err != nil {
+		return nil, err
+	}
+
 	if runOnOnePort {
 		opts := grpcinterface.ServiceOptsOnePort{
 			NoMacaroons:              noMacaroons,
@@ -279,7 +284,7 @@ func NewGrpcService(
 			NoTls:                    noOperatorTls,
 			ExtraIPs:                 operatorTLSExtraIPs,
 			ExtraDomains:             operatorTLSExtraDomains,
-			Hostname:                 config.GetHostname(),
+			Hostname:                 hostname,
 			Protocol:                 protocol,
 		}
 
@@ -305,7 +310,7 @@ func NewGrpcService(
 		WalletUnlockPasswordFile: walletUnlockPasswordFile,
 		RepoManager:              repoManager,
 		NoOperatorTls:            noOperatorTls,
-		Hostname:                 config.GetHostname(),
+		Hostname:                 hostname,
 		Protocol:                 protocol,
 	}
 
