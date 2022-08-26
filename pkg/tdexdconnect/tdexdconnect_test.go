@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/pem"
-	"fmt"
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -80,18 +78,4 @@ func TestEncodeDecode(t *testing.T) {
 		}
 		require.Equal(t, tt.proto, proto)
 	}
-}
-
-func TestT(t *testing.T) {
-	port, p, err := net.SplitHostPort("192.168.1.5:9000")
-	if err != nil {
-		//check if err is a net.AddrError
-		if _, ok := err.(*net.AddrError); ok {
-			if
-		}
-		t.Error(err)
-	}
-
-	fmt.Println(port)
-	fmt.Println(p)
 }
