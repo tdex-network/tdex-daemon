@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -97,8 +98,7 @@ const (
 	WalletUnlockPasswordFile = "WALLET_UNLOCK_PASSWORD_FILE"
 	// NoOperatorTlsKey is used to start the daemon without using TLS for the operator service
 	NoOperatorTlsKey = "NO_OPERATOR_TLS"
-	// ConnectUrlHost ectUrlHost is the host of the tdex-daemon service to connect to
-	//used by tdexconnect to create connection url
+	// ConnectUrlHost is the host of the tdex-daemon service to connect to ie. myservice:9000
 	ConnectUrlHost = "CONNECT_URL_HOST"
 	// ConnectUrlProto is the http/https protocol of the tdex-daemon service to connect to
 	//used by tdexconnect to create connection url
@@ -327,33 +327,55 @@ func validate() error {
 		}
 	}
 
-	if vip.GetString(OperatorExtraDomainKey) != "" ||
-		vip.GetString(OperatorExtraIPKey) != "" {
-		if vip.GetString(ConnectUrlHost) != "" {
-			return fmt.Errorf("%s and %s/%s cannot be set together",
-				ConnectUrlHost, OperatorExtraDomainKey, OperatorExtraIPKey)
-		}
-	}
-
 	return nil
 }
 
-func GetHost() string {
-	host := GetString(ConnectUrlHost)
+func GetHostname() (string, error) {
+	return getHostname(
+		vip.GetString(OperatorExtraIPKey),
+		vip.GetString(OperatorExtraDomainKey),
+		vip.GetString(ConnectUrlHost),
+	)
+}
 
-	if vip.GetString(OperatorExtraIPKey) != "" {
-		host = vip.GetString(OperatorExtraIPKey)
+func getHostname(
+	operatorExtraIP string,
+	operatorExtraDomain string,
+	connectionUrl string,
+) (string, error) {
+	var (
+		host     = ""
+		hostname = ""
+	)
+
+	if operatorExtraIP != "" {
+		host = operatorExtraIP
 	}
 
-	if vip.GetString(OperatorExtraDomainKey) != "" {
-		host = vip.GetString(OperatorExtraDomainKey)
+	if operatorExtraDomain != "" {
+		host = operatorExtraDomain
+	}
+
+	if connectionUrl != "" {
+		host = connectionUrl
 	}
 
 	if host == "" {
 		host = "localhost"
 	}
 
-	return host
+	if containPort(host) {
+		h, _, err := net.SplitHostPort(host)
+		if err != nil {
+			return "", err
+		}
+
+		hostname = h
+	} else {
+		hostname = host
+	}
+
+	return hostname, nil
 }
 
 func initDatadir() error {
@@ -399,4 +421,19 @@ func validateAssetString(asset string) error {
 		return fmt.Errorf("asset has invalid length")
 	}
 	return nil
+}
+
+func containPort(host string) bool {
+	return last(host, ':') > 0
+}
+
+// Index of rightmost occurrence of b in s.
+func last(s string, b byte) int {
+	i := len(s)
+	for i--; i >= 0; i-- {
+		if s[i] == b {
+			break
+		}
+	}
+	return i
 }

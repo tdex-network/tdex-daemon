@@ -279,7 +279,7 @@ func NewGrpcService(
 			NoTls:                    noOperatorTls,
 			ExtraIPs:                 operatorTLSExtraIPs,
 			ExtraDomains:             operatorTLSExtraDomains,
-			Host:                     config.GetHost(),
+			Hostname:                 config.GetHostname(),
 			Protocol:                 protocol,
 		}
 
@@ -305,7 +305,7 @@ func NewGrpcService(
 		WalletUnlockPasswordFile: walletUnlockPasswordFile,
 		RepoManager:              repoManager,
 		NoOperatorTls:            noOperatorTls,
-		Host:                     config.GetHost(),
+		Hostname:                 config.GetHostname(),
 		Protocol:                 protocol,
 	}
 

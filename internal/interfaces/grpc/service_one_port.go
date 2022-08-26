@@ -53,7 +53,7 @@ type ServiceOptsOnePort struct {
 	NoTls        bool
 	ExtraIPs     []string
 	ExtraDomains []string
-	Host         string
+	Hostname     string
 	Protocol     string
 }
 
@@ -295,7 +295,7 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 		adminMacaroonPath,
 		operatorTlsCert,
 		address,
-		s.opts.Host,
+		s.opts.Hostname,
 		s.opts.Protocol,
 	)
 	if err != nil {

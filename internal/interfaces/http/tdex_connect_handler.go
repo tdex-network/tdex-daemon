@@ -44,7 +44,7 @@ type tdexConnect struct {
 func NewTdexConnectService(
 	repoManager ports.RepoManager,
 	walletUnlockerSvc application.WalletUnlockerService,
-	macaroonPath, certPath, serverPort, host, protocol string,
+	macaroonPath, certPath, serverPort, hostname, protocol string,
 ) (TdexConnectService, error) {
 	macBytes := readFile(macaroonPath)
 	certBytes := readFile(certPath)
@@ -54,7 +54,7 @@ func NewTdexConnectService(
 		if protocol == "" || protocol == httpsProtocol {
 			p = httpsProtocol
 		} else if protocol == httpProtocol {
-			return nil, errors.New("http protocol invalid with cert provided")
+			return nil, errors.New("tdexdconnect: proto=http is not valid if cert is given")
 		}
 	}
 
@@ -66,7 +66,7 @@ func NewTdexConnectService(
 		certPath:          certPath,
 		repoManager:       repoManager,
 		protocol:          p,
-		serverAddress:     fmt.Sprintf("%s:%s", host, serverPort),
+		serverAddress:     fmt.Sprintf("%s:%s", hostname, serverPort),
 	}, nil
 }
 

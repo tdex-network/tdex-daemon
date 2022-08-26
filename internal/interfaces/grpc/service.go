@@ -121,7 +121,7 @@ type ServiceOpts struct {
 
 	RepoManager   ports.RepoManager
 	NoOperatorTls bool
-	Host          string
+	Hostname      string
 	Protocol      string
 }
 
@@ -366,7 +366,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		adminMacaroonPath,
 		operatorTlsCert,
 		operatorAddr,
-		s.opts.Host,
+		s.opts.Hostname,
 		s.opts.Protocol,
 	)
 	if err != nil {
