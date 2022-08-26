@@ -332,15 +332,15 @@ func validate() error {
 
 func GetHostname() (string, error) {
 	return getHostname(
-		vip.GetString(OperatorExtraIPKey),
-		vip.GetString(OperatorExtraDomainKey),
+		vip.GetStringSlice(OperatorExtraIPKey),
+		vip.GetStringSlice(OperatorExtraDomainKey),
 		vip.GetString(ConnectUrlHost),
 	)
 }
 
 func getHostname(
-	operatorExtraIP string,
-	operatorExtraDomain string,
+	operatorExtraIP []string,
+	operatorExtraDomain []string,
 	connectionUrl string,
 ) (string, error) {
 	var (
@@ -348,12 +348,12 @@ func getHostname(
 		hostname = ""
 	)
 
-	if operatorExtraIP != "" {
-		host = operatorExtraIP
+	if len(operatorExtraIP) > 0 {
+		host = operatorExtraIP[0]
 	}
 
-	if operatorExtraDomain != "" {
-		host = operatorExtraDomain
+	if len(operatorExtraDomain) > 0 {
+		host = operatorExtraDomain[0]
 	}
 
 	if connectionUrl != "" {

@@ -4,8 +4,8 @@ import "testing"
 
 func TestGetHostname(t *testing.T) {
 	type args struct {
-		operatorExtraIP     string
-		operatorExtraDomain string
+		operatorExtraIP     []string
+		operatorExtraDomain []string
 		connectionUrl       string
 	}
 	tests := []struct {
@@ -17,8 +17,8 @@ func TestGetHostname(t *testing.T) {
 		{
 			name: "1",
 			args: args{
-				operatorExtraIP:     "",
-				operatorExtraDomain: "",
+				operatorExtraIP:     []string{},
+				operatorExtraDomain: []string{},
 				connectionUrl:       "",
 			},
 			want:    "localhost",
@@ -27,8 +27,8 @@ func TestGetHostname(t *testing.T) {
 		{
 			name: "2",
 			args: args{
-				operatorExtraIP:     "test1:800",
-				operatorExtraDomain: "test2:800",
+				operatorExtraIP:     []string{"test1:800"},
+				operatorExtraDomain: []string{"test2:800"},
 				connectionUrl:       "test:8080",
 			},
 			want:    "test",
@@ -37,8 +37,8 @@ func TestGetHostname(t *testing.T) {
 		{
 			name: "3",
 			args: args{
-				operatorExtraIP:     "test1:800",
-				operatorExtraDomain: "test2:800",
+				operatorExtraIP:     []string{"test1:800"},
+				operatorExtraDomain: []string{"test2:800"},
 				connectionUrl:       "test",
 			},
 			want:    "test",
@@ -47,8 +47,8 @@ func TestGetHostname(t *testing.T) {
 		{
 			name: "4",
 			args: args{
-				operatorExtraIP:     "test1:800",
-				operatorExtraDomain: "test2:800",
+				operatorExtraIP:     []string{"test1:800"},
+				operatorExtraDomain: []string{"test2:800"},
 				connectionUrl:       "",
 			},
 			want:    "test2",
@@ -57,8 +57,8 @@ func TestGetHostname(t *testing.T) {
 		{
 			name: "5",
 			args: args{
-				operatorExtraIP:     "test1:800",
-				operatorExtraDomain: "",
+				operatorExtraIP:     []string{"test1:800"},
+				operatorExtraDomain: []string{},
 				connectionUrl:       "",
 			},
 			want:    "test1",
