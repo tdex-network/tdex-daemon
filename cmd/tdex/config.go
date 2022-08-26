@@ -153,7 +153,7 @@ func configConnectAction(c *cli.Context) (err error) {
 		return
 	}
 
-	rpcServerAddr, certificate, macaroon, err :=
+	rpcServerAddr, proto, certificate, macaroon, err :=
 		tdexdconnect.Decode(connectUrl)
 	if err != nil {
 		return
@@ -198,6 +198,7 @@ func configConnectAction(c *cli.Context) (err error) {
 	noMacaroons := strconv.FormatBool(len(certificate) == 0 && len(macaroon) == 0)
 
 	if err = setState(map[string]string{
+		"proto":          proto,
 		"rpcserver":      rpcServerAddr,
 		"no_macaroons":   noMacaroons,
 		"tls_cert_path":  tlsCertPath,

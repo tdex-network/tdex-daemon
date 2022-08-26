@@ -119,9 +119,10 @@ type ServiceOpts struct {
 	OperatorSvc       application.OperatorService
 	TradeSvc          application.TradeService
 
-	RepoManager ports.RepoManager
-
+	RepoManager   ports.RepoManager
 	NoOperatorTls bool
+	Hostname      string
+	Protocol      string
 }
 
 func (o ServiceOpts) validate() error {
@@ -359,13 +360,18 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		operatorTlsKey = s.opts.operatorTLSKey()
 	}
 
-	tdexConnectSvc := httpinterface.NewTdexConnectService(
+	tdexConnectSvc, err := httpinterface.NewTdexConnectService(
 		s.opts.RepoManager,
 		s.opts.WalletUnlockerSvc,
 		adminMacaroonPath,
 		operatorTlsCert,
 		operatorAddr,
+		s.opts.Hostname,
+		s.opts.Protocol,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	// http Operator server for grpc-web
 	http1OperatorServer, http2OperatorServer := newGRPCWrappedServer(

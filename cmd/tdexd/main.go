@@ -60,6 +60,7 @@ var (
 	rescanGapLimit                = config.GetInt(config.RescanGapLimitKey)
 	walletUnlockPasswordFile      = config.GetString(config.WalletUnlockPasswordFile)
 	noOperatorTls                 = config.GetBool(config.NoOperatorTlsKey)
+	protocol                      = config.GetString(config.ConnectUrlProto)
 
 	version = "dev"
 	commit  = "none"
@@ -261,6 +262,11 @@ func NewGrpcService(
 	tradeSvc application.TradeService,
 	repoManager ports.RepoManager,
 ) (interfaces.Service, error) {
+	hostname, err := config.GetHostname()
+	if err != nil {
+		return nil, err
+	}
+
 	if runOnOnePort {
 		opts := grpcinterface.ServiceOptsOnePort{
 			NoMacaroons:              noMacaroons,
@@ -278,6 +284,8 @@ func NewGrpcService(
 			NoTls:                    noOperatorTls,
 			ExtraIPs:                 operatorTLSExtraIPs,
 			ExtraDomains:             operatorTLSExtraDomains,
+			Hostname:                 hostname,
+			Protocol:                 protocol,
 		}
 
 		return grpcinterface.NewServiceOnePort(opts)
@@ -302,6 +310,9 @@ func NewGrpcService(
 		WalletUnlockPasswordFile: walletUnlockPasswordFile,
 		RepoManager:              repoManager,
 		NoOperatorTls:            noOperatorTls,
+		Hostname:                 hostname,
+		Protocol:                 protocol,
 	}
+
 	return grpcinterface.NewService(opts)
 }

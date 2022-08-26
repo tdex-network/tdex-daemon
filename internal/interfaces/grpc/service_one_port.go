@@ -53,6 +53,8 @@ type ServiceOptsOnePort struct {
 	NoTls        bool
 	ExtraIPs     []string
 	ExtraDomains []string
+	Hostname     string
+	Protocol     string
 }
 
 type serviceOnePort struct {
@@ -287,13 +289,18 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 		operatorTlsKey = s.opts.tlsKey()
 	}
 
-	tdexConnectSvc := httpinterface.NewTdexConnectService(
+	tdexConnectSvc, err := httpinterface.NewTdexConnectService(
 		s.opts.RepoManager,
 		s.opts.WalletUnlockerSvc,
 		adminMacaroonPath,
 		operatorTlsCert,
 		address,
+		s.opts.Hostname,
+		s.opts.Protocol,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	http1Server, http2Server := newGRPCWrappedServer(
 		address,

@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -97,6 +98,11 @@ const (
 	WalletUnlockPasswordFile = "WALLET_UNLOCK_PASSWORD_FILE"
 	// NoOperatorTlsKey is used to start the daemon without using TLS for the operator service
 	NoOperatorTlsKey = "NO_OPERATOR_TLS"
+	// ConnectUrlHost is the host of the tdex-daemon service to connect to ie. myservice:9000
+	ConnectUrlHost = "CONNECT_URL_HOST"
+	// ConnectUrlProto is the http/https protocol of the tdex-daemon service to connect to
+	//used by tdexconnect to create connection url
+	ConnectUrlProto = "CONNECT_URL_PROTO"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
@@ -105,6 +111,8 @@ const (
 
 	MinDefaultPercentageFee = 0.01
 	MaxDefaultPercentageFee = float64(99)
+
+	httpsProtocol = "https"
 )
 
 var vip *viper.Viper
@@ -137,6 +145,7 @@ func init() {
 	vip.SetDefault(RescanRangeStartKey, 0)
 	vip.SetDefault(RescanGapLimitKey, 50)
 	vip.SetDefault(NoOperatorTlsKey, false)
+	vip.SetDefault(ConnectUrlProto, httpsProtocol)
 
 	if err := validate(); err != nil {
 		log.Fatalf("error while validating config: %s", err)
@@ -321,6 +330,54 @@ func validate() error {
 	return nil
 }
 
+func GetHostname() (string, error) {
+	return getHostname(
+		vip.GetStringSlice(OperatorExtraIPKey),
+		vip.GetStringSlice(OperatorExtraDomainKey),
+		vip.GetString(ConnectUrlHost),
+	)
+}
+
+func getHostname(
+	operatorExtraIP []string,
+	operatorExtraDomain []string,
+	connectionUrl string,
+) (string, error) {
+	var (
+		host     = ""
+		hostname = ""
+	)
+
+	if len(operatorExtraIP) > 0 {
+		host = operatorExtraIP[0]
+	}
+
+	if len(operatorExtraDomain) > 0 {
+		host = operatorExtraDomain[0]
+	}
+
+	if connectionUrl != "" {
+		host = connectionUrl
+	}
+
+	if host == "" {
+		host = "localhost"
+	}
+
+	if containPort(host) {
+		h, _, err := net.SplitHostPort(host)
+		if err != nil {
+			return "", err
+		}
+
+		hostname = h
+	} else {
+		hostname = host
+	}
+
+	return hostname, nil
+}
+
 func initDatadir() error {
 	datadir := GetDatadir()
 	if err := makeDirectoryIfNotExists(filepath.Join(datadir, DbLocation)); err != nil {
@@ -364,4 +421,19 @@ func validateAssetString(asset string) error {
 		return fmt.Errorf("asset has invalid length")
 	}
 	return nil
+}
+
+func containPort(host string) bool {
+	return last(host, ':') > 0
+}
+
+// Index of rightmost occurrence of b in s.
+func last(s string, b byte) int {
+	i := len(s)
+	for i--; i >= 0; i-- {
+		if s[i] == b {
+			break
+		}
+	}
+	return i
 }

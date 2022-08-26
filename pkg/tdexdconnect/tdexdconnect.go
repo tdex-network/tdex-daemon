@@ -3,16 +3,26 @@ package tdexdconnect
 import (
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/url"
 )
 
 // Encode encodes the given args as query parameters of the returned *url.URL.
 func Encode(
-	rpcServerAddr string, certBytes, macBytes []byte,
+	rpcServerAddr, proto string,
+	certBytes, macBytes []byte,
 ) (*url.URL, error) {
+	if len(certBytes) > 0 && proto == "http" {
+		return nil, errors.New("http protocol invalid with cert provided")
+	}
+
 	u := url.URL{Scheme: "tdexdconnect", Host: rpcServerAddr}
 	q := u.Query()
+
+	if proto != "" {
+		q.Add("proto", proto)
+	}
 
 	if len(certBytes) > 0 {
 		block, _ := pem.Decode(certBytes)
@@ -34,9 +44,9 @@ func Encode(
 
 // EncodeToString encodes the given args into a base64 string URL.
 func EncodeToString(
-	rpcServerAddr string, certBytes, macBytes []byte,
+	rpcServerAddr, proto string, certBytes, macBytes []byte,
 ) (string, error) {
-	u, err := Encode(rpcServerAddr, certBytes, macBytes)
+	u, err := Encode(rpcServerAddr, proto, certBytes, macBytes)
 	if err != nil {
 		return "", err
 	}
@@ -46,11 +56,13 @@ func EncodeToString(
 // Decode decodes a base64 string URL and returns its query parameters.
 func Decode(
 	connectUrl string,
-) (rpcAddress string, certBytes, macBytes []byte, err error) {
+) (rpcAddress, proto string, certBytes, macBytes []byte, err error) {
 	u, err := url.Parse(connectUrl)
 	if err != nil {
 		return
 	}
+
+	proto = u.Query().Get("proto")
 
 	certificate := u.Query().Get("cert")
 	cBytes, err := base64.RawURLEncoding.DecodeString(certificate)
@@ -69,5 +81,10 @@ func Decode(
 	rpcAddress = u.Host
 	certBytes = cBytes
 	macBytes = mBytes
+
+	if len(certBytes) > 0 && proto == "http" {
+		err = errors.New("http protocol invalid with cert provided")
+	}
+
 	return
 }
