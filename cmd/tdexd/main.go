@@ -264,12 +264,12 @@ func NewGrpcService(
 	repoManager ports.RepoManager,
 ) (interfaces.Service, error) {
 	addr := fmt.Sprintf("localhost:%d", operatorSvcPort)
-	if len(operatorTLSExtraDomains) > 0 {
+	if connectAddr != "" {
+		addr = connectAddr
+	} else if len(operatorTLSExtraDomains) > 0 {
 		addr = operatorTLSExtraDomains[0]
 	} else if len(operatorTLSExtraIPs) > 0 {
 		addr = operatorTLSExtraIPs[0]
-	} else if connectAddr != "" {
-		addr = connectAddr
 	}
 
 	if runOnOnePort {
