@@ -121,8 +121,8 @@ type ServiceOpts struct {
 
 	RepoManager   ports.RepoManager
 	NoOperatorTls bool
-	Hostname      string
-	Protocol      string
+	ConnectAddr   string
+	ConnectProto  string
 }
 
 func (o ServiceOpts) validate() error {
@@ -365,9 +365,8 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		s.opts.WalletUnlockerSvc,
 		adminMacaroonPath,
 		operatorTlsCert,
-		operatorAddr,
-		s.opts.Hostname,
-		s.opts.Protocol,
+		s.opts.ConnectAddr,
+		s.opts.ConnectProto,
 	)
 	if err != nil {
 		return nil, err
@@ -446,15 +445,17 @@ func (s *service) stop(stopMacaroonSvc bool) {
 		log.Debug("stopped macaroon service")
 	}
 
-	log.Debug("stop grpc-web Operator server")
-	s.http1OperatorServer.Shutdown(context.Background())
-	s.http2OperatorServer.Shutdown(context.Background())
+	if s.muxOperator != nil {
+		log.Debug("stop grpc-web Operator server")
+		s.http1OperatorServer.Shutdown(context.Background())
+		s.http2OperatorServer.Shutdown(context.Background())
 
-	log.Debug("stop grpc Operator server")
-	s.grpcOperatorServer.GracefulStop()
+		log.Debug("stop grpc Operator server")
+		s.grpcOperatorServer.GracefulStop()
 
-	log.Debug("stop mux Operator")
-	s.muxOperator.Close()
+		log.Debug("stop mux Operator")
+		s.muxOperator.Close()
+	}
 
 	if s.grpcTradeServer != nil {
 		log.Debug("stop grpc-web Trade server")
