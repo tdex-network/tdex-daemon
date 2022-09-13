@@ -161,6 +161,15 @@ func setState(data map[string]string) error {
 		}
 		if noMac {
 			data[macaroonsPathKey] = ""
+		}
+	}
+	noTls, ok := data[noTlsKey]
+	if ok {
+		notls, err := strconv.ParseBool(noTls)
+		if err != nil {
+			return fmt.Errorf("invalid bool value for %s: %s", noTlsKey, err)
+		}
+		if notls {
 			data[tlsCertPathKey] = ""
 		}
 	}
@@ -268,31 +277,27 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 
 	opts := []grpc.DialOption{grpc.WithDefaultCallOptions(maxMsgRecvSize)}
 
-	noMacaroons, _ := strconv.ParseBool(state["no_macaroons"])
-	if noMacaroons {
+	noTls, _ := strconv.ParseBool(state[noTlsKey])
+	if noTls {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
-		withTls := false
-		noOperatorTls, _ := strconv.ParseBool(state[noOperatorTlsKey])
-		if !noOperatorTls {
-			withTls = true
-			certPath, ok := state["tls_cert_path"]
-			if !ok {
-				return nil, fmt.Errorf(
-					"TLS certificate filepath is missing. Try " +
-						"'tdex config set tls_cert_path path/to/tls/certificate'",
-				)
-			}
-
-			tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
-			if err != nil {
-				return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
-			}
-			opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
-		} else {
-			opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		certPath, ok := state["tls_cert_path"]
+		if !ok {
+			return nil, fmt.Errorf(
+				"TLS certificate filepath is missing. Try " +
+					"'tdex config set tls_cert_path path/to/tls/certificate'",
+			)
 		}
 
+		tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
+		if err != nil {
+			return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
+		}
+		opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
+	}
+
+	noMacaroons, _ := strconv.ParseBool(state["no_macaroons"])
+	if !noMacaroons {
 		// Load macaroons and add credentials to dialer
 		if !skipMacaroon {
 			macPath, ok := state["macaroons_path"]
@@ -310,7 +315,7 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 			if err := mac.UnmarshalBinary(macBytes); err != nil {
 				return nil, fmt.Errorf("could not parse macaroon %s: %s", macPath, err)
 			}
-			macCreds := macaroons.NewMacaroonCredential(mac, withTls)
+			macCreds := macaroons.NewMacaroonCredential(mac, !noTls)
 			opts = append(opts, grpc.WithPerRPCCredentials(macCreds))
 		}
 	}

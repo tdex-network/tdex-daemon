@@ -349,6 +349,9 @@ func initDatadir() error {
 		if err := makeDirectoryIfNotExists(filepath.Join(datadir, MacaroonsLocation)); err != nil {
 			return err
 		}
+	}
+	noOperatorTls := GetBool(NoOperatorTlsKey)
+	if !noOperatorTls {
 		if err := makeDirectoryIfNotExists(filepath.Join(datadir, TLSLocation)); err != nil {
 			return err
 		}

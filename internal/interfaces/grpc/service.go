@@ -144,25 +144,25 @@ func (o ServiceOpts) validate() error {
 				"all macaroons must be either existing or not in path %s", macDir,
 			)
 		}
+	}
 
-		if !o.NoOperatorTls {
-			// TLS over operator interface is automatically enabled if macaroons auth
-			// is active.
-			tlsDir := o.tlsDatadir()
-			tlsKeyExists := pathExists(filepath.Join(tlsDir, OperatorTLSKeyFile))
-			tlsCertExists := pathExists(filepath.Join(tlsDir, OperatorTLSCertFile))
-			if !tlsKeyExists && tlsCertExists {
-				return fmt.Errorf(
-					"found %s file but %s is missing. Please delete %s to have the daemon recreate both in path %s",
-					OperatorTLSCertFile, OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
-				)
-			}
+	if !o.NoOperatorTls {
+		// TLS over operator interface is automatically enabled if macaroons auth
+		// is active.
+		tlsDir := o.tlsDatadir()
+		tlsKeyExists := pathExists(filepath.Join(tlsDir, OperatorTLSKeyFile))
+		tlsCertExists := pathExists(filepath.Join(tlsDir, OperatorTLSCertFile))
+		if !tlsKeyExists && tlsCertExists {
+			return fmt.Errorf(
+				"found %s file but %s is missing. Please delete %s to have the daemon recreate both in path %s",
+				OperatorTLSCertFile, OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
+			)
+		}
 
-			if len(o.OperatorExtraIPs) > 0 {
-				for _, ip := range o.OperatorExtraIPs {
-					if net.ParseIP(ip) == nil {
-						return fmt.Errorf("invalid operator extra ip %s", ip)
-					}
+		if len(o.OperatorExtraIPs) > 0 {
+			for _, ip := range o.OperatorExtraIPs {
+				if net.ParseIP(ip) == nil {
+					return fmt.Errorf("invalid operator extra ip %s", ip)
 				}
 			}
 		}
@@ -218,14 +218,14 @@ func (o ServiceOpts) tlsDatadir() string {
 }
 
 func (o ServiceOpts) operatorTLSKey() string {
-	if o.NoMacaroons {
+	if o.NoOperatorTls {
 		return ""
 	}
 	return filepath.Join(o.tlsDatadir(), OperatorTLSKeyFile)
 }
 
 func (o ServiceOpts) operatorTLSCert() string {
-	if o.NoMacaroons {
+	if o.NoOperatorTls {
 		return ""
 	}
 	return filepath.Join(o.tlsDatadir(), OperatorTLSCertFile)
@@ -241,16 +241,15 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 		macaroonSvc, _ = macaroons.NewService(
 			opts.dbDatadir(), Location, DBFile, false, macaroons.IPLockChecker,
 		)
-
-		if !opts.NoOperatorTls {
-			if err := generateOperatorTLSKeyCert(
-				opts.tlsDatadir(), opts.OperatorExtraIPs, opts.OperatorExtraDomains,
-			); err != nil {
-				return nil, err
-			}
-		}
-
 		if err := permissions.Validate(); err != nil {
+			return nil, err
+		}
+	}
+
+	if !opts.NoOperatorTls {
+		if err := generateOperatorTLSKeyCert(
+			opts.tlsDatadir(), opts.OperatorExtraIPs, opts.OperatorExtraDomains,
+		); err != nil {
 			return nil, err
 		}
 	}
@@ -353,12 +352,8 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		daemonv1.RegisterWalletServiceServer(grpcOperatorServer, walletHandler)
 	}
 
-	operatorTlsCert := ""
-	operatorTlsKey := ""
-	if !s.opts.NoOperatorTls {
-		operatorTlsCert = s.opts.operatorTLSCert()
-		operatorTlsKey = s.opts.operatorTLSKey()
-	}
+	operatorTlsCert := s.opts.operatorTLSCert()
+	operatorTlsKey := s.opts.operatorTLSKey()
 
 	tdexConnectSvc, err := httpinterface.NewTdexConnectService(
 		s.opts.RepoManager,
