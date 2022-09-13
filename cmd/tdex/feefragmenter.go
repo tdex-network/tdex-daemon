@@ -60,6 +60,11 @@ var (
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
 			},
+			&cli.StringFlag{
+				Name:     "password",
+				Usage:    "the wallet unlocking password as security measure",
+				Required: true,
+			},
 		},
 		Action: feeFragmenterWithdrawAction,
 	}
@@ -174,12 +179,14 @@ func feeFragmenterWithdrawAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	addr := ctx.String("address")
+	password := ctx.String("password")
 	mSatsPerByte := ctx.Uint64("millisatsperbyte")
 
 	reply, err := client.WithdrawFeeFragmenter(
 		context.Background(), &daemonv1.WithdrawFeeFragmenterRequest{
 			Address:          addr,
 			MillisatsPerByte: mSatsPerByte,
+			Password:         password,
 		},
 	)
 	if err != nil {

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/btcsuite/btcutil"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
@@ -100,6 +102,7 @@ type OperatorService interface {
 	)
 	WithdrawFeeFragmenterFunds(
 		ctx context.Context, address string, millisatsPerByte uint64,
+		password string,
 	) (string, error)
 	// Market fragmenter account
 	GetMarketFragmenterAddress(
@@ -117,6 +120,7 @@ type OperatorService interface {
 	)
 	WithdrawMarketFragmenterFunds(
 		ctx context.Context, address string, millisatsPerByte uint64,
+		password string,
 	) (string, error)
 	// List methods
 	ListMarkets(ctx context.Context) ([]MarketInfo, error)
@@ -309,6 +313,10 @@ func (o *operatorService) WithdrawFeeFunds(
 	)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if !isValidPassword([]byte(req.Password), vault.PassphraseHash) {
+		return nil, nil, fmt.Errorf("invalid password")
 	}
 
 	mnemonic, err := vault.GetMnemonicSafe()
@@ -853,6 +861,10 @@ func (o *operatorService) WithdrawMarketFunds(
 		return nil, nil, err
 	}
 
+	if !isValidPassword([]byte(req.Password), vault.PassphraseHash) {
+		return nil, nil, fmt.Errorf("invalid password")
+	}
+
 	balance, err := getUnlockedBalanceForMarket(
 		o.repoManager, ctx, market,
 	)
@@ -1250,10 +1262,10 @@ func (o *operatorService) FeeFragmenterSplitFunds(
 }
 
 func (o *operatorService) WithdrawFeeFragmenterFunds(
-	ctx context.Context, addr string, millisatsPerByte uint64,
+	ctx context.Context, addr string, millisatsPerByte uint64, password string,
 ) (string, error) {
 	return o.withdrawFragmenterAccount(
-		ctx, domain.FeeFragmenterAccount, addr, millisatsPerByte,
+		ctx, domain.FeeFragmenterAccount, addr, millisatsPerByte, password,
 	)
 }
 
@@ -1367,10 +1379,10 @@ func (o *operatorService) MarketFragmenterSplitFunds(
 }
 
 func (o *operatorService) WithdrawMarketFragmenterFunds(
-	ctx context.Context, addr string, millisatsPerByte uint64,
+	ctx context.Context, addr string, millisatsPerByte uint64, password string,
 ) (string, error) {
 	return o.withdrawFragmenterAccount(
-		ctx, domain.MarketFragmenterAccount, addr, millisatsPerByte,
+		ctx, domain.MarketFragmenterAccount, addr, millisatsPerByte, password,
 	)
 }
 
@@ -2439,7 +2451,18 @@ func (o *operatorService) splitMarketFragmenterFunds(
 
 func (o *operatorService) withdrawFragmenterAccount(
 	ctx context.Context, accountIndex int, addr string, millisatsPerByte uint64,
+	password string,
 ) (string, error) {
+	vault, err := o.repoManager.VaultRepository().GetOrCreateVault(
+		ctx, nil, "", nil,
+	)
+	if err != nil {
+		return "", err
+	}
+	if !isValidPassword([]byte(password), vault.PassphraseHash) {
+		return "", fmt.Errorf("invalid password")
+	}
+
 	net, err := address.NetworkForAddress(addr)
 	if err != nil {
 		return "", fmt.Errorf("address is invalid")
@@ -2863,4 +2886,8 @@ func sendToManyWithoutFeeTopup(opts sendToManyWithoutFeeTopupOpts) (string, erro
 	)
 
 	return txHex, err
+}
+
+func isValidPassword(presentedPwd, hashedPwd []byte) bool {
+	return bytes.Equal(btcutil.Hash160(presentedPwd), hashedPwd)
 }

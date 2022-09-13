@@ -24,7 +24,6 @@ proto: proto-lint
 	@cd api-spec/protobuf; buf mod update; buf build
 	@buf generate buf.build/tdex-network/tdex-protobuf
 	@buf generate
-	@make install
 
 ## proto-lint: lint protos
 proto-lint:

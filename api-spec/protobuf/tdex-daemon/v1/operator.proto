@@ -226,6 +226,8 @@ message WithdrawFeeRequest {
   // those cases where the operator deposits funds with assets diffent from LBTC
   // into the Fee account and than needs to withdraw'em.
   string asset = 4;
+  // The password that unlocks the internal wallet.
+  string password = 5;
 }
 message WithdrawFeeResponse {
   // The transaction hash in mempool/blockchain.
@@ -331,6 +333,8 @@ message WithdrawMarketRequest {
   int64 millisats_per_byte = 3;
   // The address to send the funds to.
   string address = 4;
+  // The password that unlocks the internal wallet.
+  string password = 5;
 }
 message WithdrawMarketResponse {
   // The transaction hash in mempool/blockchain.
@@ -412,6 +416,8 @@ message WithdrawFeeFragmenterRequest {
   string address = 1;
   // The number of millisatoshis per byte that should be paid for network fees.
   uint64 millisats_per_byte = 2;
+  // The password that unlocks the internal wallet.
+  string password = 5;
 }
 message WithdrawFeeFragmenterResponse {
   string txid = 1;
@@ -452,6 +458,8 @@ message WithdrawMarketFragmenterRequest {
   string address = 1;
   // The number of millisatoshis per byte that should be paid for network fees.
   uint64 millisats_per_byte = 2;
+  // The password that unlocks the internal wallet.
+  string password = 5;
 }
 message WithdrawMarketFragmenterResponse {
   string txid = 1;

@@ -398,6 +398,7 @@ func (o operatorHandler) withdrawFee(
 		Address:         req.GetAddress(),
 		Asset:           req.GetAsset(),
 		MillisatPerByte: req.GetMillisatsPerByte(),
+		Password:        req.GetPassword(),
 		Push:            true,
 	}
 	if err := args.Validate(); err != nil {
@@ -662,6 +663,7 @@ func (o operatorHandler) withdrawMarket(
 		BalanceToWithdraw: balanceToWithdraw,
 		MillisatPerByte:   req.GetMillisatsPerByte(),
 		Address:           req.GetAddress(),
+		Password:          req.GetPassword(),
 		Push:              true,
 	}
 	if err := args.Validate(); err != nil {
@@ -879,7 +881,7 @@ func (o operatorHandler) withdrawFeeFragmenter(
 	ctx context.Context, req *daemonv1.WithdrawFeeFragmenterRequest,
 ) (*daemonv1.WithdrawFeeFragmenterResponse, error) {
 	txid, err := o.operatorSvc.WithdrawFeeFragmenterFunds(
-		ctx, req.GetAddress(), req.GetMillisatsPerByte(),
+		ctx, req.GetAddress(), req.GetMillisatsPerByte(), req.GetPassword(),
 	)
 	if err != nil {
 		return nil, err
@@ -989,7 +991,7 @@ func (o operatorHandler) withdrawMarketFragmenter(
 	ctx context.Context, req *daemonv1.WithdrawMarketFragmenterRequest,
 ) (*daemonv1.WithdrawMarketFragmenterResponse, error) {
 	txid, err := o.operatorSvc.WithdrawMarketFragmenterFunds(
-		ctx, req.GetAddress(), req.GetMillisatsPerByte(),
+		ctx, req.GetAddress(), req.GetMillisatsPerByte(), req.GetPassword(),
 	)
 	if err != nil {
 		return nil, err
@@ -1009,15 +1011,18 @@ func (o operatorHandler) listTrades(
 	var err error
 	if mkt := req.GetMarket(); mkt == nil {
 		tradeInfo, err = o.operatorSvc.ListTrades(ctx, page)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		market, err := parseMarket(req.GetMarket())
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 		tradeInfo, err = o.operatorSvc.ListTradesForMarket(ctx, market, page)
-	}
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	pbTradeInfo := make([]*daemonv1.TradeInfo, 0, len(tradeInfo))

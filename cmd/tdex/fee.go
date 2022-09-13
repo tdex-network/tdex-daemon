@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
 	"github.com/urfave/cli/v2"
@@ -90,6 +88,11 @@ var (
 				Name:  "millisatsperbyte",
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
+			},
+			&cli.StringFlag{
+				Name:     "password",
+				Usage:    "the wallet unlocking password as security measure",
+				Required: true,
 			},
 		},
 		Action: feeWithdrawAction,
@@ -213,6 +216,7 @@ func feeWithdrawAction(ctx *cli.Context) error {
 
 	amount := ctx.Uint64("amount")
 	addr := ctx.String("address")
+	password := ctx.String("password")
 	mSatsPerByte := ctx.Uint64("millisatsperbyte")
 	asset := ctx.String("asset")
 
@@ -221,6 +225,7 @@ func feeWithdrawAction(ctx *cli.Context) error {
 		Address:          addr,
 		Asset:            asset,
 		MillisatsPerByte: mSatsPerByte,
+		Password:         password,
 	})
 	if err != nil {
 		return err
@@ -228,13 +233,4 @@ func feeWithdrawAction(ctx *cli.Context) error {
 
 	printRespJSON(reply)
 	return nil
-}
-
-func waitForConfirmation() {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println(
-		"press ENTER to continue after the funds have been trasferred to the " +
-			"fragmenter",
-	)
-	reader.ReadString('\n')
 }
