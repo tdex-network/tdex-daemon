@@ -2,7 +2,6 @@ package httpinterface
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -44,17 +43,24 @@ type tdexConnect struct {
 func NewTdexConnectService(
 	repoManager ports.RepoManager,
 	walletUnlockerSvc application.WalletUnlockerService,
-	macaroonPath, certPath, serverPort, hostname, protocol string,
+	macaroonPath, certPath, addr, protocol string,
 ) (TdexConnectService, error) {
 	macBytes := readFile(macaroonPath)
 	certBytes := readFile(certPath)
+
+	if addr == "" {
+		return nil, fmt.Errorf("tdexconnet: missing listening address")
+	}
 
 	p := protocol
 	if len(certBytes) > 0 {
 		if protocol == "" || protocol == httpsProtocol {
 			p = httpsProtocol
-		} else if protocol == httpProtocol {
-			return nil, errors.New("tdexdconnect: proto=http is not valid if cert is given")
+		} else {
+			return nil, fmt.Errorf(
+				"tdexdconnect: proto must be %s if cert is given, got %s",
+				httpsProtocol, protocol,
+			)
 		}
 	}
 
@@ -66,7 +72,7 @@ func NewTdexConnectService(
 		certPath:          certPath,
 		repoManager:       repoManager,
 		protocol:          p,
-		serverAddress:     fmt.Sprintf("%s:%s", hostname, serverPort),
+		serverAddress:     addr,
 	}, nil
 }
 

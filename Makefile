@@ -65,6 +65,7 @@ run: clean
 	export TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225; \
 	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
 	export TDEX_NO_MACAROONS=true; \
+	export TDEX_CONNECT_PROTO=http; \
 	go run ./cmd/tdexd
 
 
