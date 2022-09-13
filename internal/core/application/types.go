@@ -209,6 +209,7 @@ type WithdrawMarketReq struct {
 	BalanceToWithdraw Balance
 	MillisatPerByte   int64
 	Address           string
+	Password          string
 	Push              bool
 }
 
@@ -225,6 +226,9 @@ func (r WithdrawMarketReq) Validate() error {
 	if r.Address == "" {
 		return ErrMissingWithdrawAddress
 	}
+	if r.Password == "" {
+		return ErrMissingWithdrawPassword
+	}
 	return nil
 }
 
@@ -233,6 +237,7 @@ type WithdrawFeeReq struct {
 	MillisatPerByte uint64
 	Address         string
 	Asset           string
+	Password        string
 	Push            bool
 }
 
@@ -241,12 +246,15 @@ func (r WithdrawFeeReq) Validate() error {
 		return fmt.Errorf("amount must not be 0")
 	}
 	if r.Address == "" {
-		return fmt.Errorf("address must not be null")
+		return ErrMissingWithdrawAddress
 	}
 	if r.Asset != "" {
 		if err := validateAssetString(r.Asset); err != nil {
 			return err
 		}
+	}
+	if r.Password == "" {
+		return ErrMissingWithdrawPassword
 	}
 
 	return nil
@@ -535,12 +543,12 @@ type PredefinedPeriod int
 
 func (p *PredefinedPeriod) validate() error {
 	if *p > LastYear {
-		return errors.New(fmt.Sprintf("PredefinedPeriod cant be > %v", LastYear))
+		return fmt.Errorf("PredefinedPeriod cant be > %v", LastYear)
 	}
 
 	lastYear := time.Now().Year() - 1
 	if lastYear < StartYear {
-		return errors.New(fmt.Sprintf("no available data prior to year: %v", StartYear))
+		return fmt.Errorf("no available data prior to year: %v", StartYear)
 	}
 
 	return nil

@@ -108,6 +108,11 @@ var (
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
 			},
+			&cli.StringFlag{
+				Name:     "password",
+				Usage:    "the wallet unlocking password as security measure",
+				Required: true,
+			},
 		},
 		Action: marketWithdrawAction,
 	}
@@ -434,6 +439,7 @@ func marketWithdrawAction(ctx *cli.Context) error {
 	baseAmount := ctx.Uint64("base_amount")
 	quoteAmount := ctx.Uint64("quote_amount")
 	addr := ctx.String("address")
+	password := ctx.String("password")
 	mSatsPerByte := ctx.Int64("millisatsperbyte")
 
 	reply, err := client.WithdrawMarket(context.Background(), &daemonv1.WithdrawMarketRequest{
@@ -447,6 +453,7 @@ func marketWithdrawAction(ctx *cli.Context) error {
 		},
 		Address:          addr,
 		MillisatsPerByte: mSatsPerByte,
+		Password:         password,
 	})
 	if err != nil {
 		return err

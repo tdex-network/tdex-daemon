@@ -61,6 +61,9 @@ var (
 	// ErrMissingWithdrawAddress is returned if the receiving address to is not
 	// set for a withdrawal.
 	ErrMissingWithdrawAddress = errors.New("address must not be null")
+	// ErrMissingWithdrawPassword is returned if the wallet password is missing
+	// for a withdrawal request.
+	ErrMissingWithdrawPassword = errors.New("password must not be null")
 	// ErrMarketNonZeroBalance is returned when trying to drop a market that still
 	// owns some base or quote asset funds.
 	ErrMarketNonZeroBalance = errors.New("withdraw funds from market before deleting")
