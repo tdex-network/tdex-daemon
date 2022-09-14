@@ -161,6 +161,8 @@ dockers:
       - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - web/layout.html
 
   # arm64
   - image_templates:
@@ -185,6 +187,8 @@ dockers:
       - "--label=org.opencontainers.image.title=tdexd"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
+    extra_files:
+      - web/layout.html
 
 docker_manifests:
   - name_template: ghcr.io/tdex-network/tdexd:{{ .Tag }}
