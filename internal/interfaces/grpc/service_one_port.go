@@ -261,9 +261,6 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 		grpcServer, walletUnlockerHandler,
 	)
 
-	transportHandler := grpchandler.NewTransportHandler()
-	tdexv1.RegisterTransportServiceServer(grpcServer, transportHandler)
-
 	var grpcGateway http.Handler
 	if !withUnlockerOnly {
 		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
@@ -278,6 +275,8 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 		if err != nil {
 			return nil, err
 		}
+		transportHandler := grpchandler.NewTransportHandler()
+		tdexv1.RegisterTransportServiceServer(grpcServer, transportHandler)
 		grpcGateway = tradeGrpcGateway
 	}
 
@@ -357,6 +356,9 @@ func (s *serviceOnePort) tradeGrpcGateway(
 
 	grpcGatewayMux := runtime.NewServeMux()
 	if err := tdexv1.RegisterTradeServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
+		return nil, err
+	}
+	if err := tdexv1.RegisterTransportServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
 		return nil, err
 	}
 
