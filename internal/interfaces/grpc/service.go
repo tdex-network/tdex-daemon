@@ -342,9 +342,6 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		grpcOperatorServer, walletUnlockerHandler,
 	)
 
-	transportHandler := grpchandler.NewTransportHandler()
-	tdexv1.RegisterTransportServiceServer(grpcOperatorServer, transportHandler)
-
 	if !withUnlockerOnly {
 		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
 		operatorHandler := grpchandler.NewOperatorHandler(s.opts.OperatorSvc)
@@ -400,6 +397,8 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		tradeOldHandler := grpchandler.NewTradeOldHandler(s.opts.TradeSvc)
 		tdexv1.RegisterTradeServiceServer(grpcTradeServer, tradeHandler)
 		tdexold.RegisterTradeServer(grpcTradeServer, tradeOldHandler)
+		transportHandler := grpchandler.NewTransportHandler()
+		tdexv1.RegisterTransportServiceServer(grpcTradeServer, transportHandler)
 
 		insecure := len(tradeTLSCert) <= 0
 		tradeGrpcGateway, err := s.tradeGrpcGateway(context.Background(), insecure)
@@ -574,6 +573,9 @@ func (s *service) tradeGrpcGateway(
 
 	grpcGatewayMux := runtime.NewServeMux()
 	if err := tdexv1.RegisterTradeServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
+		return nil, err
+	}
+	if err := tdexv1.RegisterTransportServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
 		return nil, err
 	}
 
