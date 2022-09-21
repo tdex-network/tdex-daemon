@@ -283,6 +283,11 @@ func newGRPCWrappedServer(
 	)
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
+		if isOptionRequest(req) {
+			w.Header().Set("Access-control-Allow-Origin", "*")
+			w.Header().Set("Access-control-Allow-Headers", "*")
+			return
+		}
 		if isGetRequest(req) {
 			if handler, ok := httpHandlers[req.URL.Path]; ok {
 				handler(w, req)
@@ -326,6 +331,10 @@ func newGRPCWrappedServer(
 
 func isGetRequest(req *http.Request) bool {
 	return req.Method == http.MethodGet
+}
+
+func isOptionRequest(req *http.Request) bool {
+	return req.Method == http.MethodOptions
 }
 
 func isValidRequest(req *http.Request) bool {
