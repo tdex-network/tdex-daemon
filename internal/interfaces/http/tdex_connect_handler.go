@@ -117,11 +117,17 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 	// if is initialized then we need to check auth before appending the macaroon
 	username, password, ok := req.BasicAuth()
 	if !ok {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+	    w.Header().Set("Access-control-Allow-Headers", "*")
+	    w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		log.Debugln("http: basic auth not provided")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 	if username != "tdex" {
+	    w.Header().Set("Access-Control-Allow-Origin", "*")
+    	w.Header().Set("Access-control-Allow-Headers", "*")
+    	w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		log.Debugln("http: invalid username")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
@@ -138,6 +144,9 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 		CypherText: vault.EncryptedMnemonic,
 		Passphrase: password,
 	}); err != nil {
+	    w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-control-Allow-Headers", "*")
+        w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		log.Debugln("http: invalid password")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
