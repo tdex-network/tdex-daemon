@@ -1,6 +1,7 @@
 package httpinterface
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"html/template"
@@ -8,10 +9,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 
 	"github.com/tdex-network/tdex-daemon/pkg/tdexdconnect"
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 
 	log "github.com/sirupsen/logrus"
 
@@ -117,11 +118,17 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 	// if is initialized then we need to check auth before appending the macaroon
 	username, password, ok := req.BasicAuth()
 	if !ok {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-control-Allow-Headers", "*")
+		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		log.Debugln("http: basic auth not provided")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 	if username != "tdex" {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-control-Allow-Headers", "*")
+		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		log.Debugln("http: invalid username")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
@@ -134,11 +141,11 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if _, err := wallet.Decrypt(wallet.DecryptOpts{
-		CypherText: vault.EncryptedMnemonic,
-		Passphrase: password,
-	}); err != nil {
-		log.Debugln("http: invalid password")
+	pwdHash := btcutil.Hash160([]byte(password))
+	if !bytes.Equal(vault.PassphraseHash, pwdHash) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-control-Allow-Headers", "*")
+		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}

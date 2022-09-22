@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"runtime/debug"
 
 	"golang.org/x/crypto/scrypt"
 )
@@ -27,6 +28,11 @@ func (o EncryptOpts) validate() error {
 
 // Encrypt encrypts (with AES-128) a plaintext with the provided passphrase
 func Encrypt(opts EncryptOpts) (string, error) {
+	// Due to https://github.com/golang/go/issues/7168.
+	// This call makes sure that memory is freed in case the GC doesn't do that
+	// right after the encryption/decryption.
+	defer debug.FreeOSMemory()
+
 	if err := opts.validate(); err != nil {
 		return "", err
 	}
@@ -76,6 +82,8 @@ func (o DecryptOpts) validate() error {
 
 // Decrypt decrypts (with AES-128) a cyphertext with the provided passphrase
 func Decrypt(opts DecryptOpts) (string, error) {
+	defer debug.FreeOSMemory()
+
 	if err := opts.validate(); err != nil {
 		return "", err
 	}
