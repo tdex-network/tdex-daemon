@@ -290,6 +290,8 @@ func newGRPCWrappedServer(
 		}
 		if isGetRequest(req) {
 			if handler, ok := httpHandlers[req.URL.Path]; ok {
+				w.Header().Set("Access-control-Allow-Origin", "*")
+				w.Header().Set("Access-control-Allow-Headers", "*")
 				handler(w, req)
 				return
 			}
@@ -302,6 +304,8 @@ func newGRPCWrappedServer(
 
 		if grpcGateway != nil {
 			if isHttpRequest(req) {
+				w.Header().Set("Access-control-Allow-Origin", "*")
+				w.Header().Set("Access-control-Allow-Headers", "*")
 				grpcGateway.ServeHTTP(w, req)
 				return
 			}
