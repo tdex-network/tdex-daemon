@@ -119,7 +119,7 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 	username, password, ok := req.BasicAuth()
 	if !ok {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		log.Debugln("http: basic auth not provided")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -127,7 +127,7 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	if username != "tdex" {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		log.Debugln("http: invalid username")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -144,7 +144,7 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 	pwdHash := btcutil.Hash160([]byte(password))
 	if !bytes.Equal(vault.PassphraseHash, pwdHash) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
