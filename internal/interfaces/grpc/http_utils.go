@@ -284,12 +284,16 @@ func newGRPCWrappedServer(
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
 		if isOptionRequest(req) {
-			w.Header().Set("Access-control-Allow-Origin", "*")
-			w.Header().Set("Access-control-Allow-Headers", "*")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 			return
 		}
 		if isGetRequest(req) {
 			if handler, ok := httpHandlers[req.URL.Path]; ok {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 				handler(w, req)
 				return
 			}
@@ -302,6 +306,9 @@ func newGRPCWrappedServer(
 
 		if grpcGateway != nil {
 			if isHttpRequest(req) {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 				grpcGateway.ServeHTTP(w, req)
 				return
 			}
