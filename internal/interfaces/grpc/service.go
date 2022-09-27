@@ -544,6 +544,7 @@ func (s *service) startListeningToReadyChan() {
 				break
 			}
 		}
+		s.walletPassword = ""
 	}
 
 	withoutUnlockerOnly := false
