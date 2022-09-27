@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/tdex-network/tdex-daemon/pkg/wallet"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 
 	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
@@ -520,12 +522,29 @@ func (s *service) startListeningToReadyChan() {
 	}
 
 	if s.walletPassword != "" {
-		if err := s.opts.WalletUnlockerSvc.UnlockWallet(context.Background(), s.walletPassword); err != nil {
-			panic(err)
-		}
+		retryAttempt := 0
+	loop:
+		for {
+			if err := s.opts.WalletUnlockerSvc.UnlockWallet(
+				context.Background(),
+				s.walletPassword,
+			); err != nil && err != wallet.ErrInvalidPassphrase && retryAttempt < 5 {
+				retryAttempt++
+				log.Debugf("retrying to unlock wallet: %v, attempt: %v", err, retryAttempt)
 
-		s.walletPassword = ""
-		log.Infoln("wallet unlocked")
+				continue loop
+			} else {
+				if err != nil {
+					log.WithError(err).Warn(
+						"an error occurred while unlocking wallet",
+					)
+				} else {
+					log.Debug("wallet unlocked with password file")
+				}
+
+				break loop
+			}
+		}
 	}
 
 	withoutUnlockerOnly := false
