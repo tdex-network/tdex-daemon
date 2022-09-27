@@ -523,7 +523,6 @@ func (s *service) startListeningToReadyChan() {
 
 	if s.walletPassword != "" {
 		retryAttempt := 0
-	loop:
 		for {
 			if err := s.opts.WalletUnlockerSvc.UnlockWallet(
 				context.Background(),
@@ -532,7 +531,7 @@ func (s *service) startListeningToReadyChan() {
 				retryAttempt++
 				log.Debugf("retrying to unlock wallet: %v, attempt: %v", err, retryAttempt)
 
-				continue loop
+				continue
 			} else {
 				if err != nil {
 					log.WithError(err).Warn(
@@ -542,7 +541,7 @@ func (s *service) startListeningToReadyChan() {
 					log.Debug("wallet unlocked with password file")
 				}
 
-				break loop
+				break
 			}
 		}
 	}
