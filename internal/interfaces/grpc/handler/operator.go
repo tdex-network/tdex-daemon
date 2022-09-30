@@ -1434,7 +1434,7 @@ func toUtxoInfoList(list []application.UtxoInfo) []*daemonv1.UtxoInfo {
 func parseTimeRange(timeRange *daemonv1.TimeRange) (*application.TimeRange, error) {
 	var predefinedPeriod *application.PredefinedPeriod
 	if timeRange.GetPredefinedPeriod() > daemonv1.PredefinedPeriod_PREDEFINED_PERIOD_UNSPECIFIED {
-		pp := application.PredefinedPeriod(timeRange.GetPredefinedPeriod())
+		pp := parsePredefinedPeriod(timeRange.GetPredefinedPeriod())
 		predefinedPeriod = &pp
 	}
 	var customPeriod *application.CustomPeriod
@@ -1471,4 +1471,27 @@ func parseTimeFrame(timeFrame daemonv1.TimeFrame) int {
 	}
 
 	return 1
+}
+
+func parsePredefinedPeriod(predefinedPeriod daemonv1.PredefinedPeriod) application.PredefinedPeriod {
+	switch predefinedPeriod {
+	case daemonv1.PredefinedPeriod_PREDEFINED_PERIOD_LAST_HOUR:
+		return application.LastHour
+	case daemonv1.PredefinedPeriod_PREDEFINED_PERIOD_LAST_DAY:
+		return application.LastDay
+	case daemonv1.PredefinedPeriod_PREDEFINED_PERIOD_LAST_WEEK:
+		return application.LastWeek
+	case daemonv1.PredefinedPeriod_PREDEFINED_PERIOD_LAST_MONTH:
+		return application.LastMonth
+	case daemonv1.PredefinedPeriod_PREDEFINED_PERIOD_LAST_THREE_MONTHS:
+		return application.LastThreeMonths
+	case daemonv1.PredefinedPeriod_PREDEFINED_PERIOD_YEAR_TO_DATE:
+		return application.YearToDate
+	case daemonv1.PredefinedPeriod_PREDEFINED_PERIOD_LAST_YEAR:
+		return application.LastYear
+	case daemonv1.PredefinedPeriod_PREDEFINED_PERIOD_ALL:
+		return application.All
+	}
+
+	return application.NIL
 }
