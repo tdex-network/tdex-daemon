@@ -28,8 +28,8 @@ const (
 	LastMonth
 	LastThreeMonths
 	YearToDate
-	All
 	LastYear
+	All
 
 	StartYear = 2021
 )
