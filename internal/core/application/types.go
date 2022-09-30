@@ -542,7 +542,7 @@ func (t *TimeRange) Validate() error {
 type PredefinedPeriod int
 
 func (p *PredefinedPeriod) validate() error {
-	if *p > LastYear {
+	if *p > All {
 		return fmt.Errorf("PredefinedPeriod cant be > %v", LastYear)
 	}
 
@@ -611,13 +611,13 @@ func (t *TimeRange) getStartAndEndTime(now time.Time) (startTime time.Time, endT
 		case YearToDate:
 			y, _, _ := now.Date()
 			start = time.Date(y, time.January, 1, 0, 0, 0, 0, time.UTC)
-		case All:
-			start = time.Date(StartYear, time.January, 1, 0, 0, 0, 0, time.UTC)
 		case LastYear:
 			y, _, _ := now.Date()
 			startTime = time.Date(y-1, time.January, 1, 0, 0, 0, 0, time.UTC)
 			endTime = time.Date(y-1, time.December, 31, 23, 59, 59, 0, time.UTC)
 			return
+		case All:
+			start = time.Date(StartYear, time.January, 1, 0, 0, 0, 0, time.UTC)
 		}
 
 		startTime = start

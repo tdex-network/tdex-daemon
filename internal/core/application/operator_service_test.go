@@ -182,6 +182,7 @@ func newOperatorService() (application.OperatorService, error) {
 
 func TestOperatorServiceGetMarketReport(t *testing.T) {
 	ctx := context.Background()
+	all := application.All
 
 	type fields struct {
 		trades []*domain.Trade
@@ -309,6 +310,36 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 			},
 			wantGroupedVolumeLen: 6,
 			wantErr:              false,
+		},
+		{
+			name: "4",
+			fields: fields{
+				trades: trades3(),
+			},
+			args: args{
+				ctx: ctx,
+				market: application.Market{
+					BaseAsset:  "b",
+					QuoteAsset: "q",
+				},
+				timeRange: application.TimeRange{
+					PredefinedPeriod: &all,
+				},
+				groupByTimeFrame: 30,
+			},
+			want: func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
+				//validate that report contains data from 2021 and 2022
+				if report.GroupedVolume[0].StartTime.Year() != 2022 {
+					return errors.New(fmt.Sprintf("expected grouped volume start time year: %v, got: %v", 2022, report.GroupedVolume[0].StartTime.Year()))
+				}
+
+				if report.GroupedVolume[len(report.GroupedVolume)-1].StartTime.Year() != 2021 {
+					return errors.New(fmt.Sprintf("expected grouped volume start time year: %v, got: %v", 2021, report.GroupedVolume[0].StartTime.Year()))
+				}
+
+				return nil
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -473,6 +504,60 @@ func trades2() []*domain.Trade {
 			SwapRequest: domain.Swap{
 				ID:        "",
 				Timestamp: uint64(timePoint2.Unix()),
+			},
+		})
+	}
+
+	return trades
+}
+
+func trades3() []*domain.Trade {
+	trades := make([]*domain.Trade, 0)
+
+	timePoint1, _ := time.Parse(time.RFC3339, "2021-03-17T14:30:00Z")
+	for i := 0; i < 5; i++ {
+		trades = append(trades, &domain.Trade{
+			Status:              domain.CompletedStatus,
+			MarketBaseAsset:     "b",
+			MarketQuoteAsset:    "q",
+			MarketFee:           20,
+			MarketFixedBaseFee:  30,
+			MarketFixedQuoteFee: 40,
+			SwapRequest: domain.Swap{
+				ID:        "",
+				Timestamp: uint64(timePoint1.Unix()),
+			},
+		})
+	}
+
+	timePoint2, _ := time.Parse(time.RFC3339, "2022-03-17T14:30:00Z")
+	for i := 0; i < 5; i++ {
+		trades = append(trades, &domain.Trade{
+			Status:              domain.CompletedStatus,
+			MarketBaseAsset:     "b",
+			MarketQuoteAsset:    "q",
+			MarketFee:           20,
+			MarketFixedBaseFee:  30,
+			MarketFixedQuoteFee: 40,
+			SwapRequest: domain.Swap{
+				ID:        "",
+				Timestamp: uint64(timePoint2.Unix()),
+			},
+		})
+	}
+
+	timePoint3, _ := time.Parse(time.RFC3339, "2022-03-16T15:30:00Z")
+	for i := 0; i < 5; i++ {
+		trades = append(trades, &domain.Trade{
+			Status:              domain.CompletedStatus,
+			MarketBaseAsset:     "b",
+			MarketQuoteAsset:    "q",
+			MarketFee:           20,
+			MarketFixedBaseFee:  30,
+			MarketFixedQuoteFee: 40,
+			SwapRequest: domain.Swap{
+				ID:        "",
+				Timestamp: uint64(timePoint3.Unix()),
 			},
 		})
 	}
