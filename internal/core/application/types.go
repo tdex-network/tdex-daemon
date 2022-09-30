@@ -543,7 +543,7 @@ type PredefinedPeriod int
 
 func (p *PredefinedPeriod) validate() error {
 	if *p > All {
-		return fmt.Errorf("PredefinedPeriod cant be > %v", LastYear)
+		return fmt.Errorf("PredefinedPeriod cant be > %v", All)
 	}
 
 	lastYear := time.Now().Year() - 1
