@@ -289,10 +289,14 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 			)
 		}
 
-		tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
-		if err != nil {
-			return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
+		tlsCreds := credentials.NewTLS(nil)
+		if certPath != "" {
+			tlsCreds, err = credentials.NewClientTLSFromFile(certPath, "")
+			if err != nil {
+				return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
+			}
 		}
+
 		opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
 	}
 
