@@ -199,6 +199,7 @@ func configConnectAction(c *cli.Context) (err error) {
 
 	if err = setState(map[string]string{
 		"proto":          proto,
+		"no_tls":         strconv.FormatBool(proto == "http"),
 		"rpcserver":      rpcServerAddr,
 		"no_macaroons":   noMacaroons,
 		"tls_cert_path":  tlsCertPath,
