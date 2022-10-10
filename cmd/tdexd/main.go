@@ -204,8 +204,7 @@ func main() {
 
 	// Start gRPC service interfaces.
 	if err := svc.Start(); err != nil {
-		log.Errorf("error while starting daemon: %s", err)
-		return
+		log.Fatalf("error while starting daemon: %s", err)
 	}
 
 	sigChan := make(chan os.Signal, 1)
