@@ -63,13 +63,6 @@ func NewTdexConnectService(
 				httpsProtocol, protocol,
 			)
 		}
-	} else {
-		if protocol == httpsProtocol {
-			return nil, fmt.Errorf(
-				"tdexdconnect: proto must be %s if cert is not given, got %s",
-				httpProtocol, protocol,
-			)
-		}
 	}
 
 	return &tdexConnect{

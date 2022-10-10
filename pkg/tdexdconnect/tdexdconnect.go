@@ -17,10 +17,6 @@ func Encode(
 		return nil, errors.New("http protocol invalid with cert provided")
 	}
 
-	if len(certBytes) == 0 && proto == "https" {
-		return nil, errors.New("https protocol invalid without cert provided")
-	}
-
 	u := url.URL{Scheme: "tdexdconnect", Host: rpcServerAddr}
 	q := u.Query()
 
