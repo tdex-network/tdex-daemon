@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -289,15 +290,21 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 			)
 		}
 
-		tlsCreds := credentials.NewTLS(nil)
+		config := &tls.Config{
+			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS12,
+		}
+		dialOpt := grpc.WithTransportCredentials(credentials.NewTLS(config))
 		if certPath != "" {
-			tlsCreds, err = credentials.NewClientTLSFromFile(certPath, "")
+			tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
 			if err != nil {
 				return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
 			}
+
+			dialOpt = grpc.WithTransportCredentials(tlsCreds)
 		}
 
-		opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
+		opts = append(opts, dialOpt)
 	}
 
 	noMacaroons, _ := strconv.ParseBool(state["no_macaroons"])

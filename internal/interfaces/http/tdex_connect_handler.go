@@ -55,12 +55,19 @@ func NewTdexConnectService(
 
 	p := protocol
 	if len(certBytes) > 0 {
-		if protocol == "" || protocol == httpsProtocol {
+		if protocol == httpsProtocol {
 			p = httpsProtocol
 		} else {
 			return nil, fmt.Errorf(
 				"tdexdconnect: proto must be %s if cert is given, got %s",
 				httpsProtocol, protocol,
+			)
+		}
+	} else {
+		if protocol == httpsProtocol {
+			return nil, fmt.Errorf(
+				"tdexdconnect: proto must be %s if cert is not given, got %s",
+				httpProtocol, protocol,
 			)
 		}
 	}
