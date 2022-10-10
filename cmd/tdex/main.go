@@ -290,10 +290,7 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 			)
 		}
 
-		config := &tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec
-			MinVersion:         tls.VersionTLS12,
-		}
+		config := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12} //nolint:gosec
 		dialOpt := grpc.WithTransportCredentials(credentials.NewTLS(config))
 		if certPath != "" {
 			tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
