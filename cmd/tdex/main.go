@@ -291,7 +291,7 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 		}
 
 		config := &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, //nolint:gosec
 			MinVersion:         tls.VersionTLS12,
 		}
 		dialOpt := grpc.WithTransportCredentials(credentials.NewTLS(config))
