@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -282,17 +281,8 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 	if noTls {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
-		certPath, ok := state["tls_cert_path"]
-		if !ok {
-			return nil, fmt.Errorf(
-				"TLS certificate filepath is missing. Try " +
-					"'tdex config set tls_cert_path path/to/tls/certificate'",
-			)
-		}
-
-		//nogosec
-		config := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12} //#nosec
-		dialOpt := grpc.WithTransportCredentials(credentials.NewTLS(config))
+		certPath := state["tls_cert_path"]
+		dialOpt := grpc.WithTransportCredentials(credentials.NewTLS(nil))
 		if certPath != "" {
 			tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
 			if err != nil {
