@@ -33,8 +33,10 @@
         headers.set('Authorization', 'Basic ' + window.btoa(unescape(encodeURIComponent(authString))))
       }
 
-      const response = await window.fetch("/tdexdconnect", { method: 'GET', headers,});
+      const pathname = window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`
+      const response = await window.fetch(`${pathname}tdexdconnect`, { method: 'GET', headers,});
       if (!response.ok) {
+        console.log(response.status, response.statusText)
         render(showLogin(password ? "Invalid password" : ""), document.getElementById("root"));
         attachOnClickLogin();
         return;
