@@ -119,9 +119,7 @@ func (w *walletUnlockerHandler) initWallet(
 	// that the app service skipped the operation because the wallet was already
 	// initialized.
 	if !noReplies && w.adminMacaroonPath != "" {
-		var mac []byte
 		// Retry checking the admin.macaroon file exists until it's found in the datadir.
-	macExist:
 		for {
 			if _, err := os.Stat(w.adminMacaroonPath); err != nil {
 				if os.IsNotExist(err) {
@@ -130,23 +128,20 @@ func (w *walletUnlockerHandler) initWallet(
 
 				return err
 			}
-			break
-		}
-		mac, err := ioutil.ReadFile(w.adminMacaroonPath)
-		if err != nil {
-			return nil
-		}
 
-		if len(mac) > 0 {
-			macStr := hex.EncodeToString(mac)
-			if err := stream.Send(&daemonv1.InitWalletResponse{
-				Data:    macStr,
-				Account: -1,
-			}); err != nil {
+			mac, err := ioutil.ReadFile(w.adminMacaroonPath)
+			if err != nil {
 				return err
 			}
-		} else {
-			goto macExist
+
+			if len(mac) == 0 {
+				continue
+			}
+
+			return stream.Send(&daemonv1.InitWalletResponse{
+				Data:    hex.EncodeToString(mac),
+				Account: -1,
+			})
 		}
 	}
 
