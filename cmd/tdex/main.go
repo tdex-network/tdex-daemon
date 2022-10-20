@@ -281,19 +281,18 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 	if noTls {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
-		certPath, ok := state["tls_cert_path"]
-		if !ok {
-			return nil, fmt.Errorf(
-				"TLS certificate filepath is missing. Try " +
-					"'tdex config set tls_cert_path path/to/tls/certificate'",
-			)
+		certPath := state["tls_cert_path"]
+		dialOpt := grpc.WithTransportCredentials(credentials.NewTLS(nil))
+		if certPath != "" {
+			tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
+			if err != nil {
+				return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
+			}
+
+			dialOpt = grpc.WithTransportCredentials(tlsCreds)
 		}
 
-		tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
-		if err != nil {
-			return nil, fmt.Errorf("could not read TLS certificate:  %s", err)
-		}
-		opts = append(opts, grpc.WithTransportCredentials(tlsCreds))
+		opts = append(opts, dialOpt)
 	}
 
 	noMacaroons, _ := strconv.ParseBool(state["no_macaroons"])
