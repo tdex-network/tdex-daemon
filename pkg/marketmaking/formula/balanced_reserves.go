@@ -9,9 +9,8 @@ import (
 )
 
 const (
-	balancedWeightIn     = 50
-	balancedWeightOut    = 50
-	BalancedReservesType = 1
+	balancedWeightIn  = 50
+	balancedWeightOut = 50
 )
 
 var (
@@ -151,8 +150,4 @@ func (BalancedReserves) InGivenOut(_opts interface{}, amountOut uint64) (uint64,
 	}
 
 	return amountIn, nil
-}
-
-func (BalancedReserves) FormulaType() int {
-	return BalancedReservesType
 }
