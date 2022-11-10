@@ -1,0 +1,259 @@
+syntax = "proto3";
+
+package tdex_daemon.v2;
+
+import "tdex/v1/types.proto";
+
+enum StrategyType {
+  STRATEGY_TYPE_UNSPECIFIED = 0;
+  STRATEGY_TYPE_PLUGGABLE = 1;
+  STRATEGY_TYPE_BALANCED = 2;
+  STRATEGY_TYPE_UNBALANCED = 3;
+}
+
+enum TradeStatus {
+  TRADE_STATUS_UNSPECIFIED = 0;
+  TRADE_STATUS_REQUEST = 1;
+  TRADE_STATUS_ACCEPT = 2;
+  TRADE_STATUS_COMPLETE = 3;
+  TRADE_STATUS_SETTLED = 4;
+  TRADE_STATUS_EXPIRED = 5;
+}
+
+enum ActionType {
+  ACTION_TYPE_UNSPECIFIED = 0;
+  ACTION_TYPE_TRADE_SETTLED = 1;
+  ACTION_TYPE_ACCOUNT_LOW_BALANCE = 2;
+  ACTION_TYPE_ACCOUNT_WITHDRAW = 3;
+  ACTION_TYPE_ALL_ACTIONS = 4;
+}
+
+enum PredefinedPeriod {
+  PREDEFINED_PERIOD_UNSPECIFIED = 0;
+  PREDEFINED_PERIOD_LAST_HOUR = 1;
+  PREDEFINED_PERIOD_LAST_DAY = 2;
+  PREDEFINED_PERIOD_LAST_WEEK = 3;
+  PREDEFINED_PERIOD_LAST_MONTH = 4;
+  PREDEFINED_PERIOD_LAST_THREE_MONTHS = 5;
+  PREDEFINED_PERIOD_YEAR_TO_DATE = 6;
+  PREDEFINED_PERIOD_LAST_YEAR = 7;
+  PREDEFINED_PERIOD_ALL = 8;
+}
+
+enum TimeFrame {
+  TIME_FRAME_UNSPECIFIED = 0;
+  TIME_FRAME_HOUR = 1;
+  TIME_FRAME_FOUR_HOURS = 2;
+  TIME_FRAME_DAY = 3;
+  TIME_FRAME_WEEK = 4;
+  TIME_FRAME_MONTH = 5;
+}
+
+message AccountInfo {
+  // The name of the wallet account.
+  string account_name = 2;
+  // The full derivation path.
+  string derivation_path = 3;
+  // The master public key.
+  string xpub = 4;
+}
+
+message MarketInfo {
+  // The asset pair of the market
+  tdex.v1.Market market = 1;
+  // The percentage and fixed fees
+  tdex.v1.Fee fee = 2;
+  // Whether the market is opened or closed.
+  bool tradable = 3;
+  // The making strategy.
+  StrategyType strategy_type = 4;
+  // The name of the wallet account.
+  string account_name = 5;
+  // The current price in case the strategy is PLUGGABLE.
+  tdex.v1.Price price = 6;
+  // The current unlocked balance.
+  map<string, Balance> balance = 7;
+}
+
+message UtxoInfo {
+  // The outpoint <hash, index>
+  Outpoint outpoint = 1;
+  // The unblinded value.
+  uint64 value = 2;
+  // The unblinded asset.
+  string asset = 3;
+}
+
+message TradeStatusInfo {
+  // The status of the trade.
+  TradeStatus status = 1;
+  // Whether it is failed in the current status.
+  bool failed = 2;
+}
+
+message SwapInfo {
+  // The proposer's quantity.
+  uint64 amount_p = 1;
+  // The proposer's asset hash.
+  string asset_p = 2;
+  // The responder's quantity.
+  uint64 amount_r = 3;
+  // The responder's asset hash.
+  string asset_r = 4;
+}
+
+message SwapFailInfo {
+  // The error code.
+  uint32 failure_code = 1;
+  // The error message.
+  string failure_message = 2;
+}
+
+message TradeInfo {
+  // The id of the trade.
+  string trade_id = 1;
+  // The info about the status of the trade.
+  TradeStatusInfo status = 2;
+  // The info about the swap.
+  SwapInfo swap_info = 3;
+  // The info of an eventually failed swap.
+  SwapFailInfo fail_info = 4;
+  // The collected fee on the current swap.
+  tdex.v1.MarketWithFee market_with_fee = 5;
+  // The prices of the trade at request time.
+  tdex.v1.Price price = 6;
+  // The unix timestamp of the SwapRequest.
+  int64 request_timestamp = 7;
+  // The unix timestamp SwapAccept.
+  int64 accept_timestamp = 8;
+  // The unix timestamp of the SwapComplete.
+  int64 complete_timestamp = 9;
+  // The unix timestamp of the settlement date.
+  int64 settle_timestamp = 10;
+  // The unix timestamp of the expiration date.
+  int64 expiry_timestamp = 11;
+  // The timestamp of the SwapRequest in RFC3339 format.
+  string request_date = 12;
+  // The timestamp of the SwapAccept in RFC3339 format.
+  string accept_date = 13;
+  // The timestamp of the SwapComplete in RFC3339 format.
+  string complete_date = 14;
+  // The timestamp of the settlement date in RFC3339 format.
+  string settle_date = 15;
+  // The timestamp of the expiration date in RFC3339 format.
+  string expiry_date = 16;
+}
+
+message FeeInfo {
+  // The id of the trade.
+  string trade_id = 1;
+  // The percentage fee applied to the trade.
+  int64 basis_point = 2;
+  // The asset in which fees are collected.
+  string asset = 3;
+  // The amount in satoshi of the percentage fee.
+  uint64 percentage_fee_amount = 4;
+  // The amount in satoshi of the fixed fee.
+  uint64 fixed_fee_amount = 5;
+  // The market price when the trade propoal was accepted.
+  double market_price = 6;
+}
+
+message Balance {
+  // Spendable balance.
+  uint64 confirmed_balance = 1;
+  // Not yet spendable balance.
+  uint64 unconfirmed_balance = 2;
+  // Not spendable balance.
+  uint64 locked_balance = 3;
+  // The balance of all unspents included those locked.
+  uint64 total_balance = 4;
+}
+
+message TxOutput {
+  // Asset hash.
+  string asset = 1;
+  // Spending amount.
+  uint64 amount = 2;
+  // Destination output script.
+  string script = 3;
+  // Blinding key for confidential output.
+  string blinding_key = 4;
+}
+
+message Outpoint {
+  // The hash of the transaction.
+  string hash = 1;
+  // The index of the output.
+  uint32 index = 2;
+}
+
+message WebhookInfo {
+  // The id of the webhook.
+  string id = 1;
+  // The endpoint of the external service to reach.
+  string endpoint = 2;
+  // Whether the outgoing requests are authenticated.
+  bool is_secured = 3;
+  // The type of the action.
+  ActionType action_type = 4;
+}
+
+message Transaction {
+  // The utxo deposited.
+  string txid = 1;
+  // Total outputs amount per asset deposited.
+  map<string, uint64> total_amount_per_asset = 2;
+  // The timestamp of the deposit transaction in Unix format.
+  int64 timestamp = 3;
+  // The timestamp of the deposit transaction in RFC3339 format.
+  string date = 4;
+}
+
+message Page {
+  // The number of the page.
+  int64 number = 1;
+  // The size of the page, ie the max length the returning list can have.
+  int64 size = 2;
+}
+
+message MarketReport {
+  MarketCollectedFees total_collected_fees = 1;
+  MarketVolume total_volume = 2;
+  repeated MarketVolume volumes_per_frame = 3;
+}
+
+message MarketCollectedFees {
+  uint64 base_amount = 1;
+  uint64 quote_amount = 2;
+  repeated FeeInfo fees_per_trade = 3;
+  // start_date in RFC3339 format of the aggregated volume calculation
+  string start_date = 4;
+  // end_date in RFC3339 format of the aggregated volume calculation
+  string end_date = 5;
+}
+
+message MarketVolume {
+  uint64 base_volume = 1;
+  uint64 quote_volume = 2;
+  // start_date in RFC3339 format of the aggregated volume calculation
+  string start_date = 3;
+  // end_date in RFC3339 format of the aggregated volume calculation
+  string end_date = 4;
+}
+
+// TimeRange is flexible type used to determine time span for which specific
+// api will fetch data, either one of predefined_period or custom_period should be provided.
+message TimeRange {
+  // predefined time_period till now
+  PredefinedPeriod predefined_period = 1;
+  // custom time range
+  CustomPeriod custom_period = 2;
+}
+
+message CustomPeriod {
+  // start_date in RFC3339 format
+  string start_date = 1;
+  // end_date in RFC3339 format
+  string end_date = 2;
+}

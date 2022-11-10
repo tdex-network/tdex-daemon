@@ -1,0 +1,154 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "tdex-daemon/v2/wallet.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "WalletService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "googlerpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "tdex_daemonv2AccountInfo": {
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "The name of the wallet account."
+        },
+        "derivationPath": {
+          "type": "string",
+          "description": "The full derivation path."
+        },
+        "xpub": {
+          "type": "string",
+          "description": "The master public key."
+        }
+      }
+    },
+    "tdex_daemonv2BuildInfo": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "title": "Version"
+        },
+        "commit": {
+          "type": "string",
+          "title": "Commit"
+        },
+        "date": {
+          "type": "string",
+          "title": "Date"
+        }
+      }
+    },
+    "tdex_daemonv2ChangePasswordResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2GenSeedResponse": {
+      "type": "object",
+      "properties": {
+        "seedMnemonic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tdex_daemonv2GetInfoResponse": {
+      "type": "object",
+      "properties": {
+        "rootPath": {
+          "type": "string",
+          "description": "The root path of the wallet of the daemon."
+        },
+        "masterBlindingKey": {
+          "type": "string",
+          "description": "The SLIP-77 master blinding key from which every keypair is derived."
+        },
+        "accountInfo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tdex_daemonv2AccountInfo"
+          },
+          "description": "The list of info related to every account."
+        },
+        "network": {
+          "type": "string",
+          "title": "Network daemon running on"
+        },
+        "buildData": {
+          "$ref": "#/definitions/tdex_daemonv2BuildInfo"
+        }
+      }
+    },
+    "tdex_daemonv2InitWalletResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "tdex_daemonv2UnlockWalletResponse": {
+      "type": "object"
+    },
+    "v2GetStatusResponse": {
+      "type": "object",
+      "properties": {
+        "initialized": {
+          "type": "boolean",
+          "description": "whether the daemon is initialized with an HD wallet."
+        },
+        "unlocked": {
+          "type": "boolean",
+          "description": "whether the daemon's wallet is unlocked."
+        },
+        "synced": {
+          "type": "boolean",
+          "description": "whether the daemon's wallet utxo set is up-to-date'."
+        }
+      }
+    },
+    "v2LockWalletResponse": {
+      "type": "object"
+    }
+  }
+}

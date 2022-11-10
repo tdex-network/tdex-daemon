@@ -44,6 +44,24 @@
       },
       "additionalProperties": {}
     },
+    "tdex_daemonv1TxOutput": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "title": "The asset being spent"
+        },
+        "value": {
+          "type": "string",
+          "format": "int64",
+          "description": "The value of the output being spent."
+        },
+        "address": {
+          "type": "string",
+          "description": "The confidential address of the output being spent."
+        }
+      }
+    },
     "v1BalanceInfo": {
       "type": "object",
       "properties": {
@@ -76,24 +94,6 @@
           "type": "string",
           "format": "byte",
           "description": "The id of the broadcasted transaction."
-        }
-      }
-    },
-    "v1TxOutput": {
-      "type": "object",
-      "properties": {
-        "asset": {
-          "type": "string",
-          "title": "The asset being spent"
-        },
-        "value": {
-          "type": "string",
-          "format": "int64",
-          "description": "The value of the output being spent."
-        },
-        "address": {
-          "type": "string",
-          "description": "The confidential address of the output being spent."
         }
       }
     },

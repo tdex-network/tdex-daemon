@@ -257,8 +257,7 @@
         "fixed": {
           "$ref": "#/definitions/v1Fixed"
         }
-      },
-      "title": "Custom Types"
+      }
     },
     "v1Fixed": {
       "type": "object",
@@ -444,6 +443,13 @@
             "format": "byte"
           },
           "description": "In case of a confidential transaction the blinding key of each confidential\noutput is included. Each blinding key is identified by the output script\nhex encoded."
+        },
+        "unblindedInputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1UnblindedInput"
+          },
+          "description": "In case of psetv2 transaction, the original list of trader's unblinded inputs,\nincluding also those of the inputs added by the provider."
         }
       }
     },
@@ -521,7 +527,7 @@
             "type": "string",
             "format": "byte"
           },
-          "description": "In case of a confidential transaction the blinding key of each confidential\ninput is included. Each blinding key is identified by the prevout script\nhex encoded."
+          "description": "In case of a confidential psetv0 transaction the blinding key of each\nconfidential input is included. Each blinding key is identified by the \nprevout script hex encoded."
         },
         "outputBlindingKey": {
           "type": "object",
@@ -529,7 +535,14 @@
             "type": "string",
             "format": "byte"
           },
-          "description": "In case of a confidential transaction the blinding key of each confidential\noutput is included. Each blinding key is identified by the output script\nhex encoded."
+          "description": "In case of a confidential psetv0 transaction the blinding key of each\nconfidential output is included. Each blinding key is identified by the\noutput script hex encoded."
+        },
+        "unblindedInputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1UnblindedInput"
+          },
+          "description": "In case of psetv2 transaction, the list of trader's unblinded inputs data,\neven in case they are unconfidential."
         }
       }
     },
@@ -540,6 +553,29 @@
         "TRADE_TYPE_SELL"
       ],
       "default": "TRADE_TYPE_BUY"
+    },
+    "v1UnblindedInput": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "asset": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "assetBlinder": {
+          "type": "string"
+        },
+        "amountBlinder": {
+          "type": "string"
+        }
+      },
+      "title": "Custom Types"
     }
   }
 }

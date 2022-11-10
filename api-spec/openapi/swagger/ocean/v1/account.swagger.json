@@ -1,0 +1,293 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "ocean/v1/account.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AccountService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "TemplateFormat": {
+      "type": "string",
+      "enum": [
+        "FORMAT_UNSPECIFIED",
+        "FORMAT_DESCRIPTOR",
+        "FORMAT_MINISCRIPT",
+        "FORMAT_IONIO",
+        "FORMAT_RAW"
+      ],
+      "default": "FORMAT_UNSPECIFIED"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1BalanceInfo": {
+      "type": "object",
+      "properties": {
+        "confirmedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Balance of utxos with 1+ confirmations."
+        },
+        "unconfirmedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Balance of utxos with no confirmations."
+        },
+        "lockedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Balance of locked utxos."
+        },
+        "totalBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Total balance."
+        }
+      }
+    },
+    "v1BalanceResponse": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1BalanceInfo"
+          },
+          "description": "The balance (total, confirmed, unconfirmed) per each asset."
+        }
+      }
+    },
+    "v1BlockDetails": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "description": "Hash of the block."
+        },
+        "height": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Heighth (index) of the block."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timestamp of the block."
+        }
+      }
+    },
+    "v1CreateAccountBIP44Response": {
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "Account name."
+        },
+        "accountIndex": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Account index."
+        },
+        "xpub": {
+          "type": "string",
+          "description": "Xpub."
+        },
+        "derivationPath": {
+          "type": "string",
+          "title": "Derivation path"
+        }
+      }
+    },
+    "v1CreateAccountCustomResponse": {
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "Account name."
+        },
+        "derivationPath": {
+          "type": "string",
+          "description": "The custom derivation path of the new account."
+        },
+        "xpub": {
+          "type": "string",
+          "description": "Xpub."
+        }
+      }
+    },
+    "v1DeleteAccountResponse": {
+      "type": "object"
+    },
+    "v1DeriveAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1DeriveChangeAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1ListAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1ListUtxosResponse": {
+      "type": "object",
+      "properties": {
+        "spendableUtxos": {
+          "$ref": "#/definitions/v1Utxos"
+        },
+        "lockedUtxos": {
+          "$ref": "#/definitions/v1Utxos"
+        }
+      }
+    },
+    "v1SetAccountTemplateResponse": {
+      "type": "object"
+    },
+    "v1Template": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/TemplateFormat"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1Utxo": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string",
+          "description": "Txid of the uxo."
+        },
+        "index": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Output index."
+        },
+        "asset": {
+          "type": "string",
+          "description": "Asset."
+        },
+        "value": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Value."
+        },
+        "script": {
+          "type": "string",
+          "format": "byte",
+          "description": "Script."
+        },
+        "assetBlinder": {
+          "type": "string",
+          "format": "byte",
+          "description": "Asset blinder for confidential utxo."
+        },
+        "valueBlinder": {
+          "type": "string",
+          "format": "byte",
+          "description": "Value blinder for confidential utxo."
+        },
+        "accountName": {
+          "type": "string",
+          "description": "Name of the account owning the utxo."
+        },
+        "spentStatus": {
+          "$ref": "#/definitions/v1UtxoStatus"
+        },
+        "confirmedStatus": {
+          "$ref": "#/definitions/v1UtxoStatus"
+        }
+      }
+    },
+    "v1UtxoStatus": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string"
+        },
+        "blockInfo": {
+          "$ref": "#/definitions/v1BlockDetails"
+        },
+        "txhex": {
+          "type": "string"
+        }
+      }
+    },
+    "v1Utxos": {
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "Account name."
+        },
+        "utxos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Utxo"
+          },
+          "description": "List of utxos."
+        }
+      }
+    }
+  }
+}
