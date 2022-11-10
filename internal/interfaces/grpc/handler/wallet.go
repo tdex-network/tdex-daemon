@@ -2,144 +2,182 @@ package grpchandler
 
 import (
 	"context"
-	"errors"
+	"encoding/hex"
+	"fmt"
+	"io/ioutil"
+	"os"
 
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
-	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
 )
 
 type walletHandler struct {
-	walletSvc application.WalletService
+	walletSvc    ports.WalletManager
+	buildData    ports.BuildData
+	macaroonPath string
+
+	onInit      func(pwd string)
+	onUnlock    func(pwd string)
+	onLock      func(pwd string)
+	onChangePwd func(oldPwd, newPwd string)
 }
 
 func NewWalletHandler(
-	walletSvc application.WalletService,
-) daemonv1.WalletServiceServer {
-	return newWalletHandler(walletSvc)
+	walletSvc ports.WalletManager, buildData ports.BuildData, macPath string,
+	onInit, onUnlock, onLock func(pwd string),
+	onChangePwd func(oldPwd, newPwd string),
+) daemonv2.WalletServiceServer {
+	return newWalletHandler(
+		walletSvc, buildData, macPath, onInit, onUnlock, onLock, onChangePwd,
+	)
 }
 
 func newWalletHandler(
-	walletSvc application.WalletService,
+	walletSvc ports.WalletManager, buildData ports.BuildData, macPath string,
+	onInit, onUnlock, onLock func(pwd string),
+	onChangePwd func(oldPwd, newPwd string),
 ) *walletHandler {
 	return &walletHandler{
-		walletSvc: walletSvc,
+		walletSvc, buildData, macPath, onInit, onUnlock, onLock, onChangePwd,
 	}
 }
 
-func (w walletHandler) WalletAddress(
-	ctx context.Context,
-	req *daemonv1.WalletAddressRequest,
-) (*daemonv1.WalletAddressResponse, error) {
-	return w.walletAddress(ctx, req)
-}
-
-func (w walletHandler) WalletBalance(
-	ctx context.Context,
-	req *daemonv1.WalletBalanceRequest,
-) (*daemonv1.WalletBalanceResponse, error) {
-	return w.walletBalance(ctx, req)
-}
-
-func (w walletHandler) SendToMany(
-	ctx context.Context,
-	req *daemonv1.SendToManyRequest,
-) (*daemonv1.SendToManyResponse, error) {
-	return w.sendToMany(ctx, req)
-}
-
-func (w walletHandler) walletAddress(
-	ctx context.Context,
-	req *daemonv1.WalletAddressRequest,
-) (*daemonv1.WalletAddressResponse, error) {
-	addr, blindingKey, err := w.walletSvc.GenerateAddressAndBlindingKey(ctx)
+func (h *walletHandler) GenSeed(
+	ctx context.Context, _ *daemonv2.GenSeedRequest,
+) (*daemonv2.GenSeedResponse, error) {
+	mnemonic, err := h.walletSvc.GenSeed(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	return &daemonv1.WalletAddressResponse{
-		Address:  addr,
-		Blinding: blindingKey,
+	return &daemonv2.GenSeedResponse{
+		SeedMnemonic: mnemonic,
 	}, nil
 }
 
-func (w walletHandler) walletBalance(
-	ctx context.Context,
-	req *daemonv1.WalletBalanceRequest,
-) (*daemonv1.WalletBalanceResponse, error) {
-	b, err := w.walletSvc.GetWalletBalance(ctx)
+func (h *walletHandler) InitWallet(
+	req *daemonv2.InitWalletRequest,
+	stream daemonv2.WalletService_InitWalletServer,
+) error {
+	password, err := parsePassword(req.GetPassword())
 	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	mnemonic, err := parseMnemonic(req.GetSeedMnemonic())
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	isRestore := req.GetRestore()
+	ctx := stream.Context()
+
+	if isRestore {
+		if err := h.walletSvc.RestoreWallet(ctx, mnemonic, password); err != nil {
+			return err
+		}
+	}
+	if err := h.walletSvc.InitWallet(ctx, mnemonic, password); err != nil {
+		return err
+	}
+
+	go h.onInit(password)
+
+	if len(h.macaroonPath) <= 0 {
+		return nil
+	}
+
+	for {
+		if _, err := os.Stat(h.macaroonPath); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return err
+		}
+		mac, err := ioutil.ReadFile(h.macaroonPath)
+		if err != nil {
+			return err
+		}
+		if len(mac) > 0 {
+			return stream.Send(&daemonv2.InitWalletResponse{
+				Message: fmt.Sprintf("macaroon: %s", hex.EncodeToString(mac)),
+			})
+		}
+	}
+}
+
+func (h *walletHandler) UnlockWallet(
+	ctx context.Context, req *daemonv2.UnlockWalletRequest,
+) (*daemonv2.UnlockWalletResponse, error) {
+	password, err := parsePassword(req.GetPassword())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := h.walletSvc.Unlock(ctx, password); err != nil {
 		return nil, err
 	}
 
-	balance := make(map[string]*daemonv1.BalanceInfo)
-	for k, v := range b {
-		balance[k] = &daemonv1.BalanceInfo{
-			TotalBalance:       v.TotalBalance,
-			ConfirmedBalance:   v.ConfirmedBalance,
-			UnconfirmedBalance: v.UnconfirmedBalance,
-		}
-	}
+	go h.onUnlock(password)
 
-	return &daemonv1.WalletBalanceResponse{Balance: balance}, nil
+	return &daemonv2.UnlockWalletResponse{}, nil
 }
 
-func (w walletHandler) sendToMany(
-	ctx context.Context,
-	req *daemonv1.SendToManyRequest,
-) (*daemonv1.SendToManyResponse, error) {
-	outs := req.GetOutputs()
-	if err := validateOutputs(outs); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	msatPerByte := req.GetMillisatPerByte()
-	if err := validateMillisatPerByte(msatPerByte); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	outputs := make([]application.TxOut, 0)
-	for _, v := range outs {
-		outputs = append(outputs, application.TxOut{
-			Asset:   v.GetAsset(),
-			Value:   v.GetValue(),
-			Address: v.GetAddress(),
-		})
-	}
-
-	walletReq := application.SendToManyRequest{
-		Outputs:         outputs,
-		MillisatPerByte: msatPerByte,
-		Push:            true,
-	}
-	rawTx, txid, err := w.walletSvc.SendToMany(ctx, walletReq)
+func (h *walletHandler) LockWallet(
+	ctx context.Context, req *daemonv2.LockWalletRequest,
+) (*daemonv2.LockWalletResponse, error) {
+	password, err := parsePassword(req.GetPassword())
 	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := h.walletSvc.Lock(ctx, password); err != nil {
 		return nil, err
 	}
 
-	return &daemonv1.SendToManyResponse{RawTx: rawTx, Txid: txid}, nil
+	go h.onLock(password)
+
+	return &daemonv2.LockWalletResponse{}, nil
 }
 
-func validateOutputs(outputs []*daemonv1.TxOutput) error {
-	if len(outputs) <= 0 {
-		return errors.New("output list is empty")
+func (h *walletHandler) ChangePassword(
+	ctx context.Context, req *daemonv2.ChangePasswordRequest,
+) (*daemonv2.ChangePasswordResponse, error) {
+	currentPassword, err := parsePassword(req.GetCurrentPassword())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	for _, o := range outputs {
-		if o == nil ||
-			len(o.GetAsset()) <= 0 ||
-			o.GetValue() <= 0 ||
-			len(o.GetAddress()) <= 0 {
-			return errors.New("output list is malformed")
-		}
+	newPassword, err := parsePassword(req.GetNewPassword())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	return nil
+
+	if err := h.walletSvc.ChangePassword(
+		ctx, currentPassword, newPassword,
+	); err != nil {
+		return nil, err
+	}
+
+	go h.onChangePwd(currentPassword, newPassword)
+
+	return &daemonv2.ChangePasswordResponse{}, nil
 }
 
-func validateMillisatPerByte(satPerByte int64) error {
-	if satPerByte < domain.MinMilliSatPerByte {
-		return errors.New("milli sats per byte is too low")
+func (h *walletHandler) GetInfo(
+	ctx context.Context, _ *daemonv2.GetInfoRequest,
+) (*daemonv2.GetInfoResponse, error) {
+	info, err := h.walletSvc.Info(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return walletInfo{info, h.buildData}.toProto(), nil
+}
+
+func (h *walletHandler) GetStatus(
+	ctx context.Context, _ *daemonv2.GetStatusRequest,
+) (*daemonv2.GetStatusResponse, error) {
+	status, err := h.walletSvc.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return walletStatusInfo{status}.toProto(), nil
 }
