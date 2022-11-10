@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/mdp/qrterminal/v3"
 	"github.com/skip2/go-qrcode"
 	"github.com/spf13/pflag"
