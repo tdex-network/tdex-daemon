@@ -4,36 +4,32 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/sony/gobreaker"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 	"golang.org/x/sync/errgroup"
 )
 
 type webhookService struct {
 	store      webhookStore
-	httpClient *esplora.Client
+	httpClient *client
 	cb         *gobreaker.CircuitBreaker
 }
 
 func NewWebhookPubSubService(
 	store securestore.SecureStorage,
-	httpClient *esplora.Client,
 ) (ports.SecurePubSub, error) {
 	if store == nil {
 		return nil, ErrNullSecureStore
 	}
-	if httpClient == nil {
-		return nil, ErrNullHTTPClient
-	}
 
 	return &webhookService{
 		store:      webhookStore{store},
-		httpClient: httpClient,
+		httpClient: newHTTPClient(15 * time.Second),
 		cb:         circuitbreaker.NewCircuitBreaker(),
 	}, nil
 }
@@ -242,7 +238,7 @@ func (ws *webhookService) doRequest(hook *Webhook, payload string) error {
 			headers["Authorization"] = fmt.Sprintf("Bearer %s", tokenString)
 		}
 
-		status, resp, err := ws.httpClient.NewHTTPRequest("POST", hook.Endpoint, payload, headers)
+		status, resp, err := ws.httpClient.post(hook.Endpoint, payload, headers)
 		if err != nil {
 			return nil, err
 		}

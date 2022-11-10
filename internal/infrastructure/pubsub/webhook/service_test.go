@@ -10,12 +10,10 @@ import (
 	"net/http"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
 )
@@ -122,9 +120,7 @@ func newTestService() (ports.SecurePubSub, error) {
 	if err != nil {
 		return nil, err
 	}
-	httpClient := esplora.NewHTTPClient(15 * time.Second)
-
-	return webhookpubsub.NewWebhookPubSubService(store, httpClient)
+	return webhookpubsub.NewWebhookPubSubService(store)
 }
 
 func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, error) {
