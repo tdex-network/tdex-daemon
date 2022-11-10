@@ -14,14 +14,38 @@ type AcceptOpts struct {
 	PsetBase64         string
 	InputBlindingKeys  map[string][]byte
 	OutputBlindingKeys map[string][]byte
+	UnblindedInputs    []UnblindedInput
 }
 
 func (o AcceptOpts) validate() error {
-	return checkTxAndBlindKeys(
-		o.PsetBase64,
-		o.InputBlindingKeys,
-		o.OutputBlindingKeys,
-	)
+	if isPsetV0(o.PsetBase64) {
+		return checkTxAndBlindKeys(
+			o.PsetBase64,
+			o.InputBlindingKeys,
+			o.OutputBlindingKeys,
+		)
+	}
+	if isPsetV2(o.PsetBase64) {
+		return checkTxAndUnblindedIns(o.PsetBase64, o.UnblindedInputs)
+	}
+	return fmt.Errorf("invalid transaction format")
+}
+
+func (o AcceptOpts) unblindedIns() []*tdexv1.UnblindedInput {
+	if len(o.UnblindedInputs) <= 0 {
+		return nil
+	}
+	list := make([]*tdexv1.UnblindedInput, 0, len(o.UnblindedInputs))
+	for _, in := range o.UnblindedInputs {
+		list = append(list, &tdexv1.UnblindedInput{
+			Index:         in.Index,
+			Asset:         in.Asset,
+			Amount:        in.Amount,
+			AssetBlinder:  in.AssetBlinder,
+			AmountBlinder: in.AmountBlinder,
+		})
+	}
+	return list
 }
 
 // Accept takes a AcceptOpts and returns the id of the SwapAccept entity and
@@ -44,6 +68,7 @@ func Accept(opts AcceptOpts) (string, []byte, error) {
 		Transaction:       opts.PsetBase64,
 		InputBlindingKey:  opts.InputBlindingKeys,
 		OutputBlindingKey: opts.OutputBlindingKeys,
+		UnblindedInputs:   opts.unblindedIns(),
 	}
 
 	msgAcceptSerialized, err := proto.Marshal(msgAccept)
