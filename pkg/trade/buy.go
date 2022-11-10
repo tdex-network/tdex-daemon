@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	tradetype "github.com/tdex-network/tdex-daemon/pkg/trade/type"
 
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/elementsutil"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -138,11 +141,11 @@ func (t *Trade) marketOrderRequest(
 	addr string,
 	blindingKey []byte,
 ) ([]byte, error) {
-	unspents, err := t.explorer.GetUnspents(addr, [][]byte{blindingKey})
+	utxos, err := t.explorer.GetUnspents(addr, [][]byte{blindingKey})
 	if err != nil {
 		return nil, err
 	}
-	if len(unspents) <= 0 {
+	if len(utxos) <= 0 {
 		return nil, fmt.Errorf("address '%s' is not funded", addr)
 	}
 
@@ -157,32 +160,26 @@ func (t *Trade) marketOrderRequest(
 	}
 
 	outputScript, _ := address.ToOutputScript(addr)
-	outputScriptHex := hex.EncodeToString(outputScript)
+	_, pk := btcec.PrivKeyFromBytes(blindingKey)
+	outputBlindingKey := pk.SerializeCompressed()
 
 	psetBase64, err := NewSwapTx(
-		unspents,
-		preview.AssetToSend,
-		preview.AmountToSend,
-		preview.AssetToReceive,
-		preview.AmountToReceive,
-		outputScript,
+		utxos,
+		preview.AssetToSend, preview.AssetToReceive,
+		preview.AmountToSend, preview.AmountToReceive,
+		outputScript, outputBlindingKey,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	blindingKeyMap := map[string][]byte{
-		outputScriptHex: blindingKey,
-	}
-
 	swapRequestMsg, err := swap.Request(swap.RequestOpts{
-		AssetToSend:        preview.AssetToSend,
-		AmountToSend:       preview.AmountToSend,
-		AssetToReceive:     preview.AssetToReceive,
-		AmountToReceive:    preview.AmountToReceive,
-		PsetBase64:         psetBase64,
-		InputBlindingKeys:  blindingKeyMap,
-		OutputBlindingKeys: blindingKeyMap,
+		AssetToSend:     preview.AssetToSend,
+		AmountToSend:    preview.AmountToSend,
+		AssetToReceive:  preview.AssetToReceive,
+		AmountToReceive: preview.AmountToReceive,
+		PsetBase64:      psetBase64,
+		UnblindedInputs: utxosToUnblindedIns(utxos),
 	})
 	if err != nil {
 		return nil, err
@@ -193,6 +190,9 @@ func (t *Trade) marketOrderRequest(
 		SwapRequest: swapRequestMsg,
 		TradeType:   tradeType,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	if fail := reply.GetSwapFail(); fail != nil {
 		return nil, fmt.Errorf("trade proposal has been rejected for reason: %s", fail.GetFailureMessage())
@@ -230,4 +230,18 @@ func (t *Trade) marketOrderComplete(swapAcceptMsg []byte, w *Wallet) (string, er
 	}
 
 	return reply.GetTxid(), nil
+}
+
+func utxosToUnblindedIns(utxos []explorer.Utxo) []swap.UnblindedInput {
+	ins := make([]swap.UnblindedInput, 0, len(utxos))
+	for i, u := range utxos {
+		ins = append(ins, swap.UnblindedInput{
+			Index:         uint32(i),
+			Asset:         u.Asset(),
+			Amount:        u.Value(),
+			AssetBlinder:  elementsutil.TxIDFromBytes(u.AssetBlinder()),
+			AmountBlinder: elementsutil.TxIDFromBytes(u.ValueBlinder()),
+		})
+	}
+	return ins
 }

@@ -4,31 +4,26 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
-	"github.com/vulpemventures/go-elements/pset"
-	"github.com/vulpemventures/go-elements/transaction"
+	"github.com/vulpemventures/go-elements/psetv2"
 )
 
 func NewSwapTx(
-	unspents []explorer.Utxo,
-	inAsset string,
-	inAmount uint64,
-	outAsset string,
-	outAmount uint64,
-	outScript []byte,
+	utxos []explorer.Utxo, inAsset, outAsset string,
+	inAmount, outAmount uint64, outScript, outBlindingKey []byte,
 ) (string, error) {
-	ptx, err := pset.New([]*transaction.TxInput{}, []*transaction.TxOutput{}, 2, 0)
+	ptx, err := psetv2.New(nil, nil, nil)
 	if err != nil {
 		return "", err
 	}
 
-	selectedUnspents, change, err := explorer.SelectUnspents(
-		unspents,
+	selectedUtxos, change, err := explorer.SelectUnspents(
+		utxos,
 		inAmount,
 		inAsset,
 	)
@@ -36,29 +31,50 @@ func NewSwapTx(
 		return "", err
 	}
 
-	updater, _ := pset.NewUpdater(ptx)
+	updater, _ := psetv2.NewUpdater(ptx)
 
-	for _, in := range selectedUnspents {
-		input, witnessUtxo, _ := in.Parse()
-		updater.AddInput(input)
-		err := updater.AddInWitnessUtxo(witnessUtxo, len(ptx.Inputs)-1)
-		if err != nil {
+	for _, u := range selectedUtxos {
+		_, prevout, _ := u.Parse()
+		if err := updater.AddInputs([]psetv2.InputArgs{
+			{
+				Txid:    u.Hash(),
+				TxIndex: u.Index(),
+			},
+		}); err != nil {
+			return "", err
+		}
+
+		index := int(ptx.Global.InputCount) - 1
+		if err := updater.AddInWitnessUtxo(index, prevout); err != nil {
+			return "", err
+		}
+		if err := updater.AddInUtxoRangeProof(
+			index, prevout.RangeProof,
+		); err != nil {
 			return "", err
 		}
 	}
 
-	output, err := newTxOutput(outAsset, outAmount, outScript)
-	if err != nil {
-		return "", err
+	outputs := []psetv2.OutputArgs{
+		{
+			Asset:        outAsset,
+			Amount:       outAmount,
+			Script:       outScript,
+			BlindingKey:  outBlindingKey,
+			BlinderIndex: uint32(ptx.Global.InputCount),
+		},
 	}
-	updater.AddOutput(output)
-
 	if change > 0 {
-		changeOutput, err := newTxOutput(inAsset, change, outScript)
-		if err != nil {
-			return "", err
-		}
-		updater.AddOutput(changeOutput)
+		outputs = append(outputs, psetv2.OutputArgs{
+			Asset:       inAsset,
+			Amount:      change,
+			Script:      outScript,
+			BlindingKey: outBlindingKey,
+		})
+	}
+
+	if err := updater.AddOutputs(outputs); err != nil {
+		return "", err
 	}
 
 	return ptx.ToBase64()
@@ -71,11 +87,11 @@ type Wallet struct {
 }
 
 func NewRandomWallet(net *network.Network) (*Wallet, error) {
-	prvkey, err := btcec.NewPrivateKey(btcec.S256())
+	prvkey, err := btcec.NewPrivateKey()
 	if err != nil {
 		return nil, err
 	}
-	blindPrvkey, err := btcec.NewPrivateKey(btcec.S256())
+	blindPrvkey, err := btcec.NewPrivateKey()
 	if err != nil {
 		return nil, err
 	}
@@ -84,8 +100,8 @@ func NewRandomWallet(net *network.Network) (*Wallet, error) {
 }
 
 func NewWalletFromKey(privateKey, blindingKey []byte, net *network.Network) *Wallet {
-	prvkey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privateKey)
-	blindPrvkey, _ := btcec.PrivKeyFromBytes(btcec.S256(), blindingKey)
+	prvkey, _ := btcec.PrivKeyFromBytes(privateKey)
+	blindPrvkey, _ := btcec.PrivKeyFromBytes(blindingKey)
 
 	return &Wallet{prvkey, blindPrvkey, net}
 }
@@ -102,11 +118,11 @@ func (w *Wallet) Script() ([]byte, []byte) {
 }
 
 func (w *Wallet) Sign(psetBase64 string) (string, error) {
-	ptx, err := pset.NewPsetFromBase64(psetBase64)
+	ptx, err := psetv2.NewPsetFromBase64(psetBase64)
 	if err != nil {
 		return "", err
 	}
-	updater, err := pset.NewUpdater(ptx)
+	signer, err := psetv2.NewSigner(ptx)
 	if err != nil {
 		return "", err
 	}
@@ -114,33 +130,32 @@ func (w *Wallet) Sign(psetBase64 string) (string, error) {
 	for i, in := range ptx.Inputs {
 		script, witnessScript := w.Script()
 		if bytes.Equal(in.WitnessUtxo.Script, witnessScript) {
-			hashForSignature := ptx.UnsignedTx.HashForWitnessV0(
+			tx, err := ptx.UnsignedTx()
+			if err != nil {
+				return "", err
+			}
+			hashForSignature := tx.HashForWitnessV0(
 				i,
 				script,
 				in.WitnessUtxo.Value,
 				txscript.SigHashAll,
 			)
 
-			signature, err := w.privateKey.Sign(hashForSignature[:])
-			if err != nil {
-				return "", err
-			}
-
-			if !signature.Verify(hashForSignature[:], w.privateKey.PubKey()) {
+			sig := ecdsa.Sign(w.privateKey, hashForSignature[:])
+			if !sig.Verify(hashForSignature[:], w.privateKey.PubKey()) {
 				return "", fmt.Errorf(
 					"signature verification failed for input %d",
 					i,
 				)
 			}
 
-			sigWithSigHashType := append(signature.Serialize(), byte(txscript.SigHashAll))
-			_, err = updater.Sign(
-				i,
-				sigWithSigHashType,
-				w.privateKey.PubKey().SerializeCompressed(),
-				nil,
-				nil,
-			)
+			sigWithSigHashType := append(sig.Serialize(), byte(txscript.SigHashAll))
+			if err := signer.SignInput(
+				i, sigWithSigHashType, w.privateKey.PubKey().SerializeCompressed(),
+				nil, nil,
+			); err != nil {
+				return "", err
+			}
 		}
 	}
 
@@ -153,16 +168,4 @@ func (w *Wallet) PrivateKey() []byte {
 
 func (w *Wallet) BlindingKey() []byte {
 	return w.blindingPrivateKey.Serialize()
-}
-
-func newTxOutput(assetHex string, amount uint64, script []byte) (*transaction.TxOutput, error) {
-	asset, err := bufferutil.AssetHashToBytes(assetHex)
-	if err != nil {
-		return nil, err
-	}
-	value, err := bufferutil.ValueToBytes(amount)
-	if err != nil {
-		return nil, err
-	}
-	return transaction.NewTxOutput(asset, value, script), nil
 }
