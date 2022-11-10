@@ -11,17 +11,15 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/tdex-network/tdex-daemon/pkg/wallet"
-
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-
-	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/soheilhy/cmux"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	interfaces "github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
@@ -31,9 +29,8 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
-	tdexold "github.com/tdex-network/tdex-protobuf/generated/go/trade"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
@@ -86,18 +83,9 @@ type service struct {
 	opts        ServiceOpts
 	macaroonSvc *macaroons.Service
 
-	grpcOperatorServer  *grpc.Server
-	grpcTradeServer     *grpc.Server
-	http1OperatorServer *http.Server
-	http2OperatorServer *http.Server
-	http1TradeServer    *http.Server
-	http2TradeServer    *http.Server
-	muxOperator         cmux.CMux
-	muxTrade            cmux.CMux
-	walletPassword      string
-
-	passphraseChan chan application.PassphraseMsg
-	readyChan      chan bool
+	operatorServer *http.Server
+	tradeServer    *http.Server
+	password       string
 }
 
 type ServiceOpts struct {
@@ -111,17 +99,14 @@ type ServiceOpts struct {
 	OperatorExtraDomains     []string
 	WalletUnlockPasswordFile string
 
-	OperatorAddress string
-	TradeAddress    string
-	TradeTLSKey     string
-	TradeTLSCert    string
+	OperatorPort int
+	TradePort    int
+	TradeTLSKey  string
+	TradeTLSCert string
 
-	WalletUnlockerSvc application.WalletUnlockerService
-	WalletSvc         application.WalletService
-	OperatorSvc       application.OperatorService
-	TradeSvc          application.TradeService
+	AppConfig *application.Config
+	BuildData ports.BuildData
 
-	RepoManager   ports.RepoManager
 	NoOperatorTls bool
 	ConnectAddr   string
 	ConnectProto  string
@@ -149,14 +134,13 @@ func (o ServiceOpts) validate() error {
 	}
 
 	if !o.NoOperatorTls {
-		// TLS over operator interface is automatically enabled if macaroons auth
-		// is active.
 		tlsDir := o.tlsDatadir()
 		tlsKeyExists := pathExists(filepath.Join(tlsDir, OperatorTLSKeyFile))
 		tlsCertExists := pathExists(filepath.Join(tlsDir, OperatorTLSCertFile))
 		if !tlsKeyExists && tlsCertExists {
 			return fmt.Errorf(
-				"found %s file but %s is missing. Please delete %s to have the daemon recreate both in path %s",
+				"found %s file but %s is missing. Please delete %s to make the "+
+					"daemon recreating both files in path %s",
 				OperatorTLSCertFile, OperatorTLSKeyFile, OperatorTLSCertFile, tlsDir,
 			)
 		}
@@ -170,11 +154,11 @@ func (o ServiceOpts) validate() error {
 		}
 	}
 
-	if ok := isValidAddress(o.OperatorAddress); !ok {
-		return fmt.Errorf("operator address is not valid: %s", o.OperatorAddress)
+	if ok := isValidPort(o.OperatorPort); !ok {
+		return fmt.Errorf("operator port must be in range [%d, %d]", minPort, maxPort)
 	}
-	if ok := isValidAddress(o.TradeAddress); !ok {
-		return fmt.Errorf("trade address is not valid: %s", o.OperatorAddress)
+	if ok := isValidPort(o.TradePort); !ok {
+		return fmt.Errorf("trade port must be in range [%d, %d]", minPort, maxPort)
 	}
 
 	tradeTLSKeyExist := pathExists(o.TradeTLSKey)
@@ -182,7 +166,7 @@ func (o ServiceOpts) validate() error {
 	if tradeTLSKeyExist != tradeTLSCertExist {
 		return fmt.Errorf(
 			"TLS key and certificate for Trade interface must be either existing " +
-				"or not",
+				"or undefined",
 		)
 	}
 
@@ -192,18 +176,17 @@ func (o ServiceOpts) validate() error {
 		}
 	}
 
-	if o.WalletUnlockerSvc == nil {
-		return fmt.Errorf("wallet unlocker app service must not be null")
+	if o.AppConfig == nil {
+		return fmt.Errorf("missing app config")
 	}
-	if o.WalletSvc == nil {
-		return fmt.Errorf("wallet app service must not be null")
+	if err := o.AppConfig.Validate(); err != nil {
+		return fmt.Errorf("invalid app config: %s", err)
 	}
-	if o.OperatorSvc == nil {
-		return fmt.Errorf("operator app service must not be null")
+
+	if o.BuildData == nil {
+		return fmt.Errorf("missing build data")
 	}
-	if o.TradeSvc == nil {
-		return fmt.Errorf("trade app service must not be null")
-	}
+
 	return nil
 }
 
@@ -233,6 +216,32 @@ func (o ServiceOpts) operatorTLSCert() string {
 	return filepath.Join(o.tlsDatadir(), OperatorTLSCertFile)
 }
 
+func (o ServiceOpts) operatorTLSConfig() (*tls.Config, error) {
+	if o.NoOperatorTls {
+		return nil, nil
+	}
+	return getTlsConfig(o.operatorTLSKey(), o.operatorTLSCert())
+}
+
+func (o ServiceOpts) tradeTLSConfig() (*tls.Config, error) {
+	if o.TradeTLSCert == "" {
+		return nil, nil
+	}
+	return getTlsConfig(o.TradeTLSKey, o.TradeTLSCert)
+}
+
+func (o ServiceOpts) operatorServerAddr() string {
+	return fmt.Sprintf(":%d", o.OperatorPort)
+}
+
+func (o ServiceOpts) tradeServerAddr() string {
+	return fmt.Sprintf(":%d", o.TradePort)
+}
+
+func (o ServiceOpts) tradeClientAddr() string {
+	return fmt.Sprintf("localhost:%d", o.TradePort)
+}
+
 func NewService(opts ServiceOpts) (interfaces.Service, error) {
 	if err := opts.validate(); err != nil {
 		return nil, fmt.Errorf("invalid opts: %s", err)
@@ -256,349 +265,301 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 		}
 	}
 
-	var walletPassword string
+	var password string
 	if opts.WalletUnlockPasswordFile != "" {
-		walletPasswordBytes, err := ioutil.ReadFile(opts.WalletUnlockPasswordFile)
+		passwordBytes, err := ioutil.ReadFile(opts.WalletUnlockPasswordFile)
 		if err != nil {
 			return nil, err
 		}
 
-		trimmedPass := bytes.TrimFunc(walletPasswordBytes, func(r rune) bool {
+		trimmedPass := bytes.TrimFunc(passwordBytes, func(r rune) bool {
 			return r == 10 || r == 32
 		})
 
-		walletPassword = string(trimmedPass)
+		password = string(trimmedPass)
 	}
 
 	return &service{
-		opts:           opts,
-		macaroonSvc:    macaroonSvc,
-		passphraseChan: opts.WalletUnlockerSvc.PassphraseChan(),
-		readyChan:      opts.WalletUnlockerSvc.ReadyChan(),
-		walletPassword: walletPassword,
+		opts:        opts,
+		macaroonSvc: macaroonSvc,
+		password:    password,
 	}, nil
 }
 
 func (s *service) Start() error {
-	walletUnlockerOnly := true
-	services, err := s.start(walletUnlockerOnly)
-	if err != nil {
+	withWalletOnly := true
+	if err := s.start(withWalletOnly); err != nil {
 		return err
 	}
 
-	log.Infof("wallet unlocker interface is listening on %s", s.opts.OperatorAddress)
+	if s.opts.WalletUnlockPasswordFile != "" {
+		pwdBytes, _ := ioutil.ReadFile(s.opts.WalletUnlockPasswordFile)
+		password := string(pwdBytes)
 
-	go s.startListeningToPassphraseChan()
-	go s.startListeningToReadyChan()
+		if err := s.opts.AppConfig.WalletService().Wallet().Unlock(
+			context.Background(), password,
+		); err != nil {
+			return fmt.Errorf("failed to auto unlock wallet: %s", err)
+		}
 
-	s.grpcOperatorServer = services.grpcOperator
-	s.grpcTradeServer = services.grpcTrade
-	s.http1OperatorServer = services.http1Operator
-	s.http2OperatorServer = services.http2Operator
-	s.http1TradeServer = services.http1Trade
-	s.http2TradeServer = services.http2Trade
-	s.muxOperator = services.muxOperator
-	s.muxTrade = services.muxTrade
+		s.onUnlock(password)
+	}
 
 	return nil
 }
 
 func (s *service) Stop() {
+	if s.password != "" {
+		walletSvc := s.opts.AppConfig.WalletService().Wallet()
+		walletSvc.Lock(context.Background(), s.password)
+	}
 	stopMacaroonSvc := true
 	s.stop(stopMacaroonSvc)
+
+	s.opts.AppConfig.RepoManager().Close()
+	log.Debug("closed connection with database")
+
+	s.opts.AppConfig.PubSubService().Close()
+	log.Debug("closed connection with pubsub")
+
+	s.opts.AppConfig.WalletService().Close()
+	log.Debug("closed connection with ocean wallet")
 }
 
 func (s *service) withMacaroons() bool {
-	return s.macaroonSvc != nil
+	return !s.opts.NoMacaroons
 }
 
-type services struct {
-	grpcOperator  *grpc.Server
-	grpcTrade     *grpc.Server
-	http1Operator *http.Server
-	http2Operator *http.Server
-	http1Trade    *http.Server
-	http2Trade    *http.Server
-	muxOperator   cmux.CMux
-	muxTrade      cmux.CMux
-}
-
-func (s *service) start(withUnlockerOnly bool) (*services, error) {
-	unaryInterceptor := interceptor.UnaryInterceptor(s.macaroonSvc)
-	streamInterceptor := interceptor.StreamInterceptor(s.macaroonSvc)
-
-	var adminMacaroonPath string
-	if s.withMacaroons() {
-		adminMacaroonPath = filepath.Join(s.opts.macaroonsDatadir(), AdminMacaroonFile)
+func (s *service) start(withWalletOnly bool) error {
+	operatorTlsConfig, err := s.opts.operatorTLSConfig()
+	if err != nil {
+		return err
 	}
-
-	// gRPC Operator server
-	operatorAddr := s.opts.OperatorAddress
-	grpcOperatorServer := grpc.NewServer(
-		unaryInterceptor, streamInterceptor,
-	)
-	walletUnlockerHandler := grpchandler.NewWalletUnlockerHandler(
-		s.opts.WalletUnlockerSvc, adminMacaroonPath,
-	)
-	daemonv1.RegisterWalletUnlockerServiceServer(
-		grpcOperatorServer, walletUnlockerHandler,
-	)
-
-	if !withUnlockerOnly {
-		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
-		operatorHandler := grpchandler.NewOperatorHandler(s.opts.OperatorSvc)
-		daemonv1.RegisterOperatorServiceServer(grpcOperatorServer, operatorHandler)
-		daemonv1.RegisterWalletServiceServer(grpcOperatorServer, walletHandler)
-	}
-
-	operatorTlsCert := s.opts.operatorTLSCert()
-	operatorTlsKey := s.opts.operatorTLSKey()
-
-	tdexConnectSvc, err := httpinterface.NewTdexConnectService(
-		s.opts.RepoManager,
-		s.opts.WalletUnlockerSvc,
-		adminMacaroonPath,
-		operatorTlsCert,
-		s.opts.ConnectAddr,
-		s.opts.ConnectProto,
+	operatorServer, err := s.newOperatorServer(
+		operatorTlsConfig, !withWalletOnly,
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// http Operator server for grpc-web
-	http1OperatorServer, http2OperatorServer := newGRPCWrappedServer(
-		operatorAddr,
-		grpcOperatorServer,
-		nil,
-		map[string]func(w http.ResponseWriter, req *http.Request){
-			"/":             tdexConnectSvc.RootHandler,
-			"/tdexdconnect": tdexConnectSvc.AuthHandler,
-		},
-	)
-
-	// Serve grpc and grpc-web multiplexed on the same port
-	muxOperator, err := serveMux(
-		operatorAddr, operatorTlsKey, operatorTlsCert,
-		grpcOperatorServer, http1OperatorServer, http2OperatorServer,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	var muxTrade cmux.CMux
-	var grpcTradeServer *grpc.Server
-	var http1TradeServer, http2TradeServer *http.Server
-	if !withUnlockerOnly {
-		// gRPC Trade server
-		tradeAddr := s.opts.TradeAddress
-		tradeTLSKey := s.opts.TradeTLSKey
-		tradeTLSCert := s.opts.TradeTLSCert
-		grpcTradeServer = grpc.NewServer(unaryInterceptor, streamInterceptor)
-		tradeHandler := grpchandler.NewTradeHandler(s.opts.TradeSvc)
-		tradeOldHandler := grpchandler.NewTradeOldHandler(s.opts.TradeSvc)
-		tdexv1.RegisterTradeServiceServer(grpcTradeServer, tradeHandler)
-		tdexold.RegisterTradeServer(grpcTradeServer, tradeOldHandler)
-		transportHandler := grpchandler.NewTransportHandler()
-		tdexv1.RegisterTransportServiceServer(grpcTradeServer, transportHandler)
-
-		insecure := len(tradeTLSCert) <= 0
-		tradeGrpcGateway, err := s.tradeGrpcGateway(context.Background(), insecure)
+	var tradeServer *http.Server
+	if !withWalletOnly {
+		tradeTlsConfig, err := s.opts.tradeTLSConfig()
 		if err != nil {
-			return nil, err
+			return err
 		}
-
-		http1TradeServer, http2TradeServer = newGRPCWrappedServer(
-			tradeAddr,
-			grpcTradeServer,
-			tradeGrpcGateway,
-			nil,
-		)
-		muxTrade, err = serveMux(
-			tradeAddr, tradeTLSKey, tradeTLSCert,
-			grpcTradeServer, http1TradeServer, http2TradeServer,
-		)
+		tradeServer, err = s.newTradeServer(tradeTlsConfig)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return &services{
-		grpcOperator:  grpcOperatorServer,
-		grpcTrade:     grpcTradeServer,
-		http1Operator: http1OperatorServer,
-		http2Operator: http2OperatorServer,
-		http1Trade:    http1TradeServer,
-		http2Trade:    http2TradeServer,
-		muxOperator:   muxOperator,
-		muxTrade:      muxTrade,
-	}, nil
+	s.operatorServer = operatorServer
+	s.tradeServer = tradeServer
+
+	if s.opts.NoOperatorTls {
+		go s.operatorServer.ListenAndServe()
+	} else {
+		go s.operatorServer.ListenAndServeTLS("", "")
+	}
+	log.Infof("wallet interface is listening on %s", s.opts.operatorServerAddr())
+
+	if !withWalletOnly {
+		if len(s.opts.TradeTLSCert) <= 0 {
+			go s.tradeServer.ListenAndServe()
+		} else {
+			s.tradeServer.ListenAndServeTLS("", "")
+		}
+		log.Infof("operator interface is listening on %s", s.opts.operatorServerAddr())
+		log.Infof("trade interface is listening on %s", s.opts.tradeServerAddr())
+	}
+
+	return nil
 }
 
 func (s *service) stop(stopMacaroonSvc bool) {
 	if s.withMacaroons() && stopMacaroonSvc {
 		s.macaroonSvc.Close()
-		log.Debug("stopped macaroon service")
+		log.Debug("closed connection with macaroon db")
 	}
 
-	if s.muxOperator != nil {
-		log.Debug("stop grpc-web Operator server")
-		s.http1OperatorServer.Shutdown(context.Background())
-		s.http2OperatorServer.Shutdown(context.Background())
+	s.operatorServer.Shutdown(context.Background())
+	log.Debug("stopped operator server")
 
-		log.Debug("stop grpc Operator server")
-		s.grpcOperatorServer.GracefulStop()
-
-		log.Debug("stop mux Operator")
-		s.muxOperator.Close()
-	}
-
-	if s.grpcTradeServer != nil {
-		log.Debug("stop grpc-web Trade server")
-		s.http1TradeServer.Shutdown(context.Background())
-		s.http2TradeServer.Shutdown(context.Background())
-
-		log.Debug("stop grpc Trade server")
-		s.grpcTradeServer.GracefulStop()
-
-		log.Debug("stop mux Trade")
-		s.muxTrade.Close()
+	if s.tradeServer != nil {
+		s.tradeServer.Shutdown(context.Background())
+		log.Debug("stopped trade server")
 	}
 }
 
-func (s *service) startListeningToPassphraseChan() {
-	for msg := range s.passphraseChan {
-		if s.withMacaroons() {
-			switch msg.Method {
-			case application.UnlockWallet:
-				pwd := []byte(msg.CurrentPwd)
-				if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
-					if err != macaroons.ErrAlreadyUnlocked {
-						log.WithError(err).Warn(
-							"an error occured while unlocking macaroon service",
-						)
-					}
-				}
-				ctx := context.Background()
-				if err := genMacaroons(
-					ctx, s.macaroonSvc, s.opts.macaroonsDatadir(),
-				); err != nil {
-					log.WithError(err).Warn("an error occured while creating macaroons")
-				}
-			case application.ChangePassphrase:
-				currentPwd := []byte(msg.CurrentPwd)
-				newPwd := []byte(msg.NewPwd)
-				if err := s.macaroonSvc.ChangePassword(currentPwd, newPwd); err != nil {
-					log.WithError(err).Warn(
-						"an error occured while changing password of macaroon service",
-					)
-				}
-			default:
-				pwd := []byte(msg.CurrentPwd)
-				if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
-					log.WithError(err).Warn(
-						"an error occured while creating macaroon service",
-					)
-				}
-				ctx := context.Background()
-				if err := genMacaroons(
-					ctx, s.macaroonSvc, s.opts.macaroonsDatadir(),
-				); err != nil {
-					log.WithError(err).Warn("an error occured while creating macaroons")
-				}
-			}
-		}
-	}
-}
-
-func (s *service) startListeningToReadyChan() {
-	isReady := <-s.readyChan
-
-	dontStopMacaroonSvc := false
-	s.stop(dontStopMacaroonSvc)
-
-	if !isReady {
-		panic("failed to initialize wallet")
+func (s *service) newOperatorServer(
+	tlsConfig *tls.Config, withOperatorHandler bool,
+) (*http.Server, error) {
+	serverOpts := []grpc.ServerOption{
+		interceptor.UnaryInterceptor(s.macaroonSvc),
+		interceptor.StreamInterceptor(s.macaroonSvc),
 	}
 
-	if s.walletPassword != "" {
-		retryAttempt := 0
-		for {
-			if err := s.opts.WalletUnlockerSvc.UnlockWallet(
-				context.Background(),
-				s.walletPassword,
-			); err != nil && err != wallet.ErrInvalidPassphrase && retryAttempt < 5 {
-				retryAttempt++
-				log.Debugf("retrying to unlock wallet: %v, attempt: %v", err, retryAttempt)
-
-				continue
-			} else {
-				if err != nil {
-					log.WithError(err).Warn(
-						"an error occurred while unlocking wallet",
-					)
-				} else {
-					log.Debug("wallet unlocked with password file")
-				}
-
-				break
-			}
-		}
-		s.walletPassword = ""
+	creds := insecure.NewCredentials()
+	if tlsConfig != nil {
+		creds = credentials.NewTLS(tlsConfig)
 	}
+	serverOpts = append(serverOpts, grpc.Creds(creds))
 
-	withoutUnlockerOnly := false
-	services, err := s.start(withoutUnlockerOnly)
-	if err != nil {
-		log.WithError(err).Warn(
-			"an error occured while enabling operator and trade interfaces. Shutting down",
+	var adminMacaroonPath string
+	if s.withMacaroons() {
+		adminMacaroonPath = filepath.Join(
+			s.opts.macaroonsDatadir(), AdminMacaroonFile,
 		)
-		panic(nil)
 	}
 
-	log.Infof("operator interface is listening on %s", s.opts.OperatorAddress)
-	log.Infof("trade interface is listening on %s", s.opts.TradeAddress)
+	grpcServer := grpc.NewServer(serverOpts...)
 
-	s.grpcOperatorServer = services.grpcOperator
-	s.grpcTradeServer = services.grpcTrade
-	s.http1OperatorServer = services.http1Operator
-	s.http2OperatorServer = services.http2Operator
-	s.http1TradeServer = services.http1Trade
-	s.http2TradeServer = services.http2Trade
-	s.muxOperator = services.muxOperator
-	s.muxTrade = services.muxTrade
+	walletSvc := s.opts.AppConfig.WalletService().Wallet()
+	walletHandler := grpchandler.NewWalletHandler(
+		walletSvc, s.opts.BuildData, adminMacaroonPath,
+		s.onInit, s.onUnlock, s.onLock, s.onChangePwd,
+	)
+	daemonv2.RegisterWalletServiceServer(
+		grpcServer, walletHandler,
+	)
+
+	if withOperatorHandler {
+		operatorHandler := grpchandler.NewOperatorHandler(
+			s.opts.AppConfig.OperatorService(), s.validatePassword,
+		)
+		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
+	}
+
+	// grpcweb wrapped server
+	grpcWebServer := grpcweb.WrapServer(
+		grpcServer,
+		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
+		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
+	)
+
+	handler := router(grpcServer, grpcWebServer, nil)
+	mux := http.NewServeMux()
+	mux.Handle("/", handler)
+
+	httpServerHandler := http.Handler(mux)
+	if s.opts.NoOperatorTls {
+		httpServerHandler = h2c.NewHandler(httpServerHandler, &http2.Server{})
+	}
+
+	return &http.Server{
+		Addr:      s.opts.operatorServerAddr(),
+		Handler:   httpServerHandler,
+		TLSConfig: tlsConfig,
+	}, nil
 }
 
-func (s *service) tradeGrpcGateway(
-	ctx context.Context, insecureConn bool,
-) (http.Handler, error) {
-	creds := make([]grpc.DialOption, 0)
-	if insecureConn {
-		creds = append(creds, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
+	serverOpts := []grpc.ServerOption{
+		interceptor.UnaryInterceptor(s.macaroonSvc),
+		interceptor.StreamInterceptor(s.macaroonSvc),
+	}
+
+	creds := insecure.NewCredentials()
+	if tlsConfig != nil {
+		creds = credentials.NewTLS(tlsConfig)
+	}
+	serverOpts = append(serverOpts, grpc.Creds(creds))
+
+	grpcServer := grpc.NewServer(serverOpts...)
+	tradeHandler := grpchandler.NewTradeHandler(s.opts.AppConfig.TradeService())
+	tdexv1.RegisterTradeServiceServer(grpcServer, tradeHandler)
+	transportHandler := grpchandler.NewTransportHandler()
+	tdexv1.RegisterTransportServiceServer(grpcServer, transportHandler)
+
+	// grpcweb wrapped server
+	grpcWebServer := grpcweb.WrapServer(
+		grpcServer,
+		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
+		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
+	)
+
+	// grpc gateway reverse proxy
+	dialOpts := make([]grpc.DialOption, 0)
+	if len(s.opts.TradeTLSCert) <= 0 {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
-		// #nosec
-		creds = append(creds, grpc.WithTransportCredentials(
-			/* #nosec */
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(
+			// #nosec
 			credentials.NewTLS(&tls.Config{
 				InsecureSkipVerify: true,
 			}),
 		))
 	}
-
-	conn, err := grpc.Dial(s.opts.TradeAddress, creds...)
+	conn, err := grpc.DialContext(
+		context.Background(), s.opts.tradeClientAddr(), dialOpts...,
+	)
 	if err != nil {
 		return nil, err
 	}
+	gwmux := runtime.NewServeMux()
+	tdexv1.RegisterTransportServiceHandler(context.Background(), gwmux, conn)
+	tdexv1.RegisterTradeServiceHandler(context.Background(), gwmux, conn)
+	grpcGateway := http.Handler(gwmux)
 
-	grpcGatewayMux := runtime.NewServeMux()
-	if err := tdexv1.RegisterTradeServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
-		return nil, err
+	handler := router(grpcServer, grpcWebServer, grpcGateway)
+	mux := http.NewServeMux()
+	mux.Handle("/", handler)
+
+	httpServerHandler := http.Handler(mux)
+	if s.opts.NoOperatorTls {
+		httpServerHandler = h2c.NewHandler(httpServerHandler, &http2.Server{})
 	}
-	if err := tdexv1.RegisterTransportServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
-		return nil, err
+
+	return &http.Server{
+		Addr:      s.opts.tradeServerAddr(),
+		Handler:   httpServerHandler,
+		TLSConfig: tlsConfig,
+	}, nil
+}
+
+func (s *service) onInit(password string) {
+	s.password = password
+}
+
+func (s *service) onUnlock(password string) {
+	if s.withMacaroons() {
+		pwd := []byte(password)
+		if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
+			log.WithError(err).Warn("failed to unlock macaroon store")
+		}
 	}
 
-	grpcGatewayHandler := http.Handler(grpcGatewayMux)
+	stopMacaroonSvc := true
+	s.stop(!stopMacaroonSvc)
 
-	return grpcGatewayHandler, nil
+	withWalletOnly := true
+	if err := s.start(!withWalletOnly); err != nil {
+		log.WithError(err).Warn("failed to load handlers to interface after unlock")
+	}
+
+	if s.password == "" {
+		s.password = password
+	}
+}
+
+func (s *service) onLock(_ string) {
+	stopMacaroonSvc := true
+	s.stop(stopMacaroonSvc)
+	withWalletOnly := true
+	s.start(withWalletOnly)
+}
+
+func (s *service) onChangePwd(oldPassword, newPassword string) {
+	if !s.withMacaroons() {
+		return
+	}
+	oldPwd, newPwd := []byte(oldPassword), []byte(newPassword)
+	if err := s.macaroonSvc.ChangePassword(oldPwd, newPwd); err != nil {
+		log.WithError(err).Warn("failed to change password of macaroon store")
+	}
+}
+
+func (s *service) validatePassword(pwd string) bool {
+	return pwd == s.password
 }
