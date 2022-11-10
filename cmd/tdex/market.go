@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	"github.com/urfave/cli/v2"
 )
@@ -47,7 +46,7 @@ var (
 	}
 	marketBalanceCmd = &cli.Command{
 		Name:   "balance",
-		Usage:  "check the balance of a market",
+		Usage:  "DEPRECATED: get the balance of a market",
 		Action: marketBalanceAction,
 	}
 	marketDepositCmd = &cli.Command{
@@ -58,16 +57,6 @@ var (
 				Name:  "num_of_addresses",
 				Usage: "the number of addresses to generate for the market",
 			},
-			&cli.BoolFlag{
-				Name: "fragment",
-				Usage: "send funds to an ephemeral wallet to be split into multiple " +
-					"fragments and deposited into the market account",
-			},
-			&cli.StringFlag{
-				Name: "recover_funds_to_address",
-				Usage: "specify an address where to send the funds owned by the " +
-					"fragmenter to abort the process",
-			},
 		},
 		Action: marketDepositAction,
 	}
@@ -77,33 +66,19 @@ var (
 		Action: marketListAddressesAction,
 	}
 	marketClaimCmd = &cli.Command{
-		Name:  "claim",
-		Usage: "claim deposits for a market",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "outpoints",
-				Usage: "list of outpoints referring to utxos [{\"hash\": <string>, \"index\": <number>}]",
-			},
-		},
+		Name:   "claim",
+		Usage:  "DEPRECATED: claim deposits for a market",
 		Action: marketClaimAction,
 	}
 	marketWithdrawCmd = &cli.Command{
 		Name:  "withdraw",
 		Usage: "withdraw some funds to an address",
 		Flags: []cli.Flag{
-			&cli.Uint64Flag{
-				Name:  "base_amount",
-				Usage: "the amount in Satoshi of base asset to withdraw from the market.",
+			&cli.StringSliceFlag{
+				Name:  "receivers",
+				Usage: "list of withdrawal receivers as {asset, amount, address}",
 			},
 			&cli.Uint64Flag{
-				Name:  "quote_amount",
-				Usage: "the amount in Satoshi of quote asset to withdraw from the market.",
-			},
-			&cli.StringFlag{
-				Name:  "address",
-				Usage: "the address where to send the withdrew amount(s).",
-			},
-			&cli.Int64Flag{
 				Name:  "millisatsperbyte",
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
@@ -160,19 +135,9 @@ var (
 		Action: marketUpdatePercentageFeeAction,
 	}
 	marketReportFeeCmd = &cli.Command{
-		Name:  "reportfee",
-		Usage: "get a report of the fees collected for the trades of a market.",
-		Flags: []cli.Flag{
-			&cli.Uint64Flag{
-				Name:  "page",
-				Usage: "the number of the page to be listed. If omitted, the entire list is returned",
-			},
-			&cli.Uint64Flag{
-				Name:  "page_size",
-				Usage: "the size of the page",
-				Value: 10,
-			},
-		},
+		Name:   "reportfee",
+		Usage:  "get a report of the fees collected for the trades of a market.",
+		Flags:  []cli.Flag{},
 		Action: marketReportFeeAction,
 	}
 	marketUpdateStrategyCmd = &cli.Command{
@@ -245,7 +210,7 @@ func newMarketAction(ctx *cli.Context) error {
 	quoteAsset := ctx.String("quote_asset")
 
 	if _, err := client.NewMarket(
-		context.Background(), &daemonv1.NewMarketRequest{
+		context.Background(), &daemonv2.NewMarketRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -273,7 +238,7 @@ func marketInfoAction(ctx *cli.Context) error {
 	}
 
 	resp, err := client.GetMarketInfo(
-		context.Background(), &daemonv1.GetMarketInfoRequest{
+		context.Background(), &daemonv2.GetMarketInfoRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -289,38 +254,11 @@ func marketInfoAction(ctx *cli.Context) error {
 }
 
 func marketBalanceAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	baseAsset, quoteAsset, err := getMarketFromState()
-	if err != nil {
-		return err
-	}
-
-	resp, err := client.GetMarketBalance(
-		context.Background(), &daemonv1.GetMarketBalanceRequest{
-			Market: &tdexv1.Market{
-				BaseAsset:  baseAsset,
-				QuoteAsset: quoteAsset,
-			},
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	printRespJSON(resp)
+	printDeprecatedWarn("tdex market info")
 	return nil
 }
 
 func marketDepositAction(ctx *cli.Context) error {
-	if withFragmenter := ctx.Bool("fragment"); withFragmenter {
-		return marketFragmentDepositAction(ctx)
-	}
-
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
 		return err
@@ -333,9 +271,9 @@ func marketDepositAction(ctx *cli.Context) error {
 	}
 
 	numOfAddresses := ctx.Int64("num_of_addresses")
-	resp, err := client.GetMarketAddress(
+	resp, err := client.DeriveMarketAddresses(
 		context.Background(),
-		&daemonv1.GetMarketAddressRequest{
+		&daemonv2.DeriveMarketAddressesRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -348,11 +286,6 @@ func marketDepositAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(resp)
-	return nil
-}
-
-func marketFragmentDepositAction(ctx *cli.Context) error {
-	printDeprecatedWarn("tdex marketfragmenter split")
 	return nil
 }
 
@@ -369,7 +302,7 @@ func marketListAddressesAction(ctx *cli.Context) error {
 	}
 
 	resp, err := client.ListMarketAddresses(
-		context.Background(), &daemonv1.ListMarketAddressesRequest{
+		context.Background(), &daemonv2.ListMarketAddressesRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -380,48 +313,12 @@ func marketListAddressesAction(ctx *cli.Context) error {
 		return err
 	}
 
-	list := resp.GetAddressWithBlindingKey()
-	if list == nil {
-		fmt.Println("[]")
-		return nil
-	}
-
-	listStr, _ := json.MarshalIndent(list, "", "   ")
-	fmt.Println(string(listStr))
+	printRespJSON(resp)
 	return nil
 }
 
 func marketClaimAction(ctx *cli.Context) error {
-	outpoints, err := parseOutpoints(ctx.String("outpoints"))
-	if err != nil {
-		return err
-	}
-
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	baseAsset, quoteAsset, err := getMarketFromState()
-	if err != nil {
-		return err
-	}
-
-	if _, err := client.ClaimMarketDeposits(
-		context.Background(), &daemonv1.ClaimMarketDepositsRequest{
-			Market: &tdexv1.Market{
-				BaseAsset:  baseAsset,
-				QuoteAsset: quoteAsset,
-			},
-			Outpoints: outpoints,
-		},
-	); err != nil {
-		return err
-	}
-
-	fmt.Println()
-	fmt.Println("market is funded")
+	printDeprecatedWarn("")
 	return nil
 }
 
@@ -436,22 +333,20 @@ func marketWithdrawAction(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	baseAmount := ctx.Uint64("base_amount")
-	quoteAmount := ctx.Uint64("quote_amount")
-	addr := ctx.String("address")
+	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
-	mSatsPerByte := ctx.Int64("millisatsperbyte")
+	mSatsPerByte := ctx.Uint64("millisatsperbyte")
+	outputs, err := parseOutputs(receivers)
+	if err != nil {
+		return err
+	}
 
-	reply, err := client.WithdrawMarket(context.Background(), &daemonv1.WithdrawMarketRequest{
+	reply, err := client.WithdrawMarket(context.Background(), &daemonv2.WithdrawMarketRequest{
 		Market: &tdexv1.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
 		},
-		BalanceToWithdraw: &tdexv1.Balance{
-			BaseAmount:  baseAmount,
-			QuoteAmount: quoteAmount,
-		},
-		Address:          addr,
+		Outputs:          outputs,
 		MillisatsPerByte: mSatsPerByte,
 		Password:         password,
 	})
@@ -476,7 +371,7 @@ func marketOpenAction(ctx *cli.Context) error {
 	}
 
 	_, err = client.OpenMarket(
-		context.Background(), &daemonv1.OpenMarketRequest{
+		context.Background(), &daemonv2.OpenMarketRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -505,7 +400,7 @@ func marketCloseAction(ctx *cli.Context) error {
 	}
 
 	_, err = client.CloseMarket(
-		context.Background(), &daemonv1.CloseMarketRequest{
+		context.Background(), &daemonv2.CloseMarketRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -534,7 +429,7 @@ func marketDropAction(ctx *cli.Context) error {
 	}
 
 	_, err = client.DropMarket(
-		context.Background(), &daemonv1.DropMarketRequest{
+		context.Background(), &daemonv2.DropMarketRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -564,7 +459,7 @@ func marketUpdateFixedFeeAction(ctx *cli.Context) error {
 
 	baseFee := ctx.Int64("base_fee")
 	quoteFee := ctx.Int64("quote_fee")
-	req := &daemonv1.UpdateMarketFixedFeeRequest{
+	req := &daemonv2.UpdateMarketFixedFeeRequest{
 		Market: &tdexv1.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
@@ -598,8 +493,8 @@ func marketUpdatePercentageFeeAction(ctx *cli.Context) error {
 		return err
 	}
 
-	basisPoint := ctx.Int64("basis_point")
-	req := &daemonv1.UpdateMarketPercentageFeeRequest{
+	basisPoint := uint32(ctx.Int64("basis_point"))
+	req := &daemonv2.UpdateMarketPercentageFeeRequest{
 		Market: &tdexv1.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
@@ -619,41 +514,7 @@ func marketUpdatePercentageFeeAction(ctx *cli.Context) error {
 }
 
 func marketReportFeeAction(ctx *cli.Context) error {
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	baseAsset, quoteAsset, err := getMarketFromState()
-	if err != nil {
-		return err
-	}
-
-	pageNumber := ctx.Int64("page")
-	pageSize := ctx.Int64("page_size")
-	var page *daemonv1.Page
-	if pageNumber > 0 {
-		page = &daemonv1.Page{
-			PageNumber: pageNumber,
-			PageSize:   pageSize,
-		}
-	}
-
-	reply, err := client.GetMarketCollectedSwapFees(
-		context.Background(), &daemonv1.GetMarketCollectedSwapFeesRequest{
-			Market: &tdexv1.Market{
-				BaseAsset:  baseAsset,
-				QuoteAsset: quoteAsset,
-			},
-			Page: page,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	printRespJSON(reply)
+	printDeprecatedWarn("tdex market report")
 	return nil
 }
 
@@ -669,13 +530,13 @@ func marketUpdateStrategyAction(ctx *cli.Context) error {
 		return err
 	}
 
-	strategy := daemonv1.StrategyType_STRATEGY_TYPE_BALANCED
+	strategy := daemonv2.StrategyType_STRATEGY_TYPE_BALANCED
 	if ctx.Bool("pluggable") {
-		strategy = daemonv1.StrategyType_STRATEGY_TYPE_PLUGGABLE
+		strategy = daemonv2.StrategyType_STRATEGY_TYPE_PLUGGABLE
 	}
 
 	_, err = client.UpdateMarketStrategy(
-		context.Background(), &daemonv1.UpdateMarketStrategyRequest{
+		context.Background(), &daemonv2.UpdateMarketStrategyRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -705,7 +566,7 @@ func marketUpdatePriceAction(ctx *cli.Context) error {
 	}
 
 	_, err = client.UpdateMarketPrice(
-		context.Background(), &daemonv1.UpdateMarketPriceRequest{
+		context.Background(), &daemonv2.UpdateMarketPriceRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -737,30 +598,30 @@ func marketReportAction(ctx *cli.Context) error {
 		return err
 	}
 
-	var customPeriod *daemonv1.CustomPeriod
+	var customPeriod *daemonv2.CustomPeriod
 	start := ctx.String("start")
 	end := ctx.String("end")
 	if start != "" && end != "" {
-		customPeriod = &daemonv1.CustomPeriod{
+		customPeriod = &daemonv2.CustomPeriod{
 			StartDate: start,
 			EndDate:   end,
 		}
 	}
 
-	var predefinedPeriod daemonv1.PredefinedPeriod
+	var predefinedPeriod daemonv2.PredefinedPeriod
 	pp := ctx.Int("predefined_period")
 	if pp > 0 {
-		predefinedPeriod = daemonv1.PredefinedPeriod(pp)
+		predefinedPeriod = daemonv2.PredefinedPeriod(pp)
 	}
 
 	reply, err := client.GetMarketReport(
 		context.Background(),
-		&daemonv1.GetMarketReportRequest{
+		&daemonv2.GetMarketReportRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
-			TimeRange: &daemonv1.TimeRange{
+			TimeRange: &daemonv2.TimeRange{
 				PredefinedPeriod: predefinedPeriod,
 				CustomPeriod:     customPeriod,
 			},

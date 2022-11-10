@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/tdex-network/tdex-daemon/pkg/tdexdconnect"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/network"

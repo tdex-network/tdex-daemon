@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	"github.com/urfave/cli/v2"
 )
 
@@ -43,17 +42,23 @@ var (
 		Action: feeFragmenterListAddressesAction,
 	}
 	feeFragmenterSplitFundsCmd = &cli.Command{
-		Name:   "split",
-		Usage:  "split fee fragmenter funds and make them deposits of the fee acount",
+		Name:  "split",
+		Usage: "split fee fragmenter funds and make them deposits of the fee account",
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:  "num_fragments",
+				Usage: "Number of fragmented utxos to generate from fee fragmenter account balance",
+			},
+		},
 		Action: feeFragmenterSplitFundsAction,
 	}
 	feeFragmenterWithdrawCmd = &cli.Command{
 		Name:  "withdraw",
-		Usage: "withdraw all the fee fragmenter funds",
+		Usage: "withdraw funds from fee fragmenter account",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "address",
-				Usage: "the address of the receiver of the funds",
+			&cli.StringSliceFlag{
+				Name:  "receivers",
+				Usage: "list of withdrawal receivers as  {aseet, amount, address}",
 			},
 			&cli.Uint64Flag{
 				Name:  "millisatsperbyte",
@@ -78,7 +83,7 @@ func feeFragmenterBalanceAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.GetFeeFragmenterBalance(
-		context.Background(), &daemonv1.GetFeeFragmenterBalanceRequest{},
+		context.Background(), &daemonv2.GetFeeFragmenterBalanceRequest{},
 	)
 	if err != nil {
 		return err
@@ -97,8 +102,8 @@ func feeFragmenterDepositAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	numOfAddresses := ctx.Int64("num_of_addresses")
-	resp, err := client.GetFeeFragmenterAddress(
-		context.Background(), &daemonv1.GetFeeFragmenterAddressRequest{
+	resp, err := client.DeriveFeeFragmenterAddresses(
+		context.Background(), &daemonv2.DeriveFeeFragmenterAddressesRequest{
 			NumOfAddresses: numOfAddresses,
 		},
 	)
@@ -107,7 +112,6 @@ func feeFragmenterDepositAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(resp)
-
 	return nil
 }
 
@@ -119,21 +123,13 @@ func feeFragmenterListAddressesAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.ListFeeFragmenterAddresses(
-		context.Background(), &daemonv1.ListFeeFragmenterAddressesRequest{},
+		context.Background(), &daemonv2.ListFeeFragmenterAddressesRequest{},
 	)
 	if err != nil {
 		return err
 	}
 
-	list := reply.GetAddressWithBlindingKey()
-	if list == nil {
-		fmt.Println("[]")
-		return nil
-	}
-
-	listStr, _ := json.MarshalIndent(list, "", "   ")
-	fmt.Println(string(listStr))
-
+	printRespJSON(reply)
 	return nil
 }
 
@@ -144,11 +140,11 @@ func feeFragmenterSplitFundsAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	maxFragments := ctx.Uint64("max_fragments")
+	numFragments := ctx.Int("num_fragments")
 
 	stream, err := client.FeeFragmenterSplitFunds(
-		context.Background(), &daemonv1.FeeFragmenterSplitFundsRequest{
-			MaxFragments: uint32(maxFragments),
+		context.Background(), &daemonv2.FeeFragmenterSplitFundsRequest{
+			MaxFragments: uint32(numFragments),
 		})
 	if err != nil {
 		return err
@@ -178,13 +174,17 @@ func feeFragmenterWithdrawAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	addr := ctx.String("address")
+	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
 	mSatsPerByte := ctx.Uint64("millisatsperbyte")
+	outputs, err := parseOutputs(receivers)
+	if err != nil {
+		return err
+	}
 
 	reply, err := client.WithdrawFeeFragmenter(
-		context.Background(), &daemonv1.WithdrawFeeFragmenterRequest{
-			Address:          addr,
+		context.Background(), &daemonv2.WithdrawFeeFragmenterRequest{
+			Outputs:          outputs,
 			MillisatsPerByte: mSatsPerByte,
 			Password:         password,
 		},

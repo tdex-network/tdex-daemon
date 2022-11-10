@@ -3,17 +3,17 @@ package main
 import (
 	"context"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	"github.com/urfave/cli/v2"
 )
 
 var listwithdrawals = cli.Command{
-	Name:  "listwithdrawals",
-	Usage: "list all withdrawals for a wallet account",
+	Name:  "withdrawals",
+	Usage: "get a list of all withdrawals for a wallet account",
 	Flags: []cli.Flag{
-		&cli.Uint64Flag{
-			Name:     "account_index",
-			Usage:    "the index of the wallet account for which listing withdrawals",
+		&cli.StringFlag{
+			Name:     "account_name",
+			Usage:    "the name of the wallet account for which listing withdrawals",
 			Required: true,
 		},
 		&cli.Uint64Flag{
@@ -36,21 +36,21 @@ func listWithdrawalsAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	accountIndex := ctx.Int64("account_index")
+	accountName := ctx.String("account_name")
 	pageNumber := ctx.Int64("page")
 	pageSize := ctx.Int64("page_size")
-	var page *daemonv1.Page
+	var page *daemonv2.Page
 	if pageNumber > 0 {
-		page = &daemonv1.Page{
-			PageNumber: pageNumber,
-			PageSize:   pageSize,
+		page = &daemonv2.Page{
+			Number: pageNumber,
+			Size:   pageSize,
 		}
 	}
 
 	resp, err := client.ListWithdrawals(
-		context.Background(), &daemonv1.ListWithdrawalsRequest{
-			AccountIndex: int64(accountIndex),
-			Page:         page,
+		context.Background(), &daemonv2.ListWithdrawalsRequest{
+			AccountName: accountName,
+			Page:        page,
 		},
 	)
 	if err != nil {

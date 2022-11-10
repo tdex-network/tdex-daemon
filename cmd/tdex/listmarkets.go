@@ -3,14 +3,14 @@ package main
 import (
 	"context"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 
 	"github.com/urfave/cli/v2"
 )
 
 var listmarkets = cli.Command{
-	Name:   "listmarkets",
-	Usage:  "list all created markets",
+	Name:   "markets",
+	Usage:  "get a list of all markets",
 	Action: listMarketsAction,
 }
 
@@ -22,13 +22,12 @@ func listMarketsAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	resp, err := client.ListMarkets(
-		context.Background(), &daemonv1.ListMarketsRequest{},
+		context.Background(), &daemonv2.ListMarketsRequest{},
 	)
 	if err != nil {
 		return err
 	}
 
 	printRespJSON(resp)
-
 	return nil
 }

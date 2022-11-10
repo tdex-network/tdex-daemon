@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 
 	"github.com/urfave/cli/v2"
 )
@@ -40,15 +40,15 @@ func addWebhookAction(ctx *cli.Context) error {
 
 	endpoint := ctx.String("endpoint")
 	secret := ctx.String("secret")
-	action, ok := daemonv1.ActionType_value[ctx.String("action")]
+	action, ok := daemonv2.ActionType_value[ctx.String("action")]
 	if !ok {
 		return fmt.Errorf("unknown action type")
 	}
 
 	reply, err := client.AddWebhook(
-		context.Background(), &daemonv1.AddWebhookRequest{
+		context.Background(), &daemonv2.AddWebhookRequest{
 			Endpoint: endpoint,
-			Action:   daemonv1.ActionType(action),
+			Action:   daemonv2.ActionType(action),
 			Secret:   secret,
 		},
 	)

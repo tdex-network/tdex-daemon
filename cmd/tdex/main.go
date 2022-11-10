@@ -17,14 +17,14 @@ import (
 
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	"gopkg.in/macaroon.v2"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 )
 
@@ -70,6 +70,7 @@ func main() {
 		&genseed,
 		&initwallet,
 		&unlockwallet,
+		&lockwallet,
 		&status,
 		&changepassword,
 		&getwalletinfo,
@@ -88,24 +89,6 @@ func main() {
 		&listdeposits,
 		&listwithdrawals,
 		&contentType,
-		// TODO: deprecated commands, to be removed in next version.
-		&fragmentfee,
-		&fragmentmarket,
-		&listmarket,
-		&depositfee,
-		&depositmarket,
-		&claimfee,
-		&claimmarket,
-		&balancefee,
-		&openmarket,
-		&closemarket,
-		&dropmarket,
-		&updatestrategy,
-		&updateprice,
-		&updatePercentagefee,
-		&updateFixedfee,
-		&withdrawmarket,
-		&reportmarketfee,
 	)
 
 	app.Before = func(ctx *cli.Context) error {
@@ -235,34 +218,24 @@ func getTransportClient(ctx *cli.Context) (tdexv1.TransportServiceClient, func()
 	return tdexv1.NewTransportServiceClient(conn), cleanup, nil
 }
 
-func getOperatorClient(ctx *cli.Context) (daemonv1.OperatorServiceClient, func(), error) {
+func getOperatorClient(ctx *cli.Context) (daemonv2.OperatorServiceClient, func(), error) {
 	conn, err := getClientConn(false)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { conn.Close() }
 
-	return daemonv1.NewOperatorServiceClient(conn), cleanup, nil
+	return daemonv2.NewOperatorServiceClient(conn), cleanup, nil
 }
 
-func getUnlockerClient(ctx *cli.Context) (daemonv1.WalletUnlockerServiceClient, func(), error) {
+func getWalletClient(ctx *cli.Context) (daemonv2.WalletServiceClient, func(), error) {
 	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { _ = conn.Close() }
 
-	return daemonv1.NewWalletUnlockerServiceClient(conn), cleanup, nil
-}
-
-func getWalletClient(ctx *cli.Context) (daemonv1.WalletServiceClient, func(), error) {
-	conn, err := getClientConn(true)
-	if err != nil {
-		return nil, nil, err
-	}
-	cleanup := func() { _ = conn.Close() }
-
-	return daemonv1.NewWalletServiceClient(conn), cleanup, nil
+	return daemonv2.NewWalletServiceClient(conn), cleanup, nil
 }
 
 func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
@@ -353,6 +326,14 @@ func cleanAndExpandPath(path string) string {
 	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
 	// but the variables can still be expanded via POSIX-style $VARIABLE.
 	return filepath.Clean(os.ExpandEnv(path))
+}
+
+func printDeprecatedWarn(newCmd string) {
+	colorYellow := "\033[33m"
+	fmt.Println(fmt.Sprintf(
+		"%sWarning: this command is deprecated and will be removed in the next "+
+			"version.\nInstead, use the new command '%s'", string(colorYellow), newCmd,
+	))
 }
 
 type invalidUsageError struct {

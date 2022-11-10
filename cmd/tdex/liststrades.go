@@ -3,15 +3,15 @@ package main
 import (
 	"context"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 
 	"github.com/urfave/cli/v2"
 )
 
 var listtrades = cli.Command{
-	Name:  "listtrades",
-	Usage: "list all trades for a market, or for all markets",
+	Name:  "trades",
+	Usage: "get a list of all trades for a market",
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{
 			Name:  "page",
@@ -21,10 +21,6 @@ var listtrades = cli.Command{
 			Name:  "page_size",
 			Usage: "the size of the page",
 			Value: 10,
-		},
-		&cli.BoolFlag{
-			Name:  "all",
-			Usage: "to list all trades, not filtered by any market",
 		},
 	},
 	Action: listTradesAction,
@@ -37,30 +33,28 @@ func listTradesAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	allTrades := ctx.Bool("all")
 	pageNumber := ctx.Int64("page")
 	pageSize := ctx.Int64("page_size")
-	var page *daemonv1.Page
+	var page *daemonv2.Page
 	if pageNumber > 0 {
-		page = &daemonv1.Page{
-			PageNumber: pageNumber,
-			PageSize:   pageSize,
+		page = &daemonv2.Page{
+			Number: pageNumber,
+			Size:   pageSize,
 		}
 	}
 
-	baseAsset, quoteAsset, _ := getMarketFromState()
-	var market *tdexv1.Market
-	if baseAsset != "" && !allTrades {
-		market = &tdexv1.Market{
-			BaseAsset:  baseAsset,
-			QuoteAsset: quoteAsset,
-		}
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
 	}
 
 	resp, err := client.ListTrades(
-		context.Background(), &daemonv1.ListTradesRequest{
-			Market: market,
-			Page:   page,
+		context.Background(), &daemonv2.ListTradesRequest{
+			Market: &tdexv1.Market{
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
+			},
+			Page: page,
 		},
 	)
 	if err != nil {

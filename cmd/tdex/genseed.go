@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 
 	"github.com/urfave/cli/v2"
 )
@@ -17,16 +17,13 @@ var genseed = cli.Command{
 }
 
 func genSeedAction(ctx *cli.Context) error {
-	client, cleanup, err := getUnlockerClient(ctx)
+	client, cleanup, err := getWalletClient(ctx)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	resp, err := client.GenSeed(
-		context.Background(),
-		&tdexv1.GenSeedRequest{},
-	)
+	resp, err := client.GenSeed(context.Background(), &daemonv2.GenSeedRequest{})
 	if err != nil {
 		return err
 	}

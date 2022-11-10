@@ -9,28 +9,29 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var unlockwallet = cli.Command{
-	Name:  "unlock",
-	Usage: "unlock the daemon wallet with the given password",
+var lockwallet = cli.Command{
+	Name:  "lock",
+	Usage: "lock the daemon wallet",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "password",
-			Usage: "the password used to encrypt the mnemonic",
-			Value: "",
+			Name:     "password",
+			Usage:    "the (un)locking password",
+			Value:    "",
+			Required: true,
 		},
 	},
-	Action: unlockWalletAction,
+	Action: lockWalletAction,
 }
 
-func unlockWalletAction(ctx *cli.Context) error {
+func lockWalletAction(ctx *cli.Context) error {
 	client, cleanup, err := getWalletClient(ctx)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	_, err = client.UnlockWallet(
-		context.Background(), &daemonv2.UnlockWalletRequest{
+	_, err = client.LockWallet(
+		context.Background(), &daemonv2.LockWalletRequest{
 			Password: ctx.String("password"),
 		},
 	)
@@ -39,6 +40,6 @@ func unlockWalletAction(ctx *cli.Context) error {
 	}
 
 	fmt.Println()
-	fmt.Println("Wallet is unlocked")
+	fmt.Println("Wallet is locked")
 	return nil
 }
