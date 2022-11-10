@@ -8,87 +8,70 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
-func TestVerifyMarketFunds(t *testing.T) {
+const (
+	baseAsset  = "0000000000000000000000000000000000000000000000000000000000000000"
+	quoteAsset = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+)
+
+func TestNewMarket(t *testing.T) {
 	t.Parallel()
 
-	market := newTestMarket()
-	outpoints := []domain.OutpointWithAsset{
-		{
-			Asset: baseAsset,
-			Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-			Vout:  0,
-		},
-		{
-			Asset: quoteAsset,
-			Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-			Vout:  1,
-		},
-	}
+	fee := uint32(25)
 
-	err := market.VerifyMarketFunds(outpoints)
+	m, err := domain.NewMarket(baseAsset, quoteAsset, fee)
 	require.NoError(t, err)
+	require.NotNil(t, m)
+	require.Equal(t, baseAsset, m.BaseAsset)
+	require.Equal(t, quoteAsset, m.QuoteAsset)
+	require.Equal(t, fee, m.PercentageFee)
+	require.Zero(t, m.FixedFee.BaseFee)
+	require.Zero(t, m.FixedFee.QuoteFee)
+	require.False(t, m.IsStrategyPluggable())
 }
 
-func TestFailingVerifyMarketFunds(t *testing.T) {
+func TestFailingNewMarket(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name          string
-		market        *domain.Market
-		outpoints     []domain.OutpointWithAsset
+		baseAsset     string
+		quoteAsset    string
+		fee           int64
 		expectedError error
 	}{
 		{
-			name:   "missing_quote_asset",
-			market: newTestMarket(),
-			outpoints: []domain.OutpointWithAsset{
-				{
-					Asset: "0000000000000000000000000000000000000000000000000000000000000000",
-					Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-					Vout:  0,
-				},
-			},
-			expectedError: domain.ErrMarketMissingQuoteAsset,
+			name:          "invalid_base_asset",
+			baseAsset:     "",
+			quoteAsset:    quoteAsset,
+			fee:           25,
+			expectedError: domain.ErrMarketInvalidBaseAsset,
 		},
 		{
-			name:   "missing_base_asset",
-			market: newTestMarket(),
-			outpoints: []domain.OutpointWithAsset{
-				{
-					Asset: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-					Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-					Vout:  1,
-				},
-			},
-			expectedError: domain.ErrMarketMissingBaseAsset,
+			name:          "invalid_quote_asset",
+			baseAsset:     baseAsset,
+			quoteAsset:    "invalidquoteasset",
+			fee:           25,
+			expectedError: domain.ErrMarketInvalidQuoteAsset,
 		},
 		{
-			name:   "to_many_assets",
-			market: newTestMarket(),
-			outpoints: []domain.OutpointWithAsset{
-				{
-					Asset: "0000000000000000000000000000000000000000000000000000000000000000",
-					Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-					Vout:  0,
-				},
-				{
-					Asset: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-					Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-					Vout:  1,
-				},
-				{
-					Asset: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-					Txid:  "0000000000000000000000000000000000000000000000000000000000000000",
-					Vout:  2,
-				},
-			},
-			expectedError: domain.ErrMarketTooManyAssets,
+			name:          "fee_too_low",
+			baseAsset:     baseAsset,
+			quoteAsset:    quoteAsset,
+			fee:           -1,
+			expectedError: domain.ErrMarketInvalidPercentageFee,
+		},
+		{
+			name:          "fee_too_high",
+			baseAsset:     baseAsset,
+			quoteAsset:    quoteAsset,
+			fee:           10000,
+			expectedError: domain.ErrMarketInvalidPercentageFee,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.market.VerifyMarketFunds(tt.outpoints)
+			_, err := domain.NewMarket(tt.baseAsset, tt.quoteAsset, uint32(tt.fee))
 			require.EqualError(t, err, tt.expectedError.Error())
 		})
 	}
@@ -132,8 +115,7 @@ func TestMakeNotTradable(t *testing.T) {
 
 	m := newTestMarketTradable()
 
-	err := m.MakeNotTradable()
-	require.NoError(t, err)
+	m.MakeNotTradable()
 	require.False(t, m.IsTradable())
 }
 
@@ -147,7 +129,6 @@ func TestMakeStrategyPluggable(t *testing.T) {
 	err := m.MakeStrategyPluggable()
 	require.NoError(t, err)
 	require.True(t, m.IsStrategyPluggable())
-	require.False(t, m.IsStrategyPluggableInitialized())
 	require.False(t, m.IsStrategyBalanced())
 }
 
@@ -157,7 +138,7 @@ func TestFailingMakeStrategyPluggable(t *testing.T) {
 	m := newTestMarketTradable()
 
 	err := m.MakeStrategyPluggable()
-	require.EqualError(t, err, domain.ErrMarketMustBeClosed.Error())
+	require.EqualError(t, err, domain.ErrMarketIsOpen.Error())
 }
 
 func TestMakeStrategyBalanced(t *testing.T) {
@@ -176,52 +157,52 @@ func TestFailingMakeStrategyBalanced(t *testing.T) {
 	m := newTestMarketTradable()
 
 	err := m.MakeStrategyBalanced()
-	require.EqualError(t, err, domain.ErrMarketMustBeClosed.Error())
+	require.EqualError(t, err, domain.ErrMarketIsOpen.Error())
 }
 
-func TestChangeFeeBasisPoint(t *testing.T) {
+func TestChangePercentageFee(t *testing.T) {
 	t.Parallel()
 
 	m := newTestMarket()
-	newFee := int64(50)
+	newFee := uint32(50)
 
-	err := m.ChangeFeeBasisPoint(newFee)
+	err := m.ChangePercentageFee(newFee)
 	require.NoError(t, err)
-	require.Equal(t, newFee, m.Fee)
+	require.Equal(t, newFee, m.PercentageFee)
 }
 
-func TestFailingChangeFeeBasisPoint(t *testing.T) {
+func TestFailingChangePercentageFee(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name          string
 		market        *domain.Market
-		marketFee     int64
+		marketFee     int
 		expectedError error
 	}{
 		{
 			name:          "must_be_closed",
 			market:        newTestMarketTradable(),
 			marketFee:     50,
-			expectedError: domain.ErrMarketMustBeClosed,
+			expectedError: domain.ErrMarketIsOpen,
 		},
 		{
 			name:          "fee_too_low",
 			market:        newTestMarket(),
 			marketFee:     -1,
-			expectedError: domain.ErrMarketFeeTooLow,
+			expectedError: domain.ErrMarketInvalidPercentageFee,
 		},
 		{
 			name:          "fee_too_high",
 			market:        newTestMarket(),
 			marketFee:     10000,
-			expectedError: domain.ErrMarketFeeTooHigh,
+			expectedError: domain.ErrMarketInvalidPercentageFee,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.market.ChangeFeeBasisPoint(tt.marketFee)
+			err := tt.market.ChangePercentageFee(uint32(tt.marketFee))
 			require.EqualError(t, err, tt.expectedError.Error())
 		})
 	}
@@ -234,14 +215,14 @@ func TestChangeFixedFee(t *testing.T) {
 	baseFee := int64(100)
 	err := m.ChangeFixedFee(baseFee, -1)
 	require.NoError(t, err)
-	require.Equal(t, baseFee, m.FixedFee.BaseFee)
+	require.Equal(t, int(baseFee), int(m.FixedFee.BaseFee))
 	require.Zero(t, m.FixedFee.QuoteFee)
 
 	quoteFee := int64(200000)
 	err = m.ChangeFixedFee(-1, quoteFee)
 	require.NoError(t, err)
-	require.Equal(t, baseFee, m.FixedFee.BaseFee)
-	require.Equal(t, quoteFee, m.FixedFee.QuoteFee)
+	require.Equal(t, int(baseFee), int(m.FixedFee.BaseFee))
+	require.Equal(t, int(quoteFee), int(m.FixedFee.QuoteFee))
 }
 
 func TestFailingChangeFixedFee(t *testing.T) {
@@ -256,21 +237,21 @@ func TestFailingChangeFixedFee(t *testing.T) {
 		{
 			name:          "must_be_closed",
 			market:        newTestMarketTradable(),
-			expectedError: domain.ErrMarketMustBeClosed,
+			expectedError: domain.ErrMarketIsOpen,
 		},
 		{
 			name:          "invalid_fixed_base_fee",
 			market:        newTestMarket(),
 			baseFee:       -2,
 			quoteFee:      1000,
-			expectedError: domain.ErrInvalidFixedFee,
+			expectedError: domain.ErrMarketInvalidFixedFee,
 		},
 		{
 			name:          "invalid_fixed_quote_fee",
 			market:        newTestMarket(),
 			baseFee:       100,
 			quoteFee:      -2,
-			expectedError: domain.ErrInvalidFixedFee,
+			expectedError: domain.ErrMarketInvalidFixedFee,
 		},
 	}
 
@@ -282,7 +263,7 @@ func TestFailingChangeFixedFee(t *testing.T) {
 	}
 }
 
-func TestChangeMarketPrices(t *testing.T) {
+func TestChangeMarketMarketPrice(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -307,14 +288,10 @@ func TestChangeMarketPrices(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.market.ChangeBasePrice(tt.basePrice)
+			err := tt.market.ChangePrice(tt.basePrice, tt.quotePrice)
 			require.NoError(t, err)
-			require.Equal(t, tt.basePrice, tt.market.BaseAssetPrice())
-
-			err = tt.market.ChangeQuotePrice(tt.quotePrice)
-			require.NoError(t, err)
-			require.Equal(t, tt.quotePrice, tt.market.QuoteAssetPrice())
-			require.True(t, tt.market.IsStrategyPluggableInitialized())
+			require.Equal(t, tt.basePrice.String(), tt.market.BaseAssetPrice().String())
+			require.Equal(t, tt.quotePrice.String(), tt.market.QuoteAssetPrice().String())
 		})
 	}
 }
@@ -322,19 +299,49 @@ func TestChangeMarketPrices(t *testing.T) {
 func TestFailingChangeBasePrice(t *testing.T) {
 	t.Parallel()
 
-	m := newTestMarket()
+	tests := []struct {
+		name          string
+		market        *domain.Market
+		basePrice     decimal.Decimal
+		quotePrice    decimal.Decimal
+		expectedError error
+	}{
+		{
+			name:          "negative_base_price",
+			market:        newTestMarket(),
+			basePrice:     decimal.NewFromInt(-1),
+			quotePrice:    decimal.NewFromInt(1),
+			expectedError: domain.ErrMarketInvalidBasePrice,
+		},
+		{
+			name:          "zero_base_price",
+			market:        newTestMarket(),
+			basePrice:     decimal.Zero,
+			quotePrice:    decimal.NewFromInt(1),
+			expectedError: domain.ErrMarketInvalidBasePrice,
+		},
+		{
+			name:          "negative_quote_price",
+			market:        newTestMarket(),
+			basePrice:     decimal.NewFromInt(1),
+			quotePrice:    decimal.NewFromInt(-1),
+			expectedError: domain.ErrMarketInvalidQuotePrice,
+		},
+		{
+			name:          "zero_quote_price",
+			market:        newTestMarket(),
+			basePrice:     decimal.NewFromInt(1),
+			quotePrice:    decimal.Zero,
+			expectedError: domain.ErrMarketInvalidQuotePrice,
+		},
+	}
 
-	err := m.ChangeBasePrice(decimal.NewFromFloat(-0.0002))
-	require.EqualError(t, err, domain.ErrMarketInvalidBasePrice.Error())
-}
-
-func TestFailingChangeQuotePrice(t *testing.T) {
-	t.Parallel()
-
-	m := newTestMarket()
-
-	err := m.ChangeQuotePrice(decimal.NewFromFloat(-50000))
-	require.EqualError(t, err, domain.ErrMarketInvalidQuotePrice.Error())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.market.ChangePrice(tt.basePrice, tt.quotePrice)
+			require.EqualError(t, err, tt.expectedError.Error())
+		})
+	}
 }
 
 func TestPreview(t *testing.T) {
@@ -342,7 +349,7 @@ func TestPreview(t *testing.T) {
 
 	t.Run("market with balanced strategy", func(t *testing.T) {
 		market := newTestMarket()
-		market.ChangeFeeBasisPoint(100)
+		market.ChangePercentageFee(100)
 		market.ChangeFixedFee(650, 20000000)
 		market.MakeTradable()
 
@@ -361,9 +368,9 @@ func TestPreview(t *testing.T) {
 				isBaseAsset:  true,
 				isBuy:        true,
 				expected: &domain.PreviewInfo{
-					Price: domain.Prices{
-						BasePrice:  decimal.NewFromFloat(0.000025),
-						QuotePrice: decimal.NewFromFloat(40000),
+					Price: domain.MarketPrice{
+						BasePrice:  decimal.NewFromFloat(0.000025).String(),
+						QuotePrice: decimal.NewFromFloat(40000).String(),
 					},
 					Amount: 102448966,
 					Asset:  quoteAsset,
@@ -376,9 +383,9 @@ func TestPreview(t *testing.T) {
 				isBaseAsset:  false,
 				isBuy:        true,
 				expected: &domain.PreviewInfo{
-					Price: domain.Prices{
-						BasePrice:  decimal.NewFromFloat(0.000025),
-						QuotePrice: decimal.NewFromFloat(40000),
+					Price: domain.MarketPrice{
+						BasePrice:  decimal.NewFromFloat(0.000025).String(),
+						QuotePrice: decimal.NewFromFloat(40000).String(),
 					},
 					Amount: 1765,
 					Asset:  baseAsset,
@@ -391,9 +398,9 @@ func TestPreview(t *testing.T) {
 				isBaseAsset:  true,
 				isBuy:        false,
 				expected: &domain.PreviewInfo{
-					Price: domain.Prices{
-						BasePrice:  decimal.NewFromFloat(0.000025),
-						QuotePrice: decimal.NewFromFloat(40000),
+					Price: domain.MarketPrice{
+						BasePrice:  decimal.NewFromFloat(0.000025).String(),
+						QuotePrice: decimal.NewFromFloat(40000).String(),
 					},
 					Amount: 57662280,
 					Asset:  quoteAsset,
@@ -406,9 +413,9 @@ func TestPreview(t *testing.T) {
 				isBaseAsset:  false,
 				isBuy:        false,
 				expected: &domain.PreviewInfo{
-					Price: domain.Prices{
-						BasePrice:  decimal.NewFromFloat(0.000025),
-						QuotePrice: decimal.NewFromFloat(40000),
+					Price: domain.MarketPrice{
+						BasePrice:  decimal.NewFromFloat(0.000025).String(),
+						QuotePrice: decimal.NewFromFloat(40000).String(),
 					},
 					Amount: 3239,
 					Asset:  baseAsset,
@@ -420,8 +427,7 @@ func TestPreview(t *testing.T) {
 			preview, err := market.Preview(tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy)
 			require.NoError(t, err)
 			require.NotNil(t, preview)
-			require.Equal(t, tt.expected.Price.BasePrice.String(), preview.Price.BasePrice.String())
-			require.Equal(t, tt.expected.Price.QuotePrice.String(), preview.Price.QuotePrice.String())
+			require.Exactly(t, tt.expected.Price, preview.Price)
 			require.Equal(t, int(tt.expected.Amount), int(preview.Amount))
 			require.Equal(t, tt.expected.Asset, preview.Asset)
 		}
@@ -430,10 +436,11 @@ func TestPreview(t *testing.T) {
 	t.Run("market with pluggable strategy", func(t *testing.T) {
 		market := newTestMarketWithPluggableStrategy()
 		market.MakeNotTradable()
-		market.ChangeFeeBasisPoint(100)
+		market.ChangePercentageFee(100)
 		market.ChangeFixedFee(650, 20000000)
-		market.ChangeBasePrice(decimal.NewFromFloat(0.000028571429))
-		market.ChangeQuotePrice(decimal.NewFromFloat(35000))
+		market.ChangePrice(
+			decimal.NewFromFloat(0.000028571429), decimal.NewFromFloat(35000),
+		)
 		market.MakeTradable()
 
 		tests := []struct {
@@ -451,9 +458,9 @@ func TestPreview(t *testing.T) {
 				isBaseAsset:  true,
 				isBuy:        true,
 				expected: &domain.PreviewInfo{
-					Price: domain.Prices{
-						BasePrice:  decimal.NewFromFloat(0.000028571429),
-						QuotePrice: decimal.NewFromFloat(35000),
+					Price: domain.MarketPrice{
+						BasePrice:  decimal.NewFromFloat(0.000028571429).String(),
+						QuotePrice: decimal.NewFromFloat(35000).String(),
 					},
 					Amount: 90700000,
 					Asset:  quoteAsset,
@@ -466,9 +473,9 @@ func TestPreview(t *testing.T) {
 				isBaseAsset:  false,
 				isBuy:        true,
 				expected: &domain.PreviewInfo{
-					Price: domain.Prices{
-						BasePrice:  decimal.NewFromFloat(0.000028571429),
-						QuotePrice: decimal.NewFromFloat(35000),
+					Price: domain.MarketPrice{
+						BasePrice:  decimal.NewFromFloat(0.000028571429).String(),
+						QuotePrice: decimal.NewFromFloat(35000).String(),
 					},
 					Amount: 2178,
 					Asset:  baseAsset,
@@ -481,9 +488,9 @@ func TestPreview(t *testing.T) {
 				isBaseAsset:  true,
 				isBuy:        false,
 				expected: &domain.PreviewInfo{
-					Price: domain.Prices{
-						BasePrice:  decimal.NewFromFloat(0.000028571429),
-						QuotePrice: decimal.NewFromFloat(35000),
+					Price: domain.MarketPrice{
+						BasePrice:  decimal.NewFromFloat(0.000028571429).String(),
+						QuotePrice: decimal.NewFromFloat(35000).String(),
 					},
 					Amount: 49300000,
 					Asset:  quoteAsset,
@@ -496,9 +503,9 @@ func TestPreview(t *testing.T) {
 				isBaseAsset:  false,
 				isBuy:        false,
 				expected: &domain.PreviewInfo{
-					Price: domain.Prices{
-						BasePrice:  decimal.NewFromFloat(0.000028571429),
-						QuotePrice: decimal.NewFromFloat(35000),
+					Price: domain.MarketPrice{
+						BasePrice:  decimal.NewFromFloat(0.000028571429).String(),
+						QuotePrice: decimal.NewFromFloat(35000).String(),
 					},
 					Amount: 3535,
 					Asset:  baseAsset,
@@ -510,8 +517,7 @@ func TestPreview(t *testing.T) {
 			preview, err := market.Preview(tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy)
 			require.NoError(t, err)
 			require.NotNil(t, preview)
-			require.Equal(t, tt.expected.Price.BasePrice.String(), preview.Price.BasePrice.String())
-			require.Equal(t, tt.expected.Price.QuotePrice.String(), preview.Price.QuotePrice.String())
+			require.Exactly(t, tt.expected.Price, preview.Price)
 			require.Equal(t, tt.expected.Asset, preview.Asset)
 			require.Equal(t, int(tt.expected.Amount), int(preview.Amount))
 		}
@@ -523,7 +529,7 @@ func TestFailingPreview(t *testing.T) {
 
 	t.Run("market with balanced strategy", func(t *testing.T) {
 		market := newTestMarket()
-		market.ChangeFeeBasisPoint(100)
+		market.ChangePercentageFee(100)
 		market.MakeTradable()
 
 		tests := []struct {
@@ -632,9 +638,10 @@ func TestFailingPreview(t *testing.T) {
 	t.Run("market with pluggable strategy", func(t *testing.T) {
 		market := newTestMarketWithPluggableStrategy()
 		market.MakeNotTradable()
-		market.ChangeFeeBasisPoint(100)
-		market.ChangeBasePrice(decimal.NewFromFloat(0.000028571429))
-		market.ChangeQuotePrice(decimal.NewFromFloat(35000))
+		market.ChangePercentageFee(100)
+		market.ChangePrice(
+			decimal.NewFromFloat(0.000028571429), decimal.NewFromFloat(35000),
+		)
 		market.MakeTradable()
 
 		tests := []struct {
@@ -751,7 +758,7 @@ func TestFailingPreview(t *testing.T) {
 
 	t.Run("market with balanced strategy and fixed fees", func(t *testing.T) {
 		market := newTestMarket()
-		market.ChangeFeeBasisPoint(100)
+		market.ChangePercentageFee(100)
 		market.ChangeFixedFee(650, 20000000)
 		market.MakeTradable()
 
@@ -872,10 +879,11 @@ func TestFailingPreview(t *testing.T) {
 
 		market := newTestMarketWithPluggableStrategy()
 		market.MakeNotTradable()
-		market.ChangeFeeBasisPoint(100)
+		market.ChangePercentageFee(100)
 		market.ChangeFixedFee(650, 20000000)
-		market.ChangeBasePrice(decimal.NewFromFloat(0.000028571429))
-		market.ChangeQuotePrice(decimal.NewFromFloat(35000))
+		market.ChangePrice(
+			decimal.NewFromFloat(0.000028571429), decimal.NewFromFloat(35000),
+		)
 		market.MakeTradable()
 
 		tests := []struct {
@@ -1010,7 +1018,7 @@ func TestFailingPreview(t *testing.T) {
 }
 
 func newTestMarket() *domain.Market {
-	m, _ := domain.NewMarket(0, baseAsset, quoteAsset, 25)
+	m, _ := domain.NewMarket(baseAsset, quoteAsset, 25)
 	return m
 }
 

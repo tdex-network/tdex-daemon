@@ -2,23 +2,10 @@ package domain
 
 import (
 	"github.com/shopspring/decimal"
-	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
+	pluggable_strategy "github.com/tdex-network/tdex-daemon/internal/infrastructure/market-strategy/pluggable"
+	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 )
-
-// IsZero ...
-func (p Prices) IsZero() bool {
-	return p == Prices{}
-}
-
-// AreZero ...
-func (p Prices) AreZero() bool {
-	if p.IsZero() {
-		return true
-	}
-
-	return decimal.Decimal(p.BasePrice).Equal(decimal.NewFromInt(0)) && decimal.Decimal(p.QuotePrice).Equal(decimal.NewFromInt(0))
-}
 
 // IsTradable returns true if the market is available for trading
 func (m *Market) IsTradable() bool {
@@ -27,71 +14,34 @@ func (m *Market) IsTradable() bool {
 
 // BaseAssetPrice returns the latest price for the base asset
 func (m *Market) BaseAssetPrice() decimal.Decimal {
-	basePrice, _ := getLatestPrice(m.Price)
-
-	return decimal.Decimal(basePrice)
+	if m.Price.IsZero() {
+		return decimal.Zero
+	}
+	p, _ := decimal.NewFromString(m.Price.BasePrice)
+	return p
 }
 
 // QuoteAssetPrice returns the latest price for the quote asset
 func (m *Market) QuoteAssetPrice() decimal.Decimal {
-	_, quotePrice := getLatestPrice(m.Price)
-
-	return decimal.Decimal(quotePrice)
+	if m.Price.IsZero() {
+		return decimal.Zero
+	}
+	p, _ := decimal.NewFromString(m.Price.QuotePrice)
+	return p
 }
 
 func (m *Market) IsStrategyBalanced() bool {
-	return m.Strategy.Type == int(StrategyTypeBalanced)
+	return m.StrategyType == StrategyTypeBalanced
 }
 
 // IsStrategyPluggable returns true if the the startegy isn't automated.
 func (m *Market) IsStrategyPluggable() bool {
-	return !m.Strategy.IsZero() && m.Strategy.Type == int(StrategyTypePluggable)
+	return m.StrategyType == StrategyTypePluggable
 }
 
-// IsStrategyPluggableInitialized returns true if the prices have been set.
-func (m *Market) IsStrategyPluggableInitialized() bool {
-	return !m.Price.AreZero()
-}
-
-// VerifyMarketFunds verifies that the provided list of outpoints (each
-// including the unblinded asset) are valid funds of the market, by checking
-// that their assets match those of the market.
-func (m *Market) VerifyMarketFunds(fundingTxs []OutpointWithAsset) error {
-	assetCount := make(map[string]int)
-	for _, o := range fundingTxs {
-		assetCount[o.Asset]++
-	}
-
-	if len(assetCount) > 2 {
-		return ErrMarketTooManyAssets
-	}
-
-	_, baseFundsOk := assetCount[m.BaseAsset]
-	_, quoteFundsOk := assetCount[m.QuoteAsset]
-
-	// balanced strategy requires funds of both assets to be non zero.
-	if m.IsStrategyBalanced() {
-		if !baseFundsOk {
-			return ErrMarketMissingBaseAsset
-		}
-		if !quoteFundsOk {
-			return ErrMarketMissingQuoteAsset
-		}
-
-		return nil
-	}
-
-	// for other strategies, it's ok to have single asset funds instead.
-	if !baseFundsOk && !quoteFundsOk {
-		return ErrMarketMissingFunds
-	}
-
-	return nil
-}
-
-// MakeTradable ...
+// MakeTradable updates the status of the market to tradable.
 func (m *Market) MakeTradable() error {
-	if m.IsStrategyPluggable() && !m.IsStrategyPluggableInitialized() {
+	if m.IsStrategyPluggable() && m.Price.IsZero() {
 		return ErrMarketNotPriced
 	}
 
@@ -99,10 +49,9 @@ func (m *Market) MakeTradable() error {
 	return nil
 }
 
-// MakeNotTradable ...
-func (m *Market) MakeNotTradable() error {
+// MakeNotTradable updates the status of the market to not tradable.
+func (m *Market) MakeNotTradable() {
 	m.Tradable = false
-	return nil
 }
 
 // MakeStrategyPluggable makes the current market using a given price
@@ -110,12 +59,11 @@ func (m *Market) MakeNotTradable() error {
 func (m *Market) MakeStrategyPluggable() error {
 	if m.IsTradable() {
 		// We need the market be switched off before making this change
-		return ErrMarketMustBeClosed
+		return ErrMarketIsOpen
 	}
 
-	m.Strategy = mm.NewStrategyFromFormula(PluggableStrategy{})
-	m.ChangeBasePrice(decimal.NewFromInt(0))
-	m.ChangeQuotePrice(decimal.NewFromInt(0))
+	m.StrategyType = StrategyTypePluggable
+	m.Price = MarketPrice{}
 
 	return nil
 }
@@ -124,66 +72,58 @@ func (m *Market) MakeStrategyPluggable() error {
 func (m *Market) MakeStrategyBalanced() error {
 	if m.IsTradable() {
 		// We need the market be switched off before making this change
-		return ErrMarketMustBeClosed
+		return ErrMarketIsOpen
 	}
 
-	m.Strategy = mm.NewStrategyFromFormula(formula.BalancedReserves{})
+	m.StrategyType = StrategyTypeBalanced
 
 	return nil
 }
 
-// ChangeFeeBasisPoint ...
-func (m *Market) ChangeFeeBasisPoint(fee int64) error {
+// ChangePercentageFee updates market's perentage fee to the given one.
+func (m *Market) ChangePercentageFee(fee uint32) error {
 	if m.IsTradable() {
-		return ErrMarketMustBeClosed
+		return ErrMarketIsOpen
 	}
 
-	if err := validateFee(fee); err != nil {
-		return err
+	if !isValidPercentageFee(int(fee)) {
+		return ErrMarketInvalidPercentageFee
 	}
 
-	m.Fee = fee
+	m.PercentageFee = fee
 	return nil
 }
 
-// ChangeFixedFee ...
+// ChangeFixedFee updates market's fixed fee to those given.
 func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
 	if m.IsTradable() {
-		return ErrMarketMustBeClosed
+		return ErrMarketIsOpen
 	}
 
-	if err := validateFixedFee(baseFee, quoteFee); err != nil {
-		return err
+	if !isValidFixedFee(int(baseFee), int(quoteFee)) {
+		return ErrMarketInvalidFixedFee
 	}
 
 	if baseFee >= 0 {
-		m.FixedFee.BaseFee = baseFee
+		m.FixedFee.BaseFee = uint64(baseFee)
 	}
 	if quoteFee >= 0 {
-		m.FixedFee.QuoteFee = quoteFee
+		m.FixedFee.QuoteFee = uint64(quoteFee)
 	}
 	return nil
 }
 
-// ChangeBasePrice ...
-func (m *Market) ChangeBasePrice(price decimal.Decimal) error {
-	zero := decimal.NewFromInt(0)
-	if price.LessThanOrEqual(zero) {
+// ChangeBasePrice updates the price of market's base asset.
+func (m *Market) ChangePrice(basePrice, quotePrice decimal.Decimal) error {
+	if basePrice.LessThanOrEqual(decimal.Zero) {
 		return ErrMarketInvalidBasePrice
 	}
-
-	m.Price.BasePrice = price
-	return nil
-}
-
-// ChangeQuotePrice ...
-func (m *Market) ChangeQuotePrice(price decimal.Decimal) error {
-	zero := decimal.NewFromInt(0)
-	if price.LessThanOrEqual(zero) {
+	if quotePrice.LessThanOrEqual(decimal.Zero) {
 		return ErrMarketInvalidQuotePrice
 	}
 
-	m.Price.QuotePrice = price
+	m.Price.BasePrice = basePrice.String()
+	m.Price.QuotePrice = quotePrice.String()
 	return nil
 }
 
@@ -196,11 +136,11 @@ func (m *Market) Preview(
 	}
 
 	if isBaseAsset {
-		if amount < uint64(m.FixedFee.BaseFee) {
+		if amount < m.FixedFee.BaseFee {
 			return nil, ErrMarketPreviewAmountTooLow
 		}
 	} else {
-		if amount < uint64(m.FixedFee.QuoteFee) {
+		if amount < m.FixedFee.QuoteFee {
 			return nil, ErrMarketPreviewAmountTooLow
 		}
 	}
@@ -242,21 +182,32 @@ func (m *Market) Preview(
 	}, nil
 }
 
+func (m *Market) strategy() marketmaking.MakingFormula {
+	switch m.StrategyType {
+	case StrategyTypePluggable:
+		return pluggable_strategy.PluggableStrategy{}
+	case StrategyTypeBalanced:
+		fallthrough
+	default:
+		return marketmaking.NewBalancedReservedFormula()
+	}
+}
+
 func (m *Market) formula(
 	isBaseAsset, isBuy bool,
 ) func(interface{}, uint64) (uint64, error) {
-	formula := m.getStrategySafe().Formula()
+	strategy := m.strategy()
 	if isBuy {
 		if isBaseAsset {
-			return formula.InGivenOut
+			return strategy.InGivenOut
 		}
-		return formula.OutGivenIn
+		return strategy.OutGivenIn
 	}
 
 	if isBaseAsset {
-		return formula.OutGivenIn
+		return strategy.OutGivenIn
 	}
-	return formula.InGivenOut
+	return strategy.InGivenOut
 }
 
 func (m *Market) formulaOptsForPluggable(
@@ -274,11 +225,11 @@ func (m *Market) formulaOptsForPluggable(
 		price = m.QuoteAssetPrice()
 	}
 
-	return PluggableStrategyOpts{
+	return pluggable_strategy.PluggableStrategyOpts{
 		BalanceIn:  balanceIn,
 		BalanceOut: balanceOut,
 		Price:      price,
-		Fee:        uint64(m.Fee),
+		Fee:        uint64(m.PercentageFee),
 	}
 }
 
@@ -295,12 +246,14 @@ func (m *Market) formulaOptsForBalanced(
 	return formula.BalancedReservesOpts{
 		BalanceIn:           balanceIn,
 		BalanceOut:          balanceOut,
-		Fee:                 uint64(m.Fee),
+		Fee:                 uint64(m.PercentageFee),
 		ChargeFeeOnTheWayIn: true,
 	}
 }
 
-func (m *Market) priceForStrategy(baseBalance, quoteBalance uint64) (Prices, error) {
+func (m *Market) priceForStrategy(
+	baseBalance, quoteBalance uint64,
+) (MarketPrice, error) {
 	if m.IsStrategyPluggable() {
 		return m.Price, nil
 	}
@@ -310,12 +263,12 @@ func (m *Market) priceForStrategy(baseBalance, quoteBalance uint64) (Prices, err
 
 func (m *Market) priceFromBalances(
 	baseBalance, quoteBalance uint64,
-) (price Prices, err error) {
+) (price MarketPrice, err error) {
 	toIface := func(o formula.BalancedReservesOpts) interface{} {
 		return o
 	}
-
-	basePrice, err := m.getStrategySafe().Formula().SpotPrice(
+	strategy := m.strategy()
+	basePrice, err := strategy.SpotPrice(
 		toIface(formula.BalancedReservesOpts{
 			BalanceIn:  quoteBalance,
 			BalanceOut: baseBalance,
@@ -324,7 +277,7 @@ func (m *Market) priceFromBalances(
 	if err != nil {
 		return
 	}
-	quotePrice, err := m.getStrategySafe().Formula().SpotPrice(
+	quotePrice, err := strategy.SpotPrice(
 		toIface(formula.BalancedReservesOpts{
 			BalanceIn:  baseBalance,
 			BalanceOut: quoteBalance,
@@ -334,9 +287,9 @@ func (m *Market) priceFromBalances(
 		return
 	}
 
-	price = Prices{
-		BasePrice:  basePrice,
-		QuotePrice: quotePrice,
+	price = MarketPrice{
+		BasePrice:  basePrice.String(),
+		QuotePrice: quotePrice.String(),
 	}
 	return
 }
@@ -360,42 +313,6 @@ func (m *Market) chargeFixedFees(
 		)
 	}
 	return amount + uint64(m.FixedFee.BaseFee), nil
-}
-
-// getStrategySafe is a backward compatible method that returns the current
-// strategy as the implementation of the mm.MakingFormula interface.
-func (m *Market) getStrategySafe() mm.MakingStrategy {
-	if m.IsStrategyPluggable() {
-		return mm.NewStrategyFromFormula(PluggableStrategy{})
-	}
-	return m.Strategy
-}
-
-func validateFee(basisPoint int64) error {
-	if basisPoint < 0 {
-		return ErrMarketFeeTooLow
-	}
-	if basisPoint > 9999 {
-		return ErrMarketFeeTooHigh
-	}
-
-	return nil
-}
-
-func validateFixedFee(baseFee, quoteFee int64) error {
-	if baseFee < -1 || quoteFee < -1 {
-		return ErrInvalidFixedFee
-	}
-
-	return nil
-}
-
-func getLatestPrice(pt Prices) (decimal.Decimal, decimal.Decimal) {
-	if pt.IsZero() || pt.AreZero() {
-		return decimal.NewFromInt(0), decimal.NewFromInt(0)
-	}
-
-	return pt.BasePrice, pt.QuotePrice
 }
 
 func safeSubtractFeesFromAmount(amount, fee, balance uint64) (uint64, error) {
