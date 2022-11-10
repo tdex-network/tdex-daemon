@@ -131,7 +131,6 @@ func generateOperatorTLSKeyCert(
 
 		KeyUsage: x509.KeyUsageKeyEncipherment |
 			x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		IsCA:                  true,
 		BasicConstraintsValid: true,
 
 		DNSNames:    dnsNames,

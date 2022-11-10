@@ -50,7 +50,7 @@ func NewTdexConnectService(
 
 	p := protocol
 	if len(certBytes) > 0 {
-		if protocol == "" || protocol == httpsProtocol {
+		if protocol == httpsProtocol {
 			p = httpsProtocol
 		} else {
 			return nil, fmt.Errorf(
