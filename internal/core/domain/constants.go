@@ -1,29 +1,22 @@
 package domain
 
 const (
-	FeeAccount = iota
-	WalletAccount
-	FeeFragmenterAccount
-	MarketFragmenterAccount
-	UnusedAccount3
-	MarketAccountStart
+	StrategyTypeUndefined = iota
+	StrategyTypePluggable
+	StrategyTypeBalanced
+	StrategyTypeUnbalanced
 
-	ExternalChain = 0
-	InternalChain = 1
+	TradeStatusCodeUndefined = iota
+	TradeStatusCodeProposal
+	TradeStatusCodeAccepted
+	TradeStatusCodeCompleted
+	TradeStatusCodeSettled
+	TradeStatusCodeExpired
 
-	MinMilliSatPerByte = 100
+	MinPercentageFee = 0
+	MaxPercentageFee = 9999
 
-	StrategyTypePluggable  StrategyType = 0
-	StrategyTypeBalanced   StrategyType = 1
-	StrategyTypeUnbalanced StrategyType = 2
-)
-
-const (
-	Empty = iota - 1
-	Undefined
-	Proposal
-	Accepted
-	Completed
-	Settled
-	Expired
+	FeeAccount              = "fee_account"
+	FeeFragmenterAccount    = "fee_fragmenter_account"
+	MarketFragmenterAccount = "market_fragmenter_account"
 )
