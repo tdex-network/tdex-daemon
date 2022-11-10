@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"testing"
 	"time"
 
@@ -16,19 +15,15 @@ import (
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 )
 
-var mockedErr = &domain.SwapError{
-	Err:  errors.New("something went wrong"),
-	Code: 10,
-}
-
 func TestTradePropose(t *testing.T) {
-	swapRequest := newMockedSwapRequest()
+	mktName := "test"
+	swapRequest := newSwapRequest()
 	mktBaseAsset := swapRequest.GetAssetP()
 	mktQuoteAsset := swapRequest.GetAssetR()
-	mktFee := int64(25)
+	mktFee := uint32(25)
 	traderPubkey := []byte{}
 	mockedSwapParser := mockSwapParser{}
-	mockedSwapParser.On("SerializeRequest", swapRequest).Return(randomBytes(100), nil)
+	mockedSwapParser.On("SerializeRequest", swapRequest).Return(randomBytes(100), -1)
 	domain.SwapParserManager = mockedSwapParser
 
 	tests := []struct {
@@ -64,12 +59,12 @@ func TestTradePropose(t *testing.T) {
 			t.Parallel()
 
 			ok, err := tt.trade.Propose(
-				swapRequest, mktBaseAsset, mktQuoteAsset, mktFee, 0, 0, traderPubkey)
+				swapRequest, mktName, mktBaseAsset, mktQuoteAsset, mktFee, 0, 0, traderPubkey)
 			require.NoError(t, err)
 			require.True(t, ok)
 
-			require.GreaterOrEqual(t, tt.trade.Status.Code, domain.Proposal)
-			require.NotEmpty(t, tt.trade.SwapRequest.ID)
+			require.GreaterOrEqual(t, tt.trade.Status.Code, domain.TradeStatusCodeProposal)
+			require.NotEmpty(t, tt.trade.SwapRequest.Id)
 			require.NotNil(t, tt.trade.SwapRequest.Message)
 			require.NotEmpty(t, tt.trade.SwapRequest.Timestamp)
 		})
@@ -77,26 +72,24 @@ func TestTradePropose(t *testing.T) {
 }
 
 func TestFailingTradePropose(t *testing.T) {
-	swapRequest := newMockedSwapRequest()
+	mktName := "test"
+	swapRequest := newSwapRequest()
 	mktBaseAsset := swapRequest.GetAssetP()
 	mktQuoteAsset := swapRequest.GetAssetR()
-	mktFee := int64(25)
+	mktFee := uint32(25)
 	traderPubkey := []byte{}
 	mockedSwapParser := mockSwapParser{}
-	mockedSwapParser.On("SerializeRequest", swapRequest).Return(nil, mockedErr)
+	mockedSwapParser.On("SerializeRequest", swapRequest).Return(nil, 1)
 	mockedSwapParser.On(
-		"SerializeFail",
-		swapRequest.GetId(),
-		mockedErr.Code,
-		mockedErr.Err.Error(),
-	).Return(randomID(), randomBytes(100))
+		"SerializeFail", swapRequest.GetId(), mock.Anything,
+	).Return(randomId(), randomBytes(100))
 	domain.SwapParserManager = mockedSwapParser
 
-	t.Run("failing_because_invalid_request", func(t *testing.T) {
+	t.Run("invalid_request", func(t *testing.T) {
 		trade := newTradeEmpty()
 
 		ok, err := trade.Propose(
-			swapRequest, mktBaseAsset, mktQuoteAsset, mktFee, 0, 0, traderPubkey,
+			swapRequest, mktName, mktBaseAsset, mktQuoteAsset, mktFee, 0, 0, traderPubkey,
 		)
 		require.NoError(t, err)
 		require.False(t, ok)
@@ -107,14 +100,7 @@ func TestFailingTradePropose(t *testing.T) {
 
 func TestTradeAccept(t *testing.T) {
 	tx := randomBase64(100)
-	inBlindKeys := map[string][]byte{
-		randomHex(20): randomBytes(32),
-	}
-	outBlindKeys := map[string][]byte{
-		randomHex(20): randomBytes(32),
-		randomHex(20): randomBytes(32),
-	}
-	expiryDuration := uint64(600)
+	expiryDuration := time.Now().Add(1 * time.Minute).Unix()
 
 	tests := []struct {
 		name  string
@@ -142,62 +128,46 @@ func TestTradeAccept(t *testing.T) {
 		tt := tests[i]
 
 		mockedSwapParser := mockSwapParser{}
-		mockedSwapParser.On("SerializeAccept", domain.AcceptArgs{
-			RequestMessage:     tt.trade.SwapRequest.Message,
-			Transaction:        tx,
-			InputBlindingKeys:  inBlindKeys,
-			OutputBlindingKeys: outBlindKeys,
-		}).Return(randomID(), randomBytes(100), nil)
+		mockedSwapParser.On(
+			"SerializeAccept", mock.Anything, mock.Anything, mock.Anything,
+		).Return(randomId(), randomBytes(100), -1)
 		domain.SwapParserManager = mockedSwapParser
 
 		t.Run(tt.name, func(t *testing.T) {
-			ok, err := tt.trade.Accept(tx, inBlindKeys, outBlindKeys, expiryDuration)
+			ok, err := tt.trade.Accept(tx, nil, expiryDuration)
 			require.NoError(t, err)
 			require.True(t, ok)
-			require.GreaterOrEqual(t, tt.trade.Status.Code, domain.Accepted)
+			require.GreaterOrEqual(t, tt.trade.Status.Code, domain.TradeStatusCodeAccepted)
 		})
 	}
 }
 
 func TestFailingTradeAccept(t *testing.T) {
 	tx := randomBase64(100)
-	inBlindKeys := map[string][]byte{
-		randomHex(20): randomBytes(32),
-	}
-	outBlindKeys := map[string][]byte{
-		randomHex(20): randomBytes(32),
-		randomHex(20): randomBytes(32),
-	}
-	expiryDuration := uint64(600)
+	expiryDuration := time.Now().Add(1 * time.Minute).Unix()
 
-	t.Run("failing_because_invalid_request", func(t *testing.T) {
+	t.Run("invalid_request", func(t *testing.T) {
 		trade := newTradeProposal()
 		mockedSwapParser := mockSwapParser{}
-		mockedSwapParser.On("SerializeAccept", domain.AcceptArgs{
-			RequestMessage:     trade.SwapRequest.Message,
-			Transaction:        tx,
-			InputBlindingKeys:  inBlindKeys,
-			OutputBlindingKeys: outBlindKeys,
-		}).Return(nil, nil, mockedErr)
 		mockedSwapParser.On(
-			"SerializeFail",
-			trade.SwapRequest.ID,
-			mockedErr.Code,
-			mockedErr.Err.Error(),
-		).Return(randomID(), randomBytes(100))
+			"SerializeAccept", mock.Anything, mock.Anything, mock.Anything,
+		).Return(nil, nil, 2)
+		mockedSwapParser.On(
+			"SerializeFail", trade.SwapRequest.Id, mock.Anything,
+		).Return(randomId(), randomBytes(100))
 		domain.SwapParserManager = mockedSwapParser
 
-		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys, expiryDuration)
+		ok, err := trade.Accept(tx, nil, expiryDuration)
 		require.NoError(t, err)
 		require.False(t, ok)
 		require.False(t, trade.IsAccepted())
 		require.True(t, trade.IsRejected())
 	})
 
-	t.Run("failing_because_invalid_status", func(t *testing.T) {
+	t.Run("invalid_status", func(t *testing.T) {
 		trade := newTradeEmpty()
 
-		ok, err := trade.Accept(tx, inBlindKeys, outBlindKeys, expiryDuration)
+		ok, err := trade.Accept(tx, nil, expiryDuration)
 		require.EqualError(t, err, domain.ErrTradeMustBeProposal.Error())
 		require.False(t, ok)
 		require.False(t, trade.IsAccepted())
@@ -237,23 +207,24 @@ func TestTradeComplete(t *testing.T) {
 
 		mockedSwapParser := mockSwapParser{}
 		mockedSwapParser.On(
-			"SerializeComplete",
-			tt.trade.SwapAccept.Message,
-			tt.tx,
-		).Return(randomID(), randomBytes(100), nil)
+			"SerializeComplete", tt.trade.SwapAccept.Message, tt.tx,
+		).Return(randomId(), randomBytes(100), -1)
+		mockedSwapParser.On(
+			"ParseSwapTransaction", mock.Anything, mock.Anything,
+		).Return(&domain.SwapTransactionDetails{
+			PsetBase64: randomBase64(100),
+			TxHex:      randomHex(100),
+			Txid:       randomHex(32),
+		}, -1)
 		domain.SwapParserManager = mockedSwapParser
 
-		mockedPsetParser := mockPsetParser{}
-		mockedPsetParser.On("GetTxID", tt.tx).Return(randomHex(32), nil)
-		mockedPsetParser.On("GetTxHex", tt.tx).Return(randomHex(32), nil)
-		domain.PsetParserManager = mockedPsetParser
-
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := tt.trade.Complete(tt.tx)
+			ok, err := tt.trade.Complete(tt.tx)
 			require.NoError(t, err)
-			require.NotNil(t, res)
-			require.True(t, res.OK)
-			require.GreaterOrEqual(t, tt.trade.Status.Code, domain.Completed)
+			require.True(t, ok)
+			require.GreaterOrEqual(t, tt.trade.Status.Code, domain.TradeStatusCodeCompleted)
+			require.NotEmpty(t, tt.trade.TxHex)
+			require.NotEmpty(t, tt.trade.TxId)
 		})
 	}
 }
@@ -261,44 +232,48 @@ func TestTradeComplete(t *testing.T) {
 func TestFailingTradeComplete(t *testing.T) {
 	tx := randomBase64(100)
 
-	t.Run("failing_because_invalid_request", func(t *testing.T) {
+	t.Run("invalid_request", func(t *testing.T) {
 		trade := newTradeAccepted()
 		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser.On(
+			"ParseSwapTransaction", mock.Anything, mock.Anything,
+		).Return(&domain.SwapTransactionDetails{
+			PsetBase64: randomBase64(100),
+			TxHex:      randomHex(100),
+			Txid:       randomHex(32),
+		}, -1)
 		mockedSwapParser.On(
 			"SerializeComplete",
 			trade.SwapAccept.Message,
 			tx,
-		).Return(nil, nil, mockedErr)
+		).Return(nil, nil, 3)
 		mockedSwapParser.On(
-			"SerializeFail",
-			trade.SwapAccept.ID,
-			mockedErr.Code,
-			mockedErr.Err.Error(),
-		).Return(randomID(), randomBytes(100))
+			"SerializeFail", trade.SwapAccept.Id, mock.Anything,
+		).Return(randomId(), randomBytes(100))
 		domain.SwapParserManager = mockedSwapParser
 
-		res, err := trade.Complete(tx)
+		ok, err := trade.Complete(tx)
 		require.NoError(t, err)
-		require.False(t, res.OK)
-		require.Empty(t, res.TxID)
-		require.Empty(t, res.TxHex)
+		require.False(t, ok)
+		require.Empty(t, trade.TxId)
+		require.Empty(t, trade.TxHex)
 		require.False(t, trade.IsCompleted())
 		require.True(t, trade.IsRejected())
 	})
 
-	t.Run("failing_because_expired", func(t *testing.T) {
+	t.Run("expired", func(t *testing.T) {
 		trade := newTradeAccepted()
-		trade.ExpiryTime = uint64(time.Now().AddDate(0, 0, -1).Unix())
+		trade.ExpiryTime = time.Now().AddDate(0, 0, -1).Unix()
 		require.True(t, trade.IsExpired())
 
 		res, err := trade.Complete(tx)
 		require.EqualError(t, err, domain.ErrTradeExpired.Error())
-		require.Nil(t, res)
+		require.False(t, res)
 		require.False(t, trade.IsCompleted())
 		require.True(t, trade.IsRejected())
 	})
 
-	t.Run("failing_because_invalid_status", func(t *testing.T) {
+	t.Run("invalid_status", func(t *testing.T) {
 		tests := []struct {
 			name  string
 			trade *domain.Trade
@@ -321,16 +296,38 @@ func TestFailingTradeComplete(t *testing.T) {
 
 				res, err := tt.trade.Complete(tx)
 				require.EqualError(t, err, domain.ErrTradeMustBeAccepted.Error())
-				require.Nil(t, res)
+				require.False(t, res)
 				require.False(t, tt.trade.IsCompleted())
 			})
 		}
+	})
 
+	t.Run("invalid_transaction", func(t *testing.T) {
+		trade := newTradeAccepted()
+		require.Empty(t, trade.TxId)
+		require.Empty(t, trade.TxHex)
+
+		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser.On(
+			"SerializeFail", trade.SwapAccept.Id, mock.Anything,
+		).Return(randomId(), randomBytes(100))
+		mockedSwapParser.On(
+			"ParseSwapTransaction", mock.Anything,
+		).Return(nil, 4)
+		domain.SwapParserManager = mockedSwapParser
+
+		ok, err := trade.Complete(tx)
+		require.NoError(t, err)
+		require.False(t, ok)
+		require.Empty(t, trade.TxId)
+		require.Empty(t, trade.TxHex)
+		require.False(t, trade.IsCompleted())
+		require.True(t, trade.IsRejected())
 	})
 }
 
 func TestTradeSettle(t *testing.T) {
-	now := uint64(time.Now().Unix())
+	now := time.Now().Unix()
 
 	tests := []struct {
 		name  string
@@ -365,14 +362,11 @@ func TestTradeSettle(t *testing.T) {
 }
 
 func TestFailingTradeSettle(t *testing.T) {
-	now := uint64(time.Now().Unix())
+	now := time.Now().Unix()
 	mockedSwapParser := mockSwapParser{}
 	mockedSwapParser.On(
-		"SerializeFail",
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-	).Return(randomID(), randomBytes(100))
+		"SerializeFail", mock.Anything, mock.Anything,
+	).Return(randomId(), randomBytes(100))
 	domain.SwapParserManager = mockedSwapParser
 
 	t.Run("failing_because_invalid_status", func(t *testing.T) {
@@ -411,7 +405,7 @@ func TestFailingTradeSettle(t *testing.T) {
 }
 
 func TestTradeExpire(t *testing.T) {
-	oneDayAgo := uint64(time.Now().AddDate(0, 0, -1).Unix())
+	oneDayAgo := time.Now().AddDate(0, 0, -1).Unix()
 
 	tests := []struct {
 		name  string
@@ -469,7 +463,7 @@ func TestFailingTradeExpire(t *testing.T) {
 				t.Parallel()
 
 				ok, err := tt.trade.Expire()
-				require.EqualError(t, err, domain.ErrTradeNullExpirationDate.Error())
+				require.EqualError(t, err, domain.ErrTradeNullExpiryTime.Error())
 				require.False(t, ok)
 				require.False(t, tt.trade.IsExpired())
 			})
@@ -483,67 +477,102 @@ func newTradeEmpty() *domain.Trade {
 }
 
 func newTradeProposal() *domain.Trade {
-	req := newMockedSwapRequest()
+	req := newSwapRequest()
 	now := time.Now()
 	return &domain.Trade{
-		ID:               uuid.New(),
+		Id:               randomId(),
 		MarketQuoteAsset: req.GetAssetR(),
-		MarketPrice: domain.Prices{
-			BasePrice:  decimal.NewFromInt(int64(req.GetAmountR())).Div(decimal.NewFromInt(int64(req.GetAmountP()))),
-			QuotePrice: decimal.NewFromInt(int64(req.GetAmountP())).Div(decimal.NewFromInt(int64(req.GetAmountR()))),
+		MarketPrice: domain.MarketPrice{
+			BasePrice:  decimal.NewFromInt(int64(req.GetAmountR())).Div(decimal.NewFromInt(int64(req.GetAmountP()))).String(),
+			QuotePrice: decimal.NewFromInt(int64(req.GetAmountP())).Div(decimal.NewFromInt(int64(req.GetAmountR()))).String(),
 		},
-		Status: domain.ProposalStatus,
-		SwapRequest: domain.Swap{
-			ID:        req.GetId(),
+		Status: domain.TradeStatus{
+			Code: domain.TradeStatusCodeProposal,
+		},
+		SwapRequest: &domain.Swap{
+			Id:        req.GetId(),
 			Message:   randomBytes(100),
-			Timestamp: uint64(now.Unix()),
+			Timestamp: now.Unix(),
 		},
 	}
 }
 
 func newTradeAccepted() *domain.Trade {
 	trade := newTradeProposal()
-	acc := newMockedSwapAccept()
+	acc := newSwapAccept()
 
-	trade.Status = domain.AcceptedStatus
-	trade.SwapAccept = domain.Swap{
-		ID:        acc.GetId(),
-		Message:   randomBytes(100),
-		Timestamp: uint64(time.Now().Unix()),
+	trade.Status = domain.TradeStatus{
+		Code: domain.TradeStatusCodeAccepted,
 	}
-	trade.ExpiryTime = uint64(time.Now().Add(5 * time.Minute).Unix())
-	trade.TxID = randomHex(32)
+	trade.SwapAccept = &domain.Swap{
+		Id:        acc.GetId(),
+		Message:   randomBytes(100),
+		Timestamp: time.Now().Unix(),
+	}
+	trade.ExpiryTime = time.Now().Add(5 * time.Minute).Unix()
 	return trade
 }
 
 func newTradeCompleted() *domain.Trade {
 	trade := newTradeAccepted()
-	com := newMockedSwapComplete()
+	com := newSwapComplete()
 
-	trade.Status = domain.CompletedStatus
-	trade.SwapComplete = domain.Swap{
-		ID:        com.GetId(),
+	trade.Status = domain.TradeStatus{
+		Code: domain.TradeStatusCodeCompleted,
+	}
+	trade.SwapComplete = &domain.Swap{
+		Id:        com.GetId(),
 		Message:   randomBytes(100),
-		Timestamp: uint64(time.Now().Unix()),
+		Timestamp: time.Now().Unix(),
 	}
 	trade.TxHex = randomHex(100)
+	trade.TxId = randomHex(32)
 	return trade
 }
 
 func newTradeSettled() *domain.Trade {
 	trade := newTradeCompleted()
 	trade.ExpiryTime = 0
-	trade.SettlementTime = uint64(time.Now().Unix())
-	trade.Status = domain.SettledStatus
+	trade.SettlementTime = time.Now().Unix()
+	trade.Status = domain.TradeStatus{
+		Code: domain.TradeStatusCodeSettled,
+	}
 	return trade
 }
 
 func newTradeFailed() *domain.Trade {
 	trade := newTradeProposal()
 	trade.Fail(
-		trade.SwapRequest.ID, int(pkgswap.ErrCodeRejectedSwapRequest), "mock error",
+		trade.SwapRequest.Id, pkgswap.ErrCodeRejectedSwapRequest,
 	)
 	return trade
+}
+
+func newSwapRequest() domain.SwapRequest {
+	return domain.SwapRequest{
+		Id:          randomId(),
+		AssetP:      randomHex(32),
+		AmountP:     10000,
+		AssetR:      randomHex(32),
+		AmountR:     2000000,
+		Transaction: randomBase64(100),
+	}
+}
+
+func newSwapAccept() domain.SwapAccept {
+	return domain.SwapAccept{
+		Id:          randomId(),
+		RequestId:   randomId(),
+		Transaction: randomBase64(100),
+	}
+}
+
+func newSwapComplete() domain.SwapComplete {
+	return domain.SwapComplete{
+		Id:          randomId(),
+		AcceptId:    randomId(),
+		Transaction: randomBase64(100),
+	}
 }
 
 func randomHex(len int) string {
@@ -560,6 +589,6 @@ func randomBytes(len int) []byte {
 	return b
 }
 
-func randomID() string {
+func randomId() string {
 	return uuid.New().String()
 }
