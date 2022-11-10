@@ -1,12 +1,10 @@
-package db
+package db_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
@@ -20,80 +18,63 @@ func TestDepositRepositoryImplementations(t *testing.T) {
 		repo := repositories[i]
 
 		t.Run(repo.Name, func(t *testing.T) {
-			t.Run("testAddAndListDeposits", func(t *testing.T) {
-				testAddAndListDeposits(t, repo)
+			t.Run("add_and_get_deposits", func(t *testing.T) {
+				testAddAndGetDeposits(t, repo)
 			})
 		})
 	}
 }
 
-func testAddAndListDeposits(t *testing.T, repo depositRepository) {
+func testAddAndGetDeposits(t *testing.T, repo depositRepository) {
 	depositRepository := repo.Repository
+	ctx := context.Background()
+	deposits := makeRandomDeposits(20)
 
-	deposits := make([]domain.Deposit, 0, 10)
-	for i := 0; i < 10; i++ {
-		deposits = append(deposits, domain.Deposit{
-			TxID:         fmt.Sprintf("%d", i),
-			AccountIndex: 1,
-			VOut:         1,
-			Asset:        "dummy",
-			Value:        400,
-		})
-	}
-	count, err := depositRepository.AddDeposits(context.Background(), deposits)
+	allDeposits, err := depositRepository.GetAllDeposits(ctx, nil)
 	require.NoError(t, err)
-	require.Equal(t, 10, count)
+	require.Empty(t, allDeposits)
 
-	count, err = depositRepository.AddDeposits(context.Background(), []domain.Deposit{{
-		TxID:         "0",
-		AccountIndex: 1,
-		VOut:         1,
-		Asset:        "dummy",
-		Value:        400,
-	}})
+	count, err := depositRepository.AddDeposits(ctx, deposits)
+	require.NoError(t, err)
+	require.Equal(t, 20, count)
+
+	allDeposits, err = depositRepository.GetAllDeposits(ctx, nil)
+	require.NoError(t, err)
+	require.Len(t, allDeposits, 20)
+
+	count, err = depositRepository.AddDeposits(ctx, deposits)
 	require.NoError(t, err)
 	require.Zero(t, count)
 
-	deposits, err = depositRepository.ListDepositsForAccount(context.Background(), 0)
-	require.NoError(t, err)
-	require.Empty(t, deposits)
+	// Test that pagination is correct by getting all 20 deposits in 4 pages,
+	// each including 5 items. The concatenation of all pages must match the
+	// non-paginated list item per item.
+	allPagedDeposits := make([]domain.Deposit, 0)
+	for i := 1; i < 5; i++ {
+		pagedDeposits, err := depositRepository.GetAllDeposits(
+			ctx, page{int64(i), 5},
+		)
+		require.NoError(t, err)
+		require.Len(t, pagedDeposits, 5)
+		allPagedDeposits = append(allPagedDeposits, pagedDeposits...)
+	}
+	require.Exactly(t, allPagedDeposits, allDeposits)
 
-	deposits, err = depositRepository.ListDepositsForAccount(context.Background(), 1)
-	require.NoError(t, err)
-	require.Len(t, deposits, 10)
-
-	deposits, err = depositRepository.ListDepositsForAccountAndPage(
-		context.Background(), 1, domain.Page{Number: 1, Size: 5},
+	depositsByMarket, err := depositRepository.GetDepositsForAccount(
+		ctx, deposits[0].AccountName, nil,
 	)
 	require.NoError(t, err)
-	require.Len(t, deposits, 5)
+	require.Len(t, depositsByMarket, 1)
 
-	deposits, err = depositRepository.ListDepositsForAccountAndPage(
-		context.Background(), 1, domain.Page{Number: 2, Size: 5},
+	depositsByMarket, err = depositRepository.GetDepositsForAccount(
+		ctx, randomHex(20), nil,
 	)
 	require.NoError(t, err)
-	require.Len(t, deposits, 5)
-
-	deposits, err = depositRepository.ListAllDeposits(context.Background())
-	require.NoError(t, err)
-	require.Len(t, deposits, 10)
-
-	deposits, err = depositRepository.ListAllDepositsForPage(
-		context.Background(), domain.Page{Number: 1, Size: 6},
-	)
-	require.NoError(t, err)
-	require.Len(t, deposits, 6)
-
-	deposits, err = depositRepository.ListAllDepositsForPage(
-		context.Background(), domain.Page{Number: 2, Size: 6},
-	)
-	require.NoError(t, err)
-	require.Len(t, deposits, 4)
+	require.Empty(t, depositsByMarket)
 }
 
 type depositRepository struct {
 	Name       string
-	DBManager  ports.RepoManager
 	Repository domain.DepositRepository
 }
 
@@ -105,12 +86,10 @@ func createDepositRepositories(t *testing.T) []depositRepository {
 	return []depositRepository{
 		{
 			Name:       "badger",
-			DBManager:  badgerDBManager,
 			Repository: badgerDBManager.DepositRepository(),
 		},
 		{
 			Name:       "inmemory",
-			DBManager:  inmemoryDBManager,
 			Repository: inmemoryDBManager.DepositRepository(),
 		},
 	}

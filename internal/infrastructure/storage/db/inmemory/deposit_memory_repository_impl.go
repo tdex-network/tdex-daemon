@@ -2,22 +2,31 @@ package inmemory
 
 import (
 	"context"
+	"sort"
+	"sync"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
-type DepositRepositoryImpl struct {
-	store *depositInmemoryStore
+type depositInMemoryStore struct {
+	deposits map[string]domain.Deposit
+	locker   *sync.RWMutex
+}
+
+type depositRepositoryImpl struct {
+	store *depositInMemoryStore
 }
 
 // NewDepositRepositoryImpl returns a new empty DepositRepositoryImpl
-func NewDepositRepositoryImpl(store *depositInmemoryStore) domain.DepositRepository {
-	return &DepositRepositoryImpl{store}
+func NewDepositRepositoryImpl() domain.DepositRepository {
+	return &depositRepositoryImpl{&depositInMemoryStore{
+		deposits: map[string]domain.Deposit{},
+		locker:   &sync.RWMutex{},
+	}}
 }
 
-func (d DepositRepositoryImpl) AddDeposits(
-	ctx context.Context,
-	deposits []domain.Deposit,
+func (d *depositRepositoryImpl) AddDeposits(
+	ctx context.Context, deposits []domain.Deposit,
 ) (int, error) {
 	d.store.locker.Lock()
 	defer d.store.locker.Unlock()
@@ -33,75 +42,62 @@ func (d DepositRepositoryImpl) AddDeposits(
 	return count, nil
 }
 
-func (d DepositRepositoryImpl) ListDepositsForAccount(
-	ctx context.Context,
-	accountIndex int,
+func (d *depositRepositoryImpl) GetDepositsForAccount(
+	ctx context.Context, accountName string, page domain.Page,
 ) ([]domain.Deposit, error) {
 	d.store.locker.RLock()
 	defer d.store.locker.RUnlock()
 
-	result := make([]domain.Deposit, 0)
-	for _, v := range d.store.deposits {
-		if v.AccountIndex == accountIndex {
-			result = append(result, v)
+	deposits := make([]domain.Deposit, 0)
+	for _, deposit := range d.store.deposits {
+		if deposit.AccountName == accountName {
+			deposits = append(deposits, deposit)
 		}
 	}
-	return result, nil
-}
+	sort.SliceStable(deposits, func(i, j int) bool {
+		return deposits[i].Timestamp > deposits[j].Timestamp
+	})
 
-func (d DepositRepositoryImpl) ListDepositsForAccountAndPage(
-	ctx context.Context,
-	accountIndex int,
-	page domain.Page,
-) ([]domain.Deposit, error) {
-	d.store.locker.RLock()
-	defer d.store.locker.RUnlock()
+	if page == nil {
+		return deposits, nil
+	}
 
-	result := make([]domain.Deposit, 0)
-	startIndex := page.Number*page.Size - page.Size + 1
-	endIndex := page.Number * page.Size
-	index := 1
-	for _, v := range d.store.deposits {
-		if v.AccountIndex == accountIndex {
-			if index >= startIndex && index <= endIndex {
-				result = append(result, v)
-			}
-			index++
+	pagDeposits := make([]domain.Deposit, 0, page.GetSize())
+	startIndex := int(page.GetNumber()*page.GetSize() - page.GetSize())
+	endIndex := int(page.GetNumber() * page.GetSize())
+	for i, deposit := range deposits {
+		if i >= startIndex && i < endIndex {
+			pagDeposits = append(pagDeposits, deposit)
 		}
 	}
-
-	return result, nil
+	return pagDeposits, nil
 }
 
-func (d DepositRepositoryImpl) ListAllDeposits(
-	ctx context.Context,
-) ([]domain.Deposit, error) {
-	d.store.locker.RLock()
-	defer d.store.locker.RUnlock()
-
-	deposits := make([]domain.Deposit, 0, len(d.store.deposits))
-	for _, v := range d.store.deposits {
-		deposits = append(deposits, v)
-	}
-	return deposits, nil
-}
-
-func (d DepositRepositoryImpl) ListAllDepositsForPage(
+func (d *depositRepositoryImpl) GetAllDeposits(
 	ctx context.Context, page domain.Page,
 ) ([]domain.Deposit, error) {
 	d.store.locker.RLock()
 	defer d.store.locker.RUnlock()
 
-	deposits := make([]domain.Deposit, 0, len(d.store.deposits))
-	startIndex := page.Number*page.Size - page.Size + 1
-	endIndex := page.Number * page.Size
-	index := 1
-	for _, v := range d.store.deposits {
-		if index >= startIndex && index <= endIndex {
-			deposits = append(deposits, v)
-		}
-		index++
+	deposits := make([]domain.Deposit, 0)
+	for _, deposit := range d.store.deposits {
+		deposits = append(deposits, deposit)
+	}
+	sort.SliceStable(deposits, func(i, j int) bool {
+		return deposits[i].Timestamp > deposits[j].Timestamp
+	})
+
+	if page == nil {
+		return deposits, nil
 	}
 
-	return deposits, nil
+	pagDeposits := make([]domain.Deposit, 0, page.GetSize())
+	startIndex := int(page.GetNumber()*page.GetSize() - page.GetSize())
+	endIndex := int(page.GetNumber() * page.GetSize())
+	for i, deposit := range deposits {
+		if i >= startIndex && i < endIndex {
+			pagDeposits = append(pagDeposits, deposit)
+		}
+	}
+	return pagDeposits, nil
 }

@@ -12,8 +12,11 @@ type withdrawalRepositoryImpl struct {
 	store *badgerhold.Store
 }
 
-// NewWithdrawalRepositoryImpl initialize a badger implementation of the domain.StatsRepository
-func NewWithdrawalRepositoryImpl(store *badgerhold.Store) domain.WithdrawalRepository {
+// NewWithdrawalRepositoryImpl is the factory for a badger implementaion of
+// domain.WithdrawalRepository
+func NewWithdrawalRepositoryImpl(
+	store *badgerhold.Store,
+) domain.WithdrawalRepository {
 	return withdrawalRepositoryImpl{store}
 }
 
@@ -24,44 +27,30 @@ func (w withdrawalRepositoryImpl) AddWithdrawals(
 	return w.insertWithdrawals(ctx, withdrawals)
 }
 
-func (w withdrawalRepositoryImpl) ListWithdrawalsForAccount(
-	ctx context.Context, accountIndex int,
+func (w withdrawalRepositoryImpl) GetWithdrawalsForAccount(
+	ctx context.Context, accountName string, page domain.Page,
 ) ([]domain.Withdrawal, error) {
-	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
-
+	query := badgerhold.Where("AccountName").Eq(accountName)
+	if page != nil {
+		offset := int(page.GetNumber()*page.GetSize() - page.GetSize())
+		query.Skip(offset).Limit(int(page.GetSize()))
+	}
 	return w.findWithdrawals(ctx, query)
 }
 
-func (w withdrawalRepositoryImpl) ListWithdrawalsForAccountAndPage(
-	ctx context.Context, accountIndex int, page domain.Page,
-) ([]domain.Withdrawal, error) {
-	query := badgerhold.Where("AccountIndex").Eq(accountIndex)
-	from := page.Number*page.Size - page.Size
-	query.Skip(from).Limit(page.Size)
-
-	return w.findWithdrawals(ctx, query)
-}
-
-func (w withdrawalRepositoryImpl) ListAllWithdrawals(
-	ctx context.Context,
-) ([]domain.Withdrawal, error) {
-	query := &badgerhold.Query{}
-	return w.findWithdrawals(ctx, query)
-}
-
-func (w withdrawalRepositoryImpl) ListAllWithdrawalsForPage(
+func (w withdrawalRepositoryImpl) GetAllWithdrawals(
 	ctx context.Context, page domain.Page,
 ) ([]domain.Withdrawal, error) {
 	query := &badgerhold.Query{}
-	from := page.Number*page.Size - page.Size
-	query.Skip(from).Limit(page.Size)
-
+	if page != nil {
+		offset := int(page.GetNumber()*page.GetSize() - page.GetSize())
+		query.Skip(offset).Limit(int(page.GetSize()))
+	}
 	return w.findWithdrawals(ctx, query)
 }
 
 func (w withdrawalRepositoryImpl) insertWithdrawals(
-	ctx context.Context,
-	withdrawals []domain.Withdrawal,
+	ctx context.Context, withdrawals []domain.Withdrawal,
 ) (int, error) {
 	count := 0
 	for _, ww := range withdrawals {
@@ -78,8 +67,7 @@ func (w withdrawalRepositoryImpl) insertWithdrawals(
 }
 
 func (w withdrawalRepositoryImpl) insertWithdrawal(
-	ctx context.Context,
-	withdrawal domain.Withdrawal,
+	ctx context.Context, withdrawal domain.Withdrawal,
 ) (bool, error) {
 	var err error
 	if ctx.Value("tx") != nil {
@@ -98,8 +86,7 @@ func (w withdrawalRepositoryImpl) insertWithdrawal(
 }
 
 func (w withdrawalRepositoryImpl) findWithdrawals(
-	ctx context.Context,
-	query *badgerhold.Query,
+	ctx context.Context, query *badgerhold.Query,
 ) ([]domain.Withdrawal, error) {
 	var withdrawals []domain.Withdrawal
 	var err error
