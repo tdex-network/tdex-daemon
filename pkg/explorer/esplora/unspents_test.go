@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/payment"
 )
@@ -124,7 +124,7 @@ func TestGetUnspentStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	spentUtxo := tx.Inputs()[0]
-	spentUtxoHash := bufferutil.TxIDFromBytes(spentUtxo.Hash)
+	spentUtxoHash := elementsutil.TxIDFromBytes(spentUtxo.Hash)
 	spentUtxoIndex := spentUtxo.Index
 	spentUtxoStatus, err := explorerSvc.GetUnspentStatus(spentUtxoHash, spentUtxoIndex)
 	if err != nil {
@@ -145,11 +145,11 @@ func newService() (explorer.Service, error) {
 }
 
 func newTestData() (string, []byte, error) {
-	key, err := btcec.NewPrivateKey(btcec.S256())
+	key, err := btcec.NewPrivateKey()
 	if err != nil {
 		return "", nil, err
 	}
-	blindKey, err := btcec.NewPrivateKey(btcec.S256())
+	blindKey, err := btcec.NewPrivateKey()
 	if err != nil {
 		return "", nil, err
 	}

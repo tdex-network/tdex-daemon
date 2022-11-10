@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"math"
 
-	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -80,7 +79,7 @@ func (t *tx) Fee() int {
 	var fee uint64
 	for _, out := range t.Outputs() {
 		if len(out.Script) <= 0 {
-			fee, _ = elementsutil.ElementsToSatoshiValue(out.Value)
+			fee, _ = elementsutil.ValueFromBytes(out.Value)
 		}
 	}
 	return int(fee)
@@ -215,7 +214,7 @@ func (eu elementsUnspent) IsRevealed() bool {
 }
 
 func (eu elementsUnspent) Parse() (*transaction.TxInput, *transaction.TxOutput, error) {
-	inHash, err := bufferutil.TxIDToBytes(eu.UTxID)
+	inHash, err := elementsutil.TxIDToBytes(eu.UTxID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -223,11 +222,11 @@ func (eu elementsUnspent) Parse() (*transaction.TxInput, *transaction.TxOutput, 
 
 	var witnessUtxo *transaction.TxOutput
 	if eu.IsConfidential() {
-		assetCommitment, err := bufferutil.CommitmentToBytes(eu.UAssetCommitment)
+		assetCommitment, err := elementsutil.CommitmentToBytes(eu.UAssetCommitment)
 		if err != nil {
 			return nil, nil, err
 		}
-		valueCommitment, err := bufferutil.CommitmentToBytes(eu.UAmountCommitment)
+		valueCommitment, err := elementsutil.CommitmentToBytes(eu.UAmountCommitment)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -240,12 +239,12 @@ func (eu elementsUnspent) Parse() (*transaction.TxInput, *transaction.TxOutput, 
 			SurjectionProof: eu.SurjectionProof(),
 		}
 	} else {
-		asset, err := bufferutil.AssetHashToBytes(eu.UAsset)
+		asset, err := elementsutil.AssetHashToBytes(eu.UAsset)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		value, err := bufferutil.ValueToBytes(eu.Value())
+		value, err := elementsutil.ValueToBytes(eu.Value())
 		if err != nil {
 			return nil, nil, err
 		}

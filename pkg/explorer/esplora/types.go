@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
+	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
@@ -278,7 +278,7 @@ func (wu witnessUtxo) IsRevealed() bool {
 }
 
 func (wu witnessUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, error) {
-	inHash, err := bufferutil.TxIDToBytes(wu.UHash)
+	inHash, err := elementsutil.TxIDToBytes(wu.UHash)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -286,11 +286,11 @@ func (wu witnessUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, erro
 
 	var witnessUtxo *transaction.TxOutput
 	if wu.IsConfidential() {
-		assetCommitment, err := bufferutil.CommitmentToBytes(wu.UAssetCommitment)
+		assetCommitment, err := elementsutil.CommitmentToBytes(wu.UAssetCommitment)
 		if err != nil {
 			return nil, nil, err
 		}
-		valueCommitment, err := bufferutil.CommitmentToBytes(wu.UValueCommitment)
+		valueCommitment, err := elementsutil.CommitmentToBytes(wu.UValueCommitment)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -303,12 +303,12 @@ func (wu witnessUtxo) Parse() (*transaction.TxInput, *transaction.TxOutput, erro
 			SurjectionProof: wu.USurjectionProof,
 		}
 	} else {
-		asset, err := bufferutil.AssetHashToBytes(wu.UAsset)
+		asset, err := elementsutil.AssetHashToBytes(wu.UAsset)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		value, err := bufferutil.ValueToBytes(wu.UValue)
+		value, err := elementsutil.ValueToBytes(wu.UValue)
 		if err != nil {
 			return nil, nil, err
 		}
