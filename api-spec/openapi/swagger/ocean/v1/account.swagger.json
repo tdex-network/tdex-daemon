@@ -190,10 +190,12 @@
       "type": "object",
       "properties": {
         "spendableUtxos": {
-          "$ref": "#/definitions/v1Utxos"
+          "$ref": "#/definitions/v1Utxos",
+          "description": "List of spendable utxos."
         },
         "lockedUtxos": {
-          "$ref": "#/definitions/v1Utxos"
+          "$ref": "#/definitions/v1Utxos",
+          "description": "List of currently locked utxos."
         }
       }
     },
@@ -252,10 +254,12 @@
           "description": "Name of the account owning the utxo."
         },
         "spentStatus": {
-          "$ref": "#/definitions/v1UtxoStatus"
+          "$ref": "#/definitions/v1UtxoStatus",
+          "description": "Info about utxo's spent status."
         },
         "confirmedStatus": {
-          "$ref": "#/definitions/v1UtxoStatus"
+          "$ref": "#/definitions/v1UtxoStatus",
+          "description": "Info about utxo's confirmation status."
         }
       }
     },

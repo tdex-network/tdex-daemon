@@ -219,7 +219,8 @@
           "title": "Network daemon running on"
         },
         "buildData": {
-          "$ref": "#/definitions/tdex_daemonv1BuildInfo"
+          "$ref": "#/definitions/tdex_daemonv1BuildInfo",
+          "title": "Daemon build information"
         },
         "fixedBaseAsset": {
           "type": "string",
@@ -255,7 +256,8 @@
       "type": "object",
       "properties": {
         "report": {
-          "$ref": "#/definitions/tdex_daemonv1MarketReport"
+          "$ref": "#/definitions/tdex_daemonv1MarketReport",
+          "title": "MarketReport holds info about volume and collected fees"
         }
       }
     },
@@ -435,17 +437,20 @@
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/v1Market"
+          "$ref": "#/definitions/v1Market",
+          "title": "The asset pair of the market"
         },
         "fee": {
-          "$ref": "#/definitions/v1Fee"
+          "$ref": "#/definitions/v1Fee",
+          "title": "The percentage and fixed fees"
         },
         "tradable": {
           "type": "boolean",
           "description": "Whether the market is opened or closed."
         },
         "strategyType": {
-          "$ref": "#/definitions/tdex_daemonv1StrategyType"
+          "$ref": "#/definitions/tdex_daemonv1StrategyType",
+          "description": "The making strategy."
         },
         "accountIndex": {
           "type": "string",
@@ -453,10 +458,12 @@
           "description": "The index of the wallet account."
         },
         "price": {
-          "$ref": "#/definitions/v1Price"
+          "$ref": "#/definitions/v1Price",
+          "description": "The current price in case the strategy is PLUGGABLE."
         },
         "balance": {
-          "$ref": "#/definitions/tdexv1Balance"
+          "$ref": "#/definitions/tdexv1Balance",
+          "description": "The current unlocked balance."
         }
       }
     },
@@ -615,10 +622,12 @@
       "type": "object",
       "properties": {
         "predefinedPeriod": {
-          "$ref": "#/definitions/tdex_daemonv1PredefinedPeriod"
+          "$ref": "#/definitions/tdex_daemonv1PredefinedPeriod",
+          "title": "predefined time_period till now"
         },
         "customPeriod": {
-          "$ref": "#/definitions/tdex_daemonv1CustomPeriod"
+          "$ref": "#/definitions/tdex_daemonv1CustomPeriod",
+          "title": "custom time range"
         }
       },
       "description": "TimeRange is flexible type used to determine time span for which specific\napi will fetch data, either one of predefined_period or custom_period should be provided."
@@ -631,19 +640,24 @@
           "description": "The id of the trade."
         },
         "status": {
-          "$ref": "#/definitions/tdex_daemonv1TradeStatusInfo"
+          "$ref": "#/definitions/tdex_daemonv1TradeStatusInfo",
+          "description": "The info about the status of the trade."
         },
         "swapInfo": {
-          "$ref": "#/definitions/tdex_daemonv1SwapInfo"
+          "$ref": "#/definitions/tdex_daemonv1SwapInfo",
+          "description": "The info about the swap."
         },
         "failInfo": {
-          "$ref": "#/definitions/tdex_daemonv1SwapFailInfo"
+          "$ref": "#/definitions/tdex_daemonv1SwapFailInfo",
+          "description": "The info of an eventually failed swap."
         },
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee"
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The collected fee on the current swap."
         },
         "price": {
-          "$ref": "#/definitions/v1TradePrice"
+          "$ref": "#/definitions/v1TradePrice",
+          "description": "The prices of the trade at request time."
         },
         "txUrl": {
           "type": "string",
@@ -712,7 +726,8 @@
       "type": "object",
       "properties": {
         "status": {
-          "$ref": "#/definitions/tdex_daemonv1TradeStatus"
+          "$ref": "#/definitions/tdex_daemonv1TradeStatus",
+          "description": "The status of the trade."
         },
         "failed": {
           "type": "boolean",
@@ -724,7 +739,8 @@
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee"
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The market with updated fees."
         }
       }
     },
@@ -732,7 +748,8 @@
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee"
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The market with updated fees."
         }
       }
     },
@@ -746,7 +763,8 @@
       "type": "object",
       "properties": {
         "outpoint": {
-          "$ref": "#/definitions/tdex_daemonv1Outpoint"
+          "$ref": "#/definitions/tdex_daemonv1Outpoint",
+          "title": "The outpoint \u003chash, index\u003e"
         },
         "value": {
           "type": "string",
@@ -775,7 +793,8 @@
           "description": "Whether the outgoing requests are authenticated."
         },
         "actionType": {
-          "$ref": "#/definitions/tdex_daemonv1ActionType"
+          "$ref": "#/definitions/tdex_daemonv1ActionType",
+          "description": "The type of the action."
         }
       }
     },
@@ -869,7 +888,8 @@
       "type": "object",
       "properties": {
         "utxo": {
-          "$ref": "#/definitions/tdex_daemonv1UtxoInfo"
+          "$ref": "#/definitions/tdex_daemonv1UtxoInfo",
+          "description": "The utxo deposited."
         },
         "timestampUnix": {
           "type": "string",
@@ -946,10 +966,12 @@
       "type": "object",
       "properties": {
         "availableBalance": {
-          "$ref": "#/definitions/tdexv1Balance"
+          "$ref": "#/definitions/tdexv1Balance",
+          "description": "The balance of all unlocked unspents."
         },
         "totalBalance": {
-          "$ref": "#/definitions/tdexv1Balance"
+          "$ref": "#/definitions/tdexv1Balance",
+          "description": "The balance of all unspents included those locked."
         }
       }
     },
@@ -1040,7 +1062,8 @@
           "description": "The hash of the transaction included in mempool/blockchain."
         },
         "balance": {
-          "$ref": "#/definitions/tdexv1Balance"
+          "$ref": "#/definitions/tdexv1Balance",
+          "description": "The balance withdrawn from the wallet account."
         },
         "address": {
           "type": "string",

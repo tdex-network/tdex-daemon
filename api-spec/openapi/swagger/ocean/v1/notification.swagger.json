@@ -91,7 +91,8 @@
       "type": "object",
       "properties": {
         "eventType": {
-          "$ref": "#/definitions/v1TxEventType"
+          "$ref": "#/definitions/v1TxEventType",
+          "description": "Tx event type."
         },
         "accountNames": {
           "type": "array",
@@ -109,7 +110,8 @@
           "description": "Txid of transaction."
         },
         "blockDetails": {
-          "$ref": "#/definitions/v1BlockDetails"
+          "$ref": "#/definitions/v1BlockDetails",
+          "description": "Details of the block including the tx."
         }
       }
     },
@@ -165,10 +167,12 @@
           "description": "Name of the account owning the utxo."
         },
         "spentStatus": {
-          "$ref": "#/definitions/v1UtxoStatus"
+          "$ref": "#/definitions/v1UtxoStatus",
+          "description": "Info about utxo's spent status."
         },
         "confirmedStatus": {
-          "$ref": "#/definitions/v1UtxoStatus"
+          "$ref": "#/definitions/v1UtxoStatus",
+          "description": "Info about utxo's confirmation status."
         }
       }
     },
@@ -202,7 +206,8 @@
       "type": "object",
       "properties": {
         "eventType": {
-          "$ref": "#/definitions/v1UtxoEventType"
+          "$ref": "#/definitions/v1UtxoEventType",
+          "description": "The event's type occured for the utxos."
         },
         "utxos": {
           "type": "array",

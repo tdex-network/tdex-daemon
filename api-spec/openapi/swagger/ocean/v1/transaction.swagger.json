@@ -135,7 +135,8 @@
           "description": "Raw transaction in hex format."
         },
         "blockDetails": {
-          "$ref": "#/definitions/v1BlockDetails"
+          "$ref": "#/definitions/v1BlockDetails",
+          "description": "Deatils of the block including the transaction."
         }
       }
     },
@@ -150,6 +151,20 @@
           "type": "integer",
           "format": "int64",
           "description": "Previous tx output index."
+        },
+        "script": {
+          "type": "string",
+          "description": "Prevout script."
+        },
+        "scriptsigSize": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Input scriptsig size."
+        },
+        "witnessSize": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Input witness size."
         }
       }
     },
@@ -340,10 +355,12 @@
           "description": "Name of the account owning the utxo."
         },
         "spentStatus": {
-          "$ref": "#/definitions/v1UtxoStatus"
+          "$ref": "#/definitions/v1UtxoStatus",
+          "description": "Info about utxo's spent status."
         },
         "confirmedStatus": {
-          "$ref": "#/definitions/v1UtxoStatus"
+          "$ref": "#/definitions/v1UtxoStatus",
+          "description": "Info about utxo's confirmation status."
         }
       }
     },

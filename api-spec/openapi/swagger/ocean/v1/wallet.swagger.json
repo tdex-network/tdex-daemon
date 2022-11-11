@@ -112,7 +112,8 @@
       "type": "object",
       "properties": {
         "network": {
-          "$ref": "#/definitions/GetInfoResponseNetwork"
+          "$ref": "#/definitions/GetInfoResponseNetwork",
+          "title": "The Liquid network of the wallet"
         },
         "nativeAsset": {
           "type": "string",
@@ -143,7 +144,8 @@
           "description": "List containing info about the wallet accounts."
         },
         "buildInfo": {
-          "$ref": "#/definitions/v1BuildInfo"
+          "$ref": "#/definitions/v1BuildInfo",
+          "description": "Info about the current version of the ocean wallet."
         }
       }
     },

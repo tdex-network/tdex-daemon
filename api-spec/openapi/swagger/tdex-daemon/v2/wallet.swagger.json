@@ -115,7 +115,8 @@
           "title": "Network daemon running on"
         },
         "buildData": {
-          "$ref": "#/definitions/tdex_daemonv2BuildInfo"
+          "$ref": "#/definitions/tdex_daemonv2BuildInfo",
+          "title": "Daemon build information"
         }
       }
     },

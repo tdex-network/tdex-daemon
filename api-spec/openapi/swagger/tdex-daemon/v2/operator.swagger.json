@@ -194,7 +194,8 @@
       "type": "object",
       "properties": {
         "report": {
-          "$ref": "#/definitions/tdex_daemonv2MarketReport"
+          "$ref": "#/definitions/tdex_daemonv2MarketReport",
+          "title": "MarketReport holds info about volume and collected fees"
         }
       }
     },
@@ -371,24 +372,28 @@
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/v1Market"
+          "$ref": "#/definitions/v1Market",
+          "title": "The asset pair of the market"
         },
         "fee": {
-          "$ref": "#/definitions/v1Fee"
+          "$ref": "#/definitions/v1Fee",
+          "title": "The percentage and fixed fees"
         },
         "tradable": {
           "type": "boolean",
           "description": "Whether the market is opened or closed."
         },
         "strategyType": {
-          "$ref": "#/definitions/tdex_daemonv2StrategyType"
+          "$ref": "#/definitions/tdex_daemonv2StrategyType",
+          "description": "The making strategy."
         },
         "accountName": {
           "type": "string",
           "description": "The name of the wallet account."
         },
         "price": {
-          "$ref": "#/definitions/v1Price"
+          "$ref": "#/definitions/v1Price",
+          "description": "The current price in case the strategy is PLUGGABLE."
         },
         "balance": {
           "type": "object",
@@ -556,10 +561,12 @@
       "type": "object",
       "properties": {
         "predefinedPeriod": {
-          "$ref": "#/definitions/tdex_daemonv2PredefinedPeriod"
+          "$ref": "#/definitions/tdex_daemonv2PredefinedPeriod",
+          "title": "predefined time_period till now"
         },
         "customPeriod": {
-          "$ref": "#/definitions/tdex_daemonv2CustomPeriod"
+          "$ref": "#/definitions/tdex_daemonv2CustomPeriod",
+          "title": "custom time range"
         }
       },
       "description": "TimeRange is flexible type used to determine time span for which specific\napi will fetch data, either one of predefined_period or custom_period should be provided."
@@ -572,19 +579,24 @@
           "description": "The id of the trade."
         },
         "status": {
-          "$ref": "#/definitions/tdex_daemonv2TradeStatusInfo"
+          "$ref": "#/definitions/tdex_daemonv2TradeStatusInfo",
+          "description": "The info about the status of the trade."
         },
         "swapInfo": {
-          "$ref": "#/definitions/tdex_daemonv2SwapInfo"
+          "$ref": "#/definitions/tdex_daemonv2SwapInfo",
+          "description": "The info about the swap."
         },
         "failInfo": {
-          "$ref": "#/definitions/tdex_daemonv2SwapFailInfo"
+          "$ref": "#/definitions/tdex_daemonv2SwapFailInfo",
+          "description": "The info of an eventually failed swap."
         },
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee"
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The collected fee on the current swap."
         },
         "price": {
-          "$ref": "#/definitions/v1Price"
+          "$ref": "#/definitions/v1Price",
+          "description": "The prices of the trade at request time."
         },
         "requestTimestamp": {
           "type": "string",
@@ -649,7 +661,8 @@
       "type": "object",
       "properties": {
         "status": {
-          "$ref": "#/definitions/tdex_daemonv2TradeStatus"
+          "$ref": "#/definitions/tdex_daemonv2TradeStatus",
+          "description": "The status of the trade."
         },
         "failed": {
           "type": "boolean",
@@ -683,7 +696,8 @@
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee"
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The market with updated fees."
         }
       }
     },
@@ -691,7 +705,8 @@
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee"
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The market with updated fees."
         }
       }
     },
@@ -705,7 +720,8 @@
       "type": "object",
       "properties": {
         "outpoint": {
-          "$ref": "#/definitions/tdex_daemonv2Outpoint"
+          "$ref": "#/definitions/tdex_daemonv2Outpoint",
+          "title": "The outpoint \u003chash, index\u003e"
         },
         "value": {
           "type": "string",
@@ -734,7 +750,8 @@
           "description": "Whether the outgoing requests are authenticated."
         },
         "actionType": {
-          "$ref": "#/definitions/tdex_daemonv2ActionType"
+          "$ref": "#/definitions/tdex_daemonv2ActionType",
+          "description": "The type of the action."
         }
       }
     },
