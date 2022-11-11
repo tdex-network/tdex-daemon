@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain/mocks"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
 )
 
@@ -22,7 +23,7 @@ func TestTradePropose(t *testing.T) {
 	mktQuoteAsset := swapRequest.GetAssetR()
 	mktFee := uint32(25)
 	traderPubkey := []byte{}
-	mockedSwapParser := mockSwapParser{}
+	mockedSwapParser := mocks.NewMockSwapParser(t)
 	mockedSwapParser.On("SerializeRequest", swapRequest).Return(randomBytes(100), -1)
 	domain.SwapParserManager = mockedSwapParser
 
@@ -78,7 +79,7 @@ func TestFailingTradePropose(t *testing.T) {
 	mktQuoteAsset := swapRequest.GetAssetR()
 	mktFee := uint32(25)
 	traderPubkey := []byte{}
-	mockedSwapParser := mockSwapParser{}
+	mockedSwapParser := mocks.NewMockSwapParser(t)
 	mockedSwapParser.On("SerializeRequest", swapRequest).Return(nil, 1)
 	mockedSwapParser.On(
 		"SerializeFail", swapRequest.GetId(), mock.Anything,
@@ -127,10 +128,10 @@ func TestTradeAccept(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 
-		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser := mocks.NewMockSwapParser(t)
 		mockedSwapParser.On(
 			"SerializeAccept", mock.Anything, mock.Anything, mock.Anything,
-		).Return(randomId(), randomBytes(100), -1)
+		).Return(randomId(), randomBytes(100), -1).Maybe()
 		domain.SwapParserManager = mockedSwapParser
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -148,13 +149,13 @@ func TestFailingTradeAccept(t *testing.T) {
 
 	t.Run("invalid_request", func(t *testing.T) {
 		trade := newTradeProposal()
-		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser := mocks.NewMockSwapParser(t)
 		mockedSwapParser.On(
 			"SerializeAccept", mock.Anything, mock.Anything, mock.Anything,
-		).Return(nil, nil, 2)
+		).Return("", nil, 2)
 		mockedSwapParser.On(
 			"SerializeFail", trade.SwapRequest.Id, mock.Anything,
-		).Return(randomId(), randomBytes(100))
+		).Return(randomId(), randomBytes(100)).Maybe()
 		domain.SwapParserManager = mockedSwapParser
 
 		ok, err := trade.Accept(tx, nil, expiryDuration)
@@ -205,17 +206,17 @@ func TestTradeComplete(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 
-		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser := mocks.NewMockSwapParser(t)
 		mockedSwapParser.On(
 			"SerializeComplete", tt.trade.SwapAccept.Message, tt.tx,
-		).Return(randomId(), randomBytes(100), -1)
+		).Return(randomId(), randomBytes(100), -1).Maybe()
 		mockedSwapParser.On(
 			"ParseSwapTransaction", mock.Anything, mock.Anything,
 		).Return(&domain.SwapTransactionDetails{
 			PsetBase64: randomBase64(100),
 			TxHex:      randomHex(100),
 			Txid:       randomHex(32),
-		}, -1)
+		}, -1).Maybe()
 		domain.SwapParserManager = mockedSwapParser
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -234,7 +235,7 @@ func TestFailingTradeComplete(t *testing.T) {
 
 	t.Run("invalid_request", func(t *testing.T) {
 		trade := newTradeAccepted()
-		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser := mocks.NewMockSwapParser(t)
 		mockedSwapParser.On(
 			"ParseSwapTransaction", mock.Anything, mock.Anything,
 		).Return(&domain.SwapTransactionDetails{
@@ -246,7 +247,7 @@ func TestFailingTradeComplete(t *testing.T) {
 			"SerializeComplete",
 			trade.SwapAccept.Message,
 			tx,
-		).Return(nil, nil, 3)
+		).Return("", nil, 3)
 		mockedSwapParser.On(
 			"SerializeFail", trade.SwapAccept.Id, mock.Anything,
 		).Return(randomId(), randomBytes(100))
@@ -307,7 +308,7 @@ func TestFailingTradeComplete(t *testing.T) {
 		require.Empty(t, trade.TxId)
 		require.Empty(t, trade.TxHex)
 
-		mockedSwapParser := mockSwapParser{}
+		mockedSwapParser := mocks.NewMockSwapParser(t)
 		mockedSwapParser.On(
 			"SerializeFail", trade.SwapAccept.Id, mock.Anything,
 		).Return(randomId(), randomBytes(100))
@@ -363,7 +364,7 @@ func TestTradeSettle(t *testing.T) {
 
 func TestFailingTradeSettle(t *testing.T) {
 	now := time.Now().Unix()
-	mockedSwapParser := mockSwapParser{}
+	mockedSwapParser := mocks.NewMockSwapParser(t)
 	mockedSwapParser.On(
 		"SerializeFail", mock.Anything, mock.Anything,
 	).Return(randomId(), randomBytes(100))
