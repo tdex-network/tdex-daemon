@@ -21,7 +21,7 @@ type Config struct {
 	DBType   string
 	DBConfig interface{}
 
-	OceanWallet         ports.OceanWallet
+	OceanWallet         ports.WalletService
 	SecurePubSub        ports.SecurePubSub
 	MarketPercentageFee uint32
 	FeeBalanceThreshold uint64

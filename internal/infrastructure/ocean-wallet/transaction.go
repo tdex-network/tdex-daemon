@@ -10,15 +10,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-type txManager struct {
+type tx struct {
 	client pb.TransactionServiceClient
 }
 
-func newTxManager(conn *grpc.ClientConn) *txManager {
-	return &txManager{pb.NewTransactionServiceClient(conn)}
+func newTx(conn *grpc.ClientConn) *tx {
+	return &tx{pb.NewTransactionServiceClient(conn)}
 }
 
-func (m *txManager) GetTransaction(
+func (m *tx) GetTransaction(
 	ctx context.Context, txid string,
 ) (string, error) {
 	res, err := m.client.GetTransaction(ctx, &pb.GetTransactionRequest{
@@ -30,7 +30,7 @@ func (m *txManager) GetTransaction(
 	return res.GetTxHex(), nil
 }
 
-func (m *txManager) EstimateFees(
+func (m *tx) EstimateFees(
 	ctx context.Context, ins []ports.TxInput, outs []ports.TxOutput,
 ) (uint64, error) {
 	res, err := m.client.EstimateFees(ctx, &pb.EstimateFeesRequest{
@@ -43,7 +43,7 @@ func (m *txManager) EstimateFees(
 	return res.GetFeeAmount(), nil
 }
 
-func (m *txManager) SelectUtxos(
+func (m *tx) SelectUtxos(
 	ctx context.Context, accountName, asset string, amount uint64,
 ) ([]ports.Utxo, uint64, int64, error) {
 	res, err := m.client.SelectUtxos(ctx, &pb.SelectUtxosRequest{
@@ -59,7 +59,7 @@ func (m *txManager) SelectUtxos(
 	return utxoList(res.GetUtxos()).toPortableList(), change, expiryTime, nil
 }
 
-func (m *txManager) CreatePset(
+func (m *tx) CreatePset(
 	ctx context.Context, ins []ports.TxInput, outs []ports.TxOutput,
 ) (string, error) {
 	res, err := m.client.CreatePset(ctx, &pb.CreatePsetRequest{
@@ -72,7 +72,7 @@ func (m *txManager) CreatePset(
 	return res.GetPset(), nil
 }
 
-func (m *txManager) UpdatePset(
+func (m *tx) UpdatePset(
 	ctx context.Context, pset string,
 	ins []ports.TxInput, outs []ports.TxOutput,
 ) (string, error) {
@@ -87,7 +87,7 @@ func (m *txManager) UpdatePset(
 	return res.GetPset(), nil
 }
 
-func (m *txManager) BlindPset(
+func (m *tx) BlindPset(
 	ctx context.Context, pset string, extraUnblindedIns []ports.UnblindedInput,
 ) (string, error) {
 	res, err := m.client.BlindPset(ctx, &pb.BlindPsetRequest{
@@ -101,7 +101,7 @@ func (m *txManager) BlindPset(
 	return res.GetPset(), nil
 }
 
-func (m *txManager) SignPset(
+func (m *tx) SignPset(
 	ctx context.Context, pset string, extractRawTx bool,
 ) (string, error) {
 	res, err := m.client.SignPset(ctx, &pb.SignPsetRequest{
@@ -128,7 +128,7 @@ func (m *txManager) SignPset(
 	return rawTx.ToHex()
 }
 
-func (m *txManager) Transfer(
+func (m *tx) Transfer(
 	ctx context.Context,
 	accountName string, outs []ports.TxOutput, millisatsPerByte uint64,
 ) (string, error) {
@@ -143,7 +143,7 @@ func (m *txManager) Transfer(
 	return res.GetTxHex(), nil
 }
 
-func (m *txManager) BroadcastTransaction(
+func (m *tx) BroadcastTransaction(
 	ctx context.Context, txHex string,
 ) (string, error) {
 	res, err := m.client.BroadcastTransaction(

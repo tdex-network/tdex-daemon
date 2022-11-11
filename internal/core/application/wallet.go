@@ -7,10 +7,10 @@ import (
 )
 
 type WalletService interface {
-	Wallet() ports.WalletManager
-	Account() ports.AccountManager
-	Transaction() ports.TransactionManager
-	Notification() ports.NotificationManager
+	Wallet() ports.Wallet
+	Account() ports.Account
+	Transaction() ports.Transaction
+	Notification() ports.Notification
 	Network() network.Network
 	NativeAsset() string
 	SendToMany(
@@ -24,6 +24,6 @@ type WalletService interface {
 	Close()
 }
 
-func NewWalletService(w ports.OceanWallet) (WalletService, error) {
+func NewWalletService(w ports.WalletService) (WalletService, error) {
 	return wallet.NewService(w)
 }

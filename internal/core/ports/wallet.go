@@ -2,15 +2,15 @@ package ports
 
 import "context"
 
-type OceanWallet interface {
-	Wallet() WalletManager
-	Account() AccountManager
-	Transaction() TransactionManager
-	Notification() NotificationManager
+type WalletService interface {
+	Wallet() Wallet
+	Account() Account
+	Transaction() Transaction
+	Notification() Notification
 	Close()
 }
 
-type WalletManager interface {
+type Wallet interface {
 	GenSeed(ctx context.Context) ([]string, error)
 	InitWallet(ctx context.Context, mnemonic []string, password string) error
 	RestoreWallet(ctx context.Context, mnemonic []string, password string) error
@@ -21,7 +21,7 @@ type WalletManager interface {
 	Info(ctx context.Context) (WalletInfo, error)
 }
 
-type AccountManager interface {
+type Account interface {
 	CreateAccount(ctx context.Context, accountName string) (WalletAccount, error)
 	DeriveAddresses(
 		ctx context.Context, accountName string, num int,
@@ -39,7 +39,7 @@ type AccountManager interface {
 	DeleteAccount(ctx context.Context, accountName string) error
 }
 
-type TransactionManager interface {
+type Transaction interface {
 	GetTransaction(ctx context.Context, txid string) (string, error)
 	EstimateFees(
 		ctx context.Context, ins []TxInput, outs []TxOutput,
@@ -67,7 +67,7 @@ type TransactionManager interface {
 	BroadcastTransaction(ctx context.Context, txHex string) (string, error)
 }
 
-type NotificationManager interface {
+type Notification interface {
 	GetTxNotifications() chan WalletTxNotification
 	GetUtxoNotifications() chan WalletUtxoNotification
 }

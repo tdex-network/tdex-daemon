@@ -8,15 +8,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-type accountManager struct {
+type account struct {
 	client pb.AccountServiceClient
 }
 
-func newAccountManager(conn *grpc.ClientConn) *accountManager {
-	return &accountManager{pb.NewAccountServiceClient(conn)}
+func newAccount(conn *grpc.ClientConn) *account {
+	return &account{pb.NewAccountServiceClient(conn)}
 }
 
-func (m *accountManager) CreateAccount(
+func (m *account) CreateAccount(
 	ctx context.Context, accountName string,
 ) (ports.WalletAccount, error) {
 	res, err := m.client.CreateAccountBIP44(ctx, &pb.CreateAccountBIP44Request{
@@ -28,7 +28,7 @@ func (m *accountManager) CreateAccount(
 	return accountInfo{res}, nil
 }
 
-func (m *accountManager) DeriveAddresses(
+func (m *account) DeriveAddresses(
 	ctx context.Context, accountName string, num int,
 ) ([]string, error) {
 	res, err := m.client.DeriveAddresses(ctx, &pb.DeriveAddressesRequest{
@@ -41,7 +41,7 @@ func (m *accountManager) DeriveAddresses(
 	return res.GetAddresses(), nil
 }
 
-func (m *accountManager) DeriveChangeAddresses(
+func (m *account) DeriveChangeAddresses(
 	ctx context.Context, accountName string, num int,
 ) ([]string, error) {
 	res, err := m.client.DeriveChangeAddresses(ctx, &pb.DeriveChangeAddressesRequest{
@@ -54,7 +54,7 @@ func (m *accountManager) DeriveChangeAddresses(
 	return res.GetAddresses(), nil
 }
 
-func (m *accountManager) ListAddresses(
+func (m *account) ListAddresses(
 	ctx context.Context, accountName string,
 ) ([]string, error) {
 	res, err := m.client.ListAddresses(ctx, &pb.ListAddressesRequest{
@@ -66,7 +66,7 @@ func (m *accountManager) ListAddresses(
 	return res.GetAddresses(), nil
 }
 
-func (m *accountManager) GetBalance(
+func (m *account) GetBalance(
 	ctx context.Context, accountName string,
 ) (map[string]ports.Balance, error) {
 	res, err := m.client.Balance(ctx, &pb.BalanceRequest{
@@ -82,7 +82,7 @@ func (m *accountManager) GetBalance(
 	return balance, nil
 }
 
-func (m *accountManager) ListUtxos(
+func (m *account) ListUtxos(
 	ctx context.Context, accountName string,
 ) (spendableUtxos, lockedUtxos []ports.Utxo, err error) {
 	res, err := m.client.ListUtxos(ctx, &pb.ListUtxosRequest{
@@ -100,7 +100,7 @@ func (m *accountManager) ListUtxos(
 	return
 }
 
-func (m *accountManager) DeleteAccount(
+func (m *account) DeleteAccount(
 	ctx context.Context, accountName string,
 ) error {
 	_, err := m.client.DeleteAccount(ctx, &pb.DeleteAccountRequest{

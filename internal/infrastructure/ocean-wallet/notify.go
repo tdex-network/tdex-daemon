@@ -11,14 +11,14 @@ import (
 	"google.golang.org/grpc"
 )
 
-type notifyManager struct {
+type notify struct {
 	client              pb.NotificationServiceClient
 	chTxNotifications   chan ports.WalletTxNotification
 	chUtxoNotifications chan ports.WalletUtxoNotification
 }
 
-func newNotifyManager(conn *grpc.ClientConn) (*notifyManager, error) {
-	svc := &notifyManager{
+func newNotify(conn *grpc.ClientConn) (*notify, error) {
+	svc := &notify{
 		client:              pb.NewNotificationServiceClient(conn),
 		chTxNotifications:   make(chan ports.WalletTxNotification),
 		chUtxoNotifications: make(chan ports.WalletUtxoNotification),
@@ -38,15 +38,15 @@ func newNotifyManager(conn *grpc.ClientConn) (*notifyManager, error) {
 	return svc, nil
 }
 
-func (m *notifyManager) GetTxNotifications() chan ports.WalletTxNotification {
+func (m *notify) GetTxNotifications() chan ports.WalletTxNotification {
 	return m.chTxNotifications
 }
 
-func (m *notifyManager) GetUtxoNotifications() chan ports.WalletUtxoNotification {
+func (m *notify) GetUtxoNotifications() chan ports.WalletUtxoNotification {
 	return m.chUtxoNotifications
 }
 
-func (m *notifyManager) startListeningForTxNotifications() error {
+func (m *notify) startListeningForTxNotifications() error {
 	stream, err := m.client.TransactionNotifications(
 		context.Background(), &pb.TransactionNotificationsRequest{},
 	)
@@ -76,7 +76,7 @@ func (m *notifyManager) startListeningForTxNotifications() error {
 	return nil
 }
 
-func (m *notifyManager) startListeningForUtxoNotifications() error {
+func (m *notify) startListeningForUtxoNotifications() error {
 	stream, err := m.client.UtxosNotifications(
 		context.Background(), &pb.UtxosNotificationsRequest{},
 	)

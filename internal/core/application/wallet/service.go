@@ -15,14 +15,14 @@ import (
 )
 
 type Service struct {
-	wallet     ports.OceanWallet
+	wallet     ports.WalletService
 	staticInfo ports.WalletInfo
 
 	txNotificationHandlers   txNotificationQueue
 	utxoNotificationHandlers utxoNotificationQueue
 }
 
-func NewService(wallet ports.OceanWallet) (*Service, error) {
+func NewService(wallet ports.WalletService) (*Service, error) {
 	if wallet == nil {
 		return nil, fmt.Errorf("missing ocean wallet service")
 	}
@@ -46,19 +46,19 @@ func NewService(wallet ports.OceanWallet) (*Service, error) {
 	return svc, nil
 }
 
-func (s *Service) Wallet() ports.WalletManager {
+func (s *Service) Wallet() ports.Wallet {
 	return s.wallet.Wallet()
 }
 
-func (s *Service) Account() ports.AccountManager {
+func (s *Service) Account() ports.Account {
 	return s.wallet.Account()
 }
 
-func (s *Service) Transaction() ports.TransactionManager {
+func (s *Service) Transaction() ports.Transaction {
 	return s.wallet.Transaction()
 }
 
-func (s *Service) Notification() ports.NotificationManager {
+func (s *Service) Notification() ports.Notification {
 	return s.wallet.Notification()
 }
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -27,7 +26,7 @@ type TdexConnectService interface {
 }
 
 type tdexConnect struct {
-	walletSvc        ports.WalletManager
+	walletSvc        ports.Wallet
 	validatePassword func(pwd string) bool
 	macaroonBytes    []byte
 	certBytes        []byte
@@ -38,7 +37,7 @@ type tdexConnect struct {
 }
 
 func NewTdexConnectService(
-	walletSvc ports.WalletManager, validatePassword func(string) bool,
+	walletSvc ports.Wallet, validatePassword func(string) bool,
 	macaroonPath, certPath, addr, protocol string,
 ) (TdexConnectService, error) {
 	macBytes := readFile(macaroonPath)
@@ -167,7 +166,7 @@ func readFile(filePath string) []byte {
 		return nil
 	}
 
-	file, err := ioutil.ReadFile(filePath)
+	file, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil
 	}

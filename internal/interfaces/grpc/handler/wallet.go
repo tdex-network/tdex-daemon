@@ -14,7 +14,7 @@ import (
 )
 
 type walletHandler struct {
-	walletSvc    ports.WalletManager
+	walletSvc    ports.Wallet
 	buildData    ports.BuildData
 	macaroonPath string
 
@@ -25,7 +25,7 @@ type walletHandler struct {
 }
 
 func NewWalletHandler(
-	walletSvc ports.WalletManager, buildData ports.BuildData, macPath string,
+	walletSvc ports.Wallet, buildData ports.BuildData, macPath string,
 	onInit, onUnlock, onLock func(pwd string),
 	onChangePwd func(oldPwd, newPwd string),
 ) daemonv2.WalletServiceServer {
@@ -35,7 +35,7 @@ func NewWalletHandler(
 }
 
 func newWalletHandler(
-	walletSvc ports.WalletManager, buildData ports.BuildData, macPath string,
+	walletSvc ports.Wallet, buildData ports.BuildData, macPath string,
 	onInit, onUnlock, onLock func(pwd string),
 	onChangePwd func(oldPwd, newPwd string),
 ) *walletHandler {

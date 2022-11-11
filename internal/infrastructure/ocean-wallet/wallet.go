@@ -9,15 +9,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-type walletManager struct {
+type wallet struct {
 	client pb.WalletServiceClient
 }
 
-func newWalletManager(conn *grpc.ClientConn) *walletManager {
-	return &walletManager{pb.NewWalletServiceClient(conn)}
+func newWallet(conn *grpc.ClientConn) *wallet {
+	return &wallet{pb.NewWalletServiceClient(conn)}
 }
 
-func (m *walletManager) GenSeed(ctx context.Context) ([]string, error) {
+func (m *wallet) GenSeed(ctx context.Context) ([]string, error) {
 	res, err := m.client.GenSeed(ctx, &pb.GenSeedRequest{})
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (m *walletManager) GenSeed(ctx context.Context) ([]string, error) {
 	return mnemonic, nil
 }
 
-func (m *walletManager) InitWallet(
+func (m *wallet) InitWallet(
 	ctx context.Context, mnemonic []string, password string,
 ) error {
 	_, err := m.client.CreateWallet(ctx, &pb.CreateWalletRequest{
@@ -37,7 +37,7 @@ func (m *walletManager) InitWallet(
 	return err
 }
 
-func (m *walletManager) RestoreWallet(
+func (m *wallet) RestoreWallet(
 	ctx context.Context, mnemonic []string, password string,
 ) error {
 	_, err := m.client.RestoreWallet(ctx, &pb.RestoreWalletRequest{
@@ -47,21 +47,21 @@ func (m *walletManager) RestoreWallet(
 	return err
 }
 
-func (m *walletManager) Unlock(ctx context.Context, password string) error {
+func (m *wallet) Unlock(ctx context.Context, password string) error {
 	_, err := m.client.Unlock(ctx, &pb.UnlockRequest{
 		Password: password,
 	})
 	return err
 }
 
-func (m *walletManager) Lock(ctx context.Context, password string) error {
+func (m *wallet) Lock(ctx context.Context, password string) error {
 	_, err := m.client.Lock(ctx, &pb.LockRequest{
 		Password: password,
 	})
 	return err
 }
 
-func (m *walletManager) ChangePassword(
+func (m *wallet) ChangePassword(
 	ctx context.Context, oldPwd, newPwd string,
 ) error {
 	_, err := m.client.ChangePassword(ctx, &pb.ChangePasswordRequest{
@@ -71,7 +71,7 @@ func (m *walletManager) ChangePassword(
 	return err
 }
 
-func (m *walletManager) Status(
+func (m *wallet) Status(
 	ctx context.Context,
 ) (ports.WalletStatus, error) {
 	res, err := m.client.Status(ctx, &pb.StatusRequest{})
@@ -81,7 +81,7 @@ func (m *walletManager) Status(
 	return walletStatus{res}, nil
 }
 
-func (m *walletManager) Info(ctx context.Context) (ports.WalletInfo, error) {
+func (m *wallet) Info(ctx context.Context) (ports.WalletInfo, error) {
 	res, err := m.client.GetInfo(ctx, &pb.GetInfoRequest{})
 	if err != nil {
 		return nil, err
