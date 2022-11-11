@@ -349,9 +349,12 @@ func TestPreview(t *testing.T) {
 
 	t.Run("market with balanced strategy", func(t *testing.T) {
 		market := newTestMarket()
-		market.ChangePercentageFee(100)
-		market.ChangeFixedFee(650, 20000000)
-		market.MakeTradable()
+		err := market.ChangePercentageFee(100)
+		require.NoError(t, err)
+		err = market.ChangeFixedFee(650, 20000000)
+		require.NoError(t, err)
+		err = market.MakeTradable()
+		require.NoError(t, err)
 
 		tests := []struct {
 			baseBalance  uint64
@@ -436,12 +439,16 @@ func TestPreview(t *testing.T) {
 	t.Run("market with pluggable strategy", func(t *testing.T) {
 		market := newTestMarketWithPluggableStrategy()
 		market.MakeNotTradable()
-		market.ChangePercentageFee(100)
-		market.ChangeFixedFee(650, 20000000)
-		market.ChangePrice(
+		err := market.ChangePercentageFee(100)
+		require.NoError(t, err)
+		err = market.ChangeFixedFee(650, 20000000)
+		require.NoError(t, err)
+		err = market.ChangePrice(
 			decimal.NewFromFloat(0.000028571429), decimal.NewFromFloat(35000),
 		)
-		market.MakeTradable()
+		require.NoError(t, err)
+		err = market.MakeTradable()
+		require.NoError(t, err)
 
 		tests := []struct {
 			baseBalance  uint64
@@ -529,8 +536,10 @@ func TestFailingPreview(t *testing.T) {
 
 	t.Run("market with balanced strategy", func(t *testing.T) {
 		market := newTestMarket()
-		market.ChangePercentageFee(100)
-		market.MakeTradable()
+		err := market.ChangePercentageFee(100)
+		require.NoError(t, err)
+		err = market.MakeTradable()
+		require.NoError(t, err)
 
 		tests := []struct {
 			name         string
@@ -638,11 +647,14 @@ func TestFailingPreview(t *testing.T) {
 	t.Run("market with pluggable strategy", func(t *testing.T) {
 		market := newTestMarketWithPluggableStrategy()
 		market.MakeNotTradable()
-		market.ChangePercentageFee(100)
-		market.ChangePrice(
+		err := market.ChangePercentageFee(100)
+		require.NoError(t, err)
+		err = market.ChangePrice(
 			decimal.NewFromFloat(0.000028571429), decimal.NewFromFloat(35000),
 		)
-		market.MakeTradable()
+		require.NoError(t, err)
+		err = market.MakeTradable()
+		require.NoError(t, err)
 
 		tests := []struct {
 			name         string
@@ -758,9 +770,12 @@ func TestFailingPreview(t *testing.T) {
 
 	t.Run("market with balanced strategy and fixed fees", func(t *testing.T) {
 		market := newTestMarket()
-		market.ChangePercentageFee(100)
-		market.ChangeFixedFee(650, 20000000)
-		market.MakeTradable()
+		err := market.ChangePercentageFee(100)
+		require.NoError(t, err)
+		err = market.ChangeFixedFee(650, 20000000)
+		require.NoError(t, err)
+		err = market.MakeTradable()
+		require.NoError(t, err)
 
 		tests := []struct {
 			name         string
@@ -879,12 +894,16 @@ func TestFailingPreview(t *testing.T) {
 
 		market := newTestMarketWithPluggableStrategy()
 		market.MakeNotTradable()
-		market.ChangePercentageFee(100)
-		market.ChangeFixedFee(650, 20000000)
-		market.ChangePrice(
+		err := market.ChangePercentageFee(100)
+		require.NoError(t, err)
+		err = market.ChangeFixedFee(650, 20000000)
+		require.NoError(t, err)
+		err = market.ChangePrice(
 			decimal.NewFromFloat(0.000028571429), decimal.NewFromFloat(35000),
 		)
-		market.MakeTradable()
+		require.NoError(t, err)
+		err = market.MakeTradable()
+		require.NoError(t, err)
 
 		tests := []struct {
 			name         string
@@ -1024,12 +1043,14 @@ func newTestMarket() *domain.Market {
 
 func newTestMarketTradable() *domain.Market {
 	m := newTestMarket()
+	//nolint
 	m.MakeTradable()
 	return m
 }
 
 func newTestMarketWithPluggableStrategy() *domain.Market {
 	m := newTestMarket()
+	//nolint
 	m.MakeStrategyPluggable()
 	return m
 }

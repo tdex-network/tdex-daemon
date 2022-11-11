@@ -197,6 +197,7 @@ func (s *serviceOnePort) Start() error {
 func (s *serviceOnePort) Stop() {
 	if s.password != "" {
 		walletSvc := s.opts.AppConfig.WalletService().Wallet()
+		//nolint
 		walletSvc.Lock(context.Background(), s.password)
 	}
 
@@ -230,8 +231,10 @@ func (s *serviceOnePort) start(withWalletOnly bool) error {
 	s.server = server
 
 	if s.opts.withTls() {
+		//nolint
 		go s.server.ListenAndServeTLS("", "")
 	} else {
+		//nolint
 		go s.server.ListenAndServe()
 	}
 
@@ -246,10 +249,12 @@ func (s *serviceOnePort) start(withWalletOnly bool) error {
 
 func (s *serviceOnePort) stop(stopMacaroonSvc bool) {
 	if s.withMacaroons() && stopMacaroonSvc {
+		//nolint
 		s.macaroonSvc.Close()
 		log.Debug("closed connection with macaroon db")
 	}
 
+	//nolint
 	s.server.Shutdown(context.Background())
 	log.Debug("stopped server")
 }
@@ -314,8 +319,16 @@ func (s *serviceOnePort) newServer(
 			return nil, err
 		}
 		gwmux := runtime.NewServeMux()
-		tdexv1.RegisterTransportServiceHandler(context.Background(), gwmux, conn)
-		tdexv1.RegisterTradeServiceHandler(context.Background(), gwmux, conn)
+		if err := tdexv1.RegisterTransportServiceHandler(
+			context.Background(), gwmux, conn,
+		); err != nil {
+			return nil, err
+		}
+		if err := tdexv1.RegisterTradeServiceHandler(
+			context.Background(), gwmux, conn,
+		); err != nil {
+			return nil, err
+		}
 		grpcGateway = http.Handler(gwmux)
 	}
 

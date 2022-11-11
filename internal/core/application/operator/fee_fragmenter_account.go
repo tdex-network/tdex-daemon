@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -103,7 +104,14 @@ func (s *service) FeeFragmenterSplitFunds(
 	}
 
 	// make sure the fee account is created.
-	s.wallet.Account().CreateAccount(ctx, domain.FeeAccount)
+	if _, err := s.wallet.Account().CreateAccount(ctx, domain.FeeAccount); err != nil {
+		if !strings.Contains(err.Error(), "already exist") {
+			chRes <- fragmenterReply{
+				"", fmt.Errorf("failed to create fee fragmenter account: %s", err),
+			}
+			return
+		}
+	}
 
 	chRes <- fragmenterReply{
 		"crafting transaction to deposit funds to fee account", nil,

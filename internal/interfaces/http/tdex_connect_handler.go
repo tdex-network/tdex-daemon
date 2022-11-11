@@ -104,7 +104,11 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 	if !walletStatus.IsInitialized() {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Write([]byte(connectUrl))
+		if _, err := w.Write([]byte(connectUrl)); err != nil {
+			log.Errorln(err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 
@@ -154,7 +158,13 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Write([]byte(connectUrl))
+	if _, err := w.Write([]byte(connectUrl)); err != nil {
+		if err != nil {
+			log.Errorln(err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+	}
 }
 
 func readFile(filePath string) []byte {

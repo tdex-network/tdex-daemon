@@ -100,6 +100,7 @@ func TestCore_Request(t *testing.T) {
 
 func randomBytes(len int) []byte {
 	b := make([]byte, len)
+	//nolint
 	rand.Read(b)
 	return b
 }

@@ -122,7 +122,7 @@ func (s *Service) TradePropose(
 func (s *Service) TradeComplete(
 	ctx context.Context,
 	swapComplete ports.SwapComplete, swapFail ports.SwapFail,
-) (string, ports.SwapFail, error) {
+) (txidRes string, swapFailRes ports.SwapFail, err error) {
 	if swapFail != nil {
 		return s.tradeFail(ctx, swapFail)
 	}
@@ -138,11 +138,15 @@ func (s *Service) TradeComplete(
 	}
 
 	defer func() {
-		s.repoManager.TradeRepository().UpdateTrade(
+		if _err := s.repoManager.TradeRepository().UpdateTrade(
 			ctx, trade.Id, func(_ *domain.Trade) (*domain.Trade, error) {
 				return trade, nil
 			},
-		)
+		); _err != nil {
+			err = _err
+			txidRes = ""
+			swapFailRes = nil
+		}
 	}()
 
 	ok, _ := trade.Complete(swapComplete.GetTransaction())
@@ -230,13 +234,16 @@ func (s *Service) makeTradeSettledOrExpired(
 				status.GetBlockInfo().GetTimestamp() > 0 {
 				settlementTimestamp = status.GetBlockInfo().GetTimestamp()
 			}
+			//nolint
 			trade.Settle(settlementTimestamp)
 			tradeStatus = "settled"
 		} else if eventType.IsUnlocked() {
+			//nolint
 			trade.Expire()
 			tradeStatus = "expired"
 		}
 
+		//nolint
 		s.repoManager.TradeRepository().UpdateTrade(
 			ctx, trade.Id, func(_ *domain.Trade) (*domain.Trade, error) {
 				return trade, nil

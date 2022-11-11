@@ -51,6 +51,7 @@ func main() {
 
 	log.Info("starting ocean and tdex services...")
 	// docker-compose logs are sent to stderr therefore we cannot check for errors :(
+	//nolint
 	runCommand(
 		"docker-compose", "-f", composePath, "up", "-d", "oceand", "tdexd",
 	)
@@ -297,8 +298,10 @@ func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
 
 func clear() {
 	// stop all services
+	//nolint
 	runCommand("docker-compose", "-f", composePath, "down")
 	// remove volumes
+	//nolint
 	runCommand("rm", "-rf", volumesPath)
 }
 
@@ -334,6 +337,7 @@ func newCommand(out, err io.Writer, name string, arg ...string) *exec.Cmd {
 
 func addressesFromStdout(out string) []string {
 	res := make(map[string]interface{})
+	//nolint
 	json.Unmarshal([]byte(out), &res)
 
 	addresses := make([]string, 0)
@@ -356,7 +360,9 @@ func fundFeeFragmenterAccount(addresses []string) error {
 
 func fundMarketFragmenterAccount(addresses []string) error {
 	for _, addr := range addresses {
+		//nolint
 		explorerSvc.Faucet(addr, marketBaseDepositAmount, "")
+		//nolint
 		explorerSvc.Faucet(addr, marketQuoteDepositAmount, usdt)
 	}
 	time.Sleep(7 * time.Second)
@@ -445,6 +451,7 @@ func getNodeAddress() (string, error) {
 	}
 
 	res := map[string]string{}
+	//nolint
 	json.Unmarshal([]byte(resp), &res)
 	return res["address"], nil
 }

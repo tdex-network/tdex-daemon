@@ -62,6 +62,7 @@ func randomId() string {
 
 func randomBytes(len int) []byte {
 	b := make([]byte, len)
+	//nolint
 	rand.Read(b)
 	return b
 }

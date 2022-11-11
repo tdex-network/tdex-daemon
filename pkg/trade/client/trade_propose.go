@@ -49,6 +49,7 @@ func (c *Client) TradePropose(opts TradeProposeOpts) (*tdexv1.ProposeTradeRespon
 		QuoteAsset: opts.Market.QuoteAsset,
 	}
 	swapRequest := &tdexv1.SwapRequest{}
+	//nolint
 	proto.Unmarshal(opts.SwapRequest, swapRequest)
 
 	request := &tdexv1.ProposeTradeRequest{

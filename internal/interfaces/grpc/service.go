@@ -311,6 +311,7 @@ func (s *service) Start() error {
 func (s *service) Stop() {
 	if s.password != "" {
 		walletSvc := s.opts.AppConfig.WalletService().Wallet()
+		//nolint
 		walletSvc.Lock(context.Background(), s.password)
 	}
 	stopMacaroonSvc := true
@@ -358,17 +359,21 @@ func (s *service) start(withWalletOnly bool) error {
 	s.tradeServer = tradeServer
 
 	if s.opts.NoOperatorTls {
+		//nolint
 		go s.operatorServer.ListenAndServe()
 	} else {
+		//nolint
 		go s.operatorServer.ListenAndServeTLS("", "")
 	}
 	log.Infof("wallet interface is listening on %s", s.opts.operatorServerAddr())
 
 	if !withWalletOnly {
 		if len(s.opts.TradeTLSCert) <= 0 {
+			//nolint
 			go s.tradeServer.ListenAndServe()
 		} else {
-			s.tradeServer.ListenAndServeTLS("", "")
+			//nolint
+			go s.tradeServer.ListenAndServeTLS("", "")
 		}
 		log.Infof("operator interface is listening on %s", s.opts.operatorServerAddr())
 		log.Infof("trade interface is listening on %s", s.opts.tradeServerAddr())
@@ -379,14 +384,17 @@ func (s *service) start(withWalletOnly bool) error {
 
 func (s *service) stop(stopMacaroonSvc bool) {
 	if s.withMacaroons() && stopMacaroonSvc {
+		//nolint
 		s.macaroonSvc.Close()
 		log.Debug("closed connection with macaroon db")
 	}
 
+	//nolint
 	s.operatorServer.Shutdown(context.Background())
 	log.Debug("stopped operator server")
 
 	if s.tradeServer != nil {
+		//nolint
 		s.tradeServer.Shutdown(context.Background())
 		log.Debug("stopped trade server")
 	}
@@ -498,8 +506,16 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 		return nil, err
 	}
 	gwmux := runtime.NewServeMux()
-	tdexv1.RegisterTransportServiceHandler(context.Background(), gwmux, conn)
-	tdexv1.RegisterTradeServiceHandler(context.Background(), gwmux, conn)
+	if err := tdexv1.RegisterTransportServiceHandler(
+		context.Background(), gwmux, conn,
+	); err != nil {
+		return nil, err
+	}
+	if err := tdexv1.RegisterTradeServiceHandler(
+		context.Background(), gwmux, conn,
+	); err != nil {
+		return nil, err
+	}
 	grpcGateway := http.Handler(gwmux)
 
 	handler := router(grpcServer, grpcWebServer, grpcGateway)
@@ -552,6 +568,7 @@ func (s *service) onLock(_ string) {
 	stopMacaroonSvc := true
 	s.stop(stopMacaroonSvc)
 	withWalletOnly := true
+	//nolint
 	s.start(withWalletOnly)
 }
 

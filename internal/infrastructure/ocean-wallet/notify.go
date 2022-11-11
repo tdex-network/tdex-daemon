@@ -57,7 +57,8 @@ func (m *notify) GetUtxoNotifications() chan ports.WalletUtxoNotification {
 
 func (m *notify) startListeningForTxNotifications(
 	stream pb.NotificationService_TransactionNotificationsClient,
-) (err error) {
+) {
+	var err error
 	defer func() {
 		if err != nil {
 			log.WithError(err).Fatal(
@@ -67,12 +68,13 @@ func (m *notify) startListeningForTxNotifications(
 	}()
 
 	for {
-		notification, err := stream.Recv()
+		var notification *pb.TransactionNotificationsResponse
+		notification, err = stream.Recv()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			return err
+			return
 		}
 
 		select {
@@ -81,13 +83,12 @@ func (m *notify) startListeningForTxNotifications(
 		default:
 		}
 	}
-
-	return nil
 }
 
 func (m *notify) startListeningForUtxoNotifications(
 	stream pb.NotificationService_UtxosNotificationsClient,
-) (err error) {
+) {
+	var err error
 	defer func() {
 		if err != nil {
 			log.WithError(err).Fatal(
@@ -97,12 +98,13 @@ func (m *notify) startListeningForUtxoNotifications(
 	}()
 
 	for {
-		notification, err := stream.Recv()
+		var notification *pb.UtxosNotificationsResponse
+		notification, err = stream.Recv()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			return err
+			return
 		}
 
 		select {
@@ -111,8 +113,6 @@ func (m *notify) startListeningForUtxoNotifications(
 		default:
 		}
 	}
-
-	return nil
 }
 
 type txNotifyInfo struct {

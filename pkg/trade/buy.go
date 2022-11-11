@@ -203,7 +203,9 @@ func (t *Trade) marketOrderRequest(
 
 func (t *Trade) marketOrderComplete(swapAcceptMsg []byte, w *Wallet) (string, error) {
 	swapAccept := &tdexv1.SwapAccept{}
-	proto.Unmarshal(swapAcceptMsg, swapAccept)
+	if err := proto.Unmarshal(swapAcceptMsg, swapAccept); err != nil {
+		return "", err
+	}
 
 	psetBase64 := swapAccept.GetTransaction()
 	signedPset, err := w.Sign(psetBase64)

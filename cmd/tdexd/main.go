@@ -57,9 +57,8 @@ func main() {
 	// Profiler is enabled at url http://localhost:8024/debug/pprof/
 	if profilerEnabled {
 		runtime.SetBlockProfileRate(1)
-		go func() {
-			http.ListenAndServe(":8024", nil)
-		}()
+		//nolint
+		go http.ListenAndServe(":8024", nil)
 	}
 
 	// Init services to be used by those of the application layer.

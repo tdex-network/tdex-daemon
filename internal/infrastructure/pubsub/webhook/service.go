@@ -118,7 +118,9 @@ func (ws *webhookService) addWebhook(hook *Webhook) (string, error) {
 	if err := ws.store.db().AddToBucket(hooksBucket, hookID, hook.Serialize()); err != nil {
 		return "", err
 	}
-	ws.addHookByAction(hook)
+	if err := ws.addHookByAction(hook); err != nil {
+		return "", err
+	}
 	return hook.ID, nil
 }
 
@@ -139,8 +141,7 @@ func (ws *webhookService) removeWebhook(hookID string) error {
 	}
 
 	hook, _ := NewWebhookFromBytes(buf)
-	ws.removeHookByAction(hook)
-	return nil
+	return ws.removeHookByAction(hook)
 }
 
 func (ws *webhookService) listWebhooksForAction(actionType WebhookAction) []ports.Subscription {
@@ -175,15 +176,15 @@ func (ws *webhookService) invokeWebhooksForAction(actionType WebhookAction, mess
 	return eg.Wait()
 }
 
-func (ws *webhookService) addHookByAction(hook *Webhook) {
+func (ws *webhookService) addHookByAction(hook *Webhook) error {
 	key := []byte{byte(hook.ActionType)}
 	hooks := ws.getSerializedHooks(hook.ActionType)
 	hooks = append(hooks, hook.Serialize())
 	updatedHooks := bytes.Join(hooks, separator)
-	ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
+	return ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
 }
 
-func (ws *webhookService) removeHookByAction(hook *Webhook) {
+func (ws *webhookService) removeHookByAction(hook *Webhook) error {
 	rawHooks := ws.getSerializedHooks(hook.ActionType)
 
 	var index int
@@ -199,12 +200,11 @@ func (ws *webhookService) removeHookByAction(hook *Webhook) {
 	rawHooks = append(rawHooks[:index], rawHooks[index+1:]...)
 
 	if len(rawHooks) <= 0 {
-		ws.store.db().RemoveFromBucket(hooksByActionBucket, key)
-		return
+		return ws.store.db().RemoveFromBucket(hooksByActionBucket, key)
 	}
 
 	updatedHooks := bytes.Join(rawHooks, separator)
-	ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
+	return ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
 }
 
 func (ws *webhookService) getHooksByAction(actionType WebhookAction) []*Webhook {

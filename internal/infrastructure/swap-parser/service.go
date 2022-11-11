@@ -78,6 +78,7 @@ func (s service) SerializeFail(id string, errCode int) (string, []byte) {
 
 func (s service) DeserializeRequest(msg []byte) *domain.SwapRequest {
 	swap := &tdexv1.SwapRequest{}
+	//nolint
 	proto.Unmarshal(msg, swap)
 	unblindedIns := make([]domain.UnblindedInput, 0, len(swap.GetUnblindedInputs()))
 	for _, in := range swap.GetUnblindedInputs() {
@@ -102,6 +103,7 @@ func (s service) DeserializeRequest(msg []byte) *domain.SwapRequest {
 
 func (s service) DeserializeAccept(msg []byte) *domain.SwapAccept {
 	swap := &tdexv1.SwapAccept{}
+	//nolint
 	proto.Unmarshal(msg, swap)
 	unblindedIns := make([]domain.UnblindedInput, 0, len(swap.GetUnblindedInputs()))
 	for _, in := range swap.GetUnblindedInputs() {
@@ -123,6 +125,7 @@ func (s service) DeserializeAccept(msg []byte) *domain.SwapAccept {
 
 func (s service) DeserializeComplete(msg []byte) *domain.SwapComplete {
 	swap := &tdexv1.SwapComplete{}
+	//nolint
 	proto.Unmarshal(msg, swap)
 	return &domain.SwapComplete{
 		Id:          swap.GetId(),
@@ -133,6 +136,7 @@ func (s service) DeserializeComplete(msg []byte) *domain.SwapComplete {
 
 func (s service) DeserializeFail(msg []byte) *domain.SwapFail {
 	swap := &tdexv1.SwapFail{}
+	//nolint
 	proto.Unmarshal(msg, swap)
 	return &domain.SwapFail{
 		Id:             swap.GetId(),
@@ -145,6 +149,7 @@ func (s service) DeserializeFail(msg []byte) *domain.SwapFail {
 func (s service) ParseSwapTransaction(tx string) (*domain.SwapTransactionDetails, int) {
 	if isPset(tx) {
 		ptx, _ := psetv2.NewPsetFromBase64(tx)
+		//nolint
 		psetv2.FinalizeAll(ptx)
 		t, _ := psetv2.Extract(ptx)
 		txhex, _ := t.ToHex()

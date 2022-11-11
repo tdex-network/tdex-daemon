@@ -84,8 +84,7 @@ func (s *Service) checkForPendingTrades() {
 	for _, t := range trades {
 		trade := &t
 		if trade.IsAccepted() || trade.IsCompleted() {
-			if trade.IsExpired() {
-				trade.Expire()
+			if ok, _ := trade.Expire(); ok {
 				expiredTrades = append(expiredTrades, trade)
 				continue
 			}

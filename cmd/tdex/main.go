@@ -94,7 +94,7 @@ func main() {
 
 	app.Before = func(ctx *cli.Context) error {
 		if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
-			os.Mkdir(tdexDataDir, os.ModeDir|0755)
+			return os.Mkdir(tdexDataDir, os.ModeDir|0755)
 		}
 		return nil
 	}
@@ -118,7 +118,9 @@ func getState() (map[string]string, error) {
 	}
 
 	data := map[string]string{}
-	json.Unmarshal(file, &data)
+	if err := json.Unmarshal(file, &data); err != nil {
+		return nil, err
+	}
 
 	return data, nil
 }

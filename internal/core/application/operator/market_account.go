@@ -34,7 +34,11 @@ func (s *service) NewMarket(
 	}
 
 	if err := s.repoManager.MarketRepository().AddMarket(ctx, newMarket); err != nil {
-		go func() { s.wallet.Account().DeleteAccount(ctx, newMarket.Name) }()
+		go func() {
+			if err := s.wallet.Account().DeleteAccount(ctx, newMarket.Name); err != nil {
+				log.WithError(err).Warn("failed to delete wallet account, please do it manually")
+			}
+		}()
 		return nil, err
 	}
 

@@ -37,7 +37,9 @@ func TestWebhookPubSubService(t *testing.T) {
 	server := newTestWebServer(t)
 
 	t.Cleanup(func() {
+		//nolint
 		server.Shutdown(context.TODO())
+		//nolint
 		pubsubSvc.Store().Close()
 		os.RemoveAll(datadir)
 	})
@@ -184,6 +186,7 @@ func newTestWebServer(t *testing.T) *http.Server {
 
 func randomSecret() string {
 	b := make([]byte, 32)
+	//nolint
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }
