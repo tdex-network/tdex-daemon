@@ -3,7 +3,6 @@ package kvdb
 import (
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -213,7 +212,7 @@ func lastCompactionDate(dbFile string) (time.Time, error) {
 		return zeroTime, nil
 	}
 
-	tsBytes, err := ioutil.ReadFile(tsFile)
+	tsBytes, err := os.ReadFile(tsFile)
 	if err != nil {
 		return zeroTime, err
 	}
@@ -230,5 +229,5 @@ func updateLastCompactionDate(dbFile string) error {
 	byteOrder.PutUint64(tsBytes[:], uint64(time.Now().UnixNano()))
 
 	tsFile := fmt.Sprintf("%s%s", dbFile, LastCompactionFileNameSuffix)
-	return ioutil.WriteFile(tsFile, tsBytes[:], 0600)
+	return os.WriteFile(tsFile, tsBytes[:], 0600)
 }

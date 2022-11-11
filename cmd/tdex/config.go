@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -169,7 +168,7 @@ func configConnectAction(c *cli.Context) (err error) {
 			return
 		}
 
-		if err = ioutil.WriteFile(tlsCertPath, buf.Bytes(), 0644); err != nil {
+		if err = os.WriteFile(tlsCertPath, buf.Bytes(), 0644); err != nil {
 			err = fmt.Errorf("failed to write certificate to file: %s", err)
 			return
 		}
@@ -183,7 +182,7 @@ func configConnectAction(c *cli.Context) (err error) {
 	var macaroonsPath string
 	if len(macaroon) > 0 {
 		macaroonsPath = filepath.Join(tdexDataDir, "admin.macaroon")
-		if err = ioutil.WriteFile(macaroonsPath, macaroon, 0644); err != nil {
+		if err = os.WriteFile(macaroonsPath, macaroon, 0644); err != nil {
 			err = fmt.Errorf("failed to write macaroon to file: %s", err)
 			return
 		}

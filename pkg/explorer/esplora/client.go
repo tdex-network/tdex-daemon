@@ -3,7 +3,7 @@ package esplora
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -57,7 +57,7 @@ func (s *Client) get(url string, header map[string]string) (int, string, error) 
 	}
 	defer rs.Body.Close()
 
-	bodyBytes, err := ioutil.ReadAll(rs.Body)
+	bodyBytes, err := io.ReadAll(rs.Body)
 	if err != nil {
 		return 0, "", err
 	}
@@ -83,7 +83,7 @@ func (s *Client) list(url string, header map[string]string) (int, string, error)
 	}
 	defer rs.Body.Close()
 
-	bodyBytes, err := ioutil.ReadAll(rs.Body)
+	bodyBytes, err := io.ReadAll(rs.Body)
 	if err != nil {
 		return 0, "", err
 	}
@@ -109,7 +109,7 @@ func (s *Client) delete(url string, header map[string]string) (int, string, erro
 	}
 	defer rs.Body.Close()
 
-	bodyBytes, err := ioutil.ReadAll(rs.Body)
+	bodyBytes, err := io.ReadAll(rs.Body)
 	if err != nil {
 		return 0, "", err
 	}
@@ -134,7 +134,7 @@ func (s *Client) post(url, bodyString string, header map[string]string) (int, st
 	}
 	defer rs.Body.Close()
 
-	bodyBytes, err := ioutil.ReadAll(rs.Body)
+	bodyBytes, err := io.ReadAll(rs.Body)
 	if err != nil {
 		return 0, "", errors.New("Failed to parse response body: " + err.Error())
 	}

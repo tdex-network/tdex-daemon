@@ -2,7 +2,7 @@ package esplora_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewTxFromJSON(t *testing.T) {
-	file, err := ioutil.ReadFile("testdata/fixtures.json")
+	file, err := os.ReadFile("testdata/fixtures.json")
 	if err != nil {
 		t.Fatal(err)
 	}

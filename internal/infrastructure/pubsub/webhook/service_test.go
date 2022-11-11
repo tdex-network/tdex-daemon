@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -167,7 +167,7 @@ func newTestWebServer(t *testing.T) *http.Server {
 
 		// Log request
 		defer r.Body.Close()
-		payload, _ := ioutil.ReadAll(r.Body)
+		payload, _ := io.ReadAll(r.Body)
 		headers, _ := json.Marshal(r.Header)
 		info := struct {
 			method   string

@@ -418,7 +418,7 @@ func mintBlock() error {
 // 		},
 // 	}
 // 	configJSON, _ := json.Marshal(configMap)
-// 	ioutil.WriteFile(feederConfigJSON, configJSON, 0777)
+// 	os.WriteFile(feederConfigJSON, configJSON, 0777)
 
 // 	runCommand("docker-compose", "-f", composePath, "up", "-d", "feederd")
 // 	return nil

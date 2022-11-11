@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -105,7 +104,7 @@ func main() {
 }
 
 func getState() (map[string]string, error) {
-	file, err := ioutil.ReadFile(statePath)
+	file, err := os.ReadFile(statePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -163,7 +162,7 @@ func setState(data map[string]string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(statePath, jsonString, 0755)
+	err = os.WriteFile(statePath, jsonString, 0755)
 	if err != nil {
 		return fmt.Errorf("writing to file: %w", err)
 	}
@@ -279,7 +278,7 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 						"'tdex config set macaroons_path path/to/macaroon",
 				)
 			}
-			macBytes, err := ioutil.ReadFile(macPath)
+			macBytes, err := os.ReadFile(macPath)
 			if err != nil {
 				return nil, fmt.Errorf("could not read macaroon %s: %s", macPath, err)
 			}

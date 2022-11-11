@@ -1,7 +1,7 @@
 package webhookpubsub
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -36,7 +36,7 @@ func (c *client) doRequest(req *http.Request) (int, string, error) {
 	}
 	defer rs.Body.Close()
 
-	bodyBytes, err := ioutil.ReadAll(rs.Body)
+	bodyBytes, err := io.ReadAll(rs.Body)
 	if err != nil {
 		return -1, "", err
 	}

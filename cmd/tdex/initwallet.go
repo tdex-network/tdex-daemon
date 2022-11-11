@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -94,7 +94,7 @@ func initWalletAction(ctx *cli.Context) error {
 		tlsCertPath := state["tls_cert_path"]
 		if ok, _ := filepath.Match(tdexDataDir, filepath.Dir(tlsCertPath)); ok {
 			macPath := filepath.Join(tdexDataDir, "admin.macaroon")
-			if err := ioutil.WriteFile(macPath, macaroon, 0644); err != nil {
+			if err := os.WriteFile(macPath, macaroon, 0644); err != nil {
 				return fmt.Errorf("failed to write macaroon to file: %s", err)
 			}
 			if err := setState(

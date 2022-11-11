@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
@@ -93,7 +92,7 @@ func (h *walletHandler) InitWallet(
 			}
 			return err
 		}
-		mac, err := ioutil.ReadFile(h.macaroonPath)
+		mac, err := os.ReadFile(h.macaroonPath)
 		if err != nil {
 			return err
 		}
