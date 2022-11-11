@@ -67,7 +67,7 @@ func NewClient(host string, port int, user, passwd string, useSSL bool, timeout 
 	if useSSL {
 		serverAddr = "https://"
 		// #nosec G402
-		t := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		t := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
 		httpClient = &http.Client{Transport: t}
 	} else {
 		serverAddr = "http://"
