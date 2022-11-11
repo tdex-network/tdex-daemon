@@ -14,8 +14,10 @@ const (
 )
 
 var (
-	// ErrInvalidOptsType ...
-	ErrInvalidOptsType = errors.New("opts must be of type BalancedReservesOpts")
+	// ErrInvalidBalancedReservesOptsType ...
+	ErrInvalidBalancedReservesOptsType = errors.New(
+		"opts must be of type BalancedReservesOpts",
+	)
 	// ErrAmountTooLow ...
 	ErrAmountTooLow = errors.New("provided amount is too low")
 	// ErrAmountTooBig ...
@@ -43,7 +45,7 @@ type BalancedReserves struct{}
 func (BalancedReserves) SpotPrice(_opts interface{}) (spotPrice decimal.Decimal, err error) {
 	opts, ok := _opts.(BalancedReservesOpts)
 	if !ok {
-		err = ErrInvalidOptsType
+		err = ErrInvalidBalancedReservesOptsType
 		return
 	}
 
@@ -63,7 +65,7 @@ func (BalancedReserves) SpotPrice(_opts interface{}) (spotPrice decimal.Decimal,
 func (BalancedReserves) OutGivenIn(_opts interface{}, amountIn uint64) (uint64, error) {
 	opts, ok := _opts.(BalancedReservesOpts)
 	if !ok {
-		return 0, ErrInvalidOptsType
+		return 0, ErrInvalidBalancedReservesOptsType
 	}
 
 	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {
@@ -107,7 +109,7 @@ func (BalancedReserves) OutGivenIn(_opts interface{}, amountIn uint64) (uint64, 
 func (BalancedReserves) InGivenOut(_opts interface{}, amountOut uint64) (uint64, error) {
 	opts, ok := _opts.(BalancedReservesOpts)
 	if !ok {
-		return 0, ErrInvalidOptsType
+		return 0, ErrInvalidBalancedReservesOptsType
 	}
 
 	if opts.BalanceIn == 0 || opts.BalanceOut == 0 {

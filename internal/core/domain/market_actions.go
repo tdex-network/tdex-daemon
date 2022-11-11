@@ -2,7 +2,6 @@ package domain
 
 import (
 	"github.com/shopspring/decimal"
-	pluggable_strategy "github.com/tdex-network/tdex-daemon/internal/infrastructure/market-strategy/pluggable"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 )
@@ -185,7 +184,7 @@ func (m *Market) Preview(
 func (m *Market) strategy() marketmaking.MakingFormula {
 	switch m.StrategyType {
 	case StrategyTypePluggable:
-		return pluggable_strategy.PluggableStrategy{}
+		return marketmaking.NewPluggableFormula()
 	case StrategyTypeBalanced:
 		fallthrough
 	default:
@@ -225,7 +224,7 @@ func (m *Market) formulaOptsForPluggable(
 		price = m.QuoteAssetPrice()
 	}
 
-	return pluggable_strategy.PluggableStrategyOpts{
+	return formula.PluggableOpts{
 		BalanceIn:  balanceIn,
 		BalanceOut: balanceOut,
 		Price:      price,

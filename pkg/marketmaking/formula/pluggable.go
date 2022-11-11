@@ -1,14 +1,13 @@
-package pluggable_strategy
+package formula
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
-type PluggableStrategyOpts struct {
+type PluggableOpts struct {
 	BalanceIn  uint64
 	BalanceOut uint64
 	Price      decimal.Decimal
@@ -16,56 +15,54 @@ type PluggableStrategyOpts struct {
 }
 
 var (
-	ErrInvalidOptsType     = fmt.Errorf("opts must be of type PluggableStrategyOpts")
-	ErrPreviewAmountTooLow = fmt.Errorf("provided amount is too low")
-	ErrPreviewAmountTooBig = fmt.Errorf("provided amount is too big")
+	ErrInvalidPluggableOptsType = fmt.Errorf("opts must be of type PluggableOpts")
 )
 
-type PluggableStrategy struct{}
+type Pluggable struct{}
 
-func (s PluggableStrategy) SpotPrice(
+func (s Pluggable) SpotPrice(
 	_ interface{},
 ) (spotPrice decimal.Decimal, err error) {
 	return
 }
 
-func (s PluggableStrategy) OutGivenIn(
+func (s Pluggable) OutGivenIn(
 	_opts interface{}, amountIn uint64,
 ) (uint64, error) {
-	opts, ok := _opts.(PluggableStrategyOpts)
+	opts, ok := _opts.(PluggableOpts)
 	if !ok {
-		return 0, ErrInvalidOptsType
+		return 0, ErrInvalidPluggableOptsType
 	}
 	if amountIn == 0 {
-		return 0, ErrPreviewAmountTooLow
+		return 0, ErrAmountTooLow
 	}
 
 	amountR := decimal.NewFromInt(int64(amountIn)).Mul(opts.Price).BigInt().Uint64()
 	amountR, _ = mathutil.LessFee(amountR, opts.Fee)
 	if amountR == 0 {
-		return 0, ErrPreviewAmountTooLow
+		return 0, ErrAmountTooLow
 	}
 	return amountR, nil
 }
 
-func (s PluggableStrategy) InGivenOut(
+func (s Pluggable) InGivenOut(
 	_opts interface{}, amountOut uint64,
 ) (uint64, error) {
-	opts, ok := _opts.(PluggableStrategyOpts)
+	opts, ok := _opts.(PluggableOpts)
 	if !ok {
-		return 0, errors.New("opts must be of type PluggableStrategyOpts")
+		return 0, ErrInvalidPluggableOptsType
 	}
 	if amountOut == 0 {
-		return 0, ErrPreviewAmountTooLow
+		return 0, ErrAmountTooLow
 	}
 	if amountOut >= opts.BalanceOut {
-		return 0, ErrPreviewAmountTooBig
+		return 0, ErrAmountTooBig
 	}
 
 	amountP := decimal.NewFromInt(int64(amountOut)).Mul(opts.Price).BigInt().Uint64()
 	amountP, _ = mathutil.PlusFee(amountP, opts.Fee)
 	if amountP == 0 {
-		return 0, ErrPreviewAmountTooLow
+		return 0, ErrAmountTooLow
 	}
 	return amountP, nil
 }

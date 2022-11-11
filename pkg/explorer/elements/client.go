@@ -59,7 +59,7 @@ type rpcResponse struct {
 // NewClient retursn an RpcClient
 func NewClient(host string, port int, user, passwd string, useSSL bool, timeout int) (c *RPCClient, err error) {
 	if len(host) == 0 {
-		err = errors.New("Bad call missing argument host")
+		err = errors.New("bad call missing argument host")
 		return
 	}
 	var serverAddr string
@@ -93,7 +93,7 @@ func (c *RPCClient) doTimeoutRequest(timer *time.Timer, req *http.Request) (*htt
 	case r := <-done:
 		return r.resp, r.err
 	case <-timer.C:
-		return nil, errors.New("Timeout reading data from server")
+		return nil, errors.New("timeout reading data from server")
 	}
 }
 

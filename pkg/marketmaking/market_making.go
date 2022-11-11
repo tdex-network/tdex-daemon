@@ -15,3 +15,7 @@ type MakingFormula interface {
 func NewBalancedReservedFormula() MakingFormula {
 	return formula.BalancedReserves{}
 }
+
+func NewPluggableFormula() MakingFormula {
+	return formula.Pluggable{}
+}
