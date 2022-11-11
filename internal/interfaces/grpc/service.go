@@ -485,9 +485,8 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(
-			// #nosec
 			credentials.NewTLS(&tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: true, // #nosec
 			}),
 		))
 	}
