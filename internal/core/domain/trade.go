@@ -86,7 +86,7 @@ func (t *Trade) Propose(
 }
 
 // Accept brings a trade from the Proposal to the Accepted status by validating
-// the provided arguemtn against the the SwapRequest message and sets its
+// the provided argument against the SwapRequest message and sets its
 // expiration time.
 func (t *Trade) Accept(
 	psetBase64 string, unblindedIns []UnblindedInput, expiryTime int64,

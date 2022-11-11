@@ -33,7 +33,7 @@ func (m *Market) IsStrategyBalanced() bool {
 	return m.StrategyType == StrategyTypeBalanced
 }
 
-// IsStrategyPluggable returns true if the the startegy isn't automated.
+// IsStrategyPluggable returns true if the strategy isn't automated.
 func (m *Market) IsStrategyPluggable() bool {
 	return m.StrategyType == StrategyTypePluggable
 }

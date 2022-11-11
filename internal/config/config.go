@@ -24,9 +24,9 @@ const (
 	LogLevelKey = "LOG_LEVEL"
 	// DefaultFeeKey is the default swap fee when creating a market
 	PercentageFeeKey = "PERCENTAGE_FEE"
-	// FeeAccountBalanceThresholdKey is the treshold of LBTC balance (in satoshis) for the fee account, after wich we alert the operator that it cannot subsidize anymore swaps
+	// FeeAccountBalanceThresholdKey is the treshold of LBTC balance (in satoshis) for the fee account, after which we alert the operator that it cannot subsidize anymore swaps
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
-	// TradeExpiryTimeKey is the duration in seconds of lock on unspents we reserve for accpeted trades, before eventually double spending it
+	// TradeExpiryTimeKey is the duration in seconds of lock on unspents we reserve for accepted trades, before eventually double spending it
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
 	// TradeSatsPerByte is the sats per byte ratio to use for paying for trades' network fees
 	TradeSatsPerByte = "TRADE_SATS_PER_BYTE"

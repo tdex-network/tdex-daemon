@@ -12,7 +12,7 @@ type withdrawalRepositoryImpl struct {
 	store *badgerhold.Store
 }
 
-// NewWithdrawalRepositoryImpl is the factory for a badger implementaion of
+// NewWithdrawalRepositoryImpl is the factory for a badger implementation of
 // domain.WithdrawalRepository
 func NewWithdrawalRepositoryImpl(
 	store *badgerhold.Store,

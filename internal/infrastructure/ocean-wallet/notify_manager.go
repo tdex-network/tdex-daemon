@@ -61,7 +61,7 @@ func (m *notifyManager) startListeningForTxNotifications() error {
 				if err == io.EOF {
 					return
 				}
-				log.WithError(err).Warn("closed connection with ocean wallet's tx notificaiton stream")
+				log.WithError(err).Warn("closed connection with ocean wallet's tx notification stream")
 				return
 			}
 
@@ -92,7 +92,7 @@ func (m *notifyManager) startListeningForUtxoNotifications() error {
 					return
 				}
 				log.WithError(err).Warn(
-					"closed connection with ocean wallet's utxo notificaiton stream",
+					"closed connection with ocean wallet's utxo notification stream",
 				)
 				return
 			}

@@ -90,7 +90,7 @@ func (d *repoManager) Close() {
 	d.unspentStore.Close()
 }
 
-// isTransactionConflict returns wheter the error occured when commiting a
+// isTransactionConflict returns whether the error occurred when committing a
 // transacton is a conflict
 func isTransactionConflict(err error) bool {
 	return err == badger.ErrConflict

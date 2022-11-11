@@ -197,7 +197,7 @@ func (s *service) MarketFragmenterSplitFunds(
 	}
 
 	chRes <- fragmenterReply{
-		"crafting and broadcasting transaciton to send funds to market account",
+		"crafting and broadcasting transaction to send funds to market account",
 		nil,
 	}
 	txid, err := s.wallet.SendToMany(domain.MarketFragmenterAccount, outputs, 100)

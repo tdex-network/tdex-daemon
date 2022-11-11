@@ -149,7 +149,7 @@ func (s *service) FeeFragmenterSplitFunds(
 		fmt.Sprintf("fee account funding transaction: %s", txid), nil,
 	}
 
-	chRes <- fragmenterReply{"fragmentation suceeded", nil}
+	chRes <- fragmenterReply{"fragmentation succeeded", nil}
 }
 
 func (s *service) WithdrawFeeFragmenterFunds(

@@ -25,7 +25,7 @@ func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, ass
 				return false, errors.New("Unable to unblind output with script: " + script)
 			}
 
-			// check if the unblinded output respect criterias
+			// check if the unblinded output respects criteria
 			if unblinded.Value == value &&
 				elementsutil.AssetHashFromBytes(unblinded.Asset) == asset {
 				return true, nil

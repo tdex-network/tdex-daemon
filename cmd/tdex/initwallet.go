@@ -101,7 +101,7 @@ func initWalletAction(ctx *cli.Context) error {
 				map[string]string{"macaroons_path": macPath},
 			); err != nil {
 				return fmt.Errorf(
-					"an error occured while setting 'macaroons_path' in config: %s.\n"+
+					"an error occurred while setting 'macaroons_path' in config: %s.\n"+
 						"Please run 'tdex config set macaroons_path %s'", err, macPath,
 				)
 			}
