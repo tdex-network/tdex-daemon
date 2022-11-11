@@ -5,8 +5,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -153,7 +153,7 @@ func NewServiceOnePort(opts ServiceOptsOnePort) (interfaces.Service, error) {
 
 	var password string
 	if opts.WalletUnlockPasswordFile != "" {
-		passwordBytes, err := ioutil.ReadFile(opts.WalletUnlockPasswordFile)
+		passwordBytes, err := os.ReadFile(opts.WalletUnlockPasswordFile)
 		if err != nil {
 			return nil, err
 		}
@@ -179,7 +179,7 @@ func (s *serviceOnePort) Start() error {
 	}
 
 	if s.opts.WalletUnlockPasswordFile != "" {
-		pwdBytes, _ := ioutil.ReadFile(s.opts.WalletUnlockPasswordFile)
+		pwdBytes, _ := os.ReadFile(s.opts.WalletUnlockPasswordFile)
 		password := string(pwdBytes)
 
 		if err := s.opts.AppConfig.WalletService().Wallet().Unlock(
@@ -353,6 +353,11 @@ func (s *serviceOnePort) onUnlock(password string) {
 	pwd := []byte(password)
 	if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
 		log.WithError(err).Warn("failed to unlock macaroon store")
+	}
+	if err := genMacaroons(
+		context.Background(), s.macaroonSvc, s.opts.macaroonsDatadir(),
+	); err != nil {
+		log.WithError(err).Warn("failed to create macaroons")
 	}
 
 	stopMacaroonSvc := true

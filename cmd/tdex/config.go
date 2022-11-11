@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -214,23 +213,6 @@ func configConnectAction(c *cli.Context) (err error) {
 	return nil
 }
 
-func getNetworkFromState() (*network.Network, error) {
-	state, err := getState()
-	if err != nil {
-		return nil, err
-	}
-
-	net := state["network"]
-	switch net {
-	case network.Testnet.Name:
-		return &network.Testnet, nil
-	case network.Regtest.Name:
-		return &network.Regtest, nil
-	default:
-		return &network.Liquid, nil
-	}
-}
-
 func getMarketFromState() (string, string, error) {
 	state, err := getState()
 	if err != nil {
@@ -246,31 +228,4 @@ func getMarketFromState() (string, string, error) {
 	}
 
 	return baseAsset, quoteAsset, nil
-}
-
-func getWalletFromState(walletType string) (map[string]string, error) {
-	state, err := getState()
-	if err != nil {
-		return nil, err
-	}
-
-	walletKey := fmt.Sprintf("%s_wallet", walletType)
-	walletJSON, ok := state[walletKey]
-	if !ok || walletJSON == "" {
-		return nil, nil
-	}
-
-	wallet := map[string]string{}
-	if err := json.Unmarshal([]byte(walletJSON), &wallet); err != nil {
-		return nil, err
-	}
-	return wallet, nil
-}
-
-func flushWallet(walletType string) {
-	state, _ := getState()
-	walletKey := fmt.Sprintf("%s_wallet", walletType)
-	if _, ok := state[walletKey]; ok {
-		setState(map[string]string{walletKey: ""})
-	}
 }

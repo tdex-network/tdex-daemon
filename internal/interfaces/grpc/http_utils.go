@@ -14,7 +14,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -72,7 +71,7 @@ func generateOperatorTLSKeyCert(
 	// addIP appends an IP address only if it isn't already in the slice.
 	addIP := func(ipAddr net.IP) {
 		for _, ip := range ipAddresses {
-			if bytes.Equal(ip, ipAddr) {
+			if net.IP.Equal(ip, ipAddr) {
 				return
 			}
 		}
@@ -102,9 +101,7 @@ func generateOperatorTLSKeyCert(
 	}
 
 	if len(extraDomains) > 0 {
-		for _, domain := range extraDomains {
-			dnsNames = append(dnsNames, domain)
-		}
+		dnsNames = append(dnsNames, extraDomains...)
 	}
 
 	dnsNames = append(dnsNames, "unix", "unixpacket")
@@ -158,10 +155,10 @@ func generateOperatorTLSKeyCert(
 		return fmt.Errorf("failed to encode private key: %v", err)
 	}
 
-	if err := ioutil.WriteFile(certPath, certBuf.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(certPath, certBuf.Bytes(), 0644); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(keyPath, keyBuf.Bytes(), 0600); err != nil {
+	if err := os.WriteFile(keyPath, keyBuf.Bytes(), 0600); err != nil {
 		os.Remove(certPath)
 		return err
 	}
@@ -174,7 +171,7 @@ func createOrLoadTLSKey(keyPath string) (*ecdsa.PrivateKey, error) {
 		return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	}
 
-	b, err := ioutil.ReadFile(keyPath)
+	b, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, err
 	}

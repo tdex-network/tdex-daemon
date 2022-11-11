@@ -5,10 +5,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -267,7 +267,7 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 
 	var password string
 	if opts.WalletUnlockPasswordFile != "" {
-		passwordBytes, err := ioutil.ReadFile(opts.WalletUnlockPasswordFile)
+		passwordBytes, err := os.ReadFile(opts.WalletUnlockPasswordFile)
 		if err != nil {
 			return nil, err
 		}
@@ -293,7 +293,7 @@ func (s *service) Start() error {
 	}
 
 	if s.opts.WalletUnlockPasswordFile != "" {
-		pwdBytes, _ := ioutil.ReadFile(s.opts.WalletUnlockPasswordFile)
+		pwdBytes, _ := os.ReadFile(s.opts.WalletUnlockPasswordFile)
 		password := string(pwdBytes)
 
 		if err := s.opts.AppConfig.WalletService().Wallet().Unlock(
@@ -527,6 +527,11 @@ func (s *service) onUnlock(password string) {
 		pwd := []byte(password)
 		if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
 			log.WithError(err).Warn("failed to unlock macaroon store")
+		}
+		if err := genMacaroons(
+			context.Background(), s.macaroonSvc, s.opts.macaroonsDatadir(),
+		); err != nil {
+			log.WithError(err).Warn("failed to create macaroons")
 		}
 	}
 

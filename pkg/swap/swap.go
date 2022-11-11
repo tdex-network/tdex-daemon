@@ -4,78 +4,11 @@ import (
 	"encoding/hex"
 	"errors"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	"github.com/vulpemventures/go-elements/confidential"
 	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
 )
-
-func compareMessagesAndTransaction(request *tdexv1.SwapRequest, accept *tdexv1.SwapAccept) error {
-	decodedFromRequest, err := pset.NewPsetFromBase64(request.GetTransaction())
-	if err != nil {
-		return err
-	}
-
-	for index, input := range decodedFromRequest.Inputs {
-		if input.WitnessUtxo == nil && input.NonWitnessUtxo != nil {
-			inputVout := decodedFromRequest.UnsignedTx.Inputs[index].Index
-			decodedFromRequest.Inputs[index].WitnessUtxo = input.NonWitnessUtxo.Outputs[inputVout]
-		}
-	}
-
-	totalP, err := countCumulativeAmount(decodedFromRequest.Inputs, request.GetAssetP(), request.GetInputBlindingKey())
-	if err != nil {
-		return err
-	}
-	if totalP < request.GetAmountP() {
-		return errors.New("cumulative utxos count is not enough to cover SwapRequest.amount_p")
-	}
-
-	outputRFound, err := outputFoundInTransaction(
-		decodedFromRequest.UnsignedTx.Outputs,
-		request.GetAmountR(),
-		request.GetAssetR(),
-		request.GetOutputBlindingKey(),
-	)
-	if err != nil {
-		return err
-	}
-	if !outputRFound {
-		return errors.New("either SwapRequest.amount_r or SwapRequest.asset_r do not match the provided pset")
-	}
-
-	if accept != nil {
-		decodedFromAccept, err := pset.NewPsetFromBase64(accept.GetTransaction())
-		if err != nil {
-			return err
-		}
-
-		if request.GetId() != accept.GetRequestId() {
-			return errors.New("id mismatch: SwapRequest.id and SwapAccept.request_id are not the same")
-		}
-
-		totalR, err := countCumulativeAmount(decodedFromAccept.Inputs, request.GetAssetR(), accept.GetInputBlindingKey())
-		if err != nil {
-			return err
-		}
-		if totalR < request.GetAmountR() {
-			return errors.New("cumulative utxos count is not enough to cover SwapRequest.amount_r")
-		}
-
-		outputPFound, err := outputFoundInTransaction(
-			decodedFromAccept.UnsignedTx.Outputs,
-			request.GetAmountP(),
-			request.GetAssetP(),
-			accept.GetOutputBlindingKey(),
-		)
-		if !outputPFound {
-			return errors.New("either SwapRequest.amount_p or SwapRequest.asset_p do not match the provided pset")
-		}
-	}
-
-	return nil
-}
 
 func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, asset string, ouptutBlindKeys map[string][]byte) (bool, error) {
 	for _, output := range outputs {

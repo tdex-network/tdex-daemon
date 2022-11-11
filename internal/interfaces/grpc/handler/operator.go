@@ -12,8 +12,6 @@ import (
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 )
 
-const readOnlyTx = true
-
 type operatorHandler struct {
 	operatorSvc       application.OperatorService
 	passwordValidator func(pwd string) bool

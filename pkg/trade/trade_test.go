@@ -88,21 +88,3 @@ func TestFailingNewTrade(t *testing.T) {
 		assert.Equal(t, tt.err, err)
 	}
 }
-
-var client *tradeclient.Client
-
-func newTestTrade() (t *Trade, err error) {
-	if client == nil {
-		client, err = tradeclient.NewTradeClient("localhost", 9000)
-		if err != nil {
-			return
-		}
-	}
-
-	t, err = NewTrade(NewTradeOpts{
-		Chain:           "regtest",
-		ExplorerService: explorerSvc,
-		Client:          client,
-	})
-	return
-}

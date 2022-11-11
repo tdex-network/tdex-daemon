@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -21,9 +19,9 @@ import (
 )
 
 var (
-	composePath      = "test/resources/compose/docker-compose.yml"
-	volumesPath      = "test/resources/volumes"
-	feederConfigJSON = fmt.Sprintf("%s/feederd/config.json", volumesPath)
+	composePath = "test/resources/compose/docker-compose.yml"
+	volumesPath = "test/resources/volumes"
+	// feederConfigJSON = fmt.Sprintf("%s/feederd/config.json", volumesPath)
 
 	explorerUrl    = "http://localhost:3001"
 	explorerSvc, _ = esplora.NewService(explorerUrl, 15000)
@@ -394,37 +392,37 @@ func mintBlock() error {
 	return nil
 }
 
-func setupFeeder() error {
-	if err := makeDirectoryIfNotExists(
-		filepath.Dir(feederConfigJSON),
-	); err != nil {
-		return err
-	}
+// func setupFeeder() error {
+// 	if err := makeDirectoryIfNotExists(
+// 		filepath.Dir(feederConfigJSON),
+// 	); err != nil {
+// 		return err
+// 	}
 
-	configMap := map[string]interface{}{
-		"price_feeder": "kraken",
-		"interval":     1000,
-		"targets": map[string]string{
-			"rpc_address":    "tdexd:9000",
-			"tls_cert_path":  "",
-			"macaroons_path": "",
-		},
-		"well_known_markets": map[string]interface{}{
-			"kraken": []map[string]interface{}{
-				{
-					"base_asset":  lbtc,
-					"quote_asset": usdt,
-					"ticker":      "XBT/USDT",
-				},
-			},
-		},
-	}
-	configJSON, _ := json.Marshal(configMap)
-	ioutil.WriteFile(feederConfigJSON, configJSON, 0777)
+// 	configMap := map[string]interface{}{
+// 		"price_feeder": "kraken",
+// 		"interval":     1000,
+// 		"targets": map[string]string{
+// 			"rpc_address":    "tdexd:9000",
+// 			"tls_cert_path":  "",
+// 			"macaroons_path": "",
+// 		},
+// 		"well_known_markets": map[string]interface{}{
+// 			"kraken": []map[string]interface{}{
+// 				{
+// 					"base_asset":  lbtc,
+// 					"quote_asset": usdt,
+// 					"ticker":      "XBT/USDT",
+// 				},
+// 			},
+// 		},
+// 	}
+// 	configJSON, _ := json.Marshal(configMap)
+// 	ioutil.WriteFile(feederConfigJSON, configJSON, 0777)
 
-	runCommand("docker-compose", "-f", composePath, "up", "-d", "feederd")
-	return nil
-}
+// 	runCommand("docker-compose", "-f", composePath, "up", "-d", "feederd")
+// 	return nil
+// }
 
 func setupTraderClient() (*trade.Trade, error) {
 	client, _ := tradeclient.NewTradeClient("localhost", 9945)

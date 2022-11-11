@@ -105,11 +105,6 @@ func feeDepositAction(ctx *cli.Context) error {
 	return nil
 }
 
-func feeFragmentDepositAction(ctx *cli.Context) error {
-	printDeprecatedWarn("tdex feefragmenter split")
-	return nil
-}
-
 func feeListAddressesAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
