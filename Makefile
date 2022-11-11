@@ -28,8 +28,8 @@ proto: proto-lint
 
 ## proto-lint: lint protos & detect breaking changes
 proto-lint:
-	@echo "Linting protos & Detecting breaking changes..."
-	@buf lint && buf breaking --against ".git#branch=master"
+	@echo "Linting protos..."
+	@buf lint
 
 ## clean: cleans the binary
 clean:
