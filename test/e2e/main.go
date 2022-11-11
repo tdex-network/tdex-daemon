@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	composePath = "test/resources/compose/docker-compose.yml"
-	volumesPath = "test/resources/volumes"
+	composePath = "resources/compose/docker-compose.yml"
+	volumesPath = "resources/volumes"
 	// feederConfigJSON = fmt.Sprintf("%s/feederd/config.json", volumesPath)
 
 	explorerUrl    = "http://localhost:3001"
@@ -297,9 +297,9 @@ func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
 
 func clear() {
 	// stop all services
-	runCommand("docker-compose", "-f", "test/resources/compose/docker-compose.yml", "down")
+	runCommand("docker-compose", "-f", composePath, "down")
 	// remove volumes
-	runCommand("rm", "-rf", "test/resources/volumes")
+	runCommand("rm", "-rf", volumesPath)
 }
 
 func runCLICommand(arg ...string) (string, error) {
