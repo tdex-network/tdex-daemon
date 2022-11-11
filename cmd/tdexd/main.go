@@ -30,29 +30,16 @@ import (
 
 var (
 	// General config
-	logLevel                 = config.GetInt(config.LogLevelKey)
-	profilerEnabled          = config.GetBool(config.EnableProfilerKey)
-	datadir                  = config.GetDatadir()
-	dbDir                    = filepath.Join(datadir, config.DbLocation)
-	profilerDir              = filepath.Join(datadir, config.ProfilerLocation)
-	noMacaroons              = config.GetBool(config.NoMacaroonsKey)
-	noOperatorTls            = config.GetBool(config.NoOperatorTlsKey)
-	statsInterval            = config.GetDuration(config.StatsIntervalKey) * time.Second
-	tradeTLSKey              = config.GetString(config.TradeTLSKeyKey)
-	tradeTLSCert             = config.GetString(config.TradeTLSCertKey)
-	operatorTLSExtraIPs      = config.GetStringSlice(config.OperatorExtraIPKey)
-	operatorTLSExtraDomains  = config.GetStringSlice(config.OperatorExtraDomainKey)
-	walletUnlockPasswordFile = config.GetString(config.WalletUnlockPasswordFile)
-	connectAddr              = config.GetString(config.ConnectAddrKey)
-	connectProto             = config.GetString(config.ConnectProtoKey)
-	dbType                   = config.GetString(config.DBTypeKey)
+	logLevel, tradeSvcPort, operatorSvcPort, statsInterval int
+	noMacaroons, noOperatorTls, profilerEnabled            bool
+	datadir, dbDir, profilerDir, tradeTLSKey, tradeTLSCert string
+	walletUnlockPasswordFile, dbType, oceanWalletAddr      string
+	connectAddr, connectProto                              string
+	operatorTLSExtraIPs, operatorTLSExtraDomains           []string
 	// App services config
-	marketsPercentageFee     = uint32(config.GetFloat(config.PercentageFeeKey) * 100)
-	pricesSlippagePercentage = decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
-	feeBalanceThreshold      = uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
-	tradeSvcPort             = config.GetInt(config.TradeListeningPortKey)
-	operatorSvcPort          = config.GetInt(config.OperatorListeningPortKey)
-	oceanWalletAddr          = config.GetString(config.OceanWalletAddrKey)
+	marketsPercentageFee     uint32
+	feeBalanceThreshold      uint64
+	pricesSlippagePercentage decimal.Decimal
 
 	version = "dev"
 	commit  = "none"
@@ -60,6 +47,10 @@ var (
 )
 
 func main() {
+	if err := loadConfig(); err != nil {
+		log.WithError(err).Fatal("failed to init config")
+	}
+
 	log.SetLevel(log.Level(logLevel))
 	domain.SwapParserManager = swap_parser.NewService()
 
@@ -97,14 +88,15 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("failed to initialize grpc service")
 	}
-	defer svc.Stop()
+	log.RegisterExitHandler(svc.Stop)
 
 	log.Info("starting daemon")
 
 	if log.GetLevel() >= log.DebugLevel {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		stats.EnableMemoryStatistics(ctx, statsInterval, profilerDir)
+		interval := time.Duration(statsInterval) * time.Second
+		stats.EnableMemoryStatistics(ctx, interval, profilerDir)
 	}
 
 	// Start gRPC service interfaces.
@@ -118,6 +110,36 @@ func main() {
 	<-sigChan
 
 	log.Info("shutting down daemon")
+}
+
+func loadConfig() error {
+	if err := config.InitConfig(); err != nil {
+		return err
+	}
+	logLevel = config.GetInt(config.LogLevelKey)
+	profilerEnabled = config.GetBool(config.EnableProfilerKey)
+	datadir = config.GetDatadir()
+	dbDir = filepath.Join(datadir, config.DbLocation)
+	profilerDir = filepath.Join(datadir, config.ProfilerLocation)
+	noMacaroons = config.GetBool(config.NoMacaroonsKey)
+	noOperatorTls = config.GetBool(config.NoOperatorTlsKey)
+	statsInterval = config.GetInt(config.StatsIntervalKey)
+	tradeTLSKey = config.GetString(config.TradeTLSKeyKey)
+	tradeTLSCert = config.GetString(config.TradeTLSCertKey)
+	operatorTLSExtraIPs = config.GetStringSlice(config.OperatorExtraIPKey)
+	operatorTLSExtraDomains = config.GetStringSlice(config.OperatorExtraDomainKey)
+	walletUnlockPasswordFile = config.GetString(config.WalletUnlockPasswordFile)
+	connectAddr = config.GetString(config.ConnectAddrKey)
+	connectProto = config.GetString(config.ConnectProtoKey)
+	dbType = config.GetString(config.DBTypeKey)
+	// App services config
+	marketsPercentageFee = uint32(config.GetFloat(config.PercentageFeeKey) * 100)
+	pricesSlippagePercentage = decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
+	feeBalanceThreshold = uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
+	tradeSvcPort = config.GetInt(config.TradeListeningPortKey)
+	operatorSvcPort = config.GetInt(config.OperatorListeningPortKey)
+	oceanWalletAddr = config.GetString(config.OceanWalletAddrKey)
+	return nil
 }
 
 type buildData struct{}

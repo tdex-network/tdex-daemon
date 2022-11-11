@@ -24,16 +24,25 @@ func newNotify(conn *grpc.ClientConn) (*notify, error) {
 		chUtxoNotifications: make(chan ports.WalletUtxoNotification),
 	}
 
-	if err := svc.startListeningForTxNotifications(); err != nil {
+	txStream, err := svc.client.TransactionNotifications(
+		context.Background(), &pb.TransactionNotificationsRequest{},
+	)
+	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to open stream for tx notifications: %s", err,
 		)
 	}
-	if err := svc.startListeningForUtxoNotifications(); err != nil {
+	go svc.startListeningForTxNotifications(txStream)
+
+	utxoStream, err := svc.client.UtxosNotifications(
+		context.Background(), &pb.UtxosNotificationsRequest{},
+	)
+	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to open stream for utxo notifications: %s", err,
 		)
 	}
+	go svc.startListeningForUtxoNotifications(utxoStream)
 
 	return svc, nil
 }
@@ -46,64 +55,62 @@ func (m *notify) GetUtxoNotifications() chan ports.WalletUtxoNotification {
 	return m.chUtxoNotifications
 }
 
-func (m *notify) startListeningForTxNotifications() error {
-	stream, err := m.client.TransactionNotifications(
-		context.Background(), &pb.TransactionNotificationsRequest{},
-	)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for {
-			notification, err := stream.Recv()
-			if err != nil {
-				if err == io.EOF {
-					return
-				}
-				log.WithError(err).Warn("closed connection with ocean wallet's tx notification stream")
-				return
-			}
-
-			select {
-			case m.chTxNotifications <- txNotifyInfo{notification}:
-				continue
-			default:
-			}
+func (m *notify) startListeningForTxNotifications(
+	stream pb.NotificationService_TransactionNotificationsClient,
+) (err error) {
+	defer func() {
+		if err != nil {
+			log.WithError(err).Fatal(
+				"notification handler: error while listenting to tx notifications",
+			)
 		}
 	}()
+
+	for {
+		notification, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		select {
+		case m.chTxNotifications <- txNotifyInfo{notification}:
+			continue
+		default:
+		}
+	}
 
 	return nil
 }
 
-func (m *notify) startListeningForUtxoNotifications() error {
-	stream, err := m.client.UtxosNotifications(
-		context.Background(), &pb.UtxosNotificationsRequest{},
-	)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for {
-			notification, err := stream.Recv()
-			if err != nil {
-				if err == io.EOF {
-					return
-				}
-				log.WithError(err).Warn(
-					"closed connection with ocean wallet's utxo notification stream",
-				)
-				return
-			}
-
-			select {
-			case m.chUtxoNotifications <- utxoNotifyInfo{notification}:
-				continue
-			default:
-			}
+func (m *notify) startListeningForUtxoNotifications(
+	stream pb.NotificationService_UtxosNotificationsClient,
+) (err error) {
+	defer func() {
+		if err != nil {
+			log.WithError(err).Fatal(
+				"notification handler: error while listenting to utxo notifications",
+			)
 		}
 	}()
+
+	for {
+		notification, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		select {
+		case m.chUtxoNotifications <- utxoNotifyInfo{notification}:
+			continue
+		default:
+		}
+	}
 
 	return nil
 }

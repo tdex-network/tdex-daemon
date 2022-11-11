@@ -9,7 +9,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -81,7 +80,7 @@ const (
 var vip *viper.Viper
 var defaultDatadir = btcutil.AppDataDir("tdex-daemon", false)
 
-func init() {
+func InitConfig() error {
 	vip = viper.New()
 	vip.SetEnvPrefix("TDEX")
 	vip.AutomaticEnv()
@@ -103,12 +102,14 @@ func init() {
 	vip.SetDefault(DBTypeKey, application.DBBadger)
 
 	if err := validate(); err != nil {
-		log.Fatalf("error while validating config: %s", err)
+		return fmt.Errorf("error while validating config: %s", err)
 	}
 
 	if err := initDatadir(); err != nil {
-		log.Fatalf("error while creating datadir: %s", err)
+		return fmt.Errorf("error while creating datadir: %s", err)
 	}
+
+	return nil
 }
 
 func GetString(key string) string {

@@ -31,20 +31,25 @@ var (
 	traderAmount = 0.001
 )
 
-func init() {
+func initEnv() error {
 	conn, err := grpc.Dial("localhost:9945", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("failed to connect to daemon: %s", err)
+		return fmt.Errorf("failed to connect to daemon: %s", err)
 	}
 	client = tdexv1.NewTradeServiceClient(conn)
 
 	explorerSvc, err = esplora.NewService("http://localhost:3001", 15000)
 	if err != nil {
-		log.Fatalf("failes to prepare explorer: %s", err)
+		return fmt.Errorf("failed to prepare explorer: %s", err)
 	}
+	return nil
 }
 
 func main() {
+	if err := initEnv(); err != nil {
+		log.Fatal(err)
+	}
+
 	traderWallet := newKeyPair()
 
 	fmt.Printf("Trader wallet:\n%s\n\n", traderWallet)

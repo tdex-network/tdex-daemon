@@ -47,7 +47,7 @@ var (
 	}
 )
 
-func init() {
+func initCLIEnv() {
 	dataDir := cleanAndExpandPath(os.Getenv("TDEX_OPERATOR_DATADIR"))
 	if len(dataDir) <= 0 {
 		return
@@ -58,6 +58,8 @@ func init() {
 }
 
 func main() {
+	initCLIEnv()
+
 	app := cli.NewApp()
 
 	app.Version = formatVersion()
