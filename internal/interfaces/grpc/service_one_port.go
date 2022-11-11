@@ -306,9 +306,9 @@ func (s *serviceOnePort) newServer(
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		} else {
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(
-				// #nosec G402
+				// #nosec
 				credentials.NewTLS(&tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec
+					InsecureSkipVerify: true,
 				}),
 			))
 		}
