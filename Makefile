@@ -1,4 +1,4 @@
-.PHONY: build build-cli build-unlocker proto proto-lint clean cov fmt help install integrationtest run test trade-cert vet
+.PHONY: build build-cli build-unlocker proto proto-lint clean cov fmt help install integrationtest mock run test trade-cert vet
 
 install:
 	@echo "Installing deps..."
@@ -71,11 +71,16 @@ vet:
 	@go vet ./...
 
 ## test: runs unit and component tests
-test: fmt
+test: fmt mock
 	@echo "Running unit tests..."
-	@go test -v -count=1 -race -short ./...
+	@go test -v -count=1 -race ./...
 
 ## integrationtest: runs e2e test
 integrationtest:
 	@echo "Running integration tests..."
 	@go run test/e2e/main.go
+
+## mock: generates mocks for unit tests
+mock:
+	@echo "Generating mocks for unit tests..."
+	@mockery --dir=internal/core/domain --name=SwapParser --structname=MockSwapParser --filename=swap.go --output=internal/core/domain/mocks
