@@ -19,7 +19,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	oceanwallet "github.com/tdex-network/tdex-daemon/internal/infrastructure/ocean-wallet"
 	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
-	swap_parser "github.com/tdex-network/tdex-daemon/internal/infrastructure/swap-parser"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpcinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc"
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
@@ -52,7 +51,7 @@ func main() {
 	}
 
 	log.SetLevel(log.Level(logLevel))
-	domain.SwapParserManager = swap_parser.NewService()
+	domain.SwapParserManager = application.NewSwapParserService()
 
 	// Profiler is enabled at url http://localhost:8024/debug/pprof/
 	if profilerEnabled {
