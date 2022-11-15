@@ -111,7 +111,7 @@ func getState() (map[string]string, error) {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
-		if err := setState(initialState); err != nil {
+		if err := setInitialState(); err != nil {
 			return nil, err
 		}
 		return initialState, nil
@@ -125,15 +125,15 @@ func getState() (map[string]string, error) {
 	return data, nil
 }
 
-func setState(data map[string]string) error {
-	file, err := os.OpenFile(statePath, os.O_RDONLY|os.O_CREATE, 0644)
+func setInitialState() error {
+	jsonString, err := json.Marshal(initialState)
 	if err != nil {
 		return err
 	}
-	if err := file.Close(); err != nil {
-		return err
-	}
+	return os.WriteFile(statePath, jsonString, 0755)
+}
 
+func setState(data map[string]string) error {
 	currentData, err := getState()
 	if err != nil {
 		return err

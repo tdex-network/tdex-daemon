@@ -37,16 +37,10 @@ var (
 )
 
 func main() {
-	defer func() {
-		if rec := recover(); rec != nil {
-			fmt.Println("Recover from panic", rec)
-		}
-		clear()
-	}()
+	log.RegisterExitHandler(clear)
 
 	if err := makeDirectoryIfNotExists(volumesPath); err != nil {
-		log.WithError(err).Error("failed to create volume dir")
-		return
+		log.WithError(err).Fatal("failed to create volume dir")
 	}
 
 	log.Info("starting ocean and tdex services...")
@@ -59,39 +53,34 @@ func main() {
 
 	log.Info("minting USDT asset...")
 	if err := setupUSDTAsset(); err != nil {
-		log.WithError(err).Error("failed to mint USDT asset")
-		return
+		log.WithError(err).Fatal("failed to mint USDT asset")
 	}
 	log.Infof("asset: %s\n\n", usdt)
 
 	log.Info("configuring tdex CLI...")
 	if _, err := runCLICommand("config", "init", "--no_tls", "--no_macaroons"); err != nil {
-		log.WithError(err).Error("failed to config tdex CLI")
-		return
+		log.WithError(err).Fatal("failed to config tdex CLI")
 	}
 	log.Infof("done\n\n")
 
 	log.Info("asking for new mnemonic seed...")
 	seed, err := runCLICommand("genseed")
 	if err != nil {
-		log.WithError(err).Error("failed to retrieve mnemonic seed")
-		return
+		log.WithError(err).Fatal("failed to retrieve mnemonic seed")
 	}
 	log.Infof("mnemonic: %s\n\n", seed)
 
 	// init daemon with generated seed
 	log.Info("initializing wallet...")
 	if _, err := runCLICommand("init", "--seed", seed, "--password", password); err != nil {
-		log.WithError(err).Error("failed to initialize wallet")
-		return
+		log.WithError(err).Fatal("failed to initialize wallet")
 	}
 	log.Infof("done\n\n")
 
 	// unlock with password
 	log.Info("unlocking wallet...")
 	if _, err := runCLICommand("unlock", "--password", password); err != nil {
-		log.WithError(err).Error("failed to unlock wallet")
-		return
+		log.WithError(err).Fatal("failed to unlock wallet")
 	}
 	log.Infof("done\n\n")
 
@@ -100,26 +89,22 @@ func main() {
 	log.Infof("funding feefragmenter account with %f LBTC...\n", feeFragmenterDepositAmount)
 	out, err := runCLICommand("feefragmenter", "deposit")
 	if err != nil {
-		log.WithError(err).Error("failed to derive addresses from feefragmenter account")
-		return
+		log.WithError(err).Fatal("failed to derive addresses from feefragmenter account")
 	}
 
 	feeAddresses := addressesFromStdout(out)
 	if err := fundFeeFragmenterAccount(feeAddresses); err != nil {
-		log.WithError(err).Error("failed to fund feefragmenter account")
-		return
+		log.WithError(err).Fatal("failed to fund feefragmenter account")
 	}
 	log.Infof("done\n\n")
 
 	log.Info("splitting and depositing funds to fee account...")
 	if _, err := runCLICommand("feefragmenter", "split"); err != nil {
-		log.WithError(err).Error("failed to split and deposit feefragmnenter account funds to fee one")
-		return
+		log.WithError(err).Fatal("failed to split and deposit feefragmnenter account funds to fee one")
 	}
 
 	if err := mintBlock(); err != nil {
-		log.WithError(err).Error("failed to mint new block")
-		return
+		log.WithError(err).Fatal("failed to mint new block")
 	}
 	log.Infof("done\n\n")
 
@@ -128,43 +113,36 @@ func main() {
 	if _, err = runCLICommand(
 		"market", "new", "--base_asset", lbtc, "--quote_asset", usdt,
 	); err != nil {
-		log.WithError(err).Error("failed to create new market")
-		return
+		log.WithError(err).Fatal("failed to create new market")
 	}
 
 	if _, err := runCLICommand("config", "set", "base_asset", lbtc); err != nil {
-		log.WithError(err).Error("failed to configure market base asset")
-		return
+		log.WithError(err).Fatal("failed to configure market base asset")
 	}
 	if _, err := runCLICommand("config", "set", "quote_asset", usdt); err != nil {
-		log.WithError(err).Error("failed to configure market quote asset")
-		return
+		log.WithError(err).Fatal("failed to configure market quote asset")
 	}
 	log.Infof("done\n\n")
 
 	log.Infof("funding marketfragmenter account with %f LBTC and %f USDT...\n", marketBaseDepositAmount, marketQuoteDepositAmount)
 	out, err = runCLICommand("marketfragmenter", "deposit")
 	if err != nil {
-		log.WithError(err).Error("failed to derive addresses from marketfragmenter account")
-		return
+		log.WithError(err).Fatal("failed to derive addresses from marketfragmenter account")
 	}
 
 	marketAddresses := addressesFromStdout(out)
 	if err := fundMarketFragmenterAccount(marketAddresses); err != nil {
-		log.WithError(err).Error("failed to fund marketfragmenter account")
-		return
+		log.WithError(err).Fatal("failed to fund marketfragmenter account")
 	}
 	log.Infof("done\n\n")
 
 	log.Info("splitting and depositing funds to market account...")
 	if _, err := runCLICommand("marketfragmenter", "split"); err != nil {
-		log.WithError(err).Error("failed to split and deposit marketfragmenter account funds to market one")
-		return
+		log.WithError(err).Fatal("failed to split and deposit marketfragmenter account funds to market one")
 	}
 
 	if err := mintBlock(); err != nil {
-		log.WithError(err).Error("failed to mint new block")
-		return
+		log.WithError(err).Fatal("failed to mint new block")
 	}
 	log.Infof("done\n\n")
 
@@ -172,8 +150,7 @@ func main() {
 	// start the feeder service.
 	log.Info("switching to pluggable market strategy...")
 	if _, err := runCLICommand("market", "strategy", "--pluggable"); err != nil {
-		log.WithError(err).Error("failed to update market strategy")
-		return
+		log.WithError(err).Fatal("failed to update market strategy")
 	}
 	log.Infof("done\n\n")
 
@@ -182,23 +159,20 @@ func main() {
 
 	// log.Info("starting feeder...")
 	// if err := setupFeeder(); err != nil {
-	// 	log.WithError(err).Error("failed to start feeder service")
-	// 	return
+	// 	log.WithError(err).Fatal("failed to start feeder service")
 	// }
 	// time.Sleep(7 * time.Second)
 	// log.Infof("done\n\n")
 	if _, err := runCLICommand(
 		"market", "price", "--base_price", "0.00005", "--quote_price", "20000",
 	); err != nil {
-		log.WithError(err).Error("failed to update market price")
-		return
+		log.WithError(err).Fatal("failed to update market price")
 	}
 	log.Infof("done\n\n")
 
 	log.Info("opening market...")
 	if _, err := runCLICommand("market", "open"); err != nil {
-		log.WithError(err).Error("failed to open market")
-		return
+		log.WithError(err).Fatal("failed to open market")
 	}
 	log.Infof("done\n\n")
 
@@ -214,8 +188,7 @@ func main() {
 			faucetAmount, asset = 20, usdt // 20 USDT
 		}
 		if _, err := explorerSvc.Faucet(w.Address(), faucetAmount, asset); err != nil {
-			log.WithError(err).Error("failed to fund traders' wallets")
-			return
+			log.WithError(err).Fatal("failed to fund traders' wallets")
 		}
 
 		wallets = append(wallets, w)
@@ -243,21 +216,19 @@ func main() {
 	// }
 
 	// if err := eg.Wait(); err != nil {
-	// 	log.WithError(err).Error("failed to trade on LBTC/USDT market")
-	// 	return
+	// 	log.WithError(err).Fatal("failed to trade on LBTC/USDT market")
 	// }
 	for i := 0; i < numOfConcurrentTrades; i++ {
 		if err := tradeOnMarket(client, wallets[i], assets[i]); err != nil {
-			log.WithError(err).Error("failed to trade on LBTC/USDT market")
-			return
+			log.WithError(err).Fatal("failed to trade on LBTC/USDT market")
 		}
 		if err := mintBlock(); err != nil {
-			log.WithError(err).Error("failed to mint new block")
-			return
+			log.WithError(err).Fatal("failed to mint new block")
 		}
 	}
 	log.Info("done.\n\n")
 	log.Info("test succeeded")
+	log.Exit(0)
 }
 
 func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
