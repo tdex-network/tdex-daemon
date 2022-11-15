@@ -1,4 +1,4 @@
-.PHONY: build build-cli build-unlocker build-tdexdconnect proto proto-lint clean cov fmt help install integrationtest run test trade-cert vet
+.PHONY: build build-cli build-unlocker proto proto-lint clean cov fmt help install integrationtest run test trade-cert vet
 
 install:
 	@echo "Installing deps..."
@@ -14,10 +14,6 @@ build:
 build-cli:
 	@echo "Building tdex binary..." 
 	@bash ./scripts/build-cli
-
-build-tdexdconnect:
-	@echo "Building tdexdconnect binary..."
-	@bash ./scripts/build-tdexdconnect
 
 ## proto: compile proto stubs
 proto: proto-lint

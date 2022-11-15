@@ -21,7 +21,7 @@ services:
   tdexd:
     container_name: tdexd
     build: 
-      context: ../../../
+      context: ../../
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
@@ -39,7 +39,7 @@ services:
       - "9000:9000"
       - "9945:9945"
     volumes:
-      - ../volumes/tdexd/data:/home/tdex/.tdexd
+      - ../volumes/tdexd/data:/home/tdex/.tdex-daemon
       - ../volumes/tdexd/cli:/home/tdex/.tdex-operator
   feederd:
     container_name: feederd
