@@ -5,6 +5,8 @@ services:
     container_name: oceand
     image: ghcr.io/vulpemventures/oceand:latest
     restart: unless-stopped
+    depends_on:
+      - oceand-db
     environment:
       - OCEAN_LOG_LEVEL=5
       - OCEAN_NO_TLS=true
@@ -34,7 +36,7 @@ services:
       - TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000
       - TDEX_NO_MACAROONS=true
       - TDEX_NO_OPERATOR_TLS=true
-      - TDEX_CONNECT_PROTO=h
+      - TDEX_CONNECT_PROTO=http
     ports:
       - "9000:9000"
       - "9945:9945"
@@ -49,6 +51,16 @@ services:
       - tdexd
     volumes:
       - ../volumes/feederd/config.json:/config.json
+  oceand-db:
+    container_name: oceand-regtest-db
+    image: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=oceand-db
+    ports:
+      - "5432:5432"
 
 networks:
   default:
