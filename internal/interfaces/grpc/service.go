@@ -25,6 +25,7 @@ import (
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
+	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 	"google.golang.org/grpc"
 	"gopkg.in/macaroon-bakery.v2/bakery"
@@ -446,7 +447,24 @@ func (s *service) newOperatorServer(
 		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
 	)
 
-	handler := router(grpcServer, grpcWebServer, nil)
+	tdexConnectSvc, err := httpinterface.NewTdexConnectService(
+		s.opts.AppConfig.WalletService().Wallet(),
+		s.validatePassword,
+		adminMacaroonPath,
+		s.opts.operatorTLSCert(),
+		s.opts.ConnectAddr,
+		s.opts.ConnectProto,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	httpHandlers := map[string]http.HandlerFunc{
+		"/":             tdexConnectSvc.RootHandler,
+		"/tdexdconnect": tdexConnectSvc.AuthHandler,
+	}
+
+	handler := router(grpcServer, grpcWebServer, nil, httpHandlers)
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)
 
@@ -518,7 +536,7 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 	}
 	grpcGateway := http.Handler(gwmux)
 
-	handler := router(grpcServer, grpcWebServer, grpcGateway)
+	handler := router(grpcServer, grpcWebServer, grpcGateway, nil)
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)
 

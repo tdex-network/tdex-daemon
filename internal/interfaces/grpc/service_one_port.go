@@ -25,6 +25,7 @@ import (
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
+	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
@@ -339,7 +340,24 @@ func (s *serviceOnePort) newServer(
 		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
 	)
 
-	handler := router(grpcServer, grpcWebServer, grpcGateway)
+	tdexConnectSvc, err := httpinterface.NewTdexConnectService(
+		s.opts.AppConfig.WalletService().Wallet(),
+		s.validatePassword,
+		adminMacaroonPath,
+		s.opts.TLSCert,
+		s.opts.ConnectAddr,
+		s.opts.ConnectProto,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	httpHandlers := map[string]http.HandlerFunc{
+		"/":             tdexConnectSvc.RootHandler,
+		"/tdexdconnect": tdexConnectSvc.AuthHandler,
+	}
+
+	handler := router(grpcServer, grpcWebServer, grpcGateway, httpHandlers)
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)
 

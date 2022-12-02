@@ -241,7 +241,7 @@ func isValidGrpcWebOptionRequest(req *http.Request) bool {
 }
 
 func isHttpRequest(req *http.Request) bool {
-	return strings.ToLower(req.Method) == "get" ||
+	return req.Method == http.MethodGet ||
 		strings.Contains(req.Header.Get("Content-Type"), "application/json")
 }
 
@@ -271,22 +271,33 @@ func getTlsConfig(tlsKey, tlsCert string) (*tls.Config, error) {
 
 func router(
 	grpcServer *grpc.Server, grpcWebServer *grpcweb.WrappedGrpcServer,
-	grpcGateway http.Handler,
+	grpcGateway http.Handler, httpHandlers map[string]http.HandlerFunc,
 ) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if isGrpcWebRequest(r) {
 			grpcWebServer.ServeHTTP(w, r)
 			return
 		}
-		if grpcGateway != nil {
-			if isOptionRequest(r) {
+		if isOptionRequest(r) {
+			if grpcGateway != nil {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 				return
 			}
-			if isHttpRequest(r) {
+		}
+
+		if isHttpRequest(r) {
+			if handler, ok := httpHandlers[r.URL.Path]; ok {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+				handler(w, r)
+				return
+			}
+			if grpcGateway != nil {
 				grpcGateway.ServeHTTP(w, r)
+				return
 			}
 		}
 		grpcServer.ServeHTTP(w, r)
