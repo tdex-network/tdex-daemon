@@ -11,10 +11,10 @@ services:
       - OCEAN_LOG_LEVEL=5
       - OCEAN_NO_TLS=true
       - OCEAN_NO_PROFILER=true
-      - OCEAN_NODE_RPC_ADDR=http://admin1:123@liquid:18884
+      - OCEAN_ELECTRUM_URL=tcp://electrs-liquid:50001
       - OCEAN_NETWORK=regtest
-      - OCEAN_ESPLORA_URL=http://chopsticks-liquid:3000
       - OCEAN_UTXO_EXPIRY_DURATION_IN_SECONDS=60
+      - OCEAN_DB_HOST=oceand-regtest-db
     ports:
       - "18000:18000"
     volumes:
