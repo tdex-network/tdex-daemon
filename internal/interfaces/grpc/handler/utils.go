@@ -211,7 +211,7 @@ func parsePage(page *daemonv2.Page) (ports.Page, error) {
 	if page.GetSize() <= 0 {
 		return nil, errors.New("invalid page size")
 	}
-	return page, nil
+	return pageInfo{page}, nil
 }
 
 func parseWebhook(hook *daemonv2.AddWebhookRequest) (ports.Webhook, error) {

@@ -477,3 +477,21 @@ func (i accountsInfo) toProto() []*daemonv2.AccountInfo {
 	}
 	return list
 }
+
+type pageInfo struct {
+	*daemonv2.Page
+}
+
+func (i pageInfo) GetNumber() int64 {
+	if i.Page.GetNumber() <= 0 {
+		return 1
+	}
+	return i.Page.GetNumber()
+}
+
+func (i pageInfo) GetSize() int64 {
+	if i.Page.GetSize() <= 0 {
+		return 1
+	}
+	return i.Page.GetSize()
+}
