@@ -89,37 +89,6 @@ type MarketInfo interface {
 	GetPrice() MarketPrice
 }
 
-type MarketReport interface {
-	GetMarket() Market
-	GetCollectedFees() MarketCollectedFees
-	GetTotalVolume() MarketVolume
-	GetVolumesPerFrame() []MarketVolume
-}
-
-type MarketCollectedFees interface {
-	GetBaseAmount() uint64
-	GetQuoteAmount() uint64
-	GetTradeFeeInfo() []TradeFeeInfo
-	GetStartDate() string
-	GetEndDate() string
-}
-
-type MarketVolume interface {
-	GetBaseVolume() uint64
-	GetQuoteVolume() uint64
-	GetStartDate() string
-	GetEndDate() string
-}
-
-type TradeFeeInfo interface {
-	GetTradeId() string
-	GetPercentageFee() uint64
-	GetFeeAsset() string
-	GetPercentageFeeAmount() uint64
-	GetFixedFeeAmount() uint64
-	GetMarketPrice() decimal.Decimal
-}
-
 type TradeType interface {
 	IsBuy() bool
 	IsSell() bool
@@ -146,27 +115,6 @@ type TradePreview interface {
 	GetMarketFee() MarketFee
 	GetMarketPrice() MarketPrice
 	GetMarketBalance() map[string]Balance
-}
-
-type TimeRange interface {
-	GetPredefinedPeriod() PredefinedPeriod
-	GetCustomPeriod() CustomPeriod
-}
-
-type PredefinedPeriod interface {
-	IsLastHour() bool
-	IsLastDay() bool
-	IsLastWeek() bool
-	IsLastMonth() bool
-	IsLastThreeMonths() bool
-	IsYearToDate() bool
-	IsLastYear() bool
-	IsAll() bool
-}
-
-type CustomPeriod interface {
-	GetStartDate() string
-	GetEndDate() string
 }
 
 type Page interface {

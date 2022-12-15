@@ -31,9 +31,9 @@ type OperatorService interface {
 		ctx context.Context, market ports.Market,
 	) ([]string, error)
 	GetMarketReport(
-		ctx context.Context, market ports.Market,
-		timeRange ports.TimeRange, groupByTimeFrame int,
-	) (ports.MarketReport, error)
+		ctx context.Context, market operator.Market,
+		timeRange operator.TimeRange, groupByTimeFrame int,
+	) (*operator.MarketReport, error)
 	OpenMarket(ctx context.Context, market ports.Market) error
 	CloseMarket(ctx context.Context, market ports.Market) error
 	DropMarket(ctx context.Context, market ports.Market) error

@@ -2,6 +2,9 @@ package grpchandler
 
 import (
 	"context"
+	"time"
+
+	"github.com/tdex-network/tdex-daemon/internal/core/application/operator"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -483,20 +486,58 @@ func (h *operatorHandler) getMarketReport(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	groupByTimeFrame, err := parseTimeFrame(req.GetTimeFrame())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
 
+	mkt := operator.Market{
+		BaseAsset:  market.GetBaseAsset(),
+		QuoteAsset: market.GetQuoteAsset(),
+	}
 	report, err := h.operatorSvc.GetMarketReport(
-		ctx, market, timeRange, groupByTimeFrame,
+		ctx, mkt, *timeRange, parseTimeFrame(req.GetTimeFrame()),
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	fees := make([]*daemonv2.FeeInfo, 0, len(report.CollectedFees.TradeFeeInfo))
+	for _, v := range report.CollectedFees.TradeFeeInfo {
+		mp, _ := v.MarketPrice.Float64()
+		fees = append(fees, &daemonv2.FeeInfo{
+			TradeId:             v.TradeID,
+			BasisPoint:          int64(v.PercentageFee),
+			Asset:               v.FeeAsset,
+			PercentageFeeAmount: v.PercentageFeeAmount,
+			FixedFeeAmount:      v.FixedFeeAmount,
+			MarketPrice:         mp,
+		})
+	}
+
+	volumesPerFrame := make([]*daemonv2.MarketVolume, 0, len(report.VolumesPerFrame))
+	for _, v := range report.VolumesPerFrame {
+		volumesPerFrame = append(volumesPerFrame, &daemonv2.MarketVolume{
+			BaseVolume:  v.BaseVolume,
+			QuoteVolume: v.QuoteVolume,
+			StartDate:   v.StartTime.Format(time.RFC3339),
+			EndDate:     v.EndTime.Format(time.RFC3339),
+		})
+	}
+
 	return &daemonv2.GetMarketReportResponse{
-		Report: marketReportInfo{report}.toProto(),
+		Report: &daemonv2.MarketReport{
+			TotalCollectedFees: &daemonv2.MarketCollectedFees{
+				BaseAmount:   report.CollectedFees.BaseAmount,
+				QuoteAmount:  report.CollectedFees.QuoteAmount,
+				StartDate:    report.CollectedFees.StartTime.Format(time.RFC3339),
+				EndDate:      report.CollectedFees.EndTime.Format(time.RFC3339),
+				FeesPerTrade: fees,
+			},
+			TotalVolume: &daemonv2.MarketVolume{
+				BaseVolume:  report.TotalVolume.BaseVolume,
+				QuoteVolume: report.TotalVolume.QuoteVolume,
+				StartDate:   report.TotalVolume.StartTime.Format(time.RFC3339),
+				EndDate:     report.TotalVolume.EndTime.Format(time.RFC3339),
+			},
+			VolumesPerFrame: volumesPerFrame,
+		},
 	}, nil
 }
 

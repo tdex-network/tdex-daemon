@@ -231,58 +231,6 @@ func parseWebhookActionType(actionType daemonv2.ActionType) (int, error) {
 	return int(actionType), nil
 }
 
-func parseTimeRange(timeRange *daemonv2.TimeRange) (ports.TimeRange, error) {
-	pp := timeRange.GetPredefinedPeriod()
-	cp := timeRange.GetCustomPeriod()
-	if pp == daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_UNSPECIFIED && cp == nil {
-		return nil, errors.New("missing predefined or custom period")
-	}
-	if pp < daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_UNSPECIFIED ||
-		pp > daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_ALL {
-		return nil, errors.New("unknown predefined period")
-	}
-	if cp != nil {
-		startDate, endDate := cp.GetStartDate(), cp.GetEndDate()
-		if startDate == "" && endDate == "" {
-			return nil, errors.New("missing custom start and end dates")
-		}
-		sd, err := time.Parse(time.RFC3339, startDate)
-		if err != nil {
-			return nil, fmt.Errorf("invalid custom start date: %s", err)
-		}
-		ed, err := time.Parse(time.RFC3339, endDate)
-		if err != nil {
-			return nil, fmt.Errorf("invalid custom end date: %s", err)
-		}
-		if ed.Equal(sd) || ed.Before(sd) {
-			return nil, fmt.Errorf(
-				"invalid custom period: end date is equal or before start date",
-			)
-		}
-	}
-
-	return timeRangeInfo{timeRange}, nil
-}
-
-func parseTimeFrame(timeFrame daemonv2.TimeFrame) (int, error) {
-	switch timeFrame {
-	case daemonv2.TimeFrame_TIME_FRAME_UNSPECIFIED, daemonv2.TimeFrame_TIME_FRAME_HOUR:
-		return 1, nil
-	case daemonv2.TimeFrame_TIME_FRAME_FOUR_HOURS:
-		return 4, nil
-	case daemonv2.TimeFrame_TIME_FRAME_DAY:
-		return 24, nil
-	case daemonv2.TimeFrame_TIME_FRAME_WEEK:
-		return 24 * 7, nil
-	case daemonv2.TimeFrame_TIME_FRAME_MONTH:
-		year, month, _ := time.Now().Date()
-		numOfDaysForCurrentMont := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
-		return numOfDaysForCurrentMont, nil
-	default:
-		return -1, fmt.Errorf("unknown time frame")
-	}
-}
-
 func isValidPassword(pwd string) bool {
 	return len(pwd) >= 8
 }

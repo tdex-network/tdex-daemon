@@ -1,8 +1,11 @@
 package grpchandler
 
 import (
+	"time"
+
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	"github.com/tdex-network/tdex-daemon/internal/core/application/operator"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 )
 
@@ -97,67 +100,6 @@ func (i marketStrategyInfo) toProto() daemonv2.StrategyType {
 		return daemonv2.StrategyType_STRATEGY_TYPE_PLUGGABLE
 	}
 	return daemonv2.StrategyType_STRATEGY_TYPE_UNSPECIFIED
-}
-
-type marketReportInfo struct {
-	ports.MarketReport
-}
-
-func (i marketReportInfo) toProto() *daemonv2.MarketReport {
-	report := i.MarketReport
-	volumesPerFrame := make(
-		[]*daemonv2.MarketVolume, 0, len(report.GetVolumesPerFrame()),
-	)
-	for _, info := range report.GetVolumesPerFrame() {
-		volumesPerFrame = append(volumesPerFrame, volumeInfo{info}.toProto())
-	}
-
-	return &daemonv2.MarketReport{
-		TotalCollectedFees: collectedFeesInfo{report.GetCollectedFees()}.toProto(),
-		TotalVolume:        volumeInfo{report.GetTotalVolume()}.toProto(),
-		VolumesPerFrame:    volumesPerFrame,
-	}
-}
-
-type collectedFeesInfo struct {
-	ports.MarketCollectedFees
-}
-
-func (i collectedFeesInfo) toProto() *daemonv2.MarketCollectedFees {
-	info := i.MarketCollectedFees
-	feesPerTrade := make([]*daemonv2.FeeInfo, 0, len(info.GetTradeFeeInfo()))
-	for _, i := range info.GetTradeFeeInfo() {
-		price, _ := i.GetMarketPrice().Float64()
-		feesPerTrade = append(feesPerTrade, &daemonv2.FeeInfo{
-			TradeId:             i.GetTradeId(),
-			BasisPoint:          int64(i.GetPercentageFee()),
-			Asset:               i.GetFeeAsset(),
-			PercentageFeeAmount: i.GetPercentageFeeAmount(),
-			FixedFeeAmount:      i.GetFixedFeeAmount(),
-			MarketPrice:         price,
-		})
-	}
-	return &daemonv2.MarketCollectedFees{
-		BaseAmount:   info.GetBaseAmount(),
-		QuoteAmount:  info.GetQuoteAmount(),
-		StartDate:    info.GetStartDate(),
-		EndDate:      info.GetEndDate(),
-		FeesPerTrade: feesPerTrade,
-	}
-}
-
-type volumeInfo struct {
-	ports.MarketVolume
-}
-
-func (i volumeInfo) toProto() *daemonv2.MarketVolume {
-	info := i.MarketVolume
-	return &daemonv2.MarketVolume{
-		BaseVolume:  info.GetBaseVolume(),
-		QuoteVolume: info.GetQuoteVolume(),
-		StartDate:   info.GetStartDate(),
-		EndDate:     info.GetEndDate(),
-	}
 }
 
 type tradeTypeInfo tdexv1.TradeType
@@ -383,45 +325,6 @@ func (i withdrawalsInfo) toProto() []*daemonv2.Transaction {
 	return list
 }
 
-type timeRangeInfo struct {
-	*daemonv2.TimeRange
-}
-
-func (i timeRangeInfo) GetPredefinedPeriod() ports.PredefinedPeriod {
-	return predefinedPeriodInfo(i.TimeRange.GetPredefinedPeriod())
-}
-
-func (i timeRangeInfo) GetCustomPeriod() ports.CustomPeriod {
-	return i.TimeRange.GetCustomPeriod()
-}
-
-type predefinedPeriodInfo daemonv2.PredefinedPeriod
-
-func (i predefinedPeriodInfo) IsLastHour() bool {
-	return daemonv2.PredefinedPeriod(i) == daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_HOUR
-}
-func (i predefinedPeriodInfo) IsLastDay() bool {
-	return daemonv2.PredefinedPeriod(i) == daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_DAY
-}
-func (i predefinedPeriodInfo) IsLastWeek() bool {
-	return daemonv2.PredefinedPeriod(i) == daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_WEEK
-}
-func (i predefinedPeriodInfo) IsLastMonth() bool {
-	return daemonv2.PredefinedPeriod(i) == daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_MONTH
-}
-func (i predefinedPeriodInfo) IsLastThreeMonths() bool {
-	return daemonv2.PredefinedPeriod(i) == daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_THREE_MONTHS
-}
-func (i predefinedPeriodInfo) IsYearToDate() bool {
-	return daemonv2.PredefinedPeriod(i) == daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_YEAR_TO_DATE
-}
-func (i predefinedPeriodInfo) IsLastYear() bool {
-	return daemonv2.PredefinedPeriod(i) == daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_YEAR
-}
-func (i predefinedPeriodInfo) IsAll() bool {
-	return daemonv2.PredefinedPeriod(i) == daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_ALL
-}
-
 type walletInfo struct {
 	ports.WalletInfo
 	ports.BuildData
@@ -476,4 +379,69 @@ func (i accountsInfo) toProto() []*daemonv2.AccountInfo {
 		})
 	}
 	return list
+}
+
+func parseTimeRange(timeRange *daemonv2.TimeRange) (*operator.TimeRange, error) {
+	var predefinedPeriod *operator.PredefinedPeriod
+	if timeRange.GetPredefinedPeriod() > daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_UNSPECIFIED {
+		pp := parsePredefinedPeriod(timeRange.GetPredefinedPeriod())
+		predefinedPeriod = &pp
+	}
+	var customPeriod *operator.CustomPeriod
+	if timeRange.GetCustomPeriod() != nil {
+		customPeriod = &operator.CustomPeriod{
+			StartDate: timeRange.GetCustomPeriod().GetStartDate(),
+			EndDate:   timeRange.GetCustomPeriod().GetEndDate(),
+		}
+	}
+	tr := &operator.TimeRange{
+		PredefinedPeriod: predefinedPeriod,
+		CustomPeriod:     customPeriod,
+	}
+	if err := tr.Validate(); err != nil {
+		return nil, err
+	}
+	return tr, nil
+}
+
+func parseTimeFrame(timeFrame daemonv2.TimeFrame) int {
+	switch timeFrame {
+	case daemonv2.TimeFrame_TIME_FRAME_HOUR:
+		return 1
+	case daemonv2.TimeFrame_TIME_FRAME_FOUR_HOURS:
+		return 4
+	case daemonv2.TimeFrame_TIME_FRAME_DAY:
+		return 24
+	case daemonv2.TimeFrame_TIME_FRAME_WEEK:
+		return 24 * 7
+	case daemonv2.TimeFrame_TIME_FRAME_MONTH:
+		year, month, _ := time.Now().Date()
+		numOfDaysForCurrentMont := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+		return numOfDaysForCurrentMont
+	}
+
+	return 1
+}
+
+func parsePredefinedPeriod(predefinedPeriod daemonv2.PredefinedPeriod) operator.PredefinedPeriod {
+	switch predefinedPeriod {
+	case daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_HOUR:
+		return operator.LastHour
+	case daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_DAY:
+		return operator.LastDay
+	case daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_WEEK:
+		return operator.LastWeek
+	case daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_MONTH:
+		return operator.LastMonth
+	case daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_THREE_MONTHS:
+		return operator.LastThreeMonths
+	case daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_YEAR_TO_DATE:
+		return operator.YearToDate
+	case daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_YEAR:
+		return operator.LastYear
+	case daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_ALL:
+		return operator.All
+	}
+
+	return operator.NIL
 }
