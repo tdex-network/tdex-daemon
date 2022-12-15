@@ -33,8 +33,8 @@ func Validate() error {
 }
 
 // findUnhandledMethods returns RPC methods that are not included in public routes
-//nor in routes for which invocation some kind of auth is needed
-//purpose of this check is to prevent forgetting adding of new rpc methods to public/auth map
+// nor in routes for which invocation some kind of auth is needed
+// purpose of this check is to prevent forgetting adding of new rpc methods to public/auth map
 func findUnhandledMethods(publicRoutes, methodsThatNeedsAuth map[string][]bakery.Op) []string {
 	result := make([]string, 0)
 	allMethods := make([]string, 0)
@@ -400,10 +400,6 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 		fmt.Sprintf("/%s/ListWithdrawals", daemonv2.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "read",
-		}},
-		fmt.Sprintf("/%s/ReloadUtxos", daemonv2.OperatorService_ServiceDesc.ServiceName): {{
-			Entity: EntityOperator,
-			Action: "write",
 		}},
 		fmt.Sprintf("/%s/ListUtxos", daemonv2.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityOperator,

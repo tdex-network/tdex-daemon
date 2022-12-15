@@ -137,10 +137,6 @@ func (s *service) ListWithdrawals(
 	return withdrawalList(withdrawals).toPortableList(), nil
 }
 
-func (s *service) ReloadUtxos(ctx context.Context) error {
-	return fmt.Errorf("not implemented")
-}
-
 func (s *service) checkAccountsLowBalance() func(ports.WalletTxNotification) bool {
 	return func(notification ports.WalletTxNotification) bool {
 		publishTopic := func(

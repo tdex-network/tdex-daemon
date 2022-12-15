@@ -555,9 +555,6 @@
       ],
       "default": "PREDEFINED_PERIOD_UNSPECIFIED"
     },
-    "tdex_daemonv1ReloadUtxosResponse": {
-      "type": "object"
-    },
     "tdex_daemonv1RemoveWebhookResponse": {
       "type": "object"
     },
@@ -1040,6 +1037,9 @@
           "format": "double"
         }
       }
+    },
+    "v1ReloadUtxosResponse": {
+      "type": "object"
     },
     "v1TradePrice": {
       "type": "object",

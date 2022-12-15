@@ -100,8 +100,7 @@ type OperatorService interface {
 	ListWithdrawals(
 		ctx context.Context, accountName string, page ports.Page,
 	) ([]ports.Withdrawal, error)
-	// Reload utxo set
-	ReloadUtxos(ctx context.Context) error
+
 	// Webhook
 	AddWebhook(ctx context.Context, hook ports.Webhook) (string, error)
 	RemoveWebhook(ctx context.Context, id string) error

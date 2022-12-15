@@ -492,9 +492,6 @@
       ],
       "default": "PREDEFINED_PERIOD_UNSPECIFIED"
     },
-    "tdex_daemonv2ReloadUtxosResponse": {
-      "type": "object"
-    },
     "tdex_daemonv2RemoveWebhookResponse": {
       "type": "object"
     },

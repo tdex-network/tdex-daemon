@@ -209,15 +209,6 @@ func (h *operatorHandler) ListTrades(
 	return h.listTrades(ctx, req)
 }
 
-func (h *operatorHandler) ReloadUtxos(
-	ctx context.Context, rew *daemonv2.ReloadUtxosRequest,
-) (*daemonv2.ReloadUtxosResponse, error) {
-	if err := h.operatorSvc.ReloadUtxos(ctx); err != nil {
-		return nil, err
-	}
-	return &daemonv2.ReloadUtxosResponse{}, nil
-}
-
 func (h *operatorHandler) ListUtxos(
 	ctx context.Context, req *daemonv2.ListUtxosRequest,
 ) (*daemonv2.ListUtxosResponse, error) {

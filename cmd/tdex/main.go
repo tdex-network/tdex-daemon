@@ -83,7 +83,6 @@ func main() {
 		&listmarkets,
 		&listtrades,
 		&listutxos,
-		&reloadtxos,
 		&addwebhook,
 		&removewebhook,
 		&listwebhooks,

@@ -86,8 +86,6 @@ type OperatorServiceClient interface {
 	// Returs all the trades processed by the daemon (ongoing, completed and
 	// failed/rejected) or all those filtered by market.
 	ListTrades(ctx context.Context, in *ListTradesRequest, opts ...grpc.CallOption) (*ListTradesResponse, error)
-	// Causes the daemon to re-sync the whole utxo set.
-	ReloadUtxos(ctx context.Context, in *ReloadUtxosRequest, opts ...grpc.CallOption) (*ReloadUtxosResponse, error)
 	// Returns all the utxos, whether unspents, spents or locked.
 	ListUtxos(ctx context.Context, in *ListUtxosRequest, opts ...grpc.CallOption) (*ListUtxosResponse, error)
 	// Adds a webhook registered for some kind of event.
@@ -417,15 +415,6 @@ func (c *operatorServiceClient) ListTrades(ctx context.Context, in *ListTradesRe
 	return out, nil
 }
 
-func (c *operatorServiceClient) ReloadUtxos(ctx context.Context, in *ReloadUtxosRequest, opts ...grpc.CallOption) (*ReloadUtxosResponse, error) {
-	out := new(ReloadUtxosResponse)
-	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.OperatorService/ReloadUtxos", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *operatorServiceClient) ListUtxos(ctx context.Context, in *ListUtxosRequest, opts ...grpc.CallOption) (*ListUtxosResponse, error) {
 	out := new(ListUtxosResponse)
 	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.OperatorService/ListUtxos", in, out, opts...)
@@ -548,8 +537,6 @@ type OperatorServiceServer interface {
 	// Returs all the trades processed by the daemon (ongoing, completed and
 	// failed/rejected) or all those filtered by market.
 	ListTrades(context.Context, *ListTradesRequest) (*ListTradesResponse, error)
-	// Causes the daemon to re-sync the whole utxo set.
-	ReloadUtxos(context.Context, *ReloadUtxosRequest) (*ReloadUtxosResponse, error)
 	// Returns all the utxos, whether unspents, spents or locked.
 	ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosResponse, error)
 	// Adds a webhook registered for some kind of event.
@@ -654,9 +641,6 @@ func (UnimplementedOperatorServiceServer) ListMarkets(context.Context, *ListMark
 }
 func (UnimplementedOperatorServiceServer) ListTrades(context.Context, *ListTradesRequest) (*ListTradesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTrades not implemented")
-}
-func (UnimplementedOperatorServiceServer) ReloadUtxos(context.Context, *ReloadUtxosRequest) (*ReloadUtxosResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReloadUtxos not implemented")
 }
 func (UnimplementedOperatorServiceServer) ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUtxos not implemented")
@@ -1216,24 +1200,6 @@ func _OperatorService_ListTrades_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _OperatorService_ReloadUtxos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReloadUtxosRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OperatorServiceServer).ReloadUtxos(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/tdex_daemon.v2.OperatorService/ReloadUtxos",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServiceServer).ReloadUtxos(ctx, req.(*ReloadUtxosRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _OperatorService_ListUtxos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListUtxosRequest)
 	if err := dec(in); err != nil {
@@ -1456,10 +1422,6 @@ var OperatorService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTrades",
 			Handler:    _OperatorService_ListTrades_Handler,
-		},
-		{
-			MethodName: "ReloadUtxos",
-			Handler:    _OperatorService_ReloadUtxos_Handler,
 		},
 		{
 			MethodName: "ListUtxos",

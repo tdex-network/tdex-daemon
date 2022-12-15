@@ -120,9 +120,6 @@ service OperatorService {
   // failed/rejected) or all those filtered by market.
   rpc ListTrades(ListTradesRequest) returns (ListTradesResponse) {}
 
-  // Causes the daemon to re-sync the whole utxo set.
-  rpc ReloadUtxos(ReloadUtxosRequest) returns(ReloadUtxosResponse) {}
-
   // Returns all the utxos, whether unspents, spents or locked.
   rpc ListUtxos(ListUtxosRequest) returns(ListUtxosResponse){}
 
@@ -374,9 +371,6 @@ message WithdrawMarketFragmenterRequest {
 message WithdrawMarketFragmenterResponse {
   string txid = 1;
 }
-
-message ReloadUtxosRequest {}
-message ReloadUtxosResponse {}
 
 message ListMarketsRequest {}
 message ListMarketsResponse {
