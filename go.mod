@@ -15,7 +15,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2
-	github.com/dgraph-io/ristretto v0.1.0 // indirect
+	github.com/dgraph-io/badger/v3 v3.2103.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/google/uuid v1.3.0
@@ -37,6 +37,8 @@ require (
 	github.com/tdex-network/tdex-daemon/pkg/securestore v0.0.0-20210813140257-70d50a8b72a4
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201016201833-94bc303c76d4
+	github.com/timshannon/badgerhold/v3 v3.0.0 // indirect
+	github.com/timshannon/badgerhold/v4 v4.0.2
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/vulpemventures/go-elements v0.4.1
 	go.etcd.io/bbolt v1.3.6 // indirect

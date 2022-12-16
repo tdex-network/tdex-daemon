@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/options"
+	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v3/options"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-	"github.com/timshannon/badgerhold/v2"
+	"github.com/timshannon/badgerhold/v4"
 )
 
 // repoManager holds all the badgerhold stores in a single data structure.
@@ -97,7 +97,7 @@ func isTransactionConflict(err error) bool {
 }
 
 // EncodeKey encodes key values with a type prefix which allows multiple
-//different types to exist in the badger DB
+// different types to exist in the badger DB
 func EncodeKey(key interface{}, typeName string) ([]byte, error) {
 	encoded, err := badgerhold.DefaultEncode(key)
 	if err != nil {
@@ -116,7 +116,6 @@ func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
 	if isInMemory {
 		opts.InMemory = true
 	} else {
-		opts.ValueLogLoadingMode = options.FileIO
 		opts.Compression = options.ZSTD
 	}
 

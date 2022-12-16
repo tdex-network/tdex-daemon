@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
-	"github.com/timshannon/badgerhold/v2"
+	"github.com/timshannon/badgerhold/v4"
 )
 
 type tradeRepositoryImpl struct {
