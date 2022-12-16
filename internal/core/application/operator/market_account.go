@@ -173,7 +173,11 @@ func (s *service) GetMarketReport(
 
 	var totBaseFee, totQuoteFee uint64
 	for _, v := range tradesFee {
-		totBaseFee += v.percentageFeeAmount + v.fixedFeeAmount
+		if v.feeAsset == v.Trade.MarketBaseAsset {
+			totBaseFee += v.percentageFeeAmount + v.fixedFeeAmount
+		} else {
+			totQuoteFee += v.percentageFeeAmount + v.fixedFeeAmount
+		}
 	}
 
 	feeReport := marketFeeReportInfo{
@@ -183,22 +187,6 @@ func (s *service) GetMarketReport(
 	return marketReportInfo{
 		*mkt, feeReport, totVolume, subVolumes,
 	}, nil
-
-	// return &MarketReport{
-	// 	CollectedFees: MarketCollectedFees{
-	// 		BaseAmount:  uint64(totalFees[mkt.BaseAsset]),
-	// 		QuoteAmount: uint64(totalFees[mkt.QuoteAsset]),
-	// 		StartTime:   rangeStart,
-	// 		EndTime:     rangeEnd,
-	// 	},
-	// 	Volume: MarketVolume{
-	// 		BaseVolume:  uint64(volume[mkt.BaseAsset]),
-	// 		QuoteVolume: uint64(volume[mkt.QuoteAsset]),
-	// 		StartTime:   rangeStart,
-	// 		EndTime:     rangeEnd,
-	// 	},
-	// 	GroupedVolume: subVolumes.toPortableList(),
-	// }, nil
 }
 
 func (s *service) OpenMarket(ctx context.Context, market ports.Market) error {
