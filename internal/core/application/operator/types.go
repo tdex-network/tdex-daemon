@@ -1,6 +1,8 @@
 package operator
 
 import (
+	"time"
+
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -310,4 +312,125 @@ func (i txInfo) withdrawalAmountPerAsset() map[string]uint64 {
 type txOutputInfo struct {
 	asset  string
 	amount uint64
+}
+
+type marketVolumeInfo struct {
+	start       time.Time
+	end         time.Time
+	baseVolume  uint64
+	quoteVolume uint64
+}
+
+func (i marketVolumeInfo) GetBaseVolume() uint64 {
+	return i.baseVolume
+}
+func (i marketVolumeInfo) GetQuoteVolume() uint64 {
+	return i.quoteVolume
+}
+func (i marketVolumeInfo) GetStartDate() string {
+	return i.start.Format(time.RFC3339)
+}
+func (i marketVolumeInfo) GetEndDate() string {
+	return i.end.Format(time.RFC3339)
+}
+
+type marketVolumeInfoList []*marketVolumeInfo
+
+func (l marketVolumeInfoList) toPortableList() []ports.MarketVolume {
+	list := make([]ports.MarketVolume, 0, len(l))
+	for _, v := range l {
+		list = append(list, *v)
+	}
+	return list
+}
+
+type tradeFeeInfo struct {
+	domain.Trade
+	feeAsset            string
+	percentageFeeAmount uint64
+	fixedFeeAmount      uint64
+	marketPrice         string
+}
+
+func (i tradeFeeInfo) GetTradeId() string {
+	return i.Trade.Id
+}
+func (i tradeFeeInfo) GetPercentageFee() uint64 {
+	return uint64(i.Trade.MarketPercentageFee)
+}
+func (i tradeFeeInfo) GetFeeAsset() string {
+	return i.feeAsset
+}
+func (i tradeFeeInfo) GetPercentageFeeAmount() uint64 {
+	return i.percentageFeeAmount
+}
+func (i tradeFeeInfo) GetFixedFeeAmount() uint64 {
+	return i.fixedFeeAmount
+}
+func (i tradeFeeInfo) GetMarketPrice() decimal.Decimal {
+	p, _ := decimal.NewFromString(i.marketPrice)
+	return p
+}
+func (i tradeFeeInfo) GetTimestamp() int64 {
+	return i.Trade.SwapRequest.Timestamp
+}
+
+type tradeFeeInfoList []tradeFeeInfo
+
+func (l tradeFeeInfoList) toPortableList() []ports.TradeFeeInfo {
+	list := make([]ports.TradeFeeInfo, 0, len(l))
+	for _, v := range l {
+		list = append(list, v)
+	}
+	return list
+}
+
+type marketFeeReportInfo struct {
+	start       time.Time
+	end         time.Time
+	totBaseFee  uint64
+	totQuoteFee uint64
+	tradeFees   tradeFeeInfoList
+}
+
+func (i marketFeeReportInfo) GetBaseAmount() uint64 {
+	return i.totBaseFee
+}
+func (i marketFeeReportInfo) GetQuoteAmount() uint64 {
+	return i.totQuoteFee
+}
+func (i marketFeeReportInfo) GetTradeFeeInfo() []ports.TradeFeeInfo {
+	return i.tradeFees.toPortableList()
+}
+func (i marketFeeReportInfo) GetStartDate() string {
+	return i.start.Format(time.RFC3339)
+}
+func (i marketFeeReportInfo) GetEndDate() string {
+	return i.end.Format(time.RFC3339)
+}
+
+type marketReportInfo struct {
+	domain.Market
+	marketFeeReportInfo
+	totVolume  marketVolumeInfo
+	subVolumes marketVolumeInfoList
+}
+
+func (i marketReportInfo) GetMarket() ports.Market {
+	return i
+}
+func (i marketReportInfo) GetBaseAsset() string {
+	return i.Market.BaseAsset
+}
+func (i marketReportInfo) GetQuoteAsset() string {
+	return i.Market.QuoteAsset
+}
+func (i marketReportInfo) GetCollectedFees() ports.MarketCollectedFees {
+	return i.marketFeeReportInfo
+}
+func (i marketReportInfo) GetTotalVolume() ports.MarketVolume {
+	return i.totVolume
+}
+func (i marketReportInfo) GetVolumesPerFrame() []ports.MarketVolume {
+	return i.subVolumes.toPortableList()
 }

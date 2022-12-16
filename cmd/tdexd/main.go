@@ -109,6 +109,7 @@ func main() {
 	<-sigChan
 
 	log.Info("shutting down daemon")
+	log.Exit(0)
 }
 
 func loadConfig() error {

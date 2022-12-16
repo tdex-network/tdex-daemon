@@ -1,6 +1,8 @@
 package grpchandler
 
 import (
+	"time"
+
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -135,6 +137,7 @@ func (i collectedFeesInfo) toProto() *daemonv2.MarketCollectedFees {
 			PercentageFeeAmount: i.GetPercentageFeeAmount(),
 			FixedFeeAmount:      i.GetFixedFeeAmount(),
 			MarketPrice:         price,
+			RequestDate:         time.Unix(i.GetTimestamp(), 0).Format(time.RFC3339),
 		})
 	}
 	return &daemonv2.MarketCollectedFees{
@@ -392,7 +395,11 @@ func (i timeRangeInfo) GetPredefinedPeriod() ports.PredefinedPeriod {
 }
 
 func (i timeRangeInfo) GetCustomPeriod() ports.CustomPeriod {
-	return i.TimeRange.GetCustomPeriod()
+	p := i.TimeRange.GetCustomPeriod()
+	if p == nil {
+		return nil
+	}
+	return p
 }
 
 type predefinedPeriodInfo daemonv2.PredefinedPeriod

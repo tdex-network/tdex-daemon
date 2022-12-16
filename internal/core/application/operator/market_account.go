@@ -3,12 +3,17 @@ package operator
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
 
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
+
+const startYear = 2021
 
 func (s *service) NewMarket(
 	ctx context.Context, market ports.Market,
@@ -93,101 +98,107 @@ func (s *service) GetMarketReport(
 	ctx context.Context, market ports.Market,
 	timeRange ports.TimeRange, groupByHours int,
 ) (ports.MarketReport, error) {
-	// startTime, endTime := timeRangeToDates(timeRange)
+	rangeStart, rangeEnd := timeRangeToDates(timeRange)
 
-	// if int(endTime.Sub(startTime).Hours()) <= groupByHours {
-	// 	return nil, ErrInvalidTimeFrame
-	// }
+	if int(rangeEnd.Sub(rangeStart).Hours()) <= groupByHours {
+		return nil, fmt.Errorf("time range too small for given grouping period")
+	}
 
-	// m, _, err := o.repoManager.MarketRepository().GetMarketByAssets(
-	// 	ctx, market.BaseAsset, market.QuoteAsset,
-	// )
-	// if err != nil {
-	// 	return nil, err
-	// }
+	mkt, err := s.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.GetBaseAsset(), market.GetQuoteAsset(),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	// if m == nil {
-	// 	return nil, ErrMarketNotExist
-	// }
+	trades, err := s.repoManager.TradeRepository().GetCompletedTradesByMarket(
+		ctx, mkt.Name, nil,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	// trades, err := o.repoManager.TradeRepository().GetCompletedTradesByMarket(
-	// 	ctx, market.QuoteAsset,
-	// )
-	// if err != nil {
-	// 	return nil, err
-	// }
+	// Sort trades by swap request timestamp, desc order.
+	sort.SliceStable(trades, func(i, j int) bool {
+		return trades[i].SwapRequest.Timestamp > trades[j].SwapRequest.Timestamp
+	})
 
-	// //sort desc
-	// sort.SliceStable(trades, func(i, j int) bool {
-	// 	return trades[i].SwapRequest.Timestamp > trades[j].SwapRequest.Timestamp
-	// })
-
-	// groupedVolume := initGroupedVolume(startTime, endTime, groupByHours)
-
+	subVolumes := splitTimeRange(rangeStart, rangeEnd, groupByHours)
+	tradesFee := make([]tradeFeeInfo, 0)
 	// totalFees := make(map[string]int64)
-	// volume := make(map[string]int64)
-	// for _, trade := range trades {
-	// 	if (time.Unix(int64(trade.SwapRequest.Timestamp), 0).After(startTime) ||
-	// 		time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(startTime)) &&
-	// 		(time.Unix(int64(trade.SwapRequest.Timestamp), 0).Before(endTime) ||
-	// 			time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(endTime)) {
-	// 		feeBasisPoint := trade.MarketFee
-	// 		swapRequest := trade.SwapRequestMessage()
-	// 		feeAsset := swapRequest.GetAssetP()
-	// 		amountP := swapRequest.GetAmountP()
-	// 		_, percentageFeeAmount := mathutil.LessFee(amountP, uint64(feeBasisPoint))
+	for _, trade := range trades {
+		if isInTimeRange(trade.SwapRequest.Timestamp, rangeStart, rangeEnd) {
+			feeBasisPoint := trade.MarketPercentageFee
+			swapRequest := trade.SwapRequestMessage()
+			feeAsset := swapRequest.GetAssetP()
+			amountP := swapRequest.GetAmountP()
+			_, percentageFeeAmount := mathutil.LessFee(
+				amountP, uint64(feeBasisPoint),
+			)
 
-	// 		fixedFeeAmount := uint64(trade.MarketFixedQuoteFee)
-	// 		if feeAsset == m.BaseAsset {
-	// 			fixedFeeAmount = uint64(trade.MarketFixedBaseFee)
-	// 		}
-	// 		totalFees[feeAsset] += int64(percentageFeeAmount) + int64(fixedFeeAmount)
+			marketPrice := trade.MarketPrice.BasePrice
+			fixedFeeAmount := uint64(trade.MarketFixedQuoteFee)
+			if feeAsset == mkt.BaseAsset {
+				marketPrice = trade.MarketPrice.QuotePrice
+				fixedFeeAmount = uint64(trade.MarketFixedBaseFee)
+			}
 
-	// 		volume[swapRequest.GetAssetR()] += int64(swapRequest.GetAmountR())
-	// 		volume[swapRequest.GetAssetP()] += int64(swapRequest.GetAmountP())
+			tradesFee = append(tradesFee, tradeFeeInfo{
+				trade, feeAsset, percentageFeeAmount, fixedFeeAmount, marketPrice,
+			})
 
-	// 		for i, v := range groupedVolume {
-	// 			//find time slot to which trade belongs to and calculate volume for that slot
-	// 			if (time.Unix(int64(trade.SwapRequest.Timestamp), 0).After(v.StartTime) ||
-	// 				time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(v.StartTime)) &&
-	// 				(time.Unix(int64(trade.SwapRequest.Timestamp), 0).Before(v.EndTime) ||
-	// 					time.Unix(int64(trade.SwapRequest.Timestamp), 0).Equal(v.EndTime)) {
+			for i, v := range subVolumes {
+				if isInTimeRange(trade.SwapRequest.Timestamp, v.start, v.end) {
+					baseAmount := swapRequest.GetAmountR()
+					quoteAmount := swapRequest.GetAmountP()
+					if swapRequest.GetAssetR() == mkt.QuoteAsset {
+						baseAmount, quoteAmount = quoteAmount, baseAmount
+					}
 
-	// 				//assume AmountR is base asset, AmountP(FeeAsset) is quote asset
-	// 				volumeBaseAmount := swapRequest.GetAmountR() + v.BaseVolume
-	// 				volumeQuoteAmount := swapRequest.GetAmountP() + v.QuoteVolume
-	// 				if swapRequest.GetAssetR() == market.QuoteAsset {
-	// 					volumeBaseAmount = swapRequest.GetAmountP() + v.BaseVolume
-	// 					volumeQuoteAmount = swapRequest.GetAmountR() + v.QuoteVolume
-	// 				}
+					subVolumes[i].baseVolume += baseAmount
+					subVolumes[i].quoteVolume += quoteAmount
+				}
+			}
+		}
+	}
 
-	// 				groupedVolume[i] = MarketVolume{
-	// 					BaseVolume:  volumeBaseAmount,
-	// 					QuoteVolume: volumeQuoteAmount,
-	// 					StartTime:   v.StartTime,
-	// 					EndTime:     v.EndTime,
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
+	var totBaseVolume, totQuoteVolume uint64
+	for _, v := range subVolumes {
+		totBaseVolume += v.baseVolume
+		totQuoteVolume += v.quoteVolume
+	}
+	totVolume := marketVolumeInfo{
+		rangeStart, rangeEnd, totBaseVolume, totQuoteVolume,
+	}
+
+	var totBaseFee, totQuoteFee uint64
+	for _, v := range tradesFee {
+		totBaseFee += v.percentageFeeAmount + v.fixedFeeAmount
+	}
+
+	feeReport := marketFeeReportInfo{
+		rangeStart, rangeEnd, totBaseFee, totQuoteFee, tradesFee,
+	}
+
+	return marketReportInfo{
+		*mkt, feeReport, totVolume, subVolumes,
+	}, nil
 
 	// return &MarketReport{
 	// 	CollectedFees: MarketCollectedFees{
-	// 		BaseAmount:  uint64(totalFees[market.BaseAsset]),
-	// 		QuoteAmount: uint64(totalFees[market.QuoteAsset]),
-	// 		StartTime:   startTime,
-	// 		EndTime:     endTime,
+	// 		BaseAmount:  uint64(totalFees[mkt.BaseAsset]),
+	// 		QuoteAmount: uint64(totalFees[mkt.QuoteAsset]),
+	// 		StartTime:   rangeStart,
+	// 		EndTime:     rangeEnd,
 	// 	},
 	// 	Volume: MarketVolume{
-	// 		BaseVolume:  uint64(volume[market.BaseAsset]),
-	// 		QuoteVolume: uint64(volume[market.QuoteAsset]),
-	// 		StartTime:   startTime,
-	// 		EndTime:     endTime,
+	// 		BaseVolume:  uint64(volume[mkt.BaseAsset]),
+	// 		QuoteVolume: uint64(volume[mkt.QuoteAsset]),
+	// 		StartTime:   rangeStart,
+	// 		EndTime:     rangeEnd,
 	// 	},
-	// 	GroupedVolume: groupedVolume,
+	// 	GroupedVolume: subVolumes.toPortableList(),
 	// }, nil
-	return nil, fmt.Errorf("not implemented")
 }
 
 func (s *service) OpenMarket(ctx context.Context, market ports.Market) error {
@@ -339,4 +350,84 @@ func (s *service) UpdateMarketStrategy(
 			return mkt, nil
 		},
 	)
+}
+
+func timeRangeToDates(tr ports.TimeRange) (startTime, endTime time.Time) {
+	now := time.Now()
+	endTime = now
+
+	if p := tr.GetCustomPeriod(); p != nil {
+		startTime, _ = time.Parse(time.RFC3339, p.GetStartDate())
+
+		if p.GetEndDate() != "" {
+			endTime, _ = time.Parse(time.RFC3339, p.GetEndDate())
+		}
+		return
+	}
+
+	p := tr.GetPredefinedPeriod()
+	if p.IsLastHour() {
+		startTime = now.Add(time.Duration(-60) * time.Minute)
+	}
+	if p.IsLastDay() {
+		startTime = now.AddDate(0, 0, -1)
+	}
+	if p.IsLastWeek() {
+		startTime = now.AddDate(0, 0, -7)
+	}
+	if p.IsLastMonth() {
+		startTime = now.AddDate(0, -1, 0)
+	}
+	if p.IsLastThreeMonths() {
+		startTime = now.AddDate(0, -3, 0)
+	}
+	if p.IsYearToDate() {
+		y, _, _ := now.Date()
+		startTime = time.Date(y, time.January, 1, 0, 0, 0, 0, time.UTC)
+	}
+	if p.IsLastYear() {
+		y, _, _ := now.Date()
+		startTime = time.Date(y-1, time.January, 1, 0, 0, 0, 0, time.UTC)
+		endTime = time.Date(y-1, time.December, 31, 23, 59, 59, 0, time.UTC)
+	}
+	if p.IsAll() {
+		startTime = time.Date(startYear, time.January, 1, 0, 0, 0, 0, time.UTC)
+	}
+
+	return
+}
+
+// initGroupedVolume splits the given time range (start, end) into a list of
+// MarketVolume, ie. smaller consecutive time ranges of numHours hours in descending order.
+// Example:
+// in: 2009-11-10 19:00:00 (start), 2009-11-11 00:00:00 (end), 2 (numHours)
+// out: [
+//
+//	{end: 2009-11-11 00:00:00, start: 2009-11-10 22:00:01},
+//	{end: 2009-11-11 22:00:00, start: 2009-11-10 20:00:01},
+//	{end: 2009-11-10 20:00:00, start: 2009-11-10 19:00:00},
+//
+// ]
+func splitTimeRange(start, end time.Time, groupByHours int) marketVolumeInfoList {
+	groupedVolume := make([]*marketVolumeInfo, 0)
+	for {
+		if end.Equal(start) || end.Before(start) {
+			return groupedVolume
+		} else {
+			nextEnd := end.Add(-time.Hour * time.Duration(groupByHours))
+			nextStart := start
+			if nextEnd.Sub(start).Seconds() > 0 {
+				nextStart = nextEnd.Add(time.Second)
+			}
+			groupedVolume = append(groupedVolume, &marketVolumeInfo{
+				start: nextStart, end: end,
+			})
+			end = nextEnd
+		}
+	}
+}
+
+func isInTimeRange(t int64, start, end time.Time) bool {
+	tt := time.Unix(t, 0)
+	return !tt.Before(start) && !tt.After(end)
 }
