@@ -118,6 +118,7 @@ type TradeFeeInfo interface {
 	GetPercentageFeeAmount() uint64
 	GetFixedFeeAmount() uint64
 	GetMarketPrice() decimal.Decimal
+	GetTimestamp() int64
 }
 
 type TradeType interface {

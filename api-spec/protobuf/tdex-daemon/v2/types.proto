@@ -157,6 +157,8 @@ message FeeInfo {
   uint64 fixed_fee_amount = 5;
   // The market price when the trade propoal was accepted.
   double market_price = 6;
+  // The request date of the trade in RFC3339 format.
+  string request_date = 7;
 }
 
 message Balance {
