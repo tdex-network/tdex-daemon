@@ -213,7 +213,9 @@ func (s *Service) CompleteSwap(
 		}
 		if len(in.WitnessScript) > 0 {
 			// values for 2of2 native or wrapped segwit multisig inputs
-			scriptSigSize = 35
+			if scriptSigSize > 0 {
+				scriptSigSize = 35
+			}
 			witnessSize = 223
 		}
 		existingInputs = append(existingInputs, input{
