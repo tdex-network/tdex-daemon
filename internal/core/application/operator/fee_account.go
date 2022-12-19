@@ -12,7 +12,7 @@ func (s *service) DeriveFeeAddresses(
 ) ([]string, error) {
 	if !s.accountExists(ctx, domain.FeeAccount) {
 		if _, err := s.wallet.Account().CreateAccount(
-			ctx, domain.FeeAccount,
+			ctx, domain.FeeAccount, false,
 		); err != nil {
 			return nil, err
 		}

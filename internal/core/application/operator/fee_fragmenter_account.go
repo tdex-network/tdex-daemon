@@ -22,7 +22,7 @@ func (s *service) DeriveFeeFragmenterAddresses(
 ) ([]string, error) {
 	if !s.accountExists(ctx, domain.FeeFragmenterAccount) {
 		if _, err := s.wallet.Account().CreateAccount(
-			ctx, domain.FeeFragmenterAccount,
+			ctx, domain.FeeFragmenterAccount, false,
 		); err != nil {
 			return nil, err
 		}
@@ -104,7 +104,9 @@ func (s *service) FeeFragmenterSplitFunds(
 	}
 
 	// make sure the fee account is created.
-	if _, err := s.wallet.Account().CreateAccount(ctx, domain.FeeAccount); err != nil {
+	if _, err := s.wallet.Account().CreateAccount(
+		ctx, domain.FeeAccount, false,
+	); err != nil {
 		if !strings.Contains(err.Error(), "already exist") {
 			chRes <- fragmenterReply{
 				"", fmt.Errorf("failed to create fee fragmenter account: %s", err),

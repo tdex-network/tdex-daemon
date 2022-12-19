@@ -337,17 +337,14 @@
         },
         "script": {
           "type": "string",
-          "format": "byte",
           "description": "Script."
         },
         "assetBlinder": {
           "type": "string",
-          "format": "byte",
           "description": "Asset blinder for confidential utxo."
         },
         "valueBlinder": {
           "type": "string",
-          "format": "byte",
           "description": "Value blinder for confidential utxo."
         },
         "accountName": {
@@ -361,6 +358,10 @@
         "confirmedStatus": {
           "$ref": "#/definitions/v1UtxoStatus",
           "description": "Info about utxo's confirmation status."
+        },
+        "redeemScript": {
+          "type": "string",
+          "description": "Redeem script locking the utxo in case its owned by a multisig account."
         }
       }
     },

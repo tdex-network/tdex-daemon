@@ -23,11 +23,12 @@ type Utxo interface {
 	UtxoKey
 	GetAsset() string
 	GetValue() uint64
-	GetScript() []byte
-	GetAssetBlinder() []byte
-	GetValueBlinder() []byte
+	GetScript() string
+	GetAssetBlinder() string
+	GetValueBlinder() string
 	GetConfirmedStatus() UtxoStatus
 	GetSpentStatus() UtxoStatus
+	GetRedeemScript() string
 }
 
 type UnblindedInput interface {

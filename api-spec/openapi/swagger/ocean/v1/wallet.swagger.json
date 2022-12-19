@@ -70,9 +70,12 @@
           "type": "string",
           "description": "Derivation path."
         },
-        "xpub": {
-          "type": "string",
-          "description": "XPub."
+        "xpubs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Xpubs."
         }
       }
     },

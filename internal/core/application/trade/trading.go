@@ -9,7 +9,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	pkgswap "github.com/tdex-network/tdex-daemon/pkg/swap"
-	"github.com/vulpemventures/go-elements/elementsutil"
 )
 
 func (s *Service) TradePreview(
@@ -103,8 +102,8 @@ func (s *Service) TradePropose(
 			Index:         uint32(i),
 			Asset:         u.GetAsset(),
 			Amount:        u.GetValue(),
-			AssetBlinder:  elementsutil.TxIDFromBytes(u.GetAssetBlinder()),
-			AmountBlinder: elementsutil.TxIDFromBytes(u.GetValueBlinder()),
+			AssetBlinder:  u.GetAssetBlinder(),
+			AmountBlinder: u.GetValueBlinder(),
 		})
 	}
 	if ok, _ := trade.Accept(signedPset, unblindedIns, tradeExpiryTime); !ok {

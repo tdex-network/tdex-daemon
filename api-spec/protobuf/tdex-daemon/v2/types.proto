@@ -55,7 +55,7 @@ message AccountInfo {
   // The full derivation path.
   string derivation_path = 3;
   // The master public key.
-  string xpub = 4;
+  repeated string xpubs = 4;
 }
 
 message MarketInfo {

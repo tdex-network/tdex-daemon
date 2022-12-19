@@ -2,6 +2,7 @@ package oceanwallet
 
 import (
 	"context"
+	"strings"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/ocean/v1"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -17,8 +18,22 @@ func newAccount(conn *grpc.ClientConn) *account {
 }
 
 func (m *account) CreateAccount(
-	ctx context.Context, accountName string,
+	ctx context.Context, accountName string, isMarket bool,
 ) (ports.WalletAccount, error) {
+	// If the account being created is for market, try to create a multisig
+	// account if supported, otherwise fallback to singlesig one.
+	if isMarket {
+		res, err := m.client.CreateAccountMultiSig(ctx, &pb.CreateAccountMultiSigRequest{
+			Name: accountName,
+		})
+		if err != nil && !strings.Contains(err.Error(), "not implemented") {
+			return nil, err
+		}
+		if res != nil {
+			return msAccountInfo{res}, nil
+		}
+	}
+
 	res, err := m.client.CreateAccountBIP44(ctx, &pb.CreateAccountBIP44Request{
 		Name: accountName,
 	})
@@ -115,6 +130,17 @@ type accountInfo struct {
 
 func (i accountInfo) GetName() string {
 	return i.CreateAccountBIP44Response.GetAccountName()
+}
+func (i accountInfo) GetXpubs() []string {
+	return []string{i.CreateAccountBIP44Response.GetXpub()}
+}
+
+type msAccountInfo struct {
+	*pb.CreateAccountMultiSigResponse
+}
+
+func (i msAccountInfo) GetName() string {
+	return i.CreateAccountMultiSigResponse.GetAccountName()
 }
 
 type utxoList []*pb.Utxo

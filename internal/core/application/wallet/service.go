@@ -98,7 +98,14 @@ func (s *Service) SendToMany(
 		}
 		for _, u := range utxos {
 			txid, _ := elementsutil.TxIDToBytes(u.GetTxid())
-			inputs = append(inputs, input{txid, u.GetIndex(), u.GetScript()})
+			var scriptSigSize, witnessSize int
+			if len(u.GetRedeemScript()) > 0 {
+				scriptSigSize = 35
+				witnessSize = 223
+			}
+			inputs = append(inputs, input{
+				txid, u.GetIndex(), u.GetScript(), scriptSigSize, witnessSize,
+			})
 		}
 	}
 
@@ -137,7 +144,7 @@ func (s *Service) SendToMany(
 
 	for _, u := range feeUtxos {
 		txid, _ := elementsutil.TxIDToBytes(u.GetTxid())
-		inputs = append(inputs, input{txid, u.GetIndex(), u.GetScript()})
+		inputs = append(inputs, input{txid, u.GetIndex(), u.GetScript(), 0, 0})
 	}
 	feeAmount := dummyFeeAmount
 	if change > 0 {
@@ -199,8 +206,19 @@ func (s *Service) CompleteSwap(
 
 	ptx, _ := psetv2.NewPsetFromBase64(swapRequest.GetTransaction())
 	for _, in := range ptx.Inputs {
+		var scriptSigSize, witnessSize int
+		if len(in.RedeemScript) > 0 {
+			// values for 2of2 native bare multisig inputs
+			scriptSigSize = 223
+		}
+		if len(in.WitnessScript) > 0 {
+			// values for 2of2 native or wrapped segwit multisig inputs
+			scriptSigSize = 35
+			witnessSize = 223
+		}
 		existingInputs = append(existingInputs, input{
-			in.PreviousTxid, in.PreviousTxIndex, in.GetUtxo().Script,
+			in.PreviousTxid, in.PreviousTxIndex, hex.EncodeToString(in.GetUtxo().Script),
+			scriptSigSize, witnessSize,
 		})
 	}
 	for _, out := range ptx.Outputs {
@@ -219,7 +237,14 @@ func (s *Service) CompleteSwap(
 
 	for _, u := range utxos {
 		txid, _ := elementsutil.TxIDToBytes(u.GetTxid())
-		inputs = append(inputs, input{txid, u.GetIndex(), u.GetScript()})
+		var scriptSigSize, witnessSize int
+		if len(u.GetRedeemScript()) > 0 {
+			scriptSigSize = 35
+			witnessSize = 223
+		}
+		inputs = append(inputs, input{
+			txid, u.GetIndex(), u.GetScript(), scriptSigSize, witnessSize,
+		})
 	}
 
 	addresses, err := accountManager.DeriveAddresses(ctx, account, 1)
@@ -264,7 +289,7 @@ func (s *Service) CompleteSwap(
 
 	for _, u := range feeUtxos {
 		txid, _ := elementsutil.TxIDToBytes(u.GetTxid())
-		inputs = append(inputs, input{txid, u.GetIndex(), u.GetScript()})
+		inputs = append(inputs, input{txid, u.GetIndex(), u.GetScript(), 0, 0})
 	}
 	feeAmount := dummyFeeAmount
 	if change > 0 {

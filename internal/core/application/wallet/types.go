@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"encoding/hex"
 	"sync"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -9,9 +8,11 @@ import (
 )
 
 type input struct {
-	txid   []byte
-	index  uint32
-	script []byte
+	txid          []byte
+	index         uint32
+	script        string
+	scriptSigSize int
+	witnessSize   int
 }
 
 func (i input) GetTxid() string {
@@ -21,13 +22,13 @@ func (i input) GetIndex() uint32 {
 	return i.index
 }
 func (i input) GetScript() string {
-	return hex.EncodeToString(i.script)
+	return i.script
 }
 func (i input) GetScriptSigSize() int {
-	return 0
+	return i.scriptSigSize
 }
 func (i input) GetWitnessSize() int {
-	return 0
+	return i.witnessSize
 }
 
 type output struct {

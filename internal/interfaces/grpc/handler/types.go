@@ -479,7 +479,7 @@ func (i accountsInfo) toProto() []*daemonv2.AccountInfo {
 		list = append(list, &daemonv2.AccountInfo{
 			AccountName:    account.GetName(),
 			DerivationPath: account.GetDerivationPath(),
-			Xpub:           account.GetXpub(),
+			Xpubs:          account.GetXpubs(),
 		})
 	}
 	return list

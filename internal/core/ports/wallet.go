@@ -22,7 +22,9 @@ type Wallet interface {
 }
 
 type Account interface {
-	CreateAccount(ctx context.Context, accountName string) (WalletAccount, error)
+	CreateAccount(
+		ctx context.Context, accountName string, isMarket bool,
+	) (WalletAccount, error)
 	DeriveAddresses(
 		ctx context.Context, accountName string, num int,
 	) ([]string, error)
@@ -91,7 +93,7 @@ type WalletInfo interface {
 type WalletAccount interface {
 	GetName() string
 	GetDerivationPath() string
-	GetXpub() string
+	GetXpubs() []string
 }
 
 type WalletTxNotification interface {

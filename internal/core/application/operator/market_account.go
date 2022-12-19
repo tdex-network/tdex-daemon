@@ -33,7 +33,7 @@ func (s *service) NewMarket(
 	}
 
 	if _, err := s.wallet.Account().CreateAccount(
-		ctx, newMarket.Name,
+		ctx, newMarket.Name, true,
 	); err != nil {
 		return nil, err
 	}

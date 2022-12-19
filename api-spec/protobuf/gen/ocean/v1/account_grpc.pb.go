@@ -24,6 +24,8 @@ const _ = grpc.SupportPackageIsVersion7
 type AccountServiceClient interface {
 	// CreateAccountBIP44 creates a new BIP44 account.
 	CreateAccountBIP44(ctx context.Context, in *CreateAccountBIP44Request, opts ...grpc.CallOption) (*CreateAccountBIP44Response, error)
+	// CreateAccountMultiSig creates a new multisig account.
+	CreateAccountMultiSig(ctx context.Context, in *CreateAccountMultiSigRequest, opts ...grpc.CallOption) (*CreateAccountMultiSigResponse, error)
 	// CreateAccountCustom creates a new custom account for which loading a template.
 	CreateAccountCustom(ctx context.Context, in *CreateAccountCustomRequest, opts ...grpc.CallOption) (*CreateAccountCustomResponse, error)
 	// SetAccountTemplate sets the template for the account used to generate new addresses.
@@ -56,6 +58,15 @@ func NewAccountServiceClient(cc grpc.ClientConnInterface) AccountServiceClient {
 func (c *accountServiceClient) CreateAccountBIP44(ctx context.Context, in *CreateAccountBIP44Request, opts ...grpc.CallOption) (*CreateAccountBIP44Response, error) {
 	out := new(CreateAccountBIP44Response)
 	err := c.cc.Invoke(ctx, "/ocean.v1.AccountService/CreateAccountBIP44", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountServiceClient) CreateAccountMultiSig(ctx context.Context, in *CreateAccountMultiSigRequest, opts ...grpc.CallOption) (*CreateAccountMultiSigResponse, error) {
+	out := new(CreateAccountMultiSigResponse)
+	err := c.cc.Invoke(ctx, "/ocean.v1.AccountService/CreateAccountMultiSig", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +151,8 @@ func (c *accountServiceClient) DeleteAccount(ctx context.Context, in *DeleteAcco
 type AccountServiceServer interface {
 	// CreateAccountBIP44 creates a new BIP44 account.
 	CreateAccountBIP44(context.Context, *CreateAccountBIP44Request) (*CreateAccountBIP44Response, error)
+	// CreateAccountMultiSig creates a new multisig account.
+	CreateAccountMultiSig(context.Context, *CreateAccountMultiSigRequest) (*CreateAccountMultiSigResponse, error)
 	// CreateAccountCustom creates a new custom account for which loading a template.
 	CreateAccountCustom(context.Context, *CreateAccountCustomRequest) (*CreateAccountCustomResponse, error)
 	// SetAccountTemplate sets the template for the account used to generate new addresses.
@@ -167,6 +180,9 @@ type UnimplementedAccountServiceServer struct {
 
 func (UnimplementedAccountServiceServer) CreateAccountBIP44(context.Context, *CreateAccountBIP44Request) (*CreateAccountBIP44Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAccountBIP44 not implemented")
+}
+func (UnimplementedAccountServiceServer) CreateAccountMultiSig(context.Context, *CreateAccountMultiSigRequest) (*CreateAccountMultiSigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateAccountMultiSig not implemented")
 }
 func (UnimplementedAccountServiceServer) CreateAccountCustom(context.Context, *CreateAccountCustomRequest) (*CreateAccountCustomResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAccountCustom not implemented")
@@ -218,6 +234,24 @@ func _AccountService_CreateAccountBIP44_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AccountServiceServer).CreateAccountBIP44(ctx, req.(*CreateAccountBIP44Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountService_CreateAccountMultiSig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAccountMultiSigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).CreateAccountMultiSig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ocean.v1.AccountService/CreateAccountMultiSig",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).CreateAccountMultiSig(ctx, req.(*CreateAccountMultiSigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -376,6 +410,10 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateAccountBIP44",
 			Handler:    _AccountService_CreateAccountBIP44_Handler,
+		},
+		{
+			MethodName: "CreateAccountMultiSig",
+			Handler:    _AccountService_CreateAccountMultiSig_Handler,
 		},
 		{
 			MethodName: "CreateAccountCustom",

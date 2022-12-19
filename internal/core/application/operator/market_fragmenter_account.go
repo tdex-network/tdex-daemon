@@ -24,7 +24,7 @@ func (s *service) DeriveMarketFragmenterAddresses(
 ) ([]string, error) {
 	if !s.accountExists(ctx, domain.MarketFragmenterAccount) {
 		if _, err := s.wallet.Account().CreateAccount(
-			ctx, domain.MarketFragmenterAccount,
+			ctx, domain.MarketFragmenterAccount, false,
 		); err != nil {
 			return nil, err
 		}

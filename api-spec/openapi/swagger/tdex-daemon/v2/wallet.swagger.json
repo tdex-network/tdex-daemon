@@ -55,8 +55,11 @@
           "type": "string",
           "description": "The full derivation path."
         },
-        "xpub": {
-          "type": "string",
+        "xpubs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
           "description": "The master public key."
         }
       }

@@ -171,18 +171,21 @@ func (u utxo) GetAsset() string {
 func (u utxo) GetValue() uint64 {
 	return 0
 }
-func (u utxo) GetScript() []byte {
-	return nil
+func (u utxo) GetScript() string {
+	return ""
 }
-func (u utxo) GetAssetBlinder() []byte {
-	return nil
+func (u utxo) GetAssetBlinder() string {
+	return ""
 }
-func (u utxo) GetValueBlinder() []byte {
-	return nil
+func (u utxo) GetValueBlinder() string {
+	return ""
 }
 func (u utxo) GetSpentStatus() ports.UtxoStatus {
 	return nil
 }
 func (u utxo) GetConfirmedStatus() ports.UtxoStatus {
 	return nil
+}
+func (u utxo) GetRedeemScript() string {
+	return ""
 }
