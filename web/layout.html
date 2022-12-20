@@ -1,69 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-GB">
 
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta content="width=device-width, initial-scale=1" name="viewport">
   <title>TDEX Daemon</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" rel="stylesheet">
+  <style>
+      #tabs-with-content .tabs:not(:last-child) {
+          margin-bottom: 0;
+      }
+
+      #tabs-with-content .tab-content {
+          padding: 1rem;
+          display: none;
+          margin-bottom: 0;
+      }
+
+      #tabs-with-content .tab-content.is-active {
+          display: block;
+      }
+
+      .tabs li.is-active a {
+          border-bottom-color: #00d1b2;
+          color: #4a4a4a;
+          font-weight: 500;
+      }
+  </style>
+  <script
+      charset="utf-8"
+      src="https://cdn.jsdelivr.net/npm/easyqrcodejs@4.4.13/dist/easy.qrcode.min.js"
+      type="text/javascript">
+  </script>
   <script type="module">
-    function attachOnClickLogin() {
-      const unlockButton = document.getElementById('unlockButton');
-      if (!unlockButton) return;
+      function attachOnClickLogin() {
+          const unlockButton = document.getElementById('unlockButton');
+          if (!unlockButton) return;
 
-      unlockButton.onclick = async () => {
-        const password = document.getElementById("password").value;
-        await getConnectURL(password);
-      }
-    }
-
-    function attachOnClickCopy(connectURL) {
-      const copyButton = document.getElementById("copyButton");
-      if (!copyButton) return;
-
-      copyButton.onclick = async () => {
-        const clipText = await navigator.clipboard.writeText(connectURL);
-      }
-    }
-
-    async function getConnectURL(password) {
-      let headers = new Headers();
-      if (password) {
-        const authString = `tdex:${password}`
-        headers.set('Authorization', 'Basic ' + window.btoa(unescape(encodeURIComponent(authString))))
+          unlockButton.onclick = async () => {
+              const password = document.getElementById("password").value;
+              await getConnectURL(password);
+          }
       }
 
-      const pathname = window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`
-      const response = await window.fetch(`${pathname}tdexdconnect`, { method: 'GET', headers,});
-      if (!response.ok) {
-        console.log(response.status, response.statusText)
-        render(showLogin(password ? "Invalid password" : ""), document.getElementById("root"));
-        attachOnClickLogin();
-        return;
+      function attachOnClickCopy(connectURL) {
+          const copyButton = document.getElementById("copyButton");
+          if (!copyButton) return;
+
+          copyButton.onclick = async () => {
+              const clipText = await navigator.clipboard.writeText(connectURL);
+          }
       }
-      const data = await response.text();
-      render(showConnect(data), document.getElementById("root"));
-      attachOnClickCopy(data);
-    }
+
+      async function getConnectURL(password) {
+          let headers = new Headers();
+          if (password) {
+              const authString = `tdex:${password}`
+              headers.set('Authorization', 'Basic ' + window.btoa(unescape(encodeURIComponent(authString))))
+          }
+
+          const pathname = window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`
+          const response = await window.fetch(`${pathname}tdexdconnect`, {method: 'GET', headers,});
+          if (!response.ok) {
+              console.log(response.status, response.statusText)
+              render(showLogin(password ? "Invalid password" : ""), document.getElementById("root"));
+              attachOnClickLogin();
+              return;
+          }
+          const data = await response.text();
+          render(showConnect(data), document.getElementById("root"));
+          attachOnClickCopy(data);
+          tabsWithContent()
+          generateQRCode(data)
+      }
 
 
-    function render(template, node) {
-      if (!node) return;
-      node.innerHTML = (typeof template === 'function' ? template() : template);
-    };
+      function render(template, node) {
+          if (!node) return;
+          node.innerHTML = (typeof template === 'function' ? template() : template);
+      }
 
+      function tabsWithContent() {
+          let tabs = document.querySelectorAll('.tabs li');
+          let tabsContent = document.querySelectorAll('.tab-content');
+          let deactivateAllTabs = function () {
+              tabs.forEach(function (tab) {
+                  tab.classList.remove('is-active');
+              });
+          };
+          let hideTabsContent = function () {
+              tabsContent.forEach(function (tabContent) {
+                  tabContent.classList.remove('is-active');
+              });
+          };
+          let activateTabsContent = function (tab) {
+              tabsContent[getIndex(tab)].classList.add('is-active');
+          };
+          let getIndex = function (el) {
+              return [...el.parentElement.children].indexOf(el);
+          };
+          tabs.forEach(function (tab, index) {
+              if (index === 1) return; // TODO: remove this line when trader endpoint is accessible
+              tab.addEventListener('click', function () {
+                  deactivateAllTabs();
+                  hideTabsContent();
+                  tab.classList.add('is-active');
+                  activateTabsContent(tab);
+              });
+          })
+          tabs[0].click();
+      }
 
-    function showConnect(connectURL) {
-      return `
+      function generateQRCode(connectURL) {
+          const options = {text: connectURL};
+          new QRCode(document.getElementById("qrcode"), options);
+      }
+
+      function showConnect(connectURL) {
+          return `
           <h1 class="title is-1">🔌 TDEX Connect URL</h1>
-          <div class="box">
-            <div class="content">
+          <div id="tabs-with-content" class="box">
+            <div class="tabs is-fullwidth">
+              <ul>
+                <li class="is-active">
+                  <a>
+                    <span>Operator endpoint</span>
+                  </a>
+                </li>
+                <li>
+                  <a style="cursor: not-allowed;">
+                    <span>Trader endpoint</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div class="content tab-content">
               <article class="message">
                 <div class="message-header">
                   <p>URL</p>
                 </div>
                 <div id="connectURL" class="message-body" style="word-break: break-all;">
-                  ${connectURL}
+                  <div id="qrcode" style="margin-bottom: 20px"></div>
+                  <div>${connectURL}</div>
+                </div>
+              </article>
+              <div class="field">
+                <div class="control">
+                  <button class="button is-primary" id="copyButton" onclick="copyToClipboard('${connectURL}')">Copy</button>
+                </div>
+              </div>
+            </div>
+            <div class="content tab-content">
+              <article class="message">
+                <div class="message-header">
+                  <p>URL</p>
+                </div>
+                <div id="connectURL" class="message-body" style="word-break: break-all;">
+                  Trader endpoint
                 </div>
               </article>
               <div class="field">
@@ -74,10 +167,10 @@
             </div>
           </div>
         `;
-    };
+      }
 
-    function showLogin(errorMessage) {
-      return `
+      function showLogin(errorMessage) {
+          return `
           <h1 class="title is-1">🔓 Unlock</h1>
           <div class="content">
             <div class="columns">
@@ -95,20 +188,20 @@
             </div>
           </div>
         `;
-    };
+      }
 
-    window.onload = async () => {
-      await getConnectURL();
-    };
+      window.onload = async () => {
+          await getConnectURL();
+      };
   </script>
 </head>
 
 <body>
-  <section class="section">
-    <div class="container">
-      <div id="root" class="has-text-centered"></div>
-    </div>
-  </section>
+<section class="section">
+  <div class="container">
+    <div class="has-text-centered" id="root"></div>
+  </div>
+</section>
 
 </body>
 
