@@ -68,7 +68,12 @@ func (t tradeRepositoryImpl) GetCompletedTradesByMarket(
 func (t tradeRepositoryImpl) GetTradeBySwapAcceptId(
 	ctx context.Context, swapAcceptId string,
 ) (*domain.Trade, error) {
-	query := badgerhold.Where("SwapAccept.Id").Eq(swapAcceptId)
+	query := badgerhold.Where("SwapAccept").MatchFunc(
+		func(ra *badgerhold.RecordAccess) (bool, error) {
+			swapAccept := ra.Field().(*domain.Swap)
+			return swapAccept != nil && swapAccept.Id == swapAcceptId, nil
+		},
+	)
 
 	trades, err := t.findTrades(ctx, query)
 	if err != nil {
