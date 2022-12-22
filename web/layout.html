@@ -7,6 +7,55 @@
   <title>TDEX Daemon</title>
   <link href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" rel="stylesheet">
   <style>
+      html {
+          background-image: linear-gradient(to top, #000000, #111111, #1c1c1c, #262626, #313131);
+          height: 100%;
+      }
+
+      .box {
+          background-color: #000;
+          border-radius: 8px;
+      }
+
+      .button.is-primary, .button.is-primary:hover, .button.is-primary:focus {
+          background-color: rgba(15, 255, 0, 0.12);
+          box-shadow: none !important;
+          color: #0FFF00;
+          min-width: 12vw;
+      }
+
+      .button.is-primary.is-active, .button.is-primary:active {
+          background-color: rgba(15, 255, 0, 0.2);
+          box-shadow: none !important;
+          color: #0FFF00;
+      }
+
+      .button.is-primary:hover {
+          box-shadow: 0 0 0 1px #0FFF00 inset !important;
+      }
+
+      .message {
+          background-color: #252525;
+          border-radius: 8px;
+          font-size: 1rem;
+      }
+
+      .message-header {
+          background-color: #333333;
+          border-radius: 8px 8px 0 0;
+      }
+
+      .message-body {
+          background-color: #252525;
+          border-radius: 8px;
+          color: white;
+      }
+
+      canvas {
+          padding: 8px;
+          background-color: white;
+      }
+
       #tabs-with-content .tabs:not(:last-child) {
           margin-bottom: 0;
       }
@@ -21,10 +70,23 @@
           display: block;
       }
 
+      .tabs a:hover {
+          border-bottom-color: #dbdbdb;
+          color: #c6c6c6;
+      }
+
+      .tabs a {
+          color: white;
+      }
+
       .tabs li.is-active a {
-          border-bottom-color: #00d1b2;
-          color: #4a4a4a;
+          border-bottom-color: #0FFF00;
+          color: white;
           font-weight: 500;
+      }
+
+      .title {
+          color: white;
       }
   </style>
   <script
