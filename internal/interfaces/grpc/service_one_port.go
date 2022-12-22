@@ -126,6 +126,9 @@ func (o ServiceOptsOnePort) withTls() bool {
 }
 
 func (o ServiceOptsOnePort) tlsConfig() (*tls.Config, error) {
+	if !o.withTls() {
+		return nil, nil
+	}
 	return getTlsConfig(o.TLSKey, o.TLSCert)
 }
 
