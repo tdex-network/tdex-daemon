@@ -554,31 +554,28 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 
 func (s *service) onInit(password string) {
 	s.password = password
+	if !s.withMacaroons() {
+		return
+	}
+
+	pwd := []byte(password)
+	if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
+		log.WithError(err).Warn("failed to unlock macaroon store")
+	}
+	if err := genMacaroons(
+		context.Background(), s.macaroonSvc, s.opts.macaroonsDatadir(),
+	); err != nil {
+		log.WithError(err).Warn("failed to create macaroons")
+	}
 }
 
 func (s *service) onUnlock(password string) {
-	if s.withMacaroons() {
-		pwd := []byte(password)
-		if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
-			log.WithError(err).Warn("failed to unlock macaroon store")
-		}
-		if err := genMacaroons(
-			context.Background(), s.macaroonSvc, s.opts.macaroonsDatadir(),
-		); err != nil {
-			log.WithError(err).Warn("failed to create macaroons")
-		}
-	}
-
 	stopMacaroonSvc := true
 	s.stop(!stopMacaroonSvc)
 
 	withWalletOnly := true
 	if err := s.start(!withWalletOnly); err != nil {
 		log.WithError(err).Warn("failed to load handlers to interface after unlock")
-	}
-
-	if s.password == "" {
-		s.password = password
 	}
 }
 
