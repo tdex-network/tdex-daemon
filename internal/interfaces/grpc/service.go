@@ -568,8 +568,6 @@ func (s *service) onInit(password string) {
 	); err != nil {
 		log.WithError(err).Warn("failed to create macaroons")
 	}
-
-	s.macaroonSvc.Close()
 }
 
 func (s *service) onUnlock(password string) {
@@ -580,7 +578,9 @@ func (s *service) onUnlock(password string) {
 	if s.withMacaroons() {
 		pwd := []byte(password)
 		if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
-			log.WithError(err).Warn("failed to unlock macaroon store")
+			if err != macaroons.ErrAlreadyUnlocked {
+				log.WithError(err).Warn("failed to unlock macaroon store")
+			}
 		}
 		if err := genMacaroons(
 			context.Background(), s.macaroonSvc, s.opts.macaroonsDatadir(),

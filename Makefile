@@ -55,7 +55,6 @@ help:
 
 ## run: Run locally with default configuration in regtest
 run: clean
-	@export TDEX_NETWORK=regtest; \
 	export TDEX_WALLET_ADDR=localhost:18000; \
 	export TDEX_LOG_LEVEL=5; \
 	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
