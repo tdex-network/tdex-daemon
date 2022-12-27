@@ -227,7 +227,7 @@ func (s *serviceOnePort) start(withWalletOnly bool) error {
 	if err != nil {
 		return err
 	}
-	server, err := s.newServer(tlsConfig, !withWalletOnly)
+	server, err := s.newServer(tlsConfig, withWalletOnly)
 	if err != nil {
 		return err
 	}
@@ -378,12 +378,11 @@ func (s *serviceOnePort) newServer(
 
 func (s *serviceOnePort) onInit(password string) {
 	s.password = password
-}
 
-func (s *serviceOnePort) onUnlock(password string) {
 	if !s.withMacaroons() {
 		return
 	}
+
 	pwd := []byte(password)
 	if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
 		log.WithError(err).Warn("failed to unlock macaroon store")
@@ -392,6 +391,26 @@ func (s *serviceOnePort) onUnlock(password string) {
 		context.Background(), s.macaroonSvc, s.opts.macaroonsDatadir(),
 	); err != nil {
 		log.WithError(err).Warn("failed to create macaroons")
+	}
+
+	s.macaroonSvc.Close()
+}
+
+func (s *serviceOnePort) onUnlock(password string) {
+	if s.password == "" {
+		s.password = password
+	}
+
+	if s.withMacaroons() {
+		pwd := []byte(password)
+		if err := s.macaroonSvc.CreateUnlock(&pwd); err != nil {
+			log.WithError(err).Warn("failed to unlock macaroon store")
+		}
+		if err := genMacaroons(
+			context.Background(), s.macaroonSvc, s.opts.macaroonsDatadir(),
+		); err != nil {
+			log.WithError(err).Warn("failed to create macaroons")
+		}
 	}
 
 	stopMacaroonSvc := true
