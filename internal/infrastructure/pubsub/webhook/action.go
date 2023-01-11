@@ -2,7 +2,7 @@ package webhookpubsub
 
 // webhook action types
 const (
-	TradeSettled WebhookAction = iota
+	TradeSettled WebhookAction = iota + 1
 	AccountLowBalance
 	AccountWithdraw
 	AllActions
