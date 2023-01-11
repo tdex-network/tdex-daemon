@@ -59,6 +59,8 @@ func (s *service) UnlockWallet(ctx context.Context, password string) error {
 	if err := s.wallet.Wallet().Unlock(ctx, password); err != nil {
 		return err
 	}
+	// TODO: remove this line.
+	s.pubsub.SecurePubSub().Store().Init(password)
 	s.pubsub.SecurePubSub().Store().Unlock(password)
 	return nil
 }
