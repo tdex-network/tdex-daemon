@@ -7,13 +7,14 @@ import (
 	"os"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type walletHandler struct {
-	walletSvc    ports.Wallet
+	unlockerSvc  application.UnlockerService
 	buildData    ports.BuildData
 	macaroonPath string
 
@@ -24,29 +25,30 @@ type walletHandler struct {
 }
 
 func NewWalletHandler(
-	walletSvc ports.Wallet, buildData ports.BuildData, macPath string,
+	unlockerSvc application.UnlockerService, buildData ports.BuildData, macPath string,
 	onInit, onUnlock, onLock func(pwd string),
 	onChangePwd func(oldPwd, newPwd string),
 ) daemonv2.WalletServiceServer {
 	return newWalletHandler(
-		walletSvc, buildData, macPath, onInit, onUnlock, onLock, onChangePwd,
+		unlockerSvc, buildData, macPath, onInit, onUnlock, onLock, onChangePwd,
 	)
 }
 
 func newWalletHandler(
-	walletSvc ports.Wallet, buildData ports.BuildData, macPath string,
+	unlockerSvc application.UnlockerService,
+	buildData ports.BuildData, macPath string,
 	onInit, onUnlock, onLock func(pwd string),
 	onChangePwd func(oldPwd, newPwd string),
 ) *walletHandler {
 	return &walletHandler{
-		walletSvc, buildData, macPath, onInit, onUnlock, onLock, onChangePwd,
+		unlockerSvc, buildData, macPath, onInit, onUnlock, onLock, onChangePwd,
 	}
 }
 
 func (h *walletHandler) GenSeed(
 	ctx context.Context, _ *daemonv2.GenSeedRequest,
 ) (*daemonv2.GenSeedResponse, error) {
-	mnemonic, err := h.walletSvc.GenSeed(ctx)
+	mnemonic, err := h.unlockerSvc.GenSeed(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -71,11 +73,11 @@ func (h *walletHandler) InitWallet(
 	ctx := stream.Context()
 
 	if isRestore {
-		if err := h.walletSvc.RestoreWallet(ctx, mnemonic, password); err != nil {
+		if err := h.unlockerSvc.RestoreWallet(ctx, mnemonic, password); err != nil {
 			return err
 		}
 	}
-	if err := h.walletSvc.InitWallet(ctx, mnemonic, password); err != nil {
+	if err := h.unlockerSvc.InitWallet(ctx, mnemonic, password); err != nil {
 		return err
 	}
 
@@ -112,7 +114,7 @@ func (h *walletHandler) UnlockWallet(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := h.walletSvc.Unlock(ctx, password); err != nil {
+	if err := h.unlockerSvc.UnlockWallet(ctx, password); err != nil {
 		return nil, err
 	}
 
@@ -129,7 +131,7 @@ func (h *walletHandler) LockWallet(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := h.walletSvc.Lock(ctx, password); err != nil {
+	if err := h.unlockerSvc.LockWallet(ctx, password); err != nil {
 		return nil, err
 	}
 
@@ -150,7 +152,7 @@ func (h *walletHandler) ChangePassword(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := h.walletSvc.ChangePassword(
+	if err := h.unlockerSvc.ChangePassword(
 		ctx, currentPassword, newPassword,
 	); err != nil {
 		return nil, err
@@ -164,7 +166,7 @@ func (h *walletHandler) ChangePassword(
 func (h *walletHandler) GetInfo(
 	ctx context.Context, _ *daemonv2.GetInfoRequest,
 ) (*daemonv2.GetInfoResponse, error) {
-	info, err := h.walletSvc.Info(ctx)
+	info, err := h.unlockerSvc.Info(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +176,7 @@ func (h *walletHandler) GetInfo(
 func (h *walletHandler) GetStatus(
 	ctx context.Context, _ *daemonv2.GetStatusRequest,
 ) (*daemonv2.GetStatusResponse, error) {
-	status, err := h.walletSvc.Status(ctx)
+	status, err := h.unlockerSvc.Status(ctx)
 	if err != nil {
 		return nil, err
 	}

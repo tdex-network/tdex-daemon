@@ -424,9 +424,8 @@ func (s *service) newOperatorServer(
 
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	walletSvc := s.opts.AppConfig.WalletService().Wallet()
 	walletHandler := grpchandler.NewWalletHandler(
-		walletSvc, s.opts.BuildData, adminMacaroonPath,
+		s.opts.AppConfig.UnlockerService(), s.opts.BuildData, adminMacaroonPath,
 		s.onInit, s.onUnlock, s.onLock, s.onChangePwd,
 	)
 	daemonv2.RegisterWalletServiceServer(

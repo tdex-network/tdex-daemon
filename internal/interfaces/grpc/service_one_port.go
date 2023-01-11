@@ -285,9 +285,9 @@ func (s *serviceOnePort) newServer(
 	}
 
 	grpcServer := grpc.NewServer(serverOpts...)
+
 	walletHandler := grpchandler.NewWalletHandler(
-		s.opts.AppConfig.WalletService().Wallet(), s.opts.BuildData,
-		adminMacaroonPath,
+		s.opts.AppConfig.UnlockerService(), s.opts.BuildData, adminMacaroonPath,
 		s.onInit, s.onUnlock, s.onLock, s.onChangePwd,
 	)
 	daemonv2.RegisterWalletServiceServer(

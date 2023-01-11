@@ -30,6 +30,7 @@ type Config struct {
 	repo     ports.RepoManager
 	pubsub   PubSubService
 	wallet   WalletService
+	unlocker UnlockerService
 	operator OperatorService
 	trade    TradeService
 }
@@ -56,6 +57,11 @@ func (c *Config) PubSubService() PubSubService {
 
 func (c *Config) WalletService() WalletService {
 	svc, _ := c.walletService()
+	return svc
+}
+
+func (c *Config) UnlockerService() UnlockerService {
+	svc, _ := c.unlockerService()
 	return svc
 }
 
@@ -99,6 +105,19 @@ func (c *Config) walletService() (WalletService, error) {
 		c.wallet = wallet
 	}
 	return c.wallet, nil
+}
+
+func (c *Config) unlockerService() (UnlockerService, error) {
+	if c.unlocker == nil {
+		wallet, _ := c.walletService()
+		pubsub, _ := c.pubsubService()
+		unlocker, err := NewUnlockerService(wallet, pubsub)
+		if err != nil {
+			return nil, err
+		}
+		c.unlocker = unlocker
+	}
+	return c.unlocker, nil
 }
 
 func (c *Config) operatorService() (OperatorService, error) {
