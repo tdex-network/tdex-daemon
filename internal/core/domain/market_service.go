@@ -242,6 +242,12 @@ func (m *Market) Preview(
 	}, nil
 }
 
+func (m *Market) SpotPrice(
+	baseBalance, quoteBalance uint64,
+) (Prices, error) {
+	return m.priceForStrategy(baseBalance, quoteBalance)
+}
+
 func (m *Market) formula(
 	isBaseAsset, isBuy bool,
 ) func(interface{}, uint64) (uint64, error) {

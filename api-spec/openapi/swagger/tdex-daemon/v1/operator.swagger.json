@@ -207,8 +207,7 @@
         "fixed": {
           "$ref": "#/definitions/v1Fixed"
         }
-      },
-      "title": "Custom Types"
+      }
     },
     "v1FeeFragmenterSplitFundsResponse": {
       "type": "object",

@@ -27,6 +27,9 @@ type TradeServiceClient interface {
 	// GetMarketBalance retutns the balance of the two current reserves of the
 	// given market.
 	GetMarketBalance(ctx context.Context, in *GetMarketBalanceRequest, opts ...grpc.CallOption) (*GetMarketBalanceResponse, error)
+	// GetMarketPrice retutns the spot price for the requested market and its
+	// minimum tradable amount of base asset.
+	GetMarketPrice(ctx context.Context, in *GetMarketPriceRequest, opts ...grpc.CallOption) (*GetMarketPriceResponse, error)
 	// PreviewTrade returns a counter amount and asset in response to the
 	// provided ones and a trade type for a market.
 	//
@@ -76,6 +79,15 @@ func (c *tradeServiceClient) GetMarketBalance(ctx context.Context, in *GetMarket
 	return out, nil
 }
 
+func (c *tradeServiceClient) GetMarketPrice(ctx context.Context, in *GetMarketPriceRequest, opts ...grpc.CallOption) (*GetMarketPriceResponse, error) {
+	out := new(GetMarketPriceResponse)
+	err := c.cc.Invoke(ctx, "/tdex.v1.TradeService/GetMarketPrice", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *tradeServiceClient) PreviewTrade(ctx context.Context, in *PreviewTradeRequest, opts ...grpc.CallOption) (*PreviewTradeResponse, error) {
 	out := new(PreviewTradeResponse)
 	err := c.cc.Invoke(ctx, "/tdex.v1.TradeService/PreviewTrade", in, out, opts...)
@@ -112,6 +124,9 @@ type TradeServiceServer interface {
 	// GetMarketBalance retutns the balance of the two current reserves of the
 	// given market.
 	GetMarketBalance(context.Context, *GetMarketBalanceRequest) (*GetMarketBalanceResponse, error)
+	// GetMarketPrice retutns the spot price for the requested market and its
+	// minimum tradable amount of base asset.
+	GetMarketPrice(context.Context, *GetMarketPriceRequest) (*GetMarketPriceResponse, error)
 	// PreviewTrade returns a counter amount and asset in response to the
 	// provided ones and a trade type for a market.
 	//
@@ -144,6 +159,9 @@ func (UnimplementedTradeServiceServer) ListMarkets(context.Context, *ListMarkets
 }
 func (UnimplementedTradeServiceServer) GetMarketBalance(context.Context, *GetMarketBalanceRequest) (*GetMarketBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketBalance not implemented")
+}
+func (UnimplementedTradeServiceServer) GetMarketPrice(context.Context, *GetMarketPriceRequest) (*GetMarketPriceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMarketPrice not implemented")
 }
 func (UnimplementedTradeServiceServer) PreviewTrade(context.Context, *PreviewTradeRequest) (*PreviewTradeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PreviewTrade not implemented")
@@ -198,6 +216,24 @@ func _TradeService_GetMarketBalance_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TradeServiceServer).GetMarketBalance(ctx, req.(*GetMarketBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TradeService_GetMarketPrice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMarketPriceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TradeServiceServer).GetMarketPrice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tdex.v1.TradeService/GetMarketPrice",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TradeServiceServer).GetMarketPrice(ctx, req.(*GetMarketPriceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -270,6 +306,10 @@ var TradeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMarketBalance",
 			Handler:    _TradeService_GetMarketBalance_Handler,
+		},
+		{
+			MethodName: "GetMarketPrice",
+			Handler:    _TradeService_GetMarketPrice_Handler,
 		},
 		{
 			MethodName: "PreviewTrade",

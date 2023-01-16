@@ -163,7 +163,7 @@ func (t tradeOldHandler) marketPrice(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	preview, err := t.tradeSvc.GetMarketPrice(
+	preview, err := t.tradeSvc.GetTradePreview(
 		ctx, market, int(tradeType), amount, asset,
 	)
 	if err != nil {

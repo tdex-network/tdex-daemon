@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -26,6 +27,10 @@ import (
 type TradeService interface {
 	GetTradableMarkets(ctx context.Context) ([]MarketWithFee, error)
 	GetMarketPrice(
+		ctx context.Context,
+		market Market,
+	) (*decimal.Decimal, uint64, error)
+	GetTradePreview(
 		ctx context.Context,
 		market Market,
 		tradeType int,
@@ -183,6 +188,47 @@ func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 }
 
 func (t *tradeService) GetMarketPrice(
+	ctx context.Context,
+	market Market,
+) (*decimal.Decimal, uint64, error) {
+	if err := market.Validate(); err != nil {
+		return nil, 0, err
+	}
+
+	mkt, _, err := t.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
+	)
+	if err != nil {
+		log.Debugf("error while retrieving market: %s", err)
+		return nil, 0, ErrServiceUnavailable
+	}
+	if mkt == nil {
+		return nil, 0, ErrMarketNotExist
+	}
+
+	balance, err := getUnlockedBalanceForMarket(t.repoManager, ctx, mkt)
+	if err != nil {
+		log.WithError(err).Debug("error while retrieving balance")
+		return nil, 0, ErrServiceUnavailable
+	}
+
+	price, err := mkt.SpotPrice(balance.BaseAmount, balance.QuoteAmount)
+	if err != nil {
+		log.WithError(err).Debug("error while retrieving spot price")
+		return nil, 0, ErrServiceUnavailable
+	}
+	spotPrice := &price.QuotePrice
+	minAmount := uint64(mkt.FixedFee.BaseFee) + 1
+	if spotPrice.LessThan(decimal.NewFromInt(1)) {
+		spotPrice = &price.BasePrice
+		minAmount, _ = spotPrice.Mul(
+			decimal.NewFromFloat(math.Pow10(8)),
+		).BigFloat().Uint64()
+	}
+	return spotPrice, minAmount, nil
+}
+
+func (t *tradeService) GetTradePreview(
 	ctx context.Context,
 	market Market,
 	tradeType int,
