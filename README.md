@@ -62,7 +62,7 @@ $ make build-tdexdconnect
 
 ### Build and Run with docker
 
-Build and use `tdex` with docker.
+Build and use `tdex` with docker
 
 #### Build tdexd docker image
 
