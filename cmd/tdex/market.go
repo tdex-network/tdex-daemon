@@ -20,6 +20,7 @@ var (
 			marketOpenCmd, marketCloseCmd, marketDropCmd,
 			marketUpdateFixedFeeCmd, marketUpdatePercentageFeeCmd, marketReportFeeCmd,
 			marketUpdateStrategyCmd, marketUpdatePriceCmd, marketReportCmd,
+			marketUpdateAssetsPrecisionCmd,
 		},
 	}
 
@@ -36,6 +37,16 @@ var (
 				Name:  "quote_asset",
 				Usage: "the base asset hash of an existent market",
 				Value: "",
+			},
+			&cli.UintFlag{
+				Name:  "base_asset_precision",
+				Usage: "the precision for the base asset",
+				Value: 0,
+			},
+			&cli.UintFlag{
+				Name:  "quote_asset_precision",
+				Usage: "the precision for the quote asset",
+				Value: 0,
 			},
 		},
 		Action: newMarketAction,
@@ -187,7 +198,23 @@ var (
 		},
 		Action: marketUpdateStrategyAction,
 	}
-
+	marketUpdateAssetsPrecisionCmd = &cli.Command{
+		Name:  "precision",
+		Usage: "updates the precision of one or both market assets",
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:  "base_asset",
+				Usage: "the precision for the base asset",
+				Value: -1,
+			},
+			&cli.IntFlag{
+				Name:  "quote_asset",
+				Usage: "the precision for the quote asset",
+				Value: -1,
+			},
+		},
+		Action: marketUpdateAssetsPrecision,
+	}
 	marketUpdatePriceCmd = &cli.Command{
 		Name:  "price",
 		Usage: "updates the price of a market",
@@ -243,6 +270,8 @@ func newMarketAction(ctx *cli.Context) error {
 
 	baseAsset := ctx.String("base_asset")
 	quoteAsset := ctx.String("quote_asset")
+	basePrecision := ctx.Uint("base_asset_precision")
+	quotePrecision := ctx.Uint("quote_asset_precision")
 
 	if _, err := client.NewMarket(
 		context.Background(), &daemonv1.NewMarketRequest{
@@ -250,6 +279,8 @@ func newMarketAction(ctx *cli.Context) error {
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
+			BaseAssetPrecision:  uint32(basePrecision),
+			QuoteAssetPrecision: uint32(quotePrecision),
 		},
 	); err != nil {
 		return err
@@ -771,5 +802,38 @@ func marketReportAction(ctx *cli.Context) error {
 	}
 
 	printRespJSON(reply)
+	return nil
+}
+
+func marketUpdateAssetsPrecision(ctx *cli.Context) error {
+	client, cleanup, err := getOperatorClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
+	}
+
+	basePrecision := ctx.Int("base_asset")
+	quotePrecision := ctx.Int("quote_asset")
+
+	if _, err := client.UpdateMarketAssetsPrecision(
+		context.Background(), &daemonv1.UpdateMarketAssetsPrecisionRequest{
+			Market: &tdexv1.Market{
+				BaseAsset:  baseAsset,
+				QuoteAsset: quoteAsset,
+			},
+			BaseAssetPrecision:  int32(basePrecision),
+			QuoteAssetPrecision: int32(quotePrecision),
+		},
+	); err != nil {
+		return err
+	}
+
+	fmt.Println()
+	fmt.Println("precisions have been updated")
 	return nil
 }

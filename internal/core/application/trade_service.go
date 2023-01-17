@@ -218,12 +218,12 @@ func (t *tradeService) GetMarketPrice(
 		return nil, 0, ErrServiceUnavailable
 	}
 	spotPrice := &price.QuotePrice
+	spotPricePrecision := calcPricePrecision(*spotPrice)
+	delta := int(spotPricePrecision) - int(mkt.QuoteAssetPrecision)
 	minAmount := uint64(mkt.FixedFee.BaseFee) + 1
-	if spotPrice.LessThan(decimal.NewFromInt(1)) {
-		spotPrice = &price.BasePrice
-		minAmount, _ = spotPrice.Mul(
-			decimal.NewFromFloat(math.Pow10(8)),
-		).BigFloat().Uint64()
+	fmt.Println("DELTA", delta, spotPricePrecision, mkt.QuoteAssetPrecision)
+	if delta > 0 {
+		minAmount = uint64(math.Pow10(delta))
 	}
 	return spotPrice, minAmount, nil
 }
@@ -1014,4 +1014,19 @@ func isPriceInRange(
 	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
 
 	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
+}
+
+func calcPricePrecision(price decimal.Decimal) uint {
+	precision := uint(0)
+	one := decimal.NewFromInt(1)
+	ten := decimal.NewFromInt(10)
+	d, _ := decimal.NewFromString(price.String())
+
+	for {
+		if d.GreaterThanOrEqual(one) {
+			return precision
+		}
+		d = d.Mul(ten)
+		precision++
+	}
 }

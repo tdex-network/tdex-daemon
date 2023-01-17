@@ -60,7 +60,7 @@ func TestAccountManagement(t *testing.T) {
 		QuoteAsset: marketQuoteAsset,
 	}
 
-	err = operatorSvc.NewMarket(ctx, mkt)
+	err = operatorSvc.NewMarket(ctx, mkt, 8, 8)
 	require.NoError(t, err)
 
 	mktAddressesAndKeys, err := operatorSvc.GetMarketAddress(ctx, mkt, 2)

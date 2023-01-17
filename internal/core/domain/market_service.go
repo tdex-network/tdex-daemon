@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"fmt"
+
 	"github.com/shopspring/decimal"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
@@ -161,6 +163,34 @@ func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
 	}
 	if quoteFee >= 0 {
 		m.FixedFee.QuoteFee = quoteFee
+	}
+	return nil
+}
+
+// ChangeBasePrice ...
+func (m *Market) ChangeAssetPrecision(
+	baseAssetPrecision, quoteAssetPrecision int,
+) error {
+	if m.IsTradable() {
+		return ErrMarketMustBeClosed
+	}
+
+	if baseAssetPrecision >= 0 {
+		if err := validatePrecision(uint(baseAssetPrecision)); err != nil {
+			return fmt.Errorf("invalid base asset precision: %s", err)
+		}
+	}
+	if quoteAssetPrecision >= 0 {
+		if err := validatePrecision(uint(quoteAssetPrecision)); err != nil {
+			return fmt.Errorf("invalid quote asset precision: %s", err)
+		}
+	}
+
+	if baseAssetPrecision >= 0 {
+		m.BaseAssetPrecision = uint(baseAssetPrecision)
+	}
+	if quoteAssetPrecision >= 0 {
+		m.QuoteAssetPrecision = uint(quoteAssetPrecision)
 	}
 	return nil
 }
@@ -391,6 +421,14 @@ func validateFee(basisPoint int64) error {
 func validateFixedFee(baseFee, quoteFee int64) error {
 	if baseFee < -1 || quoteFee < -1 {
 		return ErrInvalidFixedFee
+	}
+
+	return nil
+}
+
+func validatePrecision(precision uint) error {
+	if precision > 8 {
+		return ErrInvalidPrecision
 	}
 
 	return nil

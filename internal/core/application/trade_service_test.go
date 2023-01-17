@@ -221,7 +221,7 @@ func newTradeServiceTest(
 	}
 
 	mkt, err := domain.NewMarket(
-		domain.MarketAccountStart, marketBaseAsset, marketQuoteAsset, marketFee,
+		domain.MarketAccountStart, marketBaseAsset, marketQuoteAsset, marketFee, 8, 8,
 	)
 	if err != nil {
 		return nil, err

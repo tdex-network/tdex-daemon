@@ -18,7 +18,7 @@ func TestNewMarket(t *testing.T) {
 	accountIndex := 0
 	fee := int64(25)
 
-	m, err := domain.NewMarket(accountIndex, baseAsset, quoteAsset, fee)
+	m, err := domain.NewMarket(accountIndex, baseAsset, quoteAsset, fee, 8, 8)
 	require.NoError(t, err)
 	require.NotNil(t, m)
 	require.Equal(t, accountIndex, m.AccountIndex)
@@ -50,7 +50,7 @@ func TestFailingNewMarket(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := domain.NewMarket(tt.accountIndex, tt.baseAsset, tt.quoteAsset, tt.fee)
+			_, err := domain.NewMarket(tt.accountIndex, tt.baseAsset, tt.quoteAsset, tt.fee, 8, 8)
 			require.EqualError(t, err, tt.expectedError.Error())
 		})
 	}

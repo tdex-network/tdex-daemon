@@ -1010,7 +1010,7 @@ func TestFailingPreview(t *testing.T) {
 }
 
 func newTestMarket() *domain.Market {
-	m, _ := domain.NewMarket(0, baseAsset, quoteAsset, 25)
+	m, _ := domain.NewMarket(0, baseAsset, quoteAsset, 25, 8, 8)
 	return m
 }
 

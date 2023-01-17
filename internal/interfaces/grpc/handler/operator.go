@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -15,8 +16,6 @@ import (
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 )
-
-const readOnlyTx = true
 
 type operatorHandler struct {
 	operatorSvc application.OperatorService
@@ -149,6 +148,12 @@ func (o operatorHandler) UpdateMarketFixedFee(
 	ctx context.Context, req *daemonv1.UpdateMarketFixedFeeRequest,
 ) (*daemonv1.UpdateMarketFixedFeeResponse, error) {
 	return o.updateMarketFixedFee(ctx, req)
+}
+
+func (o operatorHandler) UpdateMarketAssetsPrecision(
+	ctx context.Context, req *daemonv1.UpdateMarketAssetsPrecisionRequest,
+) (*daemonv1.UpdateMarketAssetsPrecisionResponse, error) {
+	return o.updateMarketAssetsPrecision(ctx, req)
 }
 
 func (o operatorHandler) UpdateMarketPrice(
@@ -420,8 +425,16 @@ func (o operatorHandler) newMarket(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	basePrecision, err := parsePrecision(req.GetBaseAssetPrecision())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	quotePrecision, err := parsePrecision(req.GetQuoteAssetPrecision())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
-	if err := o.operatorSvc.NewMarket(ctx, market); err != nil {
+	if err := o.operatorSvc.NewMarket(ctx, market, basePrecision, quotePrecision); err != nil {
 		return nil, err
 	}
 
@@ -467,6 +480,8 @@ func (o operatorHandler) getMarketInfo(
 				BaseAmount:  info.Balance.BaseAmount,
 				QuoteAmount: info.Balance.QuoteAmount,
 			},
+			BaseAssetPrecision:  uint32(info.BaseAssetPrecision),
+			QuoteAssetPrecision: uint32(info.QuoteAssetPrecision),
 		},
 	}, nil
 }
@@ -744,6 +759,23 @@ func (o operatorHandler) updateMarketFixedFee(
 			},
 		},
 	}, nil
+}
+
+func (o operatorHandler) updateMarketAssetsPrecision(
+	ctx context.Context, req *daemonv1.UpdateMarketAssetsPrecisionRequest,
+) (*daemonv1.UpdateMarketAssetsPrecisionResponse, error) {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := o.operatorSvc.UpdateMarketAssetsPrecision(
+		ctx, market, int(req.GetBaseAssetPrecision()), int(req.GetQuoteAssetPrecision()),
+	); err != nil {
+		return nil, err
+	}
+
+	return &daemonv1.UpdateMarketAssetsPrecisionResponse{}, nil
 }
 
 func (o operatorHandler) updateMarketPrice(
@@ -1138,6 +1170,8 @@ func (o operatorHandler) listMarkets(
 				BaseAmount:  marketInfo.Balance.BaseAmount,
 				QuoteAmount: marketInfo.Balance.QuoteAmount,
 			},
+			BaseAssetPrecision:  uint32(marketInfo.BaseAssetPrecision),
+			QuoteAssetPrecision: uint32(marketInfo.QuoteAssetPrecision),
 		})
 	}
 
@@ -1388,6 +1422,13 @@ func parseFixedFee(fee *tdexv1.Fixed) application.Fee {
 		FixedBaseFee:  baseFee,
 		FixedQuoteFee: quoteFee,
 	}
+}
+
+func parsePrecision(precision uint32) (uint, error) {
+	if precision > 8 {
+		return 0, fmt.Errorf("asset precision must be in range [0, 8]")
+	}
+	return uint(precision), nil
 }
 
 func parsePrice(p *tdexv1.Price) (price application.Price, err error) {

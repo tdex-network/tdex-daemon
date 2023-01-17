@@ -59,7 +59,9 @@ type OperatorService interface {
 		ctx context.Context, req WithdrawFeeReq,
 	) ([]byte, []byte, error)
 	// Market account
-	NewMarket(ctx context.Context, market Market) error
+	NewMarket(
+		ctx context.Context, market Market, basePrecision, quotePrecision uint,
+	) error
 	GetMarketInfo(ctx context.Context, market Market) (*MarketInfo, error)
 	GetMarketAddress(
 		ctx context.Context, market Market, numOfAddresses int,
@@ -86,6 +88,9 @@ type OperatorService interface {
 	UpdateMarketFixedFee(
 		ctx context.Context, req MarketWithFee,
 	) (*MarketWithFee, error)
+	UpdateMarketAssetsPrecision(
+		ctx context.Context, market Market, basePrecision, quotePrecision int,
+	) error
 	UpdateMarketPrice(ctx context.Context, req MarketWithPrice) error
 	UpdateMarketStrategy(ctx context.Context, req MarketStrategy) error
 	// Fee Fragmenter account
@@ -443,7 +448,9 @@ func (o *operatorService) WithdrawFeeFunds(
 	return rawTx, rawTxid, nil
 }
 
-func (o *operatorService) NewMarket(ctx context.Context, mkt Market) error {
+func (o *operatorService) NewMarket(
+	ctx context.Context, mkt Market, basePrecision, quotePrecision uint,
+) error {
 	if err := mkt.Validate(); err != nil {
 		return err
 	}
@@ -480,6 +487,7 @@ func (o *operatorService) NewMarket(ctx context.Context, mkt Market) error {
 	accountIndex := latestAccountIndex + 1
 	newMarket, err := domain.NewMarket(
 		accountIndex, mkt.BaseAsset, mkt.QuoteAsset, o.marketFee,
+		basePrecision, quotePrecision,
 	)
 	if err != nil {
 		return err
@@ -538,7 +546,9 @@ func (o *operatorService) GetMarketInfo(ctx context.Context, mkt Market) (*Marke
 			FixedBaseFee:  market.FixedFee.BaseFee,
 			FixedQuoteFee: market.FixedFee.QuoteFee,
 		},
-		Balance: *balance,
+		Balance:             *balance,
+		BaseAssetPrecision:  market.BaseAssetPrecision,
+		QuoteAssetPrecision: market.QuoteAssetPrecision,
 	}, nil
 }
 
@@ -1161,6 +1171,39 @@ func (o *operatorService) UpdateMarketPrice(
 	)
 }
 
+func (o *operatorService) UpdateMarketAssetsPrecision(
+	ctx context.Context, market Market, basePrecision, quotePrecision int,
+) error {
+	if err := market.Validate(); err != nil {
+		return err
+	}
+
+	mkt, accountIndex, err := o.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
+	)
+	if err != nil {
+		return err
+	}
+	if accountIndex < 0 {
+		return ErrMarketNotExist
+	}
+
+	fmt.Println("BBB", basePrecision, quotePrecision)
+	if err := mkt.ChangeAssetPrecision(
+		basePrecision, quotePrecision,
+	); err != nil {
+		return err
+	}
+
+	fmt.Println("AAAA", mkt.BaseAssetPrecision, mkt.QuoteAssetPrecision)
+
+	return o.repoManager.MarketRepository().UpdateMarket(
+		ctx, accountIndex, func(_ *domain.Market) (*domain.Market, error) {
+			return mkt, nil
+		},
+	)
+}
+
 // UpdateMarketStrategy changes the current market making strategy,
 // either using an automated market making formula or a pluggable price feed
 func (o *operatorService) UpdateMarketStrategy(
@@ -1413,7 +1456,9 @@ func (o *operatorService) ListMarkets(ctx context.Context) ([]MarketInfo, error)
 				FixedBaseFee:  market.FixedFee.BaseFee,
 				FixedQuoteFee: market.FixedFee.QuoteFee,
 			},
-			Balance: *balance,
+			Balance:             *balance,
+			BaseAssetPrecision:  market.BaseAssetPrecision,
+			QuoteAssetPrecision: market.QuoteAssetPrecision,
 		})
 	}
 
@@ -1726,13 +1771,15 @@ func (o *operatorService) GetMarketReport(
 }
 
 // initGroupedVolume splits the given time range (start, end) into a list of
-//MarketVolume, ie. smaller consecutive time ranges of numHours hours in descending order.
+// MarketVolume, ie. smaller consecutive time ranges of numHours hours in descending order.
 // Example:
 // in: 2009-11-10 19:00:00 (start), 2009-11-11 00:00:00 (end), 2 (numHours)
 // out: [
-//   {end: 2009-11-11 00:00:00, start: 2009-11-10 22:00:01},
-//   {end: 2009-11-11 22:00:00, start: 2009-11-10 20:00:01},
-//   {end: 2009-11-10 20:00:00, start: 2009-11-10 19:00:00},
+//
+//	{end: 2009-11-11 00:00:00, start: 2009-11-10 22:00:01},
+//	{end: 2009-11-11 22:00:00, start: 2009-11-10 20:00:01},
+//	{end: 2009-11-10 20:00:00, start: 2009-11-10 19:00:00},
+//
 // ]
 func initGroupedVolume(start, end time.Time, groupByHours int) []MarketVolume {
 	groupedVolume := make([]MarketVolume, 0)
