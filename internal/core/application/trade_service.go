@@ -221,7 +221,6 @@ func (t *tradeService) GetMarketPrice(
 	spotPricePrecision := calcPricePrecision(*spotPrice)
 	delta := int(spotPricePrecision) - int(mkt.QuoteAssetPrecision)
 	minAmount := uint64(mkt.FixedFee.BaseFee) + 1
-	fmt.Println("DELTA", delta, spotPricePrecision, mkt.QuoteAssetPrecision)
 	if delta > 0 {
 		minAmount = uint64(math.Pow10(delta))
 	}

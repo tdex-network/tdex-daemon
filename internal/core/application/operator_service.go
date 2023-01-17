@@ -1188,14 +1188,11 @@ func (o *operatorService) UpdateMarketAssetsPrecision(
 		return ErrMarketNotExist
 	}
 
-	fmt.Println("BBB", basePrecision, quotePrecision)
 	if err := mkt.ChangeAssetPrecision(
 		basePrecision, quotePrecision,
 	); err != nil {
 		return err
 	}
-
-	fmt.Println("AAAA", mkt.BaseAssetPrecision, mkt.QuoteAssetPrecision)
 
 	return o.repoManager.MarketRepository().UpdateMarket(
 		ctx, accountIndex, func(_ *domain.Market) (*domain.Market, error) {
