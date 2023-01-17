@@ -399,6 +399,10 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityPrice,
 			Action: "write",
 		}},
+		fmt.Sprintf("/%s/UpdateMarketAssetsPrecision", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
 		fmt.Sprintf("/%s/UpdateMarketStrategy", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
