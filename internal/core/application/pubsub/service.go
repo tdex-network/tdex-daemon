@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	tradeSettled = iota
+	tradeSettled = iota + 1
 	accountLowBalance
 	accountWithdraw
 )
