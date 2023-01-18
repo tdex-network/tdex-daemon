@@ -31,11 +31,13 @@ func (m *tx) GetTransaction(
 }
 
 func (m *tx) EstimateFees(
-	ctx context.Context, ins []ports.TxInput, outs []ports.TxOutput,
+	ctx context.Context,
+	ins []ports.TxInput, outs []ports.TxOutput, msatsPerByte uint64,
 ) (uint64, error) {
 	res, err := m.client.EstimateFees(ctx, &pb.EstimateFeesRequest{
-		Inputs:  inputList(ins).toProto(),
-		Outputs: outputList(outs).toProto(),
+		Inputs:           inputList(ins).toProto(),
+		Outputs:          outputList(outs).toProto(),
+		MillisatsPerByte: msatsPerByte,
 	})
 	if err != nil {
 		return 0, err
@@ -130,12 +132,12 @@ func (m *tx) SignPset(
 
 func (m *tx) Transfer(
 	ctx context.Context,
-	accountName string, outs []ports.TxOutput, millisatsPerByte uint64,
+	accountName string, outs []ports.TxOutput, msatsPerByte uint64,
 ) (string, error) {
 	res, err := m.client.Transfer(ctx, &pb.TransferRequest{
 		AccountName:      accountName,
 		Receivers:        outputList(outs).toProto(),
-		MillisatsPerByte: millisatsPerByte,
+		MillisatsPerByte: msatsPerByte,
 	})
 	if err != nil {
 		return "", err

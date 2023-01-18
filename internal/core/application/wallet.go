@@ -14,10 +14,10 @@ type WalletService interface {
 	Network() network.Network
 	NativeAsset() string
 	SendToMany(
-		account string, outs []ports.TxOutput, millisatPerByte uint64,
+		account string, outs []ports.TxOutput, msatsPerByte uint64,
 	) (string, error)
 	CompleteSwap(
-		account string, swapRequest ports.SwapRequest,
+		account string, swapRequest ports.SwapRequest, msatsPerByte uint64,
 	) (string, []ports.Utxo, int64, error)
 	RegisterHandlerForTxEvent(handler func(ports.WalletTxNotification) bool)
 	RegisterHandlerForUtxoEvent(handler func(ports.WalletUtxoNotification) bool)

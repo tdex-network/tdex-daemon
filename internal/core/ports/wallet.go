@@ -44,7 +44,7 @@ type Account interface {
 type Transaction interface {
 	GetTransaction(ctx context.Context, txid string) (string, error)
 	EstimateFees(
-		ctx context.Context, ins []TxInput, outs []TxOutput,
+		ctx context.Context, ins []TxInput, outs []TxOutput, msatsPerByte uint64,
 	) (uint64, error)
 	SelectUtxos(
 		ctx context.Context, accountName, asset string, amount uint64,
@@ -64,7 +64,7 @@ type Transaction interface {
 	) (string, error)
 	Transfer(
 		ctx context.Context,
-		accountName string, outs []TxOutput, millisatsPerByte uint64,
+		accountName string, outs []TxOutput, msatsPerByte uint64,
 	) (string, error)
 	BroadcastTransaction(ctx context.Context, txHex string) (string, error)
 }

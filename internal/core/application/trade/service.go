@@ -17,6 +17,9 @@ import (
 var (
 	ErrServiceUnavailable = fmt.Errorf("service is unavailable, retry later")
 	ErrMarketUnavailable  = fmt.Errorf("market is closed, retry later")
+
+	minSatsPerByte = decimal.NewFromFloat(0.1)
+	maxSatsPerByte = decimal.NewFromInt(10000)
 )
 
 type Service struct {
@@ -24,14 +27,15 @@ type Service struct {
 	pubsub      *pubsub.Service
 	repoManager ports.RepoManager
 
-	priceSlippage decimal.Decimal
+	priceSlippage    decimal.Decimal
+	milliSatsPerByte uint64
 }
 
 func NewService(
 	walletSvc *wallet.Service,
 	pubsubSvc *pubsub.Service,
 	repoManager ports.RepoManager,
-	priceSlippage decimal.Decimal,
+	priceSlippage, satsPerByte decimal.Decimal,
 ) (*Service, error) {
 	if walletSvc == nil {
 		return nil, fmt.Errorf("missing wallet service")
@@ -42,9 +46,17 @@ func NewService(
 	if repoManager == nil {
 		return nil, fmt.Errorf("missing repo manager")
 	}
+	if satsPerByte.LessThan(minSatsPerByte) ||
+		satsPerByte.GreaterThan(maxSatsPerByte) {
+		return nil, fmt.Errorf(
+			"sats per byte ratio must be in range [%s, %s]",
+			minSatsPerByte, maxSatsPerByte,
+		)
+	}
+	msatsPerByte := satsPerByte.Mul(decimal.NewFromInt(1000)).BigInt().Uint64()
 
 	svc := &Service{
-		walletSvc, pubsubSvc, repoManager, priceSlippage,
+		walletSvc, pubsubSvc, repoManager, priceSlippage, msatsPerByte,
 	}
 
 	go svc.checkForPendingTrades()

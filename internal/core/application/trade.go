@@ -32,9 +32,9 @@ type TradeService interface {
 func NewTradeService(
 	walletSvc WalletService, pubsubSvc PubSubService,
 	repoManager ports.RepoManager,
-	priceSlippage decimal.Decimal,
+	priceSlippage, satsPerByte decimal.Decimal,
 ) (TradeService, error) {
 	w := walletSvc.(*wallet.Service)
 	p := pubsubSvc.(*pubsub.Service)
-	return trade.NewService(w, p, repoManager, priceSlippage)
+	return trade.NewService(w, p, repoManager, priceSlippage, satsPerByte)
 }

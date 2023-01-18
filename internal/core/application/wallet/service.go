@@ -79,7 +79,7 @@ func (s *Service) NativeAsset() string {
 }
 
 func (s *Service) SendToMany(
-	account string, outs []ports.TxOutput, millisatPerByte uint64,
+	account string, outs []ports.TxOutput, msatsPerByte uint64,
 ) (string, error) {
 	ctx := context.Background()
 	txManager := s.wallet.Transaction()
@@ -128,7 +128,9 @@ func (s *Service) SendToMany(
 		}
 	}
 
-	dummyFeeAmount, err := txManager.EstimateFees(ctx, inputs, outputs)
+	dummyFeeAmount, err := txManager.EstimateFees(
+		ctx, inputs, outputs, msatsPerByte,
+	)
 	if err != nil {
 		return "", err
 	}
@@ -157,7 +159,9 @@ func (s *Service) SendToMany(
 			lbtc, change, hex.EncodeToString(info.Script),
 			hex.EncodeToString(info.BlindingKey),
 		})
-		feeAmount, err = txManager.EstimateFees(ctx, inputs, outputs)
+		feeAmount, err = txManager.EstimateFees(
+			ctx, inputs, outputs, msatsPerByte,
+		)
 		if err != nil {
 			return "", err
 		}
@@ -195,7 +199,7 @@ func (s *Service) SendToMany(
 }
 
 func (s *Service) CompleteSwap(
-	account string, swapRequest ports.SwapRequest,
+	account string, swapRequest ports.SwapRequest, msatsPerByte uint64,
 ) (string, []ports.Utxo, int64, error) {
 	ctx := context.Background()
 	txManager := s.wallet.Transaction()
@@ -274,7 +278,9 @@ func (s *Service) CompleteSwap(
 
 	allInputs := append(existingInputs, inputs...)
 	allOutputs := append(existingOutputs, outputs...)
-	dummyFeeAmount, err := txManager.EstimateFees(ctx, allInputs, allOutputs)
+	dummyFeeAmount, err := txManager.EstimateFees(
+		ctx, allInputs, allOutputs, msatsPerByte,
+	)
 	if err != nil {
 		return "", nil, -1, err
 	}
@@ -309,7 +315,9 @@ func (s *Service) CompleteSwap(
 
 		allInputs := append(existingInputs, inputs...)
 		allOutputs := append(existingOutputs, outputs...)
-		feeAmount, err = txManager.EstimateFees(ctx, allInputs, allOutputs)
+		feeAmount, err = txManager.EstimateFees(
+			ctx, allInputs, allOutputs, msatsPerByte,
+		)
 		if err != nil {
 			return "", nil, -1, err
 		}

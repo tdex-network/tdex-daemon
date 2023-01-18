@@ -37,9 +37,9 @@ var (
 	connectAddr, connectProto                              string
 	operatorTLSExtraIPs, operatorTLSExtraDomains           []string
 	// App services config
-	marketsPercentageFee     uint32
-	feeBalanceThreshold      uint64
-	pricesSlippagePercentage decimal.Decimal
+	marketsPercentageFee                  uint32
+	feeBalanceThreshold                   uint64
+	pricesSlippagePercentage, satsPerByte decimal.Decimal
 
 	version = "dev"
 	commit  = "none"
@@ -78,6 +78,7 @@ func main() {
 		MarketPercentageFee: marketsPercentageFee,
 		FeeBalanceThreshold: feeBalanceThreshold,
 		TradePriceSlippage:  pricesSlippagePercentage,
+		TradeSatsPerByte:    satsPerByte,
 		DBType:              dbType,
 		DBConfig:            dbDir,
 	}
@@ -135,6 +136,7 @@ func loadConfig() error {
 	// App services config
 	marketsPercentageFee = uint32(config.GetFloat(config.PercentageFeeKey) * 100)
 	pricesSlippagePercentage = decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
+	satsPerByte = decimal.NewFromFloat(config.GetFloat(config.TradeSatsPerByte))
 	feeBalanceThreshold = uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
 	tradeSvcPort = config.GetInt(config.TradeListeningPortKey)
 	operatorSvcPort = config.GetInt(config.OperatorListeningPortKey)

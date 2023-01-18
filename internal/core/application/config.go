@@ -26,6 +26,7 @@ type Config struct {
 	MarketPercentageFee uint32
 	FeeBalanceThreshold uint64
 	TradePriceSlippage  decimal.Decimal
+	TradeSatsPerByte    decimal.Decimal
 
 	repo     ports.RepoManager
 	pubsub   PubSubService
@@ -142,7 +143,7 @@ func (c *Config) tradeService() (TradeService, error) {
 		pubsub, _ := c.pubsubService()
 		repo, _ := c.repoManager()
 		trade, err := NewTradeService(
-			wallet, pubsub, repo, c.TradePriceSlippage,
+			wallet, pubsub, repo, c.TradePriceSlippage, c.TradeSatsPerByte,
 		)
 		if err != nil {
 			return nil, err
