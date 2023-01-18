@@ -163,8 +163,17 @@ func (s *service) FeeFragmenterSplitFunds(
 }
 
 func (s *service) WithdrawFeeFragmenterFunds(
-	ctx context.Context, outs []ports.TxOutput, millisatsPerByte uint64,
+	ctx context.Context,
+	password string, outs []ports.TxOutput, millisatsPerByte uint64,
 ) (string, error) {
+	ok, err := s.wallet.Wallet().Auth(ctx, password)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("invalid password")
+	}
+
 	return s.wallet.Transaction().Transfer(
 		ctx, domain.FeeFragmenterAccount, outs, millisatsPerByte,
 	)

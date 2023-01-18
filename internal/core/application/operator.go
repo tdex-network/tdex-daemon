@@ -16,7 +16,8 @@ type OperatorService interface {
 	ListFeeExternalAddresses(ctx context.Context) ([]string, error)
 	GetFeeBalance(ctx context.Context) (ports.Balance, error)
 	WithdrawFeeFunds(
-		ctx context.Context, outputs []ports.TxOutput, millisatsPerByte uint64,
+		ctx context.Context,
+		password string, outputs []ports.TxOutput, millisatsPerByte uint64,
 	) (string, error)
 
 	// Market account
@@ -39,7 +40,7 @@ type OperatorService interface {
 	DropMarket(ctx context.Context, market ports.Market) error
 	WithdrawMarketFunds(
 		ctx context.Context,
-		market ports.Market, outputs []ports.TxOutput, millisatsPerByte uint64,
+		password string, market ports.Market, outputs []ports.TxOutput, millisatsPerByte uint64,
 	) (string, error)
 	UpdateMarketPercentageFee(
 		ctx context.Context, market ports.Market, basisPoint uint32,
@@ -67,7 +68,8 @@ type OperatorService interface {
 		chRes chan ports.FragmenterReply,
 	)
 	WithdrawFeeFragmenterFunds(
-		ctx context.Context, outputs []ports.TxOutput, millisatsPerByte uint64,
+		ctx context.Context,
+		password string, outputs []ports.TxOutput, millisatsPerByte uint64,
 	) (string, error)
 
 	// Market fragmenter account
@@ -83,7 +85,8 @@ type OperatorService interface {
 		chRes chan ports.FragmenterReply,
 	)
 	WithdrawMarketFragmenterFunds(
-		ctx context.Context, outputs []ports.TxOutput, millisatsPerByte uint64,
+		ctx context.Context,
+		password string, outputs []ports.TxOutput, millisatsPerByte uint64,
 	) (string, error)
 
 	// List methods

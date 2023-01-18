@@ -2,6 +2,7 @@ package operator
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -39,8 +40,17 @@ func (s *service) GetFeeBalance(ctx context.Context) (ports.Balance, error) {
 }
 
 func (s *service) WithdrawFeeFunds(
-	ctx context.Context, outs []ports.TxOutput, millisatsPerByte uint64,
+	ctx context.Context,
+	password string, outs []ports.TxOutput, millisatsPerByte uint64,
 ) (string, error) {
+	ok, err := s.wallet.Wallet().Auth(ctx, password)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("invalid password")
+	}
+
 	txHex, err := s.wallet.Transaction().Transfer(
 		ctx, domain.FeeAccount, outs, millisatsPerByte,
 	)

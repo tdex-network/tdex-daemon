@@ -26,19 +26,17 @@ type TdexConnectService interface {
 }
 
 type tdexConnect struct {
-	walletSvc        ports.Wallet
-	validatePassword func(pwd string) bool
-	macaroonBytes    []byte
-	certBytes        []byte
-	macaroonPath     string
-	certPath         string
-	serverAddress    string
-	protocol         string
+	walletSvc     ports.Wallet
+	macaroonBytes []byte
+	certBytes     []byte
+	macaroonPath  string
+	certPath      string
+	serverAddress string
+	protocol      string
 }
 
 func NewTdexConnectService(
-	walletSvc ports.Wallet, validatePassword func(string) bool,
-	macaroonPath, certPath, addr, protocol string,
+	walletSvc ports.Wallet, macaroonPath, certPath, addr, protocol string,
 ) (TdexConnectService, error) {
 	macBytes := readFile(macaroonPath)
 	certBytes := readFile(certPath)
@@ -60,8 +58,7 @@ func NewTdexConnectService(
 	}
 
 	return &tdexConnect{
-		walletSvc, validatePassword, macBytes, certBytes,
-		macaroonPath, certPath, addr, p,
+		walletSvc, macBytes, certBytes, macaroonPath, certPath, addr, p,
 	}, nil
 }
 
@@ -131,7 +128,7 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if !t.validatePassword(password) {
+	if ok, _ := t.walletSvc.Auth(context.Background(), password); !ok {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)

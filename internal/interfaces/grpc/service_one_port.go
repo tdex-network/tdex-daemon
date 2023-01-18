@@ -297,7 +297,7 @@ func (s *serviceOnePort) newServer(
 	var grpcGateway http.Handler
 	if !withWalletOnly {
 		operatorHandler := grpchandler.NewOperatorHandler(
-			s.opts.AppConfig.OperatorService(), s.validatePassword,
+			s.opts.AppConfig.OperatorService(),
 		)
 		transportHandler := grpchandler.NewTransportHandler()
 		tradeHandler := grpchandler.NewTradeHandler(s.opts.AppConfig.TradeService())
@@ -345,7 +345,6 @@ func (s *serviceOnePort) newServer(
 
 	tdexConnectSvc, err := httpinterface.NewTdexConnectService(
 		s.opts.AppConfig.WalletService().Wallet(),
-		s.validatePassword,
 		adminMacaroonPath,
 		s.opts.TLSCert,
 		s.opts.ConnectAddr,
@@ -439,8 +438,4 @@ func (s *serviceOnePort) onChangePwd(oldPassword, newPassword string) {
 	if err := s.macaroonSvc.ChangePassword(oldPwd, newPwd); err != nil {
 		log.WithError(err).Warn("failed to change password of macaroon store")
 	}
-}
-
-func (s *serviceOnePort) validatePassword(pwd string) bool {
-	return pwd == s.password
 }

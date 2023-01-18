@@ -42,6 +42,8 @@ type WalletServiceClient interface {
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	// GetInfo returns info about the HD wallet.
 	GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoResponse, error)
+	// Auth verifies whether the given password is valid without unlocking the wallet
+	Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 }
 
 type walletServiceClient struct {
@@ -124,6 +126,15 @@ func (c *walletServiceClient) GetInfo(ctx context.Context, in *GetInfoRequest, o
 	return out, nil
 }
 
+func (c *walletServiceClient) Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
+	out := new(AuthResponse)
+	err := c.cc.Invoke(ctx, "/ocean.v1.WalletService/Auth", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WalletServiceServer is the server API for WalletService service.
 // All implementations should embed UnimplementedWalletServiceServer
 // for forward compatibility
@@ -148,6 +159,8 @@ type WalletServiceServer interface {
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
 	// GetInfo returns info about the HD wallet.
 	GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error)
+	// Auth verifies whether the given password is valid without unlocking the wallet
+	Auth(context.Context, *AuthRequest) (*AuthResponse, error)
 }
 
 // UnimplementedWalletServiceServer should be embedded to have forward compatible implementations.
@@ -177,6 +190,9 @@ func (UnimplementedWalletServiceServer) Status(context.Context, *StatusRequest) 
 }
 func (UnimplementedWalletServiceServer) GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetInfo not implemented")
+}
+func (UnimplementedWalletServiceServer) Auth(context.Context, *AuthRequest) (*AuthResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Auth not implemented")
 }
 
 // UnsafeWalletServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -334,6 +350,24 @@ func _WalletService_GetInfo_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WalletService_Auth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WalletServiceServer).Auth(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ocean.v1.WalletService/Auth",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WalletServiceServer).Auth(ctx, req.(*AuthRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WalletService_ServiceDesc is the grpc.ServiceDesc for WalletService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -372,6 +406,10 @@ var WalletService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetInfo",
 			Handler:    _WalletService_GetInfo_Handler,
+		},
+		{
+			MethodName: "Auth",
+			Handler:    _WalletService_Auth_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

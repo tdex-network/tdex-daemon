@@ -79,6 +79,14 @@
         }
       }
     },
+    "v1AuthResponse": {
+      "type": "object",
+      "properties": {
+        "verified": {
+          "type": "boolean"
+        }
+      }
+    },
     "v1BuildInfo": {
       "type": "object",
       "properties": {

@@ -434,7 +434,7 @@ func (s *service) newOperatorServer(
 
 	if withOperatorHandler {
 		operatorHandler := grpchandler.NewOperatorHandler(
-			s.opts.AppConfig.OperatorService(), s.validatePassword,
+			s.opts.AppConfig.OperatorService(),
 		)
 		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
 	}
@@ -448,7 +448,6 @@ func (s *service) newOperatorServer(
 
 	tdexConnectSvc, err := httpinterface.NewTdexConnectService(
 		s.opts.AppConfig.WalletService().Wallet(),
-		s.validatePassword,
 		adminMacaroonPath,
 		s.opts.operatorTLSCert(),
 		s.opts.ConnectAddr,
@@ -613,8 +612,4 @@ func (s *service) onChangePwd(oldPassword, newPassword string) {
 	if err := s.macaroonSvc.ChangePassword(oldPwd, newPwd); err != nil {
 		log.WithError(err).Warn("failed to change password of macaroon store")
 	}
-}
-
-func (s *service) validatePassword(pwd string) bool {
-	return pwd == s.password
 }

@@ -89,6 +89,14 @@ func (m *wallet) Info(ctx context.Context) (ports.WalletInfo, error) {
 	return walletInfo{res}, nil
 }
 
+func (m *wallet) Auth(ctx context.Context, password string) (bool, error) {
+	res, err := m.client.Auth(ctx, &pb.AuthRequest{Password: password})
+	if err != nil {
+		return false, err
+	}
+	return res.GetVerified(), nil
+}
+
 type walletStatus struct {
 	*pb.StatusResponse
 }

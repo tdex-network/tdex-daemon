@@ -216,8 +216,16 @@ func (s *service) MarketFragmenterSplitFunds(
 }
 
 func (s *service) WithdrawMarketFragmenterFunds(
-	ctx context.Context, outputs []ports.TxOutput, millisatsPerByte uint64,
+	ctx context.Context,
+	password string, outputs []ports.TxOutput, millisatsPerByte uint64,
 ) (string, error) {
+	ok, err := s.wallet.Wallet().Auth(ctx, password)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("invalid password")
+	}
 	return s.wallet.SendToMany(
 		domain.MarketFragmenterAccount, outputs, millisatsPerByte,
 	)

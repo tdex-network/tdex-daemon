@@ -19,6 +19,7 @@ type Wallet interface {
 	ChangePassword(ctx context.Context, oldPwd, newPwd string) error
 	Status(ctx context.Context) (WalletStatus, error)
 	Info(ctx context.Context) (WalletInfo, error)
+	Auth(ctx context.Context, password string) (bool, error)
 }
 
 type Account interface {

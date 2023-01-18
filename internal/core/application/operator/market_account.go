@@ -228,8 +228,16 @@ func (s *service) DropMarket(ctx context.Context, market ports.Market) error {
 
 func (s *service) WithdrawMarketFunds(
 	ctx context.Context,
-	market ports.Market, outputs []ports.TxOutput, millisatsPerByte uint64,
+	password string, market ports.Market, outputs []ports.TxOutput, millisatsPerByte uint64,
 ) (string, error) {
+	ok, err := s.wallet.Wallet().Auth(ctx, password)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("invalid password")
+	}
+
 	mkt, err := s.repoManager.MarketRepository().GetMarketByAssets(
 		ctx, market.GetBaseAsset(), market.GetQuoteAsset(),
 	)

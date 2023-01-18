@@ -13,21 +13,20 @@ import (
 )
 
 type operatorHandler struct {
-	operatorSvc       application.OperatorService
-	passwordValidator func(pwd string) bool
+	operatorSvc application.OperatorService
 }
 
 // NewOperatorHandler is a constructor function returning an protobuf OperatorServer.
 func NewOperatorHandler(
-	operatorSvc application.OperatorService, pwdValidator func(pwd string) bool,
+	operatorSvc application.OperatorService,
 ) daemonv2.OperatorServiceServer {
-	return newOperatorHandler(operatorSvc, pwdValidator)
+	return newOperatorHandler(operatorSvc)
 }
 
 func newOperatorHandler(
-	operatorSvc application.OperatorService, pwdValidator func(pwd string) bool,
+	operatorSvc application.OperatorService,
 ) *operatorHandler {
-	return &operatorHandler{operatorSvc, pwdValidator}
+	return &operatorHandler{operatorSvc}
 }
 
 func (h *operatorHandler) DeriveFeeAddresses(
@@ -301,12 +300,9 @@ func (h *operatorHandler) withdrawFee(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	if !h.passwordValidator(password) {
-		return nil, status.Error(codes.InvalidArgument, "incorrect password")
-	}
 
 	txid, err := h.operatorSvc.WithdrawFeeFunds(
-		ctx, outputs, msatsPerByte,
+		ctx, password, outputs, msatsPerByte,
 	)
 	if err != nil {
 		return nil, err
@@ -449,12 +445,9 @@ func (h *operatorHandler) withdrawMarket(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	if !h.passwordValidator(password) {
-		return nil, status.Error(codes.InvalidArgument, "incorrect password")
-	}
 
 	txid, err := h.operatorSvc.WithdrawMarketFunds(
-		ctx, market, outputs, msatsPerByte,
+		ctx, password, market, outputs, msatsPerByte,
 	)
 	if err != nil {
 		return nil, err
@@ -681,12 +674,9 @@ func (h *operatorHandler) withdrawFeeFragmenter(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	if !h.passwordValidator(password) {
-		return nil, status.Error(codes.InvalidArgument, "incorrect password")
-	}
 
 	txid, err := h.operatorSvc.WithdrawFeeFragmenterFunds(
-		ctx, outputs, msatsPerByte,
+		ctx, password, outputs, msatsPerByte,
 	)
 	if err != nil {
 		return nil, err
@@ -791,12 +781,9 @@ func (h *operatorHandler) withdrawMarketFragmenter(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	if !h.passwordValidator(password) {
-		return nil, status.Error(codes.InvalidArgument, "incorrect password")
-	}
 
 	txid, err := h.operatorSvc.WithdrawMarketFragmenterFunds(
-		ctx, outputs, msatsPerByte,
+		ctx, password, outputs, msatsPerByte,
 	)
 	if err != nil {
 		return nil, err
