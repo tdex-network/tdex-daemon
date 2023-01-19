@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"fmt"
+
 	"github.com/shopspring/decimal"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
@@ -166,6 +168,34 @@ func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
 }
 
 // ChangeBasePrice ...
+func (m *Market) ChangeAssetPrecision(
+	baseAssetPrecision, quoteAssetPrecision int,
+) error {
+	if m.IsTradable() {
+		return ErrMarketMustBeClosed
+	}
+
+	if baseAssetPrecision >= 0 {
+		if err := validatePrecision(uint(baseAssetPrecision)); err != nil {
+			return fmt.Errorf("invalid base asset precision: %s", err)
+		}
+	}
+	if quoteAssetPrecision >= 0 {
+		if err := validatePrecision(uint(quoteAssetPrecision)); err != nil {
+			return fmt.Errorf("invalid quote asset precision: %s", err)
+		}
+	}
+
+	if baseAssetPrecision >= 0 {
+		m.BaseAssetPrecision = uint(baseAssetPrecision)
+	}
+	if quoteAssetPrecision >= 0 {
+		m.QuoteAssetPrecision = uint(quoteAssetPrecision)
+	}
+	return nil
+}
+
+// ChangeBasePrice ...
 func (m *Market) ChangeBasePrice(price decimal.Decimal) error {
 	zero := decimal.NewFromInt(0)
 	if price.LessThanOrEqual(zero) {
@@ -240,6 +270,12 @@ func (m *Market) Preview(
 		Amount: previewAmount,
 		Asset:  previewAsset,
 	}, nil
+}
+
+func (m *Market) SpotPrice(
+	baseBalance, quoteBalance uint64,
+) (Prices, error) {
+	return m.priceForStrategy(baseBalance, quoteBalance)
 }
 
 func (m *Market) formula(
@@ -385,6 +421,14 @@ func validateFee(basisPoint int64) error {
 func validateFixedFee(baseFee, quoteFee int64) error {
 	if baseFee < -1 || quoteFee < -1 {
 		return ErrInvalidFixedFee
+	}
+
+	return nil
+}
+
+func validatePrecision(precision uint) error {
+	if precision > 8 {
+		return ErrInvalidPrecision
 	}
 
 	return nil

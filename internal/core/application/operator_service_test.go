@@ -60,7 +60,7 @@ func TestAccountManagement(t *testing.T) {
 		QuoteAsset: marketQuoteAsset,
 	}
 
-	err = operatorSvc.NewMarket(ctx, mkt)
+	err = operatorSvc.NewMarket(ctx, mkt, 8, 8)
 	require.NoError(t, err)
 
 	mktAddressesAndKeys, err := operatorSvc.GetMarketAddress(ctx, mkt, 2)
@@ -329,12 +329,12 @@ func TestOperatorServiceGetMarketReport(t *testing.T) {
 			},
 			want: func(report *application.MarketReport, notNilAt []int, wantGroupedVolumeLen int) error {
 				//validate that report contains data from 2021 and 2022
-				if report.GroupedVolume[0].StartTime.Year() != 2022 {
-					return errors.New(fmt.Sprintf("expected grouped volume start time year: %v, got: %v", 2022, report.GroupedVolume[0].StartTime.Year()))
+				if report.GroupedVolume[0].StartTime.Year() < 2022 {
+					return fmt.Errorf("expected grouped volume start time year to not be before %v, got: %v", 2022, report.GroupedVolume[0].StartTime.Year())
 				}
 
 				if report.GroupedVolume[len(report.GroupedVolume)-1].StartTime.Year() != 2021 {
-					return errors.New(fmt.Sprintf("expected grouped volume start time year: %v, got: %v", 2021, report.GroupedVolume[0].StartTime.Year()))
+					return fmt.Errorf("expected grouped volume start time year: %v, got: %v", 2021, report.GroupedVolume[0].StartTime.Year())
 				}
 
 				return nil

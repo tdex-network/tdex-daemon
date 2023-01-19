@@ -74,6 +74,10 @@ message MarketInfo {
   tdex.v1.Price price = 6;
   // The current unlocked balance.
   tdex.v1.Balance balance = 7;
+  // The precision of the base asset.
+  uint32 base_asset_precision = 8;
+  // The precision of the quote asset.
+  uint32 quote_asset_precision = 9;
 }
 
 message UtxoInfo {

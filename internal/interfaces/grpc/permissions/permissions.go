@@ -34,8 +34,8 @@ func Validate() error {
 }
 
 // findUnhandledMethods returns RPC methods that are not included in public routes
-//nor in routes for which invocation some kind of auth is needed
-//purpose of this check is to prevent forgetting adding of new rpc methods to public/auth map
+// nor in routes for which invocation some kind of auth is needed
+// purpose of this check is to prevent forgetting adding of new rpc methods to public/auth map
 func findUnhandledMethods(publicRoutes, methodsThatNeedsAuth map[string][]bakery.Op) []string {
 	result := make([]string, 0)
 	allMethods := make([]string, 0)
@@ -251,6 +251,10 @@ func Whitelist() map[string][]bakery.Op {
 			Entity: EntityTrade,
 			Action: "read",
 		}},
+		fmt.Sprintf("/%s/GetMarketPrice", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+			Entity: EntityTrade,
+			Action: "read",
+		}},
 		fmt.Sprintf("/%s/PreviewTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
@@ -395,6 +399,10 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityPrice,
 			Action: "write",
 		}},
+		fmt.Sprintf("/%s/UpdateMarketAssetsPrecision", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
+			Entity: EntityMarket,
+			Action: "write",
+		}},
 		fmt.Sprintf("/%s/UpdateMarketStrategy", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
 			Action: "write",
@@ -477,10 +485,6 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 		}},
 		fmt.Sprintf("/%s/GetMarketReport", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityMarket,
-			Action: "read",
-		}},
-		"/Transport/SupportedContentTypes": {{
-			Entity: EntityTransport,
 			Action: "read",
 		}},
 	}

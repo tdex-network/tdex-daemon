@@ -221,7 +221,7 @@ func newTradeServiceTest(
 	}
 
 	mkt, err := domain.NewMarket(
-		domain.MarketAccountStart, marketBaseAsset, marketQuoteAsset, marketFee,
+		domain.MarketAccountStart, marketBaseAsset, marketQuoteAsset, marketFee, 8, 8,
 	)
 	if err != nil {
 		return nil, err
@@ -300,7 +300,7 @@ func marketOrder(
 	asset string,
 ) {
 	amount := uint64(btcAmount * math.Pow10(8))
-	preview, err := tradeSvc.GetMarketPrice(ctx, market, tradeType, amount, asset)
+	preview, err := tradeSvc.GetTradePreview(ctx, market, tradeType, amount, asset)
 	require.NoError(t, err)
 	require.NotNil(t, preview)
 

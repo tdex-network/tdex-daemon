@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/hex"
+	"fmt"
 
 	"github.com/shopspring/decimal"
 	mm "github.com/tdex-network/tdex-daemon/pkg/marketmaking"
@@ -19,6 +20,9 @@ type Market struct {
 	AccountIndex int
 	BaseAsset    string
 	QuoteAsset   string
+	// Precision of the market assets.
+	BaseAssetPrecision  uint
+	QuoteAssetPrecision uint
 	// Each Market has a different fee expressed in basis point of each swap.
 	Fee      int64
 	FixedFee FixedFee
@@ -60,6 +64,7 @@ type PreviewInfo struct {
 // percentage fee set.
 func NewMarket(
 	accountIndex int, baseAsset, quoteAsset string, feeInBasisPoint int64,
+	baseAssetPrecision, quoteAssetPrecision uint,
 ) (*Market, error) {
 	if !isValidAsset(baseAsset) {
 		return nil, ErrMarketInvalidBaseAsset
@@ -72,6 +77,12 @@ func NewMarket(
 	}
 	if err := validateFee(feeInBasisPoint); err != nil {
 		return nil, err
+	}
+	if err := validatePrecision(baseAssetPrecision); err != nil {
+		return nil, fmt.Errorf("invalid base asset precision: %s", err)
+	}
+	if err := validatePrecision(quoteAssetPrecision); err != nil {
+		return nil, fmt.Errorf("invalid quote asset precision: %s", err)
 	}
 
 	return &Market{

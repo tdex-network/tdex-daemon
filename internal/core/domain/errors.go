@@ -51,6 +51,7 @@ var (
 	// ErrMarketPreviewAmountTooLow is returned when a preview fails because
 	// the provided amount makes the previewed amount to be too low (lower than
 	// the optional fixed fee).
+	ErrInvalidPrecision          = errors.New("precision must be in range [0,8]")
 	ErrMarketPreviewAmountTooLow = errors.New("provided amount is too low")
 	// ErrMarketPreviewAmountTooBig is returned when a preview fails because
 	// the provided amount makes the previewed amount to be too big (greater than

@@ -49,6 +49,39 @@
         ]
       }
     },
+    "/v1/market/price": {
+      "post": {
+        "summary": "GetMarketPrice retutns the spot price for the requested market and its\nminimum tradable amount of base asset.",
+        "operationId": "TradeService_GetMarketPrice",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetMarketPriceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetMarketPriceRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TradeService"
+        ]
+      }
+    },
     "/v1/markets": {
       "post": {
         "summary": "ListMarkets lists all the markets open for trading.",
@@ -257,8 +290,7 @@
         "fixed": {
           "$ref": "#/definitions/v1Fixed"
         }
-      },
-      "title": "Custom Types"
+      }
     },
     "v1Fixed": {
       "type": "object",
@@ -286,6 +318,27 @@
       "properties": {
         "balance": {
           "$ref": "#/definitions/v1BalanceWithFee"
+        }
+      }
+    },
+    "v1GetMarketPriceRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        }
+      }
+    },
+    "v1GetMarketPriceResponse": {
+      "type": "object",
+      "properties": {
+        "spotPrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "minTradableAmount": {
+          "type": "string",
+          "format": "uint64"
         }
       }
     },
@@ -444,6 +497,13 @@
             "format": "byte"
           },
           "description": "In case of a confidential transaction the blinding key of each confidential\noutput is included. Each blinding key is identified by the output script\nhex encoded."
+        },
+        "unblindedInputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1UnblindedInput"
+          },
+          "description": "In case of psetv2 transaction, the original list of trader's unblinded inputs,\nincluding also those of the inputs added by the provider."
         }
       }
     },
@@ -521,7 +581,7 @@
             "type": "string",
             "format": "byte"
           },
-          "description": "In case of a confidential transaction the blinding key of each confidential\ninput is included. Each blinding key is identified by the prevout script\nhex encoded."
+          "description": "In case of a confidential psetv0 transaction the blinding key of each\nconfidential input is included. Each blinding key is identified by the \nprevout script hex encoded."
         },
         "outputBlindingKey": {
           "type": "object",
@@ -529,7 +589,14 @@
             "type": "string",
             "format": "byte"
           },
-          "description": "In case of a confidential transaction the blinding key of each confidential\noutput is included. Each blinding key is identified by the output script\nhex encoded."
+          "description": "In case of a confidential psetv0 transaction the blinding key of each\nconfidential output is included. Each blinding key is identified by the\noutput script hex encoded."
+        },
+        "unblindedInputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1UnblindedInput"
+          },
+          "description": "In case of psetv2 transaction, the list of trader's unblinded inputs data,\neven in case they are unconfidential."
         }
       }
     },
@@ -540,6 +607,29 @@
         "TRADE_TYPE_SELL"
       ],
       "default": "TRADE_TYPE_BUY"
+    },
+    "v1UnblindedInput": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "asset": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "assetBlinder": {
+          "type": "string"
+        },
+        "amountBlinder": {
+          "type": "string"
+        }
+      },
+      "title": "Custom Types"
     }
   }
 }

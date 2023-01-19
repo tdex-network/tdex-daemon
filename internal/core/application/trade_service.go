@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -26,6 +27,10 @@ import (
 type TradeService interface {
 	GetTradableMarkets(ctx context.Context) ([]MarketWithFee, error)
 	GetMarketPrice(
+		ctx context.Context,
+		market Market,
+	) (*decimal.Decimal, uint64, error)
+	GetTradePreview(
 		ctx context.Context,
 		market Market,
 		tradeType int,
@@ -183,6 +188,51 @@ func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 }
 
 func (t *tradeService) GetMarketPrice(
+	ctx context.Context,
+	market Market,
+) (*decimal.Decimal, uint64, error) {
+	if err := market.Validate(); err != nil {
+		return nil, 0, err
+	}
+
+	mkt, _, err := t.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.BaseAsset, market.QuoteAsset,
+	)
+	if err != nil {
+		log.Debugf("error while retrieving market: %s", err)
+		return nil, 0, ErrServiceUnavailable
+	}
+	if mkt == nil {
+		return nil, 0, ErrMarketNotExist
+	}
+
+	balance, err := getUnlockedBalanceForMarket(t.repoManager, ctx, mkt)
+	if err != nil {
+		log.WithError(err).Debug("error while retrieving balance")
+		return nil, 0, ErrServiceUnavailable
+	}
+
+	price, err := mkt.SpotPrice(balance.BaseAmount, balance.QuoteAmount)
+	if err != nil {
+		log.WithError(err).Debug("error while retrieving spot price")
+		return nil, 0, ErrServiceUnavailable
+	}
+	spotPrice := &price.QuotePrice
+	minAmount := uint64(mkt.FixedFee.BaseFee) + 1
+	if minAmount == 1 {
+		if mkt.BaseAssetPrecision > mkt.QuoteAssetPrecision {
+			minAmountDec := price.BasePrice.Div(
+				decimal.NewFromFloat(math.Pow10(int(mkt.QuoteAssetPrecision))),
+			).Mul(decimal.NewFromFloat(math.Pow10(int(mkt.BaseAssetPrecision))))
+			if minAmountDec.GreaterThanOrEqual(decimal.NewFromInt(1)) {
+				minAmount = minAmountDec.BigInt().Uint64()
+			}
+		}
+	}
+	return spotPrice, minAmount, nil
+}
+
+func (t *tradeService) GetTradePreview(
 	ctx context.Context,
 	market Market,
 	tradeType int,
@@ -968,4 +1018,19 @@ func isPriceInRange(
 	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
 
 	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
+}
+
+func calcPricePrecision(price decimal.Decimal) uint {
+	precision := uint(0)
+	one := decimal.NewFromInt(1)
+	ten := decimal.NewFromInt(10)
+	d, _ := decimal.NewFromString(price.String())
+
+	for {
+		if d.GreaterThanOrEqual(one) {
+			return precision
+		}
+		d = d.Mul(ten)
+		precision++
+	}
 }

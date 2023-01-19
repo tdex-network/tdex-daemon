@@ -111,13 +111,15 @@ type TradeInfo struct {
 
 // MarketInfo is the data struct returned by ListMarket RPC.
 type MarketInfo struct {
-	AccountIndex uint64
-	Market       Market
-	Fee          Fee
-	Tradable     bool
-	StrategyType int
-	Price        domain.Prices
-	Balance      Balance
+	AccountIndex        uint64
+	Market              Market
+	Fee                 Fee
+	Tradable            bool
+	StrategyType        int
+	Price               domain.Prices
+	Balance             Balance
+	BaseAssetPrecision  uint
+	QuoteAssetPrecision uint
 }
 
 type Market struct {

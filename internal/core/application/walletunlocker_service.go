@@ -653,7 +653,7 @@ func (w *walletUnlockerService) restoreMarket(
 
 		var err error
 		market, err = domain.NewMarket(
-			accountIndex, baseAsset, quoteAsset, w.marketFee,
+			accountIndex, baseAsset, quoteAsset, w.marketFee, 0, 0,
 		)
 		if err != nil {
 			return nil, err

@@ -207,8 +207,7 @@
         "fixed": {
           "$ref": "#/definitions/v1Fixed"
         }
-      },
-      "title": "Custom Types"
+      }
     },
     "v1FeeFragmenterSplitFundsResponse": {
       "type": "object",
@@ -650,6 +649,16 @@
         "balance": {
           "$ref": "#/definitions/v1Balance",
           "description": "The current unlocked balance."
+        },
+        "baseAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the base asset."
+        },
+        "quoteAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the quote asset."
         }
       }
     },
@@ -957,6 +966,9 @@
           "description": "Whether it is failed in the current status."
         }
       }
+    },
+    "v1UpdateMarketAssetsPrecisionResponse": {
+      "type": "object"
     },
     "v1UpdateMarketFixedFeeResponse": {
       "type": "object",
