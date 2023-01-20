@@ -48,6 +48,10 @@ type Market struct {
 	QuoteAsset string
 	// Name of the market.
 	Name string
+	// Precison of the base asset.
+	BaseAssetPrecision uint
+	// Precison of the quote asset.
+	QuoteAssetPrecision uint
 	// Percentage fee expressed in basis points.
 	PercentageFee uint32
 	// Fixed fee amount expressed in satoshi for both assets.
@@ -64,6 +68,7 @@ type Market struct {
 // percentage fee set.
 func NewMarket(
 	baseAsset, quoteAsset string, percentageFee uint32,
+	baseAssetPrecision, quoteAssetPrecision uint,
 ) (*Market, error) {
 	if !isValidAsset(baseAsset) {
 		return nil, ErrMarketInvalidBaseAsset
@@ -74,14 +79,22 @@ func NewMarket(
 	if !isValidPercentageFee(int(percentageFee)) {
 		return nil, ErrMarketInvalidPercentageFee
 	}
+	if !isValidPrecision(baseAssetPrecision) {
+		return nil, ErrMarketInvalidBaseAssetPrecision
+	}
+	if !isValidPrecision(quoteAssetPrecision) {
+		return nil, ErrMarketInvalidQuoteAssetPrecision
+	}
 	accountName := makeAccountName(baseAsset, quoteAsset)
 
 	return &Market{
-		BaseAsset:     baseAsset,
-		QuoteAsset:    quoteAsset,
-		Name:          accountName,
-		PercentageFee: percentageFee,
-		StrategyType:  StrategyTypeBalanced,
+		BaseAsset:           baseAsset,
+		QuoteAsset:          quoteAsset,
+		Name:                accountName,
+		PercentageFee:       percentageFee,
+		StrategyType:        StrategyTypeBalanced,
+		BaseAssetPrecision:  baseAssetPrecision,
+		QuoteAssetPrecision: quoteAssetPrecision,
 	}, nil
 }
 
@@ -205,6 +218,33 @@ func (m *Market) ChangePrice(basePrice, quotePrice decimal.Decimal) error {
 	return nil
 }
 
+func (m *Market) ChangeAssetPrecision(
+	baseAssetPrecision, quoteAssetPrecision int,
+) error {
+	if m.IsTradable() {
+		return ErrMarketIsOpen
+	}
+
+	if baseAssetPrecision >= 0 {
+		if !isValidPrecision(uint(baseAssetPrecision)) {
+			return ErrMarketInvalidBaseAssetPrecision
+		}
+	}
+	if quoteAssetPrecision >= 0 {
+		if !isValidPrecision(uint(quoteAssetPrecision)) {
+			return ErrMarketInvalidQuoteAssetPrecision
+		}
+	}
+
+	if baseAssetPrecision >= 0 {
+		m.BaseAssetPrecision = uint(baseAssetPrecision)
+	}
+	if quoteAssetPrecision >= 0 {
+		m.QuoteAssetPrecision = uint(quoteAssetPrecision)
+	}
+	return nil
+}
+
 func (m *Market) Preview(
 	baseBalance, quoteBalance, amount uint64,
 	isBaseAsset, isBuy bool,
@@ -258,6 +298,12 @@ func (m *Market) Preview(
 		Amount: previewAmount,
 		Asset:  previewAsset,
 	}, nil
+}
+
+func (m *Market) SpotPrice(
+	baseBalance, quoteBalance uint64,
+) (MarketPrice, error) {
+	return m.priceForStrategy(baseBalance, quoteBalance)
 }
 
 func (m *Market) strategy() marketmaking.MakingFormula {
@@ -424,4 +470,8 @@ func isValidPercentageFee(basisPoint int) bool {
 
 func isValidFixedFee(baseFee, quoteFee int) bool {
 	return baseFee >= -1 && quoteFee >= -1
+}
+
+func isValidPrecision(precision uint) bool {
+	return int(precision) >= 0 && precision <= 8
 }

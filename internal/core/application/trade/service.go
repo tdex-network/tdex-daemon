@@ -3,6 +3,7 @@ package trade
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -69,6 +70,43 @@ func (s *Service) GetTradableMarkets(ctx context.Context) ([]ports.MarketInfo, e
 		return nil, ErrServiceUnavailable
 	}
 	return marketList(markets).toPortableList(), nil
+}
+
+func (s *Service) GetMarketPrice(
+	ctx context.Context, market ports.Market,
+) (*decimal.Decimal, uint64, error) {
+	mkt, err := s.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.GetBaseAsset(), market.GetQuoteAsset(),
+	)
+	if err != nil {
+		return nil, 0, ErrServiceUnavailable
+	}
+
+	balance, err := s.wallet.Account().GetBalance(ctx, mkt.Name)
+	if err != nil {
+		return nil, 0, ErrServiceUnavailable
+	}
+
+	baseAssetBalance := balance[mkt.BaseAsset].GetConfirmedBalance()
+	quoteAssetBalance := balance[mkt.QuoteAsset].GetConfirmedBalance()
+	price, err := mkt.SpotPrice(baseAssetBalance, quoteAssetBalance)
+	if err != nil {
+		return nil, 0, ErrServiceUnavailable
+	}
+	spotPrice, _ := decimal.NewFromString(price.QuotePrice)
+	minAmount := uint64(mkt.FixedFee.BaseFee) + 1
+	if minAmount == 1 {
+		if mkt.BaseAssetPrecision > mkt.QuoteAssetPrecision {
+			bp, _ := decimal.NewFromString(price.BasePrice)
+			minAmountDec := bp.Div(
+				decimal.NewFromFloat(math.Pow10(int(mkt.QuoteAssetPrecision))),
+			).Mul(decimal.NewFromFloat(math.Pow10(int(mkt.BaseAssetPrecision))))
+			if minAmountDec.GreaterThanOrEqual(decimal.NewFromInt(1)) {
+				minAmount = minAmountDec.BigInt().Uint64()
+			}
+		}
+	}
+	return &spotPrice, minAmount, nil
 }
 
 func (s *Service) GetMarketBalance(

@@ -120,6 +120,12 @@ func (h *operatorHandler) UpdateMarketFixedFee(
 	return h.updateMarketFixedFee(ctx, req)
 }
 
+func (o operatorHandler) UpdateMarketAssetsPrecision(
+	ctx context.Context, req *daemonv2.UpdateMarketAssetsPrecisionRequest,
+) (*daemonv2.UpdateMarketAssetsPrecisionResponse, error) {
+	return o.updateMarketAssetsPrecision(ctx, req)
+}
+
 func (h *operatorHandler) UpdateMarketPrice(
 	ctx context.Context, req *daemonv2.UpdateMarketPriceRequest,
 ) (*daemonv2.UpdateMarketPriceResponse, error) {
@@ -318,8 +324,18 @@ func (h *operatorHandler) newMarket(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	basePrecision, err := parsePrecision(req.GetBaseAssetPrecision())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	quotePrecision, err := parsePrecision(req.GetQuoteAssetPrecision())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
-	if _, err := h.operatorSvc.NewMarket(ctx, market); err != nil {
+	if _, err := h.operatorSvc.NewMarket(
+		ctx, market, basePrecision, quotePrecision,
+	); err != nil {
 		return nil, err
 	}
 
@@ -536,6 +552,25 @@ func (h *operatorHandler) updateMarketFixedFee(
 			Fee:    marketFeeInfo{info.GetFee()}.toProto(),
 		},
 	}, nil
+}
+
+func (o operatorHandler) updateMarketAssetsPrecision(
+	ctx context.Context, req *daemonv2.UpdateMarketAssetsPrecisionRequest,
+) (*daemonv2.UpdateMarketAssetsPrecisionResponse, error) {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	baseAssetPrecision := int(req.GetBaseAssetPrecision())
+	quoteAssetPrecision := int(req.GetQuoteAssetPrecision())
+
+	if err := o.operatorSvc.UpdateMarketAssetsPrecision(
+		ctx, market, baseAssetPrecision, quoteAssetPrecision,
+	); err != nil {
+		return nil, err
+	}
+
+	return &daemonv2.UpdateMarketAssetsPrecisionResponse{}, nil
 }
 
 func (h *operatorHandler) updateMarketPrice(

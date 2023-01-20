@@ -18,7 +18,7 @@ func TestNewMarket(t *testing.T) {
 
 	fee := uint32(25)
 
-	m, err := domain.NewMarket(baseAsset, quoteAsset, fee)
+	m, err := domain.NewMarket(baseAsset, quoteAsset, fee, 0, 0)
 	require.NoError(t, err)
 	require.NotNil(t, m)
 	require.Equal(t, baseAsset, m.BaseAsset)
@@ -33,11 +33,13 @@ func TestFailingNewMarket(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		baseAsset     string
-		quoteAsset    string
-		fee           int64
-		expectedError error
+		name                string
+		baseAsset           string
+		quoteAsset          string
+		baseAssetPrecision  int
+		quoteAssetPrecision int
+		fee                 int64
+		expectedError       error
 	}{
 		{
 			name:          "invalid_base_asset",
@@ -67,11 +69,30 @@ func TestFailingNewMarket(t *testing.T) {
 			fee:           10000,
 			expectedError: domain.ErrMarketInvalidPercentageFee,
 		},
+		{
+			name:               "invalid_base_asset_precision",
+			baseAsset:          baseAsset,
+			quoteAsset:         quoteAsset,
+			baseAssetPrecision: 10,
+			fee:                25,
+			expectedError:      domain.ErrMarketInvalidBaseAssetPrecision,
+		},
+		{
+			name:                "invalid_quote_asset_precision",
+			baseAsset:           baseAsset,
+			quoteAsset:          quoteAsset,
+			quoteAssetPrecision: -1,
+			fee:                 25,
+			expectedError:       domain.ErrMarketInvalidQuoteAssetPrecision,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := domain.NewMarket(tt.baseAsset, tt.quoteAsset, uint32(tt.fee))
+			_, err := domain.NewMarket(
+				tt.baseAsset, tt.quoteAsset, uint32(tt.fee),
+				uint(tt.baseAssetPrecision), uint(tt.quoteAssetPrecision),
+			)
 			require.EqualError(t, err, tt.expectedError.Error())
 		})
 	}
@@ -1037,7 +1058,7 @@ func TestFailingPreview(t *testing.T) {
 }
 
 func newTestMarket() *domain.Market {
-	m, _ := domain.NewMarket(baseAsset, quoteAsset, 25)
+	m, _ := domain.NewMarket(baseAsset, quoteAsset, 25, 8, 8)
 	return m
 }
 

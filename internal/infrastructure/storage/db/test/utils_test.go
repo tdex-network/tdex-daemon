@@ -11,7 +11,7 @@ import (
 
 func makeRandomMarket() *domain.Market {
 	market, _ := domain.NewMarket(
-		randomHex(32), randomHex(32), uint32(randomIntInRange(0, 9999)),
+		randomHex(32), randomHex(32), uint32(randomIntInRange(0, 9999)), 0, 0,
 	)
 	return market
 }

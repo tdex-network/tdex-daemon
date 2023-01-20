@@ -71,6 +71,13 @@ func parseStrategy(strategyType daemonv2.StrategyType) (int, error) {
 	}
 }
 
+func parsePrecision(precision uint32) (uint, error) {
+	if precision > 8 {
+		return 0, fmt.Errorf("asset precision must be in range [0, 8]")
+	}
+	return uint(precision), nil
+}
+
 func parsePrice(price *tdexv1.Price) (*decimal.Decimal, *decimal.Decimal, error) {
 	if price == nil {
 		return nil, nil, errors.New("missing market price")

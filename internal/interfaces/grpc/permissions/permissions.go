@@ -254,6 +254,10 @@ func Whitelist() map[string][]bakery.Op {
 			Entity: EntityTrade,
 			Action: "read",
 		}},
+		fmt.Sprintf("/%s/GetMarketPrice", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+			Entity: EntityTrade,
+			Action: "read",
+		}},
 		fmt.Sprintf("/%s/PreviewTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
@@ -339,6 +343,10 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 		}},
 		fmt.Sprintf("/%s/UpdateMarketPrice", daemonv2.OperatorService_ServiceDesc.ServiceName): {{
 			Entity: EntityPrice,
+			Action: "write",
+		}},
+		fmt.Sprintf("/%s/UpdateMarketAssetsPrecision", daemonv2.OperatorService_ServiceDesc.ServiceName): {{
+			Entity: EntityMarket,
 			Action: "write",
 		}},
 		fmt.Sprintf("/%s/UpdateMarketStrategy", daemonv2.OperatorService_ServiceDesc.ServiceName): {{

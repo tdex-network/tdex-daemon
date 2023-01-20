@@ -54,6 +54,8 @@ type OperatorServiceClient interface {
 	UpdateMarketPercentageFee(ctx context.Context, in *UpdateMarketPercentageFeeRequest, opts ...grpc.CallOption) (*UpdateMarketPercentageFeeResponse, error)
 	// Changes the Liquidity provider fixed fees for the given market.
 	UpdateMarketFixedFee(ctx context.Context, in *UpdateMarketFixedFeeRequest, opts ...grpc.CallOption) (*UpdateMarketFixedFeeResponse, error)
+	// Changes the Liquidity provider asset(s) precision for the given market.
+	UpdateMarketAssetsPrecision(ctx context.Context, in *UpdateMarketAssetsPrecisionRequest, opts ...grpc.CallOption) (*UpdateMarketAssetsPrecisionResponse, error)
 	// Updates the price for the given market.
 	UpdateMarketPrice(ctx context.Context, in *UpdateMarketPriceRequest, opts ...grpc.CallOption) (*UpdateMarketPriceResponse, error)
 	// Updates the current market making strategy, either using an automated
@@ -237,6 +239,15 @@ func (c *operatorServiceClient) UpdateMarketPercentageFee(ctx context.Context, i
 func (c *operatorServiceClient) UpdateMarketFixedFee(ctx context.Context, in *UpdateMarketFixedFeeRequest, opts ...grpc.CallOption) (*UpdateMarketFixedFeeResponse, error) {
 	out := new(UpdateMarketFixedFeeResponse)
 	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.OperatorService/UpdateMarketFixedFee", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *operatorServiceClient) UpdateMarketAssetsPrecision(ctx context.Context, in *UpdateMarketAssetsPrecisionRequest, opts ...grpc.CallOption) (*UpdateMarketAssetsPrecisionResponse, error) {
+	out := new(UpdateMarketAssetsPrecisionResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.OperatorService/UpdateMarketAssetsPrecision", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -505,6 +516,8 @@ type OperatorServiceServer interface {
 	UpdateMarketPercentageFee(context.Context, *UpdateMarketPercentageFeeRequest) (*UpdateMarketPercentageFeeResponse, error)
 	// Changes the Liquidity provider fixed fees for the given market.
 	UpdateMarketFixedFee(context.Context, *UpdateMarketFixedFeeRequest) (*UpdateMarketFixedFeeResponse, error)
+	// Changes the Liquidity provider asset(s) precision for the given market.
+	UpdateMarketAssetsPrecision(context.Context, *UpdateMarketAssetsPrecisionRequest) (*UpdateMarketAssetsPrecisionResponse, error)
 	// Updates the price for the given market.
 	UpdateMarketPrice(context.Context, *UpdateMarketPriceRequest) (*UpdateMarketPriceResponse, error)
 	// Updates the current market making strategy, either using an automated
@@ -599,6 +612,9 @@ func (UnimplementedOperatorServiceServer) UpdateMarketPercentageFee(context.Cont
 }
 func (UnimplementedOperatorServiceServer) UpdateMarketFixedFee(context.Context, *UpdateMarketFixedFeeRequest) (*UpdateMarketFixedFeeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMarketFixedFee not implemented")
+}
+func (UnimplementedOperatorServiceServer) UpdateMarketAssetsPrecision(context.Context, *UpdateMarketAssetsPrecisionRequest) (*UpdateMarketAssetsPrecisionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateMarketAssetsPrecision not implemented")
 }
 func (UnimplementedOperatorServiceServer) UpdateMarketPrice(context.Context, *UpdateMarketPriceRequest) (*UpdateMarketPriceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMarketPrice not implemented")
@@ -938,6 +954,24 @@ func _OperatorService_UpdateMarketFixedFee_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OperatorServiceServer).UpdateMarketFixedFee(ctx, req.(*UpdateMarketFixedFeeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OperatorService_UpdateMarketAssetsPrecision_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMarketAssetsPrecisionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServiceServer).UpdateMarketAssetsPrecision(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tdex_daemon.v2.OperatorService/UpdateMarketAssetsPrecision",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServiceServer).UpdateMarketAssetsPrecision(ctx, req.(*UpdateMarketAssetsPrecisionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1374,6 +1408,10 @@ var OperatorService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateMarketFixedFee",
 			Handler:    _OperatorService_UpdateMarketFixedFee_Handler,
+		},
+		{
+			MethodName: "UpdateMarketAssetsPrecision",
+			Handler:    _OperatorService_UpdateMarketAssetsPrecision_Handler,
 		},
 		{
 			MethodName: "UpdateMarketPrice",

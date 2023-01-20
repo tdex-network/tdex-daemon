@@ -49,6 +49,39 @@
         ]
       }
     },
+    "/v1/market/price": {
+      "post": {
+        "summary": "GetMarketPrice retutns the spot price for the requested market and its\nminimum tradable amount of base asset.",
+        "operationId": "TradeService_GetMarketPrice",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetMarketPriceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetMarketPriceRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TradeService"
+        ]
+      }
+    },
     "/v1/markets": {
       "post": {
         "summary": "ListMarkets lists all the markets open for trading.",
@@ -285,6 +318,27 @@
       "properties": {
         "balance": {
           "$ref": "#/definitions/v1BalanceWithFee"
+        }
+      }
+    },
+    "v1GetMarketPriceRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        }
+      }
+    },
+    "v1GetMarketPriceResponse": {
+      "type": "object",
+      "properties": {
+        "spotPrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "minTradableAmount": {
+          "type": "string",
+          "format": "uint64"
         }
       }
     },

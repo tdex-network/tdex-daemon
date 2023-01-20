@@ -16,7 +16,8 @@ import (
 const startYear = 2021
 
 func (s *service) NewMarket(
-	ctx context.Context, market ports.Market,
+	ctx context.Context,
+	market ports.Market, baseAssetPrecision, quoteAssetPrecision uint,
 ) (ports.MarketInfo, error) {
 	mkt, _ := s.repoManager.MarketRepository().GetMarketByAssets(
 		ctx, market.GetBaseAsset(), market.GetQuoteAsset(),
@@ -27,6 +28,7 @@ func (s *service) NewMarket(
 
 	newMarket, err := domain.NewMarket(
 		market.GetBaseAsset(), market.GetQuoteAsset(), s.marketPercentageFee,
+		baseAssetPrecision, quoteAssetPrecision,
 	)
 	if err != nil {
 		return nil, err
@@ -314,6 +316,29 @@ func (s *service) UpdateMarketPrice(
 		ctx, mkt.Name, domain.MarketPrice{
 			BasePrice:  basePrice.String(),
 			QuotePrice: quotePrice.String(),
+		},
+	)
+}
+
+func (s *service) UpdateMarketAssetsPrecision(
+	ctx context.Context, market ports.Market, basePrecision, quotePrecision int,
+) error {
+	mkt, err := s.repoManager.MarketRepository().GetMarketByAssets(
+		ctx, market.GetBaseAsset(), market.GetQuoteAsset(),
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := mkt.ChangeAssetPrecision(
+		basePrecision, quotePrecision,
+	); err != nil {
+		return err
+	}
+
+	return s.repoManager.MarketRepository().UpdateMarket(
+		ctx, mkt.Name, func(_ *domain.Market) (*domain.Market, error) {
+			return mkt, nil
 		},
 	)
 }

@@ -22,10 +22,14 @@ var (
 	ErrMarketInvalidBasePrice = errors.New("invalid base price amount, must be > 0")
 	//ErrMarketInvalidQuotePrice is thrown when the amount for Quote price is an invalid satoshis value.
 	ErrMarketInvalidQuotePrice = errors.New("invalid quote price amount, must be > 0")
-	// ErrMarketInvalidBaseAsset is thrown when non valid base asset is given
+	// ErrMarketInvalidBaseAsset is thrown when non valid base asset is given.
 	ErrMarketInvalidBaseAsset = errors.New("invalid base asset")
-	// ErrMarketInvalidQuoteAsset is thrown when non valid quote asset is given
+	// ErrMarketInvalidQuoteAsset is thrown when non valid quote asset is given.
 	ErrMarketInvalidQuoteAsset = errors.New("invalid quote asset")
+	// ErrMarketInvalidBaseAssetPrecision is thrown when non valid quote asset precision is given.
+	ErrMarketInvalidBaseAssetPrecision = errors.New("base asset precision must be in range [0, 8]")
+	// ErrMarketInvalidQuoteAssetPrecision is thrown when non valid quote asset precision is given.
+	ErrMarketInvalidQuoteAssetPrecision = errors.New("quote asset precision must be in range [0, 8]")
 	// ErrInvalidFixedFee ...
 	ErrMarketInvalidFixedFee = errors.New("invalid fixed fee amount")
 	// ErrMarketPreviewAmountTooLow is returned when a preview fails because

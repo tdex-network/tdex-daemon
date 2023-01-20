@@ -40,6 +40,12 @@ func (t tradeHandler) GetMarketBalance(
 	return t.getMarketBalance(ctx, req)
 }
 
+func (t tradeHandler) GetMarketPrice(
+	ctx context.Context, req *tdexv1.GetMarketPriceRequest,
+) (*tdexv1.GetMarketPriceResponse, error) {
+	return t.getMarketPrice(ctx, req)
+}
+
 func (t tradeHandler) PreviewTrade(
 	ctx context.Context, req *tdexv1.PreviewTradeRequest,
 ) (*tdexv1.PreviewTradeResponse, error) {
@@ -104,6 +110,26 @@ func (t tradeHandler) getMarketBalance(
 			},
 			Fee: marketFeeInfo{info.GetFee()}.toProto(),
 		},
+	}, nil
+}
+
+func (t tradeHandler) getMarketPrice(
+	ctx context.Context, req *tdexv1.GetMarketPriceRequest,
+) (*tdexv1.GetMarketPriceResponse, error) {
+	market, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	price, minAmount, err := t.tradeSvc.GetMarketPrice(ctx, market)
+	if err != nil {
+		return nil, err
+	}
+
+	spotPrice, _ := price.Float64()
+	return &tdexv1.GetMarketPriceResponse{
+		SpotPrice:         spotPrice,
+		MinTradableAmount: minAmount,
 	}, nil
 }
 

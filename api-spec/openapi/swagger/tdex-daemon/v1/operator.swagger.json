@@ -464,6 +464,16 @@
         "balance": {
           "$ref": "#/definitions/tdexv1Balance",
           "description": "The current unlocked balance."
+        },
+        "baseAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the base asset."
+        },
+        "quoteAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the quote asset."
         }
       }
     },
@@ -731,6 +741,9 @@
           "description": "Whether it is failed in the current status."
         }
       }
+    },
+    "tdex_daemonv1UpdateMarketAssetsPrecisionResponse": {
+      "type": "object"
     },
     "tdex_daemonv1UpdateMarketFixedFeeResponse": {
       "type": "object",

@@ -405,6 +405,16 @@
             "$ref": "#/definitions/tdex_daemonv2Balance"
           },
           "description": "The current unlocked balance."
+        },
+        "baseAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the base asset."
+        },
+        "quoteAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the quote asset."
         }
       }
     },
@@ -692,6 +702,9 @@
           "description": "Blinding key for confidential output."
         }
       }
+    },
+    "tdex_daemonv2UpdateMarketAssetsPrecisionResponse": {
+      "type": "object"
     },
     "tdex_daemonv2UpdateMarketFixedFeeResponse": {
       "type": "object",

@@ -21,7 +21,10 @@ type OperatorService interface {
 	) (string, error)
 
 	// Market account
-	NewMarket(ctx context.Context, market ports.Market) (ports.MarketInfo, error)
+	NewMarket(
+		ctx context.Context,
+		market ports.Market, baseAssetPrecision, quoteAssetPrecision uint,
+	) (ports.MarketInfo, error)
 	GetMarketInfo(
 		ctx context.Context, market ports.Market,
 	) (ports.MarketInfo, error)
@@ -49,6 +52,10 @@ type OperatorService interface {
 		ctx context.Context,
 		market ports.Market, baseFixedFee, quoteFixedFee int64,
 	) (ports.MarketInfo, error)
+	UpdateMarketAssetsPrecision(
+		ctx context.Context,
+		market ports.Market, baseAssetPrecision, quoteAssetPrecision int,
+	) error
 	UpdateMarketPrice(
 		ctx context.Context,
 		market ports.Market, basePrice, quotePrice decimal.Decimal,

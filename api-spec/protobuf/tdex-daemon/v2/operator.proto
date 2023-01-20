@@ -62,6 +62,10 @@ service OperatorService {
   rpc UpdateMarketFixedFee(UpdateMarketFixedFeeRequest)
     returns (UpdateMarketFixedFeeResponse) {}
 
+  // Changes the Liquidity provider asset(s) precision for the given market.
+  rpc UpdateMarketAssetsPrecision(UpdateMarketAssetsPrecisionRequest)
+    returns (UpdateMarketAssetsPrecisionResponse) {}
+
   // Updates the price for the given market.
   rpc UpdateMarketPrice(UpdateMarketPriceRequest)
     returns (UpdateMarketPriceResponse) {}
@@ -175,6 +179,10 @@ message WithdrawFeeResponse {
 message NewMarketRequest {
   // The asset pair for which creating a new account in the daemon's wallet.
   tdex.v1.Market market = 1;
+  // The precision of the base asset.
+  uint32 base_asset_precision = 2;
+  // The precision of the quote asset.
+  uint32 quote_asset_precision = 3;
 }
 message NewMarketResponse {}
 
@@ -271,6 +279,16 @@ message UpdateMarketFixedFeeResponse {
   // The market with updated fees.
   tdex.v1.MarketWithFee market_with_fee = 1;
 }
+
+message UpdateMarketAssetsPrecisionRequest {
+  // The market for which updating the fixed fee.
+  tdex.v1.Market market = 1;
+  // The new base asset precision. A negative value is used to skip updating this field.
+  int32 base_asset_precision = 2;
+  // The new quote asset precision. A negative value is used to skip updating this field.
+  int32 quote_asset_precision = 3;
+}
+message UpdateMarketAssetsPrecisionResponse {}
 
 message UpdateMarketPriceRequest {
   // The arket for which updating the price.
