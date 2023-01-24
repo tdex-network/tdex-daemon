@@ -218,18 +218,17 @@ func (t *tradeService) GetMarketPrice(
 		return nil, 0, ErrServiceUnavailable
 	}
 	spotPrice := &price.QuotePrice
-	minAmount := uint64(mkt.FixedFee.BaseFee) + 1
-	if minAmount == 1 {
-		if mkt.BaseAssetPrecision > mkt.QuoteAssetPrecision {
-			minAmountDec := price.BasePrice.Div(
-				decimal.NewFromFloat(math.Pow10(int(mkt.QuoteAssetPrecision))),
-			).Mul(decimal.NewFromFloat(math.Pow10(int(mkt.BaseAssetPrecision))))
-			if minAmountDec.GreaterThanOrEqual(decimal.NewFromInt(1)) {
-				minAmount = minAmountDec.BigInt().Uint64()
-			}
-		}
+	if mkt.FixedFee.BaseFee > 0 {
+		return spotPrice, uint64(mkt.FixedFee.BaseFee + 1), nil
 	}
-	return spotPrice, minAmount, nil
+
+	minTradableAmount := uint64(1)
+	if price.BasePrice.LessThan(decimal.NewFromInt(1)) {
+		minTradableAmount = decimal.NewFromFloat(
+			math.Pow10(-int(mkt.QuoteAssetPrecision)),
+		).Div(price.BasePrice).BigInt().Uint64()
+	}
+	return spotPrice, minTradableAmount, nil
 }
 
 func (t *tradeService) GetTradePreview(

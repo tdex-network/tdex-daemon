@@ -4,228 +4,219 @@ import (
 	"testing"
 
 	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
-	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
-func TestBalancedReserves_SpotPrice(t *testing.T) {
-	type args struct {
-		opts interface{}
-	}
+func TestSpotPrice(t *testing.T) {
 	tests := []struct {
 		name          string
-		b             formula.BalancedReserves
-		args          args
+		opts          formula.BalancedReservesOpts
 		wantSpotPrice decimal.Decimal
 	}{
 		{
-			"OutGivenIn",
-			formula.BalancedReserves{},
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:  2 * mathutil.BigOne,
-					BalanceOut: 2 * 9760 * mathutil.BigOne,
-				}),
+			"SpotPrice",
+			formula.BalancedReservesOpts{
+				BalanceIn:  decimal.NewFromInt(2),
+				BalanceOut: decimal.NewFromInt(2 * 9760),
 			},
 			decimal.NewFromInt(9760),
 		},
 	}
+
 	b := &formula.BalancedReserves{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSpotPrice, err := b.SpotPrice(tt.args.opts)
-			if err != nil {
-				t.Fatal(err)
-			}
-			assert.Equal(t, tt.wantSpotPrice.BigInt().Int64(), gotSpotPrice.BigInt().Int64())
+			spotPrice, err := b.SpotPrice(tt.opts)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantSpotPrice.String(), spotPrice.String())
 		})
 	}
 }
 
-func TestBalancedReserves_OutGivenIn(t *testing.T) {
-	type args struct {
-		opts     interface{}
-		amountIn uint64
-	}
-	tests := []struct {
-		name          string
-		args          args
-		wantAmountOut uint64
-	}{
-		{
-			"with fee taken on the input",
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           100000000,
-					BalanceOut:          650000000000,
+func TestOutGivenIn(t *testing.T) {
+	t.Run("valid", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name          string
+			opts          formula.BalancedReservesOpts
+			amountIn      decimal.Decimal
+			wantAmountOut decimal.Decimal
+		}{
+			{
+				"with fee taken on the input",
+				formula.BalancedReservesOpts{
+					BalanceIn:           decimal.NewFromInt(1),
+					BalanceOut:          decimal.NewFromInt(6500),
 					Fee:                 25,
 					ChargeFeeOnTheWayIn: true,
-				}),
-				amountIn: 10000,
+				},
+				decimal.NewFromFloat(0.0001),
+				decimal.NewFromFloat(0.64831033),
 			},
-			64831000,
-		},
-		{
-			"with the fee taken on the output",
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           100000000,
-					BalanceOut:          650000000000,
+			{
+				"with the fee taken on the output",
+				formula.BalancedReservesOpts{
+					BalanceIn:           decimal.NewFromInt(1),
+					BalanceOut:          decimal.NewFromInt(6500),
 					Fee:                 25,
 					ChargeFeeOnTheWayIn: false,
-				}),
-				amountIn: 10000,
+				},
+				decimal.NewFromFloat(0.0001),
+				decimal.NewFromFloat(0.64831017),
 			},
-			64831016,
-		},
-	}
+		}
 
-	failingTests := []struct {
-		name      string
-		args      args
-		wantError error
-	}{
-		{
-			"provided amount is zero",
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           100000000,
-					BalanceOut:          650000000000,
+		b := formula.BalancedReserves{}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				amountOut, err := b.OutGivenIn(tt.opts, tt.amountIn)
+				require.NoError(t, err)
+				require.Equal(t, tt.wantAmountOut.String(), amountOut.String())
+			})
+		}
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name      string
+			opts      formula.BalancedReservesOpts
+			amountIn  decimal.Decimal
+			wantError error
+		}{
+			{
+				"provided amount is zero",
+				formula.BalancedReservesOpts{
+					BalanceIn:           decimal.NewFromInt(1),
+					BalanceOut:          decimal.NewFromInt(6500),
 					Fee:                 25,
 					ChargeFeeOnTheWayIn: true,
-				}),
-				amountIn: 0,
+				},
+				decimal.Zero,
+				formula.ErrAmountTooLow,
 			},
-			formula.ErrAmountTooLow,
-		},
-		{
-			"provided amount too low",
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           650000000000,
-					BalanceOut:          100000000,
+			{
+				"provided amount too low",
+				formula.BalancedReservesOpts{
+					BalanceIn:           decimal.NewFromInt(6500),
+					BalanceOut:          decimal.NewFromInt(1),
 					Fee:                 25,
 					ChargeFeeOnTheWayIn: true,
-				}),
-				amountIn: 3259,
+				},
+				decimal.NewFromFloat(0.00000001),
+				formula.ErrAmountTooLow,
 			},
-			formula.ErrAmountTooLow,
-		},
-	}
+		}
 
-	b := formula.BalancedReserves{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotAmountOut, err := b.OutGivenIn(tt.args.opts, tt.args.amountIn)
-			if err != nil {
-				t.Error(err)
-			}
-			assert.Equal(t, int64(tt.wantAmountOut), int64(gotAmountOut))
-		})
-	}
-
-	for _, tt := range failingTests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := b.OutGivenIn(tt.args.opts, tt.args.amountIn)
-			assert.Equal(t, tt.wantError, err)
-		})
-	}
+		b := formula.BalancedReserves{}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				amountOut, err := b.OutGivenIn(tt.opts, tt.amountIn)
+				require.EqualError(t, err, tt.wantError.Error())
+				require.Zero(t, amountOut)
+			})
+		}
+	})
 }
 
-func TestBalancedReserves_InGivenOut(t *testing.T) {
-	type args struct {
-		opts      interface{}
-		amountOut uint64
-	}
-	tests := []struct {
-		name         string
-		b            formula.BalancedReserves
-		args         args
-		wantAmountIn uint64
-	}{
-		{
-			"with fees taken on the input",
-			formula.BalancedReserves{},
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           650000000000,
-					BalanceOut:          100000000,
+func TestInGivenOut(t *testing.T) {
+	t.Run("valid", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name         string
+			opts         formula.BalancedReservesOpts
+			amountOut    decimal.Decimal
+			wantAmountIn decimal.Decimal
+		}{
+			{
+				"with fees taken on the input",
+				formula.BalancedReservesOpts{
+					BalanceIn:           decimal.NewFromInt(6500),
+					BalanceOut:          decimal.NewFromInt(1),
 					Fee:                 25,
 					ChargeFeeOnTheWayIn: true,
-				}),
-				amountOut: 10000,
+				},
+				decimal.NewFromFloat(0.0001),
+				decimal.NewFromFloat(0.65169017),
 			},
-			65169016,
-		},
-		{
-			"with fees taken on the output",
-			formula.BalancedReserves{},
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           650000000000,
-					BalanceOut:          100000000,
+			{
+				"with fees taken on the output",
+				formula.BalancedReservesOpts{
+					BalanceIn:           decimal.NewFromInt(6500),
+					BalanceOut:          decimal.NewFromInt(1),
 					Fee:                 25,
 					ChargeFeeOnTheWayIn: false,
-				}),
-				amountOut: 10000,
+				},
+				decimal.NewFromFloat(0.0001),
+				decimal.NewFromFloat(0.65169033),
 			},
-			65169000,
-		},
-	}
+		}
 
-	failingTests := []struct {
-		name      string
-		args      args
-		wantError error
-	}{
-		{
-			"provided amount is zero",
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           650000000000,
-					BalanceOut:          100000000,
+		b := formula.BalancedReserves{}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				amountIn, err := b.InGivenOut(tt.opts, tt.amountOut)
+				require.NoError(t, err)
+				require.Equal(t, tt.wantAmountIn.String(), amountIn.String())
+			})
+		}
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name      string
+			opts      formula.BalancedReservesOpts
+			amountOut decimal.Decimal
+			wantError error
+		}{
+			{
+				"provided amount is zero",
+				formula.BalancedReservesOpts{
+					BalanceIn:           decimal.NewFromFloat(6500),
+					BalanceOut:          decimal.NewFromFloat(1),
 					Fee:                 25,
 					ChargeFeeOnTheWayIn: true,
-				}),
-				amountOut: 0,
+				},
+				decimal.Zero,
+				formula.ErrAmountTooLow,
 			},
-			formula.ErrAmountTooLow,
-		},
-		{
-			"provided amount too big",
-			args{
-				opts: toInterface(formula.BalancedReservesOpts{
-					BalanceIn:           650000000000,
-					BalanceOut:          100000000,
+			{
+				"provided amount too big",
+				formula.BalancedReservesOpts{
+					BalanceIn:           decimal.NewFromFloat(6500),
+					BalanceOut:          decimal.NewFromFloat(1),
 					Fee:                 5000,
 					ChargeFeeOnTheWayIn: true,
-				}),
-				amountOut: 100000000,
+				},
+				decimal.NewFromFloat(1),
+				formula.ErrAmountTooBig,
 			},
-			formula.ErrAmountTooBig,
-		},
-	}
+			{
+				"provided amount too low",
+				formula.BalancedReservesOpts{
+					BalanceIn:           decimal.NewFromFloat(1),
+					BalanceOut:          decimal.NewFromFloat(6500),
+					Fee:                 5000,
+					ChargeFeeOnTheWayIn: true,
+				},
+				decimal.NewFromFloat(0.00001),
+				formula.ErrAmountTooLow,
+			},
+		}
 
-	b := formula.BalancedReserves{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotAmountIn, err := b.InGivenOut(tt.args.opts, tt.args.amountOut)
-			if err != nil {
-				t.Error(err)
-			}
-			assert.Equal(t, int64(tt.wantAmountIn), int64(gotAmountIn))
-		})
-	}
-
-	for _, tt := range failingTests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := b.InGivenOut(tt.args.opts, tt.args.amountOut)
-			assert.Equal(t, tt.wantError, err)
-		})
-	}
-}
-
-func toInterface(o formula.BalancedReservesOpts) interface{} {
-	return o
+		b := formula.BalancedReserves{}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				amountIn, err := b.InGivenOut(tt.opts, tt.amountOut)
+				require.EqualError(t, err, tt.wantError.Error())
+				require.Zero(t, amountIn)
+			})
+		}
+	})
 }
