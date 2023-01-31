@@ -29,7 +29,7 @@ type TradeService interface {
 	GetMarketPrice(
 		ctx context.Context,
 		market Market,
-	) (*decimal.Decimal, uint64, error)
+	) (decimal.Decimal, uint64, error)
 	GetTradePreview(
 		ctx context.Context,
 		market Market,
@@ -190,9 +190,9 @@ func (t *tradeService) GetTradableMarkets(ctx context.Context) (
 func (t *tradeService) GetMarketPrice(
 	ctx context.Context,
 	market Market,
-) (*decimal.Decimal, uint64, error) {
+) (decimal.Decimal, uint64, error) {
 	if err := market.Validate(); err != nil {
-		return nil, 0, err
+		return decimal.Zero, 0, err
 	}
 
 	mkt, _, err := t.repoManager.MarketRepository().GetMarketByAssets(
@@ -200,35 +200,39 @@ func (t *tradeService) GetMarketPrice(
 	)
 	if err != nil {
 		log.Debugf("error while retrieving market: %s", err)
-		return nil, 0, ErrServiceUnavailable
+		return decimal.Zero, 0, ErrServiceUnavailable
 	}
 	if mkt == nil {
-		return nil, 0, ErrMarketNotExist
+		return decimal.Zero, 0, ErrMarketNotExist
 	}
 
 	balance, err := getUnlockedBalanceForMarket(t.repoManager, ctx, mkt)
 	if err != nil {
 		log.WithError(err).Debug("error while retrieving balance")
-		return nil, 0, ErrServiceUnavailable
+		return decimal.Zero, 0, ErrServiceUnavailable
 	}
 
 	price, err := mkt.SpotPrice(balance.BaseAmount, balance.QuoteAmount)
 	if err != nil {
 		log.WithError(err).Debug("error while retrieving spot price")
-		return nil, 0, ErrServiceUnavailable
-	}
-	spotPrice := &price.QuotePrice
-	if mkt.FixedFee.BaseFee > 0 {
-		return spotPrice, uint64(mkt.FixedFee.BaseFee + 1), nil
+		return decimal.Zero, 0, ErrServiceUnavailable
 	}
 
-	minTradableAmount := uint64(1)
-	if price.BasePrice.LessThan(decimal.NewFromInt(1)) {
-		minTradableAmount = decimal.NewFromFloat(
-			math.Pow10(-int(mkt.QuoteAssetPrecision)),
-		).Div(price.BasePrice).BigInt().Uint64()
+	// 1 sat of base asset * quote price is the ideal min tradable amount but
+	// there are max 8 decimal in blockchain, so if the value is < 1, the min
+	// tradable amount is 1 / value.
+	// For example, if 1 sat of base asset * quote price = 0.001, the min
+	// tradable amount is 1 / 0.001 = 100 sats of base asset (fees excluded).
+	minAmount := decimal.NewFromFloat(math.Pow10(-int(mkt.BaseAssetPrecision))).Mul(price.QuotePrice)
+	if one := decimal.NewFromFloat(1); minAmount.LessThan(one) {
+		minAmount = one.Div(minAmount)
 	}
-	return spotPrice, minTradableAmount, nil
+	minTradableAmount := minAmount.BigInt().Uint64()
+	if mkt.FixedFee.BaseFee > 0 {
+		minTradableAmount += uint64(mkt.FixedFee.BaseFee)
+	}
+
+	return price.QuotePrice, minTradableAmount, nil
 }
 
 func (t *tradeService) GetTradePreview(
