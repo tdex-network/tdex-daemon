@@ -88,6 +88,8 @@ type MarketInfo interface {
 	GetBalance() map[string]Balance
 	GetFee() MarketFee
 	GetPrice() MarketPrice
+	GetBaseAssetPrecision() uint32
+	GetQuoteAssetPrecision() uint32
 }
 
 type MarketReport interface {

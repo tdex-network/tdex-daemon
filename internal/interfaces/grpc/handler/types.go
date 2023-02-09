@@ -31,13 +31,15 @@ func (i marketInfo) toProto() *daemonv2.MarketInfo {
 	}
 
 	return &daemonv2.MarketInfo{
-		Market:       market{info.GetMarket()}.toProto(),
-		Fee:          marketFeeInfo{info.GetFee()}.toProto(),
-		Tradable:     info.IsTradable(),
-		StrategyType: marketStrategyInfo{info.GetStrategyType()}.toProto(),
-		AccountName:  info.GetAccountName(),
-		Price:        marketPriceInfo{info.GetPrice()}.toProto(),
-		Balance:      balance,
+		Market:              market{info.GetMarket()}.toProto(),
+		Fee:                 marketFeeInfo{info.GetFee()}.toProto(),
+		Tradable:            info.IsTradable(),
+		StrategyType:        marketStrategyInfo{info.GetStrategyType()}.toProto(),
+		AccountName:         info.GetAccountName(),
+		Price:               marketPriceInfo{info.GetPrice()}.toProto(),
+		Balance:             balance,
+		BaseAssetPrecision:  info.GetBaseAssetPrecision(),
+		QuoteAssetPrecision: info.GetQuoteAssetPrecision(),
 	}
 }
 

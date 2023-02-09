@@ -82,6 +82,12 @@ func (i marketInfo) GetQuotePrice() decimal.Decimal {
 	p, _ := decimal.NewFromString(i.Price.QuotePrice)
 	return p
 }
+func (i marketInfo) GetBaseAssetPrecision() uint32 {
+	return uint32(i.Market.BaseAssetPrecision)
+}
+func (i marketInfo) GetQuoteAssetPrecision() uint32 {
+	return uint32(i.Market.QuoteAssetPrecision)
+}
 func (i marketInfo) GetPercentageFee() uint32 {
 	return i.PercentageFee
 }
