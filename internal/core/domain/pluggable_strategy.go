@@ -4,57 +4,79 @@ import (
 	"errors"
 
 	"github.com/shopspring/decimal"
-	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
+var tenThousand = decimal.NewFromInt(10000)
+
 type PluggableStrategyOpts struct {
-	BalanceIn  uint64
-	BalanceOut uint64
+	BalanceIn  decimal.Decimal
+	BalanceOut decimal.Decimal
 	Price      decimal.Decimal
 	Fee        uint64
 }
 
 type PluggableStrategy struct{}
 
-func (s PluggableStrategy) SpotPrice(_opts interface{}) (spotPrice decimal.Decimal, err error) {
+func (s PluggableStrategy) SpotPrice(_ interface{}) (decimal.Decimal, error) {
+	return decimal.Zero, nil
+}
+
+func (s PluggableStrategy) OutGivenIn(
+	_opts interface{}, amountIn decimal.Decimal,
+) (amountOut decimal.Decimal, err error) {
+	opts, ok := _opts.(PluggableStrategyOpts)
+	if !ok {
+		err = errors.New("opts must be of type PluggableStrategyOpts")
+		return
+	}
+	if amountIn.Equals(decimal.Zero) {
+		err = ErrMarketPreviewAmountTooLow
+		return
+	}
+
+	percentageFee := decimal.NewFromInt(int64(opts.Fee)).Div(tenThousand)
+	amount := amountIn.Mul(opts.Price).Mul(decimal.NewFromInt(1).Sub(percentageFee))
+	amount = amount.Round(8)
+	if amount.LessThanOrEqual(decimal.Zero) {
+		err = ErrMarketPreviewAmountTooLow
+		return
+	}
+	if amount.GreaterThanOrEqual(opts.BalanceOut) {
+		err = ErrMarketPreviewAmountTooBig
+		return
+	}
+
+	amountOut = amount
 	return
 }
 
-func (s PluggableStrategy) OutGivenIn(_opts interface{}, amountIn uint64) (uint64, error) {
+func (s PluggableStrategy) InGivenOut(
+	_opts interface{}, amountOut decimal.Decimal,
+) (amountIn decimal.Decimal, err error) {
 	opts, ok := _opts.(PluggableStrategyOpts)
 	if !ok {
-		return 0, errors.New("opts must be of type PluggableStrategyOpts")
+		err = errors.New("opts must be of type PluggableStrategyOpts")
+		return
 	}
-	if amountIn == 0 {
-		return 0, ErrMarketPreviewAmountTooLow
+	if amountOut.Equals(decimal.Zero) {
+		err = ErrMarketPreviewAmountTooLow
+		return
 	}
-
-	amountR := decimal.NewFromInt(int64(amountIn)).Mul(opts.Price).BigInt().Uint64()
-	amountR, _ = mathutil.LessFee(amountR, opts.Fee)
-	if amountR == 0 {
-		return 0, ErrMarketPreviewAmountTooLow
-	}
-	return amountR, nil
-}
-
-func (s PluggableStrategy) InGivenOut(_opts interface{}, amountOut uint64) (uint64, error) {
-	opts, ok := _opts.(PluggableStrategyOpts)
-	if !ok {
-		return 0, errors.New("opts must be of type PluggableStrategyOpts")
-	}
-	if amountOut == 0 {
-		return 0, ErrMarketPreviewAmountTooLow
-	}
-	if amountOut >= opts.BalanceOut {
-		return 0, ErrMarketPreviewAmountTooBig
+	if amountOut.GreaterThanOrEqual(opts.BalanceOut) {
+		err = ErrMarketPreviewAmountTooBig
+		return
 	}
 
-	amountP := decimal.NewFromInt(int64(amountOut)).Mul(opts.Price).BigInt().Uint64()
-	amountP, _ = mathutil.PlusFee(amountP, opts.Fee)
-	if amountP == 0 {
-		return 0, ErrMarketPreviewAmountTooLow
+	percentageFee := decimal.NewFromInt(int64(opts.Fee)).Div(tenThousand)
+	amount := amountOut.Mul(opts.Price).Mul(decimal.NewFromInt(1).Add(percentageFee))
+	amount = amount.Round(8)
+	if amount.LessThanOrEqual(decimal.Zero) {
+		err = ErrMarketPreviewAmountTooLow
+		return
 	}
-	return amountP, nil
+
+	amountIn = amount
+	return
 }
 
 func (s PluggableStrategy) FormulaType() int {

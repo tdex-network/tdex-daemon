@@ -86,11 +86,13 @@ func NewMarket(
 	}
 
 	return &Market{
-		AccountIndex: accountIndex,
-		BaseAsset:    baseAsset,
-		QuoteAsset:   quoteAsset,
-		Fee:          feeInBasisPoint,
-		Strategy:     mm.NewStrategyFromFormula(formula.BalancedReserves{}),
+		AccountIndex:        accountIndex,
+		BaseAsset:           baseAsset,
+		QuoteAsset:          quoteAsset,
+		BaseAssetPrecision:  baseAssetPrecision,
+		QuoteAssetPrecision: quoteAssetPrecision,
+		Fee:                 feeInBasisPoint,
+		Strategy:            mm.NewStrategyFromFormula(formula.BalancedReserves{}),
 	}, nil
 }
 
