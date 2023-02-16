@@ -14,7 +14,7 @@ type TradeService interface {
 	GetTradableMarkets(ctx context.Context) ([]ports.MarketInfo, error)
 	GetMarketPrice(
 		ctx context.Context, market ports.Market,
-	) (*decimal.Decimal, uint64, error)
+	) (decimal.Decimal, uint64, error)
 	TradePreview(
 		ctx context.Context, market ports.Market,
 		tradeType ports.TradeType, amount uint64, asset string,

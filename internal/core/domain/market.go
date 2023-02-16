@@ -2,11 +2,13 @@ package domain
 
 import (
 	"encoding/hex"
+	"math"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
+	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
 type FixedFee struct {
@@ -276,26 +278,40 @@ func (m *Market) Preview(
 		return nil, err
 	}
 
-	previewAmount, err := formula(args, amount)
-	if err != nil {
-		return nil, err
+	assetPrecision := math.Pow10(int(m.BaseAssetPrecision))
+	if !isBaseAsset {
+		assetPrecision = math.Pow10(int(m.QuoteAssetPrecision))
 	}
+	amountDecimal := mathutil.Div(amount, uint64(assetPrecision))
 
-	previewAmount, err = m.chargeFixedFees(
-		baseBalance, quoteBalance, previewAmount, isBaseAsset, isBuy,
-	)
+	previewAmount, err := formula(args, amountDecimal)
 	if err != nil {
 		return nil, err
 	}
 
 	previewAsset := m.BaseAsset
+	previewAssetPrecision := math.Pow10(int(m.BaseAssetPrecision))
 	if isBaseAsset {
 		previewAsset = m.QuoteAsset
+		previewAssetPrecision = math.Pow10(int(m.QuoteAssetPrecision))
+	}
+
+	previewAmountInSats := previewAmount.Mul(
+		decimal.NewFromFloat(previewAssetPrecision),
+	).BigInt().Uint64()
+	previewAmountInSats, err = m.chargeFixedFees(
+		baseBalance, quoteBalance, previewAmountInSats, isBaseAsset, isBuy,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if previewAmountInSats == 0 {
+		return nil, ErrMarketPreviewAmountTooLow
 	}
 
 	return &PreviewInfo{
 		Price:  price,
-		Amount: previewAmount,
+		Amount: previewAmountInSats,
 		Asset:  previewAsset,
 	}, nil
 }
@@ -319,7 +335,7 @@ func (m *Market) strategy() marketmaking.MakingFormula {
 
 func (m *Market) formula(
 	isBaseAsset, isBuy bool,
-) func(interface{}, uint64) (uint64, error) {
+) func(interface{}, decimal.Decimal) (decimal.Decimal, error) {
 	strategy := m.strategy()
 	if isBuy {
 		if isBaseAsset {
@@ -337,11 +353,12 @@ func (m *Market) formula(
 func (m *Market) formulaOptsForPluggable(
 	baseBalance, quoteBalance uint64, isBaseAsset, isBuy bool,
 ) interface{} {
-	balanceIn := baseBalance
-	balanceOut := quoteBalance
+	bp := uint64(math.Pow10(int(m.BaseAssetPrecision)))
+	qp := uint64(math.Pow10(int(m.QuoteAssetPrecision)))
+	balanceIn := mathutil.Div(baseBalance, bp)
+	balanceOut := mathutil.Div(quoteBalance, qp)
 	if isBuy {
-		balanceIn = quoteBalance
-		balanceOut = baseBalance
+		balanceIn, balanceOut = balanceOut, balanceIn
 	}
 
 	price := m.BaseAssetPrice()
@@ -360,11 +377,12 @@ func (m *Market) formulaOptsForPluggable(
 func (m *Market) formulaOptsForBalanced(
 	baseBalance, quoteBalance uint64, isBaseAsset, isBuy bool,
 ) interface{} {
-	balanceIn := baseBalance
-	balanceOut := quoteBalance
+	bp := uint64(math.Pow10(int(m.BaseAssetPrecision)))
+	qp := uint64(math.Pow10(int(m.QuoteAssetPrecision)))
+	balanceIn := mathutil.Div(baseBalance, bp)
+	balanceOut := mathutil.Div(quoteBalance, qp)
 	if isBuy {
-		balanceIn = quoteBalance
-		balanceOut = baseBalance
+		balanceIn, balanceOut = balanceOut, balanceIn
 	}
 
 	return formula.BalancedReservesOpts{
@@ -388,28 +406,26 @@ func (m *Market) priceForStrategy(
 func (m *Market) priceFromBalances(
 	baseBalance, quoteBalance uint64,
 ) (price MarketPrice, err error) {
-	toIface := func(o formula.BalancedReservesOpts) interface{} {
-		return o
-	}
-	strategy := m.strategy()
-	basePrice, err := strategy.SpotPrice(
-		toIface(formula.BalancedReservesOpts{
-			BalanceIn:  quoteBalance,
-			BalanceOut: baseBalance,
-		}),
+	bp := uint64(math.Pow10(int(m.BaseAssetPrecision)))
+	qp := uint64(math.Pow10(int(m.QuoteAssetPrecision)))
+	balanceIn := mathutil.Div(quoteBalance, qp)
+	balanceOut := mathutil.Div(baseBalance, bp)
+	basePrice, err := m.strategy().SpotPrice(
+		formula.BalancedReservesOpts{
+			BalanceIn:  balanceIn,
+			BalanceOut: balanceOut,
+		},
 	)
 	if err != nil {
 		return
 	}
-	quotePrice, err := strategy.SpotPrice(
-		toIface(formula.BalancedReservesOpts{
-			BalanceIn:  baseBalance,
-			BalanceOut: quoteBalance,
-		}),
+	balanceIn, balanceOut = balanceOut, balanceIn
+	quotePrice, err := m.strategy().SpotPrice(
+		formula.BalancedReservesOpts{
+			BalanceIn:  balanceIn,
+			BalanceOut: balanceOut,
+		},
 	)
-	if err != nil {
-		return
-	}
 
 	price = MarketPrice{
 		BasePrice:  basePrice.String(),

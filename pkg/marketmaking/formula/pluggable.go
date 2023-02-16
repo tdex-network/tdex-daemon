@@ -4,17 +4,18 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
-	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
 type PluggableOpts struct {
-	BalanceIn  uint64
-	BalanceOut uint64
+	BalanceIn  decimal.Decimal
+	BalanceOut decimal.Decimal
 	Price      decimal.Decimal
 	Fee        uint64
 }
 
 var (
+	tenThousand = decimal.NewFromInt(10000)
+
 	ErrInvalidPluggableOptsType = fmt.Errorf("opts must be of type PluggableOpts")
 )
 
@@ -27,42 +28,59 @@ func (s Pluggable) SpotPrice(
 }
 
 func (s Pluggable) OutGivenIn(
-	_opts interface{}, amountIn uint64,
-) (uint64, error) {
+	_opts interface{}, amountIn decimal.Decimal,
+) (amountOut decimal.Decimal, err error) {
 	opts, ok := _opts.(PluggableOpts)
 	if !ok {
-		return 0, ErrInvalidPluggableOptsType
+		err = ErrInvalidPluggableOptsType
+		return
 	}
-	if amountIn == 0 {
-		return 0, ErrAmountTooLow
+	if amountIn.Equals(decimal.Zero) {
+		err = ErrAmountTooLow
+		return
 	}
 
-	amountR := decimal.NewFromInt(int64(amountIn)).Mul(opts.Price).BigInt().Uint64()
-	amountR, _ = mathutil.LessFee(amountR, opts.Fee)
-	if amountR == 0 {
-		return 0, ErrAmountTooLow
+	percentageFee := decimal.NewFromInt(int64(opts.Fee)).Div(tenThousand)
+	amount := amountIn.Mul(opts.Price).Mul(decimal.NewFromInt(1).Sub(percentageFee))
+	amount = amount.Round(8)
+	if amount.LessThanOrEqual(decimal.Zero) {
+		err = ErrAmountTooLow
+		return
 	}
-	return amountR, nil
+	if amount.GreaterThanOrEqual(opts.BalanceOut) {
+		err = ErrAmountTooBig
+		return
+	}
+
+	amountOut = amount
+	return
 }
 
 func (s Pluggable) InGivenOut(
-	_opts interface{}, amountOut uint64,
-) (uint64, error) {
+	_opts interface{}, amountOut decimal.Decimal,
+) (amountIn decimal.Decimal, err error) {
 	opts, ok := _opts.(PluggableOpts)
 	if !ok {
-		return 0, ErrInvalidPluggableOptsType
+		err = ErrInvalidPluggableOptsType
+		return
 	}
-	if amountOut == 0 {
-		return 0, ErrAmountTooLow
+	if amountOut.Equals(decimal.Zero) {
+		err = ErrAmountTooLow
+		return
 	}
-	if amountOut >= opts.BalanceOut {
-		return 0, ErrAmountTooBig
+	if amountOut.GreaterThanOrEqual(opts.BalanceOut) {
+		err = ErrAmountTooBig
+		return
 	}
 
-	amountP := decimal.NewFromInt(int64(amountOut)).Mul(opts.Price).BigInt().Uint64()
-	amountP, _ = mathutil.PlusFee(amountP, opts.Fee)
-	if amountP == 0 {
-		return 0, ErrAmountTooLow
+	percentageFee := decimal.NewFromInt(int64(opts.Fee)).Div(tenThousand)
+	amount := amountOut.Mul(opts.Price).Mul(decimal.NewFromInt(1).Add(percentageFee))
+	amount = amount.Round(8)
+	if amount.LessThanOrEqual(decimal.Zero) {
+		err = ErrAmountTooLow
+		return
 	}
-	return amountP, nil
+
+	amountIn = amount
+	return
 }

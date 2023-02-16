@@ -74,39 +74,44 @@ func (s *Service) GetTradableMarkets(ctx context.Context) ([]ports.MarketInfo, e
 
 func (s *Service) GetMarketPrice(
 	ctx context.Context, market ports.Market,
-) (*decimal.Decimal, uint64, error) {
+) (decimal.Decimal, uint64, error) {
 	mkt, err := s.repoManager.MarketRepository().GetMarketByAssets(
 		ctx, market.GetBaseAsset(), market.GetQuoteAsset(),
 	)
 	if err != nil {
-		return nil, 0, ErrServiceUnavailable
+		return decimal.Zero, 0, ErrServiceUnavailable
 	}
 
 	balance, err := s.wallet.Account().GetBalance(ctx, mkt.Name)
 	if err != nil {
-		return nil, 0, ErrServiceUnavailable
+		return decimal.Zero, 0, ErrServiceUnavailable
 	}
 
 	baseAssetBalance := balance[mkt.BaseAsset].GetConfirmedBalance()
 	quoteAssetBalance := balance[mkt.QuoteAsset].GetConfirmedBalance()
+
 	price, err := mkt.SpotPrice(baseAssetBalance, quoteAssetBalance)
 	if err != nil {
-		return nil, 0, ErrServiceUnavailable
+		log.WithError(err).Debug("error while retrieving spot price")
+		return decimal.Zero, 0, ErrServiceUnavailable
 	}
 	spotPrice, _ := decimal.NewFromString(price.QuotePrice)
-	minAmount := uint64(mkt.FixedFee.BaseFee) + 1
-	if minAmount == 1 {
-		if mkt.BaseAssetPrecision > mkt.QuoteAssetPrecision {
-			bp, _ := decimal.NewFromString(price.BasePrice)
-			minAmountDec := bp.Div(
-				decimal.NewFromFloat(math.Pow10(int(mkt.QuoteAssetPrecision))),
-			).Mul(decimal.NewFromFloat(math.Pow10(int(mkt.BaseAssetPrecision))))
-			if minAmountDec.GreaterThanOrEqual(decimal.NewFromInt(1)) {
-				minAmount = minAmountDec.BigInt().Uint64()
-			}
-		}
+
+	// 1 sat of base asset * quote price is the ideal min tradable amount but
+	// there are max 8 decimal in blockchain, so if the value is < 1, the min
+	// tradable amount is 1 / value.
+	// For example, if 1 sat of base asset * quote price = 0.001, the min
+	// tradable amount is 1 / 0.001 = 100 sats of base asset (fees excluded).
+	minAmount := decimal.NewFromFloat(math.Pow10(-int(mkt.BaseAssetPrecision))).Mul(spotPrice)
+	if one := decimal.NewFromFloat(1); minAmount.LessThan(one) {
+		minAmount = one.Div(minAmount)
 	}
-	return &spotPrice, minAmount, nil
+	minTradableAmount := minAmount.BigInt().Uint64()
+	if mkt.FixedFee.BaseFee > 0 {
+		minTradableAmount += uint64(mkt.FixedFee.BaseFee)
+	}
+
+	return spotPrice, minTradableAmount, nil
 }
 
 func (s *Service) GetMarketBalance(
