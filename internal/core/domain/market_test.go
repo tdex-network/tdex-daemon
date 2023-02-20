@@ -311,8 +311,8 @@ func TestChangeMarketMarketPrice(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.market.ChangePrice(tt.basePrice, tt.quotePrice)
 			require.NoError(t, err)
-			require.Equal(t, tt.basePrice.String(), tt.market.BaseAssetPrice().String())
-			require.Equal(t, tt.quotePrice.String(), tt.market.QuoteAssetPrice().String())
+			require.Equal(t, tt.basePrice.String(), tt.market.Price.BasePrice)
+			require.Equal(t, tt.quotePrice.String(), tt.market.Price.QuotePrice)
 		})
 	}
 }
@@ -583,12 +583,10 @@ func TestPreview(t *testing.T) {
 			market := newTestMarketWithAssetsPrecision(
 				tt.baseAssetPrecision, tt.quoteAssetPrecision,
 			)
-			basePrice, _ := decimal.NewFromString(price.BasePrice)
-			quotePrice, _ := decimal.NewFromString(price.QuotePrice)
 			market.MakeStrategyPluggable()
 			market.ChangePercentageFee(tt.percentageFee)
 			market.ChangeFixedFee(tt.baseFixedFee, tt.quoteFixedFee)
-			market.ChangePrice(basePrice, quotePrice)
+			market.ChangePrice(price.GetBasePrice(), price.GetQuotePrice())
 			market.MakeTradable()
 
 			preview, err := market.Preview(tt.baseBalance, tt.quoteBalance, tt.amount, tt.isBaseAsset, tt.isBuy)

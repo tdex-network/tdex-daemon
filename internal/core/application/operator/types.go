@@ -74,14 +74,6 @@ func (i marketInfo) GetQuoteAsset() string {
 func (i marketInfo) GetAccountName() string {
 	return i.Name
 }
-func (i marketInfo) GetBasePrice() decimal.Decimal {
-	p, _ := decimal.NewFromString(i.Price.BasePrice)
-	return p
-}
-func (i marketInfo) GetQuotePrice() decimal.Decimal {
-	p, _ := decimal.NewFromString(i.Price.QuotePrice)
-	return p
-}
 func (i marketInfo) GetBaseAssetPrecision() uint32 {
 	return uint32(i.Market.BaseAssetPrecision)
 }
@@ -110,7 +102,7 @@ func (i marketInfo) GetFee() ports.MarketFee {
 	return i
 }
 func (i marketInfo) GetPrice() ports.MarketPrice {
-	return i
+	return i.Price
 }
 func (i marketInfo) GetBalance() map[string]ports.Balance {
 	return i.balance
@@ -169,14 +161,6 @@ func (i tradeInfo) GetBaseAsset() string {
 func (i tradeInfo) GetQuoteAsset() string {
 	return i.Trade.MarketQuoteAsset
 }
-func (i tradeInfo) GetBasePrice() decimal.Decimal {
-	p, _ := decimal.NewFromString(i.Trade.MarketPrice.BasePrice)
-	return p
-}
-func (i tradeInfo) GetQuotePrice() decimal.Decimal {
-	p, _ := decimal.NewFromString(i.Trade.MarketPrice.QuotePrice)
-	return p
-}
 func (i tradeInfo) GetPercentageFee() uint32 {
 	return i.Trade.MarketPercentageFee
 }
@@ -220,7 +204,7 @@ func (i tradeInfo) GetMarketFee() ports.MarketFee {
 	return i
 }
 func (i tradeInfo) GetMarketPrice() ports.MarketPrice {
-	return i
+	return i.MarketPrice
 }
 
 type marketStrategyInfo int

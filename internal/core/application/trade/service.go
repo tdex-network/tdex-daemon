@@ -90,28 +90,24 @@ func (s *Service) GetMarketPrice(
 	baseAssetBalance := balance[mkt.BaseAsset].GetConfirmedBalance()
 	quoteAssetBalance := balance[mkt.QuoteAsset].GetConfirmedBalance()
 
-	price, err := mkt.SpotPrice(baseAssetBalance, quoteAssetBalance)
+	spotPrice, err := mkt.SpotPrice(baseAssetBalance, quoteAssetBalance)
 	if err != nil {
 		log.WithError(err).Debug("error while retrieving spot price")
 		return decimal.Zero, 0, ErrServiceUnavailable
 	}
-	spotPrice, _ := decimal.NewFromString(price.QuotePrice)
 
-	// 1 sat of base asset * quote price is the ideal min tradable amount but
-	// there are max 8 decimal in blockchain, so if the value is < 1, the min
-	// tradable amount is 1 / value.
-	// For example, if 1 sat of base asset * quote price = 0.001, the min
-	// tradable amount is 1 / 0.001 = 100 sats of base asset (fees excluded).
-	minAmount := decimal.NewFromFloat(math.Pow10(-int(mkt.BaseAssetPrecision))).Mul(spotPrice)
-	if one := decimal.NewFromFloat(1); minAmount.LessThan(one) {
-		minAmount = one.Div(minAmount)
-	}
-	minTradableAmount := minAmount.BigInt().Uint64()
-	if mkt.FixedFee.BaseFee > 0 {
-		minTradableAmount += uint64(mkt.FixedFee.BaseFee)
+	// The min tradable amount is the max value between 1 sat of base asset amd
+	// the amount corresponding for 1 sat of quote asset.
+	minTradableAmount := decimal.NewFromFloat(
+		math.Pow10(-int(mkt.BaseAssetPrecision)),
+	)
+	if amount := decimal.NewFromFloat(
+		math.Pow10(-int(mkt.QuoteAssetPrecision)),
+	).Mul(spotPrice.GetBasePrice()); amount.GreaterThan(minTradableAmount) {
+		minTradableAmount = amount
 	}
 
-	return spotPrice, minTradableAmount, nil
+	return spotPrice.GetQuotePrice(), minTradableAmount.BigInt().Uint64(), nil
 }
 
 func (s *Service) GetMarketBalance(

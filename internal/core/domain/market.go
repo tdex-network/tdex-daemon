@@ -29,9 +29,15 @@ func (mp MarketPrice) IsZero() bool {
 	if mp == empty {
 		return true
 	}
-	bp, _ := decimal.NewFromString(mp.BasePrice)
-	qp, _ := decimal.NewFromString(mp.QuotePrice)
-	return bp.IsZero() && qp.IsZero()
+	return mp.GetBasePrice().IsZero() && mp.GetQuotePrice().IsZero()
+}
+func (mp MarketPrice) GetBasePrice() decimal.Decimal {
+	p, _ := decimal.NewFromString(mp.BasePrice)
+	return p
+}
+func (mp MarketPrice) GetQuotePrice() decimal.Decimal {
+	p, _ := decimal.NewFromString(mp.QuotePrice)
+	return p
 }
 
 // PreviewInfo contains info about a price preview based on the market's current
@@ -103,24 +109,6 @@ func NewMarket(
 // IsTradable returns true if the market is available for trading
 func (m *Market) IsTradable() bool {
 	return m.Tradable
-}
-
-// BaseAssetPrice returns the latest price for the base asset
-func (m *Market) BaseAssetPrice() decimal.Decimal {
-	if m.Price.IsZero() {
-		return decimal.Zero
-	}
-	p, _ := decimal.NewFromString(m.Price.BasePrice)
-	return p
-}
-
-// QuoteAssetPrice returns the latest price for the quote asset
-func (m *Market) QuoteAssetPrice() decimal.Decimal {
-	if m.Price.IsZero() {
-		return decimal.Zero
-	}
-	p, _ := decimal.NewFromString(m.Price.QuotePrice)
-	return p
 }
 
 func (m *Market) IsStrategyBalanced() bool {
@@ -361,9 +349,9 @@ func (m *Market) formulaOptsForPluggable(
 		balanceIn, balanceOut = balanceOut, balanceIn
 	}
 
-	price := m.BaseAssetPrice()
+	price := m.Price.GetBasePrice()
 	if isBaseAsset {
-		price = m.QuoteAssetPrice()
+		price = m.Price.GetQuotePrice()
 	}
 
 	return formula.PluggableOpts{

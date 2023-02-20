@@ -1,7 +1,6 @@
 package trade
 
 import (
-	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 )
@@ -29,14 +28,6 @@ func (i marketInfo) GetQuoteAsset() string {
 }
 func (i marketInfo) GetAccountName() string {
 	return i.Name
-}
-func (i marketInfo) GetBasePrice() decimal.Decimal {
-	p, _ := decimal.NewFromString(i.Price.BasePrice)
-	return p
-}
-func (i marketInfo) GetQuotePrice() decimal.Decimal {
-	p, _ := decimal.NewFromString(i.Price.QuotePrice)
-	return p
 }
 func (i marketInfo) GetBaseAssetPrecision() uint32 {
 	return uint32(i.Market.BaseAssetPrecision)
@@ -66,7 +57,7 @@ func (i marketInfo) GetFee() ports.MarketFee {
 	return i
 }
 func (i marketInfo) GetPrice() ports.MarketPrice {
-	return i
+	return i.Market.Price
 }
 func (i marketInfo) GetBalance() map[string]ports.Balance {
 	return i.balance
@@ -96,14 +87,6 @@ func (i previewInfo) GetFixedBaseFee() uint64 {
 func (i previewInfo) GetFixedQuoteFee() uint64 {
 	return i.Market.FixedFee.QuoteFee
 }
-func (i previewInfo) GetBasePrice() decimal.Decimal {
-	p, _ := decimal.NewFromString(i.PreviewInfo.Price.BasePrice)
-	return p
-}
-func (i previewInfo) GetQuotePrice() decimal.Decimal {
-	p, _ := decimal.NewFromString(i.PreviewInfo.Price.QuotePrice)
-	return p
-}
 func (i previewInfo) GetAmount() uint64 {
 	return i.PreviewInfo.Amount
 }
@@ -117,7 +100,7 @@ func (i previewInfo) GetMarketFee() ports.MarketFee {
 	return i
 }
 func (i previewInfo) GetMarketPrice() ports.MarketPrice {
-	return i
+	return i.Market.Price
 }
 
 type swapRequestInfo struct {

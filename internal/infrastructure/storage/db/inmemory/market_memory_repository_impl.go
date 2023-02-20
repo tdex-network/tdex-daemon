@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
@@ -170,10 +169,9 @@ func (r *marketRepositoryImpl) UpdateMarketPrice(
 		return err
 	}
 
-	bp, _ := decimal.NewFromString(price.BasePrice)
-	qp, _ := decimal.NewFromString(price.QuotePrice)
-	err = market.ChangePrice(bp, qp)
-	if err != nil {
+	if err := market.ChangePrice(
+		price.GetBasePrice(), price.GetQuotePrice(),
+	); err != nil {
 		return err
 	}
 
