@@ -106,6 +106,9 @@ func (s *Service) GetMarketPrice(
 	).Mul(spotPrice.GetBasePrice()); amount.GreaterThan(minTradableAmount) {
 		minTradableAmount = amount
 	}
+	minTradableAmount = minTradableAmount.Mul(decimal.NewFromFloat(
+		math.Pow10(int(mkt.BaseAssetPrecision)),
+	))
 
 	return spotPrice.GetQuotePrice(), minTradableAmount.BigInt().Uint64(), nil
 }
