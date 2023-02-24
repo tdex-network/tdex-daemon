@@ -71,20 +71,6 @@ builds:
       - arm64
     binary: tdex
 
-  # tdexdconnect
-  - id: "tdexdconnect"
-    main: ./cmd/tdexdconnect
-    ldflags:
-      - -s -w
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    binary: tdexdconnect
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
   prerelease: auto
@@ -127,12 +113,6 @@ archives:
       - tdex
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
-  - id: tdexdconnect
-    format: binary
-    builds:
-      - tdexdconnect
-    name_template: "tdexdconnect-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-
 dockers:
   ###########################
   # tag latest & prerelease #
@@ -146,7 +126,6 @@ dockers:
     use: buildx
     ids:
       - tdex
-      - tdexdconnect
       - tdexd-linux-amd64
     dockerfile: goreleaser.Dockerfile
     # GOOS of the built binaries/packages that should be used.
@@ -172,7 +151,6 @@ dockers:
     use: buildx
     ids:
       - tdex
-      - tdexdconnect
       - tdexd-linux-arm64
     dockerfile: goreleaser.Dockerfile
     # GOOS of the built binaries/packages that should be used.

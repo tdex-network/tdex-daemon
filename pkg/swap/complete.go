@@ -7,6 +7,7 @@ import (
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	"github.com/thanhpk/randstr"
 	"github.com/vulpemventures/go-elements/pset"
+	"github.com/vulpemventures/go-elements/psetv2"
 	"github.com/vulpemventures/go-elements/transaction"
 	"google.golang.org/protobuf/proto"
 )
@@ -26,12 +27,8 @@ func Complete(complete CompleteOpts) (string, []byte, error) {
 		return "", nil, fmt.Errorf("unmarshal swap accept %w", err)
 	}
 
-	if !isHex(complete.Transaction) {
-		ptx, err := pset.NewPsetFromBase64(complete.Transaction)
-		if err != nil {
-			return "", nil, fmt.Errorf("transaction in base64 format is invalid")
-		}
-
+	if isPsetV0(complete.Transaction) {
+		ptx, _ := pset.NewPsetFromBase64(complete.Transaction)
 		ok, err := ptx.ValidateAllSignatures()
 		if err != nil {
 			return "", nil, err
@@ -39,10 +36,17 @@ func Complete(complete CompleteOpts) (string, []byte, error) {
 		if !ok {
 			return "", nil, fmt.Errorf("transaction contains invalid signatures")
 		}
-	} else {
+	} else if isPsetV2(complete.Transaction) {
+		ptx, _ := psetv2.NewPsetFromBase64(complete.Transaction)
+		if ptx == nil {
+			return "", nil, fmt.Errorf("unknown transaction format")
+		}
+	} else if isHex(complete.Transaction) {
 		if _, err := transaction.NewTxFromHex(complete.Transaction); err != nil {
 			return "", nil, fmt.Errorf("transaction in hex format is invalid")
 		}
+	} else {
+		return "", nil, fmt.Errorf("invalid transaction format")
 	}
 
 	randomID := randstr.Hex(8)
@@ -113,6 +117,9 @@ func ValidateCompletePset(opts ValidateCompletePsetOpts) error {
 		swapRequest.GetAssetP(),
 		opts.OutputBlindingKeys,
 	)
+	if err != nil {
+		return err
+	}
 	if !outputPFound {
 		return fmt.Errorf("either SwapRequest.amount_p or SwapRequest.asset_p do not match the provided pset")
 	}

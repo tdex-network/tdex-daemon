@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/address"
 	"github.com/vulpemventures/go-elements/transaction"
@@ -178,7 +178,7 @@ func findBlindKeyForAddress(addr string, blindKeys [][]byte) ([]byte, error) {
 	}
 
 	for _, key := range blindKeys {
-		prvkey, pubkey := btcec.PrivKeyFromBytes(btcec.S256(), key)
+		prvkey, pubkey := btcec.PrivKeyFromBytes(key)
 		prvkeyBytes := prvkey.Serialize()
 		pubkeyBytes := pubkey.SerializeCompressed()
 		if bytes.Equal(data.BlindingKey, pubkeyBytes) {

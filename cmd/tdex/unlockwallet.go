@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 
 	"github.com/urfave/cli/v2"
 )
@@ -23,15 +23,15 @@ var unlockwallet = cli.Command{
 }
 
 func unlockWalletAction(ctx *cli.Context) error {
-	client, cleanup, err := getUnlockerClient(ctx)
+	client, cleanup, err := getWalletClient(ctx)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
 	_, err = client.UnlockWallet(
-		context.Background(), &daemonv1.UnlockWalletRequest{
-			WalletPassword: []byte(ctx.String("password")),
+		context.Background(), &daemonv2.UnlockWalletRequest{
+			Password: ctx.String("password"),
 		},
 	)
 	if err != nil {

@@ -2,11 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	"github.com/urfave/cli/v2"
 )
 
@@ -33,22 +30,6 @@ var (
 				Name:  "num_of_addresses",
 				Usage: "the number of addresses to generate",
 			},
-			&cli.BoolFlag{
-				Name: "fragment",
-				Usage: "send funds to an ephemeral wallet to be split into multiple " +
-					"fragments and deposited into the Fee account",
-			},
-			&cli.UintFlag{
-				Name: "max_fragments",
-				Usage: "specify the max number of fragments the fragmenter can " +
-					"create when splitting its funds",
-				Value: 50,
-			},
-			&cli.StringFlag{
-				Name: "recover_funds_to_address",
-				Usage: "specify an address where to send the funds owned by the " +
-					"fragmenter to abort the process",
-			},
 		},
 		Action: feeDepositAction,
 	}
@@ -58,31 +39,18 @@ var (
 		Action: feeListAddressesAction,
 	}
 	feeClaimCmd = &cli.Command{
-		Name:  "claim",
-		Usage: "claim deposits for the fee account",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "outpoints",
-				Usage: "list of outpoints referring to utxos [{\"hash\": <string>, \"index\": <number>}]",
-			},
-		},
+		Name:   "claim",
+		Usage:  "DEPRECATED: claim deposits for the fee account",
 		Action: feeClaimAction,
 	}
 	feeWithdrawCmd = &cli.Command{
 		Name:  "withdraw",
-		Usage: "withdraw some funds to an address",
+		Usage: "withdraw funds from fee account",
 		Flags: []cli.Flag{
-			&cli.Uint64Flag{
-				Name:  "amount",
-				Usage: "the amount in Satoshi to withdraw",
-			},
-			&cli.StringFlag{
-				Name:  "address",
-				Usage: "the address of the receiver of the funds",
-			},
-			&cli.StringFlag{
-				Name:  "asset",
-				Usage: "the asset of the funds to withdraw",
+			&cli.StringSliceFlag{
+				Name:     "receivers",
+				Usage:    "list of withdrawal receivers as {asset, amount, address}",
+				Required: true,
 			},
 			&cli.Uint64Flag{
 				Name:  "millisatsperbyte",
@@ -106,7 +74,7 @@ func feeBalanceAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	reply, err := client.GetFeeBalance(context.Background(), &daemonv1.GetFeeBalanceRequest{})
+	reply, err := client.GetFeeBalance(context.Background(), &daemonv2.GetFeeBalanceRequest{})
 	if err != nil {
 		return err
 	}
@@ -117,10 +85,6 @@ func feeBalanceAction(ctx *cli.Context) error {
 }
 
 func feeDepositAction(ctx *cli.Context) error {
-	if withFragmenter := ctx.Bool("fragment"); withFragmenter {
-		return feeFragmentDepositAction(ctx)
-	}
-
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
 		return err
@@ -128,8 +92,8 @@ func feeDepositAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	numOfAddresses := ctx.Int64("num_of_addresses")
-	resp, err := client.GetFeeAddress(
-		context.Background(), &daemonv1.GetFeeAddressRequest{
+	reply, err := client.DeriveFeeAddresses(
+		context.Background(), &daemonv2.DeriveFeeAddressesRequest{
 			NumOfAddresses: numOfAddresses,
 		},
 	)
@@ -137,13 +101,7 @@ func feeDepositAction(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJSON(resp)
-
-	return nil
-}
-
-func feeFragmentDepositAction(ctx *cli.Context) error {
-	printDeprecatedWarn("tdex feefragmenter split")
+	printRespJSON(reply)
 	return nil
 }
 
@@ -155,56 +113,19 @@ func feeListAddressesAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.ListFeeAddresses(
-		context.Background(), &daemonv1.ListFeeAddressesRequest{},
+		context.Background(), &daemonv2.ListFeeAddressesRequest{},
 	)
 	if err != nil {
 		return err
 	}
 
-	list := reply.GetAddressWithBlindingKey()
-	if list == nil {
-		fmt.Println("[]")
-		return nil
-	}
-
-	listStr, _ := json.MarshalIndent(list, "", "   ")
-	fmt.Println(string(listStr))
-
+	printRespJSON(reply)
 	return nil
 }
 
 func feeClaimAction(ctx *cli.Context) error {
-	outpoints, err := parseOutpoints(ctx.String("outpoints"))
-	if err != nil {
-		return err
-	}
-
-	client, cleanup, err := getOperatorClient(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	if _, err := client.ClaimFeeDeposits(
-		context.Background(), &daemonv1.ClaimFeeDepositsRequest{
-			Outpoints: outpoints,
-		},
-	); err != nil {
-		return err
-	}
-
-	fmt.Println()
-	fmt.Println("fee account is funded")
-
+	printDeprecatedWarn("")
 	return nil
-}
-
-func parseOutpoints(str string) ([]*daemonv1.Outpoint, error) {
-	var outpoints []*daemonv1.Outpoint
-	if err := json.Unmarshal([]byte(str), &outpoints); err != nil {
-		return nil, errors.New("unable to parse provided outpoints")
-	}
-	return outpoints, nil
 }
 
 func feeWithdrawAction(ctx *cli.Context) error {
@@ -214,16 +135,16 @@ func feeWithdrawAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	amount := ctx.Uint64("amount")
-	addr := ctx.String("address")
+	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
 	mSatsPerByte := ctx.Uint64("millisatsperbyte")
-	asset := ctx.String("asset")
+	outputs, err := parseOutputs(receivers)
+	if err != nil {
+		return err
+	}
 
-	reply, err := client.WithdrawFee(context.Background(), &daemonv1.WithdrawFeeRequest{
-		Amount:           amount,
-		Address:          addr,
-		Asset:            asset,
+	reply, err := client.WithdrawFee(context.Background(), &daemonv2.WithdrawFeeRequest{
+		Outputs:          outputs,
 		MillisatsPerByte: mSatsPerByte,
 		Password:         password,
 	})

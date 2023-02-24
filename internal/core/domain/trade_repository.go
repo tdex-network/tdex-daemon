@@ -2,53 +2,39 @@ package domain
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 // TradeRepository is the abstraction for any kind of database intended to
 // persist Trades.
 type TradeRepository interface {
-	// GetOrCreateTrade returns the trade with the given tradeID, or create a
-	// new empty one if not found.
-	GetOrCreateTrade(ctx context.Context, tradeID *uuid.UUID) (*Trade, error)
+	// AddTrade adds a new trade to the repository.
+	AddTrade(ctx context.Context, trade *Trade) error
+	// GetTradeById returns the trade with the given id if existing.
+	GetTradeById(ctx context.Context, id string) (*Trade, error)
 	// GetAllTrades returns all the trades stored in the repository.
-	GetAllTrades(ctx context.Context) ([]*Trade, error)
-	// GetAllTrades returns a page containg a subset of all trades stored in the
-	// repository.
-	GetAllTradesForPage(ctx context.Context, page Page) ([]*Trade, error)
+	GetAllTrades(ctx context.Context, page Page) ([]Trade, error)
 	// GetAllTradesByMarket returns all the trades filtered by a market
-	// identified by its quote asset.
+	// identified by its name.
 	GetAllTradesByMarket(
-		ctx context.Context, marketQuoteAsset string,
-	) ([]*Trade, error)
-	// GetAllTradesByMarketAndPage returns a page containing a subset of all
-	// trades filtered by a market identified by its quote asset.
-	GetAllTradesByMarketAndPage(
-		ctx context.Context, marketQuoteAsset string, page Page,
-	) ([]*Trade, error)
+		ctx context.Context, marketName string, page Page,
+	) ([]Trade, error)
 	// GetCompletedTradesByMarket returns all the Completed or Settled trades
-	// for the provided market identified by its quote asset.
+	// for the provided market identified by its name.
 	GetCompletedTradesByMarket(
-		ctx context.Context, marketQuoteAsset string,
-	) ([]*Trade, error)
-	// GetCompletedTradesByMarketAndPage returns a page containing a subset of
-	// all Completed or Settled trades for the provided market identified by
-	// its quote asset.
-	GetCompletedTradesByMarketAndPage(
-		ctx context.Context, marketQuoteAsset string, page Page,
-	) ([]*Trade, error)
-	// GetTradeBySwapAcceptID returns the trade that contains the SwapAccept
+		ctx context.Context, marketName string, page Page,
+	) ([]Trade, error)
+	// GetTradeBySwapAcceptId returns the trade that contains the SwapAccept
 	// message matching the given id.
-	GetTradeBySwapAcceptID(ctx context.Context, swapAcceptID string) (*Trade, error)
-	// GetTradeByTxID returns the trade which transaction matches the given
+	GetTradeBySwapAcceptId(
+		ctx context.Context, swapAcceptId string,
+	) (*Trade, error)
+	// GetTradeByTxid returns the trade which transaction matches the given
 	// transaction id.
-	GetTradeByTxID(ctx context.Context, txID string) (*Trade, error)
+	GetTradeByTxId(ctx context.Context, txid string) (*Trade, error)
 	// UpdateTrade allowa to commit multiple changes to the same trade in a
 	// transactional way.
 	UpdateTrade(
 		ctx context.Context,
-		tradeID *uuid.UUID,
-		updateFn func(t *Trade) (*Trade, error),
+		tradeId string, updateFn func(t *Trade) (*Trade, error),
 	) error
 }

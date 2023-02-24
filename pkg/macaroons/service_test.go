@@ -3,7 +3,6 @@ package macaroons_test
 import (
 	"context"
 	"encoding/hex"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,10 +34,7 @@ var (
 // DB file is returned, because the service will open the file
 // and read the store on its own.
 func setupTestRootKeyStorage(t *testing.T) string {
-	tempDir, err := ioutil.TempDir("", "macaroonstore-")
-	if err != nil {
-		t.Fatalf("Error creating temp dir: %v", err)
-	}
+	tempDir := t.TempDir()
 	db, err := kvdb.Create(
 		kvdb.BoltBackendName, filepath.Join(tempDir, "macaroons.db"), true,
 		kvdb.DefaultDBTimeout,

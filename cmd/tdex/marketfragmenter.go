@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	"github.com/urfave/cli/v2"
+	"github.com/vulpemventures/go-elements/address"
 )
 
 var (
@@ -24,12 +26,12 @@ var (
 
 	marketFragmenterBalanceCmd = &cli.Command{
 		Name:   "balance",
-		Usage:  "check the balance of the market fragmenter account",
+		Usage:  "get the balance of the market fragmenter account",
 		Action: marketFragmenterBalanceAction,
 	}
 	marketFragmenterDepositCmd = &cli.Command{
 		Name:  "deposit",
-		Usage: "generate some address(es) to receive funds",
+		Usage: "generate some addresses to receive funds",
 		Flags: []cli.Flag{
 			&cli.UintFlag{
 				Name:  "num_of_addresses",
@@ -52,9 +54,10 @@ var (
 		Name:  "withdraw",
 		Usage: "withdraw all the market fragmenter funds",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "address",
-				Usage: "the address of the receiver of the funds",
+			&cli.StringSliceFlag{
+				Name:     "receivers",
+				Usage:    "list of withdrawal receivers as {asset, amount, address}",
+				Required: true,
 			},
 			&cli.Uint64Flag{
 				Name:  "millisatsperbyte",
@@ -79,7 +82,7 @@ func marketFragmenterBalanceAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.GetMarketFragmenterBalance(
-		context.Background(), &daemonv1.GetMarketFragmenterBalanceRequest{},
+		context.Background(), &daemonv2.GetMarketFragmenterBalanceRequest{},
 	)
 	if err != nil {
 		return err
@@ -98,8 +101,8 @@ func marketFragmenterDepositAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	numOfAddresses := ctx.Int64("num_of_addresses")
-	resp, err := client.GetMarketFragmenterAddress(
-		context.Background(), &daemonv1.GetMarketFragmenterAddressRequest{
+	resp, err := client.DeriveMarketFragmenterAddresses(
+		context.Background(), &daemonv2.DeriveMarketFragmenterAddressesRequest{
 			NumOfAddresses: numOfAddresses,
 		},
 	)
@@ -120,21 +123,13 @@ func marketFragmenterListAddressesAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	reply, err := client.ListMarketFragmenterAddresses(
-		context.Background(), &daemonv1.ListMarketFragmenterAddressesRequest{},
+		context.Background(), &daemonv2.ListMarketFragmenterAddressesRequest{},
 	)
 	if err != nil {
 		return err
 	}
 
-	list := reply.GetAddressWithBlindingKey()
-	if list == nil {
-		fmt.Println("[]")
-		return nil
-	}
-
-	listStr, _ := json.MarshalIndent(list, "", "   ")
-	fmt.Println(string(listStr))
-
+	printRespJSON(reply)
 	return nil
 }
 
@@ -151,7 +146,7 @@ func marketFragmenterSplitFundsAction(ctx *cli.Context) error {
 	}
 
 	stream, err := client.MarketFragmenterSplitFunds(
-		context.Background(), &daemonv1.MarketFragmenterSplitFundsRequest{
+		context.Background(), &daemonv2.MarketFragmenterSplitFundsRequest{
 			Market: &tdexv1.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
@@ -185,13 +180,18 @@ func marketFragmenterWithdrawAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	addr := ctx.String("address")
+	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
 	mSatsPerByte := ctx.Uint64("millisatsperbyte")
 
+	outputs, err := parseOutputs(receivers)
+	if err != nil {
+		return err
+	}
+
 	reply, err := client.WithdrawMarketFragmenter(
-		context.Background(), &daemonv1.WithdrawMarketFragmenterRequest{
-			Address:          addr,
+		context.Background(), &daemonv2.WithdrawMarketFragmenterRequest{
+			Outputs:          outputs,
 			MillisatsPerByte: mSatsPerByte,
 			Password:         password,
 		},
@@ -202,4 +202,45 @@ func marketFragmenterWithdrawAction(ctx *cli.Context) error {
 
 	printRespJSON(reply)
 	return nil
+}
+
+func parseOutputs(receivers []string) ([]*daemonv2.TxOutput, error) {
+	outputs := make([]*daemonv2.TxOutput, 0, len(receivers))
+	for _, r := range receivers {
+		m := make([]map[string]interface{}, 0)
+		if err := json.Unmarshal([]byte(r), &m); err != nil {
+			return nil, fmt.Errorf("failed to parse receivers: %s", err)
+		}
+		var asset, script, blindKey string
+		var amount uint64
+		for _, rr := range m {
+			if rr["asset"] != nil {
+				asset = rr["asset"].(string)
+			}
+			if rr["address"] != nil {
+				addr := rr["address"].(string)
+				scriptBytes, err := address.ToOutputScript(addr)
+				if err != nil {
+					return nil, fmt.Errorf(
+						"failed to parse receiver with addr %s: %s", addr, err,
+					)
+				}
+				script = hex.EncodeToString(scriptBytes)
+				info, _ := address.FromConfidential(addr)
+				if info != nil {
+					blindKey = hex.EncodeToString(info.BlindingKey)
+				}
+			}
+			if rr["amount"] != nil {
+				amount = uint64(rr["amount"].(float64))
+			}
+			outputs = append(outputs, &daemonv2.TxOutput{
+				Asset:       asset,
+				Amount:      amount,
+				Script:      script,
+				BlindingKey: blindKey,
+			})
+		}
+	}
+	return outputs, nil
 }

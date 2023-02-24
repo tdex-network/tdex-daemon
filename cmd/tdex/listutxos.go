@@ -3,24 +3,24 @@ package main
 import (
 	"context"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	"github.com/urfave/cli/v2"
 )
 
 var listutxos = cli.Command{
-	Name:  "listutxos",
-	Usage: "list all utxos for a wallet account",
+	Name:  "utxos",
+	Usage: "get a list of all utxos for a wallet account",
 	Flags: []cli.Flag{
-		&cli.Uint64Flag{
-			Name:     "account_index",
-			Usage:    "the index of the wallet account for which listing utxos",
+		&cli.StringFlag{
+			Name:     "account_name",
+			Usage:    "the name of the wallet account for which listing utxos",
 			Required: true,
 		},
-		&cli.Uint64Flag{
+		&cli.Int64Flag{
 			Name:  "page",
 			Usage: "the number of the page to be listed. If omitted, the entire list is returned",
 		},
-		&cli.Uint64Flag{
+		&cli.Int64Flag{
 			Name:  "page_size",
 			Usage: "the size of the page",
 			Value: 10,
@@ -36,21 +36,21 @@ func listUtxosAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	accountIndex := ctx.Uint64("account_index")
+	accountName := ctx.String("account_name")
 	pageNumber := ctx.Int64("page")
 	pageSize := ctx.Int64("page_size")
-	var page *daemonv1.Page
+	var page *daemonv2.Page
 	if pageNumber > 0 {
-		page = &daemonv1.Page{
-			PageNumber: pageNumber,
-			PageSize:   pageSize,
+		page = &daemonv2.Page{
+			Number: pageNumber,
+			Size:   pageSize,
 		}
 	}
 
 	resp, err := client.ListUtxos(
-		context.Background(), &daemonv1.ListUtxosRequest{
-			AccountIndex: accountIndex,
-			Page:         page,
+		context.Background(), &daemonv2.ListUtxosRequest{
+			AccountName: accountName,
+			Page:        page,
 		},
 	)
 	if err != nil {

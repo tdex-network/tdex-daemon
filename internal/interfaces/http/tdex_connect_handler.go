@@ -1,22 +1,17 @@
 package httpinterface
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"net/http"
 	"os"
 
-	"github.com/btcsuite/btcutil"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 
 	"github.com/tdex-network/tdex-daemon/pkg/tdexdconnect"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
 )
 
 const (
@@ -31,20 +26,17 @@ type TdexConnectService interface {
 }
 
 type tdexConnect struct {
-	repoManager       ports.RepoManager
-	walletUnlockerSvc application.WalletUnlockerService
-	macaroonBytes     []byte
-	certBytes         []byte
-	macaroonPath      string
-	certPath          string
-	serverAddress     string
-	protocol          string
+	walletSvc     ports.Wallet
+	macaroonBytes []byte
+	certBytes     []byte
+	macaroonPath  string
+	certPath      string
+	serverAddress string
+	protocol      string
 }
 
 func NewTdexConnectService(
-	repoManager ports.RepoManager,
-	walletUnlockerSvc application.WalletUnlockerService,
-	macaroonPath, certPath, addr, protocol string,
+	walletSvc ports.Wallet, macaroonPath, certPath, addr, protocol string,
 ) (TdexConnectService, error) {
 	macBytes := readFile(macaroonPath)
 	certBytes := readFile(certPath)
@@ -66,14 +58,7 @@ func NewTdexConnectService(
 	}
 
 	return &tdexConnect{
-		walletUnlockerSvc: walletUnlockerSvc,
-		macaroonBytes:     macBytes,
-		certBytes:         certBytes,
-		macaroonPath:      macaroonPath,
-		certPath:          certPath,
-		repoManager:       repoManager,
-		protocol:          p,
-		serverAddress:     addr,
+		walletSvc, macBytes, certBytes, macaroonPath, certPath, addr, p,
 	}, nil
 }
 
@@ -107,11 +92,20 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	walletStatus := t.walletUnlockerSvc.IsReady(ctx)
-	if !walletStatus.Initialized {
+	walletStatus, err := t.walletSvc.Status(ctx)
+	if err != nil {
+		log.Errorln(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	if !walletStatus.IsInitialized() {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Write([]byte(connectUrl))
+		if _, err := w.Write([]byte(connectUrl)); err != nil {
+			log.Errorln(err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 
@@ -134,15 +128,7 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	vault, err := t.repoManager.VaultRepository().GetOrCreateVault(ctx, nil, "", nil)
-	if err != nil {
-		log.Errorln(err.Error())
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	pwdHash := btcutil.Hash160([]byte(password))
-	if !bytes.Equal(vault.PassphraseHash, pwdHash) {
+	if ok, _ := t.walletSvc.Auth(context.Background(), password); !ok {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
@@ -169,7 +155,13 @@ func (t *tdexConnect) AuthHandler(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Write([]byte(connectUrl))
+	if _, err := w.Write([]byte(connectUrl)); err != nil {
+		if err != nil {
+			log.Errorln(err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+	}
 }
 
 func readFile(filePath string) []byte {
@@ -181,7 +173,7 @@ func readFile(filePath string) []byte {
 		return nil
 	}
 
-	file, err := ioutil.ReadFile(filePath)
+	file, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil
 	}

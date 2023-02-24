@@ -14,41 +14,25 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
-	log "github.com/sirupsen/logrus"
-	"github.com/soheilhy/cmux"
 	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 )
 
-func isValidAddress(addr string) bool {
-	parts := strings.Split(addr, ":")
-	if len(parts) != 2 {
-		return false
-	}
-	if parts[0] != "" {
-		if ip := net.ParseIP(parts[0]); ip == nil {
-			return false
-		}
-	}
-	port, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return false
-	}
-	if port <= 1024 {
-		return false
-	}
-	return true
+const (
+	minPort = 1024
+	maxPort = 65535
+)
+
+func isValidPort(port int) bool {
+	return port >= minPort && port <= maxPort
 }
 
 func generateOperatorTLSKeyCert(
@@ -87,7 +71,7 @@ func generateOperatorTLSKeyCert(
 	// addIP appends an IP address only if it isn't already in the slice.
 	addIP := func(ipAddr net.IP) {
 		for _, ip := range ipAddresses {
-			if bytes.Equal(ip, ipAddr) {
+			if net.IP.Equal(ip, ipAddr) {
 				return
 			}
 		}
@@ -117,9 +101,7 @@ func generateOperatorTLSKeyCert(
 	}
 
 	if len(extraDomains) > 0 {
-		for _, domain := range extraDomains {
-			dnsNames = append(dnsNames, domain)
-		}
+		dnsNames = append(dnsNames, extraDomains...)
 	}
 
 	dnsNames = append(dnsNames, "unix", "unixpacket")
@@ -173,10 +155,10 @@ func generateOperatorTLSKeyCert(
 		return fmt.Errorf("failed to encode private key: %v", err)
 	}
 
-	if err := ioutil.WriteFile(certPath, certBuf.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(certPath, certBuf.Bytes(), 0644); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(keyPath, keyBuf.Bytes(), 0600); err != nil {
+	if err := os.WriteFile(keyPath, keyBuf.Bytes(), 0600); err != nil {
 		os.Remove(certPath)
 		return err
 	}
@@ -184,43 +166,12 @@ func generateOperatorTLSKeyCert(
 	return nil
 }
 
-func serveMux(
-	address, tlsKey, tlsCert string,
-	grpcServer *grpc.Server, http1Server, http2Server *http.Server,
-) (cmux.CMux, error) {
-	lis, err := net.Listen("tcp", address)
-	if err != nil {
-		return nil, err
-	}
-
-	if tlsKey != "" {
-		tlsConfig, err := getTlsConfig(tlsKey, tlsCert)
-		if err != nil {
-			return nil, err
-		}
-
-		lis = tls.NewListener(lis, tlsConfig)
-	}
-
-	mux := cmux.New(lis)
-	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-	http2L := mux.Match(cmux.HTTP2())
-	http1L := mux.Match(cmux.HTTP1())
-
-	go grpcServer.Serve(grpcL)
-	go http2Server.Serve(http2L)
-	go http1Server.Serve(http1L)
-	go mux.Serve()
-
-	return mux, nil
-}
-
 func createOrLoadTLSKey(keyPath string) (*ecdsa.PrivateKey, error) {
 	if !pathExists(keyPath) {
 		return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	}
 
-	b, err := ioutil.ReadFile(keyPath)
+	b, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -265,85 +216,11 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 	return nil, fmt.Errorf("tls: failed to parse private key")
 }
 
-/*
-	gRPC web wrapper
-*/
-
-func newGRPCWrappedServer(
-	addr string,
-	grpcServer *grpc.Server,
-	grpcGateway http.Handler,
-	httpHandlers map[string]func(w http.ResponseWriter, req *http.Request),
-) (httpSrv *http.Server, http2Srv *http.Server) {
-	grpcWebServer := grpcweb.WrapServer(
-		grpcServer,
-		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
-		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
-	)
-
-	handler := func(w http.ResponseWriter, req *http.Request) {
-		if isOptionRequest(req) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Headers", "*")
-			w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-			return
-		}
-		if isGetRequest(req) {
-			if handler, ok := httpHandlers[req.URL.Path]; ok {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Access-Control-Allow-Headers", "*")
-				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-				handler(w, req)
-				return
-			}
-		}
-
-		if isValidRequest(req) {
-			grpcWebServer.ServeHTTP(w, req)
-			return
-		}
-
-		if grpcGateway != nil {
-			if isHttpRequest(req) {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Access-Control-Allow-Headers", "*")
-				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-				grpcGateway.ServeHTTP(w, req)
-				return
-			}
-		}
-
-		msg := "received a request that could not be matched to grpc or grpc-web"
-		log.Warn(msg)
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(msg))
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler)
-
-	httpSrv = &http.Server{
-		Addr:    addr,
-		Handler: mux,
-	}
-
-	http2Srv = &http.Server{
-		Addr:    addr,
-		Handler: h2c.NewHandler(http.HandlerFunc(handler), &http2.Server{}),
-	}
-
-	return
-}
-
-func isGetRequest(req *http.Request) bool {
-	return req.Method == http.MethodGet
-}
-
 func isOptionRequest(req *http.Request) bool {
 	return req.Method == http.MethodOptions
 }
 
-func isValidRequest(req *http.Request) bool {
+func isGrpcWebRequest(req *http.Request) bool {
 	return isValidGrpcWebOptionRequest(req) || isValidGrpcWebRequest(req)
 }
 
@@ -364,7 +241,7 @@ func isValidGrpcWebOptionRequest(req *http.Request) bool {
 }
 
 func isHttpRequest(req *http.Request) bool {
-	return strings.ToLower(req.Method) == "get" ||
+	return req.Method == http.MethodGet ||
 		strings.Contains(req.Header.Get("Content-Type"), "application/json")
 }
 
@@ -390,4 +267,39 @@ func getTlsConfig(tlsKey, tlsCert string) (*tls.Config, error) {
 	config.Rand = rand.Reader
 
 	return config, nil
+}
+
+func router(
+	grpcServer *grpc.Server, grpcWebServer *grpcweb.WrappedGrpcServer,
+	grpcGateway http.Handler, httpHandlers map[string]http.HandlerFunc,
+) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isGrpcWebRequest(r) {
+			grpcWebServer.ServeHTTP(w, r)
+			return
+		}
+		if isOptionRequest(r) {
+			if grpcGateway != nil {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+				return
+			}
+		}
+
+		if isHttpRequest(r) {
+			if handler, ok := httpHandlers[r.URL.Path]; ok {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+				handler(w, r)
+				return
+			}
+			if grpcGateway != nil {
+				grpcGateway.ServeHTTP(w, r)
+				return
+			}
+		}
+		grpcServer.ServeHTTP(w, r)
+	})
 }

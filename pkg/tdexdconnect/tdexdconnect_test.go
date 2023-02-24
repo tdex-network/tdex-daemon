@@ -73,7 +73,8 @@ func TestEncodeDecode(t *testing.T) {
 			require.Len(t, certBytes, 0)
 		} else {
 			buf := &bytes.Buffer{}
-			pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
+			err = pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
+			require.NoError(t, err)
 			require.Equal(t, string(certificate), buf.String())
 		}
 		require.Equal(t, tt.proto, proto)

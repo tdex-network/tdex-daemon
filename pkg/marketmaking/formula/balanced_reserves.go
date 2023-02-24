@@ -7,8 +7,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const BalancedReservesType = 1
-
 var (
 	balancedWeightIn  = decimal.NewFromInt(50)
 	balancedWeightOut = decimal.NewFromInt(50)
@@ -16,8 +14,10 @@ var (
 )
 
 var (
-	// ErrInvalidOptsType ...
-	ErrInvalidOptsType = errors.New("opts must be of type BalancedReservesOpts")
+	// ErrInvalidBalancedReservesOptsType ...
+	ErrInvalidBalancedReservesOptsType = errors.New(
+		"opts must be of type BalancedReservesOpts",
+	)
 	// ErrAmountTooLow ...
 	ErrAmountTooLow = errors.New("provided amount is too low")
 	// ErrAmountTooBig ...
@@ -45,7 +45,7 @@ type BalancedReserves struct{}
 func (BalancedReserves) SpotPrice(_opts interface{}) (spotPrice decimal.Decimal, err error) {
 	opts, ok := _opts.(BalancedReservesOpts)
 	if !ok {
-		err = ErrInvalidOptsType
+		err = ErrInvalidBalancedReservesOptsType
 		return
 	}
 
@@ -64,7 +64,7 @@ func (BalancedReserves) OutGivenIn(
 ) (amountOut decimal.Decimal, err error) {
 	opts, ok := _opts.(BalancedReservesOpts)
 	if !ok {
-		err = ErrInvalidOptsType
+		err = ErrInvalidBalancedReservesOptsType
 		return
 	}
 	if opts.BalanceIn.Equal(decimal.Zero) || opts.BalanceOut.Equal(decimal.Zero) {
@@ -107,7 +107,7 @@ func (BalancedReserves) InGivenOut(
 ) (amountIn decimal.Decimal, err error) {
 	opts, ok := _opts.(BalancedReservesOpts)
 	if !ok {
-		err = ErrInvalidOptsType
+		err = ErrInvalidBalancedReservesOptsType
 		return
 	}
 	if opts.BalanceIn.Equals(decimal.Zero) || opts.BalanceOut.Equals(decimal.Zero) {
@@ -145,8 +145,4 @@ func (BalancedReserves) InGivenOut(
 
 	amountIn = amount
 	return
-}
-
-func (BalancedReserves) FormulaType() int {
-	return BalancedReservesType
 }

@@ -6,16 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
 )
@@ -39,7 +37,9 @@ func TestWebhookPubSubService(t *testing.T) {
 	server := newTestWebServer(t)
 
 	t.Cleanup(func() {
+		//nolint
 		server.Shutdown(context.TODO())
+		//nolint
 		pubsubSvc.Store().Close()
 		os.RemoveAll(datadir)
 	})
@@ -122,9 +122,7 @@ func newTestService() (ports.SecurePubSub, error) {
 	if err != nil {
 		return nil, err
 	}
-	httpClient := esplora.NewHTTPClient(15 * time.Second)
-
-	return webhookpubsub.NewWebhookPubSubService(store, httpClient)
+	return webhookpubsub.NewWebhookPubSubService(store)
 }
 
 func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, error) {
@@ -171,7 +169,7 @@ func newTestWebServer(t *testing.T) *http.Server {
 
 		// Log request
 		defer r.Body.Close()
-		payload, _ := ioutil.ReadAll(r.Body)
+		payload, _ := io.ReadAll(r.Body)
 		headers, _ := json.Marshal(r.Header)
 		info := struct {
 			method   string
@@ -188,6 +186,7 @@ func newTestWebServer(t *testing.T) *http.Server {
 
 func randomSecret() string {
 	b := make([]byte, 32)
+	//nolint
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }

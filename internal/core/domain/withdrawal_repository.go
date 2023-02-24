@@ -2,26 +2,17 @@ package domain
 
 import "context"
 
-// WithdrawalRepository is the abstraction to which all concrete implementations
-// must sitck with to persist withdrawals.
+// WithdrawalRepository is the abstraction for any kind of database intended to
+// persist Withdrawals.
 type WithdrawalRepository interface {
 	// AddWithdrawals adds the provided withdrawals to the repository. Those already
 	// existing won't be re-added.
 	AddWithdrawals(ctx context.Context, withdrawals []Withdrawal) (int, error)
-	// ListWithdrawalsForAccount returns the list with the withdrawals related to
-	// the given wallet account id.
-	ListWithdrawalsForAccount(
-		ctx context.Context, accountIndex int,
+	// GetWithdrawalsForAccount returns the list with the withdrawals related to
+	// the given market.
+	GetWithdrawalsForAccount(
+		ctx context.Context, accountName string, page Page,
 	) ([]Withdrawal, error)
-	// ListWithdrawalsForAccountAndPage returns a page containing a subset of the
-	// list with the withdrawals related to the given wallet account id.
-	ListWithdrawalsForAccountAndPage(
-		ctx context.Context, accountIndex int, page Page,
-	) ([]Withdrawal, error)
-	// ListAllWithdrawals returns all withdrawals related to all wallet accounts
-	// stored in the repository.
-	ListAllWithdrawals(ctx context.Context) ([]Withdrawal, error)
-	// ListAllWithdrawalsForPage returns a page containing a subset of all
-	// withdrawals related to all wallet accounts stored in the repository.
-	ListAllWithdrawalsForPage(ctx context.Context, page Page) ([]Withdrawal, error)
+	// GetAllWithdrawals returns all withdrawals related to all markets.
+	GetAllWithdrawals(ctx context.Context, page Page) ([]Withdrawal, error)
 }

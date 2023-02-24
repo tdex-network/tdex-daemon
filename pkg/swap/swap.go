@@ -4,78 +4,11 @@ import (
 	"encoding/hex"
 	"errors"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
-	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
-	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
+	"github.com/vulpemventures/go-elements/confidential"
+	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/transaction"
 )
-
-func compareMessagesAndTransaction(request *tdexv1.SwapRequest, accept *tdexv1.SwapAccept) error {
-	decodedFromRequest, err := pset.NewPsetFromBase64(request.GetTransaction())
-	if err != nil {
-		return err
-	}
-
-	for index, input := range decodedFromRequest.Inputs {
-		if input.WitnessUtxo == nil && input.NonWitnessUtxo != nil {
-			inputVout := decodedFromRequest.UnsignedTx.Inputs[index].Index
-			decodedFromRequest.Inputs[index].WitnessUtxo = input.NonWitnessUtxo.Outputs[inputVout]
-		}
-	}
-
-	totalP, err := countCumulativeAmount(decodedFromRequest.Inputs, request.GetAssetP(), request.GetInputBlindingKey())
-	if err != nil {
-		return err
-	}
-	if totalP < request.GetAmountP() {
-		return errors.New("cumulative utxos count is not enough to cover SwapRequest.amount_p")
-	}
-
-	outputRFound, err := outputFoundInTransaction(
-		decodedFromRequest.UnsignedTx.Outputs,
-		request.GetAmountR(),
-		request.GetAssetR(),
-		request.GetOutputBlindingKey(),
-	)
-	if err != nil {
-		return err
-	}
-	if !outputRFound {
-		return errors.New("either SwapRequest.amount_r or SwapRequest.asset_r do not match the provided pset")
-	}
-
-	if accept != nil {
-		decodedFromAccept, err := pset.NewPsetFromBase64(accept.GetTransaction())
-		if err != nil {
-			return err
-		}
-
-		if request.GetId() != accept.GetRequestId() {
-			return errors.New("id mismatch: SwapRequest.id and SwapAccept.request_id are not the same")
-		}
-
-		totalR, err := countCumulativeAmount(decodedFromAccept.Inputs, request.GetAssetR(), accept.GetInputBlindingKey())
-		if err != nil {
-			return err
-		}
-		if totalR < request.GetAmountR() {
-			return errors.New("cumulative utxos count is not enough to cover SwapRequest.amount_r")
-		}
-
-		outputPFound, err := outputFoundInTransaction(
-			decodedFromAccept.UnsignedTx.Outputs,
-			request.GetAmountP(),
-			request.GetAssetP(),
-			accept.GetOutputBlindingKey(),
-		)
-		if !outputPFound {
-			return errors.New("either SwapRequest.amount_p or SwapRequest.asset_p do not match the provided pset")
-		}
-	}
-
-	return nil
-}
 
 func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, asset string, ouptutBlindKeys map[string][]byte) (bool, error) {
 	for _, output := range outputs {
@@ -87,18 +20,21 @@ func outputFoundInTransaction(outputs []*transaction.TxOutput, value uint64, ass
 				return false, errors.New("No blinding private key for script: " + script)
 			}
 
-			unblinded, ok := transactionutil.UnblindOutput(output, blindingPrivateKey)
-			if !ok {
+			unblinded, err := confidential.UnblindOutputWithKey(output, blindingPrivateKey)
+			if err != nil {
 				return false, errors.New("Unable to unblind output with script: " + script)
 			}
 
-			// check if the unblinded output respect criterias
-			if unblinded.Value == value && unblinded.AssetHash == asset {
+			// check if the unblinded output respects criteria
+			if unblinded.Value == value &&
+				elementsutil.AssetHashFromBytes(unblinded.Asset) == asset {
 				return true, nil
 			}
 		}
 		// unconfidential check
-		if bufferutil.ValueFromBytes(output.Value) == value && bufferutil.AssetHashFromBytes(output.Asset) == asset {
+		outAsset := elementsutil.AssetHashFromBytes(output.Asset)
+		outValue, _ := elementsutil.ValueFromBytes(output.Value)
+		if outValue == value && outAsset == asset {
 			return true, nil
 		}
 	}
@@ -117,7 +53,7 @@ func countCumulativeAmount(utxos []pset.PInput, asset string, inputBlindKeys map
 
 	// sum all the filteredUtxos' values
 	for _, utxo := range filteredUtxos {
-		value := bufferutil.ValueFromBytes(utxo.WitnessUtxo.Value)
+		value, _ := elementsutil.ValueFromBytes(utxo.WitnessUtxo.Value)
 		amount += value
 	}
 
@@ -136,20 +72,18 @@ func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inp
 				return nil, errors.New("No blinding private key for script: " + script)
 			}
 
-			unblinded, ok := transactionutil.UnblindOutput(utxo.WitnessUtxo, blindKey)
-			if !ok {
+			unblinded, err := confidential.UnblindOutputWithKey(utxo.WitnessUtxo, blindKey)
+			if err != nil {
 				return nil, errors.New("Unable to unblind output with script: " + script)
 			}
 
+			unblindedAsset := hex.EncodeToString(elementsutil.ReverseBytes(unblinded.Asset))
 			// replace Asset and Value by unblinded data before append
-			if unblinded.AssetHash == asset {
-				assetBytes, err := bufferutil.AssetHashToBytes(unblinded.AssetHash)
-				if err != nil {
-					return nil, err
-				}
+			if unblindedAsset == asset {
+				assetBytes, _ := elementsutil.AssetHashToBytes(unblindedAsset)
 				utxo.WitnessUtxo.Asset = assetBytes
 
-				valueBytes, err := bufferutil.ValueToBytes(unblinded.Value)
+				valueBytes, err := elementsutil.ValueToBytes(unblinded.Value)
 				if err != nil {
 					return nil, err
 				}
@@ -165,7 +99,7 @@ func utxosFilteredByAssetHashAndUnblinded(utxos []pset.PInput, asset string, inp
 			continue
 		}
 
-		if bufferutil.AssetHashFromBytes(utxo.WitnessUtxo.Asset) == asset {
+		if elementsutil.AssetHashFromBytes(utxo.WitnessUtxo.Asset) == asset {
 			filteredUtxos = append(filteredUtxos, utxo)
 		}
 	}

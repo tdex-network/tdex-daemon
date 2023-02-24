@@ -1,14 +1,15 @@
 package esplora
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
 
-	"github.com/tdex-network/tdex-daemon/pkg/bufferutil"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
-	"github.com/tdex-network/tdex-daemon/pkg/transactionutil"
+	"github.com/vulpemventures/go-elements/confidential"
+	"github.com/vulpemventures/go-elements/elementsutil"
 	"github.com/vulpemventures/go-elements/transaction"
 	"go.uber.org/ratelimit"
 )
@@ -211,8 +212,8 @@ func unblindUtxo(
 	// asset and value commitments are defined. However, if a bad (nil) nonce
 	// is passed to the UnblindOutput function, this will not be able to reveal
 	// secrets of the output.
-	assetCommitment, _ := bufferutil.CommitmentToBytes(utxo.AssetCommitment())
-	valueCommitment, _ := bufferutil.CommitmentToBytes(utxo.ValueCommitment())
+	assetCommitment, _ := elementsutil.CommitmentToBytes(utxo.AssetCommitment())
+	valueCommitment, _ := elementsutil.CommitmentToBytes(utxo.ValueCommitment())
 
 	txOut := &transaction.TxOutput{
 		Nonce:           utxo.Nonce(),
@@ -225,12 +226,12 @@ func unblindUtxo(
 
 	for i := range blindKeys {
 		blindKey := blindKeys[i]
-		unblinded, ok := transactionutil.UnblindOutput(txOut, blindKey)
-		if ok {
-			utxo.UAsset = unblinded.AssetHash
+		unblinded, _ := confidential.UnblindOutputWithKey(txOut, blindKey)
+		if unblinded != nil {
+			utxo.UAsset = hex.EncodeToString(elementsutil.ReverseBytes(unblinded.Asset))
 			utxo.UValue = unblinded.Value
-			utxo.UValueBlinder = unblinded.ValueBlinder
-			utxo.UAssetBlinder = unblinded.AssetBlinder
+			utxo.UValueBlinder = unblinded.ValueBlindingFactor
+			utxo.UAssetBlinder = unblinded.AssetBlindingFactor
 			chRes <- utxoResult{utxo: utxo}
 			return
 		}

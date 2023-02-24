@@ -2,15 +2,13 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/tdex-network/tdex-daemon/pkg/tdexdconnect"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/network"
@@ -170,7 +168,7 @@ func configConnectAction(c *cli.Context) (err error) {
 			return
 		}
 
-		if err = ioutil.WriteFile(tlsCertPath, buf.Bytes(), 0644); err != nil {
+		if err = os.WriteFile(tlsCertPath, buf.Bytes(), 0644); err != nil {
 			err = fmt.Errorf("failed to write certificate to file: %s", err)
 			return
 		}
@@ -184,7 +182,7 @@ func configConnectAction(c *cli.Context) (err error) {
 	var macaroonsPath string
 	if len(macaroon) > 0 {
 		macaroonsPath = filepath.Join(tdexDataDir, "admin.macaroon")
-		if err = ioutil.WriteFile(macaroonsPath, macaroon, 0644); err != nil {
+		if err = os.WriteFile(macaroonsPath, macaroon, 0644); err != nil {
 			err = fmt.Errorf("failed to write macaroon to file: %s", err)
 			return
 		}
@@ -214,23 +212,6 @@ func configConnectAction(c *cli.Context) (err error) {
 	return nil
 }
 
-func getNetworkFromState() (*network.Network, error) {
-	state, err := getState()
-	if err != nil {
-		return nil, err
-	}
-
-	net := state["network"]
-	switch net {
-	case network.Testnet.Name:
-		return &network.Testnet, nil
-	case network.Regtest.Name:
-		return &network.Regtest, nil
-	default:
-		return &network.Liquid, nil
-	}
-}
-
 func getMarketFromState() (string, string, error) {
 	state, err := getState()
 	if err != nil {
@@ -246,31 +227,4 @@ func getMarketFromState() (string, string, error) {
 	}
 
 	return baseAsset, quoteAsset, nil
-}
-
-func getWalletFromState(walletType string) (map[string]string, error) {
-	state, err := getState()
-	if err != nil {
-		return nil, err
-	}
-
-	walletKey := fmt.Sprintf("%s_wallet", walletType)
-	walletJSON, ok := state[walletKey]
-	if !ok || walletJSON == "" {
-		return nil, nil
-	}
-
-	wallet := map[string]string{}
-	if err := json.Unmarshal([]byte(walletJSON), &wallet); err != nil {
-		return nil, err
-	}
-	return wallet, nil
-}
-
-func flushWallet(walletType string) {
-	state, _ := getState()
-	walletKey := fmt.Sprintf("%s_wallet", walletType)
-	if _, ok := state[walletKey]; ok {
-		setState(map[string]string{walletKey: ""})
-	}
 }

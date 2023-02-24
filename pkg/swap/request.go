@@ -7,9 +7,18 @@ import (
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	"github.com/thanhpk/randstr"
 	"github.com/vulpemventures/go-elements/pset"
+	"github.com/vulpemventures/go-elements/psetv2"
 	"github.com/vulpemventures/go-elements/transaction"
 	"google.golang.org/protobuf/proto"
 )
+
+type UnblindedInput struct {
+	Index         uint32
+	Asset         string
+	Amount        uint64
+	AssetBlinder  string
+	AmountBlinder string
+}
 
 // RequestOpts is the struct to be given to the Request method
 type RequestOpts struct {
@@ -21,14 +30,39 @@ type RequestOpts struct {
 	PsetBase64         string
 	InputBlindingKeys  map[string][]byte
 	OutputBlindingKeys map[string][]byte
+	UnblindedInputs    []UnblindedInput
 }
 
 func (o RequestOpts) validate() error {
-	return checkTxAndBlindKeys(
-		o.PsetBase64,
-		o.InputBlindingKeys,
-		o.OutputBlindingKeys,
-	)
+	if isPsetV0(o.PsetBase64) {
+		return checkTxAndBlindKeys(
+			o.PsetBase64,
+			o.InputBlindingKeys,
+			o.OutputBlindingKeys,
+		)
+	}
+	if isPsetV2(o.PsetBase64) {
+		return checkTxAndUnblindedIns(o.PsetBase64, o.UnblindedInputs)
+	}
+
+	return fmt.Errorf("failed to parse transaction")
+}
+
+func (o RequestOpts) unblindedIns() []*tdexv1.UnblindedInput {
+	if len(o.UnblindedInputs) <= 0 {
+		return nil
+	}
+	list := make([]*tdexv1.UnblindedInput, 0, len(o.UnblindedInputs))
+	for _, in := range o.UnblindedInputs {
+		list = append(list, &tdexv1.UnblindedInput{
+			Index:         in.Index,
+			Asset:         in.Asset,
+			Amount:        in.Amount,
+			AssetBlinder:  in.AssetBlinder,
+			AmountBlinder: in.AmountBlinder,
+		})
+	}
+	return list
 }
 
 // Request takes a RequestOpts struct and returns a serialized protobuf message.
@@ -54,6 +88,7 @@ func Request(opts RequestOpts) ([]byte, error) {
 		// Blinding keys
 		InputBlindingKey:  opts.InputBlindingKeys,
 		OutputBlindingKey: opts.InputBlindingKeys,
+		UnblindedInputs:   opts.unblindedIns(),
 	}
 
 	return proto.Marshal(msg)
@@ -99,4 +134,31 @@ func checkTxAndBlindKeys(
 	}
 
 	return nil
+}
+
+func checkTxAndUnblindedIns(
+	psetBase64 string, unblindedIns []UnblindedInput,
+) error {
+	ptx, _ := psetv2.NewPsetFromBase64(psetBase64)
+
+	if len(unblindedIns) <= 0 {
+		return fmt.Errorf("missing unblinded inputs")
+	}
+	for _, in := range unblindedIns {
+		if uint64(in.Index) >= ptx.Global.InputCount {
+			return fmt.Errorf("unblinded input index %d out of range", in.Index)
+		}
+	}
+
+	return nil
+}
+
+func isPsetV0(tx string) bool {
+	_, err := pset.NewPsetFromBase64(tx)
+	return err == nil
+}
+
+func isPsetV2(tx string) bool {
+	_, err := psetv2.NewPsetFromBase64(tx)
+	return err == nil
 }

@@ -1,31 +1,28 @@
-.PHONY: build build-cli build-unlocker build-tdexdconnect proto proto-lint clean cov fmt help install integrationtest run test trade-cert vet
+.PHONY: build build-cli build-unlocker proto proto-lint clean cov fmt help install integrationtest mock run test trade-cert vet
 
 install:
-	go mod download
-	go mod tidy
+	@echo "Installing deps..."
+	@go mod download
+	@go mod tidy
 
 ## build: build for all platforms
-build: 
-	chmod u+x ./scripts/build
-	./scripts/build
+build:
+	@echo "Building tdexd binary..."
+	@bash ./scripts/build
 
 ## build-cli: build CLI for all platforms
-build-cli: 
-	chmod u+x ./scripts/build-cli
-	./scripts/build-cli
-
-build-tdexdconnect:
-	chmod u+x ./scripts/build-tdexdconnect
-	./scripts/build-tdexdconnect
+build-cli:
+	@echo "Building tdex binary..." 
+	@bash ./scripts/build-cli
 
 ## proto: compile proto stubs
 proto: proto-lint
 	@echo "Compiling stubs..."
-	@cd api-spec/protobuf; buf mod update; buf build
 	@buf generate buf.build/tdex-network/tdex-protobuf
+	@buf generate buf.build/vulpemventures/ocean
 	@buf generate
 
-## proto-lint: lint protos
+## proto-lint: lint protos & detect breaking changes
 proto-lint:
 	@echo "Linting protos..."
 	@buf lint
@@ -37,8 +34,8 @@ clean:
 
 ## 
 trade-cert:
-	chmod u+x ./scripts/tlscert
-	bash ./scripts/tlscert
+	@echo "Creating self-signed cert for trade interface..."
+	@bash ./scripts/tlscert
 
 ## cov: generates coverage report
 cov:
@@ -47,7 +44,7 @@ cov:
 
 ## fmt: Go Format
 fmt:
-	@echo "Gofmt..."
+	@echo "Checking code format..."
 	@if [ -n "$(gofmt -l .)" ]; then echo "Go code is not formatted"; exit 1; fi
 
 
@@ -58,10 +55,8 @@ help:
 
 ## run: Run locally with default configuration in regtest
 run: clean
-	export TDEX_NETWORK=regtest; \
-	export TDEX_EXPLORER_ENDPOINT=http://127.0.0.1:3001; \
+	export TDEX_WALLET_ADDR=localhost:18000; \
 	export TDEX_LOG_LEVEL=5; \
-	export TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225; \
 	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
 	export TDEX_NO_MACAROONS=true; \
 	export TDEX_NO_OPERATOR_TLS=true; \
@@ -71,22 +66,20 @@ run: clean
 
 ## vet: code analysis
 vet:
-	@echo "Vet..."
+	@echo "Running code analysis..."
 	@go vet ./...
 
-## test: runs go unit test with default values
-test: fmt shorttest
-
-## shorttest: runs unit tests by skipping those that are time expensive
-shorttest:
-	@echo "Testing..."
-	export TDEX_NETWORK=regtest; \
-	export TDEX_EXPLORER_ENDPOINT=http://127.0.0.1:3001; \
-	export TDEX_LOG_LEVEL=5; \
-	export TDEX_BASE_ASSET=5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225; \
-	export TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000; \
-	go test -v -count=1 -race -short ./...
+## test: runs unit and component tests
+test: fmt
+	@echo "Running unit tests..."
+	@go test -v -count=1 -race ./...
 
 ## integrationtest: runs e2e test
 integrationtest:
-	go run test/e2e/main.go
+	@echo "Running integration tests..."
+	@go run test/e2e/main.go
+
+## mock: generates mocks for unit tests
+mock:
+	@echo "Generating mocks for unit tests..."
+	@mockery --dir=internal/core/domain --name=SwapParser --structname=MockSwapParser --filename=swap.go --output=internal/core/domain/mocks

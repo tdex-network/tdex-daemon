@@ -1,8 +1,7 @@
-package db
+package db_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
@@ -22,83 +21,65 @@ func TestWithdrawalRepositoryImplementations(t *testing.T) {
 		repo := repositories[i]
 
 		t.Run(repo.Name, func(t *testing.T) {
-			t.Run("testAddAndListWithdrawals", func(t *testing.T) {
-				testAddAndListWithdrawals(t, repo)
+			t.Parallel()
+
+			t.Run("add_and_get_withdrawals", func(t *testing.T) {
+				testAddAndGetWithdrawals(t, repo)
 			})
 		})
 	}
 }
 
-func testAddAndListWithdrawals(t *testing.T, repo withdrawalRepository) {
-	depositRepository := repo.Repository
-	withdrawals := make([]domain.Withdrawal, 0)
-	for i := 0; i < 10; i++ {
-		withdrawals = append(withdrawals, domain.Withdrawal{
-			TxID:            fmt.Sprintf("%d", i),
-			AccountIndex:    1,
-			BaseAmount:      20,
-			QuoteAmount:     20,
-			MillisatPerByte: 10,
-			Address:         "dwd",
-		})
-	}
+func testAddAndGetWithdrawals(t *testing.T, repo withdrawalRepository) {
+	withdrawalRepository := repo.Repository
+	ctx := context.Background()
+	withdrawals := makeRandomWithdrawals(20)
 
-	count, err := depositRepository.AddWithdrawals(
+	allWithdrawals, err := withdrawalRepository.GetAllWithdrawals(ctx, nil)
+	require.NoError(t, err)
+	require.Empty(t, allWithdrawals)
+
+	count, err := withdrawalRepository.AddWithdrawals(
 		context.Background(), withdrawals,
 	)
 	require.NoError(t, err)
-	require.Equal(t, 10, count)
+	require.Equal(t, 20, count)
 
-	count, err = depositRepository.AddWithdrawals(
-		context.Background(), []domain.Withdrawal{
-			{
-				TxID:            "0",
-				AccountIndex:    1,
-				BaseAmount:      20,
-				QuoteAmount:     20,
-				MillisatPerByte: 10,
-				Address:         "dwd",
-			},
-		},
+	allWithdrawals, err = withdrawalRepository.GetAllWithdrawals(ctx, nil)
+	require.NoError(t, err)
+	require.Len(t, allWithdrawals, 20)
+
+	count, err = withdrawalRepository.AddWithdrawals(
+		context.Background(), withdrawals,
 	)
 	require.NoError(t, err)
 	require.Zero(t, count)
 
-	withdrawals, err = depositRepository.ListWithdrawalsForAccount(context.Background(), 1)
-	require.NoError(t, err)
-	require.Len(t, withdrawals, 10)
+	// Test that pagination is correct by getting all 20 withdrawals in 4 pages,
+	// each including 5 items. The concatenation of all pages must match the
+	// non-paginated list item per item.
+	allPagedWithdrawals := make([]domain.Withdrawal, 0)
+	for i := 1; i < 5; i++ {
+		pagedWithdrawals, err := withdrawalRepository.GetAllWithdrawals(
+			ctx, page{int64(i), 5},
+		)
+		require.NoError(t, err)
+		require.NotEmpty(t, pagedWithdrawals)
+		allPagedWithdrawals = append(allPagedWithdrawals, pagedWithdrawals...)
+	}
+	require.Exactly(t, allPagedWithdrawals, allWithdrawals)
 
-	withdrawals, err = depositRepository.ListWithdrawalsForAccount(context.Background(), 0)
-	require.NoError(t, err)
-	require.Empty(t, withdrawals)
-
-	withdrawals, err = depositRepository.ListWithdrawalsForAccountAndPage(
-		context.Background(), 1, domain.Page{Number: 1, Size: 5},
+	withdrawalsByMarket, err := withdrawalRepository.GetWithdrawalsForAccount(
+		ctx, withdrawals[0].AccountName, nil,
 	)
 	require.NoError(t, err)
-	require.Len(t, withdrawals, 5)
+	require.Len(t, withdrawalsByMarket, 1)
 
-	withdrawals, err = depositRepository.ListWithdrawalsForAccountAndPage(
-		context.Background(), 1, domain.Page{Number: 2, Size: 5},
+	withdrawalsByMarket, err = withdrawalRepository.GetWithdrawalsForAccount(
+		ctx, randomHex(32), nil,
 	)
 	require.NoError(t, err)
-	require.Len(t, withdrawals, 5)
-
-	withdrawals, err = depositRepository.ListAllWithdrawals(context.Background())
-	require.NoError(t, err)
-	require.Len(t, withdrawals, 10)
-
-	withdrawals, err = depositRepository.ListAllWithdrawalsForPage(
-		context.Background(), domain.Page{Number: 1, Size: 6},
-	)
-	require.NoError(t, err)
-	require.Len(t, withdrawals, 6)
-
-	withdrawals, err = depositRepository.ListAllWithdrawalsForPage(
-		context.Background(), domain.Page{Number: 2, Size: 6},
-	)
-	require.NoError(t, err)
-	require.Len(t, withdrawals, 4)
+	require.Empty(t, withdrawalsByMarket)
 }
 
 type withdrawalRepository struct {

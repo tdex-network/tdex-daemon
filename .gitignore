@@ -30,3 +30,5 @@ test/e2e/*
 
 localhost.key
 localhost.crt
+
+resources/volumes

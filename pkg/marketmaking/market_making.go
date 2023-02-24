@@ -2,40 +2,20 @@ package marketmaking
 
 import (
 	"github.com/shopspring/decimal"
+	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
 )
-
-// MakingStrategy defines the automated market making strategy, usingi a formula to be applied to calculate the price of next trade.
-type MakingStrategy struct {
-	Type    int
-	formula MakingFormula
-}
 
 // MakingFormula defines the interface for implementing the formula to derive the spot price
 type MakingFormula interface {
 	SpotPrice(spotPriceOpts interface{}) (spotPrice decimal.Decimal, err error)
 	OutGivenIn(outGivenInOpts interface{}, amountIn decimal.Decimal) (amountOut decimal.Decimal, err error)
 	InGivenOut(inGivenOutOpts interface{}, amountOut decimal.Decimal) (amountIn decimal.Decimal, err error)
-	FormulaType() int
 }
 
-// NewStrategyFromFormula returns the strategy struct with the name
-func NewStrategyFromFormula(
-	formula MakingFormula,
-) MakingStrategy {
-	strategy := MakingStrategy{
-		Type:    formula.FormulaType(),
-		formula: formula,
-	}
-
-	return strategy
+func NewBalancedReservedFormula() MakingFormula {
+	return formula.BalancedReserves{}
 }
 
-// IsZero checks if the given strategy is the zero value
-func (ms MakingStrategy) IsZero() bool {
-	return ms.Type == 0 && ms.formula == nil
-}
-
-// Formula returns the mathematical formula of the MM strategy
-func (ms MakingStrategy) Formula() MakingFormula {
-	return ms.formula
+func NewPluggableFormula() MakingFormula {
+	return formula.Pluggable{}
 }

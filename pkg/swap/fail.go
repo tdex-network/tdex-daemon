@@ -1,31 +1,34 @@
 package swap
 
 import (
-	"fmt"
-
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	"github.com/thanhpk/randstr"
 	"google.golang.org/protobuf/proto"
 )
 
-type ErrCode int
-
 const (
-	ErrCodeInvalidSwapRequest ErrCode = iota
+	ErrCodeInvalidSwapRequest = iota
 	ErrCodeRejectedSwapRequest
 	ErrCodeFailedToComplete
+	ErrCodeInvalidTransaction
+	ErrCodeBadPricingSwapRequest
+	ErrCodeAborted
+	ErrCodeFailedToBroadcast
 )
 
-var errMsg = map[ErrCode]string{
-	ErrCodeInvalidSwapRequest:  "invalid swap request",
-	ErrCodeRejectedSwapRequest: "swap request not accepted",
-	ErrCodeFailedToComplete:    "swap not completed",
+var errMsg = map[int]string{
+	ErrCodeInvalidSwapRequest:    "invalid swap request",
+	ErrCodeRejectedSwapRequest:   "swap request not accepted",
+	ErrCodeFailedToComplete:      "swap not completed",
+	ErrCodeInvalidTransaction:    "invalid transaction format",
+	ErrCodeBadPricingSwapRequest: "swap request price not accepted",
+	ErrCodeAborted:               "aborted by counter-party ",
+	ErrCodeFailedToBroadcast:     "swap completed but didn't get included in blockchain ",
 }
 
 type FailOpts struct {
-	MessageID  string
-	ErrCode    ErrCode
-	ErrMessage string
+	MessageID string
+	ErrCode   int
 }
 
 func Fail(opts FailOpts) (string, []byte, error) {
@@ -34,7 +37,7 @@ func Fail(opts FailOpts) (string, []byte, error) {
 		Id:             randomID,
 		MessageId:      opts.MessageID,
 		FailureCode:    uint32(opts.ErrCode),
-		FailureMessage: fmt.Sprintf("%s: %s", errMsg[opts.ErrCode], opts.ErrMessage),
+		FailureMessage: errMsg[opts.ErrCode],
 	}
 
 	msgFailSerialized, err := proto.Marshal(msgFail)

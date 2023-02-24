@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -17,14 +16,14 @@ import (
 
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	"gopkg.in/macaroon.v2"
 
-	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 )
 
@@ -48,7 +47,7 @@ var (
 	}
 )
 
-func init() {
+func initCLIEnv() {
 	dataDir := cleanAndExpandPath(os.Getenv("TDEX_OPERATOR_DATADIR"))
 	if len(dataDir) <= 0 {
 		return
@@ -59,6 +58,8 @@ func init() {
 }
 
 func main() {
+	initCLIEnv()
+
 	app := cli.NewApp()
 
 	app.Version = formatVersion()
@@ -70,6 +71,7 @@ func main() {
 		&genseed,
 		&initwallet,
 		&unlockwallet,
+		&lockwallet,
 		&status,
 		&changepassword,
 		&getwalletinfo,
@@ -81,36 +83,17 @@ func main() {
 		&listmarkets,
 		&listtrades,
 		&listutxos,
-		&reloadtxos,
 		&addwebhook,
 		&removewebhook,
 		&listwebhooks,
 		&listdeposits,
 		&listwithdrawals,
 		&contentType,
-		// TODO: deprecated commands, to be removed in next version.
-		&fragmentfee,
-		&fragmentmarket,
-		&listmarket,
-		&depositfee,
-		&depositmarket,
-		&claimfee,
-		&claimmarket,
-		&balancefee,
-		&openmarket,
-		&closemarket,
-		&dropmarket,
-		&updatestrategy,
-		&updateprice,
-		&updatePercentagefee,
-		&updateFixedfee,
-		&withdrawmarket,
-		&reportmarketfee,
 	)
 
 	app.Before = func(ctx *cli.Context) error {
 		if _, err := os.Stat(tdexDataDir); os.IsNotExist(err) {
-			os.Mkdir(tdexDataDir, os.ModeDir|0755)
+			return os.Mkdir(tdexDataDir, os.ModeDir|0755)
 		}
 		return nil
 	}
@@ -122,32 +105,34 @@ func main() {
 }
 
 func getState() (map[string]string, error) {
-	file, err := ioutil.ReadFile(statePath)
+	file, err := os.ReadFile(statePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
-		if err := setState(initialState); err != nil {
+		if err := setInitialState(); err != nil {
 			return nil, err
 		}
 		return initialState, nil
 	}
 
 	data := map[string]string{}
-	json.Unmarshal(file, &data)
+	if err := json.Unmarshal(file, &data); err != nil {
+		return nil, err
+	}
 
 	return data, nil
 }
 
-func setState(data map[string]string) error {
-	file, err := os.OpenFile(statePath, os.O_RDONLY|os.O_CREATE, 0644)
+func setInitialState() error {
+	jsonString, err := json.Marshal(initialState)
 	if err != nil {
 		return err
 	}
-	if err := file.Close(); err != nil {
-		return err
-	}
+	return os.WriteFile(statePath, jsonString, 0755)
+}
 
+func setState(data map[string]string) error {
 	currentData, err := getState()
 	if err != nil {
 		return err
@@ -180,7 +165,7 @@ func setState(data map[string]string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(statePath, jsonString, 0755)
+	err = os.WriteFile(statePath, jsonString, 0755)
 	if err != nil {
 		return fmt.Errorf("writing to file: %w", err)
 	}
@@ -235,34 +220,24 @@ func getTransportClient(ctx *cli.Context) (tdexv1.TransportServiceClient, func()
 	return tdexv1.NewTransportServiceClient(conn), cleanup, nil
 }
 
-func getOperatorClient(ctx *cli.Context) (daemonv1.OperatorServiceClient, func(), error) {
+func getOperatorClient(ctx *cli.Context) (daemonv2.OperatorServiceClient, func(), error) {
 	conn, err := getClientConn(false)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { conn.Close() }
 
-	return daemonv1.NewOperatorServiceClient(conn), cleanup, nil
+	return daemonv2.NewOperatorServiceClient(conn), cleanup, nil
 }
 
-func getUnlockerClient(ctx *cli.Context) (daemonv1.WalletUnlockerServiceClient, func(), error) {
+func getWalletClient(ctx *cli.Context) (daemonv2.WalletServiceClient, func(), error) {
 	conn, err := getClientConn(true)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { _ = conn.Close() }
 
-	return daemonv1.NewWalletUnlockerServiceClient(conn), cleanup, nil
-}
-
-func getWalletClient(ctx *cli.Context) (daemonv1.WalletServiceClient, func(), error) {
-	conn, err := getClientConn(true)
-	if err != nil {
-		return nil, nil, err
-	}
-	cleanup := func() { _ = conn.Close() }
-
-	return daemonv1.NewWalletServiceClient(conn), cleanup, nil
+	return daemonv2.NewWalletServiceClient(conn), cleanup, nil
 }
 
 func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
@@ -306,7 +281,7 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 						"'tdex config set macaroons_path path/to/macaroon",
 				)
 			}
-			macBytes, err := ioutil.ReadFile(macPath)
+			macBytes, err := os.ReadFile(macPath)
 			if err != nil {
 				return nil, fmt.Errorf("could not read macaroon %s: %s", macPath, err)
 			}
@@ -352,6 +327,14 @@ func cleanAndExpandPath(path string) string {
 	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
 	// but the variables can still be expanded via POSIX-style $VARIABLE.
 	return filepath.Clean(os.ExpandEnv(path))
+}
+
+func printDeprecatedWarn(newCmd string) {
+	colorYellow := "\033[33m"
+	fmt.Println(fmt.Sprintf(
+		"%sWarning: this command is deprecated and will be removed in the next "+
+			"version.\nInstead, use the new command '%s'", string(colorYellow), newCmd,
+	))
 }
 
 type invalidUsageError struct {

@@ -1,0 +1,68 @@
+version: "3.7"
+
+services:
+  oceand:
+    container_name: oceand
+    image: ghcr.io/vulpemventures/oceand:latest
+    restart: unless-stopped
+    depends_on:
+      - oceand-db
+    environment:
+      - OCEAN_LOG_LEVEL=5
+      - OCEAN_NO_TLS=true
+      - OCEAN_NO_PROFILER=true
+      - OCEAN_ELECTRUM_URL=tcp://electrs-liquid:50001
+      - OCEAN_NETWORK=regtest
+      - OCEAN_UTXO_EXPIRY_DURATION_IN_SECONDS=60
+      - OCEAN_DB_HOST=oceand-regtest-db
+    ports:
+      - "18000:18000"
+    volumes:
+      - ../volumes/oceand/data:/home/ocean/.ocean-wallet
+      - ../volumes/oceand/cli:/home/ocean/.ocean-cli
+  tdexd:
+    container_name: tdexd
+    build: 
+      context: ../../
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - oceand
+    environment:
+      - TDEX_NETWORK=regtest
+      - TDEX_WALLET_ADDR=oceand:18000
+      - TDEX_EXPLORER_ENDPOINT=http://chopsticks-liquid:3000
+      - TDEX_LOG_LEVEL=5
+      - TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000
+      - TDEX_NO_MACAROONS=true
+      - TDEX_NO_OPERATOR_TLS=true
+      - TDEX_CONNECT_PROTO=http
+    ports:
+      - "9000:9000"
+      - "9945:9945"
+    volumes:
+      - ../volumes/tdexd/data:/home/tdex/.tdex-daemon
+      - ../volumes/tdexd/cli:/home/tdex/.tdex-operator
+  feederd:
+    container_name: feederd
+    image: ghcr.io/tdex-network/feederd:latest
+    restart: unless-stopped
+    depends_on:
+      - tdexd
+    volumes:
+      - ../volumes/feederd/config.json:/config.json
+  oceand-db:
+    container_name: oceand-regtest-db
+    image: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=oceand-db
+    ports:
+      - "5432:5432"
+
+networks:
+  default:
+    name: nigiri
+    external: true

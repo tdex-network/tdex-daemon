@@ -4,36 +4,32 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/sony/gobreaker"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/pkg/circuitbreaker"
-	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 	"golang.org/x/sync/errgroup"
 )
 
 type webhookService struct {
 	store      webhookStore
-	httpClient *esplora.Client
+	httpClient *client
 	cb         *gobreaker.CircuitBreaker
 }
 
 func NewWebhookPubSubService(
 	store securestore.SecureStorage,
-	httpClient *esplora.Client,
 ) (ports.SecurePubSub, error) {
 	if store == nil {
 		return nil, ErrNullSecureStore
 	}
-	if httpClient == nil {
-		return nil, ErrNullHTTPClient
-	}
 
 	return &webhookService{
 		store:      webhookStore{store},
-		httpClient: httpClient,
+		httpClient: newHTTPClient(15 * time.Second),
 		cb:         circuitbreaker.NewCircuitBreaker(),
 	}, nil
 }
@@ -122,7 +118,9 @@ func (ws *webhookService) addWebhook(hook *Webhook) (string, error) {
 	if err := ws.store.db().AddToBucket(hooksBucket, hookID, hook.Serialize()); err != nil {
 		return "", err
 	}
-	ws.addHookByAction(hook)
+	if err := ws.addHookByAction(hook); err != nil {
+		return "", err
+	}
 	return hook.ID, nil
 }
 
@@ -143,8 +141,7 @@ func (ws *webhookService) removeWebhook(hookID string) error {
 	}
 
 	hook, _ := NewWebhookFromBytes(buf)
-	ws.removeHookByAction(hook)
-	return nil
+	return ws.removeHookByAction(hook)
 }
 
 func (ws *webhookService) listWebhooksForAction(actionType WebhookAction) []ports.Subscription {
@@ -179,15 +176,15 @@ func (ws *webhookService) invokeWebhooksForAction(actionType WebhookAction, mess
 	return eg.Wait()
 }
 
-func (ws *webhookService) addHookByAction(hook *Webhook) {
+func (ws *webhookService) addHookByAction(hook *Webhook) error {
 	key := []byte{byte(hook.ActionType)}
 	hooks := ws.getSerializedHooks(hook.ActionType)
 	hooks = append(hooks, hook.Serialize())
 	updatedHooks := bytes.Join(hooks, separator)
-	ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
+	return ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
 }
 
-func (ws *webhookService) removeHookByAction(hook *Webhook) {
+func (ws *webhookService) removeHookByAction(hook *Webhook) error {
 	rawHooks := ws.getSerializedHooks(hook.ActionType)
 
 	var index int
@@ -203,12 +200,11 @@ func (ws *webhookService) removeHookByAction(hook *Webhook) {
 	rawHooks = append(rawHooks[:index], rawHooks[index+1:]...)
 
 	if len(rawHooks) <= 0 {
-		ws.store.db().RemoveFromBucket(hooksByActionBucket, key)
-		return
+		return ws.store.db().RemoveFromBucket(hooksByActionBucket, key)
 	}
 
 	updatedHooks := bytes.Join(rawHooks, separator)
-	ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
+	return ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
 }
 
 func (ws *webhookService) getHooksByAction(actionType WebhookAction) []*Webhook {
@@ -242,7 +238,7 @@ func (ws *webhookService) doRequest(hook *Webhook, payload string) error {
 			headers["Authorization"] = fmt.Sprintf("Bearer %s", tokenString)
 		}
 
-		status, resp, err := ws.httpClient.NewHTTPRequest("POST", hook.Endpoint, payload, headers)
+		status, resp, err := ws.httpClient.post(hook.Endpoint, payload, headers)
 		if err != nil {
 			return nil, err
 		}

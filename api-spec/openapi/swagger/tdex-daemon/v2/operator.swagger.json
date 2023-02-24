@@ -1,0 +1,939 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "tdex-daemon/v2/operator.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "OperatorService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "googlerpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "tdex_daemonv2ActionType": {
+      "type": "string",
+      "enum": [
+        "ACTION_TYPE_UNSPECIFIED",
+        "ACTION_TYPE_TRADE_SETTLED",
+        "ACTION_TYPE_ACCOUNT_LOW_BALANCE",
+        "ACTION_TYPE_ACCOUNT_WITHDRAW",
+        "ACTION_TYPE_ALL_ACTIONS"
+      ],
+      "default": "ACTION_TYPE_UNSPECIFIED"
+    },
+    "tdex_daemonv2AddWebhookResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the new webhook."
+        }
+      }
+    },
+    "tdex_daemonv2Balance": {
+      "type": "object",
+      "properties": {
+        "confirmedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Spendable balance."
+        },
+        "unconfirmedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Not yet spendable balance."
+        },
+        "lockedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Not spendable balance."
+        },
+        "totalBalance": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The balance of all unspents included those locked."
+        }
+      }
+    },
+    "tdex_daemonv2CloseMarketResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2CustomPeriod": {
+      "type": "object",
+      "properties": {
+        "startDate": {
+          "type": "string",
+          "title": "start_date in RFC3339 format"
+        },
+        "endDate": {
+          "type": "string",
+          "title": "end_date in RFC3339 format"
+        }
+      }
+    },
+    "tdex_daemonv2DropMarketResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2FeeFragmenterSplitFundsResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "A sequence of string messages returned during the process."
+        }
+      }
+    },
+    "tdex_daemonv2FeeInfo": {
+      "type": "object",
+      "properties": {
+        "tradeId": {
+          "type": "string",
+          "description": "The id of the trade."
+        },
+        "basisPoint": {
+          "type": "string",
+          "format": "int64",
+          "description": "The percentage fee applied to the trade."
+        },
+        "asset": {
+          "type": "string",
+          "description": "The asset in which fees are collected."
+        },
+        "percentageFeeAmount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The amount in satoshi of the percentage fee."
+        },
+        "fixedFeeAmount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The amount in satoshi of the fixed fee."
+        },
+        "marketPrice": {
+          "type": "number",
+          "format": "double",
+          "description": "The market price when the trade propoal was accepted."
+        },
+        "requestDate": {
+          "type": "string",
+          "description": "The request date of the trade in RFC3339 format."
+        }
+      }
+    },
+    "tdex_daemonv2GetFeeBalanceResponse": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "$ref": "#/definitions/tdex_daemonv2Balance"
+        }
+      }
+    },
+    "tdex_daemonv2GetFeeFragmenterBalanceResponse": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/tdex_daemonv2Balance"
+          },
+          "description": "Account balance grouped by asset."
+        }
+      }
+    },
+    "tdex_daemonv2GetMarketFragmenterBalanceResponse": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/tdex_daemonv2Balance"
+          },
+          "title": "Account balance grouped by asset"
+        }
+      }
+    },
+    "tdex_daemonv2GetMarketInfoResponse": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/tdex_daemonv2MarketInfo"
+        }
+      }
+    },
+    "tdex_daemonv2GetMarketReportResponse": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "$ref": "#/definitions/tdex_daemonv2MarketReport",
+          "title": "MarketReport holds info about volume and collected fees"
+        }
+      }
+    },
+    "tdex_daemonv2ListDepositsResponse": {
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "The name of the wallet account."
+        },
+        "deposits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2Transaction"
+          },
+          "description": "The list of info about the deposits."
+        }
+      }
+    },
+    "tdex_daemonv2ListFeeAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of derived confidential addresses."
+        }
+      }
+    },
+    "tdex_daemonv2ListFeeFragmenterAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tdex_daemonv2ListMarketAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of derived confidential addresses."
+        }
+      }
+    },
+    "tdex_daemonv2ListMarketFragmenterAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tdex_daemonv2ListMarketsResponse": {
+      "type": "object",
+      "properties": {
+        "markets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tdex_daemonv2MarketInfo"
+          },
+          "description": "The list of info about all the created markets."
+        }
+      }
+    },
+    "tdex_daemonv2ListTradesResponse": {
+      "type": "object",
+      "properties": {
+        "trades": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tdex_daemonv2TradeInfo"
+          },
+          "description": "The list of info about all trades or all trades for a market depending on\nthe request."
+        }
+      }
+    },
+    "tdex_daemonv2ListUtxosResponse": {
+      "type": "object",
+      "properties": {
+        "spendableUtxos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tdex_daemonv2UtxoInfo"
+          },
+          "description": "The list of all spendable utxos."
+        },
+        "lockedUtxos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tdex_daemonv2UtxoInfo"
+          },
+          "description": "The list of all locked utxos."
+        }
+      }
+    },
+    "tdex_daemonv2ListWebhooksResponse": {
+      "type": "object",
+      "properties": {
+        "webhookInfo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tdex_daemonv2WebhookInfo"
+          },
+          "description": "The list of info about the webhooks regitered for an action."
+        }
+      }
+    },
+    "tdex_daemonv2ListWithdrawalsResponse": {
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "The name of the wallet account."
+        },
+        "withdrawals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2Transaction"
+          },
+          "description": "The list of info about the withdrawals."
+        }
+      }
+    },
+    "tdex_daemonv2MarketCollectedFees": {
+      "type": "object",
+      "properties": {
+        "baseAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "quoteAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "feesPerTrade": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tdex_daemonv2FeeInfo"
+          }
+        },
+        "startDate": {
+          "type": "string",
+          "title": "start_date in RFC3339 format of the aggregated volume calculation"
+        },
+        "endDate": {
+          "type": "string",
+          "title": "end_date in RFC3339 format of the aggregated volume calculation"
+        }
+      }
+    },
+    "tdex_daemonv2MarketFragmenterSplitFundsResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "A sequence of string messages returned during the process."
+        }
+      }
+    },
+    "tdex_daemonv2MarketInfo": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market",
+          "title": "The asset pair of the market"
+        },
+        "fee": {
+          "$ref": "#/definitions/v1Fee",
+          "title": "The percentage and fixed fees"
+        },
+        "tradable": {
+          "type": "boolean",
+          "description": "Whether the market is opened or closed."
+        },
+        "strategyType": {
+          "$ref": "#/definitions/tdex_daemonv2StrategyType",
+          "description": "The making strategy."
+        },
+        "accountName": {
+          "type": "string",
+          "description": "The name of the wallet account."
+        },
+        "price": {
+          "$ref": "#/definitions/v1Price",
+          "description": "The current price in case the strategy is PLUGGABLE."
+        },
+        "balance": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/tdex_daemonv2Balance"
+          },
+          "description": "The current unlocked balance."
+        },
+        "baseAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the base asset."
+        },
+        "quoteAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the quote asset."
+        }
+      }
+    },
+    "tdex_daemonv2MarketReport": {
+      "type": "object",
+      "properties": {
+        "totalCollectedFees": {
+          "$ref": "#/definitions/tdex_daemonv2MarketCollectedFees"
+        },
+        "totalVolume": {
+          "$ref": "#/definitions/tdex_daemonv2MarketVolume"
+        },
+        "volumesPerFrame": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tdex_daemonv2MarketVolume"
+          }
+        }
+      }
+    },
+    "tdex_daemonv2MarketVolume": {
+      "type": "object",
+      "properties": {
+        "baseVolume": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "quoteVolume": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "startDate": {
+          "type": "string",
+          "title": "start_date in RFC3339 format of the aggregated volume calculation"
+        },
+        "endDate": {
+          "type": "string",
+          "title": "end_date in RFC3339 format of the aggregated volume calculation"
+        }
+      }
+    },
+    "tdex_daemonv2NewMarketResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2OpenMarketResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2Outpoint": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "description": "The hash of the transaction."
+        },
+        "index": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The index of the output."
+        }
+      }
+    },
+    "tdex_daemonv2Page": {
+      "type": "object",
+      "properties": {
+        "number": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of the page."
+        },
+        "size": {
+          "type": "string",
+          "format": "int64",
+          "description": "The size of the page, ie the max length the returning list can have."
+        }
+      }
+    },
+    "tdex_daemonv2PredefinedPeriod": {
+      "type": "string",
+      "enum": [
+        "PREDEFINED_PERIOD_UNSPECIFIED",
+        "PREDEFINED_PERIOD_LAST_HOUR",
+        "PREDEFINED_PERIOD_LAST_DAY",
+        "PREDEFINED_PERIOD_LAST_WEEK",
+        "PREDEFINED_PERIOD_LAST_MONTH",
+        "PREDEFINED_PERIOD_LAST_THREE_MONTHS",
+        "PREDEFINED_PERIOD_YEAR_TO_DATE",
+        "PREDEFINED_PERIOD_LAST_YEAR",
+        "PREDEFINED_PERIOD_ALL"
+      ],
+      "default": "PREDEFINED_PERIOD_UNSPECIFIED"
+    },
+    "tdex_daemonv2RemoveWebhookResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2StrategyType": {
+      "type": "string",
+      "enum": [
+        "STRATEGY_TYPE_UNSPECIFIED",
+        "STRATEGY_TYPE_PLUGGABLE",
+        "STRATEGY_TYPE_BALANCED",
+        "STRATEGY_TYPE_UNBALANCED"
+      ],
+      "default": "STRATEGY_TYPE_UNSPECIFIED"
+    },
+    "tdex_daemonv2SwapFailInfo": {
+      "type": "object",
+      "properties": {
+        "failureCode": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The error code."
+        },
+        "failureMessage": {
+          "type": "string",
+          "description": "The error message."
+        }
+      }
+    },
+    "tdex_daemonv2SwapInfo": {
+      "type": "object",
+      "properties": {
+        "amountP": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The proposer's quantity."
+        },
+        "assetP": {
+          "type": "string",
+          "description": "The proposer's asset hash."
+        },
+        "amountR": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The responder's quantity."
+        },
+        "assetR": {
+          "type": "string",
+          "description": "The responder's asset hash."
+        }
+      }
+    },
+    "tdex_daemonv2TimeFrame": {
+      "type": "string",
+      "enum": [
+        "TIME_FRAME_UNSPECIFIED",
+        "TIME_FRAME_HOUR",
+        "TIME_FRAME_FOUR_HOURS",
+        "TIME_FRAME_DAY",
+        "TIME_FRAME_WEEK",
+        "TIME_FRAME_MONTH"
+      ],
+      "default": "TIME_FRAME_UNSPECIFIED"
+    },
+    "tdex_daemonv2TimeRange": {
+      "type": "object",
+      "properties": {
+        "predefinedPeriod": {
+          "$ref": "#/definitions/tdex_daemonv2PredefinedPeriod",
+          "title": "predefined time_period till now"
+        },
+        "customPeriod": {
+          "$ref": "#/definitions/tdex_daemonv2CustomPeriod",
+          "title": "custom time range"
+        }
+      },
+      "description": "TimeRange is flexible type used to determine time span for which specific\napi will fetch data, either one of predefined_period or custom_period should be provided."
+    },
+    "tdex_daemonv2TradeInfo": {
+      "type": "object",
+      "properties": {
+        "tradeId": {
+          "type": "string",
+          "description": "The id of the trade."
+        },
+        "status": {
+          "$ref": "#/definitions/tdex_daemonv2TradeStatusInfo",
+          "description": "The info about the status of the trade."
+        },
+        "swapInfo": {
+          "$ref": "#/definitions/tdex_daemonv2SwapInfo",
+          "description": "The info about the swap."
+        },
+        "failInfo": {
+          "$ref": "#/definitions/tdex_daemonv2SwapFailInfo",
+          "description": "The info of an eventually failed swap."
+        },
+        "marketWithFee": {
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The collected fee on the current swap."
+        },
+        "price": {
+          "$ref": "#/definitions/v1Price",
+          "description": "The prices of the trade at request time."
+        },
+        "requestTimestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "The unix timestamp of the SwapRequest."
+        },
+        "acceptTimestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "The unix timestamp SwapAccept."
+        },
+        "completeTimestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "The unix timestamp of the SwapComplete."
+        },
+        "settleTimestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "The unix timestamp of the settlement date."
+        },
+        "expiryTimestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "The unix timestamp of the expiration date."
+        },
+        "requestDate": {
+          "type": "string",
+          "description": "The timestamp of the SwapRequest in RFC3339 format."
+        },
+        "acceptDate": {
+          "type": "string",
+          "description": "The timestamp of the SwapAccept in RFC3339 format."
+        },
+        "completeDate": {
+          "type": "string",
+          "description": "The timestamp of the SwapComplete in RFC3339 format."
+        },
+        "settleDate": {
+          "type": "string",
+          "description": "The timestamp of the settlement date in RFC3339 format."
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "The timestamp of the expiration date in RFC3339 format."
+        }
+      }
+    },
+    "tdex_daemonv2TradeStatus": {
+      "type": "string",
+      "enum": [
+        "TRADE_STATUS_UNSPECIFIED",
+        "TRADE_STATUS_REQUEST",
+        "TRADE_STATUS_ACCEPT",
+        "TRADE_STATUS_COMPLETE",
+        "TRADE_STATUS_SETTLED",
+        "TRADE_STATUS_EXPIRED"
+      ],
+      "default": "TRADE_STATUS_UNSPECIFIED"
+    },
+    "tdex_daemonv2TradeStatusInfo": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/tdex_daemonv2TradeStatus",
+          "description": "The status of the trade."
+        },
+        "failed": {
+          "type": "boolean",
+          "description": "Whether it is failed in the current status."
+        }
+      }
+    },
+    "tdex_daemonv2TxOutput": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "description": "Asset hash."
+        },
+        "amount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Spending amount."
+        },
+        "script": {
+          "type": "string",
+          "description": "Destination output script."
+        },
+        "blindingKey": {
+          "type": "string",
+          "description": "Blinding key for confidential output."
+        }
+      }
+    },
+    "tdex_daemonv2UpdateMarketAssetsPrecisionResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2UpdateMarketFixedFeeResponse": {
+      "type": "object",
+      "properties": {
+        "marketWithFee": {
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The market with updated fees."
+        }
+      }
+    },
+    "tdex_daemonv2UpdateMarketPercentageFeeResponse": {
+      "type": "object",
+      "properties": {
+        "marketWithFee": {
+          "$ref": "#/definitions/v1MarketWithFee",
+          "description": "The market with updated fees."
+        }
+      }
+    },
+    "tdex_daemonv2UpdateMarketPriceResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2UpdateMarketStrategyResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2UtxoInfo": {
+      "type": "object",
+      "properties": {
+        "outpoint": {
+          "$ref": "#/definitions/tdex_daemonv2Outpoint",
+          "title": "The outpoint \u003chash, index\u003e"
+        },
+        "value": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The unblinded value."
+        },
+        "asset": {
+          "type": "string",
+          "description": "The unblinded asset."
+        }
+      }
+    },
+    "tdex_daemonv2WebhookInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the webhook."
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "The endpoint of the external service to reach."
+        },
+        "isSecured": {
+          "type": "boolean",
+          "description": "Whether the outgoing requests are authenticated."
+        },
+        "actionType": {
+          "$ref": "#/definitions/tdex_daemonv2ActionType",
+          "description": "The type of the action."
+        }
+      }
+    },
+    "tdex_daemonv2WithdrawFeeFragmenterResponse": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string"
+        }
+      }
+    },
+    "tdex_daemonv2WithdrawFeeResponse": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string",
+          "description": "The transaction hash in mempool/blockchain."
+        }
+      }
+    },
+    "tdex_daemonv2WithdrawMarketFragmenterResponse": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string"
+        }
+      }
+    },
+    "tdex_daemonv2WithdrawMarketResponse": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string",
+          "description": "The transaction hash in mempool/blockchain."
+        }
+      }
+    },
+    "v1Fee": {
+      "type": "object",
+      "properties": {
+        "basisPoint": {
+          "type": "string",
+          "format": "int64"
+        },
+        "fixed": {
+          "$ref": "#/definitions/v1Fixed"
+        }
+      }
+    },
+    "v1Fixed": {
+      "type": "object",
+      "properties": {
+        "baseFee": {
+          "type": "string",
+          "format": "int64"
+        },
+        "quoteFee": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1Market": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string"
+        },
+        "quoteAsset": {
+          "type": "string"
+        }
+      }
+    },
+    "v1MarketWithFee": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        },
+        "fee": {
+          "$ref": "#/definitions/v1Fee"
+        }
+      }
+    },
+    "v1Price": {
+      "type": "object",
+      "properties": {
+        "basePrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "v2DeriveFeeAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of new confidential addresses."
+        }
+      }
+    },
+    "v2DeriveFeeFragmenterAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v2DeriveMarketAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of new confidential addresses."
+        }
+      }
+    },
+    "v2DeriveMarketFragmenterAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v2Transaction": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string",
+          "description": "The utxo deposited."
+        },
+        "totalAmountPerAsset": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "description": "Total outputs amount per asset deposited."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "The timestamp of the deposit transaction in Unix format."
+        },
+        "date": {
+          "type": "string",
+          "description": "The timestamp of the deposit transaction in RFC3339 format."
+        }
+      }
+    }
+  }
+}

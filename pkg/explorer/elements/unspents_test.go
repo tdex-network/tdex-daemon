@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/vulpemventures/go-elements/network"
@@ -86,11 +86,11 @@ func newService() (explorer.Service, error) {
 }
 
 func newTestData() (string, []byte, error) {
-	key, err := btcec.NewPrivateKey(btcec.S256())
+	key, err := btcec.NewPrivateKey()
 	if err != nil {
 		return "", nil, err
 	}
-	blindKey, err := btcec.NewPrivateKey(btcec.S256())
+	blindKey, err := btcec.NewPrivateKey()
 	if err != nil {
 		return "", nil, err
 	}

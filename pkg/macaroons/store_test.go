@@ -2,7 +2,6 @@ package macaroons_test
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,8 +22,7 @@ var (
 // newTestStore creates a new bolt DB in a temporary directory and then
 // initializes a root key storage for that DB.
 func newTestStore(t *testing.T) (string, func(), *macaroons.RootKeyStorage) {
-	tempDir, err := ioutil.TempDir("", "macaroonstore-")
-	require.NoError(t, err)
+	tempDir := t.TempDir()
 
 	cleanup, store := openTestStore(t, tempDir)
 	cleanup2 := func() {

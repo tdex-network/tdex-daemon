@@ -57,10 +57,12 @@ func (c *Client) TradeComplete(opts TradeCompleteOpts) (*tdexv1.CompleteTradeRes
 	var swapFail *tdexv1.SwapFail
 	if len(opts.SwapComplete) > 0 {
 		swapComplete = &tdexv1.SwapComplete{}
+		//nolint
 		proto.Unmarshal(opts.SwapComplete, swapComplete)
 	}
 	if len(opts.SwapFail) > 0 {
 		swapFail = &tdexv1.SwapFail{}
+		//nolint
 		proto.Unmarshal(opts.SwapFail, swapFail)
 	}
 

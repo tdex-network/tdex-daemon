@@ -3,7 +3,6 @@ package grpcinterface
 import (
 	"context"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -57,7 +56,7 @@ func genMacaroons(
 		if macFilename == AdminMacaroonFile {
 			perms = 0600
 		}
-		if err := ioutil.WriteFile(macFile, mktMacBytes, perms); err != nil {
+		if err := os.WriteFile(macFile, mktMacBytes, perms); err != nil {
 			os.Remove(macFile)
 			return err
 		}

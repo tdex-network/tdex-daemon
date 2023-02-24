@@ -44,10 +44,10 @@
       },
       "additionalProperties": {}
     },
-    "v1ChangePasswordResponse": {
+    "tdex_daemonv1ChangePasswordResponse": {
       "type": "object"
     },
-    "v1GenSeedResponse": {
+    "tdex_daemonv1GenSeedResponse": {
       "type": "object",
       "properties": {
         "seedMnemonic": {
@@ -58,7 +58,7 @@
         }
       }
     },
-    "v1InitWalletResponse": {
+    "tdex_daemonv1InitWalletResponse": {
       "type": "object",
       "properties": {
         "account": {
@@ -72,6 +72,9 @@
           "type": "string"
         }
       }
+    },
+    "tdex_daemonv1UnlockWalletResponse": {
+      "type": "object"
     },
     "v1InitWalletResponseStatus": {
       "type": "string",
@@ -97,9 +100,6 @@
           "description": "whether the daemon's wallet utxo set is up-to-date'."
         }
       }
-    },
-    "v1UnlockWalletResponse": {
-      "type": "object"
     }
   }
 }

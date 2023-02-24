@@ -1,0 +1,477 @@
+syntax = "proto3";
+
+package tdex_daemon.v2;
+
+import "tdex-daemon/v2/types.proto";
+import "tdex/v1/types.proto";
+
+/**
+ * Service for operators to configure and manage a TDEX daemon
+ */
+service OperatorService {
+  // Derives new addresses from the fee account.
+  // This account is only used to deposit LBTC funds to subsidize network fees.
+  rpc DeriveFeeAddresses(DeriveFeeAddressesRequest)
+    returns (DeriveFeeAddressesResponse) {}
+
+  // Returns the list of all derived addresses for the fee account.
+  rpc ListFeeAddresses(ListFeeAddressesRequest)
+    returns (ListFeeAddressesResponse) {}
+
+  // Returns the LBTC balance of the fee account.
+  rpc GetFeeBalance(GetFeeBalanceRequest) returns (GetFeeBalanceResponse) {}
+
+  // Withdraws LBTC funds from the fee account.
+  rpc WithdrawFee(WithdrawFeeRequest) returns (WithdrawFeeResponse) {}
+
+  // Creates a new market and the related wallet account.
+  rpc NewMarket(NewMarketRequest) returns (NewMarketResponse) {}
+
+  // Returns info about the given market.
+  rpc GetMarketInfo(GetMarketInfoRequest) returns (GetMarketInfoResponse) {}
+
+  // Derives new addresses for the market.
+  rpc DeriveMarketAddresses(DeriveMarketAddressesRequest)
+    returns (DeriveMarketAddressesResponse) {}
+
+  // Returns the list of all derived addresses for the given market.
+  rpc ListMarketAddresses(ListMarketAddressesRequest)
+    returns (ListMarketAddressesResponse) {}
+
+  // Makes the given market tradable.
+  rpc OpenMarket(OpenMarketRequest) returns (OpenMarketResponse) {}
+
+  // Makes the given market NOT tradabale.
+  rpc CloseMarket(CloseMarketRequest) returns (CloseMarketResponse) {}
+
+  // Deletes a market.
+  rpc DropMarket(DropMarketRequest) returns(DropMarketResponse) {}
+
+  // Withdraw funds from the given market.
+  rpc WithdrawMarket(WithdrawMarketRequest) returns (WithdrawMarketResponse) {}
+
+  // Returns a report with volume and collected fees for the given market in
+  // the specified time range.
+  rpc GetMarketReport(GetMarketReportRequest) returns(GetMarketReportResponse){}
+
+  // Changes the Liquidity Provider percentage fee for the given market.
+  rpc UpdateMarketPercentageFee(UpdateMarketPercentageFeeRequest)
+    returns (UpdateMarketPercentageFeeResponse) {}
+
+  // Changes the Liquidity provider fixed fees for the given market.
+  rpc UpdateMarketFixedFee(UpdateMarketFixedFeeRequest)
+    returns (UpdateMarketFixedFeeResponse) {}
+
+  // Changes the Liquidity provider asset(s) precision for the given market.
+  rpc UpdateMarketAssetsPrecision(UpdateMarketAssetsPrecisionRequest)
+    returns (UpdateMarketAssetsPrecisionResponse) {}
+
+  // Updates the price for the given market.
+  rpc UpdateMarketPrice(UpdateMarketPriceRequest)
+    returns (UpdateMarketPriceResponse) {}
+
+  // Updates the current market making strategy, either using an automated
+  // market making formula or a pluggable price feed.
+  rpc UpdateMarketStrategy(UpdateMarketStrategyRequest)
+      returns (UpdateMarketStrategyResponse) {}
+
+  // Derives new addresses for the fee fragmenter account.
+  rpc DeriveFeeFragmenterAddresses(DeriveFeeFragmenterAddressesRequest)
+    returns(DeriveFeeFragmenterAddressesResponse) {}
+
+  // Returns the list of all derived addresses for the fee fragmenter account.
+  rpc ListFeeFragmenterAddresses(ListFeeFragmenterAddressesRequest)
+    returns(ListFeeFragmenterAddressesResponse) {}
+
+  // Returns the balance of the fee fragmenter account.
+  rpc GetFeeFragmenterBalance(GetFeeFragmenterBalanceRequest)
+    returns(GetFeeFragmenterBalanceResponse) {}
+
+  // Splits the funds sent to the fee fragmenter account into multiple
+  // fragments that are then deposited to the Fee account.
+  rpc FeeFragmenterSplitFunds(FeeFragmenterSplitFundsRequest)
+    returns (stream FeeFragmenterSplitFundsResponse) {}
+
+  // Withdraws funds from the fee fragmenter account.
+  rpc WithdrawFeeFragmenter(WithdrawFeeFragmenterRequest)
+    returns (WithdrawFeeFragmenterResponse) {}
+
+  // Derives new addresses for the market fragmenter account.
+  rpc DeriveMarketFragmenterAddresses(DeriveMarketFragmenterAddressesRequest)
+    returns(DeriveMarketFragmenterAddressesResponse) {}
+
+  // Returns the list of all derived addresses for the market fragmenter account.
+  rpc ListMarketFragmenterAddresses(ListMarketFragmenterAddressesRequest)
+    returns(ListMarketFragmenterAddressesResponse) {}
+
+  // Returns the balance of the market fragmenter account.
+  rpc GetMarketFragmenterBalance(GetMarketFragmenterBalanceRequest)
+    returns(GetMarketFragmenterBalanceResponse) {}
+
+  // Splits the funds sent to the market fragmenter account into multiple
+  // fragments that are then deposited to the given market.
+  rpc MarketFragmenterSplitFunds(MarketFragmenterSplitFundsRequest)
+    returns (stream MarketFragmenterSplitFundsResponse) {}
+
+  // Withdraws funds from the market fragmenter account.
+  rpc WithdrawMarketFragmenter(WithdrawMarketFragmenterRequest)
+    returns (WithdrawMarketFragmenterResponse) {}
+
+  // Get info about all markets.
+  rpc ListMarkets(ListMarketsRequest) returns (ListMarketsResponse) {}
+
+  // Returs all the trades processed by the daemon (ongoing, completed and
+  // failed/rejected) or all those filtered by market.
+  rpc ListTrades(ListTradesRequest) returns (ListTradesResponse) {}
+
+  // Returns all the utxos, whether unspents, spents or locked.
+  rpc ListUtxos(ListUtxosRequest) returns(ListUtxosResponse){}
+
+  // Adds a webhook registered for some kind of event.
+  rpc AddWebhook(AddWebhookRequest) returns(AddWebhookResponse){}
+
+  // Removes some previously added webhook.
+  rpc RemoveWebhook(RemoveWebhookRequest) returns(RemoveWebhookResponse){}
+
+  // Returns registered webhooks
+  rpc ListWebhooks(ListWebhooksRequest) returns(ListWebhooksResponse){}
+
+  // Returns the list of all claimed deposits for the given account.
+  rpc ListDeposits(ListDepositsRequest) returns(ListDepositsResponse){}
+
+  // Returns the list of all withdrawals made for the given account.
+  rpc ListWithdrawals(ListWithdrawalsRequest) returns(ListWithdrawalsResponse){}
+}
+
+message DeriveFeeAddressesRequest {
+  // The number of addresses to generate.
+  int64 num_of_addresses = 1 [jstype = JS_NUMBER];
+}
+message DeriveFeeAddressesResponse {
+  // The list of new confidential addresses.
+  repeated string addresses = 1;
+}
+
+message ListFeeAddressesRequest {}
+message ListFeeAddressesResponse {
+  // The list of derived confidential addresses.
+  repeated string addresses = 1;
+}
+
+message GetFeeBalanceRequest {}
+message GetFeeBalanceResponse {
+  Balance balance = 1; 
+}
+
+message WithdrawFeeRequest {
+  // List of receivers.
+  repeated TxOutput outputs = 1;
+  // The number of millisatoshis per byte that should be paid for network fees.
+  uint64 millisats_per_byte = 2;
+  // The password that unlocks the internal wallet.
+  string password = 3;
+}
+message WithdrawFeeResponse {
+  // The transaction hash in mempool/blockchain.
+  string txid = 1;
+}
+
+message NewMarketRequest {
+  // The asset pair for which creating a new account in the daemon's wallet.
+  tdex.v1.Market market = 1;
+  // The precision of the base asset.
+  uint32 base_asset_precision = 2;
+  // The precision of the quote asset.
+  uint32 quote_asset_precision = 3;
+}
+message NewMarketResponse {}
+
+message GetMarketInfoRequest {
+  tdex.v1.Market market = 1;
+}
+message GetMarketInfoResponse {
+  MarketInfo info = 1;
+}
+
+message DeriveMarketAddressesRequest {
+  // The market for which deriving new addresses.
+  tdex.v1.Market market = 1;
+  // The number of addresses to generate.
+  int64 num_of_addresses = 2 [jstype = JS_NUMBER];
+}
+message DeriveMarketAddressesResponse {
+  // The list of new confidential addresses.
+  repeated string addresses = 1;
+}
+
+message ListMarketAddressesRequest {
+  // The Market for which listing all derived addresses.
+  tdex.v1.Market market = 1;
+}
+message ListMarketAddressesResponse {
+  // The list of derived confidential addresses.
+  repeated string addresses = 1;
+}
+
+message OpenMarketRequest {
+  // The market to be made tradable.
+  tdex.v1.Market market = 1;
+}
+message OpenMarketResponse {}
+
+message CloseMarketRequest {
+  // The market to be made not tradable.
+  tdex.v1.Market market = 1;
+}
+message CloseMarketResponse {}
+
+message DropMarketRequest {
+  tdex.v1.Market market = 1;
+}
+message DropMarketResponse{}
+
+message WithdrawMarketRequest {
+  // The market from which funds should be withdrawn.
+  tdex.v1.Market market = 1;
+  // List of receivers.
+  repeated TxOutput outputs = 2;
+  // The number of millisatoshis per byte that should be paid for network fees.
+  uint64 millisats_per_byte = 3;
+  // The password that unlocks the internal wallet.
+  string password = 4;
+}
+message WithdrawMarketResponse {
+  // The transaction hash in mempool/blockchain.
+  string txid = 1;
+}
+
+message GetMarketReportRequest {
+  // The market for which returning the report of collected fees.
+  tdex.v1.Market market = 1;
+  // time_range fetch market report from time range
+  TimeRange time_range = 2;
+  // used to group volume by time_frame for the specified time_range
+  TimeFrame time_frame = 3;
+}
+message GetMarketReportResponse {
+  // MarketReport holds info about volume and collected fees
+  MarketReport report = 1;
+}
+
+message UpdateMarketPercentageFeeRequest {
+  // The market for which updating the percentage fee.
+  tdex.v1.Market market = 1;
+  // The new percentage fee expresses in basis point.
+  uint32 basis_point = 2 [jstype = JS_NUMBER];
+}
+message UpdateMarketPercentageFeeResponse {
+  // The market with updated fees.
+  tdex.v1.MarketWithFee market_with_fee = 1;
+}
+
+message UpdateMarketFixedFeeRequest {
+  // The market for which updating the fixed fee.
+  tdex.v1.Market market = 1;
+  // The new fixed fee for base and quote asset.
+  tdex.v1.Fixed fixed = 2;
+}
+message UpdateMarketFixedFeeResponse {
+  // The market with updated fees.
+  tdex.v1.MarketWithFee market_with_fee = 1;
+}
+
+message UpdateMarketAssetsPrecisionRequest {
+  // The market for which updating the fixed fee.
+  tdex.v1.Market market = 1;
+  // The new base asset precision. A negative value is used to skip updating this field.
+  int32 base_asset_precision = 2;
+  // The new quote asset precision. A negative value is used to skip updating this field.
+  int32 quote_asset_precision = 3;
+}
+message UpdateMarketAssetsPrecisionResponse {}
+
+message UpdateMarketPriceRequest {
+  // The arket for which updating the price.
+  tdex.v1.Market market = 1;
+  // The new price for base and quote asset.
+  tdex.v1.Price price = 2;
+}
+message UpdateMarketPriceResponse {}
+
+message UpdateMarketStrategyRequest {
+  // The market for which changing the strategy.
+  tdex.v1.Market market = 1;
+  // The new making strategy to use.
+  StrategyType strategy_type = 2;
+  // The JSON string representing additional metadata about the new strategy.
+  string metadata = 3;
+}
+message UpdateMarketStrategyResponse {}
+
+message DeriveFeeFragmenterAddressesRequest {
+  int64 num_of_addresses = 1 [jstype = JS_NUMBER];
+}
+message DeriveFeeFragmenterAddressesResponse {
+  repeated string addresses = 1;
+}
+
+message ListFeeFragmenterAddressesRequest {}
+message ListFeeFragmenterAddressesResponse {
+  repeated string addresses = 1;
+}
+
+message GetFeeFragmenterBalanceRequest {}
+message GetFeeFragmenterBalanceResponse {
+  // Account balance grouped by asset.
+  map<string, Balance> balance = 1;
+}
+
+message FeeFragmenterSplitFundsRequest {
+  // The max number of fragments the fragmenter can generate when splitting
+  // its funds.
+  uint32 max_fragments = 1;
+  uint64 millisats_per_byte = 2;
+}
+message FeeFragmenterSplitFundsResponse {
+  // A sequence of string messages returned during the process.
+  string message = 1;
+}
+
+message WithdrawFeeFragmenterRequest {
+  // List of receivers.
+  repeated TxOutput outputs = 1;
+  // The number of millisatoshis per byte that should be paid for network fees.
+  uint64 millisats_per_byte = 2;
+  // The password that unlocks the internal wallet.
+  string password = 3;
+}
+message WithdrawFeeFragmenterResponse {
+  string txid = 1;
+}
+
+message DeriveMarketFragmenterAddressesRequest{
+  int64 num_of_addresses = 1 [jstype = JS_NUMBER];
+}
+message DeriveMarketFragmenterAddressesResponse {
+  repeated string addresses = 1;
+}
+
+message ListMarketFragmenterAddressesRequest{}
+message ListMarketFragmenterAddressesResponse {
+  repeated string addresses = 1;
+}
+
+message GetMarketFragmenterBalanceRequest {}
+message GetMarketFragmenterBalanceResponse {
+  // Account balance grouped by asset
+  map<string, Balance> balance = 1;
+}
+
+message MarketFragmenterSplitFundsRequest {
+  // The market to which to deposit the fragmented funds owned by the market
+  // fragmenter.
+  tdex.v1.Market market = 1;
+  uint64 millisats_per_byte = 2;
+}
+message MarketFragmenterSplitFundsResponse {
+  // A sequence of string messages returned during the process.
+  string message = 1;
+}
+
+message WithdrawMarketFragmenterRequest {
+  // List of receivers.
+  repeated TxOutput outputs = 1;
+  // The number of millisatoshis per byte that should be paid for network fees.
+  uint64 millisats_per_byte = 2;
+  // The password that unlocks the internal wallet.
+  string password = 3;
+}
+message WithdrawMarketFragmenterResponse {
+  string txid = 1;
+}
+
+message ListMarketsRequest {}
+message ListMarketsResponse {
+  // The list of info about all the created markets.
+  repeated MarketInfo markets = 1;
+}
+
+message ListTradesRequest {
+  // Market for which listing trades.
+  tdex.v1.Market market = 1;
+  // The page for a paginated reply.
+  Page page = 2;
+}
+message ListTradesResponse {
+  // The list of info about all trades or all trades for a market depending on
+  // the request.
+  repeated TradeInfo trades = 1;
+}
+
+message ListUtxosRequest {
+  // Name of the account for which listing utxos.
+  string account_name = 1;
+  // The page for a paginated reply.
+  Page page = 2;
+}
+message ListUtxosResponse{
+  // The list of all spendable utxos.
+  repeated UtxoInfo spendable_utxos = 1;
+  // The list of all locked utxos.
+  repeated UtxoInfo locked_utxos = 2;
+}
+
+message AddWebhookRequest {
+  // The endpoint of the external service to reach.
+  string endpoint = 1;
+  // The type of action for which the webhook should be registered.
+  ActionType action = 2;
+  // The secret to use for signign a JWT token for an authenticated request
+  // to the external service.
+  string secret = 3;
+}
+message AddWebhookResponse {
+  // The id of the new webhook.
+  string id = 1;
+}
+
+message RemoveWebhookRequest {
+  // The id of the webhook to remove.
+  string id = 1;
+}
+message RemoveWebhookResponse {}
+
+message ListWebhooksRequest {
+  // The action for which filtering the list of webhooks.
+  ActionType action = 1;
+}
+message ListWebhooksResponse {
+  // The list of info about the webhooks regitered for an action.
+  repeated WebhookInfo webhook_info = 1;
+}
+
+message ListDepositsRequest{
+  // The name of the wallet account for which listing the deposits.
+  string account_name = 1;
+  // The page for a paginated reply.
+  Page page = 2;
+}
+message ListDepositsResponse{
+  // The name of the wallet account.
+  string account_name = 1;
+  // The list of info about the deposits.
+  repeated Transaction deposits = 2;
+}
+
+message ListWithdrawalsRequest{
+  // The name of the wallet account for which listing the withdrawals.
+  string account_name = 1;
+  // The page for a paginated reply.
+  Page page = 2;
+}
+message ListWithdrawalsResponse{
+  // The name of the wallet account.
+  string account_name = 1;
+  // The list of info about the withdrawals.
+  repeated Transaction withdrawals = 2;
+}
