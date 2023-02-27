@@ -8,4 +8,4 @@ deps:
   - remote: buf.build
     owner: tdex-network
     repository: tdex-protobuf
-    commit: 85cac380cf36478e875981ca9dfc07f7
+    commit: cd58688e183d48f4a3eda2c236f9a07c
