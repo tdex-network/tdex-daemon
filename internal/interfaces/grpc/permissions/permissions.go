@@ -3,6 +3,8 @@ package permissions
 import (
 	"fmt"
 
+	"google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
@@ -301,7 +303,7 @@ func Whitelist() map[string][]bakery.Op {
 			Entity: EntityTrade,
 			Action: "write",
 		}},
-		"/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo": {{
+		fmt.Sprintf("/%s/ServerReflectionInfo", grpc_reflection_v1alpha.File_reflection_grpc_reflection_v1alpha_reflection_proto.Services().Get(0).FullName()): {{
 			Entity: Reflection,
 			Action: "write",
 		}},
