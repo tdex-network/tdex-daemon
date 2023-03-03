@@ -305,7 +305,7 @@ func Whitelist() map[string][]bakery.Op {
 		}},
 		fmt.Sprintf("/%s/ServerReflectionInfo", grpc_reflection_v1alpha.File_reflection_grpc_reflection_v1alpha_reflection_proto.Services().Get(0).FullName()): {{
 			Entity: Reflection,
-			Action: "write",
+			Action: "read",
 		}},
 	}
 }
