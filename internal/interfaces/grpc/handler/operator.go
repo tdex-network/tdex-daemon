@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 )
 
 type operatorHandler struct {
@@ -324,6 +324,12 @@ func (h *operatorHandler) newMarket(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	basePercentageFee, quotePercentageFee, err := parseMarketFee(
+		req.GetPercentageFee(),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 	basePrecision, err := parsePrecision(req.GetBaseAssetPrecision())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -334,7 +340,9 @@ func (h *operatorHandler) newMarket(
 	}
 
 	if _, err := h.operatorSvc.NewMarket(
-		ctx, market, basePrecision, quotePrecision,
+		ctx, market, req.GetName(),
+		uint64(basePercentageFee), uint64(quotePercentageFee),
+		basePrecision, quotePrecision,
 	); err != nil {
 		return nil, err
 	}
@@ -507,22 +515,24 @@ func (h *operatorHandler) updateMarketPercentageFee(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	percentageFee, err := parsePercentageFee(req.GetBasisPoint())
+	basePercentageFee, quotePercentageFee, err := parseMarketFee(req.GetFee())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	info, err := h.operatorSvc.UpdateMarketPercentageFee(
-		ctx, mkt, percentageFee,
+		ctx, mkt, basePercentageFee, quotePercentageFee,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return &daemonv2.UpdateMarketPercentageFeeResponse{
-		MarketWithFee: &tdexv1.MarketWithFee{
+		MarketWithFee: &tdexv2.MarketWithFee{
 			Market: market{info.GetMarket()}.toProto(),
-			Fee:    marketFeeInfo{info.GetFee()}.toProto(),
+			Fee: marketFeeInfo{
+				info.GetPercentageFee(), info.GetFixedFee(),
+			}.toProto(),
 		},
 	}, nil
 }
@@ -534,7 +544,7 @@ func (h *operatorHandler) updateMarketFixedFee(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	fixedBaseFee, fixedQuoteFee, err := parseFixedFee(req.GetFixed())
+	fixedBaseFee, fixedQuoteFee, err := parseMarketFee(req.GetFee())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -547,9 +557,11 @@ func (h *operatorHandler) updateMarketFixedFee(
 	}
 
 	return &daemonv2.UpdateMarketFixedFeeResponse{
-		MarketWithFee: &tdexv1.MarketWithFee{
+		MarketWithFee: &tdexv2.MarketWithFee{
 			Market: market{info.GetMarket()}.toProto(),
-			Fee:    marketFeeInfo{info.GetFee()}.toProto(),
+			Fee: marketFeeInfo{
+				info.GetPercentageFee(), info.GetFixedFee(),
+			}.toProto(),
 		},
 	}, nil
 }

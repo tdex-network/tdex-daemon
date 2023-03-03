@@ -5,11 +5,13 @@ import (
 	"fmt"
 
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/thanhpk/randstr"
 	"github.com/vulpemventures/go-elements/pset"
 	"github.com/vulpemventures/go-elements/psetv2"
 	"github.com/vulpemventures/go-elements/transaction"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type UnblindedInput struct {
@@ -27,34 +29,49 @@ type RequestOpts struct {
 	AmountToSend       uint64
 	AssetToReceive     string
 	AmountToReceive    uint64
-	PsetBase64         string
+	Transaction        string
 	InputBlindingKeys  map[string][]byte
 	OutputBlindingKeys map[string][]byte
 	UnblindedInputs    []UnblindedInput
 }
 
 func (o RequestOpts) validate() error {
-	if isPsetV0(o.PsetBase64) {
+	if isPsetV0(o.Transaction) {
 		return checkTxAndBlindKeys(
-			o.PsetBase64,
+			o.Transaction,
 			o.InputBlindingKeys,
 			o.OutputBlindingKeys,
 		)
 	}
-	if isPsetV2(o.PsetBase64) {
-		return checkTxAndUnblindedIns(o.PsetBase64, o.UnblindedInputs)
+	if isPsetV2(o.Transaction) {
+		return checkTxAndUnblindedIns(o.Transaction, o.UnblindedInputs)
 	}
 
-	return fmt.Errorf("failed to parse transaction")
+	return fmt.Errorf("invalid swap transaction format")
 }
 
-func (o RequestOpts) unblindedIns() []*tdexv1.UnblindedInput {
+func (o RequestOpts) forV1() bool {
+	return isPsetV0(o.Transaction)
+}
+
+func (o RequestOpts) forV2() bool {
+	return isPsetV2(o.Transaction)
+}
+
+func (o RequestOpts) id() string {
+	if o.Id != "" {
+		return o.Id
+	}
+	return randstr.Hex(8)
+}
+
+func (o RequestOpts) unblindedIns() []*tdexv2.UnblindedInput {
 	if len(o.UnblindedInputs) <= 0 {
 		return nil
 	}
-	list := make([]*tdexv1.UnblindedInput, 0, len(o.UnblindedInputs))
+	list := make([]*tdexv2.UnblindedInput, 0, len(o.UnblindedInputs))
 	for _, in := range o.UnblindedInputs {
-		list = append(list, &tdexv1.UnblindedInput{
+		list = append(list, &tdexv2.UnblindedInput{
 			Index:         in.Index,
 			Asset:         in.Asset,
 			Amount:        in.Amount,
@@ -71,27 +88,44 @@ func Request(opts RequestOpts) ([]byte, error) {
 		return nil, err
 	}
 
-	id := opts.Id
-	if len(id) <= 0 {
-		id = randstr.Hex(8)
-	}
-	msg := &tdexv1.SwapRequest{
-		Id: id,
-		// Proposer
-		AssetP:  opts.AssetToSend,
-		AmountP: opts.AmountToSend,
-		// Receiver
-		AssetR:  opts.AssetToReceive,
-		AmountR: opts.AmountToReceive,
-		//PSET
-		Transaction: opts.PsetBase64,
-		// Blinding keys
-		InputBlindingKey:  opts.InputBlindingKeys,
-		OutputBlindingKey: opts.InputBlindingKeys,
-		UnblindedInputs:   opts.unblindedIns(),
+	id := opts.id()
+	var message protoreflect.ProtoMessage
+
+	switch {
+	case opts.forV1():
+		message = &tdexv1.SwapRequest{
+			Id: id,
+			// Proposer
+			AssetP:  opts.AssetToSend,
+			AmountP: opts.AmountToSend,
+			// Receiver
+			AssetR:  opts.AssetToReceive,
+			AmountR: opts.AmountToReceive,
+			// PSETv0
+			Transaction: opts.Transaction,
+			// Blinding keys
+			InputBlindingKey:  opts.InputBlindingKeys,
+			OutputBlindingKey: opts.InputBlindingKeys,
+		}
+	case opts.forV2():
+		fallthrough
+	default:
+		message = &tdexv2.SwapRequest{
+			Id: id,
+			// Proposer
+			AssetP:  opts.AssetToSend,
+			AmountP: opts.AmountToSend,
+			// Receiver
+			AssetR:  opts.AssetToReceive,
+			AmountR: opts.AmountToReceive,
+			// PSETv2
+			Transaction: opts.Transaction,
+			// Unblinded inputs
+			UnblindedInputs: opts.unblindedIns(),
+		}
 	}
 
-	return proto.Marshal(msg)
+	return proto.Marshal(message)
 }
 
 func checkTxAndBlindKeys(

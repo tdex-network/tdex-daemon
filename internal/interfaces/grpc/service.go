@@ -31,7 +31,7 @@ import (
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
@@ -492,9 +492,9 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 
 	grpcServer := grpc.NewServer(serverOpts...)
 	tradeHandler := grpchandler.NewTradeHandler(s.opts.AppConfig.TradeService())
-	tdexv1.RegisterTradeServiceServer(grpcServer, tradeHandler)
+	tdexv2.RegisterTradeServiceServer(grpcServer, tradeHandler)
 	transportHandler := grpchandler.NewTransportHandler()
-	tdexv1.RegisterTransportServiceServer(grpcServer, transportHandler)
+	tdexv2.RegisterTransportServiceServer(grpcServer, transportHandler)
 
 	// grpcweb wrapped server
 	grpcWebServer := grpcweb.WrapServer(
@@ -522,12 +522,12 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 		return nil, err
 	}
 	gwmux := runtime.NewServeMux()
-	if err := tdexv1.RegisterTransportServiceHandler(
+	if err := tdexv2.RegisterTransportServiceHandler(
 		context.Background(), gwmux, conn,
 	); err != nil {
 		return nil, err
 	}
-	if err := tdexv1.RegisterTradeServiceHandler(
+	if err := tdexv2.RegisterTradeServiceHandler(
 		context.Background(), gwmux, conn,
 	); err != nil {
 		return nil, err

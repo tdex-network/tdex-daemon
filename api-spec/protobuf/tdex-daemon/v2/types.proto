@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package tdex_daemon.v2;
 
-import "tdex/v1/types.proto";
+import "tdex/v2/types.proto";
 
 enum StrategyType {
   STRATEGY_TYPE_UNSPECIFIED = 0;
@@ -60,18 +60,18 @@ message AccountInfo {
 
 message MarketInfo {
   // The asset pair of the market
-  tdex.v1.Market market = 1;
+  tdex.v2.Market market = 1;
   // The percentage and fixed fees
-  tdex.v1.Fee fee = 2;
+  tdex.v2.Fee fee = 2;
   // Whether the market is opened or closed.
   bool tradable = 3;
   // The making strategy.
   StrategyType strategy_type = 4;
-  // The name of the wallet account.
-  string account_name = 5;
+  // The optional name given to the market.
+  string name = 5;
   // The current price in case the strategy is PLUGGABLE.
-  tdex.v1.Price price = 6;
-  // The current unlocked balance.
+  tdex.v2.Price price = 6;
+  // The current market balance by asset.
   map<string, Balance> balance = 7;
   // The precision of the base asset.
   uint32 base_asset_precision = 8;
@@ -104,6 +104,10 @@ message SwapInfo {
   uint64 amount_r = 3;
   // The responder's asset hash.
   string asset_r = 4;
+  // The fee amount charged for trade.
+  uint64 fee_amount = 5;
+  // The asset of the swap fees.
+  string fee_asset = 6;
 }
 
 message SwapFailInfo {
@@ -123,9 +127,9 @@ message TradeInfo {
   // The info of an eventually failed swap.
   SwapFailInfo fail_info = 4;
   // The collected fee on the current swap.
-  tdex.v1.MarketWithFee market_with_fee = 5;
+  tdex.v2.MarketWithFee market_with_fee = 5;
   // The prices of the trade at request time.
-  tdex.v1.Price price = 6;
+  tdex.v2.Price price = 6;
   // The unix timestamp of the SwapRequest.
   int64 request_timestamp = 7;
   // The unix timestamp SwapAccept.

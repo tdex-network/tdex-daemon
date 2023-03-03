@@ -20,7 +20,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
@@ -302,8 +302,8 @@ func (s *serviceOnePort) newServer(
 		transportHandler := grpchandler.NewTransportHandler()
 		tradeHandler := grpchandler.NewTradeHandler(s.opts.AppConfig.TradeService())
 		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
-		tdexv1.RegisterTransportServiceServer(grpcServer, transportHandler)
-		tdexv1.RegisterTradeServiceServer(grpcServer, tradeHandler)
+		tdexv2.RegisterTransportServiceServer(grpcServer, transportHandler)
+		tdexv2.RegisterTradeServiceServer(grpcServer, tradeHandler)
 
 		dialOpts := make([]grpc.DialOption, 0)
 		if len(s.opts.TLSCert) <= 0 {
@@ -323,12 +323,12 @@ func (s *serviceOnePort) newServer(
 			return nil, err
 		}
 		gwmux := runtime.NewServeMux()
-		if err := tdexv1.RegisterTransportServiceHandler(
+		if err := tdexv2.RegisterTransportServiceHandler(
 			context.Background(), gwmux, conn,
 		); err != nil {
 			return nil, err
 		}
-		if err := tdexv1.RegisterTradeServiceHandler(
+		if err := tdexv2.RegisterTradeServiceHandler(
 			context.Background(), gwmux, conn,
 		); err != nil {
 			return nil, err

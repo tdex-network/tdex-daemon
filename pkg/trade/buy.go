@@ -178,7 +178,7 @@ func (t *Trade) marketOrderRequest(
 		AmountToSend:    preview.AmountToSend,
 		AssetToReceive:  preview.AssetToReceive,
 		AmountToReceive: preview.AmountToReceive,
-		PsetBase64:      psetBase64,
+		Transaction:     psetBase64,
 		UnblindedInputs: utxosToUnblindedIns(utxos),
 	})
 	if err != nil {

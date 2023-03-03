@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/thanhpk/randstr"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // AcceptOpts is the struct given to Accept method
@@ -28,16 +30,16 @@ func (o AcceptOpts) validate() error {
 	if isPsetV2(o.PsetBase64) {
 		return checkTxAndUnblindedIns(o.PsetBase64, o.UnblindedInputs)
 	}
-	return fmt.Errorf("invalid transaction format")
+	return fmt.Errorf("invalid swap transaction format")
 }
 
-func (o AcceptOpts) unblindedIns() []*tdexv1.UnblindedInput {
+func (o AcceptOpts) unblindedIns() []*tdexv2.UnblindedInput {
 	if len(o.UnblindedInputs) <= 0 {
 		return nil
 	}
-	list := make([]*tdexv1.UnblindedInput, 0, len(o.UnblindedInputs))
+	list := make([]*tdexv2.UnblindedInput, 0, len(o.UnblindedInputs))
 	for _, in := range o.UnblindedInputs {
-		list = append(list, &tdexv1.UnblindedInput{
+		list = append(list, &tdexv2.UnblindedInput{
 			Index:         in.Index,
 			Asset:         in.Asset,
 			Amount:        in.Amount,
@@ -48,6 +50,14 @@ func (o AcceptOpts) unblindedIns() []*tdexv1.UnblindedInput {
 	return list
 }
 
+func (o AcceptOpts) forV1() bool {
+	return isPsetV0(o.PsetBase64)
+}
+
+func (o AcceptOpts) forV2() bool {
+	return isPsetV2(o.PsetBase64)
+}
+
 // Accept takes a AcceptOpts and returns the id of the SwapAccept entity and
 // its serialized version
 func Accept(opts AcceptOpts) (string, []byte, error) {
@@ -55,23 +65,39 @@ func Accept(opts AcceptOpts) (string, []byte, error) {
 		return "", nil, err
 	}
 
-	var msgRequest tdexv1.SwapRequest
-	err := proto.Unmarshal(opts.Message, &msgRequest)
-	if err != nil {
-		return "", nil, fmt.Errorf("unmarshal swap request %w", err)
-	}
-
+	var message protoreflect.ProtoMessage
 	randomID := randstr.Hex(8)
-	msgAccept := &tdexv1.SwapAccept{
-		Id:                randomID,
-		RequestId:         msgRequest.GetId(),
-		Transaction:       opts.PsetBase64,
-		InputBlindingKey:  opts.InputBlindingKeys,
-		OutputBlindingKey: opts.OutputBlindingKeys,
-		UnblindedInputs:   opts.unblindedIns(),
+	switch {
+	case opts.forV1():
+		var msgRequest tdexv1.SwapRequest
+		if err := proto.Unmarshal(opts.Message, &msgRequest); err != nil {
+			return "", nil, fmt.Errorf("unmarshal swap request %w", err)
+		}
+
+		message = &tdexv1.SwapAccept{
+			Id:                randomID,
+			RequestId:         msgRequest.GetId(),
+			Transaction:       opts.PsetBase64,
+			InputBlindingKey:  opts.InputBlindingKeys,
+			OutputBlindingKey: opts.OutputBlindingKeys,
+		}
+	case opts.forV2():
+		fallthrough
+	default:
+		var msgRequest tdexv2.SwapRequest
+		if err := proto.Unmarshal(opts.Message, &msgRequest); err != nil {
+			return "", nil, fmt.Errorf("unmarshal swap request %w", err)
+		}
+
+		message = &tdexv2.SwapAccept{
+			Id:              randomID,
+			RequestId:       msgRequest.GetId(),
+			Transaction:     opts.PsetBase64,
+			UnblindedInputs: opts.unblindedIns(),
+		}
 	}
 
-	msgAcceptSerialized, err := proto.Marshal(msgAccept)
+	msgAcceptSerialized, err := proto.Marshal(message)
 	if err != nil {
 		return "", nil, err
 	}

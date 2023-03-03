@@ -9,7 +9,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/shopspring/decimal"
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/vulpemventures/go-elements/address"
@@ -26,7 +26,7 @@ func parsePassword(pwd string) (string, error) {
 	return pwd, nil
 }
 
-func parseMarket(market *tdexv1.Market) (ports.Market, error) {
+func parseMarket(market *tdexv2.Market) (ports.Market, error) {
 	if market == nil {
 		return nil, fmt.Errorf("missing market")
 	}
@@ -40,20 +40,20 @@ func parseMarket(market *tdexv1.Market) (ports.Market, error) {
 	return market, nil
 }
 
-func parseFixedFee(fee *tdexv1.Fixed) (int64, int64, error) {
+func parseMarketFee(fee *tdexv2.MarketFee) (int64, int64, error) {
 	var baseFee, quoteFee int64 = -1, -1
 	if fee != nil {
-		baseFee = fee.GetBaseFee()
-		quoteFee = fee.GetQuoteFee()
+		baseFee = fee.GetBaseAsset()
+		quoteFee = fee.GetQuoteAsset()
 	}
 	if baseFee < -1 {
-		return -1, -1, errors.New("invalid fixed base fee value")
+		return -1, -1, errors.New("invalid market base fee value")
 	}
 	if quoteFee < -1 {
-		return -1, -1, errors.New("invalid fixed quote fee value")
+		return -1, -1, errors.New("invalid market quote fee value")
 	}
 	if baseFee == -1 && baseFee == quoteFee {
-		return -1, -1, errors.New("invalid fixed base and quote fee values")
+		return -1, -1, errors.New("invalid market base and quote fee values")
 	}
 	return baseFee, quoteFee, nil
 }
@@ -78,7 +78,7 @@ func parsePrecision(precision uint32) (uint, error) {
 	return uint(precision), nil
 }
 
-func parsePrice(price *tdexv1.Price) (*decimal.Decimal, *decimal.Decimal, error) {
+func parsePrice(price *tdexv2.Price) (*decimal.Decimal, *decimal.Decimal, error) {
 	if price == nil {
 		return nil, nil, errors.New("missing market price")
 	}
@@ -120,7 +120,7 @@ func parseAccountName(account string) (string, error) {
 	return account, nil
 }
 
-func parseSwapRequest(sr *tdexv1.SwapRequest) (ports.SwapRequest, error) {
+func parseSwapRequest(sr *tdexv2.SwapRequest) (ports.SwapRequest, error) {
 	if sr == nil {
 		return nil, fmt.Errorf("missing swap request")
 	}
@@ -145,22 +145,22 @@ func parseSwapRequest(sr *tdexv1.SwapRequest) (ports.SwapRequest, error) {
 	return swapRequestInfo{sr}, nil
 }
 
-func parseTradeType(tradeType tdexv1.TradeType) (ports.TradeType, error) {
-	if tradeType != tdexv1.TradeType_TRADE_TYPE_BUY &&
-		tradeType != tdexv1.TradeType_TRADE_TYPE_SELL {
+func parseTradeType(tradeType tdexv2.TradeType) (ports.TradeType, error) {
+	if tradeType != tdexv2.TradeType_TRADE_TYPE_BUY &&
+		tradeType != tdexv2.TradeType_TRADE_TYPE_SELL {
 		return nil, fmt.Errorf("unknown trade type")
 	}
 	return tradeTypeInfo(tradeType), nil
 }
 
-func parseTradeAmount(amount uint64) (uint64, error) {
+func parseAmount(amount uint64) (uint64, error) {
 	if !isValidAmount(amount) {
 		return 0, fmt.Errorf("invalid amount")
 	}
 	return amount, nil
 }
 
-func parseTradeAsset(asset string) (string, error) {
+func parseAsset(asset string) (string, error) {
 	if len(asset) <= 0 {
 		return "", fmt.Errorf("missing asset")
 	}
@@ -344,7 +344,7 @@ func isValidTransaction(tx string) bool {
 	return err == nil
 }
 
-func isValidUnblindedInputList(list []*tdexv1.UnblindedInput) bool {
+func isValidUnblindedInputList(list []*tdexv2.UnblindedInput) bool {
 	for _, in := range list {
 		if !isValidIndex(in.GetIndex()) || !isValidAsset(in.GetAsset()) ||
 			!isValidAmount(in.GetAmount()) || !isValidAsset(in.GetAssetBlinder()) ||
