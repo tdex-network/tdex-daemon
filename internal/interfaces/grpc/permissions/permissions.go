@@ -19,6 +19,7 @@ const (
 	EntityWallet    = "wallet"
 	EntityWebhook   = "webhook"
 	EntityTransport = "transport"
+	Reflection      = "reflection"
 )
 
 func Validate() error {
@@ -298,6 +299,10 @@ func Whitelist() map[string][]bakery.Op {
 		}},
 		fmt.Sprintf("/%s/CompleteTrade", tdexold.File_trade_proto.Services().Get(0).FullName()): {{
 			Entity: EntityTrade,
+			Action: "write",
+		}},
+		"/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo": {{
+			Entity: Reflection,
 			Action: "write",
 		}},
 	}

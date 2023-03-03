@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"google.golang.org/grpc/reflection"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
 
@@ -279,6 +281,7 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 		tdexv1.RegisterTransportServiceServer(grpcServer, transportHandler)
 		grpcGateway = tradeGrpcGateway
 	}
+	reflection.Register(grpcServer)
 
 	operatorTlsCert := s.opts.tlsCert()
 	operatorTlsKey := s.opts.tlsKey()

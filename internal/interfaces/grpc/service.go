@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"google.golang.org/grpc/reflection"
+
 	"github.com/tdex-network/tdex-daemon/pkg/wallet"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -343,6 +345,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 	daemonv1.RegisterWalletUnlockerServiceServer(
 		grpcOperatorServer, walletUnlockerHandler,
 	)
+	reflection.Register(grpcOperatorServer)
 
 	if !withUnlockerOnly {
 		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
@@ -401,6 +404,7 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 		tdexold.RegisterTradeServer(grpcTradeServer, tradeOldHandler)
 		transportHandler := grpchandler.NewTransportHandler()
 		tdexv1.RegisterTransportServiceServer(grpcTradeServer, transportHandler)
+		reflection.Register(grpcTradeServer)
 
 		insecure := len(tradeTLSCert) <= 0
 		tradeGrpcGateway, err := s.tradeGrpcGateway(context.Background(), insecure)
