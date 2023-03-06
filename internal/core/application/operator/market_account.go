@@ -17,7 +17,9 @@ const startYear = 2021
 
 func (s *service) NewMarket(
 	ctx context.Context,
-	market ports.Market, baseAssetPrecision, quoteAssetPrecision uint,
+	market ports.Market, marketName string,
+	basePercentageFee, quotePercentageFee uint64,
+	baseAssetPrecision, quoteAssetPrecision uint,
 ) (ports.MarketInfo, error) {
 	mkt, _ := s.repoManager.MarketRepository().GetMarketByAssets(
 		ctx, market.GetBaseAsset(), market.GetQuoteAsset(),
@@ -27,7 +29,8 @@ func (s *service) NewMarket(
 	}
 
 	newMarket, err := domain.NewMarket(
-		market.GetBaseAsset(), market.GetQuoteAsset(), s.marketPercentageFee,
+		market.GetBaseAsset(), market.GetQuoteAsset(), marketName,
+		basePercentageFee, quotePercentageFee,
 		baseAssetPrecision, quoteAssetPrecision,
 	)
 	if err != nil {
@@ -40,10 +43,16 @@ func (s *service) NewMarket(
 		return nil, err
 	}
 
-	if err := s.repoManager.MarketRepository().AddMarket(ctx, newMarket); err != nil {
+	if err := s.repoManager.MarketRepository().AddMarket(
+		ctx, newMarket,
+	); err != nil {
 		go func() {
-			if err := s.wallet.Account().DeleteAccount(ctx, newMarket.Name); err != nil {
-				log.WithError(err).Warn("failed to delete wallet account, please do it manually")
+			if err := s.wallet.Account().DeleteAccount(
+				ctx, newMarket.Name,
+			); err != nil {
+				log.WithError(err).Warn(
+					"failed to delete wallet account, please do it manually",
+				)
 			}
 		}()
 		return nil, err
@@ -130,20 +139,22 @@ func (s *service) GetMarketReport(
 	// totalFees := make(map[string]int64)
 	for _, trade := range trades {
 		if isInTimeRange(trade.SwapRequest.Timestamp, rangeStart, rangeEnd) {
-			feeBasisPoint := trade.MarketPercentageFee
 			swapRequest := trade.SwapRequestMessage()
 			feeAsset := swapRequest.GetAssetP()
 			amountP := swapRequest.GetAmountP()
+
+			marketPrice := trade.MarketPrice.BasePrice
+			feeBasisPoint := trade.MarketPercentageFee.QuoteAsset
+			fixedFeeAmount := trade.MarketFixedFee.QuoteAsset
+			if feeAsset == mkt.BaseAsset {
+				feeBasisPoint = trade.MarketPercentageFee.BaseAsset
+				marketPrice = trade.MarketPrice.QuotePrice
+				fixedFeeAmount = trade.MarketFixedFee.BaseAsset
+			}
+
 			_, percentageFeeAmount := mathutil.LessFee(
 				amountP, uint64(feeBasisPoint),
 			)
-
-			marketPrice := trade.MarketPrice.BasePrice
-			fixedFeeAmount := uint64(trade.MarketFixedQuoteFee)
-			if feeAsset == mkt.BaseAsset {
-				marketPrice = trade.MarketPrice.QuotePrice
-				fixedFeeAmount = uint64(trade.MarketFixedBaseFee)
-			}
 
 			tradesFee = append(tradesFee, tradeFeeInfo{
 				trade, feeAsset, percentageFeeAmount, fixedFeeAmount, marketPrice,
@@ -229,8 +240,8 @@ func (s *service) DropMarket(ctx context.Context, market ports.Market) error {
 }
 
 func (s *service) WithdrawMarketFunds(
-	ctx context.Context,
-	password string, market ports.Market, outputs []ports.TxOutput, millisatsPerByte uint64,
+	ctx context.Context, password string,
+	market ports.Market, outputs []ports.TxOutput, millisatsPerByte uint64,
 ) (string, error) {
 	ok, err := s.wallet.Wallet().Auth(ctx, password)
 	if err != nil {
@@ -251,7 +262,8 @@ func (s *service) WithdrawMarketFunds(
 }
 
 func (s *service) UpdateMarketPercentageFee(
-	ctx context.Context, market ports.Market, basisPoint uint32,
+	ctx context.Context,
+	market ports.Market, basePercentageFee, quotePercentageFee int64,
 ) (ports.MarketInfo, error) {
 	mkt, err := s.repoManager.MarketRepository().GetMarketByAssets(
 		ctx, market.GetBaseAsset(), market.GetQuoteAsset(),
@@ -260,7 +272,9 @@ func (s *service) UpdateMarketPercentageFee(
 		return nil, err
 	}
 
-	if err := mkt.ChangePercentageFee(basisPoint); err != nil {
+	if err := mkt.ChangePercentageFee(
+		basePercentageFee, quotePercentageFee,
+	); err != nil {
 		return nil, err
 	}
 
@@ -419,8 +433,8 @@ func timeRangeToDates(tr ports.TimeRange) (startTime, endTime time.Time) {
 }
 
 // initGroupedVolume splits the given time range (start, end) into a list of
-// MarketVolume, ie. smaller consecutive time ranges of numHours hours in descending order.
-// Example:
+// MarketVolume, ie. smaller consecutive time ranges of numHours hours in
+// descending order. Example:
 // in: 2009-11-10 19:00:00 (start), 2009-11-11 00:00:00 (end), 2 (numHours)
 // out: [
 //
@@ -429,7 +443,9 @@ func timeRangeToDates(tr ports.TimeRange) (startTime, endTime time.Time) {
 //	{end: 2009-11-10 20:00:00, start: 2009-11-10 19:00:00},
 //
 // ]
-func splitTimeRange(start, end time.Time, groupByHours int) marketVolumeInfoList {
+func splitTimeRange(
+	start, end time.Time, groupByHours int,
+) marketVolumeInfoList {
 	groupedVolume := make([]*marketVolumeInfo, 0)
 	for {
 		if end.Equal(start) || end.Before(start) {

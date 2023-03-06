@@ -13,7 +13,7 @@ import (
 
 func (s *Service) TradePreview(
 	ctx context.Context, market ports.Market,
-	tradeType ports.TradeType, amount uint64, asset string,
+	tradeType ports.TradeType, amount uint64, asset, feeAsset string,
 ) (ports.TradePreview, error) {
 	if asset != market.GetBaseAsset() && asset != market.GetQuoteAsset() {
 		return nil, fmt.Errorf("asset must match one of those of the market")
@@ -37,7 +37,7 @@ func (s *Service) TradePreview(
 		return nil, ErrServiceUnavailable
 	}
 
-	return tradePreview(*mkt, balance, tradeType, asset, amount)
+	return tradePreview(*mkt, balance, tradeType, feeAsset, asset, amount)
 }
 
 func (s *Service) TradePropose(
@@ -83,7 +83,7 @@ func (s *Service) TradePropose(
 	if ok, _ := trade.Propose(
 		swapRequestInfo{swapRequest}.toDomain(),
 		mkt.Name, mkt.BaseAsset, mkt.QuoteAsset,
-		mkt.PercentageFee, mkt.FixedFee.BaseFee, mkt.FixedFee.QuoteFee, nil,
+		mkt.PercentageFee, mkt.FixedFee, nil,
 	); !ok {
 		return nil, trade.SwapFailMessage(), -1, nil
 	}

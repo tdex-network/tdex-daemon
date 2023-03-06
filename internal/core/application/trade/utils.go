@@ -21,10 +21,11 @@ func isValidTradePrice(
 	if tradeType.IsSell() {
 		amount = swapRequest.GetAmountP()
 	}
+	feeAsset := swapRequest.GetFeeAsset()
 
 	preview, _ := tradePreview(
 		market, balance,
-		tradeType, market.BaseAsset, amount,
+		tradeType, feeAsset, market.BaseAsset, amount,
 	)
 
 	if preview != nil {
@@ -42,7 +43,7 @@ func isValidTradePrice(
 
 	preview, _ = tradePreview(
 		market, balance,
-		tradeType, market.QuoteAsset, amount,
+		tradeType, feeAsset, market.QuoteAsset, amount,
 	)
 
 	if preview == nil {
@@ -74,12 +75,13 @@ func isPriceInRange(
 	lowerBound := expectedAmount.Mul(decimal.NewFromInt(1).Sub(slippage))
 	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
 
-	return amountToCheck.GreaterThanOrEqual(lowerBound) && amountToCheck.LessThanOrEqual(upperBound)
+	return amountToCheck.GreaterThanOrEqual(lowerBound) &&
+		amountToCheck.LessThanOrEqual(upperBound)
 }
 
 func tradePreview(
 	mkt domain.Market, balance map[string]ports.Balance,
-	tradeType ports.TradeType, asset string, amount uint64,
+	tradeType ports.TradeType, feeAsset, asset string, amount uint64,
 ) (ports.TradePreview, error) {
 	var baseBalance, quoteBalance uint64
 	if balance != nil {
@@ -90,13 +92,12 @@ func tradePreview(
 			quoteBalance = b.GetConfirmedBalance()
 		}
 	}
-	isBaseAsset := asset == mkt.BaseAsset
 
 	preview, err := mkt.Preview(
-		baseBalance, quoteBalance, amount, isBaseAsset, tradeType.IsBuy(),
+		baseBalance, quoteBalance, amount, asset, feeAsset, tradeType.IsBuy(),
 	)
 	if err != nil {
 		return nil, err
 	}
-	return previewInfo{mkt, *preview, balance}, nil
+	return previewInfo{mkt, *preview}, nil
 }
