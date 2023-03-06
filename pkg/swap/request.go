@@ -1,15 +1,11 @@
 package swap
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/thanhpk/randstr"
-	"github.com/vulpemventures/go-elements/pset"
-	"github.com/vulpemventures/go-elements/psetv2"
-	"github.com/vulpemventures/go-elements/transaction"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -33,18 +29,23 @@ type RequestOpts struct {
 	InputBlindingKeys  map[string][]byte
 	OutputBlindingKeys map[string][]byte
 	UnblindedInputs    []UnblindedInput
+	FeeAmount          uint64
+	FeeAsset           string
 }
 
 func (o RequestOpts) validate() error {
 	if isPsetV0(o.Transaction) {
-		return checkTxAndBlindKeys(
+		return validateSwapTxV0(
 			o.Transaction,
 			o.InputBlindingKeys,
 			o.OutputBlindingKeys,
 		)
 	}
 	if isPsetV2(o.Transaction) {
-		return checkTxAndUnblindedIns(o.Transaction, o.UnblindedInputs)
+		if len(o.UnblindedInputs) <= 0 {
+			return fmt.Errorf("missing unblinded inputs")
+		}
+		return validateSwapRequestTx(o)
 	}
 
 	return fmt.Errorf("invalid swap transaction format")
@@ -126,73 +127,4 @@ func Request(opts RequestOpts) ([]byte, error) {
 	}
 
 	return proto.Marshal(message)
-}
-
-func checkTxAndBlindKeys(
-	psetBase64 string,
-	inBlindKeys, outBlindKeys map[string][]byte,
-) error {
-	ptx, err := pset.NewPsetFromBase64(psetBase64)
-	if err != nil {
-		return fmt.Errorf("pset is not in a valid base64 format")
-	}
-
-	checkInputKeys := inBlindKeys != nil
-	for i, in := range ptx.Inputs {
-		if !in.IsSane() {
-			return fmt.Errorf("partial input %d is not sane", i)
-		}
-		var prevout *transaction.TxOutput
-		if in.WitnessUtxo != nil {
-			prevout = in.WitnessUtxo
-		} else {
-			txinIndex := ptx.UnsignedTx.Inputs[i].Index
-			prevout = in.NonWitnessUtxo.Outputs[txinIndex]
-		}
-		if checkInputKeys {
-			script := hex.EncodeToString(prevout.Script)
-			if _, ok := inBlindKeys[script]; !ok {
-				return fmt.Errorf("missing blinding key for input %d", i)
-			}
-		}
-	}
-
-	checkOutputKeys := outBlindKeys != nil
-	for i, out := range ptx.UnsignedTx.Outputs {
-		if len(out.Script) > 0 && checkOutputKeys {
-			script := hex.EncodeToString(out.Script)
-			if _, ok := outBlindKeys[script]; !ok {
-				return fmt.Errorf("missing blinding key for output %d", i)
-			}
-		}
-	}
-
-	return nil
-}
-
-func checkTxAndUnblindedIns(
-	psetBase64 string, unblindedIns []UnblindedInput,
-) error {
-	ptx, _ := psetv2.NewPsetFromBase64(psetBase64)
-
-	if len(unblindedIns) <= 0 {
-		return fmt.Errorf("missing unblinded inputs")
-	}
-	for _, in := range unblindedIns {
-		if uint64(in.Index) >= ptx.Global.InputCount {
-			return fmt.Errorf("unblinded input index %d out of range", in.Index)
-		}
-	}
-
-	return nil
-}
-
-func isPsetV0(tx string) bool {
-	_, err := pset.NewPsetFromBase64(tx)
-	return err == nil
-}
-
-func isPsetV2(tx string) bool {
-	_, err := psetv2.NewPsetFromBase64(tx)
-	return err == nil
 }

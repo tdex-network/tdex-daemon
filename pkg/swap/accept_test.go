@@ -19,8 +19,8 @@ func TestSwapAccept(t *testing.T) {
 	require.NoError(t, err)
 
 	id, messageAccept, err := Accept(AcceptOpts{
-		Message:    messageRequest,
-		PsetBase64: initialPsbtOfBob,
+		Message:     messageRequest,
+		Transaction: initialPsbtOfBob,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, id)

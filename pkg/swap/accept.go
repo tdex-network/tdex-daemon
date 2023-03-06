@@ -13,22 +13,20 @@ import (
 // AcceptOpts is the struct given to Accept method
 type AcceptOpts struct {
 	Message            []byte
-	PsetBase64         string
+	Transaction        string
 	InputBlindingKeys  map[string][]byte
 	OutputBlindingKeys map[string][]byte
 	UnblindedInputs    []UnblindedInput
 }
 
 func (o AcceptOpts) validate() error {
-	if isPsetV0(o.PsetBase64) {
-		return checkTxAndBlindKeys(
-			o.PsetBase64,
-			o.InputBlindingKeys,
-			o.OutputBlindingKeys,
+	if isPsetV0(o.Transaction) {
+		return validateSwapTxV0(
+			o.Transaction, o.InputBlindingKeys, o.OutputBlindingKeys,
 		)
 	}
-	if isPsetV2(o.PsetBase64) {
-		return checkTxAndUnblindedIns(o.PsetBase64, o.UnblindedInputs)
+	if isPsetV2(o.Transaction) {
+		return validateSwapAcceptTx(o.Transaction, o.UnblindedInputs)
 	}
 	return fmt.Errorf("invalid swap transaction format")
 }
@@ -51,11 +49,11 @@ func (o AcceptOpts) unblindedIns() []*tdexv2.UnblindedInput {
 }
 
 func (o AcceptOpts) forV1() bool {
-	return isPsetV0(o.PsetBase64)
+	return isPsetV0(o.Transaction)
 }
 
 func (o AcceptOpts) forV2() bool {
-	return isPsetV2(o.PsetBase64)
+	return isPsetV2(o.Transaction)
 }
 
 // Accept takes a AcceptOpts and returns the id of the SwapAccept entity and
@@ -77,7 +75,7 @@ func Accept(opts AcceptOpts) (string, []byte, error) {
 		message = &tdexv1.SwapAccept{
 			Id:                randomID,
 			RequestId:         msgRequest.GetId(),
-			Transaction:       opts.PsetBase64,
+			Transaction:       opts.Transaction,
 			InputBlindingKey:  opts.InputBlindingKeys,
 			OutputBlindingKey: opts.OutputBlindingKeys,
 		}
@@ -92,7 +90,7 @@ func Accept(opts AcceptOpts) (string, []byte, error) {
 		message = &tdexv2.SwapAccept{
 			Id:              randomID,
 			RequestId:       msgRequest.GetId(),
-			Transaction:     opts.PsetBase64,
+			Transaction:     opts.Transaction,
 			UnblindedInputs: opts.unblindedIns(),
 		}
 	}
