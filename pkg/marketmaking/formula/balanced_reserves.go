@@ -32,10 +32,6 @@ type BalancedReservesOpts struct {
 	BalanceOut decimal.Decimal
 	WeightIn   uint64
 	WeightOut  uint64
-	// The fee should be in satoshis and represents the calculated fee to take out from the swap.
-	Fee uint64
-	// Defines if the fee should be charged on the way in (ie. on )
-	ChargeFeeOnTheWayIn bool
 }
 
 // BalancedReserves defines an AMM strategy with fixed 50/50 reserves
@@ -71,11 +67,6 @@ func (BalancedReserves) OutGivenIn(
 		err = ErrBalanceTooLow
 		return
 	}
-
-	percentageFee := decimal.NewFromInt(int64(opts.Fee)).Div(tenThousands)
-	if opts.ChargeFeeOnTheWayIn {
-		amountIn = amountIn.Mul(decimal.NewFromInt(1).Sub(percentageFee))
-	}
 	if amountIn.LessThanOrEqual(decimal.Zero) {
 		err = ErrAmountTooLow
 		return
@@ -83,11 +74,8 @@ func (BalancedReserves) OutGivenIn(
 
 	amount := opts.BalanceOut.Mul(decimal.NewFromInt(1).Sub(
 		opts.BalanceIn.Div(opts.BalanceIn.Add(amountIn)),
-	))
-	if !opts.ChargeFeeOnTheWayIn {
-		amount = amount.Mul(decimal.NewFromInt(1).Sub(percentageFee))
-	}
-	amount = amount.Round(8)
+	)).Round(8)
+
 	if amount.LessThanOrEqual(decimal.Zero) {
 		err = ErrAmountTooLow
 		return
@@ -114,11 +102,6 @@ func (BalancedReserves) InGivenOut(
 		err = ErrBalanceTooLow
 		return
 	}
-
-	percentageFee := decimal.NewFromInt(int64(opts.Fee)).Div(tenThousands)
-	if !opts.ChargeFeeOnTheWayIn {
-		amountOut = amountOut.Mul(decimal.NewFromInt(1).Add(percentageFee))
-	}
 	if amountOut.Equals(decimal.Zero) {
 		err = ErrAmountTooLow
 		return
@@ -132,12 +115,8 @@ func (BalancedReserves) InGivenOut(
 		opts.BalanceOut.Div(opts.BalanceOut.Sub(amountOut)).Sub(
 			decimal.NewFromInt(1),
 		),
-	)
+	).Round(8)
 
-	if opts.ChargeFeeOnTheWayIn {
-		amount = amount.Mul(decimal.NewFromInt(1).Add(percentageFee))
-	}
-	amount = amount.Round(8)
 	if amount.LessThanOrEqual(decimal.Zero) {
 		err = ErrAmountTooLow
 		return

@@ -47,24 +47,20 @@ func TestOutGivenIn(t *testing.T) {
 			{
 				"with fee taken on the input",
 				formula.BalancedReservesOpts{
-					BalanceIn:           decimal.NewFromInt(1),
-					BalanceOut:          decimal.NewFromInt(6500),
-					Fee:                 25,
-					ChargeFeeOnTheWayIn: true,
+					BalanceIn:  decimal.NewFromInt(1),
+					BalanceOut: decimal.NewFromInt(6500),
 				},
 				decimal.NewFromFloat(0.0001),
-				decimal.NewFromFloat(0.64831033),
+				decimal.NewFromFloat(0.64993501),
 			},
 			{
 				"with the fee taken on the output",
 				formula.BalancedReservesOpts{
-					BalanceIn:           decimal.NewFromInt(1),
-					BalanceOut:          decimal.NewFromInt(6500),
-					Fee:                 25,
-					ChargeFeeOnTheWayIn: false,
+					BalanceIn:  decimal.NewFromInt(1),
+					BalanceOut: decimal.NewFromInt(6500),
 				},
 				decimal.NewFromFloat(0.0001),
-				decimal.NewFromFloat(0.64831017),
+				decimal.NewFromFloat(0.64993501),
 			},
 		}
 
@@ -90,10 +86,8 @@ func TestOutGivenIn(t *testing.T) {
 			{
 				"provided amount is zero",
 				formula.BalancedReservesOpts{
-					BalanceIn:           decimal.NewFromInt(1),
-					BalanceOut:          decimal.NewFromInt(6500),
-					Fee:                 25,
-					ChargeFeeOnTheWayIn: true,
+					BalanceIn:  decimal.NewFromInt(1),
+					BalanceOut: decimal.NewFromInt(6500),
 				},
 				decimal.Zero,
 				formula.ErrAmountTooLow,
@@ -101,10 +95,8 @@ func TestOutGivenIn(t *testing.T) {
 			{
 				"provided amount too low",
 				formula.BalancedReservesOpts{
-					BalanceIn:           decimal.NewFromInt(6500),
-					BalanceOut:          decimal.NewFromInt(1),
-					Fee:                 25,
-					ChargeFeeOnTheWayIn: true,
+					BalanceIn:  decimal.NewFromInt(6500),
+					BalanceOut: decimal.NewFromInt(1),
 				},
 				decimal.NewFromFloat(0.00000001),
 				formula.ErrAmountTooLow,
@@ -127,42 +119,25 @@ func TestInGivenOut(t *testing.T) {
 		t.Parallel()
 
 		tests := []struct {
-			name         string
 			opts         formula.BalancedReservesOpts
 			amountOut    decimal.Decimal
 			wantAmountIn decimal.Decimal
 		}{
 			{
-				"with fees taken on the input",
 				formula.BalancedReservesOpts{
-					BalanceIn:           decimal.NewFromInt(6500),
-					BalanceOut:          decimal.NewFromInt(1),
-					Fee:                 25,
-					ChargeFeeOnTheWayIn: true,
+					BalanceIn:  decimal.NewFromInt(6500),
+					BalanceOut: decimal.NewFromInt(1),
 				},
 				decimal.NewFromFloat(0.0001),
-				decimal.NewFromFloat(0.65169017),
-			},
-			{
-				"with fees taken on the output",
-				formula.BalancedReservesOpts{
-					BalanceIn:           decimal.NewFromInt(6500),
-					BalanceOut:          decimal.NewFromInt(1),
-					Fee:                 25,
-					ChargeFeeOnTheWayIn: false,
-				},
-				decimal.NewFromFloat(0.0001),
-				decimal.NewFromFloat(0.65169033),
+				decimal.NewFromFloat(0.65006501),
 			},
 		}
 
 		b := formula.BalancedReserves{}
 		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				amountIn, err := b.InGivenOut(tt.opts, tt.amountOut)
-				require.NoError(t, err)
-				require.Equal(t, tt.wantAmountIn.String(), amountIn.String())
-			})
+			amountIn, err := b.InGivenOut(tt.opts, tt.amountOut)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantAmountIn.String(), amountIn.String())
 		}
 	})
 
@@ -178,10 +153,8 @@ func TestInGivenOut(t *testing.T) {
 			{
 				"provided amount is zero",
 				formula.BalancedReservesOpts{
-					BalanceIn:           decimal.NewFromFloat(6500),
-					BalanceOut:          decimal.NewFromFloat(1),
-					Fee:                 25,
-					ChargeFeeOnTheWayIn: true,
+					BalanceIn:  decimal.NewFromFloat(6500),
+					BalanceOut: decimal.NewFromFloat(1),
 				},
 				decimal.Zero,
 				formula.ErrAmountTooLow,
@@ -189,10 +162,8 @@ func TestInGivenOut(t *testing.T) {
 			{
 				"provided amount too big",
 				formula.BalancedReservesOpts{
-					BalanceIn:           decimal.NewFromFloat(6500),
-					BalanceOut:          decimal.NewFromFloat(1),
-					Fee:                 5000,
-					ChargeFeeOnTheWayIn: true,
+					BalanceIn:  decimal.NewFromFloat(6500),
+					BalanceOut: decimal.NewFromFloat(1),
 				},
 				decimal.NewFromFloat(1),
 				formula.ErrAmountTooBig,
@@ -200,10 +171,8 @@ func TestInGivenOut(t *testing.T) {
 			{
 				"provided amount too low",
 				formula.BalancedReservesOpts{
-					BalanceIn:           decimal.NewFromFloat(1),
-					BalanceOut:          decimal.NewFromFloat(6500),
-					Fee:                 5000,
-					ChargeFeeOnTheWayIn: true,
+					BalanceIn:  decimal.NewFromFloat(1),
+					BalanceOut: decimal.NewFromFloat(6500),
 				},
 				decimal.NewFromFloat(0.00001),
 				formula.ErrAmountTooLow,
