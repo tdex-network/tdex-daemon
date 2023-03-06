@@ -114,7 +114,7 @@ func testUpdateMarket(t *testing.T, repo domain.MarketRepository) {
 
 	err = repo.UpdateMarket(
 		ctx, market.Name, func(mkt *domain.Market) (*domain.Market, error) {
-			if err := mkt.ChangePercentageFee(100); err != nil {
+			if err := mkt.ChangePercentageFee(100, 100); err != nil {
 				return nil, err
 			}
 			return mkt, nil
@@ -125,7 +125,8 @@ func testUpdateMarket(t *testing.T, repo domain.MarketRepository) {
 	foundMarket, err := repo.GetMarketByName(ctx, market.Name)
 	require.NoError(t, err)
 	require.NotNil(t, foundMarket)
-	require.Equal(t, 100, int(foundMarket.PercentageFee))
+	require.Equal(t, 100, int(foundMarket.PercentageFee.BaseAsset))
+	require.Equal(t, 100, int(foundMarket.PercentageFee.QuoteAsset))
 }
 
 func testUpdateMarketPrice(t *testing.T, repo domain.MarketRepository) {

@@ -21,7 +21,8 @@ func TestTradePropose(t *testing.T) {
 	swapRequest := newSwapRequest()
 	mktBaseAsset := swapRequest.GetAssetP()
 	mktQuoteAsset := swapRequest.GetAssetR()
-	mktFee := uint32(25)
+	mktPercentageFee := domain.MarketFee{BaseAsset: 25, QuoteAsset: 25}
+	mktFixedFee := domain.MarketFee{}
 	traderPubkey := []byte{}
 	mockedSwapParser := mocks.NewMockSwapParser(t)
 	mockedSwapParser.On("SerializeRequest", swapRequest).Return(randomBytes(100), -1)
@@ -60,7 +61,9 @@ func TestTradePropose(t *testing.T) {
 			t.Parallel()
 
 			ok, err := tt.trade.Propose(
-				swapRequest, mktName, mktBaseAsset, mktQuoteAsset, mktFee, 0, 0, traderPubkey)
+				swapRequest, mktName, mktBaseAsset, mktQuoteAsset,
+				mktPercentageFee, mktFixedFee, traderPubkey,
+			)
 			require.NoError(t, err)
 			require.True(t, ok)
 
@@ -77,7 +80,8 @@ func TestFailingTradePropose(t *testing.T) {
 	swapRequest := newSwapRequest()
 	mktBaseAsset := swapRequest.GetAssetP()
 	mktQuoteAsset := swapRequest.GetAssetR()
-	mktFee := uint32(25)
+	mktPercentageFee := domain.MarketFee{BaseAsset: 25, QuoteAsset: 25}
+	mktFixedFee := domain.MarketFee{}
 	traderPubkey := []byte{}
 	mockedSwapParser := mocks.NewMockSwapParser(t)
 	mockedSwapParser.On("SerializeRequest", swapRequest).Return(nil, 1)
@@ -90,7 +94,8 @@ func TestFailingTradePropose(t *testing.T) {
 		trade := newTradeEmpty()
 
 		ok, err := trade.Propose(
-			swapRequest, mktName, mktBaseAsset, mktQuoteAsset, mktFee, 0, 0, traderPubkey,
+			swapRequest, mktName, mktBaseAsset, mktQuoteAsset,
+			mktPercentageFee, mktFixedFee, traderPubkey,
 		)
 		require.NoError(t, err)
 		require.False(t, ok)

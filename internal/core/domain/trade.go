@@ -25,9 +25,8 @@ type Trade struct {
 	MarketBaseAsset     string
 	MarketQuoteAsset    string
 	MarketPrice         MarketPrice
-	MarketPercentageFee uint32
-	MarketFixedBaseFee  uint64
-	MarketFixedQuoteFee uint64
+	MarketPercentageFee MarketFee
+	MarketFixedFee      MarketFee
 	TraderPubkey        []byte
 	Status              TradeStatus
 	PsetBase64          string
@@ -51,7 +50,7 @@ func NewTrade() *Trade {
 func (t *Trade) Propose(
 	swapRequest SwapRequest,
 	mktName, mktBaseAsset, mktQuoteAsset string,
-	mktPercentageFee uint32, mktFixedBaseFee, mktFixedQuoteFee uint64,
+	mktPercentageFee, mktFixedFee MarketFee,
 	traderPubkey []byte,
 ) (bool, error) {
 	if t.Status.Code >= TradeStatusCodeProposal {
@@ -80,8 +79,7 @@ func (t *Trade) Propose(
 	t.SwapRequest.Message = msg
 	t.MarketPrice = price
 	t.MarketPercentageFee = mktPercentageFee
-	t.MarketFixedBaseFee = mktFixedBaseFee
-	t.MarketFixedQuoteFee = mktFixedQuoteFee
+	t.MarketFixedFee = mktFixedFee
 	return true, nil
 }
 

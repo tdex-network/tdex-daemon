@@ -38,6 +38,8 @@ type SwapRequest struct {
 	AmountP         uint64
 	AmountR         uint64
 	Transaction     string
+	FeeAsset        string
+	FeeAmount       uint64
 	UnblindedInputs []UnblindedInput
 }
 
@@ -60,6 +62,12 @@ func (s *SwapRequest) GetAmountR() uint64 {
 }
 func (s *SwapRequest) GetTransaction() string {
 	return s.Transaction
+}
+func (s *SwapRequest) GetFeeAsset() string {
+	return s.FeeAsset
+}
+func (s *SwapRequest) GetFeeAmount() uint64 {
+	return s.FeeAmount
 }
 func (s *SwapRequest) GetUnblindedInputs() []UnblindedInput {
 	return s.UnblindedInputs
