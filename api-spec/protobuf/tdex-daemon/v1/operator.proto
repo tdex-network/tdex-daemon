@@ -159,6 +159,14 @@ service OperatorService {
 
   // Returns info about volume and collected fees for specific time range
   rpc GetMarketReport(GetMarketReportRequest) returns(GetMarketReportResponse){}
+
+  // Returns the list of all available proto services
+  rpc ListProtoServices(ListProtoServicesRequest) returns(ListProtoServicesResponse){}
+}
+
+message ListProtoServicesRequest{}
+message ListProtoServicesResponse{
+  repeated string services = 1;
 }
 
 message GetInfoRequest{}

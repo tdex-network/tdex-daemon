@@ -307,6 +307,10 @@ func Whitelist() map[string][]bakery.Op {
 			Entity: Reflection,
 			Action: "read",
 		}},
+		fmt.Sprintf("/%s/ListProtoServices", daemonv1.OperatorService_ServiceDesc.ServiceName): {{
+			Entity: Reflection,
+			Action: "read",
+		}},
 	}
 }
 

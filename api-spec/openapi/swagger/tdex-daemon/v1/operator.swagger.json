@@ -207,7 +207,8 @@
         "fixed": {
           "$ref": "#/definitions/v1Fixed"
         }
-      }
+      },
+      "title": "Custom Types"
     },
     "v1FeeFragmenterSplitFundsResponse": {
       "type": "object",
@@ -507,6 +508,17 @@
             "$ref": "#/definitions/v1MarketInfo"
           },
           "description": "The list of info about all the created markets."
+        }
+      }
+    },
+    "v1ListProtoServicesResponse": {
+      "type": "object",
+      "properties": {
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

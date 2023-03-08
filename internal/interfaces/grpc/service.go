@@ -349,7 +349,11 @@ func (s *service) start(withUnlockerOnly bool) (*services, error) {
 
 	if !withUnlockerOnly {
 		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
-		operatorHandler := grpchandler.NewOperatorHandler(s.opts.OperatorSvc)
+		operatorHandler := grpchandler.NewOperatorHandler(
+			s.opts.OperatorSvc,
+			s.opts.TradeAddress,
+			s.opts.OperatorAddress,
+		)
 		daemonv1.RegisterOperatorServiceServer(grpcOperatorServer, operatorHandler)
 		daemonv1.RegisterWalletServiceServer(grpcOperatorServer, walletHandler)
 	}

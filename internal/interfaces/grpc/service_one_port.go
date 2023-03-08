@@ -266,7 +266,11 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 	var grpcGateway http.Handler
 	if !withUnlockerOnly {
 		walletHandler := grpchandler.NewWalletHandler(s.opts.WalletSvc)
-		operatorHandler := grpchandler.NewOperatorHandler(s.opts.OperatorSvc)
+		operatorHandler := grpchandler.NewOperatorHandler(
+			s.opts.OperatorSvc,
+			s.opts.Address,
+			s.opts.Address,
+		)
 		daemonv1.RegisterOperatorServiceServer(grpcServer, operatorHandler)
 		daemonv1.RegisterWalletServiceServer(grpcServer, walletHandler)
 		tradeHandler := grpchandler.NewTradeHandler(s.opts.TradeSvc)

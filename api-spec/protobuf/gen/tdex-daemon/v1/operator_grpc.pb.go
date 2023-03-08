@@ -112,6 +112,8 @@ type OperatorServiceClient interface {
 	ListWithdrawals(ctx context.Context, in *ListWithdrawalsRequest, opts ...grpc.CallOption) (*ListWithdrawalsResponse, error)
 	// Returns info about volume and collected fees for specific time range
 	GetMarketReport(ctx context.Context, in *GetMarketReportRequest, opts ...grpc.CallOption) (*GetMarketReportResponse, error)
+	// Returns the list of all available proto services
+	ListProtoServices(ctx context.Context, in *ListProtoServicesRequest, opts ...grpc.CallOption) (*ListProtoServicesResponse, error)
 }
 
 type operatorServiceClient struct {
@@ -546,6 +548,15 @@ func (c *operatorServiceClient) GetMarketReport(ctx context.Context, in *GetMark
 	return out, nil
 }
 
+func (c *operatorServiceClient) ListProtoServices(ctx context.Context, in *ListProtoServicesRequest, opts ...grpc.CallOption) (*ListProtoServicesResponse, error) {
+	out := new(ListProtoServicesResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v1.OperatorService/ListProtoServices", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OperatorServiceServer is the server API for OperatorService service.
 // All implementations should embed UnimplementedOperatorServiceServer
 // for forward compatibility
@@ -640,6 +651,8 @@ type OperatorServiceServer interface {
 	ListWithdrawals(context.Context, *ListWithdrawalsRequest) (*ListWithdrawalsResponse, error)
 	// Returns info about volume and collected fees for specific time range
 	GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportResponse, error)
+	// Returns the list of all available proto services
+	ListProtoServices(context.Context, *ListProtoServicesRequest) (*ListProtoServicesResponse, error)
 }
 
 // UnimplementedOperatorServiceServer should be embedded to have forward compatible implementations.
@@ -771,6 +784,9 @@ func (UnimplementedOperatorServiceServer) ListWithdrawals(context.Context, *List
 }
 func (UnimplementedOperatorServiceServer) GetMarketReport(context.Context, *GetMarketReportRequest) (*GetMarketReportResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMarketReport not implemented")
+}
+func (UnimplementedOperatorServiceServer) ListProtoServices(context.Context, *ListProtoServicesRequest) (*ListProtoServicesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListProtoServices not implemented")
 }
 
 // UnsafeOperatorServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -1546,6 +1562,24 @@ func _OperatorService_GetMarketReport_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OperatorService_ListProtoServices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListProtoServicesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OperatorServiceServer).ListProtoServices(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tdex_daemon.v1.OperatorService/ListProtoServices",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OperatorServiceServer).ListProtoServices(ctx, req.(*ListProtoServicesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // OperatorService_ServiceDesc is the grpc.ServiceDesc for OperatorService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1712,6 +1746,10 @@ var OperatorService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMarketReport",
 			Handler:    _OperatorService_GetMarketReport_Handler,
+		},
+		{
+			MethodName: "ListProtoServices",
+			Handler:    _OperatorService_ListProtoServices_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

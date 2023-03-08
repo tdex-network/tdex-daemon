@@ -2,10 +2,17 @@ package grpchandler
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
+
+	"google.golang.org/grpc/credentials/insecure"
+
+	"google.golang.org/grpc/credentials"
+
+	"google.golang.org/grpc"
 
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -15,24 +22,33 @@ import (
 
 	daemonv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v1"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 )
 
 type operatorHandler struct {
-	operatorSvc application.OperatorService
+	tradeAddress    string
+	operatorAddress string
+	operatorSvc     application.OperatorService
 }
 
 // NewOperatorHandler is a constructor function returning an protobuf OperatorServer.
 func NewOperatorHandler(
 	operatorSvc application.OperatorService,
+	tradeAddress string,
+	operatorAddress string,
 ) daemonv1.OperatorServiceServer {
-	return newOperatorHandler(operatorSvc)
+	return newOperatorHandler(operatorSvc, tradeAddress, operatorAddress)
 }
 
 func newOperatorHandler(
 	operatorSvc application.OperatorService,
+	tradeAddress string,
+	operatorAddress string,
 ) *operatorHandler {
 	return &operatorHandler{
-		operatorSvc: operatorSvc,
+		operatorSvc:     operatorSvc,
+		tradeAddress:    tradeAddress,
+		operatorAddress: operatorAddress,
 	}
 }
 
@@ -291,6 +307,82 @@ func (o operatorHandler) GetMarketReport(
 	req *daemonv1.GetMarketReportRequest,
 ) (*daemonv1.GetMarketReportResponse, error) {
 	return o.getMarketReport(ctx, req)
+}
+
+func (o operatorHandler) ListProtoServices(
+	ctx context.Context,
+	req *daemonv1.ListProtoServicesRequest,
+) (*daemonv1.ListProtoServicesResponse, error) {
+	tlsConf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	creds := credentials.NewTLS(tlsConf)
+	conn, err := grpc.Dial(
+		o.operatorAddress,
+		grpc.WithTransportCredentials(creds),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	allServices := make([]string, 0)
+	services, err := listServices(conn)
+	if err != nil {
+		return nil, err
+	}
+	allServices = append(allServices, services...)
+
+	if o.operatorAddress != o.tradeAddress {
+		conn, err = grpc.Dial(
+			o.tradeAddress,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+
+		services, err = listServices(conn)
+		if err != nil {
+			return nil, err
+		}
+		allServices = append(allServices, services...)
+	}
+
+	return &daemonv1.ListProtoServicesResponse{
+		Services: allServices,
+	}, nil
+}
+
+func listServices(conn *grpc.ClientConn) ([]string, error) {
+	stub := rpb.NewServerReflectionClient(conn)
+	client, err := stub.ServerReflectionInfo(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	defer client.CloseSend()
+
+	if err := client.Send(&rpb.ServerReflectionRequest{
+		MessageRequest: &rpb.ServerReflectionRequest_ListServices{},
+	}); err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Recv()
+	if err != nil {
+		return nil, err
+	}
+
+	reflectionRpc := rpb.File_reflection_grpc_reflection_v1alpha_reflection_proto.Services().Get(0).FullName()
+	services := make([]string, 0, len(resp.GetListServicesResponse().Service))
+	for _, service := range resp.GetListServicesResponse().Service {
+		if service.GetName() != string(reflectionRpc) {
+			services = append(services, service.Name)
+		}
+	}
+
+	return services, nil
 }
 
 func (o operatorHandler) getInfo(

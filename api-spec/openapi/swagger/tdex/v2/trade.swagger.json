@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "tdex/v1/trade.proto",
+    "title": "tdex/v2/trade.proto",
     "version": "version not set"
   },
   "tags": [
@@ -16,7 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/v1/market/balance": {
+    "/v2/market/balance": {
       "post": {
         "summary": "GetMarketBalance retutns the balance of the two current reserves of the\ngiven market.",
         "operationId": "TradeService_GetMarketBalance",
@@ -24,7 +24,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1GetMarketBalanceResponse"
+              "$ref": "#/definitions/tdexv2GetMarketBalanceResponse"
             }
           },
           "default": {
@@ -40,7 +40,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1GetMarketBalanceRequest"
+              "$ref": "#/definitions/tdexv2GetMarketBalanceRequest"
             }
           }
         ],
@@ -49,7 +49,7 @@
         ]
       }
     },
-    "/v1/market/price": {
+    "/v2/market/price": {
       "post": {
         "summary": "GetMarketPrice retutns the spot price for the requested market and its\nminimum tradable amount of base asset.",
         "operationId": "TradeService_GetMarketPrice",
@@ -57,7 +57,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1GetMarketPriceResponse"
+              "$ref": "#/definitions/tdexv2GetMarketPriceResponse"
             }
           },
           "default": {
@@ -73,7 +73,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1GetMarketPriceRequest"
+              "$ref": "#/definitions/tdexv2GetMarketPriceRequest"
             }
           }
         ],
@@ -82,7 +82,7 @@
         ]
       }
     },
-    "/v1/markets": {
+    "/v2/markets": {
       "post": {
         "summary": "ListMarkets lists all the markets open for trading.",
         "operationId": "TradeService_ListMarkets",
@@ -90,7 +90,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1ListMarketsResponse"
+              "$ref": "#/definitions/tdexv2ListMarketsResponse"
             }
           },
           "default": {
@@ -105,7 +105,7 @@
         ]
       }
     },
-    "/v1/trade/complete": {
+    "/v2/trade/complete": {
       "post": {
         "summary": "CompleteTrade can be used by the trader to let the daemon finalizing,\nextracting, and broadcasting the swap transaction, once he's signed his\ninputs.\nThis is not mandatory, the trader can do the steps above on his own\nalternatively.",
         "operationId": "TradeService_CompleteTrade",
@@ -113,7 +113,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1CompleteTradeResponse"
+              "$ref": "#/definitions/tdexv2CompleteTradeResponse"
             }
           },
           "default": {
@@ -129,7 +129,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1CompleteTradeRequest"
+              "$ref": "#/definitions/tdexv2CompleteTradeRequest"
             }
           }
         ],
@@ -138,7 +138,7 @@
         ]
       }
     },
-    "/v1/trade/preview": {
+    "/v2/trade/preview": {
       "post": {
         "summary": "PreviewTrade returns a counter amount and asset in response to the\nprovided ones and a trade type for a market.",
         "description": "The trade type can assume values BUY or SELL and it always refer to the\nfixed base asset.\nFor example:\n * if trade type is BUY, it means the trader wants to buy base asset funds.\n * if trade type is SELL, it means the trader wants to sell base asset funds.",
@@ -147,7 +147,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1PreviewTradeResponse"
+              "$ref": "#/definitions/tdexv2PreviewTradeResponse"
             }
           },
           "default": {
@@ -163,7 +163,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1PreviewTradeRequest"
+              "$ref": "#/definitions/tdexv2PreviewTradeRequest"
             }
           }
         ],
@@ -172,7 +172,7 @@
         ]
       }
     },
-    "/v1/trade/propose": {
+    "/v2/trade/propose": {
       "post": {
         "summary": "ProposeTrade allows a trader to present a SwapRequest. The service answers\nwith a SwapAccept, filling the request's partial transaction, + an\nexpiration time to complete the swap when accepting the swap, or,\notherwise, with a SwapFail containg the reason for the rejection of the\nproposal.",
         "operationId": "TradeService_ProposeTrade",
@@ -180,7 +180,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1ProposeTradeResponse"
+              "$ref": "#/definitions/tdexv2ProposeTradeResponse"
             }
           },
           "default": {
@@ -196,7 +196,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1ProposeTradeRequest"
+              "$ref": "#/definitions/tdexv2ProposeTradeRequest"
             }
           }
         ],
@@ -234,7 +234,7 @@
         }
       }
     },
-    "tdexv1Balance": {
+    "tdexv2Balance": {
       "type": "object",
       "properties": {
         "baseAmount": {
@@ -247,66 +247,69 @@
         }
       }
     },
-    "tdexv1CompleteTradeRequest": {
+    "tdexv2CompleteTradeRequest": {
       "type": "object",
       "properties": {
         "swapComplete": {
-          "$ref": "#/definitions/tdexv1SwapComplete"
+          "$ref": "#/definitions/tdexv2SwapComplete"
         },
         "swapFail": {
-          "$ref": "#/definitions/tdexv1SwapFail"
+          "$ref": "#/definitions/tdexv2SwapFail"
         }
       }
     },
-    "tdexv1CompleteTradeResponse": {
+    "tdexv2CompleteTradeResponse": {
       "type": "object",
       "properties": {
         "txid": {
           "type": "string"
         },
         "swapFail": {
-          "$ref": "#/definitions/tdexv1SwapFail"
+          "$ref": "#/definitions/tdexv2SwapFail"
         }
       }
     },
-    "tdexv1Fee": {
+    "tdexv2Fee": {
       "type": "object",
       "properties": {
-        "basisPoint": {
-          "type": "string",
-          "format": "int64"
+        "percentageFee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "Percentage fee on both assets of the market in basis point."
         },
-        "fixed": {
-          "$ref": "#/definitions/v1Fixed"
+        "fixedFee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "Fixed fee on both assets of the market in satoshi."
         }
-      },
-      "title": "Custom Types"
+      }
     },
-    "tdexv1GetMarketBalanceRequest": {
+    "tdexv2GetMarketBalanceRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market"
+          "$ref": "#/definitions/tdexv2Market"
         }
       }
     },
-    "tdexv1GetMarketBalanceResponse": {
+    "tdexv2GetMarketBalanceResponse": {
       "type": "object",
       "properties": {
         "balance": {
-          "$ref": "#/definitions/v1BalanceWithFee"
+          "$ref": "#/definitions/tdexv2Balance"
+        },
+        "fee": {
+          "$ref": "#/definitions/tdexv2Fee"
         }
       }
     },
-    "tdexv1GetMarketPriceRequest": {
+    "tdexv2GetMarketPriceRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market"
+          "$ref": "#/definitions/tdexv2Market"
         }
       }
     },
-    "tdexv1GetMarketPriceResponse": {
+    "tdexv2GetMarketPriceResponse": {
       "type": "object",
       "properties": {
         "spotPrice": {
@@ -319,18 +322,18 @@
         }
       }
     },
-    "tdexv1ListMarketsResponse": {
+    "tdexv2ListMarketsResponse": {
       "type": "object",
       "properties": {
         "markets": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdexv1MarketWithFee"
+            "$ref": "#/definitions/tdexv2MarketWithFee"
           }
         }
       }
     },
-    "tdexv1Market": {
+    "tdexv2Market": {
       "type": "object",
       "properties": {
         "baseAsset": {
@@ -341,46 +344,56 @@
         }
       }
     },
-    "tdexv1MarketWithFee": {
+    "tdexv2MarketWithFee": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market"
+          "$ref": "#/definitions/tdexv2Market"
         },
         "fee": {
-          "$ref": "#/definitions/tdexv1Fee"
+          "$ref": "#/definitions/tdexv2Fee"
         }
       }
     },
-    "tdexv1Preview": {
+    "tdexv2Preview": {
       "type": "object",
       "properties": {
         "price": {
-          "$ref": "#/definitions/tdexv1Price"
+          "$ref": "#/definitions/tdexv2Price",
+          "description": "The price of the market."
         },
         "fee": {
-          "$ref": "#/definitions/tdexv1Fee"
+          "$ref": "#/definitions/tdexv2Fee",
+          "description": "The fees of the market."
         },
         "amount": {
           "type": "string",
-          "format": "uint64"
+          "format": "uint64",
+          "description": "The previewd amount (fees excluded)."
         },
         "asset": {
-          "type": "string"
+          "type": "string",
+          "description": "The asset of the previewed amount (fees excluded)."
         },
-        "balance": {
-          "$ref": "#/definitions/tdexv1Balance"
+        "feeAmount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "The previewed fee amount,"
+        },
+        "feeAsset": {
+          "type": "string",
+          "title": "The asset of the previewed fee amount,"
         }
       }
     },
-    "tdexv1PreviewTradeRequest": {
+    "tdexv2PreviewTradeRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market"
+          "$ref": "#/definitions/tdexv2Market"
         },
         "type": {
-          "$ref": "#/definitions/tdexv1TradeType"
+          "$ref": "#/definitions/tdexv2TradeType"
         },
         "amount": {
           "type": "string",
@@ -388,21 +401,24 @@
         },
         "asset": {
           "type": "string"
+        },
+        "feeAsset": {
+          "type": "string"
         }
       }
     },
-    "tdexv1PreviewTradeResponse": {
+    "tdexv2PreviewTradeResponse": {
       "type": "object",
       "properties": {
         "previews": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdexv1Preview"
+            "$ref": "#/definitions/tdexv2Preview"
           }
         }
       }
     },
-    "tdexv1Price": {
+    "tdexv2Price": {
       "type": "object",
       "properties": {
         "basePrice": {
@@ -415,28 +431,28 @@
         }
       }
     },
-    "tdexv1ProposeTradeRequest": {
+    "tdexv2ProposeTradeRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market"
+          "$ref": "#/definitions/tdexv2Market"
         },
         "type": {
-          "$ref": "#/definitions/tdexv1TradeType"
+          "$ref": "#/definitions/tdexv2TradeType"
         },
         "swapRequest": {
-          "$ref": "#/definitions/tdexv1SwapRequest"
+          "$ref": "#/definitions/tdexv2SwapRequest"
         }
       }
     },
-    "tdexv1ProposeTradeResponse": {
+    "tdexv2ProposeTradeResponse": {
       "type": "object",
       "properties": {
         "swapAccept": {
-          "$ref": "#/definitions/tdexv1SwapAccept"
+          "$ref": "#/definitions/tdexv2SwapAccept"
         },
         "swapFail": {
-          "$ref": "#/definitions/tdexv1SwapFail"
+          "$ref": "#/definitions/tdexv2SwapFail"
         },
         "expiryTimeUnix": {
           "type": "string",
@@ -444,7 +460,7 @@
         }
       }
     },
-    "tdexv1SwapAccept": {
+    "tdexv2SwapAccept": {
       "type": "object",
       "properties": {
         "id": {
@@ -459,25 +475,16 @@
           "type": "string",
           "title": "The partial signed transaction base64 encoded containing the Responder's\nsigned inputs in a PSBT format"
         },
-        "inputBlindingKey": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "format": "byte"
+        "unblindedInputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2UnblindedInput"
           },
-          "description": "In case of a confidential transaction the blinding key of each confidential\ninput is included. Each blinding key is identified by the prevout script\nhex encoded."
-        },
-        "outputBlindingKey": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "format": "byte"
-          },
-          "description": "In case of a confidential transaction the blinding key of each confidential\noutput is included. Each blinding key is identified by the output script\nhex encoded."
+          "description": "In case of psetv2 transaction, the original list of trader's unblinded inputs,\nincluding also those of the inputs added by the provider."
         }
       }
     },
-    "tdexv1SwapComplete": {
+    "tdexv2SwapComplete": {
       "type": "object",
       "properties": {
         "id": {
@@ -494,7 +501,7 @@
         }
       }
     },
-    "tdexv1SwapFail": {
+    "tdexv2SwapFail": {
       "type": "object",
       "properties": {
         "id": {
@@ -516,7 +523,7 @@
         }
       }
     },
-    "tdexv1SwapRequest": {
+    "tdexv2SwapRequest": {
       "type": "object",
       "properties": {
         "id": {
@@ -543,27 +550,27 @@
         },
         "transaction": {
           "type": "string",
-          "title": "The proposer's unsigned transaction in PSBT format (base64 string)"
+          "title": "The proposer's unsigned transaction in PSET v2 format (base64 string)"
         },
-        "inputBlindingKey": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "format": "byte"
-          },
-          "description": "In case of a confidential psetv0 transaction the blinding key of each\nconfidential input is included. Each blinding key is identified by the \nprevout script hex encoded."
+        "feeAmount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The fee amount charged to the proposer by the provider."
         },
-        "outputBlindingKey": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "format": "byte"
+        "feeAsset": {
+          "type": "string",
+          "description": "The asset hash of the fee charged to the proposer."
+        },
+        "unblindedInputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2UnblindedInput"
           },
-          "description": "In case of a confidential psetv0 transaction the blinding key of each\nconfidential output is included. Each blinding key is identified by the\noutput script hex encoded."
+          "description": "The list of trader's unblinded inputs data, even in case they are\nunconfidential."
         }
       }
     },
-    "tdexv1TradeType": {
+    "tdexv2TradeType": {
       "type": "string",
       "enum": [
         "TRADE_TYPE_BUY",
@@ -571,27 +578,43 @@
       ],
       "default": "TRADE_TYPE_BUY"
     },
-    "v1BalanceWithFee": {
+    "v2MarketFee": {
       "type": "object",
       "properties": {
-        "balance": {
-          "$ref": "#/definitions/tdexv1Balance"
+        "baseAsset": {
+          "type": "string",
+          "format": "int64"
         },
-        "fee": {
-          "$ref": "#/definitions/tdexv1Fee"
+        "quoteAsset": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },
-    "v1Fixed": {
+    "v2UnblindedInput": {
       "type": "object",
       "properties": {
-        "baseFee": {
-          "type": "string",
-          "format": "int64"
+        "index": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Index of the transaction input of reference."
         },
-        "quoteFee": {
+        "asset": {
           "type": "string",
-          "format": "int64"
+          "description": "Unblinded asset."
+        },
+        "amount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Unblinded amount."
+        },
+        "assetBlinder": {
+          "type": "string",
+          "description": "Asset blinider when blinding the prevout."
+        },
+        "amountBlinder": {
+          "type": "string",
+          "description": "Amount blinider used when blinding the prevout."
         }
       }
     }

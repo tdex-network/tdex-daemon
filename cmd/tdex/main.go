@@ -88,6 +88,7 @@ func main() {
 		&listdeposits,
 		&listwithdrawals,
 		&contentType,
+		&getProtoSvcInfo,
 		// TODO: deprecated commands, to be removed in next version.
 		&fragmentfee,
 		&fragmentmarket,
