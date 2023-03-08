@@ -313,9 +313,7 @@ func (o operatorHandler) ListProtoServices(
 	ctx context.Context,
 	req *daemonv1.ListProtoServicesRequest,
 ) (*daemonv1.ListProtoServicesResponse, error) {
-	tlsConf := &tls.Config{
-		InsecureSkipVerify: true,
-	}
+	tlsConf := &tls.Config{InsecureSkipVerify: true} // nolint:gosec
 	creds := credentials.NewTLS(tlsConf)
 	conn, err := grpc.Dial(
 		o.operatorAddress,
