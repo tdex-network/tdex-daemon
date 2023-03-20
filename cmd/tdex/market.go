@@ -29,12 +29,17 @@ var (
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "base_asset",
-				Usage: "the base asset hash of an existent market",
+				Usage: "the hash of the base asset of the market",
 				Value: "",
 			},
 			&cli.StringFlag{
 				Name:  "quote_asset",
-				Usage: "the base asset hash of an existent market",
+				Usage: "the hash of the quote asset of the market",
+				Value: "",
+			},
+			&cli.StringFlag{
+				Name:  "name",
+				Usage: "optional name for the market",
 				Value: "",
 			},
 			&cli.UintFlag{
@@ -239,6 +244,7 @@ func newMarketAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
+	name := ctx.String("name")
 	baseAsset := ctx.String("base_asset")
 	quoteAsset := ctx.String("quote_asset")
 	basePrecision := ctx.Uint("base_asset_precision")
@@ -250,6 +256,7 @@ func newMarketAction(ctx *cli.Context) error {
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
+			Name:                name,
 			BaseAssetPrecision:  uint32(basePrecision),
 			QuoteAssetPrecision: uint32(quotePrecision),
 		},

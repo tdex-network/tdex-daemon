@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/shopspring/decimal"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking"
 	"github.com/tdex-network/tdex-daemon/pkg/marketmaking/formula"
@@ -97,6 +98,9 @@ func NewMarket(
 	}
 	if !isValidPrecision(quoteAssetPrecision) {
 		return nil, ErrMarketInvalidQuoteAssetPrecision
+	}
+	if name == "" {
+		name = makeAccountName(baseAsset, quoteAsset)
 	}
 
 	return &Market{
@@ -452,6 +456,11 @@ func (m *Market) previewFees(amount uint64, asset string, isBuy bool) (uint64, e
 	}
 
 	return feeAmount, nil
+}
+
+func makeAccountName(baseAsset, quoteAsset string) string {
+	buf, _ := hex.DecodeString(baseAsset + quoteAsset)
+	return hex.EncodeToString(btcutil.Hash160(buf))[:5]
 }
 
 func isValidAsset(asset string) bool {
