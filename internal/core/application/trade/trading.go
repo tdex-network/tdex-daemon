@@ -73,7 +73,13 @@ func (s *Service) TradePropose(
 		log.Debugf("added new trade with id %s", trade.Id)
 	}()
 
-	if !isValidTradePrice(*mkt, balance, tradeType, swapRequest, s.priceSlippage) {
+	feeAsset := swapRequest.GetFeeAsset()
+	feesToAdd := tradeType.IsBuy() && feeAsset == mkt.QuoteAsset ||
+		tradeType.IsSell() && feeAsset == mkt.BaseAsset
+
+	if !isValidTradePrice(
+		*mkt, balance, tradeType, swapRequest, s.priceSlippage, feesToAdd,
+	) {
 		trade.Fail(
 			swapRequest.GetId(), pkgswap.ErrCodeBadPricingSwapRequest,
 		)
@@ -89,7 +95,7 @@ func (s *Service) TradePropose(
 	}
 
 	signedPset, selectedUtxos, tradeExpiryTime, err := s.wallet.CompleteSwap(
-		mkt.Name, swapRequest, s.milliSatsPerByte,
+		mkt.Name, swapRequest, s.milliSatsPerByte, feesToAdd,
 	)
 	if err != nil {
 		log.WithError(err).Warn("failed to complete swap request")

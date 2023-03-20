@@ -28,7 +28,7 @@ var (
 	explorerSvc explorer.Service
 
 	lbtc         = network.Regtest.AssetID
-	traderAmount = 0.001
+	traderAmount = 10.0
 )
 
 func initEnv() error {
@@ -51,16 +51,7 @@ func main() {
 	}
 
 	traderWallet := newKeyPair()
-
 	fmt.Printf("Trader wallet:\n%s\n\n", traderWallet)
-
-	fmt.Printf("Sending LBTCs to trader...\n\n")
-	utxos, err := faucet(traderWallet, lbtc, traderAmount)
-	if err != nil {
-		log.Fatalf("failed to send LBTC funds to trader: %s", err)
-	}
-
-	fmt.Println(utxos[0].Hash())
 
 	fmt.Printf("Fetching market from provider...\n\n")
 	markets, err := fetchMarkets()
@@ -77,9 +68,17 @@ func main() {
 
 	usdt := targetMarket.GetQuoteAsset()
 
+	fmt.Printf("Sending USDt funds to trader...\n\n")
+	utxos, err := faucet(traderWallet, usdt, traderAmount)
+	if err != nil {
+		log.Fatalf("failed to send USDt funds to trader: %s", err)
+	}
+
+	fmt.Println(utxos[0].Hash())
+
 	fmt.Printf("Making trade preview...\n\n")
 	swapRequest, err := makeTradePreview(
-		targetMarket, lbtc, usdt, traderAmount, traderWallet, utxos,
+		targetMarket, usdt, lbtc, traderAmount, traderWallet, utxos,
 	)
 	if err != nil {
 		log.Fatalf("failed to make trade preview: %s", err)
@@ -156,7 +155,7 @@ func makeTradePreview(
 	satsAmount := uint64(amount * math.Pow10(8))
 	res, err := client.PreviewTrade(context.Background(), &tdexv2.PreviewTradeRequest{
 		Market:   market,
-		Type:     tdexv2.TradeType_TRADE_TYPE_SELL,
+		Type:     tdexv2.TradeType_TRADE_TYPE_BUY,
 		Amount:   satsAmount,
 		Asset:    asset,
 		FeeAsset: feeAsset,
@@ -166,7 +165,7 @@ func makeTradePreview(
 	}
 	preview := res.GetPreviews()[0]
 
-	feesToAdd := feeAsset == market.GetBaseAsset()
+	feesToAdd := feeAsset == market.GetQuoteAsset()
 	inAmount := satsAmount
 	if feesToAdd {
 		inAmount += preview.GetFeeAmount()

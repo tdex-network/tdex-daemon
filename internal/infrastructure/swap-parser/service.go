@@ -30,6 +30,8 @@ func (s service) SerializeRequest(
 		AmountToReceive: r.GetAmountR(),
 		Transaction:     r.GetTransaction(),
 		UnblindedInputs: unblindedIns,
+		FeeAmount:       r.FeeAmount,
+		FeeAsset:        r.FeeAsset,
 	})
 	if err != nil {
 		return nil, swap.ErrCodeInvalidSwapRequest

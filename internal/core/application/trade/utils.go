@@ -15,63 +15,65 @@ import (
 func isValidTradePrice(
 	market domain.Market, balance map[string]ports.Balance,
 	tradeType ports.TradeType, swapRequest ports.SwapRequest,
-	slippage decimal.Decimal,
+	slippage decimal.Decimal, feesToAdd bool,
 ) bool {
-	amount := swapRequest.GetAmountR()
-	if tradeType.IsSell() {
-		amount = swapRequest.GetAmountP()
-	}
 	feeAsset := swapRequest.GetFeeAsset()
+	amount, asset := swapRequest.GetAmountP(), swapRequest.GetAssetP()
+	otherAmount, otherAsset := swapRequest.GetAmountR(), swapRequest.GetAssetR()
+	if feeAsset == swapRequest.GetAssetR() {
+		amount, asset = swapRequest.GetAmountR(), swapRequest.GetAssetR()
+		otherAmount, otherAsset = swapRequest.GetAmountP(), swapRequest.GetAssetP()
+	}
+
+	// Charge fees to the amount of the swap request message.
+	if feesToAdd {
+		amount += swapRequest.GetFeeAmount()
+	} else {
+		amount -= swapRequest.GetFeeAmount()
+	}
 
 	preview, _ := tradePreview(
-		market, balance,
-		tradeType, feeAsset, market.BaseAsset, amount,
+		market, balance, tradeType, feeAsset, asset, amount,
 	)
 
 	if preview != nil {
-		if isPriceInRange(
-			tradeType, swapRequest, preview.GetAmount(), true, slippage,
-		) {
+		if isPriceInRange(tradeType, swapRequest, preview, slippage, feesToAdd) {
 			return true
 		}
 	}
 
-	amount = swapRequest.GetAmountP()
-	if tradeType.IsSell() {
-		amount = swapRequest.GetAmountR()
-	}
-
 	preview, _ = tradePreview(
-		market, balance,
-		tradeType, feeAsset, market.QuoteAsset, amount,
+		market, balance, tradeType, feeAsset, otherAsset, otherAmount,
 	)
 
 	if preview == nil {
 		return false
 	}
 
-	return isPriceInRange(
-		tradeType, swapRequest, preview.GetAmount(), false, slippage,
-	)
+	return isPriceInRange(tradeType, swapRequest, preview, slippage, feesToAdd)
 }
 
 func isPriceInRange(
 	tradeType ports.TradeType, swapRequest ports.SwapRequest,
-	previewAmount uint64, isPreviewForQuoteAsset bool,
-	slippage decimal.Decimal,
+	preview ports.TradePreview, slippage decimal.Decimal, feesToAdd bool,
 ) bool {
-	amountToCheck := decimal.NewFromInt(int64(swapRequest.GetAmountP()))
-	if tradeType.IsSell() {
-		if isPreviewForQuoteAsset {
-			amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
-		}
-	} else {
-		if !isPreviewForQuoteAsset {
-			amountToCheck = decimal.NewFromInt(int64(swapRequest.GetAmountR()))
-		}
+	amount, asset := swapRequest.GetAmountP(), swapRequest.GetAssetP()
+	if preview.GetAsset() == swapRequest.GetAssetP() {
+		amount, asset = swapRequest.GetAmountR(), swapRequest.GetAssetR()
 	}
 
-	expectedAmount := decimal.NewFromInt(int64(previewAmount))
+	amountToCheck := decimal.NewFromInt(int64(amount))
+	feeAmount := decimal.NewFromInt(int64(preview.GetFeeAmount()))
+	if preview.GetFeeAsset() != asset {
+		amountToCheck = decimal.NewFromInt(int64(preview.GetAmount()))
+	}
+	if feesToAdd {
+		amountToCheck.Add(feeAmount)
+	} else {
+		amountToCheck.Sub(feeAmount)
+	}
+
+	expectedAmount := decimal.NewFromInt(int64(amount))
 	lowerBound := expectedAmount.Mul(decimal.NewFromInt(1).Sub(slippage))
 	upperBound := expectedAmount.Mul(decimal.NewFromInt(1).Add(slippage))
 

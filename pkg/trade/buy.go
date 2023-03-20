@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
@@ -29,6 +29,10 @@ var (
 	ErrNullPrivateKey = errors.New("private key must not be null")
 	// ErrNullBlindingKey ...
 	ErrNullBlindingKey = errors.New("blinding key must not be null")
+	// ErrInvalidFeeAmount ...
+	ErrInvalidFeeAmount = errors.New("fee amount must be a positive satoshi amount")
+	// ErrInvalidFeeAsset ...
+	ErrInvalidFeeAsset = errors.New("fee asset must be a 32-byte array in hex format")
 )
 
 // BuyOrSellOpts is the struct given to Buy/Sell method
@@ -38,6 +42,7 @@ type BuyOrSellOpts struct {
 	Asset       string
 	Address     string
 	BlindingKey []byte
+	FeeAsset    string
 }
 
 func (o BuyOrSellOpts) validate() error {
@@ -59,6 +64,9 @@ func (o BuyOrSellOpts) validate() error {
 	if len(o.BlindingKey) <= 0 {
 		return ErrNullBlindingKey
 	}
+	if buf, err := hex.DecodeString(o.FeeAsset); err != nil || len(buf) != 32 {
+		return ErrInvalidFeeAsset
+	}
 	return nil
 }
 
@@ -77,6 +85,7 @@ func (t *Trade) Buy(opts BuyOrSellOpts) ([]byte, error) {
 		opts.Asset,
 		opts.Address,
 		opts.BlindingKey,
+		opts.FeeAsset,
 	)
 }
 
@@ -87,6 +96,7 @@ type BuyOrSellAndCompleteOpts struct {
 	Asset       string
 	PrivateKey  []byte
 	BlindingKey []byte
+	FeeAsset    string
 }
 
 func (o BuyOrSellAndCompleteOpts) validate() error {
@@ -104,6 +114,9 @@ func (o BuyOrSellAndCompleteOpts) validate() error {
 	}
 	if len(o.BlindingKey) <= 0 {
 		return ErrNullBlindingKey
+	}
+	if buf, err := hex.DecodeString(o.FeeAsset); err != nil || len(buf) != 32 {
+		return ErrInvalidFeeAsset
 	}
 	return nil
 }
@@ -125,6 +138,7 @@ func (t *Trade) BuyAndComplete(opts BuyOrSellAndCompleteOpts) (string, error) {
 		opts.Asset,
 		w.Address(),
 		opts.BlindingKey,
+		opts.FeeAsset,
 	)
 	if err != nil {
 		return "", err
@@ -140,6 +154,7 @@ func (t *Trade) marketOrderRequest(
 	asset string,
 	addr string,
 	blindingKey []byte,
+	feeAsset string,
 ) ([]byte, error) {
 	utxos, err := t.explorer.GetUnspents(addr, [][]byte{blindingKey})
 	if err != nil {
@@ -154,6 +169,7 @@ func (t *Trade) marketOrderRequest(
 		TradeType: int(tradeType),
 		Amount:    amount,
 		Asset:     asset,
+		FeeAsset:  feeAsset,
 	})
 	if err != nil {
 		return nil, err
@@ -163,24 +179,39 @@ func (t *Trade) marketOrderRequest(
 	_, pk := btcec.PrivKeyFromBytes(blindingKey)
 	outputBlindingKey := pk.SerializeCompressed()
 
+	amounts := map[string]uint64{
+		preview.AssetToSend:    preview.AmountToSend,
+		preview.AssetToReceive: preview.AmountToReceive,
+	}
+	feesToAdd := tradeType.IsBuy() && feeAsset == market.QuoteAsset ||
+		tradeType.IsSell() && feeAsset == market.BaseAsset
+	if feesToAdd {
+		amounts[preview.FeeAsset] += preview.FeeAmount
+	} else {
+		amounts[preview.FeeAsset] -= preview.FeeAmount
+	}
+
 	psetBase64, err := NewSwapTx(
 		utxos,
 		preview.AssetToSend, preview.AssetToReceive,
-		preview.AmountToSend, preview.AmountToReceive,
+		amounts[preview.AssetToSend], amounts[preview.AssetToReceive],
 		outputScript, outputBlindingKey,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	swapRequestMsg, err := swap.Request(swap.RequestOpts{
+	opts := swap.RequestOpts{
 		AssetToSend:     preview.AssetToSend,
 		AmountToSend:    preview.AmountToSend,
 		AssetToReceive:  preview.AssetToReceive,
 		AmountToReceive: preview.AmountToReceive,
 		Transaction:     psetBase64,
 		UnblindedInputs: utxosToUnblindedIns(utxos),
-	})
+		FeeAmount:       preview.FeeAmount,
+		FeeAsset:        preview.FeeAsset,
+	}
+	swapRequestMsg, err := swap.Request(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +233,7 @@ func (t *Trade) marketOrderRequest(
 }
 
 func (t *Trade) marketOrderComplete(swapAcceptMsg []byte, w *Wallet) (string, error) {
-	swapAccept := &tdexv1.SwapAccept{}
+	swapAccept := &tdexv2.SwapAccept{}
 	if err := proto.Unmarshal(swapAcceptMsg, swapAccept); err != nil {
 		return "", err
 	}

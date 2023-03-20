@@ -126,6 +126,8 @@ func (i swapRequestInfo) toDomain() domain.SwapRequest {
 		AmountR:         info.GetAmountR(),
 		Transaction:     info.GetTransaction(),
 		UnblindedInputs: list,
+		FeeAsset:        info.GetFeeAsset(),
+		FeeAmount:       info.GetFeeAmount(),
 	}
 }
 

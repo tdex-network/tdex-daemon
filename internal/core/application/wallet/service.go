@@ -200,6 +200,7 @@ func (s *Service) SendToMany(
 
 func (s *Service) CompleteSwap(
 	account string, swapRequest ports.SwapRequest, msatsPerByte uint64,
+	feesToAdd bool,
 ) (string, []ports.Utxo, int64, error) {
 	ctx := context.Background()
 	txManager := s.wallet.Transaction()
@@ -234,8 +235,13 @@ func (s *Service) CompleteSwap(
 		})
 	}
 
+	amountR := swapRequest.GetAmountR()
+	if swapRequest.GetFeeAsset() == swapRequest.GetAssetR() && !feesToAdd {
+		amountR -= swapRequest.GetFeeAmount()
+	}
+
 	utxos, change, unlockTime, err := txManager.SelectUtxos(
-		ctx, account, swapRequest.GetAssetR(), swapRequest.GetAmountR(),
+		ctx, account, swapRequest.GetAssetR(), amountR,
 	)
 	if err != nil {
 		return "", nil, -1, err
@@ -258,9 +264,13 @@ func (s *Service) CompleteSwap(
 		return "", nil, -1, err
 	}
 	info, _ := address.FromConfidential(addresses[0])
+	amountP := swapRequest.GetAmountP()
+	if swapRequest.GetFeeAsset() == swapRequest.GetAssetP() && feesToAdd {
+		amountP += swapRequest.GetFeeAmount()
+	}
 	outputs := []ports.TxOutput{
 		output{
-			swapRequest.GetAssetP(), swapRequest.GetAmountP(),
+			swapRequest.GetAssetP(), amountP,
 			hex.EncodeToString(info.Script), hex.EncodeToString(info.BlindingKey),
 		},
 	}

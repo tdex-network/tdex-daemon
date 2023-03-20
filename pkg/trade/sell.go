@@ -21,6 +21,7 @@ func (t *Trade) Sell(opts BuyOrSellOpts) ([]byte, error) {
 		opts.Asset,
 		opts.Address,
 		opts.BlindingKey,
+		opts.FeeAsset,
 	)
 }
 
@@ -42,6 +43,7 @@ func (t *Trade) SellAndComplete(opts BuyOrSellAndCompleteOpts) (string, error) {
 		opts.Asset,
 		w.Address(),
 		opts.BlindingKey,
+		opts.FeeAsset,
 	)
 	if err != nil {
 		return "", err
