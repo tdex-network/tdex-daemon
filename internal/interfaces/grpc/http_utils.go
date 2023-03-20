@@ -274,17 +274,15 @@ func router(
 	grpcGateway http.Handler, httpHandlers map[string]http.HandlerFunc,
 ) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isGrpcWebRequest(r) {
+			grpcWebServer.ServeHTTP(w, r)
+			return
+		}
+
 		if isOptionRequest(r) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Headers", "*")
 			w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-			return
-		}
-		if isGrpcWebRequest(r) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Headers", "*")
-			w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-			grpcWebServer.ServeHTTP(w, r)
 			return
 		}
 
