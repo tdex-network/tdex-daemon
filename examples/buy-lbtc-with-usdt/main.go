@@ -244,7 +244,7 @@ func makeTradeProposal(
 ) (*tdexv2.SwapAccept, error) {
 	res, err := client.ProposeTrade(context.Background(), &tdexv2.ProposeTradeRequest{
 		Market:      market,
-		Type:        tdexv2.TradeType_TRADE_TYPE_SELL,
+		Type:        tdexv2.TradeType_TRADE_TYPE_BUY,
 		SwapRequest: swapRequest,
 	})
 	if err != nil {
