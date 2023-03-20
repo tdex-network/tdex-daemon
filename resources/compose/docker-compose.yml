@@ -31,7 +31,6 @@ services:
     environment:
       - TDEX_NETWORK=regtest
       - TDEX_WALLET_ADDR=oceand:18000
-      - TDEX_EXPLORER_ENDPOINT=http://chopsticks-liquid:3000
       - TDEX_LOG_LEVEL=5
       - TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000
       - TDEX_NO_MACAROONS=true

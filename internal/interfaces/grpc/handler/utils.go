@@ -41,11 +41,10 @@ func parseMarket(market *tdexv2.Market) (ports.Market, error) {
 }
 
 func parseMarketFee(fee *tdexv2.MarketFee) (int64, int64, error) {
-	var baseFee, quoteFee int64 = -1, -1
-	if fee != nil {
-		baseFee = fee.GetBaseAsset()
-		quoteFee = fee.GetQuoteAsset()
+	if fee == nil {
+		return 0, 0, nil
 	}
+	baseFee, quoteFee := fee.GetBaseAsset(), fee.GetQuoteAsset()
 	if baseFee < -1 {
 		return -1, -1, errors.New("invalid market base fee value")
 	}

@@ -3,6 +3,7 @@ package dbbadger
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -138,7 +139,6 @@ func (t tradeRepositoryImpl) findTrades(
 	var trades []domain.Trade
 	var err error
 
-	query.SortBy("SwapRequest.Timestamp").Reverse()
 	if ctx.Value("tx") != nil {
 		tx := ctx.Value("tx").(*badger.Txn)
 		err = t.store.TxFind(tx, &trades, query)
@@ -148,6 +148,11 @@ func (t tradeRepositoryImpl) findTrades(
 	if err != nil {
 		return nil, err
 	}
+
+	sort.SliceStable(trades, func(i, j int) bool {
+		return trades[i].SwapRequest != nil && trades[j].SwapRequest != nil &&
+			trades[i].SwapRequest.Timestamp > trades[j].SwapRequest.Timestamp
+	})
 
 	return trades, nil
 }

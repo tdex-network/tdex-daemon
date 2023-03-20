@@ -2,6 +2,7 @@ package grpchandler
 
 import (
 	"context"
+	"strings"
 
 	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -156,7 +157,9 @@ func (t tradeHandler) previewTrade(
 	}
 	feeAsset, err := parseAsset(req.GetFeeAsset())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		// Change 'invalid asset' message to 'invalid fee asset'.
+		errMsg := strings.Replace(err.Error(), " ", " fee ", -1)
+		return nil, status.Error(codes.InvalidArgument, errMsg)
 	}
 
 	preview, err := t.tradeSvc.TradePreview(
