@@ -89,7 +89,7 @@ func Complete(opts CompleteOpts) (string, []byte, error) {
 			if !ok {
 				return "", nil, fmt.Errorf("transaction contains invalid signatures")
 			}
-		} // TODO: validate sigs of raw tx input
+		}
 
 		message = &tdexv1.SwapComplete{
 			Id:          randomID,
@@ -110,7 +110,7 @@ func Complete(opts CompleteOpts) (string, []byte, error) {
 			if !ok {
 				return "", nil, fmt.Errorf("transaction contains invalid signatures")
 			}
-		} // TODO: validate sigs of raw tx input
+		}
 
 		message = &tdexv2.SwapComplete{
 			Id:          randomID,
