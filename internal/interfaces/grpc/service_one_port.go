@@ -10,6 +10,10 @@ import (
 	"net/http"
 	"path/filepath"
 
+	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
+
+	"github.com/tdex-network/reflection"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
 
@@ -260,6 +264,7 @@ func (s *serviceOnePort) start(withUnlockerOnly bool) (*serviceOnePort, error) {
 	daemonv1.RegisterWalletUnlockerServiceServer(
 		grpcServer, walletUnlockerHandler,
 	)
+	reflection.Register(grpcServer)
 
 	var grpcGateway http.Handler
 	if !withUnlockerOnly {
@@ -359,6 +364,9 @@ func (s *serviceOnePort) tradeGrpcGateway(
 		return nil, err
 	}
 	if err := tdexv1.RegisterTransportServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
+		return nil, err
+	}
+	if err := reflectionv1.RegisterReflectionServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
 		return nil, err
 	}
 
