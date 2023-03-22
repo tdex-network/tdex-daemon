@@ -9,27 +9,27 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
-
-	log "github.com/sirupsen/logrus"
+	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	log "github.com/sirupsen/logrus"
+	"github.com/tdex-network/reflection"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
-
-	"github.com/tdex-network/tdex-daemon/internal/core/application"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type serviceOnePort struct {
@@ -293,6 +293,7 @@ func (s *serviceOnePort) newServer(
 	daemonv2.RegisterWalletServiceServer(
 		grpcServer, walletHandler,
 	)
+	reflection.Register(grpcServer)
 
 	var grpcGateway http.Handler
 	if !withWalletOnly {
@@ -307,7 +308,9 @@ func (s *serviceOnePort) newServer(
 
 		dialOpts := make([]grpc.DialOption, 0)
 		if len(s.opts.TLSCert) <= 0 {
-			dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(
+				insecure.NewCredentials(),
+			))
 		} else {
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(
 				// #nosec
@@ -316,20 +319,26 @@ func (s *serviceOnePort) newServer(
 				}),
 			))
 		}
+		ctx := context.Background()
 		conn, err := grpc.DialContext(
-			context.Background(), s.opts.clientAddr(), dialOpts...,
+			ctx, s.opts.clientAddr(), dialOpts...,
 		)
 		if err != nil {
 			return nil, err
 		}
 		gwmux := runtime.NewServeMux()
 		if err := tdexv2.RegisterTransportServiceHandler(
-			context.Background(), gwmux, conn,
+			ctx, gwmux, conn,
 		); err != nil {
 			return nil, err
 		}
 		if err := tdexv2.RegisterTradeServiceHandler(
-			context.Background(), gwmux, conn,
+			ctx, gwmux, conn,
+		); err != nil {
+			return nil, err
+		}
+		if err := reflectionv1.RegisterReflectionServiceHandler(
+			ctx, gwmux, conn,
 		); err != nil {
 			return nil, err
 		}
