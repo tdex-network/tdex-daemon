@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
+
 	"github.com/tdex-network/reflection"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -362,6 +364,9 @@ func (s *serviceOnePort) tradeGrpcGateway(
 		return nil, err
 	}
 	if err := tdexv1.RegisterTransportServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
+		return nil, err
+	}
+	if err := reflectionv1.RegisterReflectionServiceHandler(ctx, grpcGatewayMux, conn); err != nil {
 		return nil, err
 	}
 
