@@ -3,6 +3,8 @@ package permissions
 import (
 	"fmt"
 
+	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
+
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
@@ -10,14 +12,15 @@ import (
 )
 
 const (
-	EntityOperator  = "operator"
-	EntityTrade     = "trade"
-	EntityMarket    = "market"
-	EntityPrice     = "price"
-	EntityUnlocker  = "unlocker"
-	EntityWallet    = "wallet"
-	EntityWebhook   = "webhook"
-	EntityTransport = "transport"
+	EntityOperator   = "operator"
+	EntityTrade      = "trade"
+	EntityMarket     = "market"
+	EntityPrice      = "price"
+	EntityUnlocker   = "unlocker"
+	EntityWallet     = "wallet"
+	EntityWebhook    = "webhook"
+	EntityTransport  = "transport"
+	EntityReflection = "reflection"
 )
 
 func Validate() error {
@@ -272,6 +275,10 @@ func Whitelist() map[string][]bakery.Op {
 		}},
 		fmt.Sprintf("/%v/SupportedContentTypes", tdexv1.TransportService_ServiceDesc.ServiceName): {{
 			Entity: EntityTransport,
+			Action: "read",
+		}},
+		fmt.Sprintf("/%s/GetInfo", reflectionv1.ReflectionService_ServiceDesc.ServiceName): {{
+			Entity: EntityReflection,
 			Action: "read",
 		}},
 	}

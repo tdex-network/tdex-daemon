@@ -11,29 +11,28 @@ import (
 	"os"
 	"path/filepath"
 
+	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
+	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
+	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
-
 	log "github.com/sirupsen/logrus"
+	"github.com/tdex-network/reflection"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	interfaces "github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/macaroon-bakery.v2/bakery"
-
-	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
-
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
 
 const (
@@ -438,6 +437,7 @@ func (s *service) newOperatorServer(
 		)
 		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
 	}
+	reflection.Register(grpcServer)
 
 	// grpcweb wrapped server
 	grpcWebServer := grpcweb.WrapServer(
@@ -495,6 +495,7 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 	tdexv1.RegisterTradeServiceServer(grpcServer, tradeHandler)
 	transportHandler := grpchandler.NewTransportHandler()
 	tdexv1.RegisterTransportServiceServer(grpcServer, transportHandler)
+	reflection.Register(grpcServer)
 
 	// grpcweb wrapped server
 	grpcWebServer := grpcweb.WrapServer(
@@ -515,20 +516,26 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 			}),
 		))
 	}
+	ctx := context.Background()
 	conn, err := grpc.DialContext(
-		context.Background(), s.opts.tradeClientAddr(), dialOpts...,
+		ctx, s.opts.tradeClientAddr(), dialOpts...,
 	)
 	if err != nil {
 		return nil, err
 	}
 	gwmux := runtime.NewServeMux()
 	if err := tdexv1.RegisterTransportServiceHandler(
-		context.Background(), gwmux, conn,
+		ctx, gwmux, conn,
 	); err != nil {
 		return nil, err
 	}
 	if err := tdexv1.RegisterTradeServiceHandler(
-		context.Background(), gwmux, conn,
+		ctx, gwmux, conn,
+	); err != nil {
+		return nil, err
+	}
+	if err := reflectionv1.RegisterReflectionServiceHandler(
+		ctx, gwmux, conn,
 	); err != nil {
 		return nil, err
 	}
