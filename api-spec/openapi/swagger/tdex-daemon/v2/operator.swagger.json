@@ -662,6 +662,10 @@
         "expiryDate": {
           "type": "string",
           "description": "The timestamp of the expiration date in RFC3339 format."
+        },
+        "tradeType": {
+          "$ref": "#/definitions/tdexv2TradeType",
+          "description": "The trade type either BUY or SELL."
         }
       }
     },
@@ -859,6 +863,14 @@
           "format": "double"
         }
       }
+    },
+    "tdexv2TradeType": {
+      "type": "string",
+      "enum": [
+        "TRADE_TYPE_BUY",
+        "TRADE_TYPE_SELL"
+      ],
+      "default": "TRADE_TYPE_BUY"
     },
     "v2DeriveFeeAddressesResponse": {
       "type": "object",

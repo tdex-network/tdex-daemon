@@ -10,7 +10,9 @@ type SwapParser interface {
 	SerializeComplete(accMsg []byte, tx string) (string, []byte, int)
 	SerializeFail(id string, code int) (string, []byte)
 
-	DeserializeRequest(msg []byte) *SwapRequest
+	DeserializeRequest(
+		msg []byte, feeAsset string, feeAmount uint64,
+	) *SwapRequest
 	DeserializeAccept(msg []byte) *SwapAccept
 	DeserializeComplete(msg []byte) *SwapComplete
 	DeserializeFail(msg []byte) *SwapFail

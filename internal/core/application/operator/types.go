@@ -111,27 +111,34 @@ func (i marketInfo) GetBalance() map[string]ports.Balance {
 	return i.balance
 }
 
-type tradeStatus struct {
-	domain.TradeStatus
+type tradeTypeInfo domain.TradeType
+
+func (i tradeTypeInfo) IsBuy() bool {
+	return domain.TradeType(i) == domain.TradeBuy
+}
+func (i tradeTypeInfo) IsSell() bool {
+	return domain.TradeType(i) == domain.TradeSell
 }
 
-func (s tradeStatus) IsRequest() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeProposal
+type tradeStatusInfo domain.TradeStatus
+
+func (s tradeStatusInfo) IsRequest() bool {
+	return s.Code == domain.TradeStatusCodeProposal
 }
-func (s tradeStatus) IsAccept() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeAccepted
+func (s tradeStatusInfo) IsAccept() bool {
+	return s.Code == domain.TradeStatusCodeAccepted
 }
-func (s tradeStatus) IsComplete() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeCompleted
+func (s tradeStatusInfo) IsComplete() bool {
+	return s.Code == domain.TradeStatusCodeCompleted
 }
-func (s tradeStatus) IsSettled() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeSettled
+func (s tradeStatusInfo) IsSettled() bool {
+	return s.Code == domain.TradeStatusCodeSettled
 }
-func (s tradeStatus) IsExpired() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeExpired
+func (s tradeStatusInfo) IsExpired() bool {
+	return s.Code == domain.TradeStatusCodeExpired
 }
-func (s tradeStatus) IsFailed() bool {
-	return s.TradeStatus.Failed
+func (s tradeStatusInfo) IsFailed() bool {
+	return s.Failed
 }
 
 type tradeInfo struct {
@@ -141,8 +148,11 @@ type tradeInfo struct {
 func (i tradeInfo) GetId() string {
 	return i.Trade.Id
 }
+func (i tradeInfo) GetType() ports.TradeType {
+	return tradeTypeInfo(i.Trade.Type)
+}
 func (i tradeInfo) GetStatus() ports.TradeStatus {
-	return tradeStatus{i.Trade.Status}
+	return tradeStatusInfo(i.Trade.Status)
 }
 func (i tradeInfo) GetSwapInfo() ports.SwapRequest {
 	info := i.Trade

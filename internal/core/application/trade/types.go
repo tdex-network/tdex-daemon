@@ -102,6 +102,17 @@ func (i previewInfo) GetFeeAsset() string {
 	return i.PreviewInfo.FeeAsset
 }
 
+type tradeTypeInfo struct {
+	ports.TradeType
+}
+
+func (i tradeTypeInfo) toDomain() domain.TradeType {
+	if i.TradeType.IsBuy() {
+		return domain.TradeBuy
+	}
+	return domain.TradeSell
+}
+
 type swapRequestInfo struct {
 	ports.SwapRequest
 }

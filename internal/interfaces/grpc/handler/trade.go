@@ -196,7 +196,9 @@ func (t tradeHandler) proposeTrade(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	swapRequest, err := parseSwapRequest(req.GetSwapRequest())
+	swapRequest, err := parseSwapRequest(
+		req.GetSwapRequest(), req.GetFeeAsset(), req.GetFeeAmount(),
+	)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

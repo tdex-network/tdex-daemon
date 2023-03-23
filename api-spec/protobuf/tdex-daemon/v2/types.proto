@@ -150,6 +150,8 @@ message TradeInfo {
   string settle_date = 15;
   // The timestamp of the expiration date in RFC3339 format.
   string expiry_date = 16;
+  // The trade type either BUY or SELL.
+  tdex.v2.TradeType trade_type = 17;
 }
 
 message FeeInfo {

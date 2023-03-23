@@ -29,8 +29,10 @@ type RequestOpts struct {
 	InputBlindingKeys  map[string][]byte
 	OutputBlindingKeys map[string][]byte
 	UnblindedInputs    []UnblindedInput
-	FeeAmount          uint64
-	FeeAsset           string
+	// Fee asset and amount are not (de)serialized, they're used only to check
+	// that the amounts of the swap request match those of the PSETv2 tx.
+	FeeAsset  string
+	FeeAmount uint64
 }
 
 func (o RequestOpts) validate() error {

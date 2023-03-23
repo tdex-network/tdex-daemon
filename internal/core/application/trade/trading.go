@@ -87,7 +87,7 @@ func (s *Service) TradePropose(
 	}
 
 	if ok, _ := trade.Propose(
-		swapRequestInfo{swapRequest}.toDomain(),
+		tradeTypeInfo{tradeType}.toDomain(), swapRequestInfo{swapRequest}.toDomain(),
 		mkt.Name, mkt.BaseAsset, mkt.QuoteAsset,
 		mkt.PercentageFee, mkt.FixedFee, nil,
 	); !ok {

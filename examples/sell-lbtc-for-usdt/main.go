@@ -78,7 +78,7 @@ func main() {
 	usdt := targetMarket.GetQuoteAsset()
 
 	fmt.Printf("Making trade preview...\n\n")
-	swapRequest, err := makeTradePreview(
+	swapRequest, feeAsset, feeAmount, err := makeTradePreview(
 		targetMarket, lbtc, usdt, traderAmount, traderWallet, utxos,
 	)
 	if err != nil {
@@ -86,7 +86,9 @@ func main() {
 	}
 
 	fmt.Printf("Making trade proposal...\n\n")
-	swapAccept, err := makeTradeProposal(targetMarket, swapRequest)
+	swapAccept, err := makeTradeProposal(
+		targetMarket, swapRequest, feeAsset, feeAmount,
+	)
 	if err != nil {
 		log.Fatalf("failed to make trade proposal: %s", err)
 	}
@@ -152,7 +154,7 @@ func fetchMarkets() ([]*tdexv2.MarketWithFee, error) {
 func makeTradePreview(
 	market *tdexv2.Market, asset, feeAsset string, amount float64,
 	w wallet, utxos []explorer.Utxo,
-) (*tdexv2.SwapRequest, error) {
+) (*tdexv2.SwapRequest, string, uint64, error) {
 	satsAmount := uint64(amount * math.Pow10(8))
 	res, err := client.PreviewTrade(context.Background(), &tdexv2.PreviewTradeRequest{
 		Market:   market,
@@ -162,7 +164,7 @@ func makeTradePreview(
 		FeeAsset: feeAsset,
 	})
 	if err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 	preview := res.GetPreviews()[0]
 
@@ -174,7 +176,7 @@ func makeTradePreview(
 
 	selectedUtxos, change, err := explorer.SelectUnspents(utxos, inAmount, asset)
 	if err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 
 	unblindedIns := make([]*tdexv2.UnblindedInput, 0, len(selectedUtxos))
@@ -235,18 +237,19 @@ func makeTradePreview(
 		AssetR:          preview.GetAsset(),
 		Transaction:     psetBase64,
 		UnblindedInputs: unblindedIns,
-		FeeAmount:       preview.GetFeeAmount(),
-		FeeAsset:        preview.GetFeeAsset(),
-	}, nil
+	}, preview.GetFeeAsset(), preview.GetFeeAmount(), nil
 }
 
 func makeTradeProposal(
 	market *tdexv2.Market, swapRequest *tdexv2.SwapRequest,
+	feeAsset string, feeAmount uint64,
 ) (*tdexv2.SwapAccept, error) {
 	res, err := client.ProposeTrade(context.Background(), &tdexv2.ProposeTradeRequest{
 		Market:      market,
 		Type:        tdexv2.TradeType_TRADE_TYPE_SELL,
 		SwapRequest: swapRequest,
+		FeeAsset:    feeAsset,
+		FeeAmount:   feeAmount,
 	})
 	if err != nil {
 		return nil, err

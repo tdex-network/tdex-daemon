@@ -27,6 +27,7 @@ func TestTradePropose(t *testing.T) {
 	mockedSwapParser := mocks.NewMockSwapParser(t)
 	mockedSwapParser.On("SerializeRequest", swapRequest).Return(randomBytes(100), -1)
 	domain.SwapParserManager = mockedSwapParser
+	tradeType := domain.TradeBuy
 
 	tests := []struct {
 		name  string
@@ -61,7 +62,7 @@ func TestTradePropose(t *testing.T) {
 			t.Parallel()
 
 			ok, err := tt.trade.Propose(
-				swapRequest, mktName, mktBaseAsset, mktQuoteAsset,
+				tradeType, swapRequest, mktName, mktBaseAsset, mktQuoteAsset,
 				mktPercentageFee, mktFixedFee, traderPubkey,
 			)
 			require.NoError(t, err)
@@ -89,12 +90,13 @@ func TestFailingTradePropose(t *testing.T) {
 		"SerializeFail", swapRequest.GetId(), mock.Anything,
 	).Return(randomId(), randomBytes(100))
 	domain.SwapParserManager = mockedSwapParser
+	tradeType := domain.TradeBuy
 
 	t.Run("invalid_request", func(t *testing.T) {
 		trade := newTradeEmpty()
 
 		ok, err := trade.Propose(
-			swapRequest, mktName, mktBaseAsset, mktQuoteAsset,
+			tradeType, swapRequest, mktName, mktBaseAsset, mktQuoteAsset,
 			mktPercentageFee, mktFixedFee, traderPubkey,
 		)
 		require.NoError(t, err)

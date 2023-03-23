@@ -184,11 +184,16 @@ type tradesInfo []ports.Trade
 func (i tradesInfo) toProto() []*daemonv2.TradeInfo {
 	list := make([]*daemonv2.TradeInfo, 0, len(i))
 	for _, info := range i {
+		tradeType := tdexv2.TradeType_TRADE_TYPE_BUY
+		if info.GetType().IsSell() {
+			tradeType = tdexv2.TradeType_TRADE_TYPE_SELL
+		}
 		list = append(list, &daemonv2.TradeInfo{
-			TradeId:  info.GetId(),
-			Status:   tradeStatusInfo{info.GetStatus()}.toProto(),
-			SwapInfo: swapInfo{info.GetSwapInfo()}.toProto(),
-			FailInfo: failInfo{info.GetSwapFailInfo()}.toProto(),
+			TradeId:   info.GetId(),
+			TradeType: tradeType,
+			Status:    tradeStatusInfo{info.GetStatus()}.toProto(),
+			SwapInfo:  swapInfo{info.GetSwapInfo()}.toProto(),
+			FailInfo:  failInfo{info.GetSwapFailInfo()}.toProto(),
 			MarketWithFee: &tdexv2.MarketWithFee{
 				Market: market{info.GetMarket()}.toProto(),
 				Fee: marketFeeInfo{
@@ -240,6 +245,8 @@ func (i tradeStatusInfo) toProto() *daemonv2.TradeStatusInfo {
 
 type swapRequestInfo struct {
 	*tdexv2.SwapRequest
+	feeAsset  string
+	feeAmount uint64
 }
 
 func (i swapRequestInfo) GetUnblindedInputs() []ports.UnblindedInput {
@@ -249,6 +256,14 @@ func (i swapRequestInfo) GetUnblindedInputs() []ports.UnblindedInput {
 		list = append(list, in)
 	}
 	return list
+}
+
+func (i swapRequestInfo) GetFeeAsset() string {
+	return i.feeAsset
+}
+
+func (i swapRequestInfo) GetFeeAmount() uint64 {
+	return i.feeAmount
 }
 
 type swapAcceptInfo struct {
@@ -295,10 +310,12 @@ func (i swapInfo) toProto() *daemonv2.SwapInfo {
 	}
 
 	return &daemonv2.SwapInfo{
-		AssetP:  info.GetAssetP(),
-		AmountP: info.GetAmountP(),
-		AssetR:  info.GetAssetR(),
-		AmountR: info.GetAmountR(),
+		AssetP:    info.GetAssetP(),
+		AmountP:   info.GetAmountP(),
+		AssetR:    info.GetAssetR(),
+		AmountR:   info.GetAmountR(),
+		FeeAsset:  info.GetFeeAsset(),
+		FeeAmount: info.GetFeeAmount(),
 	}
 }
 

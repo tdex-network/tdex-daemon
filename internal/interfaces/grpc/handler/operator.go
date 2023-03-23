@@ -858,7 +858,9 @@ func (h *operatorHandler) listTrades(
 		return nil, err
 	}
 
-	return &daemonv2.ListTradesResponse{Trades: tradesInfo(trades).toProto()}, nil
+	return &daemonv2.ListTradesResponse{
+		Trades: tradesInfo(trades).toProto(),
+	}, nil
 }
 
 func (h *operatorHandler) listMarkets(

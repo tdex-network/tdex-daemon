@@ -131,6 +131,7 @@ type TradeType interface {
 
 type Trade interface {
 	GetId() string
+	GetType() TradeType
 	GetStatus() TradeStatus
 	GetSwapInfo() SwapRequest
 	GetSwapFailInfo() SwapFail

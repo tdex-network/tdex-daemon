@@ -442,6 +442,13 @@
         },
         "swapRequest": {
           "$ref": "#/definitions/tdexv2SwapRequest"
+        },
+        "feeAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "feeAsset": {
+          "type": "string"
         }
       }
     },
@@ -551,15 +558,6 @@
         "transaction": {
           "type": "string",
           "title": "The proposer's unsigned transaction in PSET v2 format (base64 string)"
-        },
-        "feeAmount": {
-          "type": "string",
-          "format": "uint64",
-          "description": "The fee amount charged to the proposer by the provider."
-        },
-        "feeAsset": {
-          "type": "string",
-          "description": "The asset hash of the fee charged to the proposer."
         },
         "unblindedInputs": {
           "type": "array",

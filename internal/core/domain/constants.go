@@ -19,4 +19,7 @@ const (
 	FeeAccount              = "fee_account"
 	FeeFragmenterAccount    = "fee_fragmenter_account"
 	MarketFragmenterAccount = "market_fragmenter_account"
+
+	TradeBuy TradeType = iota
+	TradeSell
 )

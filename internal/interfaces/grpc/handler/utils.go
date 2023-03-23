@@ -119,7 +119,9 @@ func parseAccountName(account string) (string, error) {
 	return account, nil
 }
 
-func parseSwapRequest(sr *tdexv2.SwapRequest) (ports.SwapRequest, error) {
+func parseSwapRequest(
+	sr *tdexv2.SwapRequest, feeAsset string, feeAmount uint64,
+) (ports.SwapRequest, error) {
 	if sr == nil {
 		return nil, fmt.Errorf("missing swap request")
 	}
@@ -141,7 +143,13 @@ func parseSwapRequest(sr *tdexv2.SwapRequest) (ports.SwapRequest, error) {
 	if !isValidUnblindedInputList(sr.GetUnblindedInputs()) {
 		return nil, fmt.Errorf("invalid unblinded input(s)")
 	}
-	return swapRequestInfo{sr}, nil
+	if !isValidAsset(feeAsset) {
+		return nil, fmt.Errorf("invalid fee asset")
+	}
+	if !isValidAmount(feeAmount) {
+		return nil, fmt.Errorf("invalid fee amount")
+	}
+	return swapRequestInfo{sr, feeAsset, feeAmount}, nil
 }
 
 func parseTradeType(tradeType tdexv2.TradeType) (ports.TradeType, error) {

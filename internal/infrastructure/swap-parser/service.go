@@ -29,9 +29,9 @@ func (s service) SerializeRequest(
 		AssetToReceive:  r.GetAssetR(),
 		AmountToReceive: r.GetAmountR(),
 		Transaction:     r.GetTransaction(),
+		FeeAsset:        r.GetFeeAsset(),
+		FeeAmount:       r.GetFeeAmount(),
 		UnblindedInputs: unblindedIns,
-		FeeAmount:       r.FeeAmount,
-		FeeAsset:        r.FeeAsset,
 	})
 	if err != nil {
 		return nil, swap.ErrCodeInvalidSwapRequest
@@ -78,7 +78,9 @@ func (s service) SerializeFail(id string, errCode int) (string, []byte) {
 	return id, msg
 }
 
-func (s service) DeserializeRequest(msg []byte) *domain.SwapRequest {
+func (s service) DeserializeRequest(
+	msg []byte, feeAsset string, feeAmount uint64,
+) *domain.SwapRequest {
 	swap := &tdexv2.SwapRequest{}
 	//nolint
 	proto.Unmarshal(msg, swap)
@@ -100,6 +102,8 @@ func (s service) DeserializeRequest(msg []byte) *domain.SwapRequest {
 		AmountR:         swap.GetAmountR(),
 		Transaction:     swap.GetTransaction(),
 		UnblindedInputs: unblindedIns,
+		FeeAsset:        feeAsset,
+		FeeAmount:       feeAmount,
 	}
 }
 
