@@ -65,6 +65,11 @@ type marketInfo struct {
 	balance map[string]ports.Balance
 }
 
+func (i marketInfo) Ticker() string {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (i marketInfo) GetBaseAsset() string {
 	return i.BaseAsset
 }
@@ -133,6 +138,11 @@ func (s tradeStatus) IsFailed() bool {
 
 type tradeInfo struct {
 	domain.Trade
+}
+
+func (i tradeInfo) Ticker() string {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (i tradeInfo) GetId() string {
@@ -404,6 +414,11 @@ type marketReportInfo struct {
 	marketFeeReportInfo
 	totVolume  marketVolumeInfo
 	subVolumes marketVolumeInfoList
+}
+
+func (i marketReportInfo) Ticker() string {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (i marketReportInfo) GetMarket() ports.Market {

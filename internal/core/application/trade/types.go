@@ -20,6 +20,11 @@ type marketInfo struct {
 	balance map[string]ports.Balance
 }
 
+func (i marketInfo) Ticker() string {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (i marketInfo) GetBaseAsset() string {
 	return i.BaseAsset
 }

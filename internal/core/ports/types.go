@@ -62,6 +62,7 @@ type BlockInfo interface {
 type Market interface {
 	GetBaseAsset() string
 	GetQuoteAsset() string
+	Ticker() string
 }
 
 type MarketPrice interface {
@@ -251,4 +252,9 @@ type BuildData interface {
 	GetVersion() string
 	GetCommit() string
 	GetDate() string
+}
+
+type PriceFeed interface {
+	GetMarket() Market
+	GetPrice() MarketPrice
 }
