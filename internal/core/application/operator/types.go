@@ -66,7 +66,7 @@ func (i marketFeeInfo) GetBaseAsset() uint64 {
 	return i.BaseAsset
 }
 func (i marketFeeInfo) GetQuoteAsset() uint64 {
-	return i.BaseAsset
+	return i.QuoteAsset
 }
 
 type marketInfo struct {
