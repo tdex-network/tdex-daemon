@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package tdex_daemon.v2;
+
+import "tdex/v1/types.proto";
+import "tdex-daemon/v2/types.proto";
+
+// FeederService is the service to manage price feeds
+service FeederService {
+  // AddPriceFeed creates a new price feed for the given market
+  rpc AddPriceFeed(AddPriceFeedRequest) returns (AddPriceFeedResponse);
+  // StartPriceFeed starts the price feed with the given id
+  rpc StartPriceFeed(StartPriceFeedRequest) returns (StartPriceFeedResponse);
+  // StopPriceFeed stops the price feed with the given id
+  rpc StopPriceFeed(StopPriceFeedRequest) returns (StopPriceFeedResponse);
+  // UpdatePriceFeed updates the price feed
+  rpc UpdatePriceFeed(UpdatePriceFeedRequest) returns (UpdatePriceFeedResponse);
+  // RemovePriceFeed removes the price feed with the given id
+  rpc RemovePriceFeed(RemovePriceFeedRequest) returns (RemovePriceFeedResponse);
+  // ListPriceFeeds returns the list of price feeds
+  rpc ListPriceFeeds(ListPriceFeedsRequest) returns (ListPriceFeedsResponse);
+  // ListSupportedPriceSources returns the list of supported price sources
+  rpc ListSupportedPriceSources(ListSupportedPriceSourcesRequest)
+      returns (ListSupportedPriceSourcesResponse);
+}
+
+message AddPriceFeedRequest {
+  // market for which the price feed is created
+  tdex.v1.Market market = 1;
+  // source is the name of the price source to use, e.g. kraken, bitfinex, coinbase etc.
+  string source = 2;
+  // ticker is the ticker of the market, e.g. "XBT/USDT", "XBT/EUR" etc.
+  string ticker = 3;
+}
+message AddPriceFeedResponse {
+  // id is the id of the price feed
+  string id = 1;
+}
+
+message StartPriceFeedRequest {
+  // id is the id of the price feed
+  string id = 1;
+}
+message StartPriceFeedResponse {}
+
+message StopPriceFeedRequest {
+  // id is the id of the price feed
+  string id = 1;
+}
+message StopPriceFeedResponse {}
+
+message UpdatePriceFeedRequest {
+  // id is the id of the price feed
+  string id = 1;
+  // source is the name of the price source to use
+  string source = 2;
+  // ticker is the ticker of the asset to use as price source
+  string ticker = 3;
+}
+message UpdatePriceFeedResponse {}
+
+
+message RemovePriceFeedRequest {
+  // id is the id of the price feed
+  string id = 1;
+}
+message RemovePriceFeedResponse {}
+
+message ListSupportedPriceSourcesRequest {}
+
+message ListSupportedPriceSourcesResponse {
+  // sources is the list of supported price sources
+  repeated string sources = 1;
+}
+
+message ListPriceFeedsRequest {
+  // market is the market for which the price feeds are listed
+  tdex.v1.Market market = 1;
+}
+
+message ListPriceFeedsResponse {
+  // feeds is the list of price feeds
+  repeated PriceFeed feeds = 1;
+}

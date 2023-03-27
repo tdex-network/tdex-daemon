@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "tdex/v1/transport.proto",
+    "title": "tdex/v2/transport.proto",
     "version": "version not set"
   },
   "tags": [
@@ -16,14 +16,14 @@
     "application/json"
   ],
   "paths": {
-    "/v1/transport": {
+    "/v2/transport": {
       "get": {
         "operationId": "TransportService_SupportedContentTypes",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1SupportedContentTypesResponse"
+              "$ref": "#/definitions/tdexv2SupportedContentTypesResponse"
             }
           },
           "default": {
@@ -67,7 +67,7 @@
         }
       }
     },
-    "tdexv1ContentType": {
+    "tdexv2ContentType": {
       "type": "string",
       "enum": [
         "CONTENT_TYPE_JSON",
@@ -77,13 +77,13 @@
       ],
       "default": "CONTENT_TYPE_JSON"
     },
-    "tdexv1SupportedContentTypesResponse": {
+    "tdexv2SupportedContentTypesResponse": {
       "type": "object",
       "properties": {
         "acceptedTypes": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdexv1ContentType"
+            "$ref": "#/definitions/tdexv2ContentType"
           }
         }
       }

@@ -1,0 +1,129 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "tdex-daemon/v2/feeder.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "FeederService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "googlerpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "v1Market": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string"
+        },
+        "quoteAsset": {
+          "type": "string"
+        }
+      }
+    },
+    "v2AddPriceFeedResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "id is the id of the price feed"
+        }
+      }
+    },
+    "v2ListPriceFeedsResponse": {
+      "type": "object",
+      "properties": {
+        "feeds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2PriceFeed"
+          },
+          "title": "feeds is the list of price feeds"
+        }
+      }
+    },
+    "v2ListSupportedPriceSourcesResponse": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "sources is the list of supported price sources"
+        }
+      }
+    },
+    "v2PriceFeed": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "id is the id of the price feed"
+        },
+        "market": {
+          "$ref": "#/definitions/v1Market",
+          "title": "market is the market for which the price feed is created"
+        },
+        "source": {
+          "type": "string",
+          "title": "source is the name of the price source to use"
+        },
+        "ticker": {
+          "type": "string",
+          "title": "ticker is the ticker of the asset to use as price source"
+        },
+        "on": {
+          "type": "boolean",
+          "title": "on is the flag to indicate if the price feed is turned on or off"
+        }
+      }
+    },
+    "v2RemovePriceFeedResponse": {
+      "type": "object"
+    },
+    "v2StartPriceFeedResponse": {
+      "type": "object"
+    },
+    "v2StopPriceFeedResponse": {
+      "type": "object"
+    },
+    "v2UpdatePriceFeedResponse": {
+      "type": "object"
+    }
+  }
+}
