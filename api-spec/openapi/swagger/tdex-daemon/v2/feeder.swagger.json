@@ -64,15 +64,12 @@
         }
       }
     },
-    "v2ListPriceFeedsResponse": {
+    "v2GetPriceFeedResponse": {
       "type": "object",
       "properties": {
-        "feeds": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v2PriceFeed"
-          },
-          "title": "feeds is the list of price feeds"
+        "feed": {
+          "$ref": "#/definitions/v2PriceFeed",
+          "title": "feed is the price feed for the given market"
         }
       }
     },

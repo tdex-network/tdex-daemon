@@ -32,8 +32,8 @@ type FeederServiceClient interface {
 	UpdatePriceFeed(ctx context.Context, in *UpdatePriceFeedRequest, opts ...grpc.CallOption) (*UpdatePriceFeedResponse, error)
 	// RemovePriceFeed removes the price feed with the given id
 	RemovePriceFeed(ctx context.Context, in *RemovePriceFeedRequest, opts ...grpc.CallOption) (*RemovePriceFeedResponse, error)
-	// ListPriceFeeds returns the list of price feeds
-	ListPriceFeeds(ctx context.Context, in *ListPriceFeedsRequest, opts ...grpc.CallOption) (*ListPriceFeedsResponse, error)
+	// GetPriceFeed returns the price feed for the given market
+	GetPriceFeed(ctx context.Context, in *GetPriceFeedRequest, opts ...grpc.CallOption) (*GetPriceFeedResponse, error)
 	// ListSupportedPriceSources returns the list of supported price sources
 	ListSupportedPriceSources(ctx context.Context, in *ListSupportedPriceSourcesRequest, opts ...grpc.CallOption) (*ListSupportedPriceSourcesResponse, error)
 }
@@ -91,9 +91,9 @@ func (c *feederServiceClient) RemovePriceFeed(ctx context.Context, in *RemovePri
 	return out, nil
 }
 
-func (c *feederServiceClient) ListPriceFeeds(ctx context.Context, in *ListPriceFeedsRequest, opts ...grpc.CallOption) (*ListPriceFeedsResponse, error) {
-	out := new(ListPriceFeedsResponse)
-	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.FeederService/ListPriceFeeds", in, out, opts...)
+func (c *feederServiceClient) GetPriceFeed(ctx context.Context, in *GetPriceFeedRequest, opts ...grpc.CallOption) (*GetPriceFeedResponse, error) {
+	out := new(GetPriceFeedResponse)
+	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.FeederService/GetPriceFeed", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +123,8 @@ type FeederServiceServer interface {
 	UpdatePriceFeed(context.Context, *UpdatePriceFeedRequest) (*UpdatePriceFeedResponse, error)
 	// RemovePriceFeed removes the price feed with the given id
 	RemovePriceFeed(context.Context, *RemovePriceFeedRequest) (*RemovePriceFeedResponse, error)
-	// ListPriceFeeds returns the list of price feeds
-	ListPriceFeeds(context.Context, *ListPriceFeedsRequest) (*ListPriceFeedsResponse, error)
+	// GetPriceFeed returns the price feed for the given market
+	GetPriceFeed(context.Context, *GetPriceFeedRequest) (*GetPriceFeedResponse, error)
 	// ListSupportedPriceSources returns the list of supported price sources
 	ListSupportedPriceSources(context.Context, *ListSupportedPriceSourcesRequest) (*ListSupportedPriceSourcesResponse, error)
 }
@@ -148,8 +148,8 @@ func (UnimplementedFeederServiceServer) UpdatePriceFeed(context.Context, *Update
 func (UnimplementedFeederServiceServer) RemovePriceFeed(context.Context, *RemovePriceFeedRequest) (*RemovePriceFeedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemovePriceFeed not implemented")
 }
-func (UnimplementedFeederServiceServer) ListPriceFeeds(context.Context, *ListPriceFeedsRequest) (*ListPriceFeedsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListPriceFeeds not implemented")
+func (UnimplementedFeederServiceServer) GetPriceFeed(context.Context, *GetPriceFeedRequest) (*GetPriceFeedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPriceFeed not implemented")
 }
 func (UnimplementedFeederServiceServer) ListSupportedPriceSources(context.Context, *ListSupportedPriceSourcesRequest) (*ListSupportedPriceSourcesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSupportedPriceSources not implemented")
@@ -256,20 +256,20 @@ func _FeederService_RemovePriceFeed_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FeederService_ListPriceFeeds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListPriceFeedsRequest)
+func _FeederService_GetPriceFeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPriceFeedRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FeederServiceServer).ListPriceFeeds(ctx, in)
+		return srv.(FeederServiceServer).GetPriceFeed(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/tdex_daemon.v2.FeederService/ListPriceFeeds",
+		FullMethod: "/tdex_daemon.v2.FeederService/GetPriceFeed",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FeederServiceServer).ListPriceFeeds(ctx, req.(*ListPriceFeedsRequest))
+		return srv.(FeederServiceServer).GetPriceFeed(ctx, req.(*GetPriceFeedRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -320,8 +320,8 @@ var FeederService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _FeederService_RemovePriceFeed_Handler,
 		},
 		{
-			MethodName: "ListPriceFeeds",
-			Handler:    _FeederService_ListPriceFeeds_Handler,
+			MethodName: "GetPriceFeed",
+			Handler:    _FeederService_GetPriceFeed_Handler,
 		},
 		{
 			MethodName: "ListSupportedPriceSources",
