@@ -252,3 +252,30 @@ type BuildData interface {
 	GetCommit() string
 	GetDate() string
 }
+
+type AddPriceFeedReq struct {
+	MarketBaseAsset  string
+	MarketQuoteAsset string
+	Source           string
+	Ticker           string
+}
+
+type UpdatePriceFeedReq struct {
+	ID     string
+	Source string
+	Ticker string
+}
+
+type PriceFeed struct {
+	ID               string
+	MarketBaseAsset  string
+	MarketQuoteAsset string
+	Source           string
+	Ticker           string
+	On               bool
+}
+
+type PriceFeedChan interface {
+	GetMarket() Market
+	GetPrice() MarketPrice
+}
