@@ -260,24 +260,7 @@ func (i txInfo) isDeposit() bool {
 }
 
 func (i txInfo) isWithdrawal() bool {
-	if len(i.ownedInputs) <= 0 || len(i.notOwnedInputs) > 0 {
-		return false
-	}
-
-	inAssets, outAssets := make(map[string]struct{}), make(map[string]struct{})
-	for _, in := range i.ownedInputs {
-		inAssets[in.asset] = struct{}{}
-	}
-	for _, out := range i.ownedOutputs {
-		outAssets[out.asset] = struct{}{}
-	}
-
-	for inAsset := range inAssets {
-		if _, ok := outAssets[inAsset]; !ok {
-			return false
-		}
-	}
-	return true
+	return len(i.ownedInputs) > 0 && len(i.notOwnedInputs) <= 0 && len(i.notOwnedOutputs) > 0
 }
 
 func (i txInfo) depositAmountPerAsset() map[string]uint64 {

@@ -210,12 +210,6 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 			withdrawals := make([]domain.Withdrawal, 0)
 
 			for _, account := range notification.GetAccountNames() {
-				// We want to store info about only fee or market accounts.
-				if account == domain.FeeFragmenterAccount ||
-					account == domain.MarketFragmenterAccount {
-					continue
-				}
-
 				txInfo := s.getTxInfo(tx, account)
 				if txInfo.isDeposit() {
 					deposits = append(deposits, domain.Deposit{
