@@ -30,6 +30,20 @@ func TestService(t *testing.T) {
 		feederSvc.Stop()
 	}()
 
+	go func() {
+		time.Sleep(2 * time.Second)
+		markets := mockedMarkets([]string{"ETH/USDT"})
+		err := feederSvc.SubscribeMarkets(markets)
+		require.NoError(t, err)
+	}()
+
+	go func() {
+		time.Sleep(3 * time.Second)
+		markets := mockedMarkets(tickers)
+		err := feederSvc.UnSubscribeMarkets(markets)
+		require.NoError(t, err)
+	}()
+
 	count := 0
 	for priceFeed := range feederSvc.FeedChan() {
 		count++

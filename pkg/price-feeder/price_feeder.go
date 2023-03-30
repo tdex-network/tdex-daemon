@@ -5,6 +5,7 @@ import "github.com/shopspring/decimal"
 type PriceFeeder interface {
 	WellKnownMarkets() []Market
 	SubscribeMarkets([]Market) error
+	UnSubscribeMarkets([]Market) error
 
 	Start() error
 	Stop()

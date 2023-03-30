@@ -30,6 +30,20 @@ func TestService(t *testing.T) {
 		feederSvc.Stop()
 	}()
 
+	go func() {
+		time.Sleep(2 * time.Second)
+		markets := mockedMarkets([]string{"ETH-USD"})
+		err := feederSvc.SubscribeMarkets(markets)
+		require.NoError(t, err)
+	}()
+
+	go func() {
+		time.Sleep(3 * time.Second)
+		markets := mockedMarkets(tickers)
+		err := feederSvc.UnSubscribeMarkets(markets)
+		require.NoError(t, err)
+	}()
+
 	count := 0
 	for priceFeed := range feederSvc.FeedChan() {
 		count++
@@ -62,30 +76,12 @@ func mockedMarkets(tickers []string) []pricefeeder.Market {
 	return markets
 }
 
-type mockMarket struct {
-	baseAsset  string
-	quoteAsset string
-	ticker     string
-}
-
 func newMockedMarket(ticker string) pricefeeder.Market {
 	return pricefeeder.Market{
 		BaseAsset:  randomHex(32),
 		QuoteAsset: randomHex(32),
 		Ticker:     ticker,
 	}
-}
-
-func (m *mockMarket) GetBaseAsset() string {
-	return m.baseAsset
-}
-
-func (m *mockMarket) GetQuoteAsset() string {
-	return m.quoteAsset
-}
-
-func (m *mockMarket) Ticker() string {
-	return m.ticker
 }
 
 func randomHex(len int) string {

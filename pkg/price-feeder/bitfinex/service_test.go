@@ -30,6 +30,20 @@ func TestService(t *testing.T) {
 		feederSvc.Stop()
 	}()
 
+	go func() {
+		time.Sleep(2 * time.Second)
+		markets := mockedMarkets([]string{"ETHUST"})
+		err := feederSvc.SubscribeMarkets(markets)
+		require.NoError(t, err)
+	}()
+
+	go func() {
+		time.Sleep(3 * time.Second)
+		markets := mockedMarkets(tickers)
+		err := feederSvc.UnSubscribeMarkets(markets)
+		require.NoError(t, err)
+	}()
+
 	count := 0
 	for priceFeed := range feederSvc.FeedChan() {
 		count++
@@ -62,12 +76,6 @@ func mockedMarkets(tickers []string) []pricefeeder.Market {
 	return markets
 }
 
-type mockMarket struct {
-	baseAsset  string
-	quoteAsset string
-	ticker     string
-}
-
 func newMockedMarket(ticker string) pricefeeder.Market {
 	return pricefeeder.Market{
 		BaseAsset:  randomHex(32),
@@ -84,4 +92,14 @@ func randomBytes(len int) []byte {
 	b := make([]byte, len)
 	rand.Read(b)
 	return b
+}
+
+func TestIdentifyJsonType(t *testing.T) {
+	jsObj := `{"event":"subscribed","channel":"ticker","chanId":80871,"symbol":"tBTCUST","pair":"BTCUST"}`
+	resp := identifyJsonType([]byte(jsObj))
+	require.Equal(t, resp, jsonObject)
+
+	arrayObj := `[80871,[28623,12.18045996,28625,14.08150541,516,0.01835842,28623,998.12121949,29151,27982]]`
+	resp = identifyJsonType([]byte(arrayObj))
+	require.Equal(t, resp, jsonArray)
 }
