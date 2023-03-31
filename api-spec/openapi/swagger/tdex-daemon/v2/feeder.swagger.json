@@ -60,7 +60,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "title": "id is the id of the price feed"
+          "description": "id is the id of the price feed."
         }
       }
     },
@@ -69,7 +69,19 @@
       "properties": {
         "feed": {
           "$ref": "#/definitions/v2PriceFeed",
-          "title": "feed is the price feed for the given market"
+          "description": "feed is the price feed for the given market."
+        }
+      }
+    },
+    "v2ListPriceFeedsResponse": {
+      "type": "object",
+      "properties": {
+        "feeds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2PriceFeed"
+          },
+          "description": "feeds is the list of price feeds."
         }
       }
     },
@@ -81,7 +93,7 @@
           "items": {
             "type": "string"
           },
-          "title": "sources is the list of supported price sources"
+          "description": "sources is the list of supported price sources."
         }
       }
     },
@@ -90,23 +102,23 @@
       "properties": {
         "id": {
           "type": "string",
-          "title": "id is the id of the price feed"
+          "description": "id is the id of the price feed."
         },
         "market": {
           "$ref": "#/definitions/v1Market",
-          "title": "market is the market for which the price feed is created"
+          "description": "market is the market for which the price feed is created."
         },
         "source": {
           "type": "string",
-          "title": "source is the name of the price source to use"
+          "description": "source is the name of the price source to use."
         },
         "ticker": {
           "type": "string",
-          "title": "ticker is the ticker of the asset to use as price source"
+          "description": "ticker is the ticker of the asset to use as price source."
         },
-        "on": {
+        "started": {
           "type": "boolean",
-          "title": "on is the flag to indicate if the price feed is turned on or off"
+          "description": "started is the flag to indicate if the price feed is started or stopped."
         }
       }
     },

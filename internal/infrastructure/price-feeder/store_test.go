@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPriceFeedRepository(t *testing.T) {
-	repo, err := NewPriceFeedRepositoryImpl("", nil)
+func TestPriceFeedStore(t *testing.T) {
+	repo, err := NewPriceFeedStoreImpl("", nil)
 	require.NoError(t, err)
 
 	//happy path
@@ -19,6 +19,7 @@ func TestPriceFeedRepository(t *testing.T) {
 	t.Run("GetPriceFeed", testGetPriceFeed(repo))
 	t.Run("GetPriceFeedsByMarket", testGetPriceFeedsByMarket(repo))
 	t.Run("UpdatePriceFeed", testUpdatePriceFeed(repo))
+	t.Run("GetAll", testGetAll(repo))
 
 	//check errors
 	t.Run("GetPriceFeedNotFound", testGetPriceFeedNotFound(repo))
@@ -26,7 +27,7 @@ func TestPriceFeedRepository(t *testing.T) {
 	t.Run("UpdateExistingPriceFeedMarket", testUpdateExistingPriceFeedMarket(repo))
 }
 
-func testAddAndDeletePriceFeed(repo PriceFeedRepository) func(*testing.T) {
+func testAddAndDeletePriceFeed(repo PriceFeedStore) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := context.Background()
 
@@ -38,8 +39,8 @@ func testAddAndDeletePriceFeed(repo PriceFeedRepository) func(*testing.T) {
 				QuoteAsset: "QA2",
 				Ticker:     "XBT/USD",
 			},
-			Source: "kraken",
-			On:     false,
+			Source:  "kraken",
+			Started: false,
 		})
 		require.NoError(t, err)
 
@@ -48,7 +49,7 @@ func testAddAndDeletePriceFeed(repo PriceFeedRepository) func(*testing.T) {
 	}
 }
 
-func testGetPriceFeed(repo PriceFeedRepository) func(*testing.T) {
+func testGetPriceFeed(repo PriceFeedStore) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := context.Background()
 		priceFeed := createTestPriceFeed()
@@ -63,7 +64,7 @@ func testGetPriceFeed(repo PriceFeedRepository) func(*testing.T) {
 	}
 }
 
-func testGetPriceFeedsByMarket(repo PriceFeedRepository) func(*testing.T) {
+func testGetPriceFeedsByMarket(repo PriceFeedStore) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := context.Background()
 		priceFeed := createTestPriceFeed()
@@ -83,7 +84,7 @@ func testGetPriceFeedsByMarket(repo PriceFeedRepository) func(*testing.T) {
 	}
 }
 
-func testUpdatePriceFeed(repo PriceFeedRepository) func(*testing.T) {
+func testUpdatePriceFeed(repo PriceFeedStore) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := context.Background()
 		priceFeed := createTestPriceFeed()
@@ -93,13 +94,13 @@ func testUpdatePriceFeed(repo PriceFeedRepository) func(*testing.T) {
 
 		pf, err := repo.GetPriceFeed(ctx, priceFeed.ID)
 		require.NoError(t, err)
-		assert.Equal(t, false, pf.On)
+		assert.Equal(t, false, pf.Started)
 
 		err = repo.UpdatePriceFeed(
 			ctx,
 			priceFeed.ID,
 			func(pf *PriceFeed) (*PriceFeed, error) {
-				pf.On = true
+				pf.Started = true
 				return pf, nil
 			},
 		)
@@ -109,11 +110,29 @@ func testUpdatePriceFeed(repo PriceFeedRepository) func(*testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, updatedPriceFeed)
 		assert.Equal(t, priceFeed.ID, updatedPriceFeed.ID)
-		assert.Equal(t, true, updatedPriceFeed.On)
+		assert.Equal(t, true, updatedPriceFeed.Started)
 	}
 }
 
-func testGetPriceFeedNotFound(repo PriceFeedRepository) func(*testing.T) {
+func testGetAll(repo PriceFeedStore) func(*testing.T) {
+	return func(t *testing.T) {
+		ctx := context.Background()
+		priceFeed := createTestPriceFeed()
+
+		err := repo.AddPriceFeed(ctx, *priceFeed)
+		require.NoError(t, err)
+
+		priceFeed = createTestPriceFeed()
+		err = repo.AddPriceFeed(ctx, *priceFeed)
+		require.NoError(t, err)
+
+		priceFeeds, err := repo.GetAllPriceFeeds(ctx)
+		require.NoError(t, err)
+		assert.NotEmpty(t, priceFeeds)
+	}
+}
+
+func testGetPriceFeedNotFound(repo PriceFeedStore) func(*testing.T) {
 	return func(t *testing.T) {
 		pf, err := repo.GetPriceFeed(context.Background(), "dummy")
 		assert.Nil(t, pf)
@@ -121,7 +140,7 @@ func testGetPriceFeedNotFound(repo PriceFeedRepository) func(*testing.T) {
 	}
 }
 
-func testPriceFeedAlreadyExists(repo PriceFeedRepository) func(*testing.T) {
+func testPriceFeedAlreadyExists(repo PriceFeedStore) func(*testing.T) {
 	return func(t *testing.T) {
 		err := repo.AddPriceFeed(
 			context.Background(),
@@ -132,8 +151,8 @@ func testPriceFeedAlreadyExists(repo PriceFeedRepository) func(*testing.T) {
 					QuoteAsset: "QA1",
 					Ticker:     "XBT/USD",
 				},
-				Source: "kraken",
-				On:     false,
+				Source:  "kraken",
+				Started: false,
 			},
 		)
 		require.NoError(t, err)
@@ -147,15 +166,15 @@ func testPriceFeedAlreadyExists(repo PriceFeedRepository) func(*testing.T) {
 					QuoteAsset: "QA1",
 					Ticker:     "XBT/EUR",
 				},
-				Source: "coinbase",
-				On:     false,
+				Source:  "coinbase",
+				Started: false,
 			},
 		)
 		require.EqualError(t, err, ErrPriceFeedAlreadyExists.Error())
 	}
 }
 
-func testUpdateExistingPriceFeedMarket(repo PriceFeedRepository) func(*testing.T) {
+func testUpdateExistingPriceFeedMarket(repo PriceFeedStore) func(*testing.T) {
 	return func(t *testing.T) {
 		id := uuid.New().String()
 		err := repo.AddPriceFeed(
@@ -167,8 +186,8 @@ func testUpdateExistingPriceFeedMarket(repo PriceFeedRepository) func(*testing.T
 					QuoteAsset: "QA",
 					Ticker:     "XBT/USD",
 				},
-				Source: "kraken",
-				On:     false,
+				Source:  "kraken",
+				Started: false,
 			},
 		)
 		require.NoError(t, err)
@@ -203,8 +222,8 @@ func createTestPriceFeed() *PriceFeed {
 			QuoteAsset: randAsset(),
 			Ticker:     "XBT/USD",
 		},
-		Source: "kraken",
-		On:     false,
+		Source:  "kraken",
+		Started: false,
 	}
 }
 

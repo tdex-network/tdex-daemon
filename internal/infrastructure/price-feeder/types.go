@@ -39,33 +39,31 @@ func (p Price) GetQuotePrice() decimal.Decimal {
 	return p.QuotePrice
 }
 
-type AddPriceFeedReq ports.AddPriceFeedReq
-
-func (a AddPriceFeedReq) Validate() error {
-	if len(a.MarketBaseAsset) != 32 {
+func validateAddPriceFeed(market ports.Market, source, ticker string) error {
+	if len(market.GetBaseAsset()) != 32 {
 		return fmt.Errorf(
-			"invalid baseAsset: %s, must be 32 length", a.MarketBaseAsset,
+			"invalid baseAsset: %s, must be 32 length", market.GetBaseAsset(),
 		)
 	}
 
-	if len(a.MarketQuoteAsset) != 32 {
+	if len(market.GetQuoteAsset()) != 32 {
 		return fmt.Errorf(
 			"invalid quoteAsset: %s, must be 32 length",
-			a.MarketQuoteAsset,
+			market.GetQuoteAsset(),
 		)
 	}
 
-	if _, ok := sources[a.Source]; !ok {
+	if _, ok := sources[source]; !ok {
 		return fmt.Errorf(
-			"invalid source: %s, must be one of %v", a.Source, sources,
+			"invalid source: %s, must be one of %v", source, sources,
 		)
 	}
 
 	regex := regexp.MustCompile(marketTickerFormat)
-	if !regex.MatchString(a.Ticker) {
+	if !regex.MatchString(ticker) {
 		return fmt.Errorf(
 			"invalid ticker: %s, must be in format %s",
-			a.Ticker,
+			ticker,
 			marketTickerFormat,
 		)
 	}
@@ -73,24 +71,22 @@ func (a AddPriceFeedReq) Validate() error {
 	return nil
 }
 
-type UpdatePriceFeedReq ports.UpdatePriceFeedReq
-
-func (u UpdatePriceFeedReq) Validate() error {
-	if u.ID == "" {
+func ValidateUpdatePriceFeed(id, source, ticker string) error {
+	if id == "" {
 		return fmt.Errorf("id must not be empty")
 	}
 
-	if _, ok := sources[u.Source]; !ok {
+	if _, ok := sources[source]; !ok {
 		return fmt.Errorf(
-			"invalid source: %s, must be one of %v", u.Source, sources,
+			"invalid source: %s, must be one of %v", source, sources,
 		)
 	}
 
 	regex := regexp.MustCompile(marketTickerFormat)
-	if !regex.MatchString(u.Ticker) {
+	if !regex.MatchString(ticker) {
 		return fmt.Errorf(
 			"invalid ticker: %s, must be in format %s",
-			u.Ticker,
+			ticker,
 			marketTickerFormat,
 		)
 	}

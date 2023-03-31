@@ -2,6 +2,7 @@ package feeder
 
 import (
 	"context"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -15,32 +16,132 @@ type Service struct {
 }
 
 func NewService(
+	ctx context.Context,
+	feederSvc ports.PriceFeeder,
 	repoManager ports.RepoManager,
-) Service {
-	return Service{repoManager: repoManager}
+) (Service, error) {
+	priceFeeds, err := feederSvc.ListPriceFeeds(context.Background())
+	if err != nil {
+		return Service{}, err
+	}
+
+	mkts := make([]ports.Market, len(priceFeeds))
+	for _, v := range priceFeeds {
+		if v.IsStarted() {
+			mkts = append(mkts, marketInfo{
+				BaseAsset:  v.GetMarket().GetBaseAsset(),
+				QuoteAsset: v.GetMarket().GetQuoteAsset(),
+			})
+		}
+	}
+
+	priceFeedChan, err := feederSvc.Start(ctx, mkts)
+	if err != nil {
+		return Service{}, err
+	}
+
+	svc := Service{
+		repoManager: repoManager,
+		feederSvc:   feederSvc,
+	}
+
+	svc.listenPriceFeedChan(priceFeedChan)
+
+	return svc, nil
 }
 
-func (s *Service) Start(ctx context.Context) error {
-	markets, err := s.repoManager.MarketRepository().GetAllMarkets(
-		context.Background(),
+func (s *Service) Stop(ctx context.Context) {
+	s.feederSvc.Stop(ctx)
+}
+
+func (s *Service) StartFeed(ctx context.Context, feedID string) error {
+	priceFeed, err := s.feederSvc.GetPriceFeed(ctx, feedID)
+	if err != nil {
+		return err
+	}
+
+	market, err := s.repoManager.MarketRepository().GetMarketByAssets(
+		ctx,
+		priceFeed.GetMarket().GetBaseAsset(),
+		priceFeed.GetMarket().GetQuoteAsset(),
 	)
 	if err != nil {
 		return err
 	}
 
-	mkts := make([]ports.Market, len(markets))
-	for _, v := range markets {
-		mkts = append(mkts, marketInfo{
-			baseAsset:  v.BaseAsset,
-			quoteAsset: v.QuoteAsset,
-		})
+	if !market.IsStrategyPluggable() {
+		return fmt.Errorf("market is not pluggable")
 	}
 
-	priceFeedChan, err := s.feederSvc.Start(ctx, mkts)
+	return s.feederSvc.StartFeed(ctx, feedID)
+}
+
+func (s *Service) StopFeed(ctx context.Context, feedID string) error {
+	return s.feederSvc.StopFeed(ctx, feedID)
+}
+
+func (s *Service) AddPriceFeed(
+	ctx context.Context, market ports.Market, source, ticker string,
+) (string, error) {
+	return s.feederSvc.AddPriceFeed(ctx, market, source, ticker)
+}
+
+func (s *Service) UpdatePriceFeed(
+	ctx context.Context, id, source, ticker string,
+) error {
+	priceFeed, err := s.feederSvc.GetPriceFeed(ctx, id)
 	if err != nil {
 		return err
 	}
 
+	if priceFeed.IsStarted() {
+		return fmt.Errorf("feed needs to be stopped before updating it")
+	}
+
+	return s.feederSvc.UpdatePriceFeed(ctx, id, source, ticker)
+}
+
+func (s *Service) RemovePriceFeed(ctx context.Context, id string) error {
+	priceFeed, err := s.feederSvc.GetPriceFeed(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if priceFeed.IsStarted() {
+		return fmt.Errorf("feed needs to be stopped before updating it")
+	}
+
+	market, err := s.repoManager.MarketRepository().GetMarketByAssets(
+		ctx,
+		priceFeed.GetMarket().GetBaseAsset(),
+		priceFeed.GetMarket().GetQuoteAsset(),
+	)
+	if err != nil {
+		return err
+	}
+
+	if market.IsStrategyPluggable() {
+		return fmt.Errorf("cant remove pluggable market")
+	}
+
+	return s.feederSvc.RemovePriceFeed(ctx, id)
+}
+
+func (s *Service) GetPriceFeed(
+	ctx context.Context, baseAsset, quoteAsset string,
+) (ports.PriceFeed, error) {
+	return s.feederSvc.GetPriceFeedForMarket(ctx, baseAsset, quoteAsset)
+}
+
+func (s *Service) ListSources(ctx context.Context) []string {
+	return s.feederSvc.ListSources(ctx)
+}
+
+func (s *Service) ListPriceFeeds(ctx context.Context) ([]ports.PriceFeed, error) {
+	return s.feederSvc.ListPriceFeeds(ctx)
+}
+
+func (s *Service) listenPriceFeedChan(priceFeedChan chan ports.PriceFeedChan) {
 	go func() {
 		log.Debugln("reading price feed chan started")
 
@@ -73,104 +174,8 @@ func (s *Service) Start(ctx context.Context) error {
 					priceFeed.GetMarket().GetQuoteAsset(),
 				)
 			}
+
+			log.Debugln("reading price feed chan stopped")
 		}
-
-		log.Debugln("reading price feed chan stopped")
 	}()
-
-	return nil
-}
-
-func (s *Service) Stop(ctx context.Context) {
-	s.feederSvc.Stop(ctx)
-}
-
-func (s *Service) StartFeed(ctx context.Context, feedID string) error {
-	priceFeed, err := s.feederSvc.GetPriceFeedForFeedID(ctx, feedID)
-	if err != nil {
-		return err
-	}
-
-	market, err := s.repoManager.MarketRepository().GetMarketByAssets(
-		ctx,
-		priceFeed.MarketBaseAsset,
-		priceFeed.MarketQuoteAsset,
-	)
-	if err != nil {
-		return err
-	}
-
-	if !market.IsStrategyPluggable() {
-		return ErrMarketNotPluggable
-	}
-
-	return s.feederSvc.StartFeed(ctx, feedID)
-}
-
-func (s *Service) StopFeed(ctx context.Context, feedID string) error {
-	return s.feederSvc.StopFeed(ctx, feedID)
-}
-
-func (s *Service) AddPriceFeed(
-	ctx context.Context,
-	req ports.AddPriceFeedReq,
-) (string, error) {
-	return s.feederSvc.AddPriceFeed(ctx, req)
-}
-
-func (s *Service) UpdatePriceFeed(
-	ctx context.Context,
-	req ports.UpdatePriceFeedReq,
-) error {
-	priceFeed, err := s.feederSvc.GetPriceFeedForFeedID(ctx, req.ID)
-	if err != nil {
-		return err
-	}
-
-	if priceFeed.On {
-		return ErrFeedOn
-	}
-
-	return s.feederSvc.UpdatePriceFeed(ctx, req)
-}
-
-func (s *Service) RemovePriceFeed(
-	ctx context.Context,
-	feedID string,
-) error {
-	priceFeed, err := s.feederSvc.GetPriceFeedForFeedID(ctx, feedID)
-	if err != nil {
-		return err
-	}
-
-	if priceFeed.On {
-		return ErrFeedOn
-	}
-
-	market, err := s.repoManager.MarketRepository().GetMarketByAssets(
-		ctx,
-		priceFeed.MarketBaseAsset,
-		priceFeed.MarketQuoteAsset,
-	)
-	if err != nil {
-		return err
-	}
-
-	if market.IsStrategyPluggable() {
-		return ErrMarketPluggable
-	}
-
-	return s.feederSvc.RemovePriceFeed(ctx, feedID)
-}
-
-func (s *Service) GetPriceFeed(
-	ctx context.Context,
-	baseAsset string,
-	quoteAsset string,
-) (*ports.PriceFeed, error) {
-	return s.feederSvc.GetPriceFeed(ctx, baseAsset, quoteAsset)
-}
-
-func (s *Service) ListSources(ctx context.Context) []string {
-	return s.feederSvc.ListSources(ctx)
 }

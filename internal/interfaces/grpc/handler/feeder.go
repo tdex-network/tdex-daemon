@@ -3,8 +3,6 @@ package grpchandler
 import (
 	"context"
 
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-
 	"github.com/tdex-network/tdex-daemon/internal/core/application/feeder"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
@@ -27,14 +25,9 @@ func (f *feederHandler) AddPriceFeed(
 	ctx context.Context,
 	req *daemonv2.AddPriceFeedRequest,
 ) (*daemonv2.AddPriceFeedResponse, error) {
+	mkt, err := parseMarket(req.GetMarket())
 	id, err := f.feederSvc.AddPriceFeed(
-		ctx,
-		ports.AddPriceFeedReq{
-			MarketBaseAsset:  req.GetMarket().GetBaseAsset(),
-			MarketQuoteAsset: req.GetMarket().GetQuoteAsset(),
-			Source:           req.GetSource(),
-			Ticker:           req.GetTicker(),
-		},
+		ctx, mkt, req.GetSource(), req.GetTicker(),
 	)
 	if err != nil {
 		return nil, err
@@ -69,15 +62,10 @@ func (f *feederHandler) StopPriceFeed(
 
 func (f *feederHandler) UpdatePriceFeed(
 	ctx context.Context,
-	request *daemonv2.UpdatePriceFeedRequest,
+	req *daemonv2.UpdatePriceFeedRequest,
 ) (*daemonv2.UpdatePriceFeedResponse, error) {
 	if err := f.feederSvc.UpdatePriceFeed(
-		ctx,
-		ports.UpdatePriceFeedReq{
-			ID:     request.GetId(),
-			Source: request.GetSource(),
-			Ticker: request.GetTicker(),
-		},
+		ctx, req.GetId(), req.GetSource(), req.GetTicker(),
 	); err != nil {
 		return nil, err
 	}
@@ -111,14 +99,14 @@ func (f *feederHandler) GetPriceFeed(
 
 	return &daemonv2.GetPriceFeedResponse{
 		Feed: &daemonv2.PriceFeed{
-			Id: priceFeed.ID,
+			Id: priceFeed.GetId(),
 			Market: &tdexv1.Market{
-				BaseAsset:  priceFeed.MarketBaseAsset,
-				QuoteAsset: priceFeed.MarketQuoteAsset,
+				BaseAsset:  priceFeed.GetMarket().GetBaseAsset(),
+				QuoteAsset: priceFeed.GetMarket().GetBaseAsset(),
 			},
-			Source: priceFeed.Source,
-			Ticker: priceFeed.Ticker,
-			On:     false,
+			Source:  priceFeed.GetSource(),
+			Ticker:  priceFeed.GetTicker(),
+			Started: priceFeed.IsStarted(),
 		},
 	}, nil
 }
@@ -130,5 +118,33 @@ func (f *feederHandler) ListSupportedPriceSources(
 	sources := f.feederSvc.ListSources(ctx)
 	return &daemonv2.ListSupportedPriceSourcesResponse{
 		Sources: sources,
+	}, nil
+}
+
+func (f *feederHandler) ListPriceFeeds(
+	ctx context.Context,
+	req *daemonv2.ListPriceFeedsRequest,
+) (*daemonv2.ListPriceFeedsResponse, error) {
+	priceFeeds, err := f.feederSvc.ListPriceFeeds(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	feeds := make([]*daemonv2.PriceFeed, len(priceFeeds))
+	for i, feed := range priceFeeds {
+		feeds[i] = &daemonv2.PriceFeed{
+			Id: feed.GetId(),
+			Market: &tdexv1.Market{
+				BaseAsset:  feed.GetMarket().GetBaseAsset(),
+				QuoteAsset: feed.GetMarket().GetQuoteAsset(),
+			},
+			Source:  feed.GetSource(),
+			Ticker:  feed.GetTicker(),
+			Started: feed.IsStarted(),
+		}
+	}
+
+	return &daemonv2.ListPriceFeedsResponse{
+		Feeds: feeds,
 	}, nil
 }

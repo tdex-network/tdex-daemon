@@ -1,13 +1,12 @@
 package feeder
 
-type marketInfo struct {
-	baseAsset  string
-	quoteAsset string
-}
+import "github.com/tdex-network/tdex-daemon/internal/core/domain"
+
+type marketInfo domain.Market
 
 func (i marketInfo) GetBaseAsset() string {
-	return i.baseAsset
+	return i.BaseAsset
 }
 func (i marketInfo) GetQuoteAsset() string {
-	return i.quoteAsset
+	return i.QuoteAsset
 }

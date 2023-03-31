@@ -16,9 +16,9 @@ var (
 )
 
 type priceFeederService struct {
-	feederSvc           pricefeeder.PriceFeeder
-	priceFeedRepository PriceFeedRepository
-	feedChan            chan ports.PriceFeedChan
+	feederSvc      pricefeeder.PriceFeeder
+	priceFeedStore PriceFeedStore
+	feedChan       chan ports.PriceFeedChan
 
 	marketsMtx sync.RWMutex
 	markets    []pricefeeder.Market
@@ -26,14 +26,14 @@ type priceFeederService struct {
 
 func NewService(
 	feederSvc pricefeeder.PriceFeeder,
-	priceFeedRepository PriceFeedRepository,
+	priceFeedStore PriceFeedStore,
 ) ports.PriceFeeder {
 	return &priceFeederService{
-		feederSvc:           feederSvc,
-		priceFeedRepository: priceFeedRepository,
-		feedChan:            make(chan ports.PriceFeedChan),
-		marketsMtx:          sync.RWMutex{},
-		markets:             make([]pricefeeder.Market, 0),
+		feederSvc:      feederSvc,
+		priceFeedStore: priceFeedStore,
+		feedChan:       make(chan ports.PriceFeedChan),
+		marketsMtx:     sync.RWMutex{},
+		markets:        make([]pricefeeder.Market, 0),
 	}
 }
 
@@ -43,7 +43,7 @@ func (p *priceFeederService) Start(
 ) (chan ports.PriceFeedChan, error) {
 	mkts := make([]pricefeeder.Market, len(markets))
 	for _, v := range markets {
-		priceFeed, err := p.priceFeedRepository.GetPriceFeedsByMarket(ctx, Market{
+		priceFeed, err := p.priceFeedStore.GetPriceFeedsByMarket(ctx, Market{
 			BaseAsset:  v.GetBaseAsset(),
 			QuoteAsset: v.GetQuoteAsset(),
 		})
@@ -58,22 +58,12 @@ func (p *priceFeederService) Start(
 		})
 	}
 
-	if err := p.watchMarkets(mkts); err != nil {
+	if err := p.feederSvc.Start(); err != nil {
 		return nil, err
 	}
 
-	return p.feedChan, nil
-}
-
-func (p *priceFeederService) watchMarkets(
-	markets []pricefeeder.Market,
-) error {
-	if err := p.feederSvc.SubscribeMarkets(markets); err != nil {
-		return err
-	}
-
-	if err := p.feederSvc.Start(); err != nil {
-		return err
+	if err := p.feederSvc.SubscribeMarkets(mkts); err != nil {
+		return nil, err
 	}
 
 	go func() {
@@ -91,7 +81,7 @@ func (p *priceFeederService) watchMarkets(
 		}
 	}()
 
-	return nil
+	return p.feedChan, nil
 }
 
 func (p *priceFeederService) Stop(ctx context.Context) {
@@ -100,59 +90,55 @@ func (p *priceFeederService) Stop(ctx context.Context) {
 }
 
 func (p *priceFeederService) StartFeed(ctx context.Context, feedID string) error {
-	p.feederSvc.Stop()
-
-	priceFeed, err := p.priceFeedRepository.GetPriceFeed(ctx, feedID)
+	priceFeed, err := p.priceFeedStore.GetPriceFeed(ctx, feedID)
 	if err != nil {
 		return err
 	}
 
-	p.addMarkets([]pricefeeder.Market{
-		{
-			BaseAsset:  priceFeed.Market.BaseAsset,
-			QuoteAsset: priceFeed.Market.QuoteAsset,
-			Ticker:     priceFeed.Market.Ticker,
-		},
-	})
+	market := pricefeeder.Market{
+		BaseAsset:  priceFeed.Market.BaseAsset,
+		QuoteAsset: priceFeed.Market.QuoteAsset,
+		Ticker:     priceFeed.Market.Ticker,
+	}
 
-	return p.watchMarkets(p.getMarkets())
+	p.addMarkets([]pricefeeder.Market{market})
+
+	return p.feederSvc.SubscribeMarkets([]pricefeeder.Market{market})
 }
 
 func (p *priceFeederService) StopFeed(ctx context.Context, feedID string) error {
-	p.feederSvc.Stop()
-
-	priceFeed, err := p.priceFeedRepository.GetPriceFeed(ctx, feedID)
+	priceFeed, err := p.priceFeedStore.GetPriceFeed(ctx, feedID)
 	if err != nil {
 		return err
 	}
 
-	p.removeMarkets([]pricefeeder.Market{
-		{
-			BaseAsset:  priceFeed.Market.BaseAsset,
-			QuoteAsset: priceFeed.Market.QuoteAsset,
-			Ticker:     priceFeed.Market.Ticker,
-		},
-	})
+	market := pricefeeder.Market{
+		BaseAsset:  priceFeed.Market.BaseAsset,
+		QuoteAsset: priceFeed.Market.QuoteAsset,
+		Ticker:     priceFeed.Market.Ticker,
+	}
 
-	return p.watchMarkets(p.getMarkets())
+	p.removeMarkets([]pricefeeder.Market{market})
+
+	return p.feederSvc.UnSubscribeMarkets([]pricefeeder.Market{market})
 }
 
 func (p *priceFeederService) AddPriceFeed(
-	ctx context.Context,
-	req ports.AddPriceFeedReq,
+	ctx context.Context, market ports.Market, source, ticker string,
 ) (string, error) {
-	addPriceRequest := AddPriceFeedReq(req)
-	if err := addPriceRequest.Validate(); err != nil {
+	if err := validateAddPriceFeed(market, source, ticker); err != nil {
 		return "", err
 	}
 
-	market := Market{
-		BaseAsset:  req.MarketBaseAsset,
-		QuoteAsset: req.MarketQuoteAsset,
-		Ticker:     req.Ticker,
-	}
-	priceFeed := NewPriceFeed(market, req.Source)
-	if err := p.priceFeedRepository.AddPriceFeed(ctx, priceFeed); err != nil {
+	priceFeed := NewPriceFeed(
+		Market{
+			BaseAsset:  market.GetBaseAsset(),
+			QuoteAsset: market.GetQuoteAsset(),
+			Ticker:     ticker,
+		},
+		source,
+	)
+	if err := p.priceFeedStore.AddPriceFeed(ctx, priceFeed); err != nil {
 		return "", err
 	}
 
@@ -160,19 +146,18 @@ func (p *priceFeederService) AddPriceFeed(
 }
 
 func (p *priceFeederService) UpdatePriceFeed(
-	ctx context.Context,
-	req ports.UpdatePriceFeedReq,
+	ctx context.Context, id, source, ticker string,
 ) error {
-	updatePriceRequest := UpdatePriceFeedReq(req)
-	if err := updatePriceRequest.Validate(); err != nil {
+	if err := ValidateUpdatePriceFeed(id, source, ticker); err != nil {
 		return err
 	}
 
-	return p.priceFeedRepository.UpdatePriceFeed(
+	return p.priceFeedStore.UpdatePriceFeed(
 		ctx,
-		req.ID, func(priceFeed *PriceFeed) (*PriceFeed, error) {
-			priceFeed.Market.Ticker = req.Ticker
-			priceFeed.Source = req.Source
+		id,
+		func(priceFeed *PriceFeed) (*PriceFeed, error) {
+			priceFeed.Market.Ticker = ticker
+			priceFeed.Source = source
 
 			return priceFeed, nil
 		},
@@ -183,15 +168,15 @@ func (p *priceFeederService) RemovePriceFeed(
 	ctx context.Context,
 	feedID string,
 ) error {
-	return p.priceFeedRepository.RemovePriceFeed(ctx, feedID)
+	return p.priceFeedStore.RemovePriceFeed(ctx, feedID)
 }
 
-func (p *priceFeederService) GetPriceFeed(
+func (p *priceFeederService) GetPriceFeedForMarket(
 	ctx context.Context,
 	baseAsset string,
 	quoteAsset string,
-) (*ports.PriceFeed, error) {
-	priceFeed, err := p.priceFeedRepository.GetPriceFeedsByMarket(ctx, Market{
+) (ports.PriceFeed, error) {
+	priceFeed, err := p.priceFeedStore.GetPriceFeedsByMarket(ctx, Market{
 		BaseAsset:  baseAsset,
 		QuoteAsset: quoteAsset,
 	})
@@ -199,33 +184,35 @@ func (p *priceFeederService) GetPriceFeed(
 		return nil, err
 	}
 
-	return &ports.PriceFeed{
-		ID:               priceFeed.ID,
-		MarketBaseAsset:  priceFeed.Market.BaseAsset,
-		MarketQuoteAsset: priceFeed.Market.QuoteAsset,
-		Source:           priceFeed.Source,
-		Ticker:           priceFeed.Market.Ticker,
-		On:               priceFeed.On,
-	}, nil
+	return priceFeed, nil
 }
 
-func (p *priceFeederService) GetPriceFeedForFeedID(
+func (p *priceFeederService) GetPriceFeed(
 	ctx context.Context,
 	feedID string,
-) (*ports.PriceFeed, error) {
-	priceFeed, err := p.priceFeedRepository.GetPriceFeed(ctx, feedID)
+) (ports.PriceFeed, error) {
+	priceFeed, err := p.priceFeedStore.GetPriceFeed(ctx, feedID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ports.PriceFeed{
-		ID:               priceFeed.ID,
-		MarketBaseAsset:  priceFeed.Market.BaseAsset,
-		MarketQuoteAsset: priceFeed.Market.QuoteAsset,
-		Source:           priceFeed.Source,
-		Ticker:           priceFeed.Market.Ticker,
-		On:               priceFeed.On,
-	}, nil
+	return priceFeed, nil
+}
+
+func (p *priceFeederService) ListPriceFeeds(
+	ctx context.Context,
+) ([]ports.PriceFeed, error) {
+	priceFeeds, err := p.priceFeedStore.GetAllPriceFeeds(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	priceFeedsResponse := make([]ports.PriceFeed, 0, len(priceFeeds))
+	for _, priceFeed := range priceFeeds {
+		priceFeedsResponse = append(priceFeedsResponse, priceFeed)
+	}
+
+	return priceFeedsResponse, nil
 }
 
 func (p *priceFeederService) ListSources(ctx context.Context) []string {

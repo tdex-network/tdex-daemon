@@ -253,26 +253,12 @@ type BuildData interface {
 	GetDate() string
 }
 
-type AddPriceFeedReq struct {
-	MarketBaseAsset  string
-	MarketQuoteAsset string
-	Source           string
-	Ticker           string
-}
-
-type UpdatePriceFeedReq struct {
-	ID     string
-	Source string
-	Ticker string
-}
-
-type PriceFeed struct {
-	ID               string
-	MarketBaseAsset  string
-	MarketQuoteAsset string
-	Source           string
-	Ticker           string
-	On               bool
+type PriceFeed interface {
+	GetId() string
+	GetMarket() Market
+	GetSource() string
+	GetTicker() string
+	IsStarted() bool
 }
 
 type PriceFeedChan interface {

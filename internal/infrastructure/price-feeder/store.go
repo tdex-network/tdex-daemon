@@ -14,13 +14,35 @@ import (
 	"github.com/timshannon/badgerhold/v4"
 )
 
+type PriceFeedStore interface {
+	// AddPriceFeed adds a new price feed to the repository.
+	AddPriceFeed(ctx context.Context, priceFeed PriceFeed) error
+	// GetPriceFeed returns the price feed with the given ID.
+	GetPriceFeed(ctx context.Context, id string) (*PriceFeed, error)
+	// GetPriceFeedsByMarket returns all price feed for a given market.
+	GetPriceFeedsByMarket(
+		ctx context.Context,
+		market Market,
+	) (*PriceFeed, error)
+	// UpdatePriceFeed updates the price feed.
+	UpdatePriceFeed(
+		ctx context.Context,
+		ID string,
+		updateFn func(priceFeed *PriceFeed) (*PriceFeed, error),
+	) error
+	// RemovePriceFeed removes the price feed with the given ID.
+	RemovePriceFeed(ctx context.Context, id string) error
+	// GetAllPriceFeeds returns all price feeds of all markets.
+	GetAllPriceFeeds(ctx context.Context) ([]PriceFeed, error)
+}
+
 type priceFeedRepositoryImpl struct {
 	store *badgerhold.Store
 }
 
-func NewPriceFeedRepositoryImpl(
+func NewPriceFeedStoreImpl(
 	baseDbDir string, logger badger.Logger,
-) (PriceFeedRepository, error) {
+) (PriceFeedStore, error) {
 	var priceFeederDir string
 	if len(baseDbDir) > 0 {
 		priceFeederDir = filepath.Join(baseDbDir, "priceFeeder")
@@ -140,6 +162,17 @@ func (p *priceFeedRepositoryImpl) RemovePriceFeed(
 	id string,
 ) error {
 	return p.store.Delete(id, PriceFeed{})
+}
+
+func (p *priceFeedRepositoryImpl) GetAllPriceFeeds(
+	ctx context.Context,
+) ([]PriceFeed, error) {
+	var priceFeeds []PriceFeed
+	if err := p.store.Find(&priceFeeds, nil); err != nil {
+		return nil, err
+	}
+
+	return priceFeeds, nil
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
