@@ -58,7 +58,7 @@ func TestService(t *testing.T) {
 
 func newTestService() (pricefeeder.PriceFeeder, error) {
 	markets := mockedMarkets(tickers)
-	svc, err := NewCoinbasePriceFeeder(interval)
+	svc, err := NewService(interval)
 	if err != nil {
 		return nil, err
 	}

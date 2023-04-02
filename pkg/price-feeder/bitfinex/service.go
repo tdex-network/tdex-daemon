@@ -54,7 +54,7 @@ type service struct {
 	quitChan chan struct{}
 }
 
-func NewBitfinexPriceFeeder(args ...interface{}) (pricefeeder.PriceFeeder, error) {
+func NewService(args ...interface{}) (pricefeeder.PriceFeeder, error) {
 	if len(args) != 1 {
 		return nil, fmt.Errorf("invalid number of args")
 	}

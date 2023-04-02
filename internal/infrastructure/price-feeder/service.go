@@ -2,7 +2,8 @@ package pricefeederinfra
 
 import (
 	"context"
-	"sync"
+
+	log "github.com/sirupsen/logrus"
 
 	pricefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder"
 
@@ -11,29 +12,26 @@ import (
 
 var (
 	sources = map[string]struct{}{
-		"kraken": {},
+		"kraken":   {},
+		"bitfinex": {},
+		"coinbase": {},
 	}
 )
 
 type priceFeederService struct {
-	feederSvc      pricefeeder.PriceFeeder
-	priceFeedStore PriceFeedStore
-	feedChan       chan ports.PriceFeedChan
-
-	marketsMtx sync.RWMutex
-	markets    []pricefeeder.Market
+	feederSvcBySource map[string]pricefeeder.PriceFeeder
+	priceFeedStore    PriceFeedStore
+	feedChan          chan ports.PriceFeedChan
 }
 
 func NewService(
-	feederSvc pricefeeder.PriceFeeder,
+	feederSvcBySource map[string]pricefeeder.PriceFeeder,
 	priceFeedStore PriceFeedStore,
 ) ports.PriceFeeder {
 	return &priceFeederService{
-		feederSvc:      feederSvc,
-		priceFeedStore: priceFeedStore,
-		feedChan:       make(chan ports.PriceFeedChan),
-		marketsMtx:     sync.RWMutex{},
-		markets:        make([]pricefeeder.Market, 0),
+		feederSvcBySource: feederSvcBySource,
+		priceFeedStore:    priceFeedStore,
+		feedChan:          make(chan ports.PriceFeedChan),
 	}
 }
 
@@ -41,7 +39,7 @@ func (p *priceFeederService) Start(
 	ctx context.Context,
 	markets []ports.Market,
 ) (chan ports.PriceFeedChan, error) {
-	mkts := make([]pricefeeder.Market, len(markets))
+	mktsBySource := make(map[string][]pricefeeder.Market)
 	for _, v := range markets {
 		priceFeed, err := p.priceFeedStore.GetPriceFeedsByMarket(ctx, Market{
 			BaseAsset:  v.GetBaseAsset(),
@@ -51,41 +49,72 @@ func (p *priceFeederService) Start(
 			return nil, err
 		}
 
-		mkts = append(mkts, pricefeeder.Market{
-			BaseAsset:  v.GetBaseAsset(),
-			QuoteAsset: v.GetQuoteAsset(),
-			Ticker:     priceFeed.Market.Ticker,
-		})
-	}
-
-	if err := p.feederSvc.Start(); err != nil {
-		return nil, err
-	}
-
-	if err := p.feederSvc.SubscribeMarkets(mkts); err != nil {
-		return nil, err
-	}
-
-	go func() {
-		for priceFeed := range p.feederSvc.FeedChan() {
-			p.feedChan <- Feed{
-				Market: Market{
-					BaseAsset:  priceFeed.Market.BaseAsset,
-					QuoteAsset: priceFeed.Market.QuoteAsset,
-				},
-				Price: Price{
-					BasePrice:  priceFeed.Price.BasePrice,
-					QuotePrice: priceFeed.Price.QuotePrice,
-				},
+		if priceFeed != nil {
+			if vv, ok := mktsBySource[priceFeed.Source]; ok {
+				mktsBySource[priceFeed.Source] = append(vv, pricefeeder.Market{
+					BaseAsset:  v.GetBaseAsset(),
+					QuoteAsset: v.GetQuoteAsset(),
+					Ticker:     priceFeed.Market.Ticker,
+				})
+			} else {
+				mktsBySource[priceFeed.Source] = append(
+					[]pricefeeder.Market{},
+					pricefeeder.Market{
+						BaseAsset:  v.GetBaseAsset(),
+						QuoteAsset: v.GetQuoteAsset(),
+						Ticker:     priceFeed.Market.Ticker,
+					},
+				)
 			}
 		}
-	}()
+	}
+
+	for _, v := range p.feederSvcBySource {
+		go func(feeder pricefeeder.PriceFeeder) {
+			if err := feeder.Start(); err != nil {
+				log.Warnf("error while starting price feeder: %v", err) //TODO handle error
+			}
+		}(v)
+	}
+
+	for k, v := range mktsBySource {
+		go func(source string, markets []pricefeeder.Market) {
+			if err := p.feederSvcBySource[source].SubscribeMarkets(markets); err != nil {
+				log.Warnf("error while starting price feeder: %v", err) //TODO handle error
+			}
+		}(k, v)
+	}
+
+	feedChanBySource := make(map[string]chan pricefeeder.PriceFeed)
+	for k, v := range p.feederSvcBySource {
+		feedChanBySource[k] = v.FeedChan()
+	}
+
+	for _, v := range feedChanBySource {
+		go func(feedChan chan pricefeeder.PriceFeed) {
+			for priceFeed := range feedChan {
+				p.feedChan <- Feed{
+					Market: Market{
+						BaseAsset:  priceFeed.Market.BaseAsset,
+						QuoteAsset: priceFeed.Market.QuoteAsset,
+					},
+					Price: Price{
+						BasePrice:  priceFeed.Price.BasePrice,
+						QuotePrice: priceFeed.Price.QuotePrice,
+					},
+				}
+			}
+		}(v)
+	}
 
 	return p.feedChan, nil
 }
 
 func (p *priceFeederService) Stop(ctx context.Context) {
-	p.feederSvc.Stop()
+	for _, v := range p.feederSvcBySource {
+		v.Stop()
+	}
+
 	close(p.feedChan)
 }
 
@@ -101,9 +130,8 @@ func (p *priceFeederService) StartFeed(ctx context.Context, feedID string) error
 		Ticker:     priceFeed.Market.Ticker,
 	}
 
-	p.addMarkets([]pricefeeder.Market{market})
-
-	return p.feederSvc.SubscribeMarkets([]pricefeeder.Market{market})
+	return p.getFeederServiceBySource(priceFeed.GetSource()).
+		SubscribeMarkets([]pricefeeder.Market{market})
 }
 
 func (p *priceFeederService) StopFeed(ctx context.Context, feedID string) error {
@@ -118,9 +146,8 @@ func (p *priceFeederService) StopFeed(ctx context.Context, feedID string) error 
 		Ticker:     priceFeed.Market.Ticker,
 	}
 
-	p.removeMarkets([]pricefeeder.Market{market})
-
-	return p.feederSvc.UnSubscribeMarkets([]pricefeeder.Market{market})
+	return p.getFeederServiceBySource(priceFeed.GetSource()).
+		UnSubscribeMarkets([]pricefeeder.Market{market})
 }
 
 func (p *priceFeederService) AddPriceFeed(
@@ -224,29 +251,9 @@ func (p *priceFeederService) ListSources(ctx context.Context) []string {
 	return supportedSources
 }
 
-func (p *priceFeederService) addMarkets(markets []pricefeeder.Market) {
-	p.marketsMtx.Lock()
-	defer p.marketsMtx.Unlock()
+func (p *priceFeederService) getFeederServiceBySource(
+	source string) pricefeeder.PriceFeeder {
+	v, _ := p.feederSvcBySource[source]
 
-	p.markets = append(p.markets, markets...)
-}
-
-func (p *priceFeederService) removeMarkets(markets []pricefeeder.Market) {
-	p.marketsMtx.Lock()
-	defer p.marketsMtx.Unlock()
-
-	for _, m := range markets {
-		for i, v := range p.markets {
-			if v.BaseAsset == m.BaseAsset && v.QuoteAsset == m.QuoteAsset {
-				p.markets = append(p.markets[:i], p.markets[i+1:]...)
-			}
-		}
-	}
-}
-
-func (p *priceFeederService) getMarkets() []pricefeeder.Market {
-	p.marketsMtx.RLock()
-	defer p.marketsMtx.RUnlock()
-
-	return p.markets
+	return v
 }

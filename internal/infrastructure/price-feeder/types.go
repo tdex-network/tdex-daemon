@@ -2,15 +2,10 @@ package pricefeederinfra
 
 import (
 	"fmt"
-	"regexp"
 
 	"github.com/shopspring/decimal"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-)
-
-const (
-	marketTickerFormat = "%s/%s"
 )
 
 type Feed struct {
@@ -59,15 +54,6 @@ func validateAddPriceFeed(market ports.Market, source, ticker string) error {
 		)
 	}
 
-	regex := regexp.MustCompile(marketTickerFormat)
-	if !regex.MatchString(ticker) {
-		return fmt.Errorf(
-			"invalid ticker: %s, must be in format %s",
-			ticker,
-			marketTickerFormat,
-		)
-	}
-
 	return nil
 }
 
@@ -79,15 +65,6 @@ func ValidateUpdatePriceFeed(id, source, ticker string) error {
 	if _, ok := sources[source]; !ok {
 		return fmt.Errorf(
 			"invalid source: %s, must be one of %v", source, sources,
-		)
-	}
-
-	regex := regexp.MustCompile(marketTickerFormat)
-	if !regex.MatchString(ticker) {
-		return fmt.Errorf(
-			"invalid ticker: %s, must be in format %s",
-			ticker,
-			marketTickerFormat,
 		)
 	}
 
