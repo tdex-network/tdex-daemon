@@ -11,6 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	pricefeederinfra "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
+
+	pricefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder"
+	bitfinexfeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/bitfinex"
+	coinbasefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/coinbase"
+	krakenfeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/kraken"
+
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/config"
@@ -40,6 +47,7 @@ var (
 	marketsPercentageFee                  uint32
 	feeBalanceThreshold                   uint64
 	pricesSlippagePercentage, satsPerByte decimal.Decimal
+	priceFeedInterval                     int
 
 	version = "dev"
 	commit  = "none"
@@ -72,9 +80,15 @@ func main() {
 		log.WithError(err).Fatal("failed to initialize pubsub service")
 	}
 
+	priceFeederSvc, err := newPriceFeederService()
+	if err != nil {
+		log.WithError(err).Fatal("failed to initialize price feeder service")
+	}
+
 	appConfig := &application.Config{
 		OceanWallet:         wallet,
 		SecurePubSub:        pubsub,
+		PriceFeederSvc:      priceFeederSvc,
 		MarketPercentageFee: marketsPercentageFee,
 		FeeBalanceThreshold: feeBalanceThreshold,
 		TradePriceSlippage:  pricesSlippagePercentage,
@@ -141,6 +155,8 @@ func loadConfig() error {
 	tradeSvcPort = config.GetInt(config.TradeListeningPortKey)
 	operatorSvcPort = config.GetInt(config.OperatorListeningPortKey)
 	oceanWalletAddr = config.GetString(config.OceanWalletAddrKey)
+	priceFeedInterval = config.GetInt(config.PriceFeedIntervalKey)
+
 	return nil
 }
 
@@ -162,6 +178,40 @@ func newWebhookPubSubService(datadir string) (ports.SecurePubSub, error) {
 		return nil, err
 	}
 	return webhookpubsub.NewWebhookPubSubService(secureStore)
+}
+
+func newPriceFeederService() (ports.PriceFeeder, error) {
+	bitfinexSvc, err := bitfinexfeeder.NewService(priceFeedInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	coinbaseSvc, err := coinbasefeeder.NewService(priceFeedInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	krakenSvc, err := krakenfeeder.NewService(priceFeedInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	feederSvcBySource := map[string]pricefeeder.PriceFeeder{
+		"bitfinex": bitfinexSvc,
+		"coinbase": coinbaseSvc,
+		"kraken":   krakenSvc,
+	}
+
+	priceFeedDbDir := filepath.Join(datadir, "pricefeed")
+
+	store, err := pricefeederinfra.NewPriceFeedStoreImpl(priceFeedDbDir, log.New())
+	if err != nil {
+		return nil, err
+	}
+
+	priceFeedSvc := pricefeederinfra.NewService(feederSvcBySource, store)
+
+	return priceFeedSvc, nil
 }
 
 func NewGrpcService(

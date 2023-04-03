@@ -3,18 +3,18 @@ package grpchandler
 import (
 	"context"
 
-	"github.com/tdex-network/tdex-daemon/internal/core/application/feeder"
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 )
 
 type feederHandler struct {
-	feederSvc feeder.Service
+	feederSvc application.FeederService
 }
 
 func NewFeederHandler(
-	feederSvc feeder.Service,
+	feederSvc application.FeederService,
 ) daemonv2.FeederServiceServer {
 	return &feederHandler{
 		feederSvc,

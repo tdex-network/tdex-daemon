@@ -435,7 +435,11 @@ func (s *service) newOperatorServer(
 		operatorHandler := grpchandler.NewOperatorHandler(
 			s.opts.AppConfig.OperatorService(),
 		)
+		feederHandler := grpchandler.NewFeederHandler(
+			s.opts.AppConfig.FeederService(),
+		)
 		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
+		daemonv2.RegisterFeederServiceServer(grpcServer, feederHandler)
 	}
 	reflection.Register(grpcServer)
 

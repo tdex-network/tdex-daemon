@@ -23,6 +23,7 @@ type Config struct {
 
 	OceanWallet         ports.WalletService
 	SecurePubSub        ports.SecurePubSub
+	PriceFeederSvc      ports.PriceFeeder
 	MarketPercentageFee uint32
 	FeeBalanceThreshold uint64
 	TradePriceSlippage  decimal.Decimal
@@ -34,6 +35,7 @@ type Config struct {
 	unlocker UnlockerService
 	operator OperatorService
 	trade    TradeService
+	feeder   FeederService
 }
 
 func (c *Config) Validate() error {
@@ -73,6 +75,11 @@ func (c *Config) OperatorService() OperatorService {
 
 func (c *Config) TradeService() TradeService {
 	svc, _ := c.tradeService()
+	return svc
+}
+
+func (c *Config) FeederService() FeederService {
+	svc, _ := c.feederService()
 	return svc
 }
 
@@ -151,4 +158,15 @@ func (c *Config) tradeService() (TradeService, error) {
 		c.trade = trade
 	}
 	return c.trade, nil
+}
+
+func (c *Config) feederService() (FeederService, error) {
+	if c.feeder == nil {
+		feeder, err := NewFeederService(c.PriceFeederSvc, c.repo)
+		if err != nil {
+			return nil, err
+		}
+		c.feeder = feeder
+	}
+	return c.feeder, nil
 }

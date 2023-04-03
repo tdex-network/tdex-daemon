@@ -302,9 +302,13 @@ func (s *serviceOnePort) newServer(
 		)
 		transportHandler := grpchandler.NewTransportHandler()
 		tradeHandler := grpchandler.NewTradeHandler(s.opts.AppConfig.TradeService())
+		feederHandler := grpchandler.NewFeederHandler(
+			s.opts.AppConfig.FeederService(),
+		)
 		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
 		tdexv1.RegisterTransportServiceServer(grpcServer, transportHandler)
 		tdexv1.RegisterTradeServiceServer(grpcServer, tradeHandler)
+		daemonv2.RegisterFeederServiceServer(grpcServer, feederHandler)
 
 		dialOpts := make([]grpc.DialOption, 0)
 		if len(s.opts.TLSCert) <= 0 {

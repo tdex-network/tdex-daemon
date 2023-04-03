@@ -16,7 +16,6 @@ type Service struct {
 }
 
 func NewService(
-	ctx context.Context,
 	feederSvc ports.PriceFeeder,
 	repoManager ports.RepoManager,
 ) (Service, error) {
@@ -35,7 +34,7 @@ func NewService(
 		}
 	}
 
-	priceFeedChan, err := feederSvc.Start(ctx, mkts)
+	priceFeedChan, err := feederSvc.Start(context.Background(), mkts)
 	if err != nil {
 		return Service{}, err
 	}
