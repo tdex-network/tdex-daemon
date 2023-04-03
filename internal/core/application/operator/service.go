@@ -314,6 +314,7 @@ func (s *service) getTxInfo(tx *transaction.Transaction, account string) txInfo 
 	}
 
 	return txInfo{
-		*tx, ownedInputs, notOwnedInputs, ownedOutputs, notOwnedOutputs, fee,
+		account, *tx,
+		ownedInputs, notOwnedInputs, ownedOutputs, notOwnedOutputs, fee,
 	}
 }

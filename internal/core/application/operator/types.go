@@ -247,6 +247,7 @@ func (i swapRequestInfo) GetUnblindedInputs() []ports.UnblindedInput {
 }
 
 type txInfo struct {
+	account string
 	transaction.Transaction
 	ownedInputs     []txOutputInfo
 	notOwnedInputs  []txOutputInfo
@@ -260,7 +261,21 @@ func (i txInfo) isDeposit() bool {
 }
 
 func (i txInfo) isWithdrawal() bool {
-	return len(i.ownedInputs) > 0 && len(i.notOwnedInputs) <= 0 && len(i.notOwnedOutputs) > 0
+	if i.account == domain.FeeAccount {
+		return len(i.ownedInputs) > 0 && len(i.notOwnedInputs) <= 0 &&
+			len(i.notOwnedOutputs) > 0
+	}
+
+	inAssets := make(map[string]struct{}, 0)
+	for _, in := range i.ownedInputs {
+		inAssets[in.asset] = struct{}{}
+	}
+	for _, out := range i.ownedOutputs {
+		if _, ok := inAssets[out.asset]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (i txInfo) depositAmountPerAsset() map[string]uint64 {
