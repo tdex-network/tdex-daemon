@@ -17,7 +17,7 @@ type TradeService interface {
 	) (decimal.Decimal, uint64, error)
 	TradePreview(
 		ctx context.Context, market ports.Market,
-		tradeType ports.TradeType, amount uint64, asset string,
+		tradeType ports.TradeType, amount uint64, asset, feeAsset string,
 	) (ports.TradePreview, error)
 	TradePropose(
 		ctx context.Context, market ports.Market,

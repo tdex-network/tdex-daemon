@@ -10,8 +10,14 @@ import (
 )
 
 func makeRandomMarket() *domain.Market {
+	name := "test"
+	baseAsset, quoteAsset := randomHex(32), randomHex(32)
+	baseFee := uint64(randomIntInRange(0, 9999))
+	quoteFee := uint64(randomIntInRange(0, 9999))
+	basePrecision := uint(randomIntInRange(0, 8))
+	quotePrecision := uint(randomIntInRange(0, 8))
 	market, _ := domain.NewMarket(
-		randomHex(32), randomHex(32), uint32(randomIntInRange(0, 9999)), 0, 0,
+		baseAsset, quoteAsset, name, baseFee, quoteFee, basePrecision, quotePrecision,
 	)
 	return market
 }

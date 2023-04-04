@@ -21,8 +21,6 @@ const (
 	DatadirKey = "DATADIR"
 	// LogLevelKey are the different logging levels. For reference on the values https://godoc.org/github.com/sirupsen/logrus#Level
 	LogLevelKey = "LOG_LEVEL"
-	// DefaultFeeKey is the default swap fee when creating a market
-	PercentageFeeKey = "PERCENTAGE_FEE"
 	// FeeAccountBalanceThresholdKey is the treshold of LBTC balance (in satoshis) for the fee account, after which we alert the operator that it cannot subsidize anymore swaps
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
 	// TradeExpiryTimeKey is the duration in seconds of lock on unspents we reserve for accepted trades, before eventually double spending it
@@ -73,9 +71,6 @@ const (
 	MacaroonsLocation = "macaroons"
 	ProfilerLocation  = "stats"
 
-	minPercentageFee = 0.01
-	maxPercentageFee = float64(99.99)
-
 	httpsProtocol = "https"
 )
 
@@ -90,7 +85,6 @@ func InitConfig() error {
 	vip.SetDefault(TradeListeningPortKey, 9945)
 	vip.SetDefault(OperatorListeningPortKey, 9000)
 	vip.SetDefault(LogLevelKey, 4)
-	vip.SetDefault(PercentageFeeKey, 0.25)
 	vip.SetDefault(FeeAccountBalanceThresholdKey, 5000)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
 	vip.SetDefault(TradeSatsPerByte, 0.1)
@@ -147,14 +141,6 @@ func validate() error {
 	datadir := GetString(DatadirKey)
 	if len(datadir) <= 0 {
 		return fmt.Errorf("missing datadir")
-	}
-
-	percentageFee := GetFloat(PercentageFeeKey)
-	if percentageFee < minPercentageFee || percentageFee > maxPercentageFee {
-		return fmt.Errorf(
-			"percentage fee must be in range [%.2f, %.2f]",
-			minPercentageFee, maxPercentageFee,
-		)
 	}
 
 	tlsKey, tlsCert := GetString(TradeTLSKeyKey), GetString(TradeTLSCertKey)

@@ -14,7 +14,7 @@ import (
 
 	"google.golang.org/grpc/credentials"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/gogo/protobuf/jsonpb"
@@ -210,14 +210,14 @@ func printRespJSON(resp interface{}) {
 	fmt.Println(jsonStr)
 }
 
-func getTransportClient(ctx *cli.Context) (tdexv1.TransportServiceClient, func(), error) {
+func getTransportClient(ctx *cli.Context) (tdexv2.TransportServiceClient, func(), error) {
 	conn, err := getClientConn(false)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { conn.Close() }
 
-	return tdexv1.NewTransportServiceClient(conn), cleanup, nil
+	return tdexv2.NewTransportServiceClient(conn), cleanup, nil
 }
 
 func getOperatorClient(ctx *cli.Context) (daemonv2.OperatorServiceClient, func(), error) {

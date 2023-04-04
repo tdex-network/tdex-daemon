@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math"
 
 	"github.com/btcsuite/btcd/btcutil"
@@ -11,9 +12,9 @@ import (
 	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
-type FixedFee struct {
-	BaseFee  uint64
-	QuoteFee uint64
+type MarketFee struct {
+	BaseAsset  uint64
+	QuoteAsset uint64
 }
 
 // MarketPrice represents base and quote market price
@@ -43,9 +44,11 @@ func (mp MarketPrice) GetQuotePrice() decimal.Decimal {
 // PreviewInfo contains info about a price preview based on the market's current
 // strategy.
 type PreviewInfo struct {
-	Price  MarketPrice
-	Amount uint64
-	Asset  string
+	Price     MarketPrice
+	Amount    uint64
+	Asset     string
+	FeeAsset  string
+	FeeAmount uint64
 }
 
 // Market defines the Market entity data structure for holding an asset pair state.
@@ -60,10 +63,10 @@ type Market struct {
 	BaseAssetPrecision uint
 	// Precison of the quote asset.
 	QuoteAssetPrecision uint
-	// Percentage fee expressed in basis points.
-	PercentageFee uint32
-	// Fixed fee amount expressed in satoshi for both assets.
-	FixedFee FixedFee
+	// Percentage fee expressed in basis points for both assets.
+	PercentageFee MarketFee
+	// Fixed fee amount expressed in satoshis for both assets.
+	FixedFee MarketFee
 	// if curretly open for trades
 	Tradable bool
 	// Market Making strategy type
@@ -75,7 +78,8 @@ type Market struct {
 // NewMarket returns a new market with an account index, the asset pair and the
 // percentage fee set.
 func NewMarket(
-	baseAsset, quoteAsset string, percentageFee uint32,
+	baseAsset, quoteAsset, name string,
+	basePercentageFee, quotePercentageFee uint64,
 	baseAssetPrecision, quoteAssetPrecision uint,
 ) (*Market, error) {
 	if !isValidAsset(baseAsset) {
@@ -84,7 +88,9 @@ func NewMarket(
 	if !isValidAsset(quoteAsset) {
 		return nil, ErrMarketInvalidQuoteAsset
 	}
-	if !isValidPercentageFee(int(percentageFee)) {
+	if !isValidPercentageFee(
+		int64(basePercentageFee), int64(quotePercentageFee),
+	) {
 		return nil, ErrMarketInvalidPercentageFee
 	}
 	if !isValidPrecision(baseAssetPrecision) {
@@ -93,16 +99,21 @@ func NewMarket(
 	if !isValidPrecision(quoteAssetPrecision) {
 		return nil, ErrMarketInvalidQuoteAssetPrecision
 	}
-	accountName := makeAccountName(baseAsset, quoteAsset)
+	if name == "" {
+		name = makeAccountName(baseAsset, quoteAsset)
+	}
 
 	return &Market{
 		BaseAsset:           baseAsset,
 		QuoteAsset:          quoteAsset,
-		Name:                accountName,
-		PercentageFee:       percentageFee,
+		Name:                name,
 		StrategyType:        StrategyTypeBalanced,
 		BaseAssetPrecision:  baseAssetPrecision,
 		QuoteAssetPrecision: quoteAssetPrecision,
+		PercentageFee: MarketFee{
+			BaseAsset:  basePercentageFee,
+			QuoteAsset: quotePercentageFee,
+		},
 	}, nil
 }
 
@@ -162,16 +173,21 @@ func (m *Market) MakeStrategyBalanced() error {
 }
 
 // ChangePercentageFee updates market's perentage fee to the given one.
-func (m *Market) ChangePercentageFee(fee uint32) error {
+func (m *Market) ChangePercentageFee(baseFee, quoteFee int64) error {
 	if m.IsTradable() {
 		return ErrMarketIsOpen
 	}
 
-	if !isValidPercentageFee(int(fee)) {
+	if !isValidPercentageFee(baseFee, quoteFee) {
 		return ErrMarketInvalidPercentageFee
 	}
 
-	m.PercentageFee = fee
+	if baseFee >= 0 {
+		m.PercentageFee.BaseAsset = uint64(baseFee)
+	}
+	if quoteFee >= 0 {
+		m.PercentageFee.QuoteAsset = uint64(quoteFee)
+	}
 	return nil
 }
 
@@ -181,15 +197,15 @@ func (m *Market) ChangeFixedFee(baseFee, quoteFee int64) error {
 		return ErrMarketIsOpen
 	}
 
-	if !isValidFixedFee(int(baseFee), int(quoteFee)) {
+	if !isValidFixedFee(baseFee, quoteFee) {
 		return ErrMarketInvalidFixedFee
 	}
 
 	if baseFee >= 0 {
-		m.FixedFee.BaseFee = uint64(baseFee)
+		m.FixedFee.BaseAsset = uint64(baseFee)
 	}
 	if quoteFee >= 0 {
-		m.FixedFee.QuoteFee = uint64(quoteFee)
+		m.FixedFee.QuoteAsset = uint64(quoteFee)
 	}
 	return nil
 }
@@ -237,21 +253,19 @@ func (m *Market) ChangeAssetPrecision(
 
 func (m *Market) Preview(
 	baseBalance, quoteBalance, amount uint64,
-	isBaseAsset, isBuy bool,
+	asset, feeAsset string, isBuy bool,
 ) (*PreviewInfo, error) {
 	if !m.IsTradable() {
 		return nil, ErrMarketIsClosed
 	}
-
-	if isBaseAsset {
-		if amount < m.FixedFee.BaseFee {
-			return nil, ErrMarketPreviewAmountTooLow
-		}
-	} else {
-		if amount < m.FixedFee.QuoteFee {
-			return nil, ErrMarketPreviewAmountTooLow
-		}
+	if asset != m.BaseAsset && asset != m.QuoteAsset {
+		return nil, fmt.Errorf("asset must be either base or quote asset")
 	}
+	if feeAsset != m.BaseAsset && feeAsset != m.QuoteAsset {
+		return nil, fmt.Errorf("fee asset must be either base or quote asset")
+	}
+
+	isBaseAsset := asset == m.BaseAsset
 
 	formula := m.formula(isBaseAsset, isBuy)
 	var args interface{}
@@ -276,7 +290,6 @@ func (m *Market) Preview(
 	if err != nil {
 		return nil, err
 	}
-
 	previewAsset := m.BaseAsset
 	previewAssetPrecision := math.Pow10(int(m.BaseAssetPrecision))
 	if isBaseAsset {
@@ -287,20 +300,27 @@ func (m *Market) Preview(
 	previewAmountInSats := previewAmount.Mul(
 		decimal.NewFromFloat(previewAssetPrecision),
 	).BigInt().Uint64()
-	previewAmountInSats, err = m.chargeFixedFees(
-		baseBalance, quoteBalance, previewAmountInSats, isBaseAsset, isBuy,
-	)
-	if err != nil {
-		return nil, err
-	}
+
 	if previewAmountInSats == 0 {
 		return nil, ErrMarketPreviewAmountTooLow
 	}
 
+	amountsByAsset := map[string]uint64{
+		asset:        amount,
+		previewAsset: previewAmountInSats,
+	}
+	amountForFees := amountsByAsset[feeAsset]
+	previewFeeAmount, err := m.previewFees(amountForFees, feeAsset, isBuy)
+	if err != nil {
+		return nil, err
+	}
+
 	return &PreviewInfo{
-		Price:  price,
-		Amount: previewAmountInSats,
-		Asset:  previewAsset,
+		Price:     price,
+		Amount:    previewAmountInSats,
+		Asset:     previewAsset,
+		FeeAsset:  feeAsset,
+		FeeAmount: previewFeeAmount,
 	}, nil
 }
 
@@ -358,7 +378,6 @@ func (m *Market) formulaOptsForPluggable(
 		BalanceIn:  balanceIn,
 		BalanceOut: balanceOut,
 		Price:      price,
-		Fee:        uint64(m.PercentageFee),
 	}
 }
 
@@ -374,10 +393,8 @@ func (m *Market) formulaOptsForBalanced(
 	}
 
 	return formula.BalancedReservesOpts{
-		BalanceIn:           balanceIn,
-		BalanceOut:          balanceOut,
-		Fee:                 uint64(m.PercentageFee),
-		ChargeFeeOnTheWayIn: true,
+		BalanceIn:  balanceIn,
+		BalanceOut: balanceOut,
 	}
 }
 
@@ -396,9 +413,9 @@ func (m *Market) priceFromBalances(
 ) (price MarketPrice, err error) {
 	bp := uint64(math.Pow10(int(m.BaseAssetPrecision)))
 	qp := uint64(math.Pow10(int(m.QuoteAssetPrecision)))
-	balanceIn := mathutil.Div(quoteBalance, qp)
-	balanceOut := mathutil.Div(baseBalance, bp)
-	basePrice, err := m.strategy().SpotPrice(
+	balanceIn := mathutil.Div(baseBalance, bp)
+	balanceOut := mathutil.Div(quoteBalance, qp)
+	quotePrice, err := m.strategy().SpotPrice(
 		formula.BalancedReservesOpts{
 			BalanceIn:  balanceIn,
 			BalanceOut: balanceOut,
@@ -407,13 +424,7 @@ func (m *Market) priceFromBalances(
 	if err != nil {
 		return
 	}
-	balanceIn, balanceOut = balanceOut, balanceIn
-	quotePrice, err := m.strategy().SpotPrice(
-		formula.BalancedReservesOpts{
-			BalanceIn:  balanceIn,
-			BalanceOut: balanceOut,
-		},
-	)
+	basePrice := decimal.NewFromInt(1).Div(quotePrice)
 
 	price = MarketPrice{
 		BasePrice:  basePrice.String(),
@@ -422,37 +433,29 @@ func (m *Market) priceFromBalances(
 	return
 }
 
-func (m *Market) chargeFixedFees(
-	baseBalance, quoteBalance, amount uint64,
-	isBaseAsset, isBuy bool,
-) (uint64, error) {
-	if isBuy {
-		if isBaseAsset {
-			return amount + uint64(m.FixedFee.QuoteFee), nil
-		}
-		return safeSubtractFeesFromAmount(
-			amount, uint64(m.FixedFee.BaseFee), baseBalance,
-		)
+func (m *Market) previewFees(amount uint64, asset string, isBuy bool) (uint64, error) {
+	percentageFee := m.PercentageFee.BaseAsset
+	fixedFee := m.FixedFee.BaseAsset
+	if asset == m.QuoteAsset {
+		percentageFee = m.PercentageFee.QuoteAsset
+		fixedFee = m.FixedFee.QuoteAsset
 	}
 
-	if isBaseAsset {
-		return safeSubtractFeesFromAmount(
-			amount, uint64(m.FixedFee.QuoteFee), quoteBalance,
-		)
-	}
-	return amount + uint64(m.FixedFee.BaseFee), nil
-}
+	fee := decimal.NewFromInt(int64(percentageFee)).Div(decimal.NewFromInt(10000))
+	feeAmount := decimal.NewFromInt(int64(amount)).Mul(fee).BigInt().Uint64()
+	feeAmount += fixedFee
+	// Fees must always be added on the amount sent by the proposer and
+	// subtracted on the amount he receives, ie. fees are going to be subtracted
+	// if he's BUYing and wants fees on base amount of the preview, or if he's
+	// SELLing and wants fees on quote amount.
+	feesToSubtract := (isBuy && asset == m.BaseAsset) ||
+		(!isBuy && asset == m.QuoteAsset)
 
-func safeSubtractFeesFromAmount(amount, fee, balance uint64) (uint64, error) {
-	amountLessFees := amount
-	if amountLessFees <= uint64(fee) {
+	if feesToSubtract && feeAmount >= amount {
 		return 0, ErrMarketPreviewAmountTooLow
 	}
-	amountLessFees -= uint64(fee)
-	if amountLessFees >= balance {
-		return 0, ErrMarketPreviewAmountTooBig
-	}
-	return amountLessFees, nil
+
+	return feeAmount, nil
 }
 
 func makeAccountName(baseAsset, quoteAsset string) string {
@@ -468,12 +471,18 @@ func isValidAsset(asset string) bool {
 	return len(buf) == 32
 }
 
-func isValidPercentageFee(basisPoint int) bool {
-	return basisPoint >= 0 && basisPoint <= 9999
+func isValidPercentageFee(baseFee, quoteFee int64) bool {
+	isValid := func(v int64) bool {
+		return (v >= 0 && v <= 9999)
+	}
+	return isValid(baseFee) && isValid(quoteFee)
 }
 
-func isValidFixedFee(baseFee, quoteFee int) bool {
-	return baseFee >= -1 && quoteFee >= -1
+func isValidFixedFee(baseFee, quoteFee int64) bool {
+	isValid := func(v int64) bool {
+		return v >= -1
+	}
+	return isValid(baseFee) && isValid(quoteFee)
 }
 
 func isValidPrecision(precision uint) bool {

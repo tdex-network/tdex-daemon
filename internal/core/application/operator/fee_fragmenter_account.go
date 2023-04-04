@@ -174,9 +174,13 @@ func (s *service) WithdrawFeeFragmenterFunds(
 		return "", fmt.Errorf("invalid password")
 	}
 
-	return s.wallet.Transaction().Transfer(
+	txHex, err := s.wallet.Transaction().Transfer(
 		ctx, domain.FeeFragmenterAccount, outs, millisatsPerByte,
 	)
+	if err != nil {
+		return "", err
+	}
+	return s.wallet.Transaction().BroadcastTransaction(ctx, txHex)
 }
 
 type output struct {

@@ -44,7 +44,7 @@
       },
       "additionalProperties": {}
     },
-    "v1Market": {
+    "tdexv2Market": {
       "type": "object",
       "properties": {
         "baseAsset": {
@@ -105,7 +105,7 @@
           "description": "id is the id of the price feed."
         },
         "market": {
-          "$ref": "#/definitions/v1Market",
+          "$ref": "#/definitions/tdexv2Market",
           "description": "market is the market for which the price feed is created."
         },
         "source": {

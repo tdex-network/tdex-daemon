@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -34,12 +34,12 @@ func (o TradeCompleteOpts) validate() error {
 		return ErrInvalidTradeCompleteOpts
 	}
 	if len(o.SwapComplete) > 0 {
-		if err := proto.Unmarshal(o.SwapComplete, &tdexv1.SwapComplete{}); err != nil {
+		if err := proto.Unmarshal(o.SwapComplete, &tdexv2.SwapComplete{}); err != nil {
 			return ErrInvalidSwapCompleteMessage
 		}
 	}
 	if len(o.SwapFail) > 0 {
-		if err := proto.Unmarshal(o.SwapFail, &tdexv1.SwapFail{}); err != nil {
+		if err := proto.Unmarshal(o.SwapFail, &tdexv2.SwapFail{}); err != nil {
 			return ErrInvalidSwapFailMessage
 		}
 	}
@@ -48,25 +48,25 @@ func (o TradeCompleteOpts) validate() error {
 }
 
 // TradeComplete crafts the request and calls the TradeComplete rpc
-func (c *Client) TradeComplete(opts TradeCompleteOpts) (*tdexv1.CompleteTradeResponse, error) {
+func (c *Client) TradeComplete(opts TradeCompleteOpts) (*tdexv2.CompleteTradeResponse, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
 
-	var swapComplete *tdexv1.SwapComplete
-	var swapFail *tdexv1.SwapFail
+	var swapComplete *tdexv2.SwapComplete
+	var swapFail *tdexv2.SwapFail
 	if len(opts.SwapComplete) > 0 {
-		swapComplete = &tdexv1.SwapComplete{}
+		swapComplete = &tdexv2.SwapComplete{}
 		//nolint
 		proto.Unmarshal(opts.SwapComplete, swapComplete)
 	}
 	if len(opts.SwapFail) > 0 {
-		swapFail = &tdexv1.SwapFail{}
+		swapFail = &tdexv2.SwapFail{}
 		//nolint
 		proto.Unmarshal(opts.SwapFail, swapFail)
 	}
 
-	request := &tdexv1.CompleteTradeRequest{
+	request := &tdexv2.CompleteTradeRequest{
 		SwapComplete: swapComplete,
 		SwapFail:     swapFail,
 	}

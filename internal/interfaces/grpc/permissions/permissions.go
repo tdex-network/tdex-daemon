@@ -3,12 +3,11 @@ package permissions
 import (
 	"fmt"
 
-	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
-
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
+	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 )
 
 const (
@@ -50,12 +49,12 @@ func findUnhandledMethods(publicRoutes, methodsThatNeedsAuth map[string][]bakery
 		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv2.WalletService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
-	for _, v := range tdexv1.TradeService_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv1.TradeService_ServiceDesc.ServiceName, v.MethodName))
+	for _, v := range tdexv2.TradeService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv2.TradeService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
-	for _, v := range tdexv1.TransportService_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv1.TransportService_ServiceDesc.ServiceName, v.MethodName))
+	for _, v := range tdexv2.TransportService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv2.TransportService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
 	for _, v := range allMethods {
@@ -249,31 +248,31 @@ func Whitelist() map[string][]bakery.Op {
 			Entity: EntityUnlocker,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ListMarkets", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListMarkets", tdexv2.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetMarketBalance", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketBalance", tdexv2.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/GetMarketPrice", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/GetMarketPrice", tdexv2.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/PreviewTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/PreviewTrade", tdexv2.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/ProposeTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ProposeTrade", tdexv2.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/CompleteTrade", tdexv1.TradeService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/CompleteTrade", tdexv2.TradeService_ServiceDesc.ServiceName): {{
 			Entity: EntityTrade,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%v/SupportedContentTypes", tdexv1.TransportService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%v/SupportedContentTypes", tdexv2.TransportService_ServiceDesc.ServiceName): {{
 			Entity: EntityTransport,
 			Action: "read",
 		}},

@@ -8,7 +8,7 @@ import (
 	"io"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/urfave/cli/v2"
 	"github.com/vulpemventures/go-elements/address"
 )
@@ -147,7 +147,7 @@ func marketFragmenterSplitFundsAction(ctx *cli.Context) error {
 
 	stream, err := client.MarketFragmenterSplitFunds(
 		context.Background(), &daemonv2.MarketFragmenterSplitFundsRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},

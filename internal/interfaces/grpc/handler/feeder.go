@@ -3,10 +3,11 @@ package grpchandler
 import (
 	"context"
 
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
+
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
 )
 
 type feederHandler struct {
@@ -100,7 +101,7 @@ func (f *feederHandler) GetPriceFeed(
 	return &daemonv2.GetPriceFeedResponse{
 		Feed: &daemonv2.PriceFeed{
 			Id: priceFeed.GetId(),
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  priceFeed.GetMarket().GetBaseAsset(),
 				QuoteAsset: priceFeed.GetMarket().GetBaseAsset(),
 			},
@@ -134,7 +135,7 @@ func (f *feederHandler) ListPriceFeeds(
 	for i, feed := range priceFeeds {
 		feeds[i] = &daemonv2.PriceFeed{
 			Id: feed.GetId(),
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  feed.GetMarket().GetBaseAsset(),
 				QuoteAsset: feed.GetMarket().GetQuoteAsset(),
 			},

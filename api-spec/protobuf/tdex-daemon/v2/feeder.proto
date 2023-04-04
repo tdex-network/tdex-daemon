@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package tdex_daemon.v2;
 
-import "tdex/v1/types.proto";
 import "tdex-daemon/v2/types.proto";
+import "tdex/v2/types.proto";
 
 // FeederService is the service to manage price feeds
 service FeederService {
@@ -28,7 +28,7 @@ service FeederService {
 
 message AddPriceFeedRequest {
   // market for which the price feed is created
-  tdex.v1.Market market = 1;
+  tdex.v2.Market market = 1;
   // source is the name of the price source to use, e.g. kraken, bitfinex, coinbase etc.
   string source = 2;
   // ticker is the ticker of the market, e.g. "XBT/USDT", "XBT/EUR" etc.
@@ -77,7 +77,7 @@ message ListSupportedPriceSourcesResponse {
 
 message GetPriceFeedRequest {
   // market is the market for which the price feeds are listed.
-  tdex.v1.Market market = 1;
+  tdex.v2.Market market = 1;
 }
 
 message GetPriceFeedResponse {

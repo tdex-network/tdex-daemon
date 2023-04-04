@@ -3,7 +3,7 @@ package tradeclient
 import (
 	"fmt"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -11,7 +11,7 @@ import (
 
 // Client allows to connect with a trader service and to call its RPCs
 type Client struct {
-	client tdexv1.TradeServiceClient
+	client tdexv2.TradeServiceClient
 	conn   *grpc.ClientConn
 }
 
@@ -25,7 +25,7 @@ func NewTradeClient(host string, port int) (*Client, error) {
 		return nil, err
 	}
 
-	client := tdexv1.NewTradeServiceClient(conn)
+	client := tdexv2.NewTradeServiceClient(conn)
 	return &Client{client, conn}, nil
 }
 

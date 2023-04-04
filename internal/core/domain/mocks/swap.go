@@ -60,13 +60,13 @@ func (_m *MockSwapParser) DeserializeFail(msg []byte) *domain.SwapFail {
 	return r0
 }
 
-// DeserializeRequest provides a mock function with given fields: msg
-func (_m *MockSwapParser) DeserializeRequest(msg []byte) *domain.SwapRequest {
-	ret := _m.Called(msg)
+// DeserializeRequest provides a mock function with given fields: msg, feeAsset, feeAmount
+func (_m *MockSwapParser) DeserializeRequest(msg []byte, feeAsset string, feeAmount uint64) *domain.SwapRequest {
+	ret := _m.Called(msg, feeAsset, feeAmount)
 
 	var r0 *domain.SwapRequest
-	if rf, ok := ret.Get(0).(func([]byte) *domain.SwapRequest); ok {
-		r0 = rf(msg)
+	if rf, ok := ret.Get(0).(func([]byte, string, uint64) *domain.SwapRequest); ok {
+		r0 = rf(msg, feeAsset, feeAmount)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.SwapRequest)

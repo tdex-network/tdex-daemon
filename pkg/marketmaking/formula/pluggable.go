@@ -10,12 +10,9 @@ type PluggableOpts struct {
 	BalanceIn  decimal.Decimal
 	BalanceOut decimal.Decimal
 	Price      decimal.Decimal
-	Fee        uint64
 }
 
 var (
-	tenThousand = decimal.NewFromInt(10000)
-
 	ErrInvalidPluggableOptsType = fmt.Errorf("opts must be of type PluggableOpts")
 )
 
@@ -40,9 +37,7 @@ func (s Pluggable) OutGivenIn(
 		return
 	}
 
-	percentageFee := decimal.NewFromInt(int64(opts.Fee)).Div(tenThousand)
-	amount := amountIn.Mul(opts.Price).Mul(decimal.NewFromInt(1).Sub(percentageFee))
-	amount = amount.Round(8)
+	amount := amountIn.Mul(opts.Price).Round(8)
 	if amount.LessThanOrEqual(decimal.Zero) {
 		err = ErrAmountTooLow
 		return
@@ -73,9 +68,7 @@ func (s Pluggable) InGivenOut(
 		return
 	}
 
-	percentageFee := decimal.NewFromInt(int64(opts.Fee)).Div(tenThousand)
-	amount := amountOut.Mul(opts.Price).Mul(decimal.NewFromInt(1).Add(percentageFee))
-	amount = amount.Round(8)
+	amount := amountOut.Mul(opts.Price).Round(8)
 	if amount.LessThanOrEqual(decimal.Zero) {
 		err = ErrAmountTooLow
 		return

@@ -26,6 +26,7 @@ type PreviewOpts struct {
 	TradeType int
 	Amount    uint64
 	Asset     string
+	FeeAsset  string
 }
 
 func (o PreviewOpts) validate() error {
@@ -41,6 +42,9 @@ func (o PreviewOpts) validate() error {
 	if buf, err := hex.DecodeString(o.Asset); err != nil || len(buf) != 32 {
 		return ErrInvalidAsset
 	}
+	if buf, err := hex.DecodeString(o.FeeAsset); err != nil || len(buf) != 32 {
+		return ErrInvalidFeeAsset
+	}
 	return nil
 }
 
@@ -50,6 +54,8 @@ type PreviewResult struct {
 	AmountToSend    uint64
 	AssetToReceive  string
 	AmountToReceive uint64
+	FeeAmount       uint64
+	FeeAsset        string
 }
 
 // Preview queries the gRPC server to get the latest price for the given market,
@@ -65,6 +71,7 @@ func (t *Trade) Preview(opts PreviewOpts) (*PreviewResult, error) {
 		TradeType: tradeType,
 		Amount:    opts.Amount,
 		Asset:     opts.Asset,
+		FeeAsset:  opts.FeeAsset,
 	})
 	if err != nil {
 		return nil, err
@@ -93,5 +100,7 @@ func (t *Trade) Preview(opts PreviewOpts) (*PreviewResult, error) {
 		AmountToSend:    amountToSend,
 		AssetToReceive:  assetToReceive,
 		AmountToReceive: amountToReceive,
+		FeeAmount:       preview.GetFeeAmount(),
+		FeeAsset:        preview.GetFeeAsset(),
 	}, nil
 }

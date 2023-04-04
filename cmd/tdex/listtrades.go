@@ -4,7 +4,7 @@ import (
 	"context"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 
 	"github.com/urfave/cli/v2"
 )
@@ -50,7 +50,7 @@ func listTradesAction(ctx *cli.Context) error {
 
 	resp, err := client.ListTrades(
 		context.Background(), &daemonv2.ListTradesRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},

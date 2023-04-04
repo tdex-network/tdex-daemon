@@ -70,9 +70,8 @@ type MarketPrice interface {
 }
 
 type MarketFee interface {
-	GetPercentageFee() uint32
-	GetFixedBaseFee() uint64
-	GetFixedQuoteFee() uint64
+	GetBaseAsset() uint64
+	GetQuoteAsset() uint64
 }
 
 type MarketStartegy interface {
@@ -82,11 +81,12 @@ type MarketStartegy interface {
 
 type MarketInfo interface {
 	GetMarket() Market
-	GetAccountName() string
+	GetName() string
 	IsTradable() bool
 	GetStrategyType() MarketStartegy
 	GetBalance() map[string]Balance
-	GetFee() MarketFee
+	GetPercentageFee() MarketFee
+	GetFixedFee() MarketFee
 	GetPrice() MarketPrice
 	GetBaseAssetPrecision() uint32
 	GetQuoteAssetPrecision() uint32
@@ -131,6 +131,7 @@ type TradeType interface {
 
 type Trade interface {
 	GetId() string
+	GetType() TradeType
 	GetStatus() TradeStatus
 	GetSwapInfo() SwapRequest
 	GetSwapFailInfo() SwapFail
@@ -140,16 +141,19 @@ type Trade interface {
 	GetSettleTimestamp() int64
 	GetExpiryTimestamp() int64
 	GetMarket() Market
-	GetMarketFee() MarketFee
+	GetMarketPercentageFee() MarketFee
+	GetMarketFixedFee() MarketFee
 	GetMarketPrice() MarketPrice
 }
 
 type TradePreview interface {
 	GetAmount() uint64
 	GetAsset() string
-	GetMarketFee() MarketFee
+	GetMarketPercentageFee() MarketFee
+	GetMarketFixedFee() MarketFee
 	GetMarketPrice() MarketPrice
-	GetMarketBalance() map[string]Balance
+	GetFeeAmount() uint64
+	GetFeeAsset() string
 }
 
 type TimeRange interface {
@@ -194,6 +198,8 @@ type SwapRequest interface {
 	GetAssetR() string
 	GetAmountR() uint64
 	GetTransaction() string
+	GetFeeAsset() string
+	GetFeeAmount() uint64
 	GetUnblindedInputs() []UnblindedInput
 }
 
