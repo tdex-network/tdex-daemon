@@ -2,6 +2,7 @@ package swap
 
 import (
 	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/thanhpk/randstr"
 	"google.golang.org/protobuf/proto"
 )
@@ -31,9 +32,25 @@ type FailOpts struct {
 	ErrCode   int
 }
 
-func Fail(opts FailOpts) (string, []byte, error) {
+func FailV1(opts FailOpts) (string, []byte, error) {
 	randomID := randstr.Hex(8)
 	msgFail := &tdexv1.SwapFail{
+		Id:             randomID,
+		MessageId:      opts.MessageID,
+		FailureCode:    uint32(opts.ErrCode),
+		FailureMessage: errMsg[opts.ErrCode],
+	}
+
+	msgFailSerialized, err := proto.Marshal(msgFail)
+	if err != nil {
+		return "", nil, err
+	}
+	return randomID, msgFailSerialized, nil
+}
+
+func Fail(opts FailOpts) (string, []byte, error) {
+	randomID := randstr.Hex(8)
+	msgFail := &tdexv2.SwapFail{
 		Id:             randomID,
 		MessageId:      opts.MessageID,
 		FailureCode:    uint32(opts.ErrCode),

@@ -23,7 +23,9 @@ type OperatorService interface {
 	// Market account
 	NewMarket(
 		ctx context.Context,
-		market ports.Market, baseAssetPrecision, quoteAssetPrecision uint,
+		market ports.Market, marketName string,
+		basePercentageFee, quotePercentageFee uint64,
+		baseAssetPrecision, quoteAssetPrecision uint,
 	) (ports.MarketInfo, error)
 	GetMarketInfo(
 		ctx context.Context, market ports.Market,
@@ -46,7 +48,8 @@ type OperatorService interface {
 		password string, market ports.Market, outputs []ports.TxOutput, millisatsPerByte uint64,
 	) (string, error)
 	UpdateMarketPercentageFee(
-		ctx context.Context, market ports.Market, basisPoint uint32,
+		ctx context.Context,
+		market ports.Market, baseFee, quoteFee int64,
 	) (ports.MarketInfo, error)
 	UpdateMarketFixedFee(
 		ctx context.Context,
@@ -119,12 +122,11 @@ type OperatorService interface {
 
 func NewOperatorService(
 	walletSvc WalletService, pubsubSvc PubSubService,
-	repoManager ports.RepoManager,
-	marketPercentageFee uint32, feeAccountBalanceThreshold uint64,
+	repoManager ports.RepoManager, feeAccountBalanceThreshold uint64,
 ) (OperatorService, error) {
 	w := walletSvc.(*wallet.Service)
 	p := pubsubSvc.(*pubsub.Service)
 	return operator.NewService(
-		w, p, repoManager, marketPercentageFee, feeAccountBalanceThreshold,
+		w, p, repoManager, feeAccountBalanceThreshold,
 	)
 }

@@ -10,7 +10,9 @@ type SwapParser interface {
 	SerializeComplete(accMsg []byte, tx string) (string, []byte, int)
 	SerializeFail(id string, code int) (string, []byte)
 
-	DeserializeRequest(msg []byte) *SwapRequest
+	DeserializeRequest(
+		msg []byte, feeAsset string, feeAmount uint64,
+	) *SwapRequest
 	DeserializeAccept(msg []byte) *SwapAccept
 	DeserializeComplete(msg []byte) *SwapComplete
 	DeserializeFail(msg []byte) *SwapFail
@@ -38,6 +40,8 @@ type SwapRequest struct {
 	AmountP         uint64
 	AmountR         uint64
 	Transaction     string
+	FeeAsset        string
+	FeeAmount       uint64
 	UnblindedInputs []UnblindedInput
 }
 
@@ -60,6 +64,12 @@ func (s *SwapRequest) GetAmountR() uint64 {
 }
 func (s *SwapRequest) GetTransaction() string {
 	return s.Transaction
+}
+func (s *SwapRequest) GetFeeAsset() string {
+	return s.FeeAsset
+}
+func (s *SwapRequest) GetFeeAmount() uint64 {
+	return s.FeeAmount
 }
 func (s *SwapRequest) GetUnblindedInputs() []UnblindedInput {
 	return s.UnblindedInputs

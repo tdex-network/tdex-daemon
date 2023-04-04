@@ -8,7 +8,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 )
 
 func TestRestrictedMethods(t *testing.T) {
@@ -30,8 +30,8 @@ func TestWhitelistedMethods(t *testing.T) {
 		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv2.WalletService_ServiceDesc.ServiceName, m.MethodName))
 	}
 
-	for _, v := range tdexv1.TradeService_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv1.TradeService_ServiceDesc.ServiceName, v.MethodName))
+	for _, v := range tdexv2.TradeService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv2.TradeService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
 	whitelist := permissions.Whitelist()

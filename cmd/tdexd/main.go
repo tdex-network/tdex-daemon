@@ -37,7 +37,6 @@ var (
 	connectAddr, connectProto                              string
 	operatorTLSExtraIPs, operatorTLSExtraDomains           []string
 	// App services config
-	marketsPercentageFee                  uint32
 	feeBalanceThreshold                   uint64
 	pricesSlippagePercentage, satsPerByte decimal.Decimal
 
@@ -75,7 +74,6 @@ func main() {
 	appConfig := &application.Config{
 		OceanWallet:         wallet,
 		SecurePubSub:        pubsub,
-		MarketPercentageFee: marketsPercentageFee,
 		FeeBalanceThreshold: feeBalanceThreshold,
 		TradePriceSlippage:  pricesSlippagePercentage,
 		TradeSatsPerByte:    satsPerByte,
@@ -134,7 +132,6 @@ func loadConfig() error {
 	connectProto = config.GetString(config.ConnectProtoKey)
 	dbType = config.GetString(config.DBTypeKey)
 	// App services config
-	marketsPercentageFee = uint32(config.GetFloat(config.PercentageFeeKey) * 100)
 	pricesSlippagePercentage = decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
 	satsPerByte = decimal.NewFromFloat(config.GetFloat(config.TradeSatsPerByte))
 	feeBalanceThreshold = uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))

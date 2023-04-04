@@ -15,6 +15,15 @@ func (l marketList) toPortableList() []ports.MarketInfo {
 	return list
 }
 
+type marketFeeInfo domain.MarketFee
+
+func (i marketFeeInfo) GetBaseAsset() uint64 {
+	return i.BaseAsset
+}
+func (i marketFeeInfo) GetQuoteAsset() uint64 {
+	return i.QuoteAsset
+}
+
 type marketInfo struct {
 	domain.Market
 	balance map[string]ports.Balance
@@ -26,7 +35,7 @@ func (i marketInfo) GetBaseAsset() string {
 func (i marketInfo) GetQuoteAsset() string {
 	return i.QuoteAsset
 }
-func (i marketInfo) GetAccountName() string {
+func (i marketInfo) GetName() string {
 	return i.Name
 }
 func (i marketInfo) GetBaseAssetPrecision() uint32 {
@@ -35,14 +44,11 @@ func (i marketInfo) GetBaseAssetPrecision() uint32 {
 func (i marketInfo) GetQuoteAssetPrecision() uint32 {
 	return uint32(i.Market.QuoteAssetPrecision)
 }
-func (i marketInfo) GetPercentageFee() uint32 {
-	return i.PercentageFee
+func (i marketInfo) GetPercentageFee() ports.MarketFee {
+	return marketFeeInfo(i.PercentageFee)
 }
-func (i marketInfo) GetFixedBaseFee() uint64 {
-	return i.FixedFee.BaseFee
-}
-func (i marketInfo) GetFixedQuoteFee() uint64 {
-	return i.FixedFee.QuoteFee
+func (i marketInfo) GetFixedFee() ports.MarketFee {
+	return marketFeeInfo(i.FixedFee)
 }
 func (i marketInfo) IsTradable() bool {
 	return i.Tradable
@@ -51,9 +57,6 @@ func (i marketInfo) GetStrategyType() ports.MarketStartegy {
 	return marketStrategyInfo(i.StrategyType)
 }
 func (i marketInfo) GetMarket() ports.Market {
-	return i
-}
-func (i marketInfo) GetFee() ports.MarketFee {
 	return i
 }
 func (i marketInfo) GetPrice() ports.MarketPrice {
@@ -75,17 +78,13 @@ func (i marketStrategyInfo) IsPluggable() bool {
 type previewInfo struct {
 	domain.Market
 	domain.PreviewInfo
-	balance map[string]ports.Balance
 }
 
-func (i previewInfo) GetPercentageFee() uint32 {
-	return i.Market.PercentageFee
+func (i previewInfo) GetMarketPercentageFee() ports.MarketFee {
+	return marketFeeInfo(i.Market.PercentageFee)
 }
-func (i previewInfo) GetFixedBaseFee() uint64 {
-	return i.Market.FixedFee.BaseFee
-}
-func (i previewInfo) GetFixedQuoteFee() uint64 {
-	return i.Market.FixedFee.QuoteFee
+func (i previewInfo) GetMarketFixedFee() ports.MarketFee {
+	return marketFeeInfo(i.Market.FixedFee)
 }
 func (i previewInfo) GetAmount() uint64 {
 	return i.PreviewInfo.Amount
@@ -93,14 +92,25 @@ func (i previewInfo) GetAmount() uint64 {
 func (i previewInfo) GetAsset() string {
 	return i.PreviewInfo.Asset
 }
-func (i previewInfo) GetMarketBalance() map[string]ports.Balance {
-	return i.balance
-}
-func (i previewInfo) GetMarketFee() ports.MarketFee {
-	return i
-}
 func (i previewInfo) GetMarketPrice() ports.MarketPrice {
 	return i.Market.Price
+}
+func (i previewInfo) GetFeeAmount() uint64 {
+	return i.PreviewInfo.FeeAmount
+}
+func (i previewInfo) GetFeeAsset() string {
+	return i.PreviewInfo.FeeAsset
+}
+
+type tradeTypeInfo struct {
+	ports.TradeType
+}
+
+func (i tradeTypeInfo) toDomain() domain.TradeType {
+	if i.TradeType.IsBuy() {
+		return domain.TradeBuy
+	}
+	return domain.TradeSell
 }
 
 type swapRequestInfo struct {
@@ -127,6 +137,8 @@ func (i swapRequestInfo) toDomain() domain.SwapRequest {
 		AmountR:         info.GetAmountR(),
 		Transaction:     info.GetTransaction(),
 		UnblindedInputs: list,
+		FeeAsset:        info.GetFeeAsset(),
+		FeeAmount:       info.GetFeeAmount(),
 	}
 }
 

@@ -18,6 +18,7 @@ type WalletService interface {
 	) (string, error)
 	CompleteSwap(
 		account string, swapRequest ports.SwapRequest, msatsPerByte uint64,
+		feesToAdd bool,
 	) (string, []ports.Utxo, int64, error)
 	RegisterHandlerForTxEvent(handler func(ports.WalletTxNotification) bool)
 	RegisterHandlerForUtxoEvent(handler func(ports.WalletUtxoNotification) bool)

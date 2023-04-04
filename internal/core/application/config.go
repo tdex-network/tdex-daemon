@@ -23,7 +23,6 @@ type Config struct {
 
 	OceanWallet         ports.WalletService
 	SecurePubSub        ports.SecurePubSub
-	MarketPercentageFee uint32
 	FeeBalanceThreshold uint64
 	TradePriceSlippage  decimal.Decimal
 	TradeSatsPerByte    decimal.Decimal
@@ -127,7 +126,7 @@ func (c *Config) operatorService() (OperatorService, error) {
 		pubsub, _ := c.pubsubService()
 		repo, _ := c.repoManager()
 		operator, err := NewOperatorService(
-			wallet, pubsub, repo, c.MarketPercentageFee, c.FeeBalanceThreshold,
+			wallet, pubsub, repo, c.FeeBalanceThreshold,
 		)
 		if err != nil {
 			return nil, err

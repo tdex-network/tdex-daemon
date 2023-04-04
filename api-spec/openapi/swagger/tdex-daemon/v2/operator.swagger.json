@@ -376,11 +376,11 @@
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/v1Market",
+          "$ref": "#/definitions/tdexv2Market",
           "title": "The asset pair of the market"
         },
         "fee": {
-          "$ref": "#/definitions/v1Fee",
+          "$ref": "#/definitions/tdexv2Fee",
           "title": "The percentage and fixed fees"
         },
         "tradable": {
@@ -391,12 +391,12 @@
           "$ref": "#/definitions/tdex_daemonv2StrategyType",
           "description": "The making strategy."
         },
-        "accountName": {
+        "name": {
           "type": "string",
-          "description": "The name of the wallet account."
+          "description": "The optional name given to the market."
         },
         "price": {
-          "$ref": "#/definitions/v1Price",
+          "$ref": "#/definitions/tdexv2Price",
           "description": "The current price in case the strategy is PLUGGABLE."
         },
         "balance": {
@@ -404,7 +404,7 @@
           "additionalProperties": {
             "$ref": "#/definitions/tdex_daemonv2Balance"
           },
-          "description": "The current unlocked balance."
+          "description": "The current market balance by asset."
         },
         "baseAssetPrecision": {
           "type": "integer",
@@ -553,6 +553,15 @@
         "assetR": {
           "type": "string",
           "description": "The responder's asset hash."
+        },
+        "feeAmount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The fee amount charged for trade."
+        },
+        "feeAsset": {
+          "type": "string",
+          "description": "The asset of the swap fees."
         }
       }
     },
@@ -602,11 +611,11 @@
           "description": "The info of an eventually failed swap."
         },
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee",
+          "$ref": "#/definitions/tdexv2MarketWithFee",
           "description": "The collected fee on the current swap."
         },
         "price": {
-          "$ref": "#/definitions/v1Price",
+          "$ref": "#/definitions/tdexv2Price",
           "description": "The prices of the trade at request time."
         },
         "requestTimestamp": {
@@ -653,6 +662,10 @@
         "expiryDate": {
           "type": "string",
           "description": "The timestamp of the expiration date in RFC3339 format."
+        },
+        "tradeType": {
+          "$ref": "#/definitions/tdexv2TradeType",
+          "description": "The trade type either BUY or SELL."
         }
       }
     },
@@ -710,7 +723,7 @@
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee",
+          "$ref": "#/definitions/tdexv2MarketWithFee",
           "description": "The market with updated fees."
         }
       }
@@ -719,7 +732,7 @@
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee",
+          "$ref": "#/definitions/tdexv2MarketWithFee",
           "description": "The market with updated fees."
         }
       }
@@ -803,32 +816,20 @@
         }
       }
     },
-    "v1Fee": {
+    "tdexv2Fee": {
       "type": "object",
       "properties": {
-        "basisPoint": {
-          "type": "string",
-          "format": "int64"
+        "percentageFee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "Percentage fee on both assets of the market in basis point."
         },
-        "fixed": {
-          "$ref": "#/definitions/v1Fixed"
+        "fixedFee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "Fixed fee on both assets of the market in satoshi."
         }
       }
     },
-    "v1Fixed": {
-      "type": "object",
-      "properties": {
-        "baseFee": {
-          "type": "string",
-          "format": "int64"
-        },
-        "quoteFee": {
-          "type": "string",
-          "format": "int64"
-        }
-      }
-    },
-    "v1Market": {
+    "tdexv2Market": {
       "type": "object",
       "properties": {
         "baseAsset": {
@@ -839,18 +840,18 @@
         }
       }
     },
-    "v1MarketWithFee": {
+    "tdexv2MarketWithFee": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/v1Market"
+          "$ref": "#/definitions/tdexv2Market"
         },
         "fee": {
-          "$ref": "#/definitions/v1Fee"
+          "$ref": "#/definitions/tdexv2Fee"
         }
       }
     },
-    "v1Price": {
+    "tdexv2Price": {
       "type": "object",
       "properties": {
         "basePrice": {
@@ -862,6 +863,14 @@
           "format": "double"
         }
       }
+    },
+    "tdexv2TradeType": {
+      "type": "string",
+      "enum": [
+        "TRADE_TYPE_BUY",
+        "TRADE_TYPE_SELL"
+      ],
+      "default": "TRADE_TYPE_BUY"
     },
     "v2DeriveFeeAddressesResponse": {
       "type": "object",
@@ -906,6 +915,19 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "v2MarketFee": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string",
+          "format": "int64"
+        },
+        "quoteAsset": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

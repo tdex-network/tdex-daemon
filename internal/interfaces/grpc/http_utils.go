@@ -278,13 +278,12 @@ func router(
 			grpcWebServer.ServeHTTP(w, r)
 			return
 		}
+
 		if isOptionRequest(r) {
-			if grpcGateway != nil {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Access-Control-Allow-Headers", "*")
-				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-				return
-			}
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			return
 		}
 
 		if isHttpRequest(r) {
@@ -296,6 +295,9 @@ func router(
 				return
 			}
 			if grpcGateway != nil {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 				grpcGateway.ServeHTTP(w, r)
 				return
 			}

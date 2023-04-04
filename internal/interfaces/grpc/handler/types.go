@@ -4,7 +4,7 @@ import (
 	"time"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 )
 
@@ -12,8 +12,8 @@ type market struct {
 	ports.Market
 }
 
-func (m market) toProto() *tdexv1.Market {
-	return &tdexv1.Market{
+func (m market) toProto() *tdexv2.Market {
+	return &tdexv2.Market{
 		BaseAsset:  m.GetBaseAsset(),
 		QuoteAsset: m.GetQuoteAsset(),
 	}
@@ -32,28 +32,33 @@ func (i marketInfo) toProto() *daemonv2.MarketInfo {
 
 	return &daemonv2.MarketInfo{
 		Market:              market{info.GetMarket()}.toProto(),
-		Fee:                 marketFeeInfo{info.GetFee()}.toProto(),
 		Tradable:            info.IsTradable(),
 		StrategyType:        marketStrategyInfo{info.GetStrategyType()}.toProto(),
-		AccountName:         info.GetAccountName(),
+		Name:                info.GetName(),
 		Price:               marketPriceInfo{info.GetPrice()}.toProto(),
 		Balance:             balance,
 		BaseAssetPrecision:  info.GetBaseAssetPrecision(),
 		QuoteAssetPrecision: info.GetQuoteAssetPrecision(),
+		Fee: marketFeeInfo{
+			info.GetPercentageFee(), info.GetFixedFee(),
+		}.toProto(),
 	}
 }
 
 type marketFeeInfo struct {
-	ports.MarketFee
+	percentageFee ports.MarketFee
+	fixedFee      ports.MarketFee
 }
 
-func (i marketFeeInfo) toProto() *tdexv1.Fee {
-	info := i.MarketFee
-	return &tdexv1.Fee{
-		BasisPoint: int64(info.GetPercentageFee()),
-		Fixed: &tdexv1.Fixed{
-			BaseFee:  int64(info.GetFixedBaseFee()),
-			QuoteFee: int64(info.GetFixedQuoteFee()),
+func (i marketFeeInfo) toProto() *tdexv2.Fee {
+	return &tdexv2.Fee{
+		PercentageFee: &tdexv2.MarketFee{
+			BaseAsset:  int64(i.percentageFee.GetBaseAsset()),
+			QuoteAsset: int64(i.percentageFee.GetQuoteAsset()),
+		},
+		FixedFee: &tdexv2.MarketFee{
+			BaseAsset:  int64(i.fixedFee.GetBaseAsset()),
+			QuoteAsset: int64(i.fixedFee.GetQuoteAsset()),
 		},
 	}
 }
@@ -62,11 +67,11 @@ type marketPriceInfo struct {
 	ports.MarketPrice
 }
 
-func (i marketPriceInfo) toProto() *tdexv1.Price {
+func (i marketPriceInfo) toProto() *tdexv2.Price {
 	info := i.MarketPrice
 	basePrice, _ := info.GetBasePrice().Float64()
 	quotePrice, _ := info.GetQuotePrice().Float64()
-	return &tdexv1.Price{
+	return &tdexv2.Price{
 		BasePrice:  basePrice,
 		QuotePrice: quotePrice,
 	}
@@ -165,13 +170,13 @@ func (i volumeInfo) toProto() *daemonv2.MarketVolume {
 	}
 }
 
-type tradeTypeInfo tdexv1.TradeType
+type tradeTypeInfo tdexv2.TradeType
 
 func (i tradeTypeInfo) IsBuy() bool {
-	return tdexv1.TradeType(i) == tdexv1.TradeType_TRADE_TYPE_BUY
+	return tdexv2.TradeType(i) == tdexv2.TradeType_TRADE_TYPE_BUY
 }
 func (i tradeTypeInfo) IsSell() bool {
-	return tdexv1.TradeType(i) == tdexv1.TradeType_TRADE_TYPE_SELL
+	return tdexv2.TradeType(i) == tdexv2.TradeType_TRADE_TYPE_SELL
 }
 
 type tradesInfo []ports.Trade
@@ -179,14 +184,21 @@ type tradesInfo []ports.Trade
 func (i tradesInfo) toProto() []*daemonv2.TradeInfo {
 	list := make([]*daemonv2.TradeInfo, 0, len(i))
 	for _, info := range i {
+		tradeType := tdexv2.TradeType_TRADE_TYPE_BUY
+		if info.GetType().IsSell() {
+			tradeType = tdexv2.TradeType_TRADE_TYPE_SELL
+		}
 		list = append(list, &daemonv2.TradeInfo{
-			TradeId:  info.GetId(),
-			Status:   tradeStatusInfo{info.GetStatus()}.toProto(),
-			SwapInfo: swapInfo{info.GetSwapInfo()}.toProto(),
-			FailInfo: failInfo{info.GetSwapFailInfo()}.toProto(),
-			MarketWithFee: &tdexv1.MarketWithFee{
+			TradeId:   info.GetId(),
+			TradeType: tradeType,
+			Status:    tradeStatusInfo{info.GetStatus()}.toProto(),
+			SwapInfo:  swapInfo{info.GetSwapInfo()}.toProto(),
+			FailInfo:  failInfo{info.GetSwapFailInfo()}.toProto(),
+			MarketWithFee: &tdexv2.MarketWithFee{
 				Market: market{info.GetMarket()}.toProto(),
-				Fee:    marketFeeInfo{info.GetMarketFee()}.toProto(),
+				Fee: marketFeeInfo{
+					info.GetMarketPercentageFee(), info.GetMarketFixedFee(),
+				}.toProto(),
 			},
 			Price:             marketPriceInfo{info.GetMarketPrice()}.toProto(),
 			RequestTimestamp:  info.GetRequestTimestamp(),
@@ -232,7 +244,9 @@ func (i tradeStatusInfo) toProto() *daemonv2.TradeStatusInfo {
 }
 
 type swapRequestInfo struct {
-	*tdexv1.SwapRequest
+	*tdexv2.SwapRequest
+	feeAsset  string
+	feeAmount uint64
 }
 
 func (i swapRequestInfo) GetUnblindedInputs() []ports.UnblindedInput {
@@ -244,16 +258,24 @@ func (i swapRequestInfo) GetUnblindedInputs() []ports.UnblindedInput {
 	return list
 }
 
+func (i swapRequestInfo) GetFeeAsset() string {
+	return i.feeAsset
+}
+
+func (i swapRequestInfo) GetFeeAmount() uint64 {
+	return i.feeAmount
+}
+
 type swapAcceptInfo struct {
 	ports.SwapAccept
 }
 
-func (i swapAcceptInfo) toProto() *tdexv1.SwapAccept {
+func (i swapAcceptInfo) toProto() *tdexv2.SwapAccept {
 	info := i.SwapAccept
 	if info == nil {
 		return nil
 	}
-	return &tdexv1.SwapAccept{
+	return &tdexv2.SwapAccept{
 		Id:          info.GetId(),
 		RequestId:   info.GetRequestId(),
 		Transaction: info.GetTransaction(),
@@ -264,12 +286,12 @@ type swapFailInfo struct {
 	ports.SwapFail
 }
 
-func (i swapFailInfo) toProto() *tdexv1.SwapFail {
+func (i swapFailInfo) toProto() *tdexv2.SwapFail {
 	info := i.SwapFail
 	if info == nil {
 		return nil
 	}
-	return &tdexv1.SwapFail{
+	return &tdexv2.SwapFail{
 		Id:             info.GetId(),
 		MessageId:      info.GetMessageId(),
 		FailureCode:    info.GetFailureCode(),
@@ -288,10 +310,12 @@ func (i swapInfo) toProto() *daemonv2.SwapInfo {
 	}
 
 	return &daemonv2.SwapInfo{
-		AssetP:  info.GetAssetP(),
-		AmountP: info.GetAmountP(),
-		AssetR:  info.GetAssetR(),
-		AmountR: info.GetAmountR(),
+		AssetP:    info.GetAssetP(),
+		AmountP:   info.GetAmountP(),
+		AssetR:    info.GetAssetR(),
+		AmountR:   info.GetAmountR(),
+		FeeAsset:  info.GetFeeAsset(),
+		FeeAmount: info.GetFeeAmount(),
 	}
 }
 

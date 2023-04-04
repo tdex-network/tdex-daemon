@@ -15,9 +15,10 @@ import (
 
 // repoManager holds all the badgerhold stores in a single data structure.
 type repoManager struct {
-	store        *badgerhold.Store
-	priceStore   *badgerhold.Store
-	unspentStore *badgerhold.Store
+	marketStore *badgerhold.Store
+	priceStore  *badgerhold.Store
+	tradeStore  *badgerhold.Store
+	txStore     *badgerhold.Store
 
 	marketRepository     domain.MarketRepository
 	tradeRepository      domain.TradeRepository
@@ -30,37 +31,41 @@ type repoManager struct {
 // It creates a dedicated directory for main and prices stores, while the
 // unspent repository lives in memory.
 func NewRepoManager(baseDbDir string, logger badger.Logger) (ports.RepoManager, error) {
-	var maindbDir, pricedbDir, unspentDir string
+	var marketsDir, pricesDir, tradesDir, txsDir string
 	if len(baseDbDir) > 0 {
-		maindbDir = filepath.Join(baseDbDir, "main")
-		pricedbDir = filepath.Join(baseDbDir, "prices")
-		unspentDir = filepath.Join(baseDbDir, "unspents")
+		marketsDir = filepath.Join(baseDbDir, "markets")
+		pricesDir = filepath.Join(baseDbDir, "prices")
+		tradesDir = filepath.Join(baseDbDir, "trades")
+		txsDir = filepath.Join(baseDbDir, "transactions")
 	}
 
-	mainDb, err := createDb(maindbDir, logger)
+	marketDb, err := createDb(marketsDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening main db: %w", err)
 	}
-
-	priceDb, err := createDb(pricedbDir, logger)
+	priceDb, err := createDb(pricesDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening prices db: %w", err)
 	}
-
-	unspentDb, err := createDb(unspentDir, logger)
+	tradeDb, err := createDb(tradesDir, logger)
+	if err != nil {
+		return nil, fmt.Errorf("opening unspents db: %w", err)
+	}
+	txDb, err := createDb(txsDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening unspents db: %w", err)
 	}
 
-	marketRepo := NewMarketRepositoryImpl(mainDb, priceDb)
-	tradeRepo := NewTradeRepositoryImpl(mainDb)
-	depositRepository := NewDepositRepositoryImpl(mainDb)
-	withdrawalRepository := NewWithdrawalRepositoryImpl(mainDb)
+	marketRepo := NewMarketRepositoryImpl(marketDb, priceDb)
+	tradeRepo := NewTradeRepositoryImpl(tradeDb)
+	depositRepository := NewDepositRepositoryImpl(txDb)
+	withdrawalRepository := NewWithdrawalRepositoryImpl(txDb)
 
 	return &repoManager{
-		store:                mainDb,
+		marketStore:          marketDb,
 		priceStore:           priceDb,
-		unspentStore:         unspentDb,
+		tradeStore:           tradeDb,
+		txStore:              txDb,
 		marketRepository:     marketRepo,
 		tradeRepository:      tradeRepo,
 		depositRepository:    depositRepository,
@@ -85,9 +90,10 @@ func (d *repoManager) WithdrawalRepository() domain.WithdrawalRepository {
 }
 
 func (d *repoManager) Close() {
-	d.store.Close()
+	d.marketStore.Close()
 	d.priceStore.Close()
-	d.unspentStore.Close()
+	d.tradeStore.Close()
+	d.txStore.Close()
 }
 
 // isTransactionConflict returns whether the error occurred when committing a

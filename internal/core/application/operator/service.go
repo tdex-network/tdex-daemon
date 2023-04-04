@@ -25,7 +25,6 @@ type service struct {
 	pubsub      *pubsub.Service
 	repoManager ports.RepoManager
 
-	marketPercentageFee        uint32
 	feeAccountBalanceThreshold uint64
 	masterBlindingKey          *slip77.Slip77
 	network                    network.Network
@@ -33,8 +32,7 @@ type service struct {
 
 func NewService(
 	walletSvc *wallet.Service, pubsubSvc *pubsub.Service,
-	repoManager ports.RepoManager,
-	marketPercentageFee uint32, feeAccountBalanceThreshold uint64,
+	repoManager ports.RepoManager, feeAccountBalanceThreshold uint64,
 ) (*service, error) {
 	if walletSvc == nil {
 		return nil, fmt.Errorf("missing wallet service")
@@ -55,7 +53,7 @@ func NewService(
 
 	svc := &service{
 		walletSvc, pubsubSvc, repoManager,
-		marketPercentageFee, feeAccountBalanceThreshold, masterBlindingKey,
+		feeAccountBalanceThreshold, masterBlindingKey,
 		walletSvc.Network(),
 	}
 
@@ -172,8 +170,8 @@ func (s *service) checkAccountsLowBalance() func(ports.WalletTxNotification) boo
 						balance, _ := s.wallet.Account().GetBalance(
 							context.Background(), account,
 						)
-						baseThreshold := market.FixedFee.BaseFee
-						quoteThreshold := market.FixedFee.QuoteFee
+						baseThreshold := market.FixedFee.BaseAsset
+						quoteThreshold := market.FixedFee.QuoteAsset
 						isLowBalance := len(balance) <= 0 ||
 							balance[market.BaseAsset] == nil ||
 							balance[market.QuoteAsset] == nil ||
@@ -212,12 +210,6 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 			withdrawals := make([]domain.Withdrawal, 0)
 
 			for _, account := range notification.GetAccountNames() {
-				// We want to store info about only fee or market accounts.
-				if account == domain.FeeFragmenterAccount ||
-					account == domain.MarketFragmenterAccount {
-					continue
-				}
-
 				txInfo := s.getTxInfo(tx, account)
 				if txInfo.isDeposit() {
 					deposits = append(deposits, domain.Deposit{
@@ -322,6 +314,7 @@ func (s *service) getTxInfo(tx *transaction.Transaction, account string) txInfo 
 	}
 
 	return txInfo{
-		*tx, ownedInputs, notOwnedInputs, ownedOutputs, notOwnedOutputs, fee,
+		account, *tx,
+		ownedInputs, notOwnedInputs, ownedOutputs, notOwnedOutputs, fee,
 	}
 }

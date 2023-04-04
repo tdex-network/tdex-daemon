@@ -5,15 +5,15 @@ import (
 	"encoding/hex"
 	"errors"
 
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 
 	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	tradetype "github.com/tdex-network/tdex-daemon/pkg/trade/type"
 )
 
 // Markets calls the Markets rpc and returns its response
-func (c *Client) Markets() (*tdexv1.ListMarketsResponse, error) {
-	return c.client.ListMarkets(context.Background(), &tdexv1.ListMarketsRequest{})
+func (c *Client) Markets() (*tdexv2.ListMarketsResponse, error) {
+	return c.client.ListMarkets(context.Background(), &tdexv2.ListMarketsRequest{})
 }
 
 // BalancesOpts is the struct given to Balances method
@@ -29,13 +29,13 @@ func (o BalancesOpts) validate() error {
 }
 
 // Balances crafts the request and calls the Balances rpc
-func (c *Client) GetMarketBalance(opts BalancesOpts) (*tdexv1.GetMarketBalanceResponse, error) {
+func (c *Client) GetMarketBalance(opts BalancesOpts) (*tdexv2.GetMarketBalanceResponse, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
 
-	request := &tdexv1.GetMarketBalanceRequest{
-		Market: &tdexv1.Market{
+	request := &tdexv2.GetMarketBalanceRequest{
+		Market: &tdexv2.Market{
 			BaseAsset:  opts.Market.BaseAsset,
 			QuoteAsset: opts.Market.QuoteAsset,
 		},
@@ -49,6 +49,7 @@ type PreviewTradeOpts struct {
 	TradeType tradetype.TradeType
 	Amount    uint64
 	Asset     string
+	FeeAsset  string
 }
 
 func (o PreviewTradeOpts) validate() error {
@@ -64,23 +65,27 @@ func (o PreviewTradeOpts) validate() error {
 	if buf, err := hex.DecodeString(o.Asset); err != nil || len(buf) != 32 {
 		return errors.New("asset must be a 32-byte array in hex format")
 	}
+	if buf, err := hex.DecodeString(o.FeeAsset); err != nil || len(buf) != 32 {
+		return errors.New("fee asset must be a 32-byte array in hex format")
+	}
 	return nil
 }
 
 // PreviewTrade crafts the request and calls the PreviewTrade rpc
-func (c *Client) PreviewTrade(opts PreviewTradeOpts) (*tdexv1.PreviewTradeResponse, error) {
+func (c *Client) PreviewTrade(opts PreviewTradeOpts) (*tdexv2.PreviewTradeResponse, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
 
-	request := &tdexv1.PreviewTradeRequest{
-		Market: &tdexv1.Market{
+	request := &tdexv2.PreviewTradeRequest{
+		Market: &tdexv2.Market{
 			BaseAsset:  opts.Market.BaseAsset,
 			QuoteAsset: opts.Market.QuoteAsset,
 		},
-		Type:   tdexv1.TradeType(opts.TradeType),
-		Amount: opts.Amount,
-		Asset:  opts.Asset,
+		Type:     tdexv2.TradeType(opts.TradeType),
+		Amount:   opts.Amount,
+		Asset:    opts.Asset,
+		FeeAsset: opts.FeeAsset,
 	}
 	return c.client.PreviewTrade(context.Background(), request)
 }

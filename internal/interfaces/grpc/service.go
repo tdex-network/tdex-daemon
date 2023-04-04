@@ -13,7 +13,7 @@ import (
 
 	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -492,9 +492,9 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 
 	grpcServer := grpc.NewServer(serverOpts...)
 	tradeHandler := grpchandler.NewTradeHandler(s.opts.AppConfig.TradeService())
-	tdexv1.RegisterTradeServiceServer(grpcServer, tradeHandler)
+	tdexv2.RegisterTradeServiceServer(grpcServer, tradeHandler)
 	transportHandler := grpchandler.NewTransportHandler()
-	tdexv1.RegisterTransportServiceServer(grpcServer, transportHandler)
+	tdexv2.RegisterTransportServiceServer(grpcServer, transportHandler)
 	reflection.Register(grpcServer)
 
 	// grpcweb wrapped server
@@ -524,12 +524,12 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 		return nil, err
 	}
 	gwmux := runtime.NewServeMux()
-	if err := tdexv1.RegisterTransportServiceHandler(
+	if err := tdexv2.RegisterTransportServiceHandler(
 		ctx, gwmux, conn,
 	); err != nil {
 		return nil, err
 	}
-	if err := tdexv1.RegisterTradeServiceHandler(
+	if err := tdexv2.RegisterTradeServiceHandler(
 		ctx, gwmux, conn,
 	); err != nil {
 		return nil, err

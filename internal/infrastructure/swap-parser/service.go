@@ -1,7 +1,7 @@
 package swap_parser
 
 import (
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/pkg/swap"
 	"github.com/vulpemventures/go-elements/psetv2"
@@ -28,7 +28,9 @@ func (s service) SerializeRequest(
 		AmountToSend:    r.GetAmountP(),
 		AssetToReceive:  r.GetAssetR(),
 		AmountToReceive: r.GetAmountR(),
-		PsetBase64:      r.GetTransaction(),
+		Transaction:     r.GetTransaction(),
+		FeeAsset:        r.GetFeeAsset(),
+		FeeAmount:       r.GetFeeAmount(),
 		UnblindedInputs: unblindedIns,
 	})
 	if err != nil {
@@ -46,7 +48,7 @@ func (s service) SerializeAccept(
 	}
 	id, msg, err := swap.Accept(swap.AcceptOpts{
 		Message:         reqMsg,
-		PsetBase64:      tx,
+		Transaction:     tx,
 		UnblindedInputs: unblindedIns,
 	})
 	if err != nil {
@@ -76,8 +78,10 @@ func (s service) SerializeFail(id string, errCode int) (string, []byte) {
 	return id, msg
 }
 
-func (s service) DeserializeRequest(msg []byte) *domain.SwapRequest {
-	swap := &tdexv1.SwapRequest{}
+func (s service) DeserializeRequest(
+	msg []byte, feeAsset string, feeAmount uint64,
+) *domain.SwapRequest {
+	swap := &tdexv2.SwapRequest{}
 	//nolint
 	proto.Unmarshal(msg, swap)
 	unblindedIns := make([]domain.UnblindedInput, 0, len(swap.GetUnblindedInputs()))
@@ -98,11 +102,13 @@ func (s service) DeserializeRequest(msg []byte) *domain.SwapRequest {
 		AmountR:         swap.GetAmountR(),
 		Transaction:     swap.GetTransaction(),
 		UnblindedInputs: unblindedIns,
+		FeeAsset:        feeAsset,
+		FeeAmount:       feeAmount,
 	}
 }
 
 func (s service) DeserializeAccept(msg []byte) *domain.SwapAccept {
-	swap := &tdexv1.SwapAccept{}
+	swap := &tdexv2.SwapAccept{}
 	//nolint
 	proto.Unmarshal(msg, swap)
 	unblindedIns := make([]domain.UnblindedInput, 0, len(swap.GetUnblindedInputs()))
@@ -124,7 +130,7 @@ func (s service) DeserializeAccept(msg []byte) *domain.SwapAccept {
 }
 
 func (s service) DeserializeComplete(msg []byte) *domain.SwapComplete {
-	swap := &tdexv1.SwapComplete{}
+	swap := &tdexv2.SwapComplete{}
 	//nolint
 	proto.Unmarshal(msg, swap)
 	return &domain.SwapComplete{
@@ -135,7 +141,7 @@ func (s service) DeserializeComplete(msg []byte) *domain.SwapComplete {
 }
 
 func (s service) DeserializeFail(msg []byte) *domain.SwapFail {
-	swap := &tdexv1.SwapFail{}
+	swap := &tdexv2.SwapFail{}
 	//nolint
 	proto.Unmarshal(msg, swap)
 	return &domain.SwapFail{

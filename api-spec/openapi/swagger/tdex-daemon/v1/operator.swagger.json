@@ -437,11 +437,11 @@
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/v1Market",
+          "$ref": "#/definitions/tdexv1Market",
           "title": "The asset pair of the market"
         },
         "fee": {
-          "$ref": "#/definitions/v1Fee",
+          "$ref": "#/definitions/tdexv1Fee",
           "title": "The percentage and fixed fees"
         },
         "tradable": {
@@ -458,7 +458,7 @@
           "description": "The index of the wallet account."
         },
         "price": {
-          "$ref": "#/definitions/v1Price",
+          "$ref": "#/definitions/tdexv1Price",
           "description": "The current price in case the strategy is PLUGGABLE."
         },
         "balance": {
@@ -659,7 +659,7 @@
           "description": "The info of an eventually failed swap."
         },
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee",
+          "$ref": "#/definitions/tdexv1MarketWithFee",
           "description": "The collected fee on the current swap."
         },
         "price": {
@@ -749,7 +749,7 @@
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee",
+          "$ref": "#/definitions/tdexv1MarketWithFee",
           "description": "The market with updated fees."
         }
       }
@@ -758,7 +758,7 @@
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/v1MarketWithFee",
+          "$ref": "#/definitions/tdexv1MarketWithFee",
           "description": "The market with updated fees."
         }
       }
@@ -855,6 +855,54 @@
         }
       }
     },
+    "tdexv1Fee": {
+      "type": "object",
+      "properties": {
+        "basisPoint": {
+          "type": "string",
+          "format": "int64"
+        },
+        "fixed": {
+          "$ref": "#/definitions/v1Fixed"
+        }
+      },
+      "title": "Custom Types"
+    },
+    "tdexv1Market": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string"
+        },
+        "quoteAsset": {
+          "type": "string"
+        }
+      }
+    },
+    "tdexv1MarketWithFee": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/tdexv1Market"
+        },
+        "fee": {
+          "$ref": "#/definitions/tdexv1Fee"
+        }
+      }
+    },
+    "tdexv1Price": {
+      "type": "object",
+      "properties": {
+        "basePrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
     "v1AddressWithBlindingKey": {
       "type": "object",
       "properties": {
@@ -909,18 +957,6 @@
         "timestampUtc": {
           "type": "string",
           "description": "The timestamp of the deposit transaction in UTC format."
-        }
-      }
-    },
-    "v1Fee": {
-      "type": "object",
-      "properties": {
-        "basisPoint": {
-          "type": "string",
-          "format": "int64"
-        },
-        "fixed": {
-          "$ref": "#/definitions/v1Fixed"
         }
       }
     },
@@ -1013,41 +1049,6 @@
           "items": {
             "$ref": "#/definitions/v1AddressWithBlindingKey"
           }
-        }
-      }
-    },
-    "v1Market": {
-      "type": "object",
-      "properties": {
-        "baseAsset": {
-          "type": "string"
-        },
-        "quoteAsset": {
-          "type": "string"
-        }
-      }
-    },
-    "v1MarketWithFee": {
-      "type": "object",
-      "properties": {
-        "market": {
-          "$ref": "#/definitions/v1Market"
-        },
-        "fee": {
-          "$ref": "#/definitions/v1Fee"
-        }
-      }
-    },
-    "v1Price": {
-      "type": "object",
-      "properties": {
-        "basePrice": {
-          "type": "number",
-          "format": "double"
-        },
-        "quotePrice": {
-          "type": "number",
-          "format": "double"
         }
       }
     },

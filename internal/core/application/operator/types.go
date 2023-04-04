@@ -60,6 +60,15 @@ func (l withdrawalList) toPortableList() []ports.Withdrawal {
 	return list
 }
 
+type marketFeeInfo domain.MarketFee
+
+func (i marketFeeInfo) GetBaseAsset() uint64 {
+	return i.BaseAsset
+}
+func (i marketFeeInfo) GetQuoteAsset() uint64 {
+	return i.QuoteAsset
+}
+
 type marketInfo struct {
 	domain.Market
 	balance map[string]ports.Balance
@@ -71,7 +80,7 @@ func (i marketInfo) GetBaseAsset() string {
 func (i marketInfo) GetQuoteAsset() string {
 	return i.QuoteAsset
 }
-func (i marketInfo) GetAccountName() string {
+func (i marketInfo) GetName() string {
 	return i.Name
 }
 func (i marketInfo) GetBaseAssetPrecision() uint32 {
@@ -80,14 +89,11 @@ func (i marketInfo) GetBaseAssetPrecision() uint32 {
 func (i marketInfo) GetQuoteAssetPrecision() uint32 {
 	return uint32(i.Market.QuoteAssetPrecision)
 }
-func (i marketInfo) GetPercentageFee() uint32 {
-	return i.PercentageFee
+func (i marketInfo) GetPercentageFee() ports.MarketFee {
+	return marketFeeInfo(i.PercentageFee)
 }
-func (i marketInfo) GetFixedBaseFee() uint64 {
-	return i.FixedFee.BaseFee
-}
-func (i marketInfo) GetFixedQuoteFee() uint64 {
-	return i.FixedFee.QuoteFee
+func (i marketInfo) GetFixedFee() ports.MarketFee {
+	return marketFeeInfo(i.FixedFee)
 }
 func (i marketInfo) IsTradable() bool {
 	return i.Tradable
@@ -98,9 +104,6 @@ func (i marketInfo) GetStrategyType() ports.MarketStartegy {
 func (i marketInfo) GetMarket() ports.Market {
 	return i
 }
-func (i marketInfo) GetFee() ports.MarketFee {
-	return i
-}
 func (i marketInfo) GetPrice() ports.MarketPrice {
 	return i.Price
 }
@@ -108,27 +111,34 @@ func (i marketInfo) GetBalance() map[string]ports.Balance {
 	return i.balance
 }
 
-type tradeStatus struct {
-	domain.TradeStatus
+type tradeTypeInfo domain.TradeType
+
+func (i tradeTypeInfo) IsBuy() bool {
+	return domain.TradeType(i) == domain.TradeBuy
+}
+func (i tradeTypeInfo) IsSell() bool {
+	return domain.TradeType(i) == domain.TradeSell
 }
 
-func (s tradeStatus) IsRequest() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeProposal
+type tradeStatusInfo domain.TradeStatus
+
+func (s tradeStatusInfo) IsRequest() bool {
+	return s.Code == domain.TradeStatusCodeProposal
 }
-func (s tradeStatus) IsAccept() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeAccepted
+func (s tradeStatusInfo) IsAccept() bool {
+	return s.Code == domain.TradeStatusCodeAccepted
 }
-func (s tradeStatus) IsComplete() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeCompleted
+func (s tradeStatusInfo) IsComplete() bool {
+	return s.Code == domain.TradeStatusCodeCompleted
 }
-func (s tradeStatus) IsSettled() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeSettled
+func (s tradeStatusInfo) IsSettled() bool {
+	return s.Code == domain.TradeStatusCodeSettled
 }
-func (s tradeStatus) IsExpired() bool {
-	return s.TradeStatus.Code == domain.TradeStatusCodeExpired
+func (s tradeStatusInfo) IsExpired() bool {
+	return s.Code == domain.TradeStatusCodeExpired
 }
-func (s tradeStatus) IsFailed() bool {
-	return s.TradeStatus.Failed
+func (s tradeStatusInfo) IsFailed() bool {
+	return s.Failed
 }
 
 type tradeInfo struct {
@@ -138,8 +148,11 @@ type tradeInfo struct {
 func (i tradeInfo) GetId() string {
 	return i.Trade.Id
 }
+func (i tradeInfo) GetType() ports.TradeType {
+	return tradeTypeInfo(i.Trade.Type)
+}
 func (i tradeInfo) GetStatus() ports.TradeStatus {
-	return tradeStatus{i.Trade.Status}
+	return tradeStatusInfo(i.Trade.Status)
 }
 func (i tradeInfo) GetSwapInfo() ports.SwapRequest {
 	info := i.Trade
@@ -161,14 +174,11 @@ func (i tradeInfo) GetBaseAsset() string {
 func (i tradeInfo) GetQuoteAsset() string {
 	return i.Trade.MarketQuoteAsset
 }
-func (i tradeInfo) GetPercentageFee() uint32 {
-	return i.Trade.MarketPercentageFee
+func (i tradeInfo) GetMarketPercentageFee() ports.MarketFee {
+	return marketFeeInfo(i.Trade.MarketPercentageFee)
 }
-func (i tradeInfo) GetFixedBaseFee() uint64 {
-	return i.Trade.MarketFixedBaseFee
-}
-func (i tradeInfo) GetFixedQuoteFee() uint64 {
-	return i.Trade.MarketFixedQuoteFee
+func (i tradeInfo) GetMarketFixedFee() ports.MarketFee {
+	return marketFeeInfo(i.Trade.MarketFixedFee)
 }
 func (i tradeInfo) GetRequestTimestamp() int64 {
 	info := i.Trade
@@ -198,9 +208,6 @@ func (i tradeInfo) GetExpiryTimestamp() int64 {
 	return i.Trade.ExpiryTime
 }
 func (i tradeInfo) GetMarket() ports.Market {
-	return i
-}
-func (i tradeInfo) GetMarketFee() ports.MarketFee {
 	return i
 }
 func (i tradeInfo) GetMarketPrice() ports.MarketPrice {
@@ -240,6 +247,7 @@ func (i swapRequestInfo) GetUnblindedInputs() []ports.UnblindedInput {
 }
 
 type txInfo struct {
+	account string
 	transaction.Transaction
 	ownedInputs     []txOutputInfo
 	notOwnedInputs  []txOutputInfo
@@ -253,20 +261,17 @@ func (i txInfo) isDeposit() bool {
 }
 
 func (i txInfo) isWithdrawal() bool {
-	if len(i.ownedInputs) <= 0 || len(i.notOwnedInputs) > 0 {
-		return false
+	if i.account == domain.FeeAccount {
+		return len(i.ownedInputs) > 0 && len(i.notOwnedInputs) <= 0 &&
+			len(i.notOwnedOutputs) > 0
 	}
 
-	inAssets, outAssets := make(map[string]struct{}), make(map[string]struct{})
+	inAssets := make(map[string]struct{}, 0)
 	for _, in := range i.ownedInputs {
 		inAssets[in.asset] = struct{}{}
 	}
 	for _, out := range i.ownedOutputs {
-		outAssets[out.asset] = struct{}{}
-	}
-
-	for inAsset := range inAssets {
-		if _, ok := outAssets[inAsset]; !ok {
+		if _, ok := inAssets[out.asset]; !ok {
 			return false
 		}
 	}
@@ -346,7 +351,10 @@ func (i tradeFeeInfo) GetTradeId() string {
 	return i.Trade.Id
 }
 func (i tradeFeeInfo) GetPercentageFee() uint64 {
-	return uint64(i.Trade.MarketPercentageFee)
+	if i.feeAsset == i.Trade.MarketBaseAsset {
+		return i.Trade.MarketPercentageFee.BaseAsset
+	}
+	return i.Trade.MarketPercentageFee.QuoteAsset
 }
 func (i tradeFeeInfo) GetFeeAsset() string {
 	return i.feeAsset

@@ -44,6 +44,8 @@ var (
 
 // Trade errors
 var (
+	// ErrTradeUnknownType ...
+	ErrTradeUnknownType = errors.New("unknown trade type")
 	// ErrTradeMustBeProposal ...
 	ErrTradeMustBeProposal = errors.New(
 		"trade must be in proposal state for being accepted",

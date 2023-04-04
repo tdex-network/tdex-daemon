@@ -10,7 +10,22 @@ import (
 var (
 	// SwapParserManager ...
 	SwapParserManager SwapParser
+
+	tradeTypes = map[TradeType]string{
+		TradeBuy:  "BUY",
+		TradeSell: "SELL",
+	}
 )
+
+type TradeType int
+
+func (t TradeType) String() string {
+	str, ok := tradeTypes[t]
+	if !ok {
+		str = "UNKNOWN"
+	}
+	return str
+}
 
 // Status represents the different statuses that a trade can assume.
 type TradeStatus struct {
@@ -21,13 +36,15 @@ type TradeStatus struct {
 // Trade is the data structure representing a trade entity.
 type Trade struct {
 	Id                  string
+	Type                TradeType
 	MarketName          string
 	MarketBaseAsset     string
 	MarketQuoteAsset    string
 	MarketPrice         MarketPrice
-	MarketPercentageFee uint32
-	MarketFixedBaseFee  uint64
-	MarketFixedQuoteFee uint64
+	MarketPercentageFee MarketFee
+	MarketFixedFee      MarketFee
+	FeeAsset            string
+	FeeAmount           uint64
 	TraderPubkey        []byte
 	Status              TradeStatus
 	PsetBase64          string
@@ -49,15 +66,19 @@ func NewTrade() *Trade {
 // Propose brings an Empty trade to the Propose status by first validating the
 // provided arguments.
 func (t *Trade) Propose(
-	swapRequest SwapRequest,
+	tradeType TradeType, swapRequest SwapRequest,
 	mktName, mktBaseAsset, mktQuoteAsset string,
-	mktPercentageFee uint32, mktFixedBaseFee, mktFixedQuoteFee uint64,
+	mktPercentageFee, mktFixedFee MarketFee,
 	traderPubkey []byte,
 ) (bool, error) {
 	if t.Status.Code >= TradeStatusCodeProposal {
 		return true, nil
 	}
+	if _, ok := tradeTypes[tradeType]; !ok {
+		return false, ErrTradeUnknownType
+	}
 
+	t.Type = tradeType
 	t.MarketName = mktName
 	t.MarketBaseAsset = mktBaseAsset
 	t.MarketQuoteAsset = mktQuoteAsset
@@ -68,6 +89,8 @@ func (t *Trade) Propose(
 	}
 	t.PsetBase64 = swapRequest.GetTransaction()
 	t.Status.Code = TradeStatusCodeProposal
+	t.FeeAsset = swapRequest.FeeAsset
+	t.FeeAmount = swapRequest.FeeAmount
 
 	msg, errCode := SwapParserManager.SerializeRequest(swapRequest)
 	if errCode >= 0 {
@@ -80,8 +103,7 @@ func (t *Trade) Propose(
 	t.SwapRequest.Message = msg
 	t.MarketPrice = price
 	t.MarketPercentageFee = mktPercentageFee
-	t.MarketFixedBaseFee = mktFixedBaseFee
-	t.MarketFixedQuoteFee = mktFixedQuoteFee
+	t.MarketFixedFee = mktFixedFee
 	return true, nil
 }
 
@@ -277,7 +299,9 @@ func (t *Trade) SwapRequestMessage() *SwapRequest {
 	if t.IsEmpty() {
 		return nil
 	}
-	return SwapParserManager.DeserializeRequest(t.SwapRequest.Message)
+	return SwapParserManager.DeserializeRequest(
+		t.SwapRequest.Message, t.FeeAsset, t.FeeAmount,
+	)
 }
 
 // SwapAcceptMessage returns the deserialized swap accept message, if defined.

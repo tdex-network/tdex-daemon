@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/urfave/cli/v2"
 )
 
@@ -29,12 +29,17 @@ var (
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "base_asset",
-				Usage: "the base asset hash of an existent market",
+				Usage: "the hash of the base asset of the market",
 				Value: "",
 			},
 			&cli.StringFlag{
 				Name:  "quote_asset",
-				Usage: "the base asset hash of an existent market",
+				Usage: "the hash of the quote asset of the market",
+				Value: "",
+			},
+			&cli.StringFlag{
+				Name:  "name",
+				Usage: "optional name for the market",
 				Value: "",
 			},
 			&cli.UintFlag{
@@ -139,8 +144,14 @@ var (
 		Usage: "updates the current market percentage fee",
 		Flags: []cli.Flag{
 			&cli.Int64Flag{
-				Name:  "basis_point",
-				Usage: "set the fee basis point",
+				Name:  "base_fee",
+				Usage: "set the percentage fee for base asset",
+				Value: -1,
+			},
+			&cli.Int64Flag{
+				Name:  "quote_fee",
+				Usage: "set the percentage fee for quote asset",
+				Value: -1,
 			},
 		},
 		Action: marketUpdatePercentageFeeAction,
@@ -233,6 +244,7 @@ func newMarketAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
+	name := ctx.String("name")
 	baseAsset := ctx.String("base_asset")
 	quoteAsset := ctx.String("quote_asset")
 	basePrecision := ctx.Uint("base_asset_precision")
@@ -240,10 +252,11 @@ func newMarketAction(ctx *cli.Context) error {
 
 	if _, err := client.NewMarket(
 		context.Background(), &daemonv2.NewMarketRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
+			Name:                name,
 			BaseAssetPrecision:  uint32(basePrecision),
 			QuoteAssetPrecision: uint32(quotePrecision),
 		},
@@ -270,7 +283,7 @@ func marketInfoAction(ctx *cli.Context) error {
 
 	resp, err := client.GetMarketInfo(
 		context.Background(), &daemonv2.GetMarketInfoRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -305,7 +318,7 @@ func marketDepositAction(ctx *cli.Context) error {
 	resp, err := client.DeriveMarketAddresses(
 		context.Background(),
 		&daemonv2.DeriveMarketAddressesRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -334,7 +347,7 @@ func marketListAddressesAction(ctx *cli.Context) error {
 
 	resp, err := client.ListMarketAddresses(
 		context.Background(), &daemonv2.ListMarketAddressesRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -373,7 +386,7 @@ func marketWithdrawAction(ctx *cli.Context) error {
 	}
 
 	reply, err := client.WithdrawMarket(context.Background(), &daemonv2.WithdrawMarketRequest{
-		Market: &tdexv1.Market{
+		Market: &tdexv2.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
 		},
@@ -403,7 +416,7 @@ func marketOpenAction(ctx *cli.Context) error {
 
 	_, err = client.OpenMarket(
 		context.Background(), &daemonv2.OpenMarketRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -432,7 +445,7 @@ func marketCloseAction(ctx *cli.Context) error {
 
 	_, err = client.CloseMarket(
 		context.Background(), &daemonv2.CloseMarketRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -461,7 +474,7 @@ func marketDropAction(ctx *cli.Context) error {
 
 	_, err = client.DropMarket(
 		context.Background(), &daemonv2.DropMarketRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -491,13 +504,13 @@ func marketUpdateFixedFeeAction(ctx *cli.Context) error {
 	baseFee := ctx.Int64("base_fee")
 	quoteFee := ctx.Int64("quote_fee")
 	req := &daemonv2.UpdateMarketFixedFeeRequest{
-		Market: &tdexv1.Market{
+		Market: &tdexv2.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
 		},
-		Fixed: &tdexv1.Fixed{
-			BaseFee:  baseFee,
-			QuoteFee: quoteFee,
+		Fee: &tdexv2.MarketFee{
+			BaseAsset:  baseFee,
+			QuoteAsset: quoteFee,
 		},
 	}
 
@@ -524,13 +537,17 @@ func marketUpdatePercentageFeeAction(ctx *cli.Context) error {
 		return err
 	}
 
-	basisPoint := uint32(ctx.Int64("basis_point"))
+	baseFee := ctx.Int64("base_fee")
+	quoteFee := ctx.Int64("quote_fee")
 	req := &daemonv2.UpdateMarketPercentageFeeRequest{
-		Market: &tdexv1.Market{
+		Market: &tdexv2.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
 		},
-		BasisPoint: basisPoint,
+		Fee: &tdexv2.MarketFee{
+			BaseAsset:  baseFee,
+			QuoteAsset: quoteFee,
+		},
 	}
 
 	if _, err := client.UpdateMarketPercentageFee(
@@ -568,7 +585,7 @@ func marketUpdateStrategyAction(ctx *cli.Context) error {
 
 	_, err = client.UpdateMarketStrategy(
 		context.Background(), &daemonv2.UpdateMarketStrategyRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -598,11 +615,11 @@ func marketUpdatePriceAction(ctx *cli.Context) error {
 
 	_, err = client.UpdateMarketPrice(
 		context.Background(), &daemonv2.UpdateMarketPriceRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
-			Price: &tdexv1.Price{
+			Price: &tdexv2.Price{
 				BasePrice:  ctx.Float64("base_price"),
 				QuotePrice: ctx.Float64("quote_price"),
 			},
@@ -648,7 +665,7 @@ func marketReportAction(ctx *cli.Context) error {
 	reply, err := client.GetMarketReport(
 		context.Background(),
 		&daemonv2.GetMarketReportRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},
@@ -683,7 +700,7 @@ func marketUpdateAssetsPrecision(ctx *cli.Context) error {
 
 	if _, err := client.UpdateMarketAssetsPrecision(
 		context.Background(), &daemonv2.UpdateMarketAssetsPrecisionRequest{
-			Market: &tdexv1.Market{
+			Market: &tdexv2.Market{
 				BaseAsset:  baseAsset,
 				QuoteAsset: quoteAsset,
 			},

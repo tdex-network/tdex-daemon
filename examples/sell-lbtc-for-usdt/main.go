@@ -12,7 +12,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/google/uuid"
-	tdexv1 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v1"
+	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
 	"github.com/vulpemventures/go-elements/elementsutil"
@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	client      tdexv1.TradeServiceClient
+	client      tdexv2.TradeServiceClient
 	explorerSvc explorer.Service
 
 	lbtc         = network.Regtest.AssetID
@@ -36,7 +36,7 @@ func initEnv() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to daemon: %s", err)
 	}
-	client = tdexv1.NewTradeServiceClient(conn)
+	client = tdexv2.NewTradeServiceClient(conn)
 
 	explorerSvc, err = esplora.NewService("http://localhost:3001", 15000)
 	if err != nil {
@@ -75,14 +75,20 @@ func main() {
 	targetMarket := markets[0].GetMarket()
 	fmt.Printf("Market: %s\n\n", targetMarket)
 
+	usdt := targetMarket.GetQuoteAsset()
+
 	fmt.Printf("Making trade preview...\n\n")
-	swapRequest, err := makeTradePreview(targetMarket, lbtc, traderAmount, traderWallet, utxos)
+	swapRequest, feeAsset, feeAmount, err := makeTradePreview(
+		targetMarket, lbtc, usdt, traderAmount, traderWallet, utxos,
+	)
 	if err != nil {
 		log.Fatalf("failed to make trade preview: %s", err)
 	}
 
 	fmt.Printf("Making trade proposal...\n\n")
-	swapAccept, err := makeTradeProposal(targetMarket, swapRequest)
+	swapAccept, err := makeTradeProposal(
+		targetMarket, swapRequest, feeAsset, feeAmount,
+	)
 	if err != nil {
 		log.Fatalf("failed to make trade proposal: %s", err)
 	}
@@ -135,9 +141,9 @@ func faucet(w wallet, asset string, amount float64) ([]explorer.Utxo, error) {
 	return explorerSvc.GetUnspents(w.address, [][]byte{w.blindPrvkey.Serialize()})
 }
 
-func fetchMarkets() ([]*tdexv1.MarketWithFee, error) {
+func fetchMarkets() ([]*tdexv2.MarketWithFee, error) {
 	res, err := client.ListMarkets(
-		context.Background(), &tdexv1.ListMarketsRequest{},
+		context.Background(), &tdexv2.ListMarketsRequest{},
 	)
 	if err != nil {
 		return nil, err
@@ -146,34 +152,41 @@ func fetchMarkets() ([]*tdexv1.MarketWithFee, error) {
 }
 
 func makeTradePreview(
-	market *tdexv1.Market, asset string, amount float64,
+	market *tdexv2.Market, asset, feeAsset string, amount float64,
 	w wallet, utxos []explorer.Utxo,
-) (*tdexv1.SwapRequest, error) {
+) (*tdexv2.SwapRequest, string, uint64, error) {
 	satsAmount := uint64(amount * math.Pow10(8))
-	res, err := client.PreviewTrade(context.Background(), &tdexv1.PreviewTradeRequest{
-		Market: market,
-		Type:   tdexv1.TradeType_TRADE_TYPE_SELL,
-		Amount: satsAmount,
-		Asset:  asset,
+	res, err := client.PreviewTrade(context.Background(), &tdexv2.PreviewTradeRequest{
+		Market:   market,
+		Type:     tdexv2.TradeType_TRADE_TYPE_SELL,
+		Amount:   satsAmount,
+		Asset:    asset,
+		FeeAsset: feeAsset,
 	})
 	if err != nil {
-		return nil, err
+		return nil, "", 0, err
 	}
 	preview := res.GetPreviews()[0]
 
-	selectedUtxos, change, err := explorer.SelectUnspents(utxos, satsAmount, asset)
-	if err != nil {
-		return nil, err
+	feesToAdd := feeAsset == market.GetBaseAsset()
+	inAmount := satsAmount
+	if feesToAdd {
+		inAmount += preview.GetFeeAmount()
 	}
 
-	unblindedIns := make([]*tdexv1.UnblindedInput, 0, len(selectedUtxos))
+	selectedUtxos, change, err := explorer.SelectUnspents(utxos, inAmount, asset)
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	unblindedIns := make([]*tdexv2.UnblindedInput, 0, len(selectedUtxos))
 	ins := make([]psetv2.InputArgs, 0, len(selectedUtxos))
 	for i, u := range selectedUtxos {
 		ins = append(ins, psetv2.InputArgs{
 			Txid:    u.Hash(),
 			TxIndex: u.Index(),
 		})
-		unblindedIns = append(unblindedIns, &tdexv1.UnblindedInput{
+		unblindedIns = append(unblindedIns, &tdexv2.UnblindedInput{
 			Index:         uint32(i),
 			Asset:         u.Asset(),
 			Amount:        u.Value(),
@@ -181,10 +194,15 @@ func makeTradePreview(
 			AmountBlinder: hex.EncodeToString(elementsutil.ReverseBytes(u.ValueBlinder())),
 		})
 	}
+
+	outAmount := preview.GetAmount()
+	if !feesToAdd {
+		outAmount -= preview.GetFeeAmount()
+	}
 	outs := []psetv2.OutputArgs{
 		{
 			Asset:        preview.GetAsset(),
-			Amount:       preview.GetAmount(),
+			Amount:       outAmount,
 			Script:       w.outputScript,
 			BlindingKey:  w.blindPubkey.SerializeCompressed(),
 			BlinderIndex: 0,
@@ -211,7 +229,7 @@ func makeTradePreview(
 
 	psetBase64, _ := pset.ToBase64()
 
-	return &tdexv1.SwapRequest{
+	return &tdexv2.SwapRequest{
 		Id:              uuid.NewString(),
 		AmountP:         satsAmount,
 		AssetP:          asset,
@@ -219,16 +237,19 @@ func makeTradePreview(
 		AssetR:          preview.GetAsset(),
 		Transaction:     psetBase64,
 		UnblindedInputs: unblindedIns,
-	}, nil
+	}, preview.GetFeeAsset(), preview.GetFeeAmount(), nil
 }
 
 func makeTradeProposal(
-	market *tdexv1.Market, swapRequest *tdexv1.SwapRequest,
-) (*tdexv1.SwapAccept, error) {
-	res, err := client.ProposeTrade(context.Background(), &tdexv1.ProposeTradeRequest{
+	market *tdexv2.Market, swapRequest *tdexv2.SwapRequest,
+	feeAsset string, feeAmount uint64,
+) (*tdexv2.SwapAccept, error) {
+	res, err := client.ProposeTrade(context.Background(), &tdexv2.ProposeTradeRequest{
 		Market:      market,
-		Type:        tdexv1.TradeType_TRADE_TYPE_SELL,
+		Type:        tdexv2.TradeType_TRADE_TYPE_SELL,
 		SwapRequest: swapRequest,
+		FeeAsset:    feeAsset,
+		FeeAmount:   feeAmount,
 	})
 	if err != nil {
 		return nil, err
@@ -239,7 +260,7 @@ func makeTradeProposal(
 	return res.GetSwapAccept(), nil
 }
 
-func signAndCompleteTrade(swap *tdexv1.SwapAccept, w wallet) (string, error) {
+func signAndCompleteTrade(swap *tdexv2.SwapAccept, w wallet) (string, error) {
 	pset, err := psetv2.NewPsetFromBase64(swap.GetTransaction())
 	if err != nil {
 		return "", err
@@ -260,8 +281,8 @@ func signAndCompleteTrade(swap *tdexv1.SwapAccept, w wallet) (string, error) {
 
 	completedPset, _ := pset.ToBase64()
 
-	res, err := client.CompleteTrade(context.Background(), &tdexv1.CompleteTradeRequest{
-		SwapComplete: &tdexv1.SwapComplete{
+	res, err := client.CompleteTrade(context.Background(), &tdexv2.CompleteTradeRequest{
+		SwapComplete: &tdexv2.SwapComplete{
 			AcceptId:    swap.GetId(),
 			Transaction: completedPset,
 		},
