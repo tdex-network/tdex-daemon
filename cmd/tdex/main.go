@@ -89,6 +89,7 @@ func main() {
 		&listdeposits,
 		&listwithdrawals,
 		&contentType,
+		&feeder,
 	)
 
 	app.Before = func(ctx *cli.Context) error {
@@ -238,6 +239,16 @@ func getWalletClient(ctx *cli.Context) (daemonv2.WalletServiceClient, func(), er
 	cleanup := func() { _ = conn.Close() }
 
 	return daemonv2.NewWalletServiceClient(conn), cleanup, nil
+}
+
+func getFeederClient(ctx *cli.Context) (daemonv2.FeederServiceClient, func(), error) {
+	conn, err := getClientConn(false)
+	if err != nil {
+		return nil, nil, err
+	}
+	cleanup := func() { conn.Close() }
+
+	return daemonv2.NewFeederServiceClient(conn), cleanup, nil
 }
 
 func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
