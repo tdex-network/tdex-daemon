@@ -201,6 +201,8 @@ func (s *Service) startPriceFeed(feederSvc ports.PriceFeeder) error {
 		return err
 	}
 
+	log.Debugln("price feed svc started")
+
 	s.listenPriceFeedChan(priceFeedChan)
 
 	return nil

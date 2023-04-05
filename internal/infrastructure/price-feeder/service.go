@@ -22,7 +22,7 @@ var (
 type priceFeederService struct {
 	feederSvcBySource map[string]pricefeeder.PriceFeeder
 	priceFeedStore    PriceFeedStore
-	feedChanMtx       *sync.RWMutex
+	feedChanMtx       *sync.Mutex
 	feedChan          chan ports.PriceFeedChan
 }
 
@@ -33,7 +33,7 @@ func NewService(
 	return &priceFeederService{
 		feederSvcBySource: feederSvcBySource,
 		priceFeedStore:    priceFeedStore,
-		feedChanMtx:       &sync.RWMutex{},
+		feedChanMtx:       &sync.Mutex{},
 		feedChan:          make(chan ports.PriceFeedChan),
 	}
 }
@@ -100,6 +100,8 @@ func (p *priceFeederService) Start(
 			}
 		}(v)
 	}
+
+	log.Debugln("price feeder service started")
 
 	return p.feedChan, nil
 }
