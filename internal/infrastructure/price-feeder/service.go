@@ -2,6 +2,7 @@ package pricefeederinfra
 
 import (
 	"context"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -21,6 +22,7 @@ var (
 type priceFeederService struct {
 	feederSvcBySource map[string]pricefeeder.PriceFeeder
 	priceFeedStore    PriceFeedStore
+	feedChanMtx       *sync.RWMutex
 	feedChan          chan ports.PriceFeedChan
 }
 
@@ -31,6 +33,7 @@ func NewService(
 	return &priceFeederService{
 		feederSvcBySource: feederSvcBySource,
 		priceFeedStore:    priceFeedStore,
+		feedChanMtx:       &sync.RWMutex{},
 		feedChan:          make(chan ports.PriceFeedChan),
 	}
 }
@@ -93,16 +96,7 @@ func (p *priceFeederService) Start(
 	for _, v := range feedChanBySource {
 		go func(feedChan chan pricefeeder.PriceFeed) {
 			for priceFeed := range feedChan {
-				p.feedChan <- Feed{
-					Market: Market{
-						BaseAsset:  priceFeed.Market.BaseAsset,
-						QuoteAsset: priceFeed.Market.QuoteAsset,
-					},
-					Price: Price{
-						BasePrice:  priceFeed.Price.BasePrice,
-						QuotePrice: priceFeed.Price.QuotePrice,
-					},
-				}
+				p.sendPriceFeed(priceFeed)
 			}
 		}(v)
 	}
@@ -115,7 +109,7 @@ func (p *priceFeederService) Stop(ctx context.Context) {
 		v.Stop()
 	}
 
-	close(p.feedChan)
+	p.closePriceFeedChan()
 }
 
 func (p *priceFeederService) StartFeed(ctx context.Context, feedID string) error {
@@ -256,4 +250,29 @@ func (p *priceFeederService) getFeederServiceBySource(
 	v, _ := p.feederSvcBySource[source]
 
 	return v
+}
+
+func (p *priceFeederService) closePriceFeedChan() {
+	p.feedChanMtx.Lock()
+	defer p.feedChanMtx.Unlock()
+
+	close(p.feedChan)
+}
+
+func (p *priceFeederService) sendPriceFeed(
+	priceFeed pricefeeder.PriceFeed,
+) {
+	p.feedChanMtx.Lock()
+	defer p.feedChanMtx.Unlock()
+
+	p.feedChan <- Feed{
+		Market: Market{
+			BaseAsset:  priceFeed.Market.BaseAsset,
+			QuoteAsset: priceFeed.Market.QuoteAsset,
+		},
+		Price: Price{
+			BasePrice:  priceFeed.Price.BasePrice,
+			QuotePrice: priceFeed.Price.QuotePrice,
+		},
+	}
 }

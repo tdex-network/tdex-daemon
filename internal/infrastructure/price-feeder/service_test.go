@@ -35,7 +35,7 @@ func TestPriceFeedService(t *testing.T) {
 	require.NoError(t, err)
 
 	go func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(7 * time.Second)
 		priceFeedSvc.Stop(ctx)
 	}()
 
