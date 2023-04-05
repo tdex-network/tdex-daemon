@@ -309,6 +309,8 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
+	s.opts.AppConfig.FeederService().Stop(context.Background())
+
 	if s.password != "" {
 		walletSvc := s.opts.AppConfig.WalletService().Wallet()
 		//nolint
