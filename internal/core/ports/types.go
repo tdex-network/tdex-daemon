@@ -117,9 +117,9 @@ type MarketVolume interface {
 type TradeFeeInfo interface {
 	GetTradeId() string
 	GetPercentageFee() uint64
+	GetFixedFee() uint64
 	GetFeeAsset() string
-	GetPercentageFeeAmount() uint64
-	GetFixedFeeAmount() uint64
+	GetFeeAmount() uint64
 	GetMarketPrice() decimal.Decimal
 	GetTimestamp() int64
 }

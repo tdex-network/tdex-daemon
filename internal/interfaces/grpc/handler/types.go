@@ -138,13 +138,13 @@ func (i collectedFeesInfo) toProto() *daemonv2.MarketCollectedFees {
 	for _, i := range info.GetTradeFeeInfo() {
 		price, _ := i.GetMarketPrice().Float64()
 		feesPerTrade = append(feesPerTrade, &daemonv2.FeeInfo{
-			TradeId:             i.GetTradeId(),
-			BasisPoint:          int64(i.GetPercentageFee()),
-			Asset:               i.GetFeeAsset(),
-			PercentageFeeAmount: i.GetPercentageFeeAmount(),
-			FixedFeeAmount:      i.GetFixedFeeAmount(),
-			MarketPrice:         price,
-			RequestDate:         time.Unix(i.GetTimestamp(), 0).Format(time.RFC3339),
+			TradeId:       i.GetTradeId(),
+			PercentageFee: i.GetPercentageFee(),
+			FixedFee:      i.GetFixedFee(),
+			Asset:         i.GetFeeAsset(),
+			Amount:        i.GetFeeAmount(),
+			MarketPrice:   price,
+			RequestDate:   time.Unix(i.GetTimestamp(), 0).Format(time.RFC3339),
 		})
 	}
 	return &daemonv2.MarketCollectedFees{
