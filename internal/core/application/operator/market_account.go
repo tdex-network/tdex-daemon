@@ -10,7 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-	"github.com/tdex-network/tdex-daemon/pkg/mathutil"
 )
 
 const startYear = 2021
@@ -136,29 +135,15 @@ func (s *service) GetMarketReport(
 
 	subVolumes := splitTimeRange(rangeStart, rangeEnd, groupByHours)
 	tradesFee := make([]tradeFeeInfo, 0)
-	// totalFees := make(map[string]int64)
 	for _, trade := range trades {
 		if isInTimeRange(trade.SwapRequest.Timestamp, rangeStart, rangeEnd) {
 			swapRequest := trade.SwapRequestMessage()
-			feeAsset := swapRequest.GetAssetP()
-			amountP := swapRequest.GetAmountP()
-
 			marketPrice := trade.MarketPrice.BasePrice
-			feeBasisPoint := trade.MarketPercentageFee.QuoteAsset
-			fixedFeeAmount := trade.MarketFixedFee.QuoteAsset
-			if feeAsset == mkt.BaseAsset {
-				feeBasisPoint = trade.MarketPercentageFee.BaseAsset
+			if trade.FeeAsset == mkt.BaseAsset {
 				marketPrice = trade.MarketPrice.QuotePrice
-				fixedFeeAmount = trade.MarketFixedFee.BaseAsset
 			}
 
-			_, percentageFeeAmount := mathutil.LessFee(
-				amountP, uint64(feeBasisPoint),
-			)
-
-			tradesFee = append(tradesFee, tradeFeeInfo{
-				trade, feeAsset, percentageFeeAmount, fixedFeeAmount, marketPrice,
-			})
+			tradesFee = append(tradesFee, tradeFeeInfo{trade, marketPrice})
 
 			for i, v := range subVolumes {
 				if isInTimeRange(trade.SwapRequest.Timestamp, v.start, v.end) {
@@ -186,10 +171,10 @@ func (s *service) GetMarketReport(
 
 	var totBaseFee, totQuoteFee uint64
 	for _, v := range tradesFee {
-		if v.feeAsset == v.Trade.MarketBaseAsset {
-			totBaseFee += v.percentageFeeAmount + v.fixedFeeAmount
+		if v.GetFeeAsset() == v.Trade.MarketBaseAsset {
+			totBaseFee += v.GetFeeAmount()
 		} else {
-			totQuoteFee += v.percentageFeeAmount + v.fixedFeeAmount
+			totQuoteFee += v.GetFeeAmount()
 		}
 	}
 
