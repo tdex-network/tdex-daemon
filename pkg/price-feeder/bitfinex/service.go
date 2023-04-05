@@ -33,7 +33,9 @@ var (
 )
 
 type service struct {
-	conn        *websocket.Conn
+	connMtx *sync.Mutex
+	conn    *websocket.Conn
+
 	writeTicker *time.Ticker
 
 	marketByTickerMtx *sync.RWMutex
@@ -83,6 +85,7 @@ func NewService(args ...interface{}) (pricefeeder.PriceFeeder, error) {
 		tickersByChanId:        make(map[int]string),
 		chanIDsByTickerMtx:     &sync.RWMutex{},
 		chanIDsByTicker:        make(map[string]int),
+		connMtx:                &sync.Mutex{},
 		conn:                   conn,
 	}, nil
 }
@@ -139,7 +142,8 @@ func (s *service) Start() error {
 		if err != nil {
 			return err
 		}
-		s.conn = conn
+
+		s.addConn(conn)
 
 		if err = s.subscribe(tickers); err != nil {
 			return err
@@ -178,12 +182,12 @@ func (s *service) start() (mustReconnect bool, err error) {
 		case <-s.quitChan:
 			s.writeTicker.Stop()
 			s.closeChannels()
-			err = s.conn.Close()
+			err = s.getConn().Close()
 			return false, err
 		default:
 			// if for any reason, reading a message from the socket panics, we make
 			// sure to recover and flag that a reconnection is required.
-			_, message, err := s.conn.ReadMessage()
+			_, message, err := s.getConn().ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					panic(err)
@@ -223,7 +227,7 @@ func (s *service) subscribe(
 			"symbol":  fmt.Sprintf("t%s", ticker),
 		}
 
-		if err := s.conn.WriteJSON(msg); err != nil {
+		if err := s.getConn().WriteJSON(msg); err != nil {
 			return fmt.Errorf("cannot subscribe to market %s: %s", ticker, err)
 		}
 	}
@@ -242,7 +246,7 @@ func (s *service) unsubscribe(mktTickers []string) error {
 			"event":  "unsubscribe",
 			"chanId": v,
 		}
-		if err := s.conn.WriteJSON(msg); err != nil {
+		if err := s.getConn().WriteJSON(msg); err != nil {
 			return fmt.Errorf("cannot unsubscribe to given markets: %s", err)
 		}
 	}
@@ -484,4 +488,18 @@ func (s *service) getChanIdByTicker(ticker string) (int, bool) {
 
 	chanId, ok := s.chanIDsByTicker[ticker]
 	return chanId, ok
+}
+
+func (s *service) addConn(c *websocket.Conn) {
+	s.connMtx.Lock()
+	defer s.connMtx.Unlock()
+
+	s.conn = c
+}
+
+func (s *service) getConn() *websocket.Conn {
+	s.connMtx.Lock()
+	defer s.connMtx.Unlock()
+
+	return s.conn
 }

@@ -29,7 +29,9 @@ var (
 )
 
 type service struct {
-	conn        *websocket.Conn
+	connMtx *sync.Mutex
+	conn    *websocket.Conn
+
 	writeTicker *time.Ticker
 
 	marketByTickerMtx *sync.RWMutex
@@ -69,6 +71,7 @@ func NewService(args ...interface{}) (pricefeeder.PriceFeeder, error) {
 		quitChan:               make(chan struct{}, 1),
 		marketByTickerMtx:      &sync.RWMutex{},
 		marketByTicker:         make(map[string]pricefeeder.Market),
+		connMtx:                &sync.Mutex{},
 		conn:                   conn,
 	}, nil
 }
@@ -124,7 +127,8 @@ func (s *service) Start() error {
 		if err != nil {
 			return err
 		}
-		s.conn = conn
+
+		s.addConn(conn)
 
 		if err := s.subscribe(tickers); err != nil {
 			return err
@@ -163,13 +167,13 @@ func (s *service) start() (mustReconnect bool, err error) {
 		case <-s.quitChan:
 			s.writeTicker.Stop()
 			s.closeChannels()
-			err = s.conn.Close()
+			err = s.getConn().Close()
 			return false, err
 		default:
 			// If for any reason, reading a message from the socket panics, we make
 			// sure to recover and flag that a reconnection is required.
 			msg := make(map[string]interface{})
-			if err := s.conn.ReadJSON(&msg); err != nil {
+			if err := s.getConn().ReadJSON(&msg); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					panic(err)
 				}
@@ -253,6 +257,14 @@ func (s *service) getMarketTickers() map[string]pricefeeder.Market {
 	return s.marketByTicker
 }
 
+func (s *service) getMarketByTicker(ticker string) pricefeeder.Market {
+	s.marketByTickerMtx.RLock()
+	defer s.marketByTickerMtx.RUnlock()
+
+	mkt, _ := s.marketByTicker[ticker]
+	return mkt
+}
+
 func (s *service) closeChannels() {
 	s.chLock.Lock()
 	defer s.chLock.Unlock()
@@ -288,7 +300,7 @@ func (s *service) parseFeed(msg map[string]interface{}) *pricefeeder.PriceFeed {
 		return nil
 	}
 	basePrice := decimal.NewFromInt(1).Div(quotePrice).Round(8)
-	mkt := s.marketByTicker[ticker]
+	mkt := s.getMarketByTicker(ticker)
 
 	return &pricefeeder.PriceFeed{
 		Market: mkt,
@@ -318,7 +330,7 @@ func (s *service) subscribe(mktTickers []string) error {
 		},
 	}
 
-	if err := s.conn.WriteJSON(msg); err != nil {
+	if err := s.getConn().WriteJSON(msg); err != nil {
 		return fmt.Errorf("cannot subscribe to given markets: %s", err)
 	}
 
@@ -334,9 +346,23 @@ func (s *service) unsubscribe(mktTickers []string) error {
 		},
 	}
 
-	if err := s.conn.WriteJSON(msg); err != nil {
+	if err := s.getConn().WriteJSON(msg); err != nil {
 		return fmt.Errorf("cannot unsubscribe to given markets: %s", err)
 	}
 
 	return nil
+}
+
+func (s *service) addConn(c *websocket.Conn) {
+	s.connMtx.Lock()
+	defer s.connMtx.Unlock()
+
+	s.conn = c
+}
+
+func (s *service) getConn() *websocket.Conn {
+	s.connMtx.Lock()
+	defer s.connMtx.Unlock()
+
+	return s.conn
 }

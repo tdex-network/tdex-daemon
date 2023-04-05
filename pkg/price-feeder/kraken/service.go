@@ -35,7 +35,9 @@ var (
 )
 
 type service struct {
-	conn        *websocket.Conn
+	connMtx *sync.Mutex
+	conn    *websocket.Conn
+
 	writeTicker *time.Ticker
 
 	marketByTickerMtx *sync.RWMutex
@@ -75,6 +77,7 @@ func NewService(args ...interface{}) (pricefeeder.PriceFeeder, error) {
 		quitChan:               make(chan struct{}, 1),
 		marketByTickerMtx:      &sync.RWMutex{},
 		marketByTicker:         make(map[string]pricefeeder.Market),
+		connMtx:                &sync.Mutex{},
 		conn:                   conn,
 	}, nil
 }
@@ -130,7 +133,8 @@ func (s *service) Start() error {
 		if err != nil {
 			return err
 		}
-		s.conn = conn
+
+		s.addConn(conn)
 
 		if err := s.subscribe(tickers); err != nil {
 			return err
@@ -169,7 +173,7 @@ func (s *service) start() (mustReconnect bool, err error) {
 		case <-s.quitChan:
 			s.writeTicker.Stop()
 			s.closeChannels()
-			err = s.conn.Close()
+			err = s.getConn().Close()
 			return false, err
 		default:
 			// Referred to:
@@ -183,7 +187,7 @@ func (s *service) start() (mustReconnect bool, err error) {
 			// Even in case the line below returns an UnexpectedCloseError,
 			// this is used to panic so the deferred recover function is reused
 			// to still signal the need for a reconnection with kraken websocket.
-			_, message, err := s.conn.ReadMessage()
+			_, message, err := s.getConn().ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					panic(err)
@@ -280,7 +284,7 @@ func (s *service) subscribe(mktTickers []string) error {
 	}
 
 	buf, _ := json.Marshal(msg)
-	if err := s.conn.WriteMessage(websocket.TextMessage, buf); err != nil {
+	if err := s.getConn().WriteMessage(websocket.TextMessage, buf); err != nil {
 		return fmt.Errorf("cannot subscribe to given markets: %s", err)
 	}
 
@@ -296,7 +300,7 @@ func (s *service) unsubscribe(mktTickers []string) error {
 		},
 	}
 
-	if err := s.conn.WriteJSON(msg); err != nil {
+	if err := s.getConn().WriteJSON(msg); err != nil {
 		return fmt.Errorf("cannot unsubscribe to given markets: %s", err)
 	}
 
@@ -375,4 +379,18 @@ func (s *service) writePriceFeed(mktTicker string, priceFeed pricefeeder.PriceFe
 	}
 
 	s.latestFeedsByTicker[mktTicker] = priceFeed
+}
+
+func (s *service) addConn(c *websocket.Conn) {
+	s.connMtx.Lock()
+	defer s.connMtx.Unlock()
+
+	s.conn = c
+}
+
+func (s *service) getConn() *websocket.Conn {
+	s.connMtx.Lock()
+	defer s.connMtx.Unlock()
+
+	return s.conn
 }
