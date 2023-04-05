@@ -174,9 +174,10 @@ func (s *service) start() (mustReconnect bool, err error) {
 			// sure to recover and flag that a reconnection is required.
 			msg := make(map[string]interface{})
 			if err := s.getConn().ReadJSON(&msg); err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					panic(err)
+				if websocket.IsCloseError(err, pricefeeder.WebSocketCloseErrors...) {
+					return true, err
 				}
+
 				log.WithError(err).Warn("could not read message from socket")
 				continue
 			}

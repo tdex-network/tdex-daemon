@@ -5,7 +5,7 @@ import "context"
 type PriceFeeder interface {
 	// Start starts the price feeder service which is periodically fetching
 	//and updating market prices from external price provide
-	Start(ctx context.Context, markets []Market) (chan PriceFeedChan, error)
+	Start(ctx context.Context) (chan PriceFeedChan, error)
 	// Stop stops the price feeder service
 	Stop(ctx context.Context)
 	// StartFeed starts forwarding price feeds from the given source to the

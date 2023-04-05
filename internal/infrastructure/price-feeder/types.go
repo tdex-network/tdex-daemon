@@ -1,6 +1,7 @@
 package pricefeederinfra
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -35,13 +36,21 @@ func (p Price) GetQuotePrice() decimal.Decimal {
 }
 
 func validateAddPriceFeed(market ports.Market, source, ticker string) error {
-	if len(market.GetBaseAsset()) != 32 {
+	baseAsset, err := hex.DecodeString(market.GetBaseAsset())
+	if err != nil {
+		return err
+	}
+	if len(baseAsset) != 32 {
 		return fmt.Errorf(
 			"invalid baseAsset: %s, must be 32 length", market.GetBaseAsset(),
 		)
 	}
 
-	if len(market.GetQuoteAsset()) != 32 {
+	quoteAsset, err := hex.DecodeString(market.GetQuoteAsset())
+	if err != nil {
+		return err
+	}
+	if len(quoteAsset) != 32 {
 		return fmt.Errorf(
 			"invalid quoteAsset: %s, must be 32 length",
 			market.GetQuoteAsset(),

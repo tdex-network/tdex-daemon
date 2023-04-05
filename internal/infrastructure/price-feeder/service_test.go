@@ -8,8 +8,6 @@ import (
 	coinbasefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/coinbase"
 	krakenfeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/kraken"
 
-	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-
 	"github.com/stretchr/testify/require"
 	pricefeederinfra "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
 	pricefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder"
@@ -26,12 +24,12 @@ var (
 )
 
 func TestPriceFeedService(t *testing.T) {
-	feederSvcBySource, priceFeedStore, markets, err := prepare()
+	feederSvcBySource, priceFeedStore, err := prepare()
 	require.NoError(t, err)
 
 	priceFeedSvc := pricefeederinfra.NewService(feederSvcBySource, priceFeedStore)
 
-	priceFeedChan, err := priceFeedSvc.Start(ctx, markets)
+	priceFeedChan, err := priceFeedSvc.Start(ctx)
 	require.NoError(t, err)
 
 	go func() {
@@ -73,20 +71,20 @@ func TestPriceFeedService(t *testing.T) {
 }
 
 func prepare() (map[string]pricefeeder.PriceFeeder,
-	pricefeederinfra.PriceFeedStore, []ports.Market, error) {
+	pricefeederinfra.PriceFeedStore, error) {
 	bitfinexSvc, err := bitfinexfeeder.NewService(interval)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	coinbaseSvc, err := coinbasefeeder.NewService(interval)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	krakenSvc, err := krakenfeeder.NewService(interval)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	feederSvcBySource := map[string]pricefeeder.PriceFeeder{
@@ -95,12 +93,12 @@ func prepare() (map[string]pricefeeder.PriceFeeder,
 		"kraken":   krakenSvc,
 	}
 
-	priceFeedStore, mkts, err := mockPriceFeedStoreStore()
+	priceFeedStore, err := mockPriceFeedStoreStore()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return feederSvcBySource, priceFeedStore, mkts, nil
+	return feederSvcBySource, priceFeedStore, nil
 }
 
 type mkt struct {
@@ -116,10 +114,10 @@ func (m mkt) GetQuoteAsset() string {
 	return m.QuoteAsset
 }
 
-func mockPriceFeedStoreStore() (pricefeederinfra.PriceFeedStore, []ports.Market, error) {
+func mockPriceFeedStoreStore() (pricefeederinfra.PriceFeedStore, error) {
 	store, err := pricefeederinfra.NewPriceFeedStoreImpl("", nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if err := store.AddPriceFeed(
@@ -135,7 +133,7 @@ func mockPriceFeedStoreStore() (pricefeederinfra.PriceFeedStore, []ports.Market,
 			Started: true,
 		},
 	); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if err := store.AddPriceFeed(
@@ -151,7 +149,7 @@ func mockPriceFeedStoreStore() (pricefeederinfra.PriceFeedStore, []ports.Market,
 			Started: true,
 		},
 	); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if err := store.AddPriceFeed(
@@ -167,19 +165,8 @@ func mockPriceFeedStoreStore() (pricefeederinfra.PriceFeedStore, []ports.Market,
 			Started: true,
 		},
 	); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	mkts := []mkt{
-		{BaseAsset: "BA", QuoteAsset: "QA"},
-		{BaseAsset: "BA1", QuoteAsset: "QA1"},
-		{BaseAsset: "BA2", QuoteAsset: "QA2"},
-	}
-
-	markets := make([]ports.Market, len(mkts))
-	for i, m := range mkts {
-		markets[i] = m
-	}
-
-	return store, markets, nil
+	return store, nil
 }

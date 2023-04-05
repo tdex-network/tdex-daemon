@@ -20,6 +20,7 @@ func TestPriceFeedStore(t *testing.T) {
 	t.Run("GetPriceFeedsByMarket", testGetPriceFeedsByMarket(repo))
 	t.Run("UpdatePriceFeed", testUpdatePriceFeed(repo))
 	t.Run("GetAll", testGetAll(repo))
+	t.Run("GetStartedPriceFeeds", testGetStartedPriceFeeds(repo))
 
 	//check errors
 	t.Run("GetPriceFeedNotFound", testGetPriceFeedNotFound(repo))
@@ -129,6 +130,19 @@ func testGetAll(repo PriceFeedStore) func(*testing.T) {
 		priceFeeds, err := repo.GetAllPriceFeeds(ctx)
 		require.NoError(t, err)
 		assert.NotEmpty(t, priceFeeds)
+	}
+}
+
+func testGetStartedPriceFeeds(repo PriceFeedStore) func(*testing.T) {
+	return func(t *testing.T) {
+		ctx := context.Background()
+		priceFeeds, err := repo.GetAllPriceFeeds(ctx)
+		require.NoError(t, err)
+		assert.NotEmpty(t, priceFeeds)
+
+		priceFeeds, err = repo.GetStartedPriceFeeds(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(priceFeeds))
 	}
 }
 

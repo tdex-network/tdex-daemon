@@ -3,7 +3,6 @@ package feeder
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
@@ -14,9 +13,6 @@ import (
 type Service struct {
 	repoManager ports.RepoManager
 	feederSvc   ports.PriceFeeder
-
-	feederSvcStartedMtx sync.RWMutex
-	feederSvcStarted    bool
 }
 
 func NewService(
@@ -24,9 +20,8 @@ func NewService(
 	repoManager ports.RepoManager,
 ) (Service, error) {
 	svc := Service{
-		repoManager:         repoManager,
-		feederSvc:           feederSvc,
-		feederSvcStartedMtx: sync.RWMutex{},
+		repoManager: repoManager,
+		feederSvc:   feederSvc,
 	}
 
 	if err := svc.startPriceFeed(feederSvc); err != nil {
@@ -69,12 +64,6 @@ func (s *Service) StopFeed(ctx context.Context, feedID string) error {
 func (s *Service) AddPriceFeed(
 	ctx context.Context, market ports.Market, source, ticker string,
 ) (string, error) {
-	if !s.IsPriceFeederStarted() {
-		if err := s.startPriceFeed(s.feederSvc); err != nil {
-			return "", err
-		}
-	}
-
 	return s.feederSvc.AddPriceFeed(ctx, market, source, ticker)
 }
 
@@ -166,37 +155,14 @@ func (s *Service) listenPriceFeedChan(priceFeedChan chan ports.PriceFeedChan) {
 					priceFeed.GetMarket().GetQuoteAsset(),
 				)
 			}
-
-			log.Debugln("reading price feed chan stopped")
 		}
+
+		log.Debugln("reading price feed chan stopped")
 	}()
 }
 
 func (s *Service) startPriceFeed(feederSvc ports.PriceFeeder) error {
-	if s.IsPriceFeederStarted() {
-		return nil
-	}
-
-	priceFeeds, err := feederSvc.ListPriceFeeds(context.Background())
-	if err != nil {
-		return err
-	}
-
-	mkts := make([]ports.Market, len(priceFeeds))
-	for _, v := range priceFeeds {
-		if v.IsStarted() {
-			mkts = append(mkts, marketInfo{
-				BaseAsset:  v.GetMarket().GetBaseAsset(),
-				QuoteAsset: v.GetMarket().GetQuoteAsset(),
-			})
-		}
-	}
-
-	if len(mkts) == 0 {
-		return nil
-	}
-
-	priceFeedChan, err := feederSvc.Start(context.Background(), mkts)
+	priceFeedChan, err := feederSvc.Start(context.Background())
 	if err != nil {
 		return err
 	}
@@ -206,18 +172,4 @@ func (s *Service) startPriceFeed(feederSvc ports.PriceFeeder) error {
 	s.listenPriceFeedChan(priceFeedChan)
 
 	return nil
-}
-
-func (s *Service) IsPriceFeederStarted() bool {
-	s.feederSvcStartedMtx.RLock()
-	defer s.feederSvcStartedMtx.RUnlock()
-
-	return s.feederSvcStarted
-}
-
-func (s *Service) SetPriceFeederStarted() {
-	s.feederSvcStartedMtx.Lock()
-	defer s.feederSvcStartedMtx.Unlock()
-
-	s.feederSvcStarted = true
 }

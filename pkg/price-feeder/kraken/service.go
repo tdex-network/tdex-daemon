@@ -189,9 +189,12 @@ func (s *service) start() (mustReconnect bool, err error) {
 			// to still signal the need for a reconnection with kraken websocket.
 			_, message, err := s.getConn().ReadMessage()
 			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					panic(err)
+				if websocket.IsCloseError(err, pricefeeder.WebSocketCloseErrors...) {
+					return true, err
 				}
+
+				log.Warnf("error reading message from socket: %s", err)
+				continue
 			}
 
 			priceFeed := s.parseFeed(message)

@@ -199,9 +199,8 @@ func newPriceFeederService() (ports.PriceFeeder, error) {
 		"kraken":   krakenSvc,
 	}
 
-	priceFeedDbDir := filepath.Join(datadir, "pricefeed")
-
-	store, err := pricefeederinfra.NewPriceFeedStoreImpl(priceFeedDbDir, log.New())
+	dbDir := filepath.Join(datadir, "db")
+	store, err := pricefeederinfra.NewPriceFeedStoreImpl(dbDir, log.New())
 	if err != nil {
 		return nil, err
 	}

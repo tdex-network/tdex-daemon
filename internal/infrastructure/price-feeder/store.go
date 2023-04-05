@@ -34,6 +34,8 @@ type PriceFeedStore interface {
 	RemovePriceFeed(ctx context.Context, id string) error
 	// GetAllPriceFeeds returns all price feeds of all markets.
 	GetAllPriceFeeds(ctx context.Context) ([]PriceFeed, error)
+	// GetStartedPriceFeeds returns all price feeds that are started.
+	GetStartedPriceFeeds(ctx context.Context) ([]PriceFeed, error)
 }
 
 type priceFeedRepositoryImpl struct {
@@ -169,6 +171,18 @@ func (p *priceFeedRepositoryImpl) GetAllPriceFeeds(
 ) ([]PriceFeed, error) {
 	var priceFeeds []PriceFeed
 	if err := p.store.Find(&priceFeeds, nil); err != nil {
+		return nil, err
+	}
+
+	return priceFeeds, nil
+}
+
+func (p *priceFeedRepositoryImpl) GetStartedPriceFeeds(
+	ctx context.Context) ([]PriceFeed, error) {
+	query := badgerhold.Where("Started").Eq(true)
+
+	var priceFeeds []PriceFeed
+	if err := p.store.Find(&priceFeeds, query); err != nil {
 		return nil, err
 	}
 
