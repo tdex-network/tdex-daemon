@@ -63,8 +63,6 @@ const (
 	OceanWalletAddrKey = "WALLET_ADDR"
 	// DBTypeKey is used to switch database type between those supported
 	DBTypeKey = "DB_TYPE"
-	// PriceFeedIntervalKey is the interval in milliseconds for fetching price feed
-	PriceFeedIntervalKey = "PRICE_FEED_INTERVAL"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
@@ -96,7 +94,6 @@ func InitConfig() error {
 	vip.SetDefault(NoOperatorTlsKey, false)
 	vip.SetDefault(ConnectProtoKey, httpsProtocol)
 	vip.SetDefault(DBTypeKey, application.DBBadger)
-	vip.SetDefault(PriceFeedIntervalKey, 2000)
 
 	if err := validate(); err != nil {
 		return fmt.Errorf("error while validating config: %s", err)

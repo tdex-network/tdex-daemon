@@ -13,11 +13,6 @@ import (
 
 	pricefeederinfra "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
 
-	pricefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder"
-	bitfinexfeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/bitfinex"
-	coinbasefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/coinbase"
-	krakenfeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/kraken"
-
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/config"
@@ -46,7 +41,6 @@ var (
 	// App services config
 	feeBalanceThreshold                   uint64
 	pricesSlippagePercentage, satsPerByte decimal.Decimal
-	priceFeedInterval                     int
 
 	version = "dev"
 	commit  = "none"
@@ -152,7 +146,6 @@ func loadConfig() error {
 	tradeSvcPort = config.GetInt(config.TradeListeningPortKey)
 	operatorSvcPort = config.GetInt(config.OperatorListeningPortKey)
 	oceanWalletAddr = config.GetString(config.OceanWalletAddrKey)
-	priceFeedInterval = config.GetInt(config.PriceFeedIntervalKey)
 
 	return nil
 }
@@ -178,34 +171,13 @@ func newWebhookPubSubService(datadir string) (ports.SecurePubSub, error) {
 }
 
 func newPriceFeederService() (ports.PriceFeeder, error) {
-	bitfinexSvc, err := bitfinexfeeder.NewService(priceFeedInterval)
-	if err != nil {
-		return nil, err
-	}
-
-	coinbaseSvc, err := coinbasefeeder.NewService(priceFeedInterval)
-	if err != nil {
-		return nil, err
-	}
-
-	krakenSvc, err := krakenfeeder.NewService(priceFeedInterval)
-	if err != nil {
-		return nil, err
-	}
-
-	feederSvcBySource := map[string]pricefeeder.PriceFeeder{
-		"bitfinex": bitfinexSvc,
-		"coinbase": coinbaseSvc,
-		"kraken":   krakenSvc,
-	}
-
 	dbDir := filepath.Join(datadir, "db")
 	store, err := pricefeederinfra.NewPriceFeedStoreImpl(dbDir, log.New())
 	if err != nil {
 		return nil, err
 	}
 
-	priceFeedSvc := pricefeederinfra.NewService(feederSvcBySource, store)
+	priceFeedSvc := pricefeederinfra.NewService(store)
 
 	return priceFeedSvc, nil
 }

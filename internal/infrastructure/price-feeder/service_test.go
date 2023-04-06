@@ -5,29 +5,23 @@ import (
 	"testing"
 	"time"
 
-	coinbasefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/coinbase"
-	krakenfeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/kraken"
-
 	"github.com/stretchr/testify/require"
 	pricefeederinfra "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
-	pricefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder"
-	bitfinexfeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder/bitfinex"
 )
 
 var (
 	ctx = context.Background()
 
-	interval = 1000 // 1s interval
 	//bitfinexTickers = []string{"BTCUST", "BTCEUT"}
 	//coinbaseTickers = []string{"BTC-USD", "BTC-EUR"}
 	//krakenTickers   = []string{"XBT/USDT", "XBT/EUR"}
 )
 
 func TestPriceFeedService(t *testing.T) {
-	feederSvcBySource, priceFeedStore, err := prepare()
+	priceFeedStore, err := prepare()
 	require.NoError(t, err)
 
-	priceFeedSvc := pricefeederinfra.NewService(feederSvcBySource, priceFeedStore)
+	priceFeedSvc := pricefeederinfra.NewService(priceFeedStore)
 
 	priceFeedChan, err := priceFeedSvc.Start(ctx)
 	require.NoError(t, err)
@@ -70,35 +64,8 @@ func TestPriceFeedService(t *testing.T) {
 
 }
 
-func prepare() (map[string]pricefeeder.PriceFeeder,
-	pricefeederinfra.PriceFeedStore, error) {
-	bitfinexSvc, err := bitfinexfeeder.NewService(interval)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	coinbaseSvc, err := coinbasefeeder.NewService(interval)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	krakenSvc, err := krakenfeeder.NewService(interval)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	feederSvcBySource := map[string]pricefeeder.PriceFeeder{
-		"bitfinex": bitfinexSvc,
-		"coinbase": coinbaseSvc,
-		"kraken":   krakenSvc,
-	}
-
-	priceFeedStore, err := mockPriceFeedStoreStore()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return feederSvcBySource, priceFeedStore, nil
+func prepare() (pricefeederinfra.PriceFeedStore, error) {
+	return mockPriceFeedStoreStore()
 }
 
 type mkt struct {
