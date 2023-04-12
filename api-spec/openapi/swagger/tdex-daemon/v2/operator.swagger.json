@@ -124,24 +124,24 @@
           "type": "string",
           "description": "The id of the trade."
         },
-        "basisPoint": {
+        "percentageFee": {
           "type": "string",
-          "format": "int64",
-          "description": "The percentage fee applied to the trade."
+          "format": "uint64",
+          "description": "The percentage fee in basis point."
+        },
+        "fixedFee": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The trading fixed fee amount."
         },
         "asset": {
           "type": "string",
           "description": "The asset in which fees are collected."
         },
-        "percentageFeeAmount": {
+        "amount": {
           "type": "string",
           "format": "uint64",
-          "description": "The amount in satoshi of the percentage fee."
-        },
-        "fixedFeeAmount": {
-          "type": "string",
-          "format": "uint64",
-          "description": "The amount in satoshi of the fixed fee."
+          "description": "The total trading fee amount."
         },
         "marketPrice": {
           "type": "number",

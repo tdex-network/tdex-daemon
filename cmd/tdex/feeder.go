@@ -15,7 +15,7 @@ var (
 		Usage: "manage price feeds",
 		Subcommands: []*cli.Command{
 			addPriceFeed, startPriceFeed, stopPriceFeed, updatePriceFeed,
-			removePriceFeed, getPriceFeed, listPriceFeeds, listSources,
+			removePriceFeed, infoPriceFeed, listPriceFeeds, listSources,
 		},
 	}
 	addPriceFeed = &cli.Command{
@@ -24,20 +24,14 @@ var (
 		Action: addPriceFeedAction,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "base_asset",
-				Usage: "base asset of the market for which the price feed is created",
+				Name:     "source",
+				Usage:    "price source to use, check 'sources' command more info",
+				Required: true,
 			},
 			&cli.StringFlag{
-				Name:  "quote_asset",
-				Usage: "quote asset of the market for which the price feed is created",
-			},
-			&cli.StringFlag{
-				Name:  "source",
-				Usage: "price source to use, e.g. kraken, bitfinex, coinbase etc",
-			},
-			&cli.StringFlag{
-				Name:  "ticker",
-				Usage: "ticker of the market, e.g. XBT/USDT, XBT/EUR etc",
+				Name:     "ticker",
+				Usage:    "ticker of the market for the selected price source",
+				Required: true,
 			},
 		},
 	}
@@ -47,8 +41,9 @@ var (
 		Action: startPriceFeedAction,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "id",
-				Usage: "id of the price feed to start",
+				Name:     "id",
+				Usage:    "id of the price feed to start",
+				Required: true,
 			},
 		},
 	}
@@ -58,64 +53,63 @@ var (
 		Action: stopPriceFeedAction,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "id",
-				Usage: "id of the price feed to start",
+				Name:     "id",
+				Usage:    "id of the price feed to stop",
+				Required: true,
 			},
 		},
 	}
 	updatePriceFeed = &cli.Command{
 		Name:   "update",
-		Usage:  "update a price feed source and ticker",
+		Usage:  "updates a price feed source and/or ticker",
 		Action: updatePriceFeedAction,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "id",
-				Usage: "id of the price feed to start",
+				Name:     "id",
+				Usage:    "id of the price feed to update",
+				Required: true,
 			},
 			&cli.StringFlag{
 				Name:  "source",
-				Usage: "price source to use, e.g. kraken, bitfinex, coinbase etc",
+				Usage: "price source to be updated, check 'sources' command for more info",
 			},
 			&cli.StringFlag{
 				Name:  "ticker",
-				Usage: "ticker of the market, e.g. XBT/USDT, XBT/EUR etc",
+				Usage: "ticker of the market to be updated",
 			},
 		},
 	}
 	removePriceFeed = &cli.Command{
 		Name:   "remove",
-		Usage:  "remove a price feed",
+		Usage:  "removes a price feed",
 		Action: removePriceFeedAction,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "id",
-				Usage: "id of the price feed to start",
+				Name:     "id",
+				Usage:    "id of the price feed to remove",
+				Required: true,
 			},
 		},
 	}
-	getPriceFeed = &cli.Command{
-		Name:   "get",
-		Usage:  "get a price feed",
-		Action: getPriceFeedAction,
+	infoPriceFeed = &cli.Command{
+		Name:   "info",
+		Usage:  "get info about a price feed",
+		Action: getPriceFeedInfoAction,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "base_asset",
-				Usage: "base asset of the market for which the price feed is created",
-			},
-			&cli.StringFlag{
-				Name:  "quote_asset",
-				Usage: "quote asset of the market for which the price feed is created",
+				Name:  "id",
+				Usage: "id of the price feed to retrieve info",
 			},
 		},
 	}
 	listPriceFeeds = &cli.Command{
 		Name:   "list",
-		Usage:  "list price feeds",
+		Usage:  "lists all price feeds",
 		Action: listPriceFeedsAction,
 	}
 	listSources = &cli.Command{
 		Name:   "sources",
-		Usage:  "list price feed sources",
+		Usage:  "lists supported price feed sources",
 		Action: listSourcesAction,
 	}
 )
@@ -127,27 +121,28 @@ func addPriceFeedAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	baseAsset := ctx.String("base_asset")
-	quoteAsset := ctx.String("quote_asset")
 	source := ctx.String("source")
 	ticker := ctx.String("ticker")
 
-	if baseAsset == "" || quoteAsset == "" || source == "" || ticker == "" {
-		return cli.Exit("base_asset, quote_asset, source and ticker are required", 1)
+	baseAsset, quoteAsset, err := getMarketFromState()
+	if err != nil {
+		return err
 	}
 
-	if _, err := client.AddPriceFeed(ctx.Context, &daemonv2.AddPriceFeedRequest{
+	reply, err := client.AddPriceFeed(ctx.Context, &daemonv2.AddPriceFeedRequest{
 		Market: &tdexv2.Market{
 			BaseAsset:  baseAsset,
 			QuoteAsset: quoteAsset,
 		},
 		Source: source,
 		Ticker: ticker,
-	}); err != nil {
-		return cli.Exit(err, 1)
+	})
+	if err != nil {
+		return err
 	}
 
-	fmt.Println("Price feed added")
+	fmt.Println("")
+	fmt.Println("price feed id:", reply.GetId())
 	return nil
 }
 
@@ -160,17 +155,14 @@ func startPriceFeedAction(ctx *cli.Context) error {
 
 	id := ctx.String("id")
 
-	if id == "" {
-		return cli.Exit("id is required", 1)
+	if _, err := client.StartPriceFeed(
+		ctx.Context, &daemonv2.StartPriceFeedRequest{Id: id},
+	); err != nil {
+		return err
 	}
 
-	if _, err := client.StartPriceFeed(ctx.Context, &daemonv2.StartPriceFeedRequest{
-		Id: id,
-	}); err != nil {
-		return cli.Exit(err, 1)
-	}
-
-	fmt.Println("Price feed started")
+	fmt.Println("")
+	fmt.Println("price feed started")
 	return nil
 }
 
@@ -182,17 +174,15 @@ func stopPriceFeedAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	id := ctx.String("id")
-	if id == "" {
-		return cli.Exit("id is required", 1)
+
+	if _, err := client.StopPriceFeed(
+		ctx.Context, &daemonv2.StopPriceFeedRequest{Id: id},
+	); err != nil {
+		return err
 	}
 
-	if _, err := client.StopPriceFeed(ctx.Context, &daemonv2.StopPriceFeedRequest{
-		Id: id,
-	}); err != nil {
-		return cli.Exit(err, 1)
-	}
-
-	fmt.Println("Price feed stopped")
+	fmt.Println("")
+	fmt.Println("price feed stopped")
 	return nil
 }
 
@@ -206,19 +196,19 @@ func updatePriceFeedAction(ctx *cli.Context) error {
 	id := ctx.String("id")
 	source := ctx.String("source")
 	ticker := ctx.String("ticker")
-	if id == "" || source == "" || ticker == "" {
-		return cli.Exit("id, source and ticker are required", 1)
+
+	if _, err := client.UpdatePriceFeed(
+		ctx.Context, &daemonv2.UpdatePriceFeedRequest{
+			Id:     id,
+			Source: source,
+			Ticker: ticker,
+		},
+	); err != nil {
+		return err
 	}
 
-	if _, err := client.UpdatePriceFeed(ctx.Context, &daemonv2.UpdatePriceFeedRequest{
-		Id:     id,
-		Source: source,
-		Ticker: ticker,
-	}); err != nil {
-		return cli.Exit(err, 1)
-	}
-
-	fmt.Println("Price feed updated")
+	fmt.Println("")
+	fmt.Println("price feed updated")
 	return nil
 }
 
@@ -230,41 +220,32 @@ func removePriceFeedAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	id := ctx.String("id")
-	if id == "" {
-		return cli.Exit("id is required", 1)
+
+	if _, err := client.RemovePriceFeed(
+		ctx.Context, &daemonv2.RemovePriceFeedRequest{Id: id},
+	); err != nil {
+		return err
 	}
 
-	if _, err := client.RemovePriceFeed(ctx.Context, &daemonv2.RemovePriceFeedRequest{
-		Id: id,
-	}); err != nil {
-		return cli.Exit(err, 1)
-	}
-
-	fmt.Println("Price feed removed")
+	fmt.Println("")
+	fmt.Println("price feed removed")
 	return nil
 }
 
-func getPriceFeedAction(ctx *cli.Context) error {
+func getPriceFeedInfoAction(ctx *cli.Context) error {
 	client, cleanup, err := getFeederClient(ctx)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	baseAsset := ctx.String("base_asset")
-	quoteAsset := ctx.String("quote_asset")
-	if baseAsset == "" || quoteAsset == "" {
-		return cli.Exit("base_asset and quote_asset are required", 1)
-	}
+	id := ctx.String("id")
 
 	reply, err := client.GetPriceFeed(ctx.Context, &daemonv2.GetPriceFeedRequest{
-		Market: &tdexv2.Market{
-			BaseAsset:  baseAsset,
-			QuoteAsset: quoteAsset,
-		},
+		Id: id,
 	})
 	if err != nil {
-		return cli.Exit(err, 1)
+		return err
 	}
 
 	printRespJSON(reply)
@@ -278,9 +259,11 @@ func listPriceFeedsAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	reply, err := client.ListPriceFeeds(ctx.Context, &daemonv2.ListPriceFeedsRequest{})
+	reply, err := client.ListPriceFeeds(
+		ctx.Context, &daemonv2.ListPriceFeedsRequest{},
+	)
 	if err != nil {
-		return cli.Exit(err, 1)
+		return err
 	}
 
 	printRespJSON(reply)
@@ -297,7 +280,7 @@ func listSourcesAction(ctx *cli.Context) error {
 	reply, err := client.ListSupportedPriceSources(ctx.Context,
 		&daemonv2.ListSupportedPriceSourcesRequest{})
 	if err != nil {
-		return cli.Exit(err, 1)
+		return err
 	}
 
 	printRespJSON(reply)

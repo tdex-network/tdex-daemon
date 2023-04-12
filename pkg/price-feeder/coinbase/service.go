@@ -1,280 +1,227 @@
 package coinbasefeeder
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/shopspring/decimal"
 	pricefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder"
 
 	"github.com/gorilla/websocket"
-	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	// CoinbaseWebSocketURL is the base url to open a WebSocket connection with
-	// Coinbase.
-	CoinbaseWebSocketURL = "ws-feed.exchange.coinbase.com"
+	baseURL                 = "ws-feed.exchange.coinbase.com"
+	maxReconnectionAttempts = 3
 )
 
-var (
-	wellKnownMarkets = []pricefeeder.Market{
-		{
-			BaseAsset:  "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d",
-			QuoteAsset: "ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2",
-			Ticker:     "BTC-USDT",
-		},
-	}
-)
-
-type service struct {
-	connMtx *sync.Mutex
-	conn    *websocket.Conn
-
-	writeTicker *time.Ticker
-
-	marketByTickerMtx *sync.RWMutex
-	marketByTicker    map[string]pricefeeder.Market
-
-	latestFeedsByTickerMtx *sync.RWMutex
-	latestFeedsByTicker    map[string]pricefeeder.PriceFeed
-
-	chLock   *sync.Mutex
-	feedChan chan pricefeeder.PriceFeed
-
-	quitChan chan struct{}
+var unexpectedErrors = []int{
+	websocket.CloseNormalClosure,
+	websocket.CloseGoingAway,
+	websocket.CloseProtocolError,
+	websocket.CloseUnsupportedData,
+	websocket.CloseNoStatusReceived,
+	websocket.CloseAbnormalClosure,
+	websocket.CloseInvalidFramePayloadData,
+	websocket.ClosePolicyViolation,
+	websocket.CloseMessageTooBig,
+	websocket.CloseMandatoryExtension,
+	websocket.CloseInternalServerErr,
+	websocket.CloseServiceRestart,
+	websocket.CloseTryAgainLater,
+	websocket.CloseTLSHandshake,
 }
 
-func NewService(args ...interface{}) (pricefeeder.PriceFeeder, error) {
-	if len(args) != 1 {
-		return nil, fmt.Errorf("invalid number of args")
-	}
+type service struct {
+	conn *websocket.Conn
 
-	interval, ok := args[0].(int)
-	if !ok {
-		return nil, fmt.Errorf("unknown interval arg type")
-	}
-	writeTicker := time.NewTicker(time.Duration(interval) * time.Millisecond)
+	marketLock      *sync.RWMutex
+	marketsByTicker map[string]pricefeeder.Market
 
+	feedLock         *sync.RWMutex
+	lastFeedByTicker map[string]pricefeeder.PriceFeed
+
+	feedCh chan pricefeeder.PriceFeed
+}
+
+func NewService() (pricefeeder.PriceFeeder, error) {
 	conn, err := connect()
 	if err != nil {
 		return nil, err
 	}
+	marketLock, feedLock := &sync.RWMutex{}, &sync.RWMutex{}
+	marketsByTicker := make(map[string]pricefeeder.Market)
+	lastFeedByTicker := make(map[string]pricefeeder.PriceFeed)
+	feedCh := make(chan pricefeeder.PriceFeed, 20)
 
 	return &service{
-		writeTicker:            writeTicker,
-		chLock:                 &sync.Mutex{},
-		latestFeedsByTickerMtx: &sync.RWMutex{},
-		latestFeedsByTicker:    make(map[string]pricefeeder.PriceFeed),
-		feedChan:               make(chan pricefeeder.PriceFeed),
-		quitChan:               make(chan struct{}, 1),
-		marketByTickerMtx:      &sync.RWMutex{},
-		marketByTicker:         make(map[string]pricefeeder.Market),
-		connMtx:                &sync.Mutex{},
-		conn:                   conn,
+		conn, marketLock, marketsByTicker, feedLock, lastFeedByTicker, feedCh,
 	}, nil
 }
 
-func (s *service) WellKnownMarkets() []pricefeeder.Market {
-	return wellKnownMarkets
-}
-
-func (s *service) SubscribeMarkets(markets []pricefeeder.Market) error {
-	mktTickers := make([]string, 0, len(markets))
-	mktByTicker := make(map[string]pricefeeder.Market)
-	for _, mkt := range markets {
-		mktTickers = append(mktTickers, mkt.Ticker)
-		mktByTicker[mkt.Ticker] = mkt
-	}
-
-	if err := s.subscribe(mktTickers); err != nil {
-		return err
-	}
-
-	s.addMarkets(mktByTicker)
-	return nil
-}
-
-func (s *service) UnSubscribeMarkets(markets []pricefeeder.Market) error {
-	mktTickers := make([]string, 0, len(markets))
-	mktByTicker := make(map[string]pricefeeder.Market)
-	for _, mkt := range markets {
-		mktTickers = append(mktTickers, mkt.Ticker)
-		mktByTicker[mkt.Ticker] = mkt
-	}
-
-	if err := s.unsubscribe(mktTickers); err != nil {
-		return err
-	}
-
-	s.removeMarkets(mktByTicker)
-	s.removeFeeds(mktByTicker)
-	return nil
-}
-
-func (s *service) Start() error {
-	mustReconnect, err := s.start()
-	for mustReconnect {
-		log.WithError(err).Warn("connection dropped unexpectedly. Trying to reconnect...")
-
-		tickers := make([]string, 0, len(s.marketByTicker))
-		for ticker := range s.getMarketTickers() {
-			tickers = append(tickers, ticker)
-		}
-
-		conn, err := connect()
-		if err != nil {
-			return err
-		}
-
-		s.addConn(conn)
-
-		if err := s.subscribe(tickers); err != nil {
-			return err
-		}
-
-		log.Debug("connection and subscriptions re-established. Restarting...")
-		mustReconnect, err = s.start()
-	}
-
-	return err
+func (s *service) Start() chan pricefeeder.PriceFeed {
+	go s.start()
+	return s.feedCh
 }
 
 func (s *service) Stop() {
-	s.quitChan <- struct{}{}
+	s.conn.Close()
+	close(s.feedCh)
 }
 
-func (s *service) FeedChan() chan pricefeeder.PriceFeed {
-	return s.feedChan
+func (s *service) SubscribeMarkets(markets []pricefeeder.Market) error {
+	tickers := make([]string, 0, len(markets))
+	marketsToAdd := make([]pricefeeder.Market, 0, len(markets))
+	for _, mkt := range markets {
+		if _, ok := s.getMarketByTicker(mkt.Ticker); !ok {
+			tickers = append(tickers, mkt.Ticker)
+			marketsToAdd = append(marketsToAdd, mkt)
+		}
+	}
+
+	if err := s.subscribe(tickers); err != nil {
+		return err
+	}
+
+	s.addMarkets(marketsToAdd)
+	return nil
 }
 
-func (s *service) start() (mustReconnect bool, err error) {
-	defer func() {
+func (s *service) UnsubscribeMarkets(markets []pricefeeder.Market) error {
+	tickers := make([]string, 0, len(markets))
+	marketsToRemove := make([]pricefeeder.Market, 0, len(markets))
+	for _, mkt := range markets {
+		if _, ok := s.getMarketByTicker(mkt.Ticker); ok {
+			tickers = append(tickers, mkt.Ticker)
+			marketsToRemove = append(marketsToRemove, mkt)
+		}
+	}
+
+	if err := s.unsubscribe(tickers); err != nil {
+		return err
+	}
+
+	s.removeFeeds(tickers)
+	s.removeMarkets(marketsToRemove)
+	return nil
+}
+
+func (s *service) ListSubscriptions() []pricefeeder.Market {
+	return s.getMarkets()
+}
+
+func (s *service) start() {
+	defer func(s *service) {
 		if rec := recover(); rec != nil {
-			mustReconnect = true
+			log.Debug(
+				"connection with kraken server dropped, attempting to reconnect...",
+			)
+			s.reconnect()
 		}
-	}()
-
-	go func() {
-		for range s.writeTicker.C {
-			s.writeToFeedChan()
-		}
-	}()
+	}(s)
 
 	for {
-		select {
-		case <-s.quitChan:
-			s.writeTicker.Stop()
-			s.closeChannels()
-			err = s.getConn().Close()
-			return false, err
-		default:
-			// If for any reason, reading a message from the socket panics, we make
-			// sure to recover and flag that a reconnection is required.
-			msg := make(map[string]interface{})
-			if err := s.getConn().ReadJSON(&msg); err != nil {
-				if websocket.IsCloseError(err, pricefeeder.WebSocketCloseErrors...) {
-					return true, err
-				}
-
-				log.WithError(err).Warn("could not read message from socket")
-				continue
+		_, message, err := s.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, unexpectedErrors...) {
+				panic(err)
 			}
-
-			priceFeed := s.parseFeed(msg)
-			if priceFeed == nil {
-				continue
-			}
-
-			s.writePriceFeed(priceFeed.Market.Ticker, *priceFeed)
+			return
 		}
+
+		priceFeed := s.parseFeed(message)
+		if priceFeed == nil {
+			continue
+		}
+
+		lastFeed, ok := s.getPriceFeed(priceFeed.Market.Ticker)
+		// Prevent updating a feed if it hasn't changed.
+		if ok && priceFeed.Price.BasePrice.Equal(lastFeed.Price.BasePrice) {
+			continue
+		}
+
+		s.updatePriceFeed(priceFeed.Market.Ticker, *priceFeed)
+		s.feedCh <- *priceFeed
 	}
 }
 
-func (s *service) readPriceFeeds() []pricefeeder.PriceFeed {
-	s.latestFeedsByTickerMtx.RLock()
-	defer s.latestFeedsByTickerMtx.RUnlock()
-
-	feeds := make([]pricefeeder.PriceFeed, 0, len(s.latestFeedsByTicker))
-	for _, priceFeed := range s.latestFeedsByTicker {
-		feeds = append(feeds, priceFeed)
+func (s *service) reconnect() {
+	var conn *websocket.Conn
+	var err error
+	for attempt := 0; attempt < maxReconnectionAttempts; attempt++ {
+		conn, err = connect()
+		if err == nil {
+			break
+		}
+		log.WithError(err).Debugf("reconnection attempt %d failed", attempt)
+		time.Sleep(500 * time.Millisecond)
 	}
-	return feeds
-}
-
-func (s *service) writePriceFeed(mktTicker string, priceFeed pricefeeder.PriceFeed) {
-	s.latestFeedsByTickerMtx.Lock()
-	defer s.latestFeedsByTickerMtx.Unlock()
-
-	if mktTicker == "" {
-		return
+	if err != nil {
+		log.Fatal("failed to reconnect to kraken server")
 	}
 
-	s.latestFeedsByTicker[mktTicker] = priceFeed
-}
+	s.conn = conn
 
-func (s *service) removeFeeds(markets map[string]pricefeeder.Market) {
-	s.latestFeedsByTickerMtx.Lock()
-	defer s.latestFeedsByTickerMtx.Unlock()
+	go s.start()
 
-	for ticker := range markets {
-		delete(s.latestFeedsByTicker, ticker)
+	if err := s.resubscribe(); err != nil {
+		log.WithError(err).Fatal(
+			"failed to restore subscriptions after reconnection",
+		)
 	}
+
+	log.Debug("kraken: connection with server restored")
 }
 
-func (s *service) writeToFeedChan() {
-	s.chLock.Lock()
-	defer s.chLock.Unlock()
-
-	priceFeeds := s.readPriceFeeds()
-	for _, priceFeed := range priceFeeds {
-		s.feedChan <- priceFeed
+func (s *service) resubscribe() error {
+	tickers := s.getMarketTickers()
+	if len(tickers) <= 0 {
+		return nil
 	}
+
+	return s.subscribe(tickers)
 }
 
-func (s *service) addMarkets(markets map[string]pricefeeder.Market) {
-	s.marketByTickerMtx.Lock()
-	defer s.marketByTickerMtx.Unlock()
-
-	for ticker, mkt := range markets {
-		s.marketByTicker[ticker] = mkt
+func (s *service) subscribe(mktTickers []string) error {
+	msg := map[string]interface{}{
+		"type":        "subscribe",
+		"product_ids": mktTickers,
+		"channels": []string{
+			"heartbeat", "ticker",
+		},
 	}
-}
 
-func (s *service) removeMarkets(markets map[string]pricefeeder.Market) {
-	s.marketByTickerMtx.Lock()
-	defer s.marketByTickerMtx.Unlock()
-
-	for ticker := range markets {
-		delete(s.marketByTicker, ticker)
+	if err := s.conn.WriteJSON(msg); err != nil {
+		return fmt.Errorf("cannot subscribe to given markets: %s", err)
 	}
+
+	return nil
 }
 
-func (s *service) getMarketTickers() map[string]pricefeeder.Market {
-	s.marketByTickerMtx.RLock()
-	defer s.marketByTickerMtx.RUnlock()
+func (s *service) unsubscribe(mktTickers []string) error {
+	msg := map[string]interface{}{
+		"type":        "unsubscribe",
+		"product_ids": mktTickers,
+		"channels": []string{
+			"heartbeat", "ticker",
+		},
+	}
 
-	return s.marketByTicker
+	if err := s.conn.WriteJSON(msg); err != nil {
+		return fmt.Errorf("cannot unsubscribe to given markets: %s", err)
+	}
+
+	return nil
 }
 
-func (s *service) getMarketByTicker(ticker string) pricefeeder.Market {
-	s.marketByTickerMtx.RLock()
-	defer s.marketByTickerMtx.RUnlock()
-
-	mkt, _ := s.marketByTicker[ticker]
-	return mkt
-}
-
-func (s *service) closeChannels() {
-	s.chLock.Lock()
-	defer s.chLock.Unlock()
-
-	close(s.feedChan)
-	close(s.quitChan)
-}
-
-func (s *service) parseFeed(msg map[string]interface{}) *pricefeeder.PriceFeed {
+func (s *service) parseFeed(buf []byte) *pricefeeder.PriceFeed {
+	msg := make(map[string]interface{})
+	if err := json.Unmarshal(buf, &msg); err != nil {
+		return nil
+	}
 	if _, ok := msg["type"]; !ok {
 		return nil
 	}
@@ -301,7 +248,10 @@ func (s *service) parseFeed(msg map[string]interface{}) *pricefeeder.PriceFeed {
 		return nil
 	}
 	basePrice := decimal.NewFromInt(1).Div(quotePrice).Round(8)
-	mkt := s.getMarketByTicker(ticker)
+	mkt, ok := s.getMarketByTicker(ticker)
+	if !ok {
+		return nil
+	}
 
 	return &pricefeeder.PriceFeed{
 		Market: mkt,
@@ -312,58 +262,88 @@ func (s *service) parseFeed(msg map[string]interface{}) *pricefeeder.PriceFeed {
 	}
 }
 
+func (s *service) addMarkets(markets []pricefeeder.Market) {
+	s.marketLock.Lock()
+	defer s.marketLock.Unlock()
+
+	for _, mkt := range markets {
+		s.marketsByTicker[mkt.Ticker] = mkt
+	}
+}
+
+func (s *service) removeMarkets(markets []pricefeeder.Market) {
+	s.marketLock.Lock()
+	defer s.marketLock.Unlock()
+
+	for _, mkt := range markets {
+		delete(s.marketsByTicker, mkt.Ticker)
+	}
+}
+
+func (s *service) getMarkets() []pricefeeder.Market {
+	s.marketLock.RLock()
+	defer s.marketLock.RUnlock()
+
+	markets := make([]pricefeeder.Market, 0, len(s.marketsByTicker))
+	for _, mkt := range s.marketsByTicker {
+		markets = append(markets, mkt)
+	}
+	return markets
+}
+
+func (s *service) getMarketByTicker(ticker string) (pricefeeder.Market, bool) {
+	s.marketLock.RLock()
+	defer s.marketLock.RUnlock()
+
+	mkt, ok := s.marketsByTicker[ticker]
+	return mkt, ok
+}
+
+func (s *service) getMarketTickers() []string {
+	s.marketLock.RLock()
+	defer s.marketLock.RUnlock()
+
+	tickers := make([]string, 0, len(s.marketsByTicker))
+	for ticker := range s.marketsByTicker {
+		tickers = append(tickers, ticker)
+	}
+	return tickers
+}
+
+func (s *service) updatePriceFeed(ticker string, feed pricefeeder.PriceFeed) {
+	if ticker == "" {
+		return
+	}
+
+	s.feedLock.Lock()
+	defer s.feedLock.Unlock()
+
+	s.lastFeedByTicker[ticker] = feed
+}
+
+func (s *service) getPriceFeed(ticker string) (pricefeeder.PriceFeed, bool) {
+	s.feedLock.RLock()
+	defer s.feedLock.RUnlock()
+
+	feed, ok := s.lastFeedByTicker[ticker]
+	return feed, ok
+}
+
+func (s *service) removeFeeds(tickers []string) {
+	s.feedLock.Lock()
+	defer s.feedLock.Unlock()
+
+	for _, ticker := range tickers {
+		delete(s.lastFeedByTicker, ticker)
+	}
+}
+
 func connect() (*websocket.Conn, error) {
-	url := fmt.Sprintf("wss://%s", CoinbaseWebSocketURL)
+	url := fmt.Sprintf("wss://%s", baseURL)
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	return conn, nil
-}
-
-func (s *service) subscribe(mktTickers []string) error {
-	msg := map[string]interface{}{
-		"type":        "subscribe",
-		"product_ids": mktTickers,
-		"channels": []string{
-			"heartbeat", "ticker",
-		},
-	}
-
-	if err := s.getConn().WriteJSON(msg); err != nil {
-		return fmt.Errorf("cannot subscribe to given markets: %s", err)
-	}
-
-	return nil
-}
-
-func (s *service) unsubscribe(mktTickers []string) error {
-	msg := map[string]interface{}{
-		"type":        "unsubscribe",
-		"product_ids": mktTickers,
-		"channels": []string{
-			"heartbeat", "ticker",
-		},
-	}
-
-	if err := s.getConn().WriteJSON(msg); err != nil {
-		return fmt.Errorf("cannot unsubscribe to given markets: %s", err)
-	}
-
-	return nil
-}
-
-func (s *service) addConn(c *websocket.Conn) {
-	s.connMtx.Lock()
-	defer s.connMtx.Unlock()
-
-	s.conn = c
-}
-
-func (s *service) getConn() *websocket.Conn {
-	s.connMtx.Lock()
-	defer s.connMtx.Unlock()
-
-	return s.conn
 }

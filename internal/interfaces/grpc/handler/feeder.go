@@ -3,9 +3,9 @@ package grpchandler
 import (
 	"context"
 
-	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
-
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 )
@@ -23,10 +23,13 @@ func NewFeederHandler(
 }
 
 func (f *feederHandler) AddPriceFeed(
-	ctx context.Context,
-	req *daemonv2.AddPriceFeedRequest,
+	ctx context.Context, req *daemonv2.AddPriceFeedRequest,
 ) (*daemonv2.AddPriceFeedResponse, error) {
 	mkt, err := parseMarket(req.GetMarket())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	id, err := f.feederSvc.AddPriceFeed(
 		ctx, mkt, req.GetSource(), req.GetTicker(),
 	)
@@ -40,10 +43,14 @@ func (f *feederHandler) AddPriceFeed(
 }
 
 func (f *feederHandler) StartPriceFeed(
-	ctx context.Context,
-	req *daemonv2.StartPriceFeedRequest,
+	ctx context.Context, req *daemonv2.StartPriceFeedRequest,
 ) (*daemonv2.StartPriceFeedResponse, error) {
-	if err := f.feederSvc.StartFeed(ctx, req.GetId()); err != nil {
+	id, err := parseId(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := f.feederSvc.StartPriceFeed(ctx, id); err != nil {
 		return nil, err
 	}
 
@@ -51,10 +58,14 @@ func (f *feederHandler) StartPriceFeed(
 }
 
 func (f *feederHandler) StopPriceFeed(
-	ctx context.Context,
-	req *daemonv2.StopPriceFeedRequest,
+	ctx context.Context, req *daemonv2.StopPriceFeedRequest,
 ) (*daemonv2.StopPriceFeedResponse, error) {
-	if err := f.feederSvc.StopFeed(ctx, req.GetId()); err != nil {
+	id, err := parseId(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := f.feederSvc.StopPriceFeed(ctx, id); err != nil {
 		return nil, err
 	}
 
@@ -62,11 +73,20 @@ func (f *feederHandler) StopPriceFeed(
 }
 
 func (f *feederHandler) UpdatePriceFeed(
-	ctx context.Context,
-	req *daemonv2.UpdatePriceFeedRequest,
+	ctx context.Context, req *daemonv2.UpdatePriceFeedRequest,
 ) (*daemonv2.UpdatePriceFeedResponse, error) {
+	id, err := parseId(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	if req.GetSource() == "" && req.GetTicker() == "" {
+		return nil, status.Error(
+			codes.InvalidArgument, "missing source and/or ticker",
+		)
+	}
+
 	if err := f.feederSvc.UpdatePriceFeed(
-		ctx, req.GetId(), req.GetSource(), req.GetTicker(),
+		ctx, id, req.GetSource(), req.GetTicker(),
 	); err != nil {
 		return nil, err
 	}
@@ -75,10 +95,14 @@ func (f *feederHandler) UpdatePriceFeed(
 }
 
 func (f *feederHandler) RemovePriceFeed(
-	ctx context.Context,
-	req *daemonv2.RemovePriceFeedRequest,
+	ctx context.Context, req *daemonv2.RemovePriceFeedRequest,
 ) (*daemonv2.RemovePriceFeedResponse, error) {
-	if err := f.feederSvc.RemovePriceFeed(ctx, req.GetId()); err != nil {
+	id, err := parseId(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := f.feederSvc.RemovePriceFeed(ctx, id); err != nil {
 		return nil, err
 	}
 
@@ -86,35 +110,25 @@ func (f *feederHandler) RemovePriceFeed(
 }
 
 func (f *feederHandler) GetPriceFeed(
-	ctx context.Context,
-	request *daemonv2.GetPriceFeedRequest,
+	ctx context.Context, req *daemonv2.GetPriceFeedRequest,
 ) (*daemonv2.GetPriceFeedResponse, error) {
-	priceFeed, err := f.feederSvc.GetPriceFeed(
-		ctx,
-		request.GetMarket().GetBaseAsset(),
-		request.GetMarket().GetQuoteAsset(),
-	)
+	id, err := parseId(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	priceFeed, err := f.feederSvc.GetPriceFeed(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	return &daemonv2.GetPriceFeedResponse{
-		Feed: &daemonv2.PriceFeed{
-			Id: priceFeed.GetId(),
-			Market: &tdexv2.Market{
-				BaseAsset:  priceFeed.GetMarket().GetBaseAsset(),
-				QuoteAsset: priceFeed.GetMarket().GetBaseAsset(),
-			},
-			Source:  priceFeed.GetSource(),
-			Ticker:  priceFeed.GetTicker(),
-			Started: priceFeed.IsStarted(),
-		},
+		Feed: priceFeedInfo{priceFeed}.toProto(),
 	}, nil
 }
 
 func (f *feederHandler) ListSupportedPriceSources(
-	ctx context.Context,
-	req *daemonv2.ListSupportedPriceSourcesRequest,
+	ctx context.Context, _ *daemonv2.ListSupportedPriceSourcesRequest,
 ) (*daemonv2.ListSupportedPriceSourcesResponse, error) {
 	sources := f.feederSvc.ListSources(ctx)
 	return &daemonv2.ListSupportedPriceSourcesResponse{
@@ -123,29 +137,14 @@ func (f *feederHandler) ListSupportedPriceSources(
 }
 
 func (f *feederHandler) ListPriceFeeds(
-	ctx context.Context,
-	req *daemonv2.ListPriceFeedsRequest,
+	ctx context.Context, _ *daemonv2.ListPriceFeedsRequest,
 ) (*daemonv2.ListPriceFeedsResponse, error) {
 	priceFeeds, err := f.feederSvc.ListPriceFeeds(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	feeds := make([]*daemonv2.PriceFeed, len(priceFeeds))
-	for i, feed := range priceFeeds {
-		feeds[i] = &daemonv2.PriceFeed{
-			Id: feed.GetId(),
-			Market: &tdexv2.Market{
-				BaseAsset:  feed.GetMarket().GetBaseAsset(),
-				QuoteAsset: feed.GetMarket().GetQuoteAsset(),
-			},
-			Source:  feed.GetSource(),
-			Ticker:  feed.GetTicker(),
-			Started: feed.IsStarted(),
-		}
-	}
-
 	return &daemonv2.ListPriceFeedsResponse{
-		Feeds: feeds,
+		Feeds: priceFeedsInfo(priceFeeds).toProto(),
 	}, nil
 }

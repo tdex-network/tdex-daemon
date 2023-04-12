@@ -309,8 +309,6 @@ func (s *service) Start() error {
 }
 
 func (s *service) Stop() {
-	s.opts.AppConfig.FeederService().Stop(context.Background())
-
 	if s.password != "" {
 		walletSvc := s.opts.AppConfig.WalletService().Wallet()
 		//nolint
@@ -319,11 +317,14 @@ func (s *service) Stop() {
 	stopMacaroonSvc := true
 	s.stop(stopMacaroonSvc)
 
-	s.opts.AppConfig.RepoManager().Close()
-	log.Debug("closed connection with database")
+	s.opts.AppConfig.FeederService().Close()
+	log.Debug("closed connection with feeder")
 
 	s.opts.AppConfig.PubSubService().Close()
 	log.Debug("closed connection with pubsub")
+
+	s.opts.AppConfig.RepoManager().Close()
+	log.Debug("closed connection with database")
 
 	s.opts.AppConfig.WalletService().Close()
 	log.Debug("closed connection with ocean wallet")

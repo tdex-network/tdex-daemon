@@ -1,12 +1,17 @@
 package feeder
 
-import "github.com/tdex-network/tdex-daemon/internal/core/domain"
+import (
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+)
 
-type marketInfo domain.Market
-
-func (i marketInfo) GetBaseAsset() string {
-	return i.BaseAsset
+type marketPrice struct {
+	ports.MarketPrice
 }
-func (i marketInfo) GetQuoteAsset() string {
-	return i.QuoteAsset
+
+func (mp marketPrice) toDomain() domain.MarketPrice {
+	return domain.MarketPrice{
+		BasePrice:  mp.GetBasePrice().String(),
+		QuotePrice: mp.GetQuotePrice().String(),
+	}
 }

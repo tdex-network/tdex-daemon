@@ -245,6 +245,13 @@ func parseWebhookActionType(actionType daemonv2.ActionType) (int, error) {
 	return int(actionType), nil
 }
 
+func parseId(id string) (string, error) {
+	if len(id) <= 0 {
+		return "", errors.New("missing id")
+	}
+	return id, nil
+}
+
 func parseTimeRange(timeRange *daemonv2.TimeRange) (ports.TimeRange, error) {
 	pp := timeRange.GetPredefinedPeriod()
 	cp := timeRange.GetCustomPeriod()

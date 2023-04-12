@@ -11,7 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	pricefeederinfra "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
+	pricefeeder "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
+	pricefeederstore "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder/store/badger"
 
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -172,14 +173,12 @@ func newWebhookPubSubService(datadir string) (ports.SecurePubSub, error) {
 
 func newPriceFeederService() (ports.PriceFeeder, error) {
 	dbDir := filepath.Join(datadir, "db")
-	store, err := pricefeederinfra.NewPriceFeedStoreImpl(dbDir, log.New())
+	store, err := pricefeederstore.NewPriceFeedStore(dbDir, log.New())
 	if err != nil {
 		return nil, err
 	}
 
-	priceFeedSvc := pricefeederinfra.NewService(store)
-
-	return priceFeedSvc, nil
+	return pricefeeder.NewService(store), nil
 }
 
 func NewGrpcService(

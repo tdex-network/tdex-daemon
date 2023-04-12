@@ -138,13 +138,13 @@ func (i collectedFeesInfo) toProto() *daemonv2.MarketCollectedFees {
 	for _, i := range info.GetTradeFeeInfo() {
 		price, _ := i.GetMarketPrice().Float64()
 		feesPerTrade = append(feesPerTrade, &daemonv2.FeeInfo{
-			TradeId:             i.GetTradeId(),
-			BasisPoint:          int64(i.GetPercentageFee()),
-			Asset:               i.GetFeeAsset(),
-			PercentageFeeAmount: i.GetPercentageFeeAmount(),
-			FixedFeeAmount:      i.GetFixedFeeAmount(),
-			MarketPrice:         price,
-			RequestDate:         time.Unix(i.GetTimestamp(), 0).Format(time.RFC3339),
+			TradeId:       i.GetTradeId(),
+			PercentageFee: i.GetPercentageFee(),
+			FixedFee:      i.GetFixedFee(),
+			Asset:         i.GetFeeAsset(),
+			Amount:        i.GetFeeAmount(),
+			MarketPrice:   price,
+			RequestDate:   time.Unix(i.GetTimestamp(), 0).Format(time.RFC3339),
 		})
 	}
 	return &daemonv2.MarketCollectedFees{
@@ -527,4 +527,28 @@ func (i pageInfo) GetSize() int64 {
 		return 1
 	}
 	return i.Page.GetSize()
+}
+
+type priceFeedInfo struct {
+	ports.PriceFeedInfo
+}
+
+func (i priceFeedInfo) toProto() *daemonv2.PriceFeed {
+	return &daemonv2.PriceFeed{
+		Id:      i.GetId(),
+		Market:  market{i.GetMarket()}.toProto(),
+		Source:  i.GetSource(),
+		Ticker:  i.GetTicker(),
+		Started: i.IsStarted(),
+	}
+}
+
+type priceFeedsInfo []ports.PriceFeedInfo
+
+func (i priceFeedsInfo) toProto() []*daemonv2.PriceFeed {
+	list := make([]*daemonv2.PriceFeed, 0, len(i))
+	for _, feed := range i {
+		list = append(list, priceFeedInfo{feed}.toProto())
+	}
+	return list
 }

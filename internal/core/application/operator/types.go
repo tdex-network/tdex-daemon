@@ -341,29 +341,29 @@ func (l marketVolumeInfoList) toPortableList() []ports.MarketVolume {
 
 type tradeFeeInfo struct {
 	domain.Trade
-	feeAsset            string
-	percentageFeeAmount uint64
-	fixedFeeAmount      uint64
-	marketPrice         string
+	marketPrice string
 }
 
 func (i tradeFeeInfo) GetTradeId() string {
 	return i.Trade.Id
 }
 func (i tradeFeeInfo) GetPercentageFee() uint64 {
-	if i.feeAsset == i.Trade.MarketBaseAsset {
+	if i.Trade.FeeAsset == i.Trade.MarketBaseAsset {
 		return i.Trade.MarketPercentageFee.BaseAsset
 	}
 	return i.Trade.MarketPercentageFee.QuoteAsset
 }
+func (i tradeFeeInfo) GetFixedFee() uint64 {
+	if i.Trade.FeeAsset == i.Trade.MarketBaseAsset {
+		return i.Trade.MarketFixedFee.BaseAsset
+	}
+	return i.Trade.MarketFixedFee.QuoteAsset
+}
 func (i tradeFeeInfo) GetFeeAsset() string {
-	return i.feeAsset
+	return i.Trade.FeeAsset
 }
-func (i tradeFeeInfo) GetPercentageFeeAmount() uint64 {
-	return i.percentageFeeAmount
-}
-func (i tradeFeeInfo) GetFixedFeeAmount() uint64 {
-	return i.fixedFeeAmount
+func (i tradeFeeInfo) GetFeeAmount() uint64 {
+	return i.Trade.FeeAmount
 }
 func (i tradeFeeInfo) GetMarketPrice() decimal.Decimal {
 	p, _ := decimal.NewFromString(i.marketPrice)

@@ -1,81 +1,105 @@
-package pricefeederinfra
+package pricefeeder
 
 import (
-	"encoding/hex"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
-
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	pricefeeder "github.com/tdex-network/tdex-daemon/pkg/price-feeder"
 )
 
-type Feed struct {
-	Market Market
-	Price  Price
+type PriceFeedInfo struct {
+	ID      string
+	Market  Market
+	Source  string
+	Ticker  string
+	Started bool
 }
 
-func (f Feed) GetMarket() ports.Market {
-	return f.Market
+func (p PriceFeedInfo) GetId() string {
+	return p.ID
 }
 
-func (f Feed) GetPrice() ports.MarketPrice {
-	return f.Price
+func (p PriceFeedInfo) GetMarket() ports.Market {
+	return p.Market
 }
 
-type Price struct {
-	BasePrice  decimal.Decimal
-	QuotePrice decimal.Decimal
+func (p PriceFeedInfo) GetSource() string {
+	return p.Source
 }
 
-func (p Price) GetBasePrice() decimal.Decimal {
-	return p.BasePrice
+func (p PriceFeedInfo) GetTicker() string {
+	return p.Ticker
 }
 
-func (p Price) GetQuotePrice() decimal.Decimal {
-	return p.QuotePrice
+func (p PriceFeedInfo) IsStarted() bool {
+	return p.Started
 }
 
-func validateAddPriceFeed(market ports.Market, source, ticker string) error {
-	baseAsset, err := hex.DecodeString(market.GetBaseAsset())
-	if err != nil {
-		return err
-	}
-	if len(baseAsset) != 32 {
-		return fmt.Errorf(
-			"invalid baseAsset: %s, must be 32 length", market.GetBaseAsset(),
-		)
-	}
-
-	quoteAsset, err := hex.DecodeString(market.GetQuoteAsset())
-	if err != nil {
-		return err
-	}
-	if len(quoteAsset) != 32 {
-		return fmt.Errorf(
-			"invalid quoteAsset: %s, must be 32 length",
-			market.GetQuoteAsset(),
-		)
-	}
-
-	if _, ok := sources[source]; !ok {
-		return fmt.Errorf(
-			"invalid source: %s, must be one of %v", source, sources,
-		)
-	}
-
-	return nil
+type Market struct {
+	BaseAsset  string
+	QuoteAsset string
 }
 
-func ValidateUpdatePriceFeed(id, source, ticker string) error {
-	if id == "" {
-		return fmt.Errorf("id must not be empty")
+func (m Market) GetBaseAsset() string {
+	return m.BaseAsset
+}
+
+func (m Market) GetQuoteAsset() string {
+	return m.QuoteAsset
+}
+
+func NewPriceFeedInfo(market ports.Market, source, ticker string) (*PriceFeedInfo, error) {
+	if market == nil {
+		return nil, fmt.Errorf("missing market")
+	}
+	if len(source) <= 0 {
+		return nil, fmt.Errorf("missing price source")
+	}
+	if _, ok := feederFactory[source]; !ok {
+		return nil, fmt.Errorf("unknown price source")
+	}
+	if len(ticker) <= 0 {
+		return nil, fmt.Errorf("missing market ticker")
 	}
 
-	if _, ok := sources[source]; !ok {
-		return fmt.Errorf(
-			"invalid source: %s, must be one of %v", source, sources,
-		)
-	}
+	return &PriceFeedInfo{
+		ID: uuid.New().String(),
+		Market: Market{
+			BaseAsset:  market.GetBaseAsset(),
+			QuoteAsset: market.GetQuoteAsset(),
+		},
+		Source:  source,
+		Ticker:  ticker,
+		Started: false,
+	}, nil
+}
 
-	return nil
+func (p *PriceFeedInfo) toMarketList() []pricefeeder.Market {
+	return []pricefeeder.Market{
+		{
+			BaseAsset:  p.Market.BaseAsset,
+			QuoteAsset: p.Market.QuoteAsset,
+			Ticker:     p.Ticker,
+		},
+	}
+}
+
+type priceFeedInfo pricefeeder.PriceFeed
+
+func (i priceFeedInfo) GetMarket() ports.Market {
+	return Market{
+		BaseAsset:  i.Market.BaseAsset,
+		QuoteAsset: i.Market.QuoteAsset,
+	}
+}
+func (i priceFeedInfo) GetBasePrice() decimal.Decimal {
+	return i.Price.BasePrice
+}
+func (i priceFeedInfo) GetQuotePrice() decimal.Decimal {
+	return i.Price.QuotePrice
+}
+func (i priceFeedInfo) GetPrice() ports.MarketPrice {
+	return i
 }

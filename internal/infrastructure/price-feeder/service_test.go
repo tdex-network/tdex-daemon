@@ -1,139 +1,117 @@
-package pricefeederinfra_test
+package pricefeeder_test
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	pricefeederinfra "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
+	"github.com/tdex-network/tdex-daemon/internal/core/ports"
+	pricefeeder "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
+	pricefeederstore "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder/store/badger"
 )
 
 var (
 	ctx = context.Background()
 
-	//bitfinexTickers = []string{"BTCUST", "BTCEUT"}
-	//coinbaseTickers = []string{"BTC-USD", "BTC-EUR"}
-	//krakenTickers   = []string{"XBT/USDT", "XBT/EUR"}
+	tickerBySource = map[string]string{
+		"bitfinex": "BTCUST",
+		"coinbase": "BTC-USD",
+		"kraken":   "XBT/USDT",
+	}
 )
 
 func TestPriceFeedService(t *testing.T) {
-	priceFeedStore, err := prepare()
+	store, err := pricefeederstore.NewPriceFeedStore("", nil)
 	require.NoError(t, err)
+	require.NotNil(t, store)
 
-	priceFeedSvc := pricefeederinfra.NewService(priceFeedStore)
+	priceFeedSvc := pricefeeder.NewService(store)
 
-	priceFeedChan, err := priceFeedSvc.Start(ctx)
-	require.NoError(t, err)
+	wg := &sync.WaitGroup{}
+	wg.Add(6)
 
 	go func() {
-		time.Sleep(7 * time.Second)
-		priceFeedSvc.Stop(ctx)
+		defer wg.Done()
+
+		time.Sleep(10 * time.Second)
+		priceFeedSvc.Close()
+	}()
+
+	feeds := make([]string, 0)
+	for source, ticker := range tickerBySource {
+		market := randomMarket()
+		id, err := priceFeedSvc.AddPriceFeed(ctx, market, source, ticker)
+		require.NoError(t, err)
+		require.NotEmpty(t, id)
+		feeds = append(feeds, id)
+	}
+
+	for _, id := range feeds {
+		feedCh, err := priceFeedSvc.StartPriceFeed(ctx, id)
+		require.NoError(t, err)
+		require.NotNil(t, feedCh)
+
+		go func(ch chan ports.PriceFeed) {
+			defer wg.Done()
+
+			for feed := range ch {
+				require.NotNil(t, feed)
+				require.NotNil(t, feed.GetMarket())
+				require.NotNil(t, feed.GetPrice())
+				fmt.Printf("received feed %+v\n", feed)
+			}
+		}(feedCh)
+	}
+
+	time.Sleep(3 * time.Second)
+	market := randomMarket()
+	id, err := priceFeedSvc.AddPriceFeed(ctx, market, "kraken", "XBT/USDT")
+	require.NoError(t, err)
+	require.NotEmpty(t, id)
+
+	feeds = append(feeds, id)
+
+	ch, err := priceFeedSvc.StartPriceFeed(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, ch)
+
+	go func() {
+		defer wg.Done()
+		for feed := range ch {
+			require.NotNil(t, feed)
+			require.NotNil(t, feed.GetMarket())
+			require.NotNil(t, feed.GetPrice())
+			fmt.Printf("received feed %+v\n", feed)
+		}
 	}()
 
 	go func() {
+		defer wg.Done()
+
 		time.Sleep(3 * time.Second)
-		err := priceFeedSvc.StopFeed(ctx, "1")
-		require.NoError(t, err)
-		err = priceFeedSvc.UpdatePriceFeed(ctx, "1", "kraken", "XBT/EUR")
-		require.NoError(t, err)
-		err = priceFeedSvc.StartFeed(ctx, "1")
-		require.NoError(t, err)
+		for _, id := range feeds {
+			err := priceFeedSvc.StopPriceFeed(ctx, id)
+			require.NoError(t, err)
+		}
 	}()
 
-	go func() {
-		time.Sleep(5 * time.Second)
-		err := priceFeedSvc.StopFeed(ctx, "2")
-		require.NoError(t, err)
-		err = priceFeedSvc.StopFeed(ctx, "3")
-	}()
-
-	count := 0
-	for pf := range priceFeedChan {
-		count++
-		require.NotEmpty(t, pf.GetMarket().GetBaseAsset())
-		require.NotEmpty(t, pf.GetMarket().GetQuoteAsset())
-		require.NotEmpty(t, pf.GetPrice().GetBasePrice())
-		require.NotEmpty(t, pf.GetPrice().GetQuotePrice())
-
-		t.Logf("market %s-%s, price %v-%v,", pf.GetMarket().GetBaseAsset(),
-			pf.GetMarket().GetQuoteAsset(), pf.GetPrice().GetBasePrice(),
-			pf.GetPrice().GetQuotePrice())
-	}
-	require.Greater(t, count, 0)
-
+	wg.Wait()
 }
 
-func prepare() (pricefeederinfra.PriceFeedStore, error) {
-	return mockPriceFeedStoreStore()
+func randomMarket() ports.Market {
+	return pricefeeder.Market{
+		BaseAsset:  randomAsset(),
+		QuoteAsset: randomAsset(),
+	}
 }
 
-type mkt struct {
-	BaseAsset  string
-	QuoteAsset string
-}
-
-func (m mkt) GetBaseAsset() string {
-	return m.BaseAsset
-}
-
-func (m mkt) GetQuoteAsset() string {
-	return m.QuoteAsset
-}
-
-func mockPriceFeedStoreStore() (pricefeederinfra.PriceFeedStore, error) {
-	store, err := pricefeederinfra.NewPriceFeedStoreImpl("", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := store.AddPriceFeed(
-		context.Background(),
-		pricefeederinfra.PriceFeed{
-			ID: "1",
-			Market: pricefeederinfra.Market{
-				BaseAsset:  "BA",
-				QuoteAsset: "QA",
-				Ticker:     "BTCUST",
-			},
-			Source:  "bitfinex",
-			Started: true,
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	if err := store.AddPriceFeed(
-		context.Background(),
-		pricefeederinfra.PriceFeed{
-			ID: "2",
-			Market: pricefeederinfra.Market{
-				BaseAsset:  "BA1",
-				QuoteAsset: "QA1",
-				Ticker:     "BTC-EUR",
-			},
-			Source:  "coinbase",
-			Started: true,
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	if err := store.AddPriceFeed(
-		context.Background(),
-		pricefeederinfra.PriceFeed{
-			ID: "3",
-			Market: pricefeederinfra.Market{
-				BaseAsset:  "BA2",
-				QuoteAsset: "QA2",
-				Ticker:     "XBT/CAD",
-			},
-			Source:  "kraken",
-			Started: true,
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	return store, nil
+func randomAsset() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }

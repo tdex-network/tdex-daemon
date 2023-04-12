@@ -11,10 +11,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/tdex-network/tdex-daemon/examples"
 	"github.com/tdex-network/tdex-daemon/pkg/explorer/esplora"
-	"github.com/tdex-network/tdex-daemon/pkg/trade"
-	tradeclient "github.com/tdex-network/tdex-daemon/pkg/trade/client"
-	trademarket "github.com/tdex-network/tdex-daemon/pkg/trade/market"
 	"github.com/vulpemventures/go-elements/network"
 )
 
@@ -23,14 +21,15 @@ var (
 	volumesPath = "resources/volumes"
 	// feederConfigJSON = fmt.Sprintf("%s/feederd/config.json", volumesPath)
 
-	explorerUrl    = "http://localhost:3001"
-	explorerSvc, _ = esplora.NewService(explorerUrl, 15000)
+	daemonAddr     = "localhost:9945"
+	explorerAddr   = "http://localhost:3001"
+	explorerSvc, _ = esplora.NewService(explorerAddr, 15000)
 
 	password                   = "password"
 	feeFragmenterDepositAmount = 0.001
-	marketBaseDepositAmount    = 0.5
-	marketQuoteDepositAmount   = float64(10000)
-	numOfConcurrentTrades      = 4
+	marketBaseDepositAmount    = 1.0
+	marketQuoteDepositAmount   = float64(25000)
+	// numOfConcurrentTrades      = 4
 
 	lbtc = network.Regtest.AssetID
 	usdt string
@@ -43,7 +42,7 @@ func main() {
 		log.WithError(err).Fatal("failed to create volume dir")
 	}
 
-	log.Info("starting ocean and tdex services...")
+	log.Info("starting oceand and tdexd services...")
 	// docker-compose logs are sent to stderr therefore we cannot check for errors :(
 	//nolint
 	runCommand(
@@ -55,7 +54,10 @@ func main() {
 	if err := setupUSDTAsset(); err != nil {
 		log.WithError(err).Fatal("failed to mint USDT asset")
 	}
-	log.Infof("asset: %s\n\n", usdt)
+	log.Infof("asset: %s", usdt)
+	log.Infof("done\n\n")
+
+	time.Sleep(2 * time.Second)
 
 	log.Info("configuring tdex CLI...")
 	if _, err := runCLICommand("config", "init", "--no_tls", "--no_macaroons"); err != nil {
@@ -63,15 +65,13 @@ func main() {
 	}
 	log.Infof("done\n\n")
 
-	log.Info("asking for new mnemonic seed...")
+	log.Info("initializing wallet...")
 	seed, err := runCLICommand("genseed")
 	if err != nil {
 		log.WithError(err).Fatal("failed to retrieve mnemonic seed")
 	}
-	log.Infof("mnemonic: %s\n\n", seed)
+	log.Infof("mnemonic: %s", seed)
 
-	// init daemon with generated seed
-	log.Info("initializing wallet...")
 	if _, err := runCLICommand("init", "--seed", seed, "--password", password); err != nil {
 		log.WithError(err).Fatal("failed to initialize wallet")
 	}
@@ -84,8 +84,7 @@ func main() {
 	}
 	log.Infof("done\n\n")
 
-	// deposit some funds to the fee fragmenter account so they can easily be
-	// split into several fragments of 5000 sats and deposited to the fee account
+	// deposit to the fee account via the fragmeneter one
 	log.Infof("funding feefragmenter account with %f LBTC...\n", feeFragmenterDepositAmount)
 	out, err := runCLICommand("feefragmenter", "deposit")
 	if err != nil {
@@ -102,16 +101,20 @@ func main() {
 	if _, err := runCLICommand("feefragmenter", "split"); err != nil {
 		log.WithError(err).Fatal("failed to split and deposit feefragmnenter account funds to fee one")
 	}
+	log.Infof("done\n\n")
 
+	// mint a block
+	log.Info("minting a block...")
 	if err := mintBlock(); err != nil {
-		log.WithError(err).Fatal("failed to mint new block")
+		log.WithError(err).Fatal("failed to mint block")
 	}
 	log.Infof("done\n\n")
 
-	// create a LBTC/USDT market on regtest and deposit funds
+	// create a LBTC/USDT market
 	log.Info("creating new market...")
 	if _, err = runCLICommand(
 		"market", "new", "--base_asset", lbtc, "--quote_asset", usdt,
+		"--base_asset_precision", "8", "--quote_asset_precision", "8",
 	); err != nil {
 		log.WithError(err).Fatal("failed to create new market")
 	}
@@ -124,6 +127,7 @@ func main() {
 	}
 	log.Infof("done\n\n")
 
+	// deposit funds to the market via the fragmenter one
 	log.Infof("funding marketfragmenter account with %f LBTC and %f USDT...\n", marketBaseDepositAmount, marketQuoteDepositAmount)
 	out, err = runCLICommand("marketfragmenter", "deposit")
 	if err != nil {
@@ -140,19 +144,36 @@ func main() {
 	if _, err := runCLICommand("marketfragmenter", "split"); err != nil {
 		log.WithError(err).Fatal("failed to split and deposit marketfragmenter account funds to market one")
 	}
+	log.Infof("done\n\n")
 
+	// mint a block
+	log.Info("minting a block...")
 	if err := mintBlock(); err != nil {
-		log.WithError(err).Fatal("failed to mint new block")
+		log.WithError(err).Fatal("failed to mint block")
+	}
+	log.Infof("done\n\n")
+
+	// setup market fees
+	log.Info("setting trading fees for the market...")
+	if _, err := runCLICommand(
+		"market", "percentagefee", "--base_fee", "100", "--quote_fee", "50",
+	); err != nil {
+		log.WithError(err).Fatal("failed to set market percentage fee")
+	}
+	if _, err := runCLICommand(
+		"market", "fixedfee", "--base_fee", "500", "--quote_fee", "1000000",
+	); err != nil {
+		log.WithError(err).Fatal("failed to set market fixed fee")
 	}
 	log.Infof("done\n\n")
 
 	// before opening the market, let's set its strategy to pluggable and also
 	// start the feeder service.
-	log.Info("switching to pluggable market strategy...")
-	if _, err := runCLICommand("market", "strategy", "--pluggable"); err != nil {
-		log.WithError(err).Fatal("failed to update market strategy")
-	}
-	log.Infof("done\n\n")
+	// log.Info("switching to pluggable market strategy...")
+	// if _, err := runCLICommand("market", "strategy", "--pluggable"); err != nil {
+	// 	log.WithError(err).Fatal("failed to update market strategy")
+	// }
+	// log.Infof("done\n\n")
 
 	// TODO: restore using feeder once it supports tdex-daemon/v2 proto.
 	// For now let's manually set a price for the market 1 LBTC = 20k USDT.
@@ -163,43 +184,73 @@ func main() {
 	// }
 	// time.Sleep(7 * time.Second)
 	// log.Infof("done\n\n")
+
+	// TODO: remove this step and restore usage of price feed
+	log.Info("setting market price (TODO: remove this step)...")
 	if _, err := runCLICommand(
-		"market", "price", "--base_price", "0.00005", "--quote_price", "20000",
+		"market", "price", "--base_price", "0.00004", "--quote_price", "25000",
 	); err != nil {
 		log.WithError(err).Fatal("failed to update market price")
 	}
 	log.Infof("done\n\n")
 
+	// open the market
 	log.Info("opening market...")
 	if _, err := runCLICommand("market", "open"); err != nil {
 		log.WithError(err).Fatal("failed to open market")
 	}
 	log.Infof("done\n\n")
 
-	log.Info("setting up traders' wallets...")
-	client, _ := setupTraderClient()
+	time.Sleep(15 * time.Second)
 
-	wallets := make([]*trade.Wallet, 0, numOfConcurrentTrades)
-	assets := make([]string, 0, numOfConcurrentTrades)
-	for i := 0; i < numOfConcurrentTrades; i++ {
-		w, _ := trade.NewRandomWallet(&network.Regtest)
-		faucetAmount, asset := 0.0004, lbtc // 0.0004 LBTC
-		if i%2 != 0 {
-			faucetAmount, asset = 20, usdt // 20 USDT
-		}
-		if _, err := explorerSvc.Faucet(w.Address(), faucetAmount, asset); err != nil {
-			log.WithError(err).Fatal("failed to fund traders' wallets")
-		}
-
-		wallets = append(wallets, w)
-		assets = append(assets, asset)
+	// trade on market
+	log.Infof("trading on market:\n\n")
+	if err = examples.SellExample(daemonAddr, explorerAddr); err != nil {
+		log.WithError(err).Error("failed to sell lbtc for usd")
 	}
 
-	time.Sleep(7 * time.Second)
+	// mint a block
+	log.Infof("minting a block...")
+	if err := mintBlock(); err != nil {
+		log.WithError(err).Fatal("failed to mint block")
+	}
 	log.Infof("done\n\n")
 
-	// start trading against the market
-	log.Info("start trading on market...")
+	if err = examples.BuyExample(daemonAddr, explorerAddr); err != nil {
+		log.WithError(err).Fatal("failed to buy lbtc for usd")
+	}
+
+	// mint a block
+	log.Info("minting a block...")
+	if err := mintBlock(); err != nil {
+		log.WithError(err).Fatal("failed to mint block")
+	}
+	log.Infof("done\n\n")
+
+	// log.Info("setting up traders' wallets...")
+	// client, _ := setupTraderClient()
+
+	// wallets := make([]*trade.Wallet, 0, numOfConcurrentTrades)
+	// assets := make([]string, 0, numOfConcurrentTrades)
+	// for i := 0; i < numOfConcurrentTrades; i++ {
+	// 	w, _ := trade.NewRandomWallet(&network.Regtest)
+	// 	faucetAmount, asset := 0.0004, lbtc // 0.0004 LBTC
+	// 	if i%2 != 0 {
+	// 		faucetAmount, asset = 20, usdt // 20 USDT
+	// 	}
+	// 	if _, err := explorerSvc.Faucet(w.Address(), faucetAmount, asset); err != nil {
+	// 		log.WithError(err).Fatal("failed to fund traders' wallets")
+	// 	}
+
+	// 	wallets = append(wallets, w)
+	// 	assets = append(assets, asset)
+	// }
+
+	// time.Sleep(7 * time.Second)
+	// log.Infof("done\n\n")
+
+	// // start trading against the market
+	// log.Info("start trading on market...")
 	// TODO: restore concurrent trades when fixing issues in Ocean wallet on
 	// getting non-wallet utxos. For now consecutive trades are made instead.
 
@@ -218,53 +269,16 @@ func main() {
 	// if err := eg.Wait(); err != nil {
 	// 	log.WithError(err).Fatal("failed to trade on LBTC/USDT market")
 	// }
-	for i := 0; i < numOfConcurrentTrades; i++ {
-		if err := tradeOnMarket(client, wallets[i], assets[i]); err != nil {
-			log.WithError(err).Fatal("failed to trade on LBTC/USDT market")
-		}
-		if err := mintBlock(); err != nil {
-			log.WithError(err).Fatal("failed to mint new block")
-		}
-	}
-	log.Info("done.\n\n")
+	// for i := 0; i < numOfConcurrentTrades; i++ {
+	// 	if err := tradeOnMarket(client, wallets[i], assets[i]); err != nil {
+	// 		log.WithError(err).Fatal("failed to trade on LBTC/USDT market")
+	// 	}
+	// 	if err := mintBlock(); err != nil {
+	// 		log.WithError(err).Fatal("failed to mint new block")
+	// 	}
+	// }
 	log.Info("test succeeded")
 	log.Exit(0)
-}
-
-func tradeOnMarket(client *trade.Trade, w *trade.Wallet, asset string) error {
-	if asset == usdt {
-		txid, err := client.BuyAndComplete(trade.BuyOrSellAndCompleteOpts{
-			Market: trademarket.Market{
-				BaseAsset:  lbtc,
-				QuoteAsset: usdt,
-			},
-			Asset:       asset,
-			Amount:      1000000000, // 10.00 USDT
-			PrivateKey:  w.PrivateKey(),
-			BlindingKey: w.BlindingKey(),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to buy LBTC: %s", err)
-		}
-		log.Infof("bought LBTC for USDT: %s", txid)
-		return nil
-	}
-
-	txid, err := client.SellAndComplete(trade.BuyOrSellAndCompleteOpts{
-		Market: trademarket.Market{
-			BaseAsset:  lbtc,
-			QuoteAsset: usdt,
-		},
-		Asset:       asset,
-		Amount:      20000, // 0.0002 LBTC
-		PrivateKey:  w.PrivateKey(),
-		BlindingKey: w.BlindingKey(),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to sell LBTC: %s", err)
-	}
-	log.Infof("sold LBTC for USDT: %s", txid)
-	return nil
 }
 
 func clear() {
@@ -325,7 +339,7 @@ func fundFeeFragmenterAccount(addresses []string) error {
 			return err
 		}
 	}
-	time.Sleep(7 * time.Second)
+	time.Sleep(10 * time.Second)
 	return nil
 }
 
@@ -336,7 +350,7 @@ func fundMarketFragmenterAccount(addresses []string) error {
 		//nolint
 		explorerSvc.Faucet(addr, marketQuoteDepositAmount, usdt)
 	}
-	time.Sleep(7 * time.Second)
+	time.Sleep(10 * time.Second)
 	return nil
 }
 
@@ -369,50 +383,9 @@ func mintBlock() error {
 	return nil
 }
 
-// func setupFeeder() error {
-// 	if err := makeDirectoryIfNotExists(
-// 		filepath.Dir(feederConfigJSON),
-// 	); err != nil {
-// 		return err
-// 	}
-
-// 	configMap := map[string]interface{}{
-// 		"price_feeder": "kraken",
-// 		"interval":     1000,
-// 		"targets": map[string]string{
-// 			"rpc_address":    "tdexd:9000",
-// 			"tls_cert_path":  "",
-// 			"macaroons_path": "",
-// 		},
-// 		"well_known_markets": map[string]interface{}{
-// 			"kraken": []map[string]interface{}{
-// 				{
-// 					"base_asset":  lbtc,
-// 					"quote_asset": usdt,
-// 					"ticker":      "XBT/USDT",
-// 				},
-// 			},
-// 		},
-// 	}
-// 	configJSON, _ := json.Marshal(configMap)
-// 	os.WriteFile(feederConfigJSON, configJSON, 0777)
-
-// 	runCommand("docker-compose", "-f", composePath, "up", "-d", "feederd")
-// 	return nil
-// }
-
-func setupTraderClient() (*trade.Trade, error) {
-	client, _ := tradeclient.NewTradeClient("localhost", 9945)
-	return trade.NewTrade(trade.NewTradeOpts{
-		Chain:           "regtest",
-		ExplorerService: explorerSvc,
-		Client:          client,
-	})
-}
-
 func getNodeAddress() (string, error) {
 	client := esplora.NewHTTPClient(17 * time.Second)
-	url := fmt.Sprintf("%s/getnewaddress", explorerUrl)
+	url := fmt.Sprintf("%s/getnewaddress", explorerAddr)
 	status, resp, err := client.NewHTTPRequest("GET", url, "", nil)
 	if err != nil {
 		return "", err

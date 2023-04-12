@@ -157,14 +157,14 @@ message TradeInfo {
 message FeeInfo {
   // The id of the trade.
   string trade_id = 1;
-  // The percentage fee applied to the trade.
-  int64 basis_point = 2;
+  // The percentage fee in basis point.
+  uint64 percentage_fee = 2;
+  // The trading fixed fee amount.
+  uint64 fixed_fee = 3;
   // The asset in which fees are collected.
-  string asset = 3;
-  // The amount in satoshi of the percentage fee.
-  uint64 percentage_fee_amount = 4;
-  // The amount in satoshi of the fixed fee.
-  uint64 fixed_fee_amount = 5;
+  string asset = 4;
+  // The total trading fee amount.
+  uint64 amount = 5;
   // The market price when the trade propoal was accepted.
   double market_price = 6;
   // The request date of the trade in RFC3339 format.

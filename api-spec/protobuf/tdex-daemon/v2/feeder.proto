@@ -76,8 +76,8 @@ message ListSupportedPriceSourcesResponse {
 }
 
 message GetPriceFeedRequest {
-  // market is the market for which the price feeds are listed.
-  tdex.v2.Market market = 1;
+  // id of the price field to get info about.
+  string id = 1;
 }
 
 message GetPriceFeedResponse {
