@@ -135,7 +135,8 @@ func (s *Service) checkForPendingTrades() {
 	ctx := context.Background()
 	trades, _ := s.repoManager.TradeRepository().GetAllTrades(ctx, nil)
 	expiredTrades := make([]*domain.Trade, 0)
-	for _, t := range trades {
+	for i := range trades {
+		t := trades[i]
 		trade := &t
 		if trade.IsAccepted() || trade.IsCompleted() {
 			if ok, _ := trade.Expire(); ok {
