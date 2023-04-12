@@ -208,11 +208,14 @@ func (s *serviceOnePort) Stop() {
 	stopMacaroonSvc := true
 	s.stop(stopMacaroonSvc)
 
-	s.opts.AppConfig.RepoManager().Close()
-	log.Debug("closed connection with database")
+	s.opts.AppConfig.FeederService().Close()
+	log.Debug("closed connection with feeder")
 
 	s.opts.AppConfig.PubSubService().Close()
 	log.Debug("closed connection with pubsub")
+
+	s.opts.AppConfig.RepoManager().Close()
+	log.Debug("closed connection with database")
 
 	s.opts.AppConfig.WalletService().Close()
 	log.Debug("closed connection with ocean wallet")
@@ -302,9 +305,13 @@ func (s *serviceOnePort) newServer(
 		)
 		transportHandler := grpchandler.NewTransportHandler()
 		tradeHandler := grpchandler.NewTradeHandler(s.opts.AppConfig.TradeService())
+		feederHandler := grpchandler.NewFeederHandler(
+			s.opts.AppConfig.FeederService(),
+		)
 		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
 		tdexv2.RegisterTransportServiceServer(grpcServer, transportHandler)
 		tdexv2.RegisterTradeServiceServer(grpcServer, tradeHandler)
+		daemonv2.RegisterFeederServiceServer(grpcServer, feederHandler)
 
 		dialOpts := make([]grpc.DialOption, 0)
 		if len(s.opts.TLSCert) <= 0 {

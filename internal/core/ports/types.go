@@ -258,3 +258,16 @@ type BuildData interface {
 	GetCommit() string
 	GetDate() string
 }
+
+type PriceFeedInfo interface {
+	GetId() string
+	GetMarket() Market
+	GetSource() string
+	GetTicker() string
+	IsStarted() bool
+}
+
+type PriceFeed interface {
+	GetMarket() Market
+	GetPrice() MarketPrice
+}

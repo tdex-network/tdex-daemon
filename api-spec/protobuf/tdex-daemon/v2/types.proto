@@ -269,3 +269,16 @@ message CustomPeriod {
   // end_date in RFC3339 format
   string end_date = 2;
 }
+
+message PriceFeed {
+  // id is the id of the price feed.
+  string id = 1;
+  // market is the market for which the price feed is created.
+  tdex.v2.Market market = 2;
+  // source is the name of the price source to use.
+  string source = 3;
+  // ticker is the ticker of the asset to use as price source.
+  string ticker = 4;
+  // started is the flag to indicate if the price feed is started or stopped.
+  bool started = 5;
+}

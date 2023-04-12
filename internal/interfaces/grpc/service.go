@@ -317,11 +317,14 @@ func (s *service) Stop() {
 	stopMacaroonSvc := true
 	s.stop(stopMacaroonSvc)
 
-	s.opts.AppConfig.RepoManager().Close()
-	log.Debug("closed connection with database")
+	s.opts.AppConfig.FeederService().Close()
+	log.Debug("closed connection with feeder")
 
 	s.opts.AppConfig.PubSubService().Close()
 	log.Debug("closed connection with pubsub")
+
+	s.opts.AppConfig.RepoManager().Close()
+	log.Debug("closed connection with database")
 
 	s.opts.AppConfig.WalletService().Close()
 	log.Debug("closed connection with ocean wallet")
@@ -435,7 +438,11 @@ func (s *service) newOperatorServer(
 		operatorHandler := grpchandler.NewOperatorHandler(
 			s.opts.AppConfig.OperatorService(),
 		)
+		feederHandler := grpchandler.NewFeederHandler(
+			s.opts.AppConfig.FeederService(),
+		)
 		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
+		daemonv2.RegisterFeederServiceServer(grpcServer, feederHandler)
 	}
 	reflection.Register(grpcServer)
 

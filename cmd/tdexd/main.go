@@ -11,6 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	pricefeeder "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
+	pricefeederstore "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder/store/badger"
+
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/config"
@@ -71,9 +74,15 @@ func main() {
 		log.WithError(err).Fatal("failed to initialize pubsub service")
 	}
 
+	priceFeederSvc, err := newPriceFeederService()
+	if err != nil {
+		log.WithError(err).Fatal("failed to initialize price feeder service")
+	}
+
 	appConfig := &application.Config{
 		OceanWallet:         wallet,
 		SecurePubSub:        pubsub,
+		PriceFeederSvc:      priceFeederSvc,
 		FeeBalanceThreshold: feeBalanceThreshold,
 		TradePriceSlippage:  pricesSlippagePercentage,
 		TradeSatsPerByte:    satsPerByte,
@@ -138,6 +147,7 @@ func loadConfig() error {
 	tradeSvcPort = config.GetInt(config.TradeListeningPortKey)
 	operatorSvcPort = config.GetInt(config.OperatorListeningPortKey)
 	oceanWalletAddr = config.GetString(config.OceanWalletAddrKey)
+
 	return nil
 }
 
@@ -159,6 +169,16 @@ func newWebhookPubSubService(datadir string) (ports.SecurePubSub, error) {
 		return nil, err
 	}
 	return webhookpubsub.NewWebhookPubSubService(secureStore)
+}
+
+func newPriceFeederService() (ports.PriceFeeder, error) {
+	dbDir := filepath.Join(datadir, "db")
+	store, err := pricefeederstore.NewPriceFeedStore(dbDir, log.New())
+	if err != nil {
+		return nil, err
+	}
+
+	return pricefeeder.NewService(store), nil
 }
 
 func NewGrpcService(

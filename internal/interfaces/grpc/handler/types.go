@@ -528,3 +528,27 @@ func (i pageInfo) GetSize() int64 {
 	}
 	return i.Page.GetSize()
 }
+
+type priceFeedInfo struct {
+	ports.PriceFeedInfo
+}
+
+func (i priceFeedInfo) toProto() *daemonv2.PriceFeed {
+	return &daemonv2.PriceFeed{
+		Id:      i.GetId(),
+		Market:  market{i.GetMarket()}.toProto(),
+		Source:  i.GetSource(),
+		Ticker:  i.GetTicker(),
+		Started: i.IsStarted(),
+	}
+}
+
+type priceFeedsInfo []ports.PriceFeedInfo
+
+func (i priceFeedsInfo) toProto() []*daemonv2.PriceFeed {
+	list := make([]*daemonv2.PriceFeed, 0, len(i))
+	for _, feed := range i {
+		list = append(list, priceFeedInfo{feed}.toProto())
+	}
+	return list
+}
