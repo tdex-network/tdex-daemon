@@ -78,7 +78,7 @@ func (s *Service) TradePropose(
 		tradeType.IsSell() && feeAsset == mkt.BaseAsset
 
 	if !isValidTradePrice(
-		*mkt, balance, tradeType, swapRequest, s.priceSlippage, feesToAdd,
+		*mkt, balance, tradeType, swapRequest, s.priceSlippage,
 	) {
 		trade.Fail(
 			swapRequest.GetId(), pkgswap.ErrCodeBadPricingSwapRequest,

@@ -57,7 +57,7 @@ func main() {
 	log.Infof("asset: %s", usdt)
 	log.Infof("done\n\n")
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	log.Info("configuring tdex CLI...")
 	if _, err := runCLICommand("config", "init", "--no_tls", "--no_macaroons"); err != nil {
