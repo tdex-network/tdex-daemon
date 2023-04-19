@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -431,4 +432,27 @@ func (i marketReportInfo) GetTotalVolume() ports.MarketVolume {
 }
 func (i marketReportInfo) GetVolumesPerFrame() []ports.MarketVolume {
 	return i.subVolumes.toPortableList()
+}
+
+type accountMap struct {
+	lock              *sync.RWMutex
+	labelsByNamespace map[string]string
+}
+
+func (m *accountMap) add(namespace, label string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	if _, ok := m.labelsByNamespace[namespace]; ok {
+		return
+	}
+
+	m.labelsByNamespace[namespace] = label
+}
+
+func (m *accountMap) getLabel(namespace string) string {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	return m.labelsByNamespace[namespace]
 }

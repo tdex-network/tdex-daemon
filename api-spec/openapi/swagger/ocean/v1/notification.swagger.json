@@ -161,7 +161,7 @@
         },
         "accountName": {
           "type": "string",
-          "description": "Name of the account owning the utxo."
+          "description": "Namespace of the account owning the utxo."
         },
         "spentStatus": {
           "$ref": "#/definitions/v1UtxoStatus",

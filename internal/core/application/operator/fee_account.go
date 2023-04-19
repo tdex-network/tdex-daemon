@@ -12,11 +12,13 @@ func (s *service) DeriveFeeAddresses(
 	ctx context.Context, num int,
 ) ([]string, error) {
 	if !s.accountExists(ctx, domain.FeeAccount) {
-		if _, err := s.wallet.Account().CreateAccount(
+		accountInfo, err := s.wallet.Account().CreateAccount(
 			ctx, domain.FeeAccount, false,
-		); err != nil {
+		)
+		if err != nil {
 			return nil, err
 		}
+		s.accounts.add(accountInfo.GetNamespace(), accountInfo.GetLabel())
 	}
 	return s.wallet.Account().DeriveAddresses(ctx, domain.FeeAccount, num)
 }
@@ -66,7 +68,7 @@ func (s *service) accountExists(ctx context.Context, account string) bool {
 		return false
 	}
 	for _, i := range info.GetAccounts() {
-		if i.GetName() == account {
+		if i.GetLabel() == account {
 			return true
 		}
 	}

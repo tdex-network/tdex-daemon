@@ -37,7 +37,7 @@ type WalletServiceClient interface {
 	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordResponse, error)
 	// RestoreWallet restores an HD Wallet based on signing and blinding seeds,
 	// encrypts them with the password and persists the encrypted seeds.
-	RestoreWallet(ctx context.Context, in *RestoreWalletRequest, opts ...grpc.CallOption) (*RestoreWalletResponse, error)
+	RestoreWallet(ctx context.Context, in *RestoreWalletRequest, opts ...grpc.CallOption) (WalletService_RestoreWalletClient, error)
 	// Status returns info about the status of the wallet.
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	// GetInfo returns info about the HD wallet.
@@ -99,13 +99,36 @@ func (c *walletServiceClient) ChangePassword(ctx context.Context, in *ChangePass
 	return out, nil
 }
 
-func (c *walletServiceClient) RestoreWallet(ctx context.Context, in *RestoreWalletRequest, opts ...grpc.CallOption) (*RestoreWalletResponse, error) {
-	out := new(RestoreWalletResponse)
-	err := c.cc.Invoke(ctx, "/ocean.v1.WalletService/RestoreWallet", in, out, opts...)
+func (c *walletServiceClient) RestoreWallet(ctx context.Context, in *RestoreWalletRequest, opts ...grpc.CallOption) (WalletService_RestoreWalletClient, error) {
+	stream, err := c.cc.NewStream(ctx, &WalletService_ServiceDesc.Streams[0], "/ocean.v1.WalletService/RestoreWallet", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &walletServiceRestoreWalletClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type WalletService_RestoreWalletClient interface {
+	Recv() (*RestoreWalletResponse, error)
+	grpc.ClientStream
+}
+
+type walletServiceRestoreWalletClient struct {
+	grpc.ClientStream
+}
+
+func (x *walletServiceRestoreWalletClient) Recv() (*RestoreWalletResponse, error) {
+	m := new(RestoreWalletResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *walletServiceClient) Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
@@ -154,7 +177,7 @@ type WalletServiceServer interface {
 	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error)
 	// RestoreWallet restores an HD Wallet based on signing and blinding seeds,
 	// encrypts them with the password and persists the encrypted seeds.
-	RestoreWallet(context.Context, *RestoreWalletRequest) (*RestoreWalletResponse, error)
+	RestoreWallet(*RestoreWalletRequest, WalletService_RestoreWalletServer) error
 	// Status returns info about the status of the wallet.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
 	// GetInfo returns info about the HD wallet.
@@ -182,8 +205,8 @@ func (UnimplementedWalletServiceServer) Lock(context.Context, *LockRequest) (*Lo
 func (UnimplementedWalletServiceServer) ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ChangePassword not implemented")
 }
-func (UnimplementedWalletServiceServer) RestoreWallet(context.Context, *RestoreWalletRequest) (*RestoreWalletResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RestoreWallet not implemented")
+func (UnimplementedWalletServiceServer) RestoreWallet(*RestoreWalletRequest, WalletService_RestoreWalletServer) error {
+	return status.Errorf(codes.Unimplemented, "method RestoreWallet not implemented")
 }
 func (UnimplementedWalletServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
@@ -296,22 +319,25 @@ func _WalletService_ChangePassword_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WalletService_RestoreWallet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RestoreWalletRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _WalletService_RestoreWallet_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RestoreWalletRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(WalletServiceServer).RestoreWallet(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/ocean.v1.WalletService/RestoreWallet",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WalletServiceServer).RestoreWallet(ctx, req.(*RestoreWalletRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(WalletServiceServer).RestoreWallet(m, &walletServiceRestoreWalletServer{stream})
+}
+
+type WalletService_RestoreWalletServer interface {
+	Send(*RestoreWalletResponse) error
+	grpc.ServerStream
+}
+
+type walletServiceRestoreWalletServer struct {
+	grpc.ServerStream
+}
+
+func (x *walletServiceRestoreWalletServer) Send(m *RestoreWalletResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _WalletService_Status_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -396,10 +422,6 @@ var WalletService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WalletService_ChangePassword_Handler,
 		},
 		{
-			MethodName: "RestoreWallet",
-			Handler:    _WalletService_RestoreWallet_Handler,
-		},
-		{
 			MethodName: "Status",
 			Handler:    _WalletService_Status_Handler,
 		},
@@ -412,6 +434,12 @@ var WalletService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WalletService_Auth_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "RestoreWallet",
+			Handler:       _WalletService_RestoreWallet_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "ocean/v1/wallet.proto",
 }

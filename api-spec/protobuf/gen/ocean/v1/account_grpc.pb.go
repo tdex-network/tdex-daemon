@@ -28,6 +28,8 @@ type AccountServiceClient interface {
 	CreateAccountMultiSig(ctx context.Context, in *CreateAccountMultiSigRequest, opts ...grpc.CallOption) (*CreateAccountMultiSigResponse, error)
 	// CreateAccountCustom creates a new custom account for which loading a template.
 	CreateAccountCustom(ctx context.Context, in *CreateAccountCustomRequest, opts ...grpc.CallOption) (*CreateAccountCustomResponse, error)
+	// SetAccountLabel sets a label for the account that can be used later to refer to it.
+	SetAccountLabel(ctx context.Context, in *SetAccountLabelRequest, opts ...grpc.CallOption) (*SetAccountLabelResponse, error)
 	// SetAccountTemplate sets the template for the account used to generate new addresses.
 	SetAccountTemplate(ctx context.Context, in *SetAccountTemplateRequest, opts ...grpc.CallOption) (*SetAccountTemplateResponse, error)
 	// DeriveAddresses generates new address(es) for the account.
@@ -76,6 +78,15 @@ func (c *accountServiceClient) CreateAccountMultiSig(ctx context.Context, in *Cr
 func (c *accountServiceClient) CreateAccountCustom(ctx context.Context, in *CreateAccountCustomRequest, opts ...grpc.CallOption) (*CreateAccountCustomResponse, error) {
 	out := new(CreateAccountCustomResponse)
 	err := c.cc.Invoke(ctx, "/ocean.v1.AccountService/CreateAccountCustom", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountServiceClient) SetAccountLabel(ctx context.Context, in *SetAccountLabelRequest, opts ...grpc.CallOption) (*SetAccountLabelResponse, error) {
+	out := new(SetAccountLabelResponse)
+	err := c.cc.Invoke(ctx, "/ocean.v1.AccountService/SetAccountLabel", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -155,6 +166,8 @@ type AccountServiceServer interface {
 	CreateAccountMultiSig(context.Context, *CreateAccountMultiSigRequest) (*CreateAccountMultiSigResponse, error)
 	// CreateAccountCustom creates a new custom account for which loading a template.
 	CreateAccountCustom(context.Context, *CreateAccountCustomRequest) (*CreateAccountCustomResponse, error)
+	// SetAccountLabel sets a label for the account that can be used later to refer to it.
+	SetAccountLabel(context.Context, *SetAccountLabelRequest) (*SetAccountLabelResponse, error)
 	// SetAccountTemplate sets the template for the account used to generate new addresses.
 	SetAccountTemplate(context.Context, *SetAccountTemplateRequest) (*SetAccountTemplateResponse, error)
 	// DeriveAddresses generates new address(es) for the account.
@@ -186,6 +199,9 @@ func (UnimplementedAccountServiceServer) CreateAccountMultiSig(context.Context, 
 }
 func (UnimplementedAccountServiceServer) CreateAccountCustom(context.Context, *CreateAccountCustomRequest) (*CreateAccountCustomResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAccountCustom not implemented")
+}
+func (UnimplementedAccountServiceServer) SetAccountLabel(context.Context, *SetAccountLabelRequest) (*SetAccountLabelResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetAccountLabel not implemented")
 }
 func (UnimplementedAccountServiceServer) SetAccountTemplate(context.Context, *SetAccountTemplateRequest) (*SetAccountTemplateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetAccountTemplate not implemented")
@@ -270,6 +286,24 @@ func _AccountService_CreateAccountCustom_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AccountServiceServer).CreateAccountCustom(ctx, req.(*CreateAccountCustomRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountService_SetAccountLabel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAccountLabelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).SetAccountLabel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ocean.v1.AccountService/SetAccountLabel",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).SetAccountLabel(ctx, req.(*SetAccountLabelRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -418,6 +452,10 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateAccountCustom",
 			Handler:    _AccountService_CreateAccountCustom_Handler,
+		},
+		{
+			MethodName: "SetAccountLabel",
+			Handler:    _AccountService_SetAccountLabel_Handler,
 		},
 		{
 			MethodName: "SetAccountTemplate",

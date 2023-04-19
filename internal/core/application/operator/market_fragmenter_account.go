@@ -23,11 +23,13 @@ func (s *service) DeriveMarketFragmenterAddresses(
 	ctx context.Context, num int,
 ) ([]string, error) {
 	if !s.accountExists(ctx, domain.MarketFragmenterAccount) {
-		if _, err := s.wallet.Account().CreateAccount(
+		accountInfo, err := s.wallet.Account().CreateAccount(
 			ctx, domain.MarketFragmenterAccount, false,
-		); err != nil {
+		)
+		if err != nil {
 			return nil, err
 		}
+		s.accounts.add(accountInfo.GetNamespace(), accountInfo.GetLabel())
 	}
 	return s.wallet.Account().DeriveAddresses(
 		ctx, domain.MarketFragmenterAccount, num,

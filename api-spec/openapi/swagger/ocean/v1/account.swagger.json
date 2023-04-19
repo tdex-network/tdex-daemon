@@ -55,6 +55,34 @@
         }
       }
     },
+    "v1AccountInfo": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "Account namespace."
+        },
+        "label": {
+          "type": "string",
+          "description": "Account label."
+        },
+        "derivationPath": {
+          "type": "string",
+          "description": "Derivation path."
+        },
+        "xpubs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Xpubs."
+        },
+        "masterBlindingKey": {
+          "type": "string",
+          "description": "The master blinding key of the account to derive blinding keypairs from."
+        }
+      }
+    },
     "v1BalanceInfo": {
       "type": "object",
       "properties": {
@@ -114,64 +142,27 @@
     "v1CreateAccountBIP44Response": {
       "type": "object",
       "properties": {
-        "accountName": {
-          "type": "string",
-          "description": "Account name."
-        },
-        "accountIndex": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Account index."
-        },
-        "xpub": {
-          "type": "string",
-          "description": "Xpub."
-        },
-        "derivationPath": {
-          "type": "string",
-          "title": "Derivation path"
+        "info": {
+          "$ref": "#/definitions/v1AccountInfo",
+          "description": "Info about the new account."
         }
       }
     },
     "v1CreateAccountCustomResponse": {
       "type": "object",
       "properties": {
-        "accountName": {
-          "type": "string",
-          "description": "Account name."
-        },
-        "derivationPath": {
-          "type": "string",
-          "description": "The custom derivation path of the new account."
-        },
-        "xpub": {
-          "type": "string",
-          "description": "Xpub."
+        "info": {
+          "$ref": "#/definitions/v1AccountInfo",
+          "description": "Info about the new account."
         }
       }
     },
     "v1CreateAccountMultiSigResponse": {
       "type": "object",
       "properties": {
-        "accountName": {
-          "type": "string",
-          "description": "Account name."
-        },
-        "accountIndex": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Account index."
-        },
-        "derivationPath": {
-          "type": "string",
-          "description": "The custom derivation path of the new account."
-        },
-        "xpubs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "List of xpubs of the multisig account."
+        "info": {
+          "$ref": "#/definitions/v1AccountInfo",
+          "description": "Info about the new account."
         }
       }
     },
@@ -224,6 +215,15 @@
         }
       }
     },
+    "v1SetAccountLabelResponse": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/v1AccountInfo",
+          "description": "Info about the updated account."
+        }
+      }
+    },
     "v1SetAccountTemplateResponse": {
       "type": "object"
     },
@@ -273,7 +273,7 @@
         },
         "accountName": {
           "type": "string",
-          "description": "Name of the account owning the utxo."
+          "description": "Namespace of the account owning the utxo."
         },
         "spentStatus": {
           "$ref": "#/definitions/v1UtxoStatus",
@@ -308,7 +308,7 @@
       "properties": {
         "accountName": {
           "type": "string",
-          "description": "Account name."
+          "description": "Account namespace."
         },
         "utxos": {
           "type": "array",

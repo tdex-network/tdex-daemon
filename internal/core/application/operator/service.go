@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -26,8 +27,8 @@ type service struct {
 	repoManager ports.RepoManager
 
 	feeAccountBalanceThreshold uint64
-	masterBlindingKey          *slip77.Slip77
 	network                    network.Network
+	accounts                   *accountMap
 }
 
 func NewService(
@@ -43,18 +44,20 @@ func NewService(
 	if repoManager == nil {
 		return nil, fmt.Errorf("missing repo manager")
 	}
-
 	info, err := walletSvc.Wallet().Info(context.Background())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to wallet: %s", err)
 	}
-	key, _ := hex.DecodeString(info.GetMasterBlindingKey())
-	masterBlindingKey, _ := slip77.FromMasterKey(key)
+
+	labelsByNamespace := make(map[string]string)
+	for _, account := range info.GetAccounts() {
+		labelsByNamespace[account.GetNamespace()] = account.GetLabel()
+	}
+	accounts := &accountMap{&sync.RWMutex{}, labelsByNamespace}
 
 	svc := &service{
-		walletSvc, pubsubSvc, repoManager,
-		feeAccountBalanceThreshold, masterBlindingKey,
-		walletSvc.Network(),
+		walletSvc, pubsubSvc, repoManager, feeAccountBalanceThreshold,
+		walletSvc.Network(), accounts,
 	}
 
 	svc.wallet.RegisterHandlerForTxEvent(svc.classifyAndStoreTx())
@@ -157,7 +160,8 @@ func (s *service) checkAccountsLowBalance() func(ports.WalletTxNotification) boo
 
 		eventType := notification.GetEventType()
 		if eventType.IsUnconfirmed() || eventType.IsBroadcasted() {
-			for _, account := range notification.GetAccountNames() {
+			for _, accountNamespace := range notification.GetAccountNames() {
+				account := s.accounts.getLabel(accountNamespace)
 				if account == domain.FeeFragmenterAccount ||
 					account == domain.MarketFragmenterAccount {
 					continue
@@ -208,9 +212,19 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 		if eventType.IsBroadcasted() || eventType.IsUnconfirmed() {
 			deposits := make([]domain.Deposit, 0)
 			withdrawals := make([]domain.Withdrawal, 0)
+			walletInfo, _ := s.wallet.Wallet().Info(context.Background())
+			accountsInfo := walletInfo.GetAccounts()
 
-			for _, account := range notification.GetAccountNames() {
-				txInfo := s.getTxInfo(tx, account)
+			for _, accountNamespace := range notification.GetAccountNames() {
+				masterBlindingKey := ""
+				account := s.accounts.getLabel(accountNamespace)
+				for _, info := range accountsInfo {
+					if info.GetLabel() == account {
+						masterBlindingKey = info.GetMasterBlindingKey()
+						break
+					}
+				}
+				txInfo := s.getTxInfo(tx, account, masterBlindingKey)
 				if txInfo.isDeposit() {
 					deposits = append(deposits, domain.Deposit{
 						AccountName:       account,
@@ -260,19 +274,23 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 	}
 }
 
-func (s *service) getTxInfo(tx *transaction.Transaction, account string) txInfo {
+func (s *service) getTxInfo(
+	tx *transaction.Transaction, account, masterBlindingKey string,
+) txInfo {
 	ctx := context.Background()
 	ownedInputs := make([]txOutputInfo, 0)
 	notOwnedInputs := make([]txOutputInfo, 0)
 	ownedOutputs := make([]txOutputInfo, 0)
 	notOwnedOutputs := make([]txOutputInfo, 0)
 	addresses, _ := s.wallet.Account().ListAddresses(ctx, account)
+	buf, _ := hex.DecodeString(masterBlindingKey)
+	masterKey, _ := slip77.FromMasterKey(buf)
 
 	findOwnedUtxo := func(out *transaction.TxOutput) *txOutputInfo {
 		for _, addr := range addresses {
 			script, _ := address.ToOutputScript(addr)
 			if bytes.Equal(script, out.Script) {
-				key, _, _ := s.masterBlindingKey.DeriveKey(out.Script)
+				key, _, _ := masterKey.DeriveKey(out.Script)
 				unblinded, _ := confidential.UnblindOutputWithKey(out, key.Serialize())
 				if unblinded != nil {
 					return &txOutputInfo{

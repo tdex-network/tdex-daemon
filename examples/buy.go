@@ -48,8 +48,6 @@ func BuyExample(daemonAddr, explorerAddr string) error {
 		return fmt.Errorf("failed to send USDt funds to trader: %s", err)
 	}
 
-	fmt.Println(utxos[0].Hash())
-
 	fmt.Printf("Making trade preview...\n\n")
 	swapRequest, feeAsset, feeAmount, err := makeTradeBuyPreview(
 		client, targetMarket, usdt, lbtc, traderAmount, traderWallet, utxos,

@@ -37,9 +37,8 @@ func NewService(wallet ports.WalletService) (*Service, error) {
 	utxoHandlers := utxoNotificationQueue{
 		&sync.Mutex{}, make([]func(ports.WalletUtxoNotification) bool, 0),
 	}
-	svc := &Service{
-		wallet, info, txHandlers, utxoHandlers,
-	}
+
+	svc := &Service{wallet, info, txHandlers, utxoHandlers}
 	go svc.listenToTxNotifications()
 	go svc.listenToUtxoNotifications()
 

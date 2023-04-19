@@ -109,14 +109,12 @@ message GetInfoRequest{}
 message GetInfoResponse{
   // The root path of the wallet of the daemon.
   string root_path = 1;
-  // The SLIP-77 master blinding key from which every keypair is derived.
-  string master_blinding_key = 2;
   // The list of info related to every account.
-  repeated AccountInfo account_info = 3;
+  repeated AccountInfo account_info = 2;
   // Network daemon running on
-  string network = 4;
+  string network = 3;
   // Daemon build information
-  BuildInfo build_data = 5;
+  BuildInfo build_data = 4;
 }
 
 message BuildInfo {

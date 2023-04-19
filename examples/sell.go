@@ -34,8 +34,6 @@ func SellExample(daemonAddr, explorerAddr string) error {
 		return fmt.Errorf("failed to send LBTC funds to trader: %s", err)
 	}
 
-	fmt.Println(utxos[0].Hash())
-
 	fmt.Printf("Fetching market from provider...\n\n")
 	markets, err := fetchMarkets(client)
 	if err != nil {

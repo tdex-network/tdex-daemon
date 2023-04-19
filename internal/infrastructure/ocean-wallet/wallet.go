@@ -2,6 +2,7 @@ package oceanwallet
 
 import (
 	"context"
+	"sort"
 	"strings"
 
 	pb "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/ocean/v1"
@@ -129,10 +130,13 @@ func (w walletInfo) GetNetwork() string {
 }
 
 func (w walletInfo) GetAccounts() []ports.WalletAccount {
-	accountInfo := w.GetInfoResponse.GetAccounts()
-	accounts := make([]ports.WalletAccount, 0, len(accountInfo))
-	for _, i := range accountInfo {
-		accounts = append(accounts, i)
+	info := w.GetInfoResponse.GetAccounts()
+	accounts := make([]ports.WalletAccount, 0, len(info))
+	for _, i := range info {
+		accounts = append(accounts, accountInfo{i})
 	}
+	sort.SliceStable(accounts, func(i, j int) bool {
+		return accounts[i].GetDerivationPath() < accounts[j].GetDerivationPath()
+	})
 	return accounts
 }

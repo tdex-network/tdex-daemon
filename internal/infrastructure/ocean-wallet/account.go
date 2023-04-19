@@ -24,23 +24,23 @@ func (m *account) CreateAccount(
 	// account if supported, otherwise fallback to singlesig one.
 	if isMarket {
 		res, err := m.client.CreateAccountMultiSig(ctx, &pb.CreateAccountMultiSigRequest{
-			Name: accountName,
+			Label: accountName,
 		})
 		if err != nil && !strings.Contains(err.Error(), "not implemented") {
 			return nil, err
 		}
 		if res != nil {
-			return msAccountInfo{res}, nil
+			return accountInfo{res.GetInfo()}, nil
 		}
 	}
 
 	res, err := m.client.CreateAccountBIP44(ctx, &pb.CreateAccountBIP44Request{
-		Name: accountName,
+		Label: accountName,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return accountInfo{res}, nil
+	return accountInfo{res.GetInfo()}, nil
 }
 
 func (m *account) DeriveAddresses(
@@ -125,22 +125,11 @@ func (m *account) DeleteAccount(
 }
 
 type accountInfo struct {
-	*pb.CreateAccountBIP44Response
+	*pb.AccountInfo
 }
 
-func (i accountInfo) GetName() string {
-	return i.CreateAccountBIP44Response.GetAccountName()
-}
-func (i accountInfo) GetXpubs() []string {
-	return []string{i.CreateAccountBIP44Response.GetXpub()}
-}
-
-type msAccountInfo struct {
-	*pb.CreateAccountMultiSigResponse
-}
-
-func (i msAccountInfo) GetName() string {
-	return i.CreateAccountMultiSigResponse.GetAccountName()
+func (i accountInfo) GetMarket() ports.Market {
+	return nil
 }
 
 type utxoList []*pb.Utxo
