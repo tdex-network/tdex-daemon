@@ -85,16 +85,17 @@ type WalletInfo interface {
 	GetNetwork() string
 	GetNativeAsset() string
 	GetRootPath() string
-	GetMasterBlindingKey() string
 	GetBirthdayBlockHash() string
 	GetBirthdayBlockHeight() uint32
 	GetAccounts() []WalletAccount
 }
 
 type WalletAccount interface {
-	GetName() string
+	GetNamespace() string
+	GetLabel() string
 	GetDerivationPath() string
 	GetXpubs() []string
+	GetMasterBlindingKey() string
 }
 
 type WalletTxNotification interface {

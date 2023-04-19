@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"strings"
 
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
@@ -21,11 +20,13 @@ func (s *service) DeriveFeeFragmenterAddresses(
 	ctx context.Context, num int,
 ) ([]string, error) {
 	if !s.accountExists(ctx, domain.FeeFragmenterAccount) {
-		if _, err := s.wallet.Account().CreateAccount(
+		accountInfo, err := s.wallet.Account().CreateAccount(
 			ctx, domain.FeeFragmenterAccount, false,
-		); err != nil {
+		)
+		if err != nil {
 			return nil, err
 		}
+		s.accounts.add(accountInfo.GetNamespace(), accountInfo.GetLabel())
 	}
 	return s.wallet.Account().DeriveAddresses(
 		ctx, domain.FeeFragmenterAccount, num,
@@ -103,25 +104,11 @@ func (s *service) FeeFragmenterSplitFunds(
 		), nil,
 	}
 
-	// make sure the fee account is created.
-	if _, err := s.wallet.Account().CreateAccount(
-		ctx, domain.FeeAccount, false,
-	); err != nil {
-		if !strings.Contains(err.Error(), "already exist") {
-			chRes <- fragmenterReply{
-				"", fmt.Errorf("failed to create fee fragmenter account: %s", err),
-			}
-			return
-		}
-	}
-
 	chRes <- fragmenterReply{
 		"crafting transaction to deposit funds to fee account", nil,
 	}
 
-	addresses, err := s.wallet.Account().DeriveAddresses(
-		ctx, domain.FeeAccount, numFragments,
-	)
+	addresses, err := s.DeriveFeeAddresses(ctx, numFragments)
 	if err != nil {
 		chRes <- fragmenterReply{
 			"", fmt.Errorf("failed to derive addresses from fee account: %s", err),

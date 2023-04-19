@@ -463,11 +463,10 @@ type walletInfo struct {
 func (i walletInfo) toProto() *daemonv2.GetInfoResponse {
 	info := i.WalletInfo
 	return &daemonv2.GetInfoResponse{
-		RootPath:          info.GetRootPath(),
-		MasterBlindingKey: info.GetMasterBlindingKey(),
-		Network:           info.GetNetwork(),
-		BuildData:         buildDataInfo{i.BuildData}.toProto(),
-		AccountInfo:       accountsInfo(info.GetAccounts()).toProto(),
+		RootPath:    info.GetRootPath(),
+		Network:     info.GetNetwork(),
+		BuildData:   buildDataInfo{i.BuildData}.toProto(),
+		AccountInfo: accountsInfo(info.GetAccounts()).toProto(),
 	}
 }
 
@@ -503,9 +502,10 @@ func (i accountsInfo) toProto() []*daemonv2.AccountInfo {
 	list := make([]*daemonv2.AccountInfo, 0, len(i))
 	for _, account := range i {
 		list = append(list, &daemonv2.AccountInfo{
-			AccountName:    account.GetName(),
-			DerivationPath: account.GetDerivationPath(),
-			Xpubs:          account.GetXpubs(),
+			Name:              account.GetLabel(),
+			DerivationPath:    account.GetDerivationPath(),
+			Xpubs:             account.GetXpubs(),
+			MasterBlindingKey: account.GetMasterBlindingKey(),
 		})
 	}
 	return list

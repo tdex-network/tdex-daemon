@@ -50,12 +50,14 @@ enum TimeFrame {
 }
 
 message AccountInfo {
-  // The name of the wallet account.
-  string account_name = 2;
+  // The optional friendly name assigned to the account.
+  string name = 1;
   // The full derivation path.
-  string derivation_path = 3;
-  // The master public key.
-  repeated string xpubs = 4;
+  string derivation_path = 2;
+  // The master public keys.
+  repeated string xpubs = 3;
+  // The master blinding key.
+  string master_blinding_key = 4;
 }
 
 message MarketInfo {

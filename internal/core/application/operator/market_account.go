@@ -36,9 +36,10 @@ func (s *service) NewMarket(
 		return nil, err
 	}
 
-	if _, err := s.wallet.Account().CreateAccount(
+	accountInfo, err := s.wallet.Account().CreateAccount(
 		ctx, newMarket.Name, true,
-	); err != nil {
+	)
+	if err != nil {
 		return nil, err
 	}
 
@@ -56,6 +57,8 @@ func (s *service) NewMarket(
 		}()
 		return nil, err
 	}
+
+	s.accounts.add(accountInfo.GetNamespace(), accountInfo.GetLabel())
 
 	return marketInfo{*newMarket, nil}, nil
 }

@@ -47,9 +47,9 @@
     "tdex_daemonv2AccountInfo": {
       "type": "object",
       "properties": {
-        "accountName": {
+        "name": {
           "type": "string",
-          "description": "The name of the wallet account."
+          "description": "The optional friendly name assigned to the account."
         },
         "derivationPath": {
           "type": "string",
@@ -60,7 +60,11 @@
           "items": {
             "type": "string"
           },
-          "description": "The master public key."
+          "description": "The master public keys."
+        },
+        "masterBlindingKey": {
+          "type": "string",
+          "description": "The master blinding key."
         }
       }
     },
@@ -101,10 +105,6 @@
         "rootPath": {
           "type": "string",
           "description": "The root path of the wallet of the daemon."
-        },
-        "masterBlindingKey": {
-          "type": "string",
-          "description": "The SLIP-77 master blinding key from which every keypair is derived."
         },
         "accountInfo": {
           "type": "array",

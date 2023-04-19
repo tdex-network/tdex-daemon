@@ -827,7 +827,11 @@
           "$ref": "#/definitions/v2MarketFee",
           "description": "Fixed fee on both assets of the market in satoshi."
         }
-      }
+      },
+      "required": [
+        "percentageFee",
+        "fixedFee"
+      ]
     },
     "tdexv2Market": {
       "type": "object",
@@ -838,7 +842,11 @@
         "quoteAsset": {
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "baseAsset",
+        "quoteAsset"
+      ]
     },
     "tdexv2MarketWithFee": {
       "type": "object",
@@ -849,7 +857,11 @@
         "fee": {
           "$ref": "#/definitions/tdexv2Fee"
         }
-      }
+      },
+      "required": [
+        "market",
+        "fee"
+      ]
     },
     "tdexv2Price": {
       "type": "object",
@@ -862,7 +874,11 @@
           "type": "number",
           "format": "double"
         }
-      }
+      },
+      "required": [
+        "basePrice",
+        "quotePrice"
+      ]
     },
     "tdexv2TradeType": {
       "type": "string",
@@ -929,7 +945,11 @@
           "type": "string",
           "format": "int64"
         }
-      }
+      },
+      "required": [
+        "baseAsset",
+        "quoteAsset"
+      ]
     },
     "v2Transaction": {
       "type": "object",

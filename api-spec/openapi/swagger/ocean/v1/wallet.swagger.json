@@ -57,14 +57,13 @@
     "v1AccountInfo": {
       "type": "object",
       "properties": {
-        "name": {
+        "namespace": {
           "type": "string",
-          "description": "Account name."
+          "description": "Account namespace."
         },
-        "index": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Account index."
+        "label": {
+          "type": "string",
+          "description": "Account label."
         },
         "derivationPath": {
           "type": "string",
@@ -76,6 +75,10 @@
             "type": "string"
           },
           "description": "Xpubs."
+        },
+        "masterBlindingKey": {
+          "type": "string",
+          "description": "The master blinding key of the account to derive blinding keypairs from."
         }
       }
     },
@@ -134,10 +137,6 @@
           "type": "string",
           "description": "The root derivation path of the HD wallet."
         },
-        "masterBlindingKey": {
-          "type": "string",
-          "description": "The master blinding key derived from the blinding seed from where derive\nblidning key pairs."
-        },
         "birthdayBlockHash": {
           "type": "string",
           "description": "The hash of the block at wallet creation time."
@@ -164,7 +163,13 @@
       "type": "object"
     },
     "v1RestoreWalletResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "String message returned within the process."
+        }
+      }
     },
     "v1StatusResponse": {
       "type": "object",
