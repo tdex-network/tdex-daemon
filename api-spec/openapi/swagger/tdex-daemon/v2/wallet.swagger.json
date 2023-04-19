@@ -30,6 +30,7 @@
         "details": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }
@@ -109,6 +110,7 @@
         "accountInfo": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv2AccountInfo"
           },
           "description": "The list of info related to every account."

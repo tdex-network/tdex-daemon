@@ -30,6 +30,7 @@
         "details": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }
@@ -210,6 +211,7 @@
         "accountInfo": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv1AccountInfo"
           },
           "description": "The list of info related to every account."
@@ -272,6 +274,7 @@
         "deposits": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Deposit"
           },
           "description": "The list of info about the deposits."
@@ -284,6 +287,7 @@
         "addressWithBlindingKey": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1AddressWithBlindingKey"
           },
           "description": "The list of derived confidential addresses and related private blinding\nkeys."
@@ -296,6 +300,7 @@
         "addressWithBlindingKey": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1AddressWithBlindingKey"
           }
         }
@@ -307,6 +312,7 @@
         "addressWithBlindingKey": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1AddressWithBlindingKey"
           },
           "description": "The list of derived confidential addresses and related private blinding\nkeys."
@@ -319,6 +325,7 @@
         "addressWithBlindingKey": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1AddressWithBlindingKey"
           }
         }
@@ -330,6 +337,7 @@
         "markets": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv1MarketInfo"
           },
           "description": "The list of info about all the created markets."
@@ -342,6 +350,7 @@
         "trades": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv1TradeInfo"
           },
           "description": "The list of info about all trades or all trades for a market depending on\nthe request."
@@ -354,6 +363,7 @@
         "unspents": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv1UtxoInfo"
           },
           "description": "The list of all unspent utxos."
@@ -361,6 +371,7 @@
         "spents": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv1UtxoInfo"
           },
           "description": "The list of all spent utxos."
@@ -368,6 +379,7 @@
         "locks": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv1UtxoInfo"
           },
           "description": "The list of all currently locked utxos."
@@ -380,6 +392,7 @@
         "webhookInfo": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv1WebhookInfo"
           },
           "description": "The list of info about the webhooks regitered for an action."
@@ -397,6 +410,7 @@
         "withdrawals": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Withdrawal"
           },
           "description": "The list of info about the withdrawals."
@@ -489,6 +503,7 @@
         "groupedVolume": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv1MarketVolume"
           }
         }
@@ -979,6 +994,7 @@
         "addressWithBlindingKey": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1AddressWithBlindingKey"
           },
           "description": "The list of new confidential addresses and related private blinding keys."
@@ -991,6 +1007,7 @@
         "addressWithBlindingKey": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1AddressWithBlindingKey"
           }
         }
@@ -1002,6 +1019,7 @@
         "addressWithBlindingKey": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1AddressWithBlindingKey"
           },
           "description": "The list of new confidential addresses and related private blinding keys."
@@ -1027,6 +1045,7 @@
         "collectedFees": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv1FeeInfo"
           },
           "description": "The list of info about the collected fees per each trade."
@@ -1047,6 +1066,7 @@
         "addressWithBlindingKey": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1AddressWithBlindingKey"
           }
         }

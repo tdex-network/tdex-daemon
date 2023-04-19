@@ -30,6 +30,7 @@
         "details": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }
@@ -83,6 +84,7 @@
         "feeds": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v2PriceFeed"
           },
           "description": "feeds is the list of price feeds."

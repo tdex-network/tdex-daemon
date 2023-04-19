@@ -229,6 +229,7 @@
         "details": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }
@@ -344,6 +345,7 @@
         "markets": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdexv2MarketWithFee"
           }
         }
@@ -445,6 +447,7 @@
         "previews": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdexv2Preview"
           }
         }
@@ -521,6 +524,7 @@
         "unblindedInputs": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v2UnblindedInput"
           },
           "description": "In case of psetv2 transaction, the original list of trader's unblinded inputs,\nincluding also those of the inputs added by the provider."
@@ -615,6 +619,7 @@
         "unblindedInputs": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v2UnblindedInput"
           },
           "description": "The list of trader's unblinded inputs data, even in case they are\nunconfidential."

@@ -30,6 +30,7 @@
         "details": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }
@@ -213,6 +214,7 @@
         "deposits": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v2Transaction"
           },
           "description": "The list of info about the deposits."
@@ -271,6 +273,7 @@
         "markets": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv2MarketInfo"
           },
           "description": "The list of info about all the created markets."
@@ -283,6 +286,7 @@
         "trades": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv2TradeInfo"
           },
           "description": "The list of info about all trades or all trades for a market depending on\nthe request."
@@ -295,6 +299,7 @@
         "spendableUtxos": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv2UtxoInfo"
           },
           "description": "The list of all spendable utxos."
@@ -302,6 +307,7 @@
         "lockedUtxos": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv2UtxoInfo"
           },
           "description": "The list of all locked utxos."
@@ -314,6 +320,7 @@
         "webhookInfo": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv2WebhookInfo"
           },
           "description": "The list of info about the webhooks regitered for an action."
@@ -330,6 +337,7 @@
         "withdrawals": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v2Transaction"
           },
           "description": "The list of info about the withdrawals."
@@ -350,6 +358,7 @@
         "feesPerTrade": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv2FeeInfo"
           }
         },
@@ -430,6 +439,7 @@
         "volumesPerFrame": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/tdex_daemonv2MarketVolume"
           }
         }
