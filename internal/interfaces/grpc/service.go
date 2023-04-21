@@ -273,7 +273,7 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 		}
 
 		trimmedPass := bytes.TrimFunc(passwordBytes, func(r rune) bool {
-			return r == 10 || r == 32
+			return r == 10 || r == 13 || r == 32
 		})
 
 		password = string(trimmedPass)
@@ -293,16 +293,13 @@ func (s *service) Start() error {
 	}
 
 	if s.opts.WalletUnlockPasswordFile != "" {
-		pwdBytes, _ := os.ReadFile(s.opts.WalletUnlockPasswordFile)
-		password := string(pwdBytes)
-
 		if err := s.opts.AppConfig.WalletService().Wallet().Unlock(
-			context.Background(), password,
+			context.Background(), s.password,
 		); err != nil {
 			return fmt.Errorf("failed to auto unlock wallet: %s", err)
 		}
 
-		s.onUnlock(password)
+		s.onUnlock(s.password)
 	}
 
 	return nil
