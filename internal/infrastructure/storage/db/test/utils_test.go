@@ -17,7 +17,8 @@ func makeRandomMarket() *domain.Market {
 	basePrecision := uint(randomIntInRange(0, 8))
 	quotePrecision := uint(randomIntInRange(0, 8))
 	market, _ := domain.NewMarket(
-		baseAsset, quoteAsset, name, baseFee, quoteFee, basePrecision, quotePrecision,
+		baseAsset, quoteAsset, name, baseFee, quoteFee, 0, 0,
+		basePrecision, quotePrecision,
 	)
 	return market
 }

@@ -330,6 +330,12 @@ func (h *operatorHandler) newMarket(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	baseFixedFee, quoteFixedFee, err := parseMarketFee(
+		req.GetFixedFee(),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 	basePrecision, err := parsePrecision(req.GetBaseAssetPrecision())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -342,6 +348,7 @@ func (h *operatorHandler) newMarket(
 	if _, err := h.operatorSvc.NewMarket(
 		ctx, market, req.GetName(),
 		uint64(basePercentageFee), uint64(quotePercentageFee),
+		uint64(baseFixedFee), uint64(quoteFixedFee),
 		basePrecision, quotePrecision,
 	); err != nil {
 		return nil, err

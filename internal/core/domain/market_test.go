@@ -18,7 +18,7 @@ func TestNewMarket(t *testing.T) {
 
 	fee := uint64(25)
 
-	m, err := domain.NewMarket(baseAsset, quoteAsset, "", fee, fee, 0, 0)
+	m, err := domain.NewMarket(baseAsset, quoteAsset, "", fee, fee, 0, 0, 0, 0)
 	require.NoError(t, err)
 	require.NotNil(t, m)
 	require.Equal(t, baseAsset, m.BaseAsset)
@@ -41,6 +41,8 @@ func TestFailingNewMarket(t *testing.T) {
 		quoteAssetPrecision int
 		basePercentageFee   int64
 		quotePercentageFee  int64
+		baseFixedFee        int64
+		quoteFixedFee       int64
 		expectedError       error
 	}{
 		{
@@ -60,7 +62,7 @@ func TestFailingNewMarket(t *testing.T) {
 			expectedError:      domain.ErrMarketInvalidQuoteAsset,
 		},
 		{
-			name:               "fee_too_low",
+			name:               "base_percentage_fee_too_low",
 			baseAsset:          baseAsset,
 			quoteAsset:         quoteAsset,
 			basePercentageFee:  -1,
@@ -68,7 +70,7 @@ func TestFailingNewMarket(t *testing.T) {
 			expectedError:      domain.ErrMarketInvalidPercentageFee,
 		},
 		{
-			name:               "fee_too_low",
+			name:               "quote_percentage_fee_too_low",
 			baseAsset:          baseAsset,
 			quoteAsset:         quoteAsset,
 			basePercentageFee:  25,
@@ -76,7 +78,7 @@ func TestFailingNewMarket(t *testing.T) {
 			expectedError:      domain.ErrMarketInvalidPercentageFee,
 		},
 		{
-			name:               "fee_too_high",
+			name:               "base_percentage_fee_too_high",
 			baseAsset:          baseAsset,
 			quoteAsset:         quoteAsset,
 			basePercentageFee:  10000,
@@ -84,12 +86,28 @@ func TestFailingNewMarket(t *testing.T) {
 			expectedError:      domain.ErrMarketInvalidPercentageFee,
 		},
 		{
-			name:               "fee_too_high",
+			name:               "quote_percentage_fee_too_high",
 			baseAsset:          baseAsset,
 			quoteAsset:         quoteAsset,
 			basePercentageFee:  25,
 			quotePercentageFee: 10000,
 			expectedError:      domain.ErrMarketInvalidPercentageFee,
+		},
+		{
+			name:          "base_fixed_fee_too_low",
+			baseAsset:     baseAsset,
+			quoteAsset:    quoteAsset,
+			baseFixedFee:  -2,
+			quoteFixedFee: 0,
+			expectedError: domain.ErrMarketInvalidFixedFee,
+		},
+		{
+			name:          "quote_fixed_fee_too_low",
+			baseAsset:     baseAsset,
+			quoteAsset:    quoteAsset,
+			baseFixedFee:  0,
+			quoteFixedFee: -2,
+			expectedError: domain.ErrMarketInvalidFixedFee,
 		},
 		{
 			name:               "invalid_base_asset_precision",
@@ -116,6 +134,7 @@ func TestFailingNewMarket(t *testing.T) {
 			_, err := domain.NewMarket(
 				tt.baseAsset, tt.quoteAsset, "",
 				uint64(tt.basePercentageFee), uint64(tt.quotePercentageFee),
+				uint64(tt.baseFixedFee), uint64(tt.quoteFixedFee),
 				uint(tt.baseAssetPrecision), uint(tt.quoteAssetPrecision),
 			)
 			require.EqualError(t, err, tt.expectedError.Error())
@@ -1251,7 +1270,7 @@ func newTestMarket() *domain.Market {
 }
 
 func newTestMarketWithAssetsPrecision(bp, qp uint) *domain.Market {
-	m, _ := domain.NewMarket(baseAsset, quoteAsset, "test", 25, 25, bp, qp)
+	m, _ := domain.NewMarket(baseAsset, quoteAsset, "test", 25, 25, 0, 0, bp, qp)
 	return m
 }
 
