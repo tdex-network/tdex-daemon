@@ -14,8 +14,8 @@ var (
 		Name:  "market",
 		Usage: "manage a market account of the daemon's wallet",
 		Subcommands: []*cli.Command{
-			marketNewCmd, marketInfoCmd, marketBalanceCmd, marketListAddressesCmd,
-			marketDepositCmd, marketClaimCmd, marketWithdrawCmd,
+			marketNewCmd, marketInfoCmd, marketListAddressesCmd,
+			marketDepositCmd, marketWithdrawCmd,
 			marketOpenCmd, marketCloseCmd, marketDropCmd,
 			marketUpdateFixedFeeCmd, marketUpdatePercentageFeeCmd, marketReportFeeCmd,
 			marketUpdateStrategyCmd, marketUpdatePriceCmd, marketReportCmd,
@@ -42,6 +42,26 @@ var (
 				Usage: "optional name for the market",
 				Value: "",
 			},
+			&cli.Uint64Flag{
+				Name:  "percentage_base_fee",
+				Usage: "the percentage fee on base asset",
+				Value: 0,
+			},
+			&cli.Uint64Flag{
+				Name:  "percentage_quote_fee",
+				Usage: "the percentage fee on quote asset",
+				Value: 0,
+			},
+			&cli.Uint64Flag{
+				Name:  "fixed_base_fee",
+				Usage: "the fixed fee on base asset",
+				Value: 0,
+			},
+			&cli.Uint64Flag{
+				Name:  "fixed_quote_fee",
+				Usage: "the fixed fee on quote asset",
+				Value: 0,
+			},
 			&cli.UintFlag{
 				Name:  "base_asset_precision",
 				Usage: "the precision for the base asset",
@@ -60,11 +80,6 @@ var (
 		Usage:  "get info about the current market",
 		Action: marketInfoAction,
 	}
-	marketBalanceCmd = &cli.Command{
-		Name:   "balance",
-		Usage:  "DEPRECATED: get the balance of a market",
-		Action: marketBalanceAction,
-	}
 	marketDepositCmd = &cli.Command{
 		Name:  "deposit",
 		Usage: "generate some address(es) to deposit funds for a market",
@@ -80,11 +95,6 @@ var (
 		Name:   "addresses",
 		Usage:  "list all the derived deposit addresses of a market",
 		Action: marketListAddressesAction,
-	}
-	marketClaimCmd = &cli.Command{
-		Name:   "claim",
-		Usage:  "DEPRECATED: claim deposits for a market",
-		Action: marketClaimAction,
 	}
 	marketWithdrawCmd = &cli.Command{
 		Name:  "withdraw",
@@ -249,6 +259,10 @@ func newMarketAction(ctx *cli.Context) error {
 	quoteAsset := ctx.String("quote_asset")
 	basePrecision := ctx.Uint("base_asset_precision")
 	quotePrecision := ctx.Uint("quote_asset_precision")
+	basePercentageFee := ctx.Uint64("percentage_base_fee")
+	quotePercentageFee := ctx.Uint64("percentage_quote_fee")
+	baseFixedFee := ctx.Uint64("fixed_base_fee")
+	quoteFixedFee := ctx.Uint64("fixed_quote_fee")
 
 	if _, err := client.NewMarket(
 		context.Background(), &daemonv2.NewMarketRequest{
@@ -259,6 +273,14 @@ func newMarketAction(ctx *cli.Context) error {
 			Name:                name,
 			BaseAssetPrecision:  uint32(basePrecision),
 			QuoteAssetPrecision: uint32(quotePrecision),
+			PercentageFee: &tdexv2.MarketFee{
+				BaseAsset:  int64(basePercentageFee),
+				QuoteAsset: int64(quotePercentageFee),
+			},
+			FixedFee: &tdexv2.MarketFee{
+				BaseAsset:  int64(baseFixedFee),
+				QuoteAsset: int64(quoteFixedFee),
+			},
 		},
 	); err != nil {
 		return err
