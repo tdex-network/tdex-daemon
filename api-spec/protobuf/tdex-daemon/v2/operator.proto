@@ -185,8 +185,10 @@ message NewMarketRequest {
   uint32 quote_asset_precision = 3;
   // The percentage fee for the market.
   tdex.v2.MarketFee percentage_fee = 4;
+  // The fixed fee for the market.
+  tdex.v2.MarketFee fixed_fee = 5;
   // Optional human-readable name for the market.
-  string name = 5;
+  string name = 6;
 }
 message NewMarketResponse {}
 

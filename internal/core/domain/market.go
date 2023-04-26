@@ -79,7 +79,7 @@ type Market struct {
 // percentage fee set.
 func NewMarket(
 	baseAsset, quoteAsset, name string,
-	basePercentageFee, quotePercentageFee uint64,
+	basePercentageFee, quotePercentageFee, baseFixedFee, quoteFixedFee uint64,
 	baseAssetPrecision, quoteAssetPrecision uint,
 ) (*Market, error) {
 	if !isValidAsset(baseAsset) {
@@ -92,6 +92,11 @@ func NewMarket(
 		int64(basePercentageFee), int64(quotePercentageFee),
 	) {
 		return nil, ErrMarketInvalidPercentageFee
+	}
+	if !isValidFixedFee(
+		int64(baseFixedFee), int64(quoteFixedFee),
+	) {
+		return nil, ErrMarketInvalidFixedFee
 	}
 	if !isValidPrecision(baseAssetPrecision) {
 		return nil, ErrMarketInvalidBaseAssetPrecision
@@ -113,6 +118,10 @@ func NewMarket(
 		PercentageFee: MarketFee{
 			BaseAsset:  basePercentageFee,
 			QuoteAsset: quotePercentageFee,
+		},
+		FixedFee: MarketFee{
+			BaseAsset:  baseFixedFee,
+			QuoteAsset: quoteFixedFee,
 		},
 	}, nil
 }

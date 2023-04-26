@@ -17,7 +17,7 @@ const startYear = 2021
 func (s *service) NewMarket(
 	ctx context.Context,
 	market ports.Market, marketName string,
-	basePercentageFee, quotePercentageFee uint64,
+	basePercentageFee, quotePercentageFee, baseFixedFee, quoteFixedFee uint64,
 	baseAssetPrecision, quoteAssetPrecision uint,
 ) (ports.MarketInfo, error) {
 	mkt, _ := s.repoManager.MarketRepository().GetMarketByAssets(
@@ -29,7 +29,7 @@ func (s *service) NewMarket(
 
 	newMarket, err := domain.NewMarket(
 		market.GetBaseAsset(), market.GetQuoteAsset(), marketName,
-		basePercentageFee, quotePercentageFee,
+		basePercentageFee, quotePercentageFee, baseFixedFee, quoteFixedFee,
 		baseAssetPrecision, quoteAssetPrecision,
 	)
 	if err != nil {
