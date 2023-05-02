@@ -95,14 +95,14 @@ func (i marketBalanceInfo) toProto() *daemonv2.Balance {
 }
 
 type marketStrategyInfo struct {
-	ports.MarketStartegy
+	ports.MarketStrategy
 }
 
 func (i marketStrategyInfo) toProto() daemonv2.StrategyType {
-	if i.MarketStartegy.IsBalanced() {
+	if i.MarketStrategy.IsBalanced() {
 		return daemonv2.StrategyType_STRATEGY_TYPE_BALANCED
 	}
-	if i.MarketStartegy.IsPluggable() {
+	if i.MarketStrategy.IsPluggable() {
 		return daemonv2.StrategyType_STRATEGY_TYPE_PLUGGABLE
 	}
 	return daemonv2.StrategyType_STRATEGY_TYPE_UNSPECIFIED

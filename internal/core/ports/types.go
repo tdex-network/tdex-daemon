@@ -74,7 +74,7 @@ type MarketFee interface {
 	GetQuoteAsset() uint64
 }
 
-type MarketStartegy interface {
+type MarketStrategy interface {
 	IsBalanced() bool
 	IsPluggable() bool
 }
@@ -83,7 +83,7 @@ type MarketInfo interface {
 	GetMarket() Market
 	GetName() string
 	IsTradable() bool
-	GetStrategyType() MarketStartegy
+	GetStrategyType() MarketStrategy
 	GetBalance() map[string]Balance
 	GetPercentageFee() MarketFee
 	GetFixedFee() MarketFee

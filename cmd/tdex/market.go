@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
@@ -71,6 +72,11 @@ var (
 				Name:  "quote_asset_precision",
 				Usage: "the precision for the quote asset",
 				Value: 0,
+			},
+			&cli.StringFlag{
+				Name:  "strategy",
+				Usage: "the market strategy to use, either BALANCED or PLUGGABLE",
+				Value: "",
 			},
 		},
 		Action: newMarketAction,
@@ -263,6 +269,16 @@ func newMarketAction(ctx *cli.Context) error {
 	quotePercentageFee := ctx.Uint64("percentage_quote_fee")
 	baseFixedFee := ctx.Uint64("fixed_base_fee")
 	quoteFixedFee := ctx.Uint64("fixed_quote_fee")
+	strategy := ctx.String("strategy")
+	strategyType := daemonv2.StrategyType_STRATEGY_TYPE_UNSPECIFIED
+	if len(strategy) > 0 {
+		if strings.ToLower(strategy) == "balanced" {
+			strategyType = daemonv2.StrategyType_STRATEGY_TYPE_BALANCED
+		}
+		if strings.ToLower(strategy) == "pluggable" {
+			strategyType = daemonv2.StrategyType_STRATEGY_TYPE_PLUGGABLE
+		}
+	}
 
 	if _, err := client.NewMarket(
 		context.Background(), &daemonv2.NewMarketRequest{
@@ -281,6 +297,7 @@ func newMarketAction(ctx *cli.Context) error {
 				BaseAsset:  int64(baseFixedFee),
 				QuoteAsset: int64(quoteFixedFee),
 			},
+			StrategyType: strategyType,
 		},
 	); err != nil {
 		return err
