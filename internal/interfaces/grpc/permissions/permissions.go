@@ -8,6 +8,7 @@ import (
 	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
+	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 	EntityWebhook    = "webhook"
 	EntityTransport  = "transport"
 	EntityReflection = "reflection"
+	EntityHealth     = "health"
 )
 
 func Validate() error {
@@ -278,6 +280,10 @@ func Whitelist() map[string][]bakery.Op {
 		}},
 		fmt.Sprintf("/%s/GetInfo", reflectionv1.ReflectionService_ServiceDesc.ServiceName): {{
 			Entity: EntityReflection,
+			Action: "read",
+		}},
+		fmt.Sprintf("/%s/Check", grpchealth.Health_ServiceDesc.ServiceName): {{
+			Entity: EntityHealth,
 			Action: "read",
 		}},
 	}
