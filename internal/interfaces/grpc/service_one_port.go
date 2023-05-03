@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
+	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
+
 	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
@@ -293,6 +295,8 @@ func (s *serviceOnePort) newServer(
 	daemonv2.RegisterWalletServiceServer(
 		grpcServer, walletHandler,
 	)
+	healthHandler := grpchandler.NewHealthHandler()
+	grpchealth.RegisterHealthServer(grpcServer, healthHandler)
 	reflection.Register(grpcServer)
 
 	var grpcGateway http.Handler
@@ -330,7 +334,7 @@ func (s *serviceOnePort) newServer(
 		if err != nil {
 			return nil, err
 		}
-		gwmux := runtime.NewServeMux()
+		gwmux := runtime.NewServeMux(runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)))
 		if err := tdexv2.RegisterTransportServiceHandler(
 			ctx, gwmux, conn,
 		); err != nil {

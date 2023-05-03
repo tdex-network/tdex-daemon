@@ -33,6 +33,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/macaroon-bakery.v2/bakery"
+
+	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
@@ -499,6 +501,8 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 	tdexv2.RegisterTradeServiceServer(grpcServer, tradeHandler)
 	transportHandler := grpchandler.NewTransportHandler()
 	tdexv2.RegisterTransportServiceServer(grpcServer, transportHandler)
+	healthHandler := grpchandler.NewHealthHandler()
+	grpchealth.RegisterHealthServer(grpcServer, healthHandler)
 	reflection.Register(grpcServer)
 
 	// grpcweb wrapped server
@@ -527,7 +531,7 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	gwmux := runtime.NewServeMux()
+	gwmux := runtime.NewServeMux(runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)))
 	if err := tdexv2.RegisterTransportServiceHandler(
 		ctx, gwmux, conn,
 	); err != nil {
