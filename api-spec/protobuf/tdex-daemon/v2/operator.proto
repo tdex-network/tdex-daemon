@@ -189,6 +189,8 @@ message NewMarketRequest {
   tdex.v2.MarketFee fixed_fee = 5;
   // Optional human-readable name for the market.
   string name = 6;
+  // The market-making strategy to use.
+  StrategyType strategy_type = 7;
 }
 message NewMarketResponse {}
 

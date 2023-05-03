@@ -25,7 +25,7 @@ type OperatorService interface {
 		ctx context.Context,
 		market ports.Market, marketName string,
 		basePercentageFee, quotePercentageFee, baseFixedFee, quoteFixedFee uint64,
-		baseAssetPrecision, quoteAssetPrecision uint,
+		baseAssetPrecision, quoteAssetPrecision, strategyType uint,
 	) (ports.MarketInfo, error)
 	GetMarketInfo(
 		ctx context.Context, market ports.Market,

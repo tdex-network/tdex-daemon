@@ -344,12 +344,16 @@ func (h *operatorHandler) newMarket(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	strategyType, err := parseStrategy(req.GetStrategyType())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	if _, err := h.operatorSvc.NewMarket(
 		ctx, market, req.GetName(),
 		uint64(basePercentageFee), uint64(quotePercentageFee),
 		uint64(baseFixedFee), uint64(quoteFixedFee),
-		basePrecision, quotePrecision,
+		basePrecision, quotePrecision, uint(strategyType),
 	); err != nil {
 		return nil, err
 	}
@@ -619,7 +623,7 @@ func (h *operatorHandler) updateMarketStrategy(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	strategyType, err := parseStrategy(req.GetStrategyType())
+	strategyType, err := parseStrategySafe(req.GetStrategyType())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

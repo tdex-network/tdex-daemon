@@ -40,6 +40,9 @@ var (
 	// the provided amount makes the previewed amount to be too big (greater than
 	// the overall balance).
 	ErrMarketPreviewAmountTooBig = errors.New("provided amount is too big")
+	// ErrMarketUnknownStrategy is thrown when an invalid strategy is given at
+	// market creation.
+	ErrMarketUnknownStrategy = errors.New("unknown market strategy")
 )
 
 // Trade errors
