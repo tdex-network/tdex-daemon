@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
+
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 
@@ -32,6 +34,10 @@ func TestWhitelistedMethods(t *testing.T) {
 
 	for _, v := range tdexv2.TradeService_ServiceDesc.Methods {
 		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv2.TradeService_ServiceDesc.ServiceName, v.MethodName))
+	}
+
+	for range grpchealth.Health_ServiceDesc.ServiceName {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", grpchealth.Health_ServiceDesc.ServiceName, "Check"))
 	}
 
 	whitelist := permissions.Whitelist()

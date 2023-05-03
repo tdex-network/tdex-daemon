@@ -443,6 +443,8 @@ func (s *service) newOperatorServer(
 		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
 		daemonv2.RegisterFeederServiceServer(grpcServer, feederHandler)
 	}
+	healthHandler := grpchandler.NewHealthHandler()
+	grpchealth.RegisterHealthServer(grpcServer, healthHandler)
 	reflection.Register(grpcServer)
 
 	// grpcweb wrapped server
