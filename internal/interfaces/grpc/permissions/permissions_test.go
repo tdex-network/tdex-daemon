@@ -36,9 +36,7 @@ func TestWhitelistedMethods(t *testing.T) {
 		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv2.TradeService_ServiceDesc.ServiceName, v.MethodName))
 	}
 
-	for range grpchealth.Health_ServiceDesc.ServiceName {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", grpchealth.Health_ServiceDesc.ServiceName, "Check"))
-	}
+	allMethods = append(allMethods, fmt.Sprintf("/%s/%s", grpchealth.Health_ServiceDesc.ServiceName, "Check"))
 
 	whitelist := permissions.Whitelist()
 	for _, m := range allMethods {
