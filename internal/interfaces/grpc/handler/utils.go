@@ -57,6 +57,17 @@ func parseMarketFee(fee *tdexv2.MarketFee) (int64, int64, error) {
 	return baseFee, quoteFee, nil
 }
 
+func parseStrategySafe(strategyType daemonv2.StrategyType) (int, error) {
+	strategy, err := parseStrategy(strategyType)
+	if err != nil {
+		return -1, err
+	}
+	if strategy == domain.StrategyTypeUndefined {
+		return -1, errors.New("invalid strategy type")
+	}
+	return strategy, nil
+}
+
 func parseStrategy(strategyType daemonv2.StrategyType) (int, error) {
 	switch strategyType {
 	case daemonv2.StrategyType_STRATEGY_TYPE_BALANCED:
@@ -64,7 +75,7 @@ func parseStrategy(strategyType daemonv2.StrategyType) (int, error) {
 	case daemonv2.StrategyType_STRATEGY_TYPE_PLUGGABLE:
 		return domain.StrategyTypePluggable, nil
 	case daemonv2.StrategyType_STRATEGY_TYPE_UNSPECIFIED:
-		return -1, errors.New("invalid strategy type")
+		return domain.StrategyTypeUndefined, nil
 	default:
 		return -1, errors.New("unknown strategy type")
 	}
@@ -199,13 +210,6 @@ func parseMillisatsPerByte(msatsPerByte uint64) (uint64, error) {
 		return 0, errors.New("invalid mSats/vByte value")
 	}
 	return msatsPerByte, nil
-}
-
-func parsePercentageFee(bp uint32) (uint32, error) {
-	if int(bp) < 0 {
-		return 0, errors.New("invalid percentage fee")
-	}
-	return bp, nil
 }
 
 func parseMnemonic(mnemonic []string) ([]string, error) {

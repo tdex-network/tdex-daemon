@@ -70,7 +70,7 @@ type Market struct {
 	// if curretly open for trades
 	Tradable bool
 	// Market Making strategy type
-	StrategyType int
+	StrategyType uint
 	// Pluggable Price of the asset pair.
 	Price MarketPrice
 }
@@ -80,7 +80,7 @@ type Market struct {
 func NewMarket(
 	baseAsset, quoteAsset, name string,
 	basePercentageFee, quotePercentageFee, baseFixedFee, quoteFixedFee uint64,
-	baseAssetPrecision, quoteAssetPrecision uint,
+	baseAssetPrecision, quoteAssetPrecision, strategyType uint,
 ) (*Market, error) {
 	if !isValidAsset(baseAsset) {
 		return nil, ErrMarketInvalidBaseAsset
@@ -104,6 +104,12 @@ func NewMarket(
 	if !isValidPrecision(quoteAssetPrecision) {
 		return nil, ErrMarketInvalidQuoteAssetPrecision
 	}
+	if !isValidStrategy(strategyType) {
+		return nil, ErrMarketUnknownStrategy
+	}
+	if strategyType == StrategyTypeUndefined {
+		strategyType = StrategyTypeBalanced
+	}
 	if name == "" {
 		name = makeAccountName(baseAsset, quoteAsset)
 	}
@@ -112,7 +118,7 @@ func NewMarket(
 		BaseAsset:           baseAsset,
 		QuoteAsset:          quoteAsset,
 		Name:                name,
-		StrategyType:        StrategyTypeBalanced,
+		StrategyType:        strategyType,
 		BaseAssetPrecision:  baseAssetPrecision,
 		QuoteAssetPrecision: quoteAssetPrecision,
 		PercentageFee: MarketFee{
@@ -496,4 +502,8 @@ func isValidFixedFee(baseFee, quoteFee int64) bool {
 
 func isValidPrecision(precision uint) bool {
 	return int(precision) >= 0 && precision <= 8
+}
+
+func isValidStrategy(strategy uint) bool {
+	return strategy >= StrategyTypeUndefined && strategy <= StrategyTypeBalanced
 }

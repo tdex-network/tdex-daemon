@@ -18,7 +18,7 @@ func (s *service) NewMarket(
 	ctx context.Context,
 	market ports.Market, marketName string,
 	basePercentageFee, quotePercentageFee, baseFixedFee, quoteFixedFee uint64,
-	baseAssetPrecision, quoteAssetPrecision uint,
+	baseAssetPrecision, quoteAssetPrecision, strategyType uint,
 ) (ports.MarketInfo, error) {
 	mkt, _ := s.repoManager.MarketRepository().GetMarketByAssets(
 		ctx, market.GetBaseAsset(), market.GetQuoteAsset(),
@@ -30,7 +30,7 @@ func (s *service) NewMarket(
 	newMarket, err := domain.NewMarket(
 		market.GetBaseAsset(), market.GetQuoteAsset(), marketName,
 		basePercentageFee, quotePercentageFee, baseFixedFee, quoteFixedFee,
-		baseAssetPrecision, quoteAssetPrecision,
+		baseAssetPrecision, quoteAssetPrecision, strategyType,
 	)
 	if err != nil {
 		return nil, err

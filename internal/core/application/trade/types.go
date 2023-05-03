@@ -53,7 +53,7 @@ func (i marketInfo) GetFixedFee() ports.MarketFee {
 func (i marketInfo) IsTradable() bool {
 	return i.Tradable
 }
-func (i marketInfo) GetStrategyType() ports.MarketStartegy {
+func (i marketInfo) GetStrategyType() ports.MarketStrategy {
 	return marketStrategyInfo(i.StrategyType)
 }
 func (i marketInfo) GetMarket() ports.Market {
