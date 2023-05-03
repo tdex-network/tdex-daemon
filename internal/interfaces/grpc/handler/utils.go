@@ -75,7 +75,7 @@ func parseStrategy(strategyType daemonv2.StrategyType) (int, error) {
 	case daemonv2.StrategyType_STRATEGY_TYPE_PLUGGABLE:
 		return domain.StrategyTypePluggable, nil
 	case daemonv2.StrategyType_STRATEGY_TYPE_UNSPECIFIED:
-		return domain.StrategyTypePluggable, nil
+		return domain.StrategyTypeUndefined, nil
 	default:
 		return -1, errors.New("unknown strategy type")
 	}
