@@ -70,7 +70,7 @@ type Market struct {
 	// if curretly open for trades
 	Tradable bool
 	// Market Making strategy type
-	StrategyType uint
+	StrategyType int
 	// Pluggable Price of the asset pair.
 	Price MarketPrice
 }
@@ -118,7 +118,7 @@ func NewMarket(
 		BaseAsset:           baseAsset,
 		QuoteAsset:          quoteAsset,
 		Name:                name,
-		StrategyType:        strategyType,
+		StrategyType:        int(strategyType),
 		BaseAssetPrecision:  baseAssetPrecision,
 		QuoteAssetPrecision: quoteAssetPrecision,
 		PercentageFee: MarketFee{
