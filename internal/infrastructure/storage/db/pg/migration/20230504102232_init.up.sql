@@ -6,8 +6,8 @@ CREATE TABLE market (
     quote_asset_precision INTEGER,
     tradable BOOLEAN,
     strategy_type INTEGER,
-    base_price INTEGER,
-    quote_price INTEGER,
+    base_price DOUBLE PRECISION,
+    quote_price DOUBLE PRECISION,
     UNIQUE (base_asset, quote_asset)
 );
 
@@ -51,7 +51,8 @@ CREATE TABLE transaction (
     type VARCHAR(10) NOT NULL CHECK (type IN ('withdrawal', 'deposit')),
     account_name VARCHAR(50) NOT NULL,
     tx_id VARCHAR(64) NOT NULL,
-    timestamp BIGINT NOT NULL
+    timestamp BIGINT NOT NULL,
+    UNIQUE (tx_id, account_name)
 );
 
 CREATE TABLE transaction_asset_amount (

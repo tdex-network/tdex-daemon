@@ -106,8 +106,11 @@ createtestdb:
 	@echo "Creating test db..."
 	@docker exec tdexd-pg createdb --username=root --owner=root tdexd-test
 
-## recreatedb: drop and create main and test db
+## recreatedb: drop and create main db
 recreatedb: dropdb createdb
+
+## recreatetestdb: drop and create main and test db
+recreatetestdb: droptestdb createtestdb
 
 ## pgcreatetestdb: starts docker container and creates test db, used in CI
 pgcreatetestdb: pg sleep createtestdb
@@ -152,6 +155,11 @@ mig_down:
 ## vet_db: check if mig_up and mig_down are ok
 vet_db: recreatedb mig_up mig_down
 	@echo "vet db migration scripts..."
+
+## sqlc: gen sql
+sqlc:
+	@echo "gen sql..."
+	@cd ./internal/infrastructure/storage/db/pg; sqlc generate
 
 sleep:
 	@echo "sleeping for 3 seconds..."

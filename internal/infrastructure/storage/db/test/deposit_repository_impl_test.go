@@ -11,6 +11,20 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 )
 
+func TestDepositRepositoryPgImplementation(t *testing.T) {
+	if err := SetupPgDb(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := TearDownPgDb()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	testAddAndGetDeposits(t, repoManager.DepositRepository())
+}
+
 func TestDepositRepositoryImplementations(t *testing.T) {
 	repositories := createDepositRepositories(t)
 
@@ -19,14 +33,15 @@ func TestDepositRepositoryImplementations(t *testing.T) {
 
 		t.Run(repo.Name, func(t *testing.T) {
 			t.Run("add_and_get_deposits", func(t *testing.T) {
-				testAddAndGetDeposits(t, repo)
+				testAddAndGetDeposits(t, repo.Repository)
 			})
 		})
 	}
 }
 
-func testAddAndGetDeposits(t *testing.T, repo depositRepository) {
-	depositRepository := repo.Repository
+func testAddAndGetDeposits(
+	t *testing.T, depositRepository domain.DepositRepository,
+) {
 	ctx := context.Background()
 	deposits := makeRandomDeposits(20)
 
