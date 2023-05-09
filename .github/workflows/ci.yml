@@ -42,6 +42,9 @@ jobs:
       - name: Get dependencies
         run: go get -v -t -d ./...
 
+      - name: Setup Pg test db
+        run: make pgcreatetestdb
+
       - name: Run Tests
         run: |
           export TEST_ELEMENTS_ENDPOINT='http://admin1:123@localhost:18884'
