@@ -10,24 +10,6 @@ import (
 	"database/sql"
 )
 
-const deleteFeeForMarket = `-- name: DeleteFeeForMarket :exec
-DELETE FROM fee WHERE fk_market_name = $1
-`
-
-func (q *Queries) DeleteFeeForMarket(ctx context.Context, fkMarketName string) error {
-	_, err := q.db.Exec(ctx, deleteFeeForMarket, fkMarketName)
-	return err
-}
-
-const deleteMarket = `-- name: DeleteMarket :exec
-DELETE FROM market WHERE name = $1
-`
-
-func (q *Queries) DeleteMarket(ctx context.Context, name string) error {
-	_, err := q.db.Exec(ctx, deleteMarket, name)
-	return err
-}
-
 const deleteSwapsByTradeId = `-- name: DeleteSwapsByTradeId :exec
 DELETE FROM swap WHERE fk_trade_id = $1
 `
@@ -38,19 +20,20 @@ func (q *Queries) DeleteSwapsByTradeId(ctx context.Context, fkTradeID string) er
 }
 
 const getAllMarkets = `-- name: GetAllMarkets :many
-SELECT name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, id, base_asset_fee, quote_asset_fee, type, fk_market_name FROM market m inner join fee f on m.name = f.fk_market_name
+SELECT name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, active, id, base_asset_fee, quote_asset_fee, type, fk_market_name FROM market m inner join market_fee f on m.name = f.fk_market_name and active = true
 `
 
 type GetAllMarketsRow struct {
 	Name                string
 	BaseAsset           string
 	QuoteAsset          string
-	BaseAssetPrecision  sql.NullInt32
-	QuoteAssetPrecision sql.NullInt32
-	Tradable            sql.NullBool
-	StrategyType        sql.NullInt32
-	BasePrice           sql.NullFloat64
-	QuotePrice          sql.NullFloat64
+	BaseAssetPrecision  int32
+	QuoteAssetPrecision int32
+	Tradable            bool
+	StrategyType        int32
+	BasePrice           float64
+	QuotePrice          float64
+	Active              bool
 	ID                  int32
 	BaseAssetFee        int64
 	QuoteAssetFee       int64
@@ -77,6 +60,7 @@ func (q *Queries) GetAllMarkets(ctx context.Context) ([]GetAllMarketsRow, error)
 			&i.StrategyType,
 			&i.BasePrice,
 			&i.QuotePrice,
+			&i.Active,
 			&i.ID,
 			&i.BaseAssetFee,
 			&i.QuoteAssetFee,
@@ -94,11 +78,11 @@ func (q *Queries) GetAllMarkets(ctx context.Context) ([]GetAllMarketsRow, error)
 }
 
 const getAllTrades = `-- name: GetAllTrades :many
-SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.fk_market_name, m.name, m.base_asset, m.quote_asset, m.base_price, m.quote_price,
+SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.base_price, t.quote_price, t.fk_market_name, m.name, m.base_asset, m.quote_asset,
        s.id as swap_id, s.message, s.timestamp, s.type as swap_type, f.base_asset_fee,
        f.quote_asset_fee, f.type as fee_type
 FROM trade t left join swap s on t.id = s.fk_trade_id inner join
-     market m on m.name = t.fk_market_name inner join fee f on m.name = f.fk_market_name
+     market m on m.name = t.fk_market_name left join trade_fee f on t.id = f.fk_trade_id
 order by t.id DESC LIMIT $1 OFFSET $2
 `
 
@@ -113,26 +97,26 @@ type GetAllTradesRow struct {
 	FeeAsset       string
 	FeeAmount      int64
 	TraderPubkey   []byte
-	StatusCode     sql.NullInt32
-	StatusFailed   sql.NullBool
+	StatusCode     int32
+	StatusFailed   bool
 	PsetBase64     string
 	TxID           sql.NullString
 	TxHex          string
 	ExpiryTime     sql.NullInt64
 	SettlementTime sql.NullInt64
+	BasePrice      sql.NullFloat64
+	QuotePrice     sql.NullFloat64
 	FkMarketName   string
 	Name           string
 	BaseAsset      string
 	QuoteAsset     string
-	BasePrice      sql.NullFloat64
-	QuotePrice     sql.NullFloat64
 	SwapID         string
 	Message        []byte
 	Timestamp      int64
 	SwapType       string
-	BaseAssetFee   int64
-	QuoteAssetFee  int64
-	FeeType        string
+	BaseAssetFee   sql.NullInt64
+	QuoteAssetFee  sql.NullInt64
+	FeeType        sql.NullString
 }
 
 func (q *Queries) GetAllTrades(ctx context.Context, arg GetAllTradesParams) ([]GetAllTradesRow, error) {
@@ -157,12 +141,12 @@ func (q *Queries) GetAllTrades(ctx context.Context, arg GetAllTradesParams) ([]G
 			&i.TxHex,
 			&i.ExpiryTime,
 			&i.SettlementTime,
+			&i.BasePrice,
+			&i.QuotePrice,
 			&i.FkMarketName,
 			&i.Name,
 			&i.BaseAsset,
 			&i.QuoteAsset,
-			&i.BasePrice,
-			&i.QuotePrice,
 			&i.SwapID,
 			&i.Message,
 			&i.Timestamp,
@@ -182,11 +166,11 @@ func (q *Queries) GetAllTrades(ctx context.Context, arg GetAllTradesParams) ([]G
 }
 
 const getAllTradesByMarket = `-- name: GetAllTradesByMarket :many
-SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.fk_market_name, m.name, m.base_asset, m.quote_asset, m.base_price, m.quote_price,
+SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.base_price, t.quote_price, t.fk_market_name, m.name, m.base_asset, m.quote_asset,
        s.id as swap_id, s.message, s.timestamp, s.type as swap_type, f.base_asset_fee,
         f.quote_asset_fee, f.type as fee_type
 FROM trade t left join swap s on t.id = s.fk_trade_id inner join
-     market m on m.name = t.fk_market_name inner join fee f on m.name = f.fk_market_name
+     market m on m.name = t.fk_market_name left join trade_fee f on t.id = f.fk_trade_id
 WHERE m.name = $1 order by t.id DESC LIMIT $2 OFFSET $3
 `
 
@@ -202,26 +186,26 @@ type GetAllTradesByMarketRow struct {
 	FeeAsset       string
 	FeeAmount      int64
 	TraderPubkey   []byte
-	StatusCode     sql.NullInt32
-	StatusFailed   sql.NullBool
+	StatusCode     int32
+	StatusFailed   bool
 	PsetBase64     string
 	TxID           sql.NullString
 	TxHex          string
 	ExpiryTime     sql.NullInt64
 	SettlementTime sql.NullInt64
+	BasePrice      sql.NullFloat64
+	QuotePrice     sql.NullFloat64
 	FkMarketName   string
 	Name           string
 	BaseAsset      string
 	QuoteAsset     string
-	BasePrice      sql.NullFloat64
-	QuotePrice     sql.NullFloat64
 	SwapID         string
 	Message        []byte
 	Timestamp      int64
 	SwapType       string
-	BaseAssetFee   int64
-	QuoteAssetFee  int64
-	FeeType        string
+	BaseAssetFee   sql.NullInt64
+	QuoteAssetFee  sql.NullInt64
+	FeeType        sql.NullString
 }
 
 func (q *Queries) GetAllTradesByMarket(ctx context.Context, arg GetAllTradesByMarketParams) ([]GetAllTradesByMarketRow, error) {
@@ -246,12 +230,12 @@ func (q *Queries) GetAllTradesByMarket(ctx context.Context, arg GetAllTradesByMa
 			&i.TxHex,
 			&i.ExpiryTime,
 			&i.SettlementTime,
+			&i.BasePrice,
+			&i.QuotePrice,
 			&i.FkMarketName,
 			&i.Name,
 			&i.BaseAsset,
 			&i.QuoteAsset,
-			&i.BasePrice,
-			&i.QuotePrice,
 			&i.SwapID,
 			&i.Message,
 			&i.Timestamp,
@@ -373,12 +357,12 @@ func (q *Queries) GetAllTransactionsForAccountNameAndPage(ctx context.Context, a
 }
 
 const getFeeByMarketName = `-- name: GetFeeByMarketName :one
-SELECT id, base_asset_fee, quote_asset_fee, type, fk_market_name FROM fee WHERE fk_market_name = $1
+SELECT id, base_asset_fee, quote_asset_fee, type, fk_market_name FROM market_fee WHERE fk_market_name = $1
 `
 
-func (q *Queries) GetFeeByMarketName(ctx context.Context, fkMarketName string) (Fee, error) {
+func (q *Queries) GetFeeByMarketName(ctx context.Context, fkMarketName string) (MarketFee, error) {
 	row := q.db.QueryRow(ctx, getFeeByMarketName, fkMarketName)
-	var i Fee
+	var i MarketFee
 	err := row.Scan(
 		&i.ID,
 		&i.BaseAssetFee,
@@ -390,8 +374,8 @@ func (q *Queries) GetFeeByMarketName(ctx context.Context, fkMarketName string) (
 }
 
 const getMarketByBaseAndQuoteAsset = `-- name: GetMarketByBaseAndQuoteAsset :many
-SELECT name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, id, base_asset_fee, quote_asset_fee, type, fk_market_name from market m inner join fee f on m.name = f.fk_market_name where
-base_asset = $1 and quote_asset = $2
+SELECT name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, active, id, base_asset_fee, quote_asset_fee, type, fk_market_name from market m inner join market_fee f on m.name = f.fk_market_name where
+base_asset = $1 and quote_asset = $2 and active = true
 `
 
 type GetMarketByBaseAndQuoteAssetParams struct {
@@ -403,12 +387,13 @@ type GetMarketByBaseAndQuoteAssetRow struct {
 	Name                string
 	BaseAsset           string
 	QuoteAsset          string
-	BaseAssetPrecision  sql.NullInt32
-	QuoteAssetPrecision sql.NullInt32
-	Tradable            sql.NullBool
-	StrategyType        sql.NullInt32
-	BasePrice           sql.NullFloat64
-	QuotePrice          sql.NullFloat64
+	BaseAssetPrecision  int32
+	QuoteAssetPrecision int32
+	Tradable            bool
+	StrategyType        int32
+	BasePrice           float64
+	QuotePrice          float64
+	Active              bool
 	ID                  int32
 	BaseAssetFee        int64
 	QuoteAssetFee       int64
@@ -435,6 +420,7 @@ func (q *Queries) GetMarketByBaseAndQuoteAsset(ctx context.Context, arg GetMarke
 			&i.StrategyType,
 			&i.BasePrice,
 			&i.QuotePrice,
+			&i.Active,
 			&i.ID,
 			&i.BaseAssetFee,
 			&i.QuoteAssetFee,
@@ -452,19 +438,20 @@ func (q *Queries) GetMarketByBaseAndQuoteAsset(ctx context.Context, arg GetMarke
 }
 
 const getMarketByName = `-- name: GetMarketByName :many
-SELECT name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, id, base_asset_fee, quote_asset_fee, type, fk_market_name from market m inner join fee f on m.name = f.fk_market_name where name = $1
+SELECT name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, active, id, base_asset_fee, quote_asset_fee, type, fk_market_name from market m inner join market_fee f on m.name = f.fk_market_name where name = $1 and active = true
 `
 
 type GetMarketByNameRow struct {
 	Name                string
 	BaseAsset           string
 	QuoteAsset          string
-	BaseAssetPrecision  sql.NullInt32
-	QuoteAssetPrecision sql.NullInt32
-	Tradable            sql.NullBool
-	StrategyType        sql.NullInt32
-	BasePrice           sql.NullFloat64
-	QuotePrice          sql.NullFloat64
+	BaseAssetPrecision  int32
+	QuoteAssetPrecision int32
+	Tradable            bool
+	StrategyType        int32
+	BasePrice           float64
+	QuotePrice          float64
+	Active              bool
 	ID                  int32
 	BaseAssetFee        int64
 	QuoteAssetFee       int64
@@ -491,6 +478,7 @@ func (q *Queries) GetMarketByName(ctx context.Context, name string) ([]GetMarket
 			&i.StrategyType,
 			&i.BasePrice,
 			&i.QuotePrice,
+			&i.Active,
 			&i.ID,
 			&i.BaseAssetFee,
 			&i.QuoteAssetFee,
@@ -508,20 +496,21 @@ func (q *Queries) GetMarketByName(ctx context.Context, name string) ([]GetMarket
 }
 
 const getTradableMarkets = `-- name: GetTradableMarkets :many
-SELECT name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, id, base_asset_fee, quote_asset_fee, type, fk_market_name FROM market m inner join fee f on m.name = f.fk_market_name
-where tradable = true
+SELECT name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, active, id, base_asset_fee, quote_asset_fee, type, fk_market_name FROM market m inner join market_fee f on m.name = f.fk_market_name
+where tradable = true and active = true
 `
 
 type GetTradableMarketsRow struct {
 	Name                string
 	BaseAsset           string
 	QuoteAsset          string
-	BaseAssetPrecision  sql.NullInt32
-	QuoteAssetPrecision sql.NullInt32
-	Tradable            sql.NullBool
-	StrategyType        sql.NullInt32
-	BasePrice           sql.NullFloat64
-	QuotePrice          sql.NullFloat64
+	BaseAssetPrecision  int32
+	QuoteAssetPrecision int32
+	Tradable            bool
+	StrategyType        int32
+	BasePrice           float64
+	QuotePrice          float64
+	Active              bool
 	ID                  int32
 	BaseAssetFee        int64
 	QuoteAssetFee       int64
@@ -548,6 +537,7 @@ func (q *Queries) GetTradableMarkets(ctx context.Context) ([]GetTradableMarketsR
 			&i.StrategyType,
 			&i.BasePrice,
 			&i.QuotePrice,
+			&i.Active,
 			&i.ID,
 			&i.BaseAssetFee,
 			&i.QuoteAssetFee,
@@ -565,11 +555,11 @@ func (q *Queries) GetTradableMarkets(ctx context.Context) ([]GetTradableMarketsR
 }
 
 const getTradeById = `-- name: GetTradeById :many
-SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.fk_market_name, m.name, m.base_asset, m.quote_asset, m.base_price, m.quote_price,
+SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.base_price, t.quote_price, t.fk_market_name, m.name, m.base_asset, m.quote_asset,
 s.id as swap_id, s.message, s.timestamp, s.type as swap_type, f.base_asset_fee,
        f.quote_asset_fee, f.type as fee_type
 FROM trade t left join swap s on t.id = s.fk_trade_id inner join
-market m on m.name = t.fk_market_name inner join fee f on m.name = f.fk_market_name
+market m on m.name = t.fk_market_name left join trade_fee f on t.id = f.fk_trade_id
 WHERE t.id = $1
 `
 
@@ -579,26 +569,26 @@ type GetTradeByIdRow struct {
 	FeeAsset       string
 	FeeAmount      int64
 	TraderPubkey   []byte
-	StatusCode     sql.NullInt32
-	StatusFailed   sql.NullBool
+	StatusCode     int32
+	StatusFailed   bool
 	PsetBase64     string
 	TxID           sql.NullString
 	TxHex          string
 	ExpiryTime     sql.NullInt64
 	SettlementTime sql.NullInt64
+	BasePrice      sql.NullFloat64
+	QuotePrice     sql.NullFloat64
 	FkMarketName   string
 	Name           string
 	BaseAsset      string
 	QuoteAsset     string
-	BasePrice      sql.NullFloat64
-	QuotePrice     sql.NullFloat64
 	SwapID         string
 	Message        []byte
 	Timestamp      int64
 	SwapType       string
-	BaseAssetFee   int64
-	QuoteAssetFee  int64
-	FeeType        string
+	BaseAssetFee   sql.NullInt64
+	QuoteAssetFee  sql.NullInt64
+	FeeType        sql.NullString
 }
 
 func (q *Queries) GetTradeById(ctx context.Context, id string) ([]GetTradeByIdRow, error) {
@@ -623,12 +613,12 @@ func (q *Queries) GetTradeById(ctx context.Context, id string) ([]GetTradeByIdRo
 			&i.TxHex,
 			&i.ExpiryTime,
 			&i.SettlementTime,
+			&i.BasePrice,
+			&i.QuotePrice,
 			&i.FkMarketName,
 			&i.Name,
 			&i.BaseAsset,
 			&i.QuoteAsset,
-			&i.BasePrice,
-			&i.QuotePrice,
 			&i.SwapID,
 			&i.Message,
 			&i.Timestamp,
@@ -648,11 +638,11 @@ func (q *Queries) GetTradeById(ctx context.Context, id string) ([]GetTradeByIdRo
 }
 
 const getTradeBySwapAcceptId = `-- name: GetTradeBySwapAcceptId :many
-SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.fk_market_name, m.name, m.base_asset, m.quote_asset, m.base_price, m.quote_price,
+SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.base_price, t.quote_price, t.fk_market_name, m.name, m.base_asset, m.quote_asset,
        s.id as swap_id, s.message, s.timestamp, s.type as swap_type, f.base_asset_fee,
        f.quote_asset_fee, f.type as fee_type
 FROM trade t left join swap s on t.id = s.fk_trade_id inner join
-     market m on m.name = t.fk_market_name inner join fee f on m.name = f.fk_market_name
+     market m on m.name = t.fk_market_name left join trade_fee f on t.id = f.fk_trade_id
 WHERE t.id in (select t.id from trade t inner join swap s on t.id = s.fk_trade_id where s.id = $1)
 `
 
@@ -662,26 +652,26 @@ type GetTradeBySwapAcceptIdRow struct {
 	FeeAsset       string
 	FeeAmount      int64
 	TraderPubkey   []byte
-	StatusCode     sql.NullInt32
-	StatusFailed   sql.NullBool
+	StatusCode     int32
+	StatusFailed   bool
 	PsetBase64     string
 	TxID           sql.NullString
 	TxHex          string
 	ExpiryTime     sql.NullInt64
 	SettlementTime sql.NullInt64
+	BasePrice      sql.NullFloat64
+	QuotePrice     sql.NullFloat64
 	FkMarketName   string
 	Name           string
 	BaseAsset      string
 	QuoteAsset     string
-	BasePrice      sql.NullFloat64
-	QuotePrice     sql.NullFloat64
 	SwapID         string
 	Message        []byte
 	Timestamp      int64
 	SwapType       string
-	BaseAssetFee   int64
-	QuoteAssetFee  int64
-	FeeType        string
+	BaseAssetFee   sql.NullInt64
+	QuoteAssetFee  sql.NullInt64
+	FeeType        sql.NullString
 }
 
 func (q *Queries) GetTradeBySwapAcceptId(ctx context.Context, id string) ([]GetTradeBySwapAcceptIdRow, error) {
@@ -706,12 +696,12 @@ func (q *Queries) GetTradeBySwapAcceptId(ctx context.Context, id string) ([]GetT
 			&i.TxHex,
 			&i.ExpiryTime,
 			&i.SettlementTime,
+			&i.BasePrice,
+			&i.QuotePrice,
 			&i.FkMarketName,
 			&i.Name,
 			&i.BaseAsset,
 			&i.QuoteAsset,
-			&i.BasePrice,
-			&i.QuotePrice,
 			&i.SwapID,
 			&i.Message,
 			&i.Timestamp,
@@ -731,11 +721,11 @@ func (q *Queries) GetTradeBySwapAcceptId(ctx context.Context, id string) ([]GetT
 }
 
 const getTradeByTxId = `-- name: GetTradeByTxId :many
-SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.fk_market_name, m.name, m.base_asset, m.quote_asset, m.base_price, m.quote_price,
+SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.base_price, t.quote_price, t.fk_market_name, m.name, m.base_asset, m.quote_asset,
        s.id as swap_id, s.message, s.timestamp, s.type as swap_type, f.base_asset_fee,
        f.quote_asset_fee, f.type as fee_type
 FROM trade t left join swap s on t.id = s.fk_trade_id inner join
-     market m on m.name = t.fk_market_name inner join fee f on m.name = f.fk_market_name
+     market m on m.name = t.fk_market_name left join trade_fee f on t.id = f.fk_trade_id
 WHERE t.tx_id = $1
 `
 
@@ -745,26 +735,26 @@ type GetTradeByTxIdRow struct {
 	FeeAsset       string
 	FeeAmount      int64
 	TraderPubkey   []byte
-	StatusCode     sql.NullInt32
-	StatusFailed   sql.NullBool
+	StatusCode     int32
+	StatusFailed   bool
 	PsetBase64     string
 	TxID           sql.NullString
 	TxHex          string
 	ExpiryTime     sql.NullInt64
 	SettlementTime sql.NullInt64
+	BasePrice      sql.NullFloat64
+	QuotePrice     sql.NullFloat64
 	FkMarketName   string
 	Name           string
 	BaseAsset      string
 	QuoteAsset     string
-	BasePrice      sql.NullFloat64
-	QuotePrice     sql.NullFloat64
 	SwapID         string
 	Message        []byte
 	Timestamp      int64
 	SwapType       string
-	BaseAssetFee   int64
-	QuoteAssetFee  int64
-	FeeType        string
+	BaseAssetFee   sql.NullInt64
+	QuoteAssetFee  sql.NullInt64
+	FeeType        sql.NullString
 }
 
 func (q *Queries) GetTradeByTxId(ctx context.Context, txID sql.NullString) ([]GetTradeByTxIdRow, error) {
@@ -789,12 +779,12 @@ func (q *Queries) GetTradeByTxId(ctx context.Context, txID sql.NullString) ([]Ge
 			&i.TxHex,
 			&i.ExpiryTime,
 			&i.SettlementTime,
+			&i.BasePrice,
+			&i.QuotePrice,
 			&i.FkMarketName,
 			&i.Name,
 			&i.BaseAsset,
 			&i.QuoteAsset,
-			&i.BasePrice,
-			&i.QuotePrice,
 			&i.SwapID,
 			&i.Message,
 			&i.Timestamp,
@@ -814,18 +804,18 @@ func (q *Queries) GetTradeByTxId(ctx context.Context, txID sql.NullString) ([]Ge
 }
 
 const getTradesByMarketAndStatus = `-- name: GetTradesByMarketAndStatus :many
-SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.fk_market_name, m.name, m.base_asset, m.quote_asset, m.base_price, m.quote_price,
+SELECT t.id, t.type, t.fee_asset, t.fee_amount, t.trader_pubkey, t.status_code, t.status_failed, t.pset_base64, t.tx_id, t.tx_hex, t.expiry_time, t.settlement_time, t.base_price, t.quote_price, t.fk_market_name, m.name, m.base_asset, m.quote_asset,
        s.id as swap_id, s.message, s.timestamp, s.type as swap_type, f.base_asset_fee,
        f.quote_asset_fee, f.type as fee_type
 FROM trade t left join swap s on t.id = s.fk_trade_id inner join
-     market m on m.name = t.fk_market_name inner join fee f on m.name = f.fk_market_name
+     market m on m.name = t.fk_market_name left join trade_fee f on t.id = f.fk_trade_id
 WHERE m.name = $1 AND t.status_code = $2 and t.status_failed = $3 order by t.id DESC LIMIT $4 OFFSET $5
 `
 
 type GetTradesByMarketAndStatusParams struct {
 	Name         string
-	StatusCode   sql.NullInt32
-	StatusFailed sql.NullBool
+	StatusCode   int32
+	StatusFailed bool
 	Limit        int32
 	Offset       int32
 }
@@ -836,26 +826,26 @@ type GetTradesByMarketAndStatusRow struct {
 	FeeAsset       string
 	FeeAmount      int64
 	TraderPubkey   []byte
-	StatusCode     sql.NullInt32
-	StatusFailed   sql.NullBool
+	StatusCode     int32
+	StatusFailed   bool
 	PsetBase64     string
 	TxID           sql.NullString
 	TxHex          string
 	ExpiryTime     sql.NullInt64
 	SettlementTime sql.NullInt64
+	BasePrice      sql.NullFloat64
+	QuotePrice     sql.NullFloat64
 	FkMarketName   string
 	Name           string
 	BaseAsset      string
 	QuoteAsset     string
-	BasePrice      sql.NullFloat64
-	QuotePrice     sql.NullFloat64
 	SwapID         string
 	Message        []byte
 	Timestamp      int64
 	SwapType       string
-	BaseAssetFee   int64
-	QuoteAssetFee  int64
-	FeeType        string
+	BaseAssetFee   sql.NullInt64
+	QuoteAssetFee  sql.NullInt64
+	FeeType        sql.NullString
 }
 
 func (q *Queries) GetTradesByMarketAndStatus(ctx context.Context, arg GetTradesByMarketAndStatusParams) ([]GetTradesByMarketAndStatusRow, error) {
@@ -886,12 +876,12 @@ func (q *Queries) GetTradesByMarketAndStatus(ctx context.Context, arg GetTradesB
 			&i.TxHex,
 			&i.ExpiryTime,
 			&i.SettlementTime,
+			&i.BasePrice,
+			&i.QuotePrice,
 			&i.FkMarketName,
 			&i.Name,
 			&i.BaseAsset,
 			&i.QuoteAsset,
-			&i.BasePrice,
-			&i.QuotePrice,
 			&i.SwapID,
 			&i.Message,
 			&i.Timestamp,
@@ -910,55 +900,33 @@ func (q *Queries) GetTradesByMarketAndStatus(ctx context.Context, arg GetTradesB
 	return items, nil
 }
 
-const insertFee = `-- name: InsertFee :one
-
-INSERT INTO fee (base_asset_fee, quote_asset_fee, type, fk_market_name) VALUES
-($1, $2, $3, $4) RETURNING id, base_asset_fee, quote_asset_fee, type, fk_market_name
+const inactivateMarket = `-- name: InactivateMarket :exec
+UPDATE market SET active=false WHERE name = $1
 `
 
-type InsertFeeParams struct {
-	BaseAssetFee  int64
-	QuoteAssetFee int64
-	Type          string
-	FkMarketName  string
-}
-
-// * Fee *
-func (q *Queries) InsertFee(ctx context.Context, arg InsertFeeParams) (Fee, error) {
-	row := q.db.QueryRow(ctx, insertFee,
-		arg.BaseAssetFee,
-		arg.QuoteAssetFee,
-		arg.Type,
-		arg.FkMarketName,
-	)
-	var i Fee
-	err := row.Scan(
-		&i.ID,
-		&i.BaseAssetFee,
-		&i.QuoteAssetFee,
-		&i.Type,
-		&i.FkMarketName,
-	)
-	return i, err
+func (q *Queries) InactivateMarket(ctx context.Context, name string) error {
+	_, err := q.db.Exec(ctx, inactivateMarket, name)
+	return err
 }
 
 const insertMarket = `-- name: InsertMarket :one
 
 INSERT INTO market (name,base_asset,quote_asset,base_asset_precision,
-quote_asset_precision,tradable,strategy_type,base_price,quote_price) VALUES
-($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price
+quote_asset_precision,tradable,strategy_type,base_price,quote_price, active) VALUES
+($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, active
 `
 
 type InsertMarketParams struct {
 	Name                string
 	BaseAsset           string
 	QuoteAsset          string
-	BaseAssetPrecision  sql.NullInt32
-	QuoteAssetPrecision sql.NullInt32
-	Tradable            sql.NullBool
-	StrategyType        sql.NullInt32
-	BasePrice           sql.NullFloat64
-	QuotePrice          sql.NullFloat64
+	BaseAssetPrecision  int32
+	QuoteAssetPrecision int32
+	Tradable            bool
+	StrategyType        int32
+	BasePrice           float64
+	QuotePrice          float64
+	Active              bool
 }
 
 // * Market *
@@ -973,6 +941,7 @@ func (q *Queries) InsertMarket(ctx context.Context, arg InsertMarketParams) (Mar
 		arg.StrategyType,
 		arg.BasePrice,
 		arg.QuotePrice,
+		arg.Active,
 	)
 	var i Market
 	err := row.Scan(
@@ -985,6 +954,39 @@ func (q *Queries) InsertMarket(ctx context.Context, arg InsertMarketParams) (Mar
 		&i.StrategyType,
 		&i.BasePrice,
 		&i.QuotePrice,
+		&i.Active,
+	)
+	return i, err
+}
+
+const insertMarketFee = `-- name: InsertMarketFee :one
+
+INSERT INTO market_fee (base_asset_fee, quote_asset_fee, type, fk_market_name) VALUES
+($1, $2, $3, $4) RETURNING id, base_asset_fee, quote_asset_fee, type, fk_market_name
+`
+
+type InsertMarketFeeParams struct {
+	BaseAssetFee  int64
+	QuoteAssetFee int64
+	Type          string
+	FkMarketName  string
+}
+
+// * MarketFee *
+func (q *Queries) InsertMarketFee(ctx context.Context, arg InsertMarketFeeParams) (MarketFee, error) {
+	row := q.db.QueryRow(ctx, insertMarketFee,
+		arg.BaseAssetFee,
+		arg.QuoteAssetFee,
+		arg.Type,
+		arg.FkMarketName,
+	)
+	var i MarketFee
+	err := row.Scan(
+		&i.ID,
+		&i.BaseAssetFee,
+		&i.QuoteAssetFee,
+		&i.Type,
+		&i.FkMarketName,
 	)
 	return i, err
 }
@@ -1026,9 +1028,9 @@ func (q *Queries) InsertSwap(ctx context.Context, arg InsertSwapParams) (Swap, e
 const insertTrade = `-- name: InsertTrade :one
 
 INSERT INTO trade (id, type, fee_asset, fee_amount, trader_pubkey, status_code,
-status_failed, pset_base64, tx_id, tx_hex, expiry_time, settlement_time,
-fk_market_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-RETURNING id, type, fee_asset, fee_amount, trader_pubkey, status_code, status_failed, pset_base64, tx_id, tx_hex, expiry_time, settlement_time, fk_market_name
+status_failed, pset_base64, tx_id, tx_hex, expiry_time, settlement_time, base_price, quote_price,
+fk_market_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+RETURNING id, type, fee_asset, fee_amount, trader_pubkey, status_code, status_failed, pset_base64, tx_id, tx_hex, expiry_time, settlement_time, base_price, quote_price, fk_market_name
 `
 
 type InsertTradeParams struct {
@@ -1037,13 +1039,15 @@ type InsertTradeParams struct {
 	FeeAsset       string
 	FeeAmount      int64
 	TraderPubkey   []byte
-	StatusCode     sql.NullInt32
-	StatusFailed   sql.NullBool
+	StatusCode     int32
+	StatusFailed   bool
 	PsetBase64     string
 	TxID           sql.NullString
 	TxHex          string
 	ExpiryTime     sql.NullInt64
 	SettlementTime sql.NullInt64
+	BasePrice      sql.NullFloat64
+	QuotePrice     sql.NullFloat64
 	FkMarketName   string
 }
 
@@ -1062,6 +1066,8 @@ func (q *Queries) InsertTrade(ctx context.Context, arg InsertTradeParams) (Trade
 		arg.TxHex,
 		arg.ExpiryTime,
 		arg.SettlementTime,
+		arg.BasePrice,
+		arg.QuotePrice,
 		arg.FkMarketName,
 	)
 	var i Trade
@@ -1078,7 +1084,41 @@ func (q *Queries) InsertTrade(ctx context.Context, arg InsertTradeParams) (Trade
 		&i.TxHex,
 		&i.ExpiryTime,
 		&i.SettlementTime,
+		&i.BasePrice,
+		&i.QuotePrice,
 		&i.FkMarketName,
+	)
+	return i, err
+}
+
+const insertTradeFee = `-- name: InsertTradeFee :one
+
+INSERT INTO trade_fee (base_asset_fee, quote_asset_fee, type, fk_trade_id) VALUES
+    ($1, $2, $3, $4) RETURNING id, base_asset_fee, quote_asset_fee, type, fk_trade_id
+`
+
+type InsertTradeFeeParams struct {
+	BaseAssetFee  int64
+	QuoteAssetFee int64
+	Type          string
+	FkTradeID     string
+}
+
+// * TradeFee *
+func (q *Queries) InsertTradeFee(ctx context.Context, arg InsertTradeFeeParams) (TradeFee, error) {
+	row := q.db.QueryRow(ctx, insertTradeFee,
+		arg.BaseAssetFee,
+		arg.QuoteAssetFee,
+		arg.Type,
+		arg.FkTradeID,
+	)
+	var i TradeFee
+	err := row.Scan(
+		&i.ID,
+		&i.BaseAssetFee,
+		&i.QuoteAssetFee,
+		&i.Type,
+		&i.FkTradeID,
 	)
 	return i, err
 }
@@ -1138,49 +1178,19 @@ func (q *Queries) InsertTransactionAssetAmount(ctx context.Context, arg InsertTr
 	return i, err
 }
 
-const updateFee = `-- name: UpdateFee :one
-UPDATE fee SET base_asset_fee = $1, quote_asset_fee = $2 WHERE
-fk_market_name = $3 and type = $4 RETURNING id, base_asset_fee, quote_asset_fee, type, fk_market_name
-`
-
-type UpdateFeeParams struct {
-	BaseAssetFee  int64
-	QuoteAssetFee int64
-	FkMarketName  string
-	Type          string
-}
-
-func (q *Queries) UpdateFee(ctx context.Context, arg UpdateFeeParams) (Fee, error) {
-	row := q.db.QueryRow(ctx, updateFee,
-		arg.BaseAssetFee,
-		arg.QuoteAssetFee,
-		arg.FkMarketName,
-		arg.Type,
-	)
-	var i Fee
-	err := row.Scan(
-		&i.ID,
-		&i.BaseAssetFee,
-		&i.QuoteAssetFee,
-		&i.Type,
-		&i.FkMarketName,
-	)
-	return i, err
-}
-
 const updateMarket = `-- name: UpdateMarket :one
 UPDATE market SET base_asset_precision = $1, quote_asset_precision = $2,
 tradable = $3, strategy_type = $4, base_price = $5, quote_price = $6 WHERE
-name = $7 RETURNING name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price
+name = $7 RETURNING name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, active
 `
 
 type UpdateMarketParams struct {
-	BaseAssetPrecision  sql.NullInt32
-	QuoteAssetPrecision sql.NullInt32
-	Tradable            sql.NullBool
-	StrategyType        sql.NullInt32
-	BasePrice           sql.NullFloat64
-	QuotePrice          sql.NullFloat64
+	BaseAssetPrecision  int32
+	QuoteAssetPrecision int32
+	Tradable            bool
+	StrategyType        int32
+	BasePrice           float64
+	QuotePrice          float64
 	Name                string
 }
 
@@ -1205,17 +1215,48 @@ func (q *Queries) UpdateMarket(ctx context.Context, arg UpdateMarketParams) (Mar
 		&i.StrategyType,
 		&i.BasePrice,
 		&i.QuotePrice,
+		&i.Active,
+	)
+	return i, err
+}
+
+const updateMarketFee = `-- name: UpdateMarketFee :one
+UPDATE market_fee SET base_asset_fee = $1, quote_asset_fee = $2 WHERE
+fk_market_name = $3 and type = $4 RETURNING id, base_asset_fee, quote_asset_fee, type, fk_market_name
+`
+
+type UpdateMarketFeeParams struct {
+	BaseAssetFee  int64
+	QuoteAssetFee int64
+	FkMarketName  string
+	Type          string
+}
+
+func (q *Queries) UpdateMarketFee(ctx context.Context, arg UpdateMarketFeeParams) (MarketFee, error) {
+	row := q.db.QueryRow(ctx, updateMarketFee,
+		arg.BaseAssetFee,
+		arg.QuoteAssetFee,
+		arg.FkMarketName,
+		arg.Type,
+	)
+	var i MarketFee
+	err := row.Scan(
+		&i.ID,
+		&i.BaseAssetFee,
+		&i.QuoteAssetFee,
+		&i.Type,
+		&i.FkMarketName,
 	)
 	return i, err
 }
 
 const updateMarketPrice = `-- name: UpdateMarketPrice :one
-UPDATE market SET base_price = $1, quote_price = $2 WHERE name = $3 RETURNING name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price
+UPDATE market SET base_price = $1, quote_price = $2 WHERE name = $3 RETURNING name, base_asset, quote_asset, base_asset_precision, quote_asset_precision, tradable, strategy_type, base_price, quote_price, active
 `
 
 type UpdateMarketPriceParams struct {
-	BasePrice  sql.NullFloat64
-	QuotePrice sql.NullFloat64
+	BasePrice  float64
+	QuotePrice float64
 	Name       string
 }
 
@@ -1232,6 +1273,7 @@ func (q *Queries) UpdateMarketPrice(ctx context.Context, arg UpdateMarketPricePa
 		&i.StrategyType,
 		&i.BasePrice,
 		&i.QuotePrice,
+		&i.Active,
 	)
 	return i, err
 }
@@ -1239,7 +1281,7 @@ func (q *Queries) UpdateMarketPrice(ctx context.Context, arg UpdateMarketPricePa
 const updateTrade = `-- name: UpdateTrade :one
 UPDATE trade SET type = $1, fee_asset = $2, fee_amount = $3, trader_pubkey = $4,
 status_code = $5, status_failed = $6, pset_base64 = $7, tx_id = $8, tx_hex = $9,
-expiry_time = $10, settlement_time = $11 WHERE id = $12 RETURNING id, type, fee_asset, fee_amount, trader_pubkey, status_code, status_failed, pset_base64, tx_id, tx_hex, expiry_time, settlement_time, fk_market_name
+expiry_time = $10, settlement_time = $11 WHERE id = $12 RETURNING id, type, fee_asset, fee_amount, trader_pubkey, status_code, status_failed, pset_base64, tx_id, tx_hex, expiry_time, settlement_time, base_price, quote_price, fk_market_name
 `
 
 type UpdateTradeParams struct {
@@ -1247,8 +1289,8 @@ type UpdateTradeParams struct {
 	FeeAsset       string
 	FeeAmount      int64
 	TraderPubkey   []byte
-	StatusCode     sql.NullInt32
-	StatusFailed   sql.NullBool
+	StatusCode     int32
+	StatusFailed   bool
 	PsetBase64     string
 	TxID           sql.NullString
 	TxHex          string
@@ -1286,6 +1328,8 @@ func (q *Queries) UpdateTrade(ctx context.Context, arg UpdateTradeParams) (Trade
 		&i.TxHex,
 		&i.ExpiryTime,
 		&i.SettlementTime,
+		&i.BasePrice,
+		&i.QuotePrice,
 		&i.FkMarketName,
 	)
 	return i, err

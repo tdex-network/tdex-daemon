@@ -8,24 +8,25 @@ import (
 	"database/sql"
 )
 
-type Fee struct {
+type Market struct {
+	Name                string
+	BaseAsset           string
+	QuoteAsset          string
+	BaseAssetPrecision  int32
+	QuoteAssetPrecision int32
+	Tradable            bool
+	StrategyType        int32
+	BasePrice           float64
+	QuotePrice          float64
+	Active              bool
+}
+
+type MarketFee struct {
 	ID            int32
 	BaseAssetFee  int64
 	QuoteAssetFee int64
 	Type          string
 	FkMarketName  string
-}
-
-type Market struct {
-	Name                string
-	BaseAsset           string
-	QuoteAsset          string
-	BaseAssetPrecision  sql.NullInt32
-	QuoteAssetPrecision sql.NullInt32
-	Tradable            sql.NullBool
-	StrategyType        sql.NullInt32
-	BasePrice           sql.NullFloat64
-	QuotePrice          sql.NullFloat64
 }
 
 type Swap struct {
@@ -42,14 +43,24 @@ type Trade struct {
 	FeeAsset       string
 	FeeAmount      int64
 	TraderPubkey   []byte
-	StatusCode     sql.NullInt32
-	StatusFailed   sql.NullBool
+	StatusCode     int32
+	StatusFailed   bool
 	PsetBase64     string
 	TxID           sql.NullString
 	TxHex          string
 	ExpiryTime     sql.NullInt64
 	SettlementTime sql.NullInt64
+	BasePrice      sql.NullFloat64
+	QuotePrice     sql.NullFloat64
 	FkMarketName   string
+}
+
+type TradeFee struct {
+	ID            int32
+	BaseAssetFee  int64
+	QuoteAssetFee int64
+	Type          string
+	FkTradeID     string
 }
 
 type Transaction struct {

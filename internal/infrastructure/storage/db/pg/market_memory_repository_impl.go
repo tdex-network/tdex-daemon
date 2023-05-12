@@ -2,7 +2,6 @@ package postgresdb
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strconv"
 
@@ -38,62 +37,43 @@ func (m *marketRepositoryImpl) AddMarket(
 	ctx context.Context, market *domain.Market,
 ) error {
 	txBody := func(querierWithTx *queries.Queries) error {
-		baseAssetPrecision := sql.NullInt32{}
-		if market.BaseAssetPrecision > 0 {
-			baseAssetPrecision.Int32 = int32(market.BaseAssetPrecision)
-			baseAssetPrecision.Valid = true
-		}
-
-		quoteAssetPrecision := sql.NullInt32{}
-		if market.QuoteAssetPrecision > 0 {
-			quoteAssetPrecision.Int32 = int32(market.QuoteAssetPrecision)
-			quoteAssetPrecision.Valid = true
-		}
-
-		basePrice := sql.NullFloat64{}
+		var basePrice float64 = 0
 		if market.Price.BasePrice != "" {
 			price, err := strconv.ParseFloat(market.Price.BasePrice, 64)
 			if err != nil {
 				return err
 			}
 
-			basePrice.Float64 = price
-			basePrice.Valid = true
+			basePrice = price
 		}
 
-		quotePrice := sql.NullFloat64{}
+		var quotePrice float64 = 0
 		if market.Price.QuotePrice != "" {
 			price, err := strconv.ParseFloat(market.Price.QuotePrice, 64)
 			if err != nil {
 				return err
 			}
 
-			quotePrice.Float64 = price
-			quotePrice.Valid = true
+			quotePrice = price
 		}
 
 		if _, err := querierWithTx.InsertMarket(ctx, queries.InsertMarketParams{
 			Name:                market.Name,
 			BaseAsset:           market.BaseAsset,
 			QuoteAsset:          market.QuoteAsset,
-			BaseAssetPrecision:  baseAssetPrecision,
-			QuoteAssetPrecision: quoteAssetPrecision,
-			Tradable: sql.NullBool{
-				Bool:  market.Tradable,
-				Valid: true,
-			},
-			StrategyType: sql.NullInt32{
-				Int32: int32(market.StrategyType),
-				Valid: true,
-			},
-			BasePrice:  basePrice,
-			QuotePrice: quotePrice,
+			BaseAssetPrecision:  int32(market.BaseAssetPrecision),
+			QuoteAssetPrecision: int32(market.QuoteAssetPrecision),
+			Tradable:            market.Tradable,
+			StrategyType:        int32(market.StrategyType),
+			BasePrice:           basePrice,
+			QuotePrice:          quotePrice,
+			Active:              true,
 		}); err != nil {
 			return err
 		}
 
 		if market.FixedFee.BaseAsset > 0 || market.FixedFee.QuoteAsset > 0 {
-			if _, err := querierWithTx.InsertFee(ctx, queries.InsertFeeParams{
+			if _, err := querierWithTx.InsertMarketFee(ctx, queries.InsertMarketFeeParams{
 				BaseAssetFee:  int64(market.FixedFee.BaseAsset),
 				QuoteAssetFee: int64(market.FixedFee.QuoteAsset),
 				Type:          marketFixedFeeKey,
@@ -104,7 +84,7 @@ func (m *marketRepositoryImpl) AddMarket(
 		}
 
 		if market.PercentageFee.BaseAsset > 0 || market.PercentageFee.QuoteAsset > 0 {
-			if _, err := querierWithTx.InsertFee(ctx, queries.InsertFeeParams{
+			if _, err := querierWithTx.InsertMarketFee(ctx, queries.InsertMarketFeeParams{
 				BaseAssetFee:  int64(market.PercentageFee.BaseAsset),
 				QuoteAssetFee: int64(market.PercentageFee.QuoteAsset),
 				Type:          marketPercentageFeeKey,
@@ -285,44 +265,30 @@ func (m *marketRepositoryImpl) DeleteMarket(
 		return fmt.Errorf("market with name %s not found", marketName)
 	}
 
-	txBody := func(querierWithTx *queries.Queries) error {
-		if err := querierWithTx.DeleteFeeForMarket(ctx, marketName); err != nil {
-			return err
-		}
-
-		return querierWithTx.DeleteMarket(ctx, marketName)
-	}
-
-	return m.execTx(ctx, txBody)
+	return m.querier.InactivateMarket(ctx, marketName)
 }
 
 func (m *marketRepositoryImpl) UpdateMarketPrice(
 	ctx context.Context, marketName string, price domain.MarketPrice,
 ) error {
-	basePrice := sql.NullFloat64{}
+	var basePrice float64 = 0
 	if price.BasePrice != "" {
-		p, err := strconv.ParseFloat(price.BasePrice, 64)
+		price, err := strconv.ParseFloat(price.BasePrice, 64)
 		if err != nil {
 			return err
 		}
 
-		basePrice = sql.NullFloat64{
-			Float64: p,
-			Valid:   true,
-		}
+		basePrice = price
 	}
 
-	quotePrice := sql.NullFloat64{}
+	var quotePrice float64 = 0
 	if price.QuotePrice != "" {
-		p, err := strconv.ParseFloat(price.QuotePrice, 64)
+		price, err := strconv.ParseFloat(price.QuotePrice, 64)
 		if err != nil {
 			return err
 		}
 
-		quotePrice = sql.NullFloat64{
-			Float64: p,
-			Valid:   true,
-		}
+		quotePrice = price
 	}
 
 	if _, err := m.querier.UpdateMarketPrice(ctx, queries.UpdateMarketPriceParams{
@@ -340,69 +306,31 @@ func (m *marketRepositoryImpl) updateMarket(
 	ctx context.Context, market domain.Market,
 ) error {
 	txBody := func(querierWithTx *queries.Queries) error {
-		baseAssetPrecision := sql.NullInt32{}
-		if market.BaseAssetPrecision > 0 {
-			baseAssetPrecision = sql.NullInt32{
-				Int32: int32(market.BaseAssetPrecision),
-				Valid: true,
-			}
-		}
-
-		quoteAssetPrecision := sql.NullInt32{}
-		if market.QuoteAssetPrecision > 0 {
-			quoteAssetPrecision = sql.NullInt32{
-				Int32: int32(market.QuoteAssetPrecision),
-				Valid: true,
-			}
-		}
-
-		tradable := sql.NullBool{}
-		if market.Tradable {
-			tradable = sql.NullBool{
-				Bool:  market.Tradable,
-				Valid: true,
-			}
-		}
-
-		strategyType := sql.NullInt32{}
-		if market.StrategyType > 0 {
-			strategyType = sql.NullInt32{
-				Int32: int32(market.StrategyType),
-				Valid: true,
-			}
-		}
-
-		basePrice := sql.NullFloat64{}
+		var basePrice float64 = 0
 		if market.Price.BasePrice != "" {
 			price, err := strconv.ParseFloat(market.Price.BasePrice, 64)
 			if err != nil {
 				return err
 			}
 
-			basePrice = sql.NullFloat64{
-				Float64: price,
-				Valid:   true,
-			}
+			basePrice = price
 		}
 
-		quotePrice := sql.NullFloat64{}
+		var quotePrice float64 = 0
 		if market.Price.QuotePrice != "" {
 			price, err := strconv.ParseFloat(market.Price.QuotePrice, 64)
 			if err != nil {
 				return err
 			}
 
-			quotePrice = sql.NullFloat64{
-				Float64: price,
-				Valid:   true,
-			}
+			quotePrice = price
 		}
 
 		if _, err := querierWithTx.UpdateMarket(ctx, queries.UpdateMarketParams{
-			BaseAssetPrecision:  baseAssetPrecision,
-			QuoteAssetPrecision: quoteAssetPrecision,
-			Tradable:            tradable,
-			StrategyType:        strategyType,
+			BaseAssetPrecision:  int32(market.BaseAssetPrecision),
+			QuoteAssetPrecision: int32(market.QuoteAssetPrecision),
+			Tradable:            market.Tradable,
+			StrategyType:        int32(market.StrategyType),
 			BasePrice:           basePrice,
 			QuotePrice:          quotePrice,
 			Name:                market.Name,
@@ -411,7 +339,7 @@ func (m *marketRepositoryImpl) updateMarket(
 		}
 
 		if market.FixedFee.BaseAsset > 0 || market.FixedFee.QuoteAsset > 0 {
-			if _, err := querierWithTx.UpdateFee(ctx, queries.UpdateFeeParams{
+			if _, err := querierWithTx.UpdateMarketFee(ctx, queries.UpdateMarketFeeParams{
 				BaseAssetFee:  int64(market.FixedFee.BaseAsset),
 				QuoteAssetFee: int64(market.FixedFee.QuoteAsset),
 				FkMarketName:  market.Name,
@@ -422,7 +350,7 @@ func (m *marketRepositoryImpl) updateMarket(
 		}
 
 		if market.PercentageFee.BaseAsset > 0 || market.PercentageFee.QuoteAsset > 0 {
-			if _, err := querierWithTx.UpdateFee(ctx, queries.UpdateFeeParams{
+			if _, err := querierWithTx.UpdateMarketFee(ctx, queries.UpdateMarketFeeParams{
 				BaseAssetFee:  int64(market.PercentageFee.BaseAsset),
 				QuoteAssetFee: int64(market.PercentageFee.QuoteAsset),
 				FkMarketName:  market.Name,

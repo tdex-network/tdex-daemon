@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/pg/sqlc/queries"
 
@@ -39,12 +40,6 @@ func (t *tradeRepositoryImpl) AddTrade(
 	ctx context.Context, trade *domain.Trade,
 ) error {
 	txBody := func(querierWithTx *queries.Queries) error {
-		statusCode := sql.NullInt32{}
-		if trade.Status.Code > 0 {
-			statusCode.Int32 = int32(trade.Status.Code)
-			statusCode.Valid = true
-		}
-
 		txId := sql.NullString{}
 		if trade.TxId != "" {
 			txId.String = trade.TxId
@@ -63,24 +58,49 @@ func (t *tradeRepositoryImpl) AddTrade(
 			settlementTime.Valid = true
 		}
 
+		basePrice := sql.NullFloat64{}
+		if trade.MarketPrice.BasePrice != "" {
+			price, err := strconv.ParseFloat(trade.MarketPrice.BasePrice, 64)
+			if err != nil {
+				return err
+			}
+
+			basePrice.Float64 = price
+			basePrice.Valid = true
+		}
+
+		quotePrice := sql.NullFloat64{}
+		if trade.MarketPrice.QuotePrice != "" {
+			price, err := strconv.ParseFloat(trade.MarketPrice.QuotePrice, 64)
+			if err != nil {
+				return err
+			}
+
+			quotePrice.Float64 = price
+			quotePrice.Valid = true
+		}
+
 		if _, err := querierWithTx.InsertTrade(ctx, queries.InsertTradeParams{
-			ID:           trade.Id,
-			Type:         int32(trade.Type),
-			FeeAsset:     trade.FeeAsset,
-			FeeAmount:    int64(trade.FeeAmount),
-			TraderPubkey: trade.TraderPubkey,
-			StatusCode:   statusCode,
-			StatusFailed: sql.NullBool{
-				Bool:  trade.Status.Failed,
-				Valid: true,
-			},
+			ID:             trade.Id,
+			Type:           int32(trade.Type),
+			FeeAsset:       trade.FeeAsset,
+			FeeAmount:      int64(trade.FeeAmount),
+			TraderPubkey:   trade.TraderPubkey,
+			StatusCode:     int32(trade.Status.Code),
+			StatusFailed:   trade.Status.Failed,
 			PsetBase64:     trade.PsetBase64,
 			TxID:           txId,
 			TxHex:          trade.TxHex,
 			ExpiryTime:     expiryTime,
 			SettlementTime: settlementTime,
+			BasePrice:      basePrice,
+			QuotePrice:     quotePrice,
 			FkMarketName:   trade.MarketName,
 		}); err != nil {
+			return err
+		}
+
+		if err := t.insertTradeFees(ctx, querierWithTx, *trade); err != nil {
 			return err
 		}
 
@@ -88,6 +108,34 @@ func (t *tradeRepositoryImpl) AddTrade(
 	}
 
 	return t.execTx(ctx, txBody)
+}
+
+func (t *tradeRepositoryImpl) insertTradeFees(
+	ctx context.Context, querierWithTx *queries.Queries, trade domain.Trade,
+) error {
+	if trade.MarketFixedFee.BaseAsset > 0 || trade.MarketFixedFee.QuoteAsset > 0 {
+		if _, err := querierWithTx.InsertTradeFee(ctx, queries.InsertTradeFeeParams{
+			BaseAssetFee:  int64(trade.MarketFixedFee.BaseAsset),
+			QuoteAssetFee: int64(trade.MarketFixedFee.QuoteAsset),
+			Type:          marketFixedFeeKey,
+			FkTradeID:     trade.Id,
+		}); err != nil {
+			return err
+		}
+	}
+
+	if trade.MarketPercentageFee.BaseAsset > 0 || trade.MarketPercentageFee.QuoteAsset > 0 {
+		if _, err := querierWithTx.InsertTradeFee(ctx, queries.InsertTradeFeeParams{
+			BaseAssetFee:  int64(trade.MarketPercentageFee.BaseAsset),
+			QuoteAssetFee: int64(trade.MarketPercentageFee.QuoteAsset),
+			Type:          marketPercentageFeeKey,
+			FkTradeID:     trade.Id,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (t *tradeRepositoryImpl) insertTradeSwaps(
@@ -240,17 +288,11 @@ func (t *tradeRepositoryImpl) GetCompletedTradesByMarket(
 	tradesRows, err := t.querier.GetTradesByMarketAndStatus(
 		ctx,
 		queries.GetTradesByMarketAndStatusParams{
-			Name: marketName,
-			StatusCode: sql.NullInt32{
-				Int32: int32(domain.TradeStatusCodeCompleted),
-				Valid: true,
-			},
-			StatusFailed: sql.NullBool{
-				Bool:  false,
-				Valid: true,
-			},
-			Limit:  limit,
-			Offset: offset,
+			Name:         marketName,
+			StatusCode:   int32(domain.TradeStatusCodeCompleted),
+			StatusFailed: false,
+			Limit:        limit,
+			Offset:       offset,
 		},
 	)
 	if err != nil {
@@ -350,15 +392,9 @@ func (t *tradeRepositoryImpl) UpdateTrade(
 			FeeAsset:     updatedTrade.FeeAsset,
 			FeeAmount:    int64(updatedTrade.FeeAmount),
 			TraderPubkey: updatedTrade.TraderPubkey,
-			StatusCode: sql.NullInt32{
-				Int32: int32(updatedTrade.Status.Code),
-				Valid: true,
-			},
-			StatusFailed: sql.NullBool{
-				Bool:  updatedTrade.Status.Failed,
-				Valid: true,
-			},
-			PsetBase64: updatedTrade.PsetBase64,
+			StatusCode:   int32(updatedTrade.Status.Code),
+			StatusFailed: updatedTrade.Status.Failed,
+			PsetBase64:   updatedTrade.PsetBase64,
 			TxID: sql.NullString{
 				String: updatedTrade.TxId,
 				Valid:  true,

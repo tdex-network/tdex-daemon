@@ -14,12 +14,13 @@ type marketRow interface {
 	GetName() string
 	GetBaseAsset() string
 	GetQuoteAsset() string
-	GetBaseAssetPrecision() sql.NullInt32
-	GetQuoteAssetPrecision() sql.NullInt32
-	GetTradable() sql.NullBool
-	GetStrategyType() sql.NullInt32
-	GetBasePrice() sql.NullFloat64
-	GetQuotePrice() sql.NullFloat64
+	GetBaseAssetPrecision() int32
+	GetQuoteAssetPrecision() int32
+	GetTradable() bool
+	GetStrategyType() int32
+	GetBasePrice() float64
+	GetQuotePrice() float64
+	GetActive() bool
 	GetID() int32
 	GetBaseAssetFee() int64
 	GetQuoteAssetFee() int64
@@ -43,28 +44,32 @@ func (m MarketByNameRow) GetQuoteAsset() string {
 	return m.QuoteAsset
 }
 
-func (m MarketByNameRow) GetBaseAssetPrecision() sql.NullInt32 {
+func (m MarketByNameRow) GetBaseAssetPrecision() int32 {
 	return m.BaseAssetPrecision
 }
 
-func (m MarketByNameRow) GetQuoteAssetPrecision() sql.NullInt32 {
+func (m MarketByNameRow) GetQuoteAssetPrecision() int32 {
 	return m.QuoteAssetPrecision
 }
 
-func (m MarketByNameRow) GetTradable() sql.NullBool {
+func (m MarketByNameRow) GetTradable() bool {
 	return m.Tradable
 }
 
-func (m MarketByNameRow) GetStrategyType() sql.NullInt32 {
+func (m MarketByNameRow) GetStrategyType() int32 {
 	return m.StrategyType
 }
 
-func (m MarketByNameRow) GetBasePrice() sql.NullFloat64 {
+func (m MarketByNameRow) GetBasePrice() float64 {
 	return m.BasePrice
 }
 
-func (m MarketByNameRow) GetQuotePrice() sql.NullFloat64 {
+func (m MarketByNameRow) GetQuotePrice() float64 {
 	return m.QuotePrice
+}
+
+func (m MarketByNameRow) GetActive() bool {
+	return m.Active
 }
 
 func (m MarketByNameRow) GetID() int32 {
@@ -103,28 +108,32 @@ func (m TradableMarketsRow) GetQuoteAsset() string {
 	return m.QuoteAsset
 }
 
-func (m TradableMarketsRow) GetBaseAssetPrecision() sql.NullInt32 {
+func (m TradableMarketsRow) GetBaseAssetPrecision() int32 {
 	return m.BaseAssetPrecision
 }
 
-func (m TradableMarketsRow) GetQuoteAssetPrecision() sql.NullInt32 {
+func (m TradableMarketsRow) GetQuoteAssetPrecision() int32 {
 	return m.QuoteAssetPrecision
 }
 
-func (m TradableMarketsRow) GetTradable() sql.NullBool {
+func (m TradableMarketsRow) GetTradable() bool {
 	return m.Tradable
 }
 
-func (m TradableMarketsRow) GetStrategyType() sql.NullInt32 {
+func (m TradableMarketsRow) GetStrategyType() int32 {
 	return m.StrategyType
 }
 
-func (m TradableMarketsRow) GetBasePrice() sql.NullFloat64 {
+func (m TradableMarketsRow) GetBasePrice() float64 {
 	return m.BasePrice
 }
 
-func (m TradableMarketsRow) GetQuotePrice() sql.NullFloat64 {
+func (m TradableMarketsRow) GetQuotePrice() float64 {
 	return m.QuotePrice
+}
+
+func (m TradableMarketsRow) GetActive() bool {
+	return m.Active
 }
 
 func (m TradableMarketsRow) GetID() int32 {
@@ -163,28 +172,32 @@ func (m MarketByBaseAndQuoteAssetRow) GetQuoteAsset() string {
 	return m.QuoteAsset
 }
 
-func (m MarketByBaseAndQuoteAssetRow) GetBaseAssetPrecision() sql.NullInt32 {
+func (m MarketByBaseAndQuoteAssetRow) GetBaseAssetPrecision() int32 {
 	return m.BaseAssetPrecision
 }
 
-func (m MarketByBaseAndQuoteAssetRow) GetQuoteAssetPrecision() sql.NullInt32 {
+func (m MarketByBaseAndQuoteAssetRow) GetQuoteAssetPrecision() int32 {
 	return m.QuoteAssetPrecision
 }
 
-func (m MarketByBaseAndQuoteAssetRow) GetTradable() sql.NullBool {
+func (m MarketByBaseAndQuoteAssetRow) GetTradable() bool {
 	return m.Tradable
 }
 
-func (m MarketByBaseAndQuoteAssetRow) GetStrategyType() sql.NullInt32 {
+func (m MarketByBaseAndQuoteAssetRow) GetStrategyType() int32 {
 	return m.StrategyType
 }
 
-func (m MarketByBaseAndQuoteAssetRow) GetBasePrice() sql.NullFloat64 {
+func (m MarketByBaseAndQuoteAssetRow) GetBasePrice() float64 {
 	return m.BasePrice
 }
 
-func (m MarketByBaseAndQuoteAssetRow) GetQuotePrice() sql.NullFloat64 {
+func (m MarketByBaseAndQuoteAssetRow) GetQuotePrice() float64 {
 	return m.QuotePrice
+}
+
+func (m MarketByBaseAndQuoteAssetRow) GetActive() bool {
+	return m.Active
 }
 
 func (m MarketByBaseAndQuoteAssetRow) GetID() int32 {
@@ -223,28 +236,32 @@ func (m AllMarketsRow) GetQuoteAsset() string {
 	return m.QuoteAsset
 }
 
-func (m AllMarketsRow) GetBaseAssetPrecision() sql.NullInt32 {
+func (m AllMarketsRow) GetBaseAssetPrecision() int32 {
 	return m.BaseAssetPrecision
 }
 
-func (m AllMarketsRow) GetQuoteAssetPrecision() sql.NullInt32 {
+func (m AllMarketsRow) GetQuoteAssetPrecision() int32 {
 	return m.QuoteAssetPrecision
 }
 
-func (m AllMarketsRow) GetTradable() sql.NullBool {
+func (m AllMarketsRow) GetTradable() bool {
 	return m.Tradable
 }
 
-func (m AllMarketsRow) GetStrategyType() sql.NullInt32 {
+func (m AllMarketsRow) GetStrategyType() int32 {
 	return m.StrategyType
 }
 
-func (m AllMarketsRow) GetBasePrice() sql.NullFloat64 {
+func (m AllMarketsRow) GetBasePrice() float64 {
 	return m.BasePrice
 }
 
-func (m AllMarketsRow) GetQuotePrice() sql.NullFloat64 {
+func (m AllMarketsRow) GetQuotePrice() float64 {
 	return m.QuotePrice
+}
+
+func (m AllMarketsRow) GetActive() bool {
+	return m.Active
 }
 
 func (m AllMarketsRow) GetID() int32 {
@@ -307,25 +324,18 @@ func convertMarketsRowsToMarkets(mktRows []marketRow) []domain.Market {
 func convertMarketRowsToMarket(mktRows []marketRow) *domain.Market {
 	mktRow := mktRows[0]
 
-	var baseAssetPrecision uint = 0
-	if mktRow.GetBaseAssetPrecision().Valid {
-		baseAssetPrecision = uint(mktRow.GetBaseAssetPrecision().Int32)
-	}
-
-	var quuoteAssetPrecision uint = 0
-	if mktRow.GetQuoteAssetPrecision().Valid {
-		quuoteAssetPrecision = uint(mktRow.GetQuoteAssetPrecision().Int32)
-	}
-
+	baseAssetPrecision := uint(mktRow.GetBaseAssetPrecision())
+	quoteAssetPrecision := uint(mktRow.GetQuoteAssetPrecision())
 	basePrice := ""
-	if mktRow.GetBasePrice().Valid {
-		basePrice = fmt.Sprintf("%f", mktRow.GetBasePrice().Float64)
+	if mktRow.GetBasePrice() > 0 {
+		basePrice = fmt.Sprintf("%f", mktRow.GetBasePrice())
 	}
-
 	quotePrice := ""
-	if mktRow.GetQuotePrice().Valid {
-		quotePrice = fmt.Sprintf("%f", mktRow.GetQuotePrice().Float64)
+	if mktRow.GetQuotePrice() > 0 {
+		quotePrice = fmt.Sprintf("%f", mktRow.GetQuotePrice())
 	}
+	tradable := mktRow.GetTradable()
+	strategyType := int(mktRow.GetStrategyType())
 
 	percentageFee := domain.MarketFee{}
 	fixedFee := domain.MarketFee{}
@@ -339,22 +349,12 @@ func convertMarketRowsToMarket(mktRows []marketRow) *domain.Market {
 		}
 	}
 
-	tradable := false
-	if mktRow.GetTradable().Valid {
-		tradable = mktRow.GetTradable().Bool
-	}
-
-	strategyType := 0
-	if mktRow.GetStrategyType().Valid {
-		strategyType = int(mktRow.GetStrategyType().Int32)
-	}
-
 	return &domain.Market{
 		BaseAsset:           mktRow.GetBaseAsset(),
 		QuoteAsset:          mktRow.GetQuoteAsset(),
 		Name:                mktRow.GetName(),
 		BaseAssetPrecision:  baseAssetPrecision,
-		QuoteAssetPrecision: quuoteAssetPrecision,
+		QuoteAssetPrecision: quoteAssetPrecision,
 		PercentageFee:       percentageFee,
 		FixedFee:            fixedFee,
 		Tradable:            tradable,
@@ -372,8 +372,8 @@ type tradeRow interface {
 	GetFeeAsset() string
 	GetFeeAmount() int64
 	GetTraderPubkey() []byte
-	GetStatusCode() sql.NullInt32
-	GetStatusFailed() sql.NullBool
+	GetStatusCode() int32
+	GetStatusFailed() bool
 	GetPsetBase64() string
 	GetTxID() sql.NullString
 	GetTxHex() string
@@ -389,9 +389,9 @@ type tradeRow interface {
 	GetMessage() []byte
 	GetTimestamp() int64
 	GetSwapType() string
-	GetBaseAssetFee() int64
-	GetQuoteAssetFee() int64
-	GetFeeType() string
+	GetBaseAssetFee() sql.NullInt64
+	GetQuoteAssetFee() sql.NullInt64
+	GetFeeType() sql.NullString
 }
 
 type TradeByIdRow struct {
@@ -418,11 +418,11 @@ func (t TradeByIdRow) GetTraderPubkey() []byte {
 	return t.TraderPubkey
 }
 
-func (t TradeByIdRow) GetStatusCode() sql.NullInt32 {
+func (t TradeByIdRow) GetStatusCode() int32 {
 	return t.StatusCode
 }
 
-func (t TradeByIdRow) GetStatusFailed() sql.NullBool {
+func (t TradeByIdRow) GetStatusFailed() bool {
 	return t.StatusFailed
 }
 
@@ -486,15 +486,15 @@ func (t TradeByIdRow) GetSwapType() string {
 	return t.SwapType
 }
 
-func (t TradeByIdRow) GetBaseAssetFee() int64 {
+func (t TradeByIdRow) GetBaseAssetFee() sql.NullInt64 {
 	return t.BaseAssetFee
 }
 
-func (t TradeByIdRow) GetQuoteAssetFee() int64 {
+func (t TradeByIdRow) GetQuoteAssetFee() sql.NullInt64 {
 	return t.QuoteAssetFee
 }
 
-func (t TradeByIdRow) GetFeeType() string {
+func (t TradeByIdRow) GetFeeType() sql.NullString {
 	return t.FeeType
 }
 
@@ -522,11 +522,11 @@ func (t AllTradesRow) GetTraderPubkey() []byte {
 	return t.TraderPubkey
 }
 
-func (t AllTradesRow) GetStatusCode() sql.NullInt32 {
+func (t AllTradesRow) GetStatusCode() int32 {
 	return t.StatusCode
 }
 
-func (t AllTradesRow) GetStatusFailed() sql.NullBool {
+func (t AllTradesRow) GetStatusFailed() bool {
 	return t.StatusFailed
 }
 
@@ -590,15 +590,15 @@ func (t AllTradesRow) GetSwapType() string {
 	return t.SwapType
 }
 
-func (t AllTradesRow) GetBaseAssetFee() int64 {
+func (t AllTradesRow) GetBaseAssetFee() sql.NullInt64 {
 	return t.BaseAssetFee
 }
 
-func (t AllTradesRow) GetQuoteAssetFee() int64 {
+func (t AllTradesRow) GetQuoteAssetFee() sql.NullInt64 {
 	return t.QuoteAssetFee
 }
 
-func (t AllTradesRow) GetFeeType() string {
+func (t AllTradesRow) GetFeeType() sql.NullString {
 	return t.FeeType
 }
 
@@ -626,11 +626,11 @@ func (t AllTradesByMarketRow) GetTraderPubkey() []byte {
 	return t.TraderPubkey
 }
 
-func (t AllTradesByMarketRow) GetStatusCode() sql.NullInt32 {
+func (t AllTradesByMarketRow) GetStatusCode() int32 {
 	return t.StatusCode
 }
 
-func (t AllTradesByMarketRow) GetStatusFailed() sql.NullBool {
+func (t AllTradesByMarketRow) GetStatusFailed() bool {
 	return t.StatusFailed
 }
 
@@ -694,15 +694,15 @@ func (t AllTradesByMarketRow) GetSwapType() string {
 	return t.SwapType
 }
 
-func (t AllTradesByMarketRow) GetBaseAssetFee() int64 {
+func (t AllTradesByMarketRow) GetBaseAssetFee() sql.NullInt64 {
 	return t.BaseAssetFee
 }
 
-func (t AllTradesByMarketRow) GetQuoteAssetFee() int64 {
+func (t AllTradesByMarketRow) GetQuoteAssetFee() sql.NullInt64 {
 	return t.QuoteAssetFee
 }
 
-func (t AllTradesByMarketRow) GetFeeType() string {
+func (t AllTradesByMarketRow) GetFeeType() sql.NullString {
 	return t.FeeType
 }
 
@@ -730,11 +730,11 @@ func (t TradesByMarketAndStatusRow) GetTraderPubkey() []byte {
 	return t.TraderPubkey
 }
 
-func (t TradesByMarketAndStatusRow) GetStatusCode() sql.NullInt32 {
+func (t TradesByMarketAndStatusRow) GetStatusCode() int32 {
 	return t.StatusCode
 }
 
-func (t TradesByMarketAndStatusRow) GetStatusFailed() sql.NullBool {
+func (t TradesByMarketAndStatusRow) GetStatusFailed() bool {
 	return t.StatusFailed
 }
 
@@ -798,15 +798,15 @@ func (t TradesByMarketAndStatusRow) GetSwapType() string {
 	return t.SwapType
 }
 
-func (t TradesByMarketAndStatusRow) GetBaseAssetFee() int64 {
+func (t TradesByMarketAndStatusRow) GetBaseAssetFee() sql.NullInt64 {
 	return t.BaseAssetFee
 }
 
-func (t TradesByMarketAndStatusRow) GetQuoteAssetFee() int64 {
+func (t TradesByMarketAndStatusRow) GetQuoteAssetFee() sql.NullInt64 {
 	return t.QuoteAssetFee
 }
 
-func (t TradesByMarketAndStatusRow) GetFeeType() string {
+func (t TradesByMarketAndStatusRow) GetFeeType() sql.NullString {
 	return t.FeeType
 }
 
@@ -834,11 +834,11 @@ func (t GetTradeBySwapAcceptIdRow) GetTraderPubkey() []byte {
 	return t.TraderPubkey
 }
 
-func (t GetTradeBySwapAcceptIdRow) GetStatusCode() sql.NullInt32 {
+func (t GetTradeBySwapAcceptIdRow) GetStatusCode() int32 {
 	return t.StatusCode
 }
 
-func (t GetTradeBySwapAcceptIdRow) GetStatusFailed() sql.NullBool {
+func (t GetTradeBySwapAcceptIdRow) GetStatusFailed() bool {
 	return t.StatusFailed
 }
 
@@ -902,15 +902,15 @@ func (t GetTradeBySwapAcceptIdRow) GetSwapType() string {
 	return t.SwapType
 }
 
-func (t GetTradeBySwapAcceptIdRow) GetBaseAssetFee() int64 {
+func (t GetTradeBySwapAcceptIdRow) GetBaseAssetFee() sql.NullInt64 {
 	return t.BaseAssetFee
 }
 
-func (t GetTradeBySwapAcceptIdRow) GetQuoteAssetFee() int64 {
+func (t GetTradeBySwapAcceptIdRow) GetQuoteAssetFee() sql.NullInt64 {
 	return t.QuoteAssetFee
 }
 
-func (t GetTradeBySwapAcceptIdRow) GetFeeType() string {
+func (t GetTradeBySwapAcceptIdRow) GetFeeType() sql.NullString {
 	return t.FeeType
 }
 
@@ -938,11 +938,11 @@ func (t GetTradeByTxIdRow) GetTraderPubkey() []byte {
 	return t.TraderPubkey
 }
 
-func (t GetTradeByTxIdRow) GetStatusCode() sql.NullInt32 {
+func (t GetTradeByTxIdRow) GetStatusCode() int32 {
 	return t.StatusCode
 }
 
-func (t GetTradeByTxIdRow) GetStatusFailed() sql.NullBool {
+func (t GetTradeByTxIdRow) GetStatusFailed() bool {
 	return t.StatusFailed
 }
 
@@ -1006,15 +1006,15 @@ func (t GetTradeByTxIdRow) GetSwapType() string {
 	return t.SwapType
 }
 
-func (t GetTradeByTxIdRow) GetBaseAssetFee() int64 {
+func (t GetTradeByTxIdRow) GetBaseAssetFee() sql.NullInt64 {
 	return t.BaseAssetFee
 }
 
-func (t GetTradeByTxIdRow) GetQuoteAssetFee() int64 {
+func (t GetTradeByTxIdRow) GetQuoteAssetFee() sql.NullInt64 {
 	return t.QuoteAssetFee
 }
 
-func (t GetTradeByTxIdRow) GetFeeType() string {
+func (t GetTradeByTxIdRow) GetFeeType() sql.NullString {
 	return t.FeeType
 }
 
@@ -1073,16 +1073,6 @@ func convertTradeRowsToTrade(tradeRows []tradeRow) (*domain.Trade, error) {
 		quotePrice = fmt.Sprintf("%f", tradeRow.GetQuotePrice().Float64)
 	}
 
-	statusCode := 0
-	if tradeRow.GetStatusCode().Valid {
-		statusCode = int(tradeRow.GetStatusCode().Int32)
-	}
-
-	statusFailed := false
-	if tradeRow.GetStatusFailed().Valid {
-		statusFailed = tradeRow.GetStatusFailed().Bool
-	}
-
 	txId := ""
 	if tradeRow.GetTxID().Valid {
 		txId = tradeRow.GetTxID().String
@@ -1105,17 +1095,19 @@ func convertTradeRowsToTrade(tradeRows []tradeRow) (*domain.Trade, error) {
 	var swapFail *domain.Swap
 	var swapRequest *domain.Swap
 	for _, v := range tradeRows {
-		if v.GetFeeType() == marketPercentageFeeKey {
-			percentageFee = domain.MarketFee{
-				BaseAsset:  uint64(v.GetBaseAssetFee()),
-				QuoteAsset: uint64(v.GetQuoteAssetFee()),
+		if v.GetFeeType().Valid {
+			if v.GetFeeType().String == marketPercentageFeeKey {
+				percentageFee = domain.MarketFee{
+					BaseAsset:  uint64(v.GetBaseAssetFee().Int64),
+					QuoteAsset: uint64(v.GetQuoteAssetFee().Int64),
+				}
 			}
-		}
 
-		if v.GetFeeType() == marketFixedFeeKey {
-			fixedFee = domain.MarketFee{
-				BaseAsset:  uint64(v.GetBaseAssetFee()),
-				QuoteAsset: uint64(v.GetQuoteAssetFee()),
+			if v.GetFeeType().String == marketFixedFeeKey {
+				fixedFee = domain.MarketFee{
+					BaseAsset:  uint64(v.GetBaseAssetFee().Int64),
+					QuoteAsset: uint64(v.GetQuoteAssetFee().Int64),
+				}
 			}
 		}
 
@@ -1168,8 +1160,8 @@ func convertTradeRowsToTrade(tradeRows []tradeRow) (*domain.Trade, error) {
 		FeeAmount:           uint64(tradeRow.GetFeeAmount()),
 		TraderPubkey:        tradeRow.GetTraderPubkey(),
 		Status: domain.TradeStatus{
-			Code:   statusCode,
-			Failed: statusFailed,
+			Code:   int(tradeRow.GetStatusCode()),
+			Failed: tradeRow.GetStatusFailed(),
 		},
 		PsetBase64:     tradeRow.GetPsetBase64(),
 		TxId:           txId,

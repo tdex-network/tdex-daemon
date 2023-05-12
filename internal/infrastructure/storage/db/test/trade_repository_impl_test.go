@@ -39,6 +39,8 @@ func TestTradeRepositoryPgImplementation(t *testing.T) {
 	require.NoError(t, err)
 	err = repoManager.MarketRepository().AddMarket(ctx, market)
 	require.NoError(t, err)
+	market.Price.BasePrice = "0.0001"
+	market.Price.QuotePrice = "0.0002"
 
 	trade := domain.NewTrade()
 	trade.MarketBaseAsset = market.BaseAsset
@@ -49,6 +51,9 @@ func TestTradeRepositoryPgImplementation(t *testing.T) {
 		Message:   []byte("swap message"),
 		Timestamp: 0,
 	}
+	trade.MarketFixedFee = market.FixedFee
+	trade.MarketPercentageFee = market.PercentageFee
+	trade.MarketPrice = market.Price
 
 	testAddAndGetTrade(t, repoManager.TradeRepository(), trade)
 	testUpdateTrade(t, repoManager.TradeRepository())

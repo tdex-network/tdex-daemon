@@ -2,16 +2,17 @@ CREATE TABLE market (
     name VARCHAR(50) NOT NULL PRIMARY KEY,
     base_asset VARCHAR(64) NOT NULL,
     quote_asset VARCHAR(64) NOT NULL,
-    base_asset_precision INTEGER,
-    quote_asset_precision INTEGER,
-    tradable BOOLEAN,
-    strategy_type INTEGER,
-    base_price DOUBLE PRECISION,
-    quote_price DOUBLE PRECISION,
+    base_asset_precision INTEGER NOT NULL,
+    quote_asset_precision INTEGER NOT NULL,
+    tradable BOOLEAN NOT NULL,
+    strategy_type INTEGER NOT NULL,
+    base_price DOUBLE PRECISION NOT NULL,
+    quote_price DOUBLE PRECISION NOT NULL,
+    active BOOLEAN NOT NULL,
     UNIQUE (base_asset, quote_asset)
 );
 
-CREATE TABLE fee (
+CREATE TABLE market_fee (
     id SERIAL PRIMARY KEY,
     base_asset_fee BIGINT NOT NULL,
     quote_asset_fee BIGINT NOT NULL,
@@ -26,15 +27,26 @@ CREATE TABLE trade (
     fee_asset VARCHAR(255) NOT NULL,
     fee_amount BIGINT NOT NULL,
     trader_pubkey BYTEA,
-    status_code INTEGER,
-    status_failed BOOLEAN,
+    status_code INTEGER NOT NULL,
+    status_failed BOOLEAN NOT NULL,
     pset_base64 TEXT NOT NULL,
     tx_id VARCHAR(64),
     tx_hex TEXT NOT NULL,
     expiry_time BIGINT,
     settlement_time BIGINT,
+    base_price DOUBLE PRECISION,
+    quote_price DOUBLE PRECISION,
     fk_market_name VARCHAR(50) NOT NULL,
     FOREIGN KEY (fk_market_name) REFERENCES market (name)
+);
+
+CREATE TABLE trade_fee (
+    id SERIAL PRIMARY KEY,
+    base_asset_fee BIGINT NOT NULL,
+    quote_asset_fee BIGINT NOT NULL,
+    type VARCHAR(10) NOT NULL CHECK (type IN ('percentage', 'fixed')),
+    fk_trade_id VARCHAR(50) NOT NULL,
+    FOREIGN KEY (fk_trade_id) REFERENCES trade (id)
 );
 
 CREATE TABLE swap (
