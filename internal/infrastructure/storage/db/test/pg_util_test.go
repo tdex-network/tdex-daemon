@@ -18,11 +18,7 @@ var (
 
 func SetupPgDb() error {
 	svc, err := postgresdb.NewService(postgresdb.DbConfig{
-		DbUser:             "root",
-		DbPassword:         "secret",
-		DbHost:             "127.0.0.1",
-		DbPort:             5432,
-		DbName:             "tdexd-test",
+		DataSourceURL:      "postgresql://root:secret@127.0.0.1:5432/tdexd-test",
 		MigrationSourceURL: "file://../pg/migration",
 	})
 	if err != nil {

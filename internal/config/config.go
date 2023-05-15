@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
@@ -63,6 +64,10 @@ const (
 	OceanWalletAddrKey = "WALLET_ADDR"
 	// DBTypeKey is used to switch database type between those supported
 	DBTypeKey = "DB_TYPE"
+	// PgConnectAddr is postgres connection string in postgresql://user:password@host:port/name format
+	PgConnectAddr = "PG_CONNECT_ADDR"
+	// PgMigrationSource is the path to the migration files for postgres
+	PgMigrationSource = "PG_MIGRATION_SOURCE"
 
 	DbLocation        = "db"
 	TLSLocation       = "tls"
@@ -93,7 +98,8 @@ func InitConfig() error {
 	vip.SetDefault(NoMacaroonsKey, false)
 	vip.SetDefault(NoOperatorTlsKey, false)
 	vip.SetDefault(ConnectProtoKey, httpsProtocol)
-	vip.SetDefault(DBTypeKey, application.DBBadger)
+	vip.SetDefault(DBTypeKey, application.DBPostgres)
+	vip.SetDefault(PgMigrationSource, "file://internal/infrastructure/storage/db/pg/migration/")
 
 	if err := validate(); err != nil {
 		return fmt.Errorf("error while validating config: %s", err)
@@ -156,6 +162,11 @@ func validate() error {
 		return fmt.Errorf("missing wallet address")
 	}
 
+	if !validatePgConnectionString(vip.GetString(PgConnectAddr)) {
+		return fmt.Errorf("please provide a valid postgres connection string" +
+			" in the format: postgres://user:password@host:port/dbname")
+	}
+
 	return nil
 }
 
@@ -194,4 +205,11 @@ func makeDirectoryIfNotExists(path string) error {
 		return os.MkdirAll(path, os.ModeDir|0755)
 	}
 	return nil
+}
+
+func validatePgConnectionString(connectionString string) bool {
+	pattern := `^postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$`
+	matched, _ := regexp.MatchString(pattern, connectionString)
+
+	return matched
 }

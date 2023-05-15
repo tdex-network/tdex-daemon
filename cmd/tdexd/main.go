@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	postgresdb "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/pg"
+
 	pricefeeder "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder"
 	pricefeederstore "github.com/tdex-network/tdex-daemon/internal/infrastructure/price-feeder/store/badger"
 
@@ -37,6 +39,7 @@ var (
 	noMacaroons, noOperatorTls, profilerEnabled            bool
 	datadir, dbDir, profilerDir, tradeTLSKey, tradeTLSCert string
 	walletUnlockPasswordFile, dbType, oceanWalletAddr      string
+	pgConnectString, pgMigrationPath                       string
 	connectAddr, connectProto                              string
 	operatorTLSExtraIPs, operatorTLSExtraDomains           []string
 	// App services config
@@ -87,7 +90,10 @@ func main() {
 		TradePriceSlippage:  pricesSlippagePercentage,
 		TradeSatsPerByte:    satsPerByte,
 		DBType:              dbType,
-		DBConfig:            dbDir,
+		DBConfig: postgresdb.DbConfig{
+			DataSourceURL:      pgConnectString,
+			MigrationSourceURL: pgMigrationPath,
+		},
 	}
 
 	runOnOnePort := operatorSvcPort == tradeSvcPort
@@ -147,6 +153,8 @@ func loadConfig() error {
 	tradeSvcPort = config.GetInt(config.TradeListeningPortKey)
 	operatorSvcPort = config.GetInt(config.OperatorListeningPortKey)
 	oceanWalletAddr = config.GetString(config.OceanWalletAddrKey)
+	pgConnectString = config.GetString(config.PgConnectAddr)
+	pgMigrationPath = config.GetString(config.PgMigrationSource)
 
 	return nil
 }

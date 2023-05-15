@@ -19,8 +19,7 @@ import (
 )
 
 const (
-	postgresDriver             = "pgx"
-	insecureDataSourceTemplate = "postgresql://%s:%s@%s:%d/%s?sslmode=disable"
+	postgresDriver = "pgx"
 
 	uniqueViolation = "23505"
 	pgxNoRows       = "no rows in result set"
@@ -37,8 +36,7 @@ type repoManager struct {
 }
 
 func NewService(dbConfig DbConfig) (ports.RepoManager, error) {
-	dataSource := insecureDataSourceStr(dbConfig)
-
+	dataSource := fmt.Sprintf("%s?sslmode=disable", dbConfig.DataSourceURL)
 	pgxPool, err := connect(dataSource)
 	if err != nil {
 		return nil, err
@@ -126,11 +124,7 @@ func (r *repoManager) execTx(
 }
 
 type DbConfig struct {
-	DbUser             string
-	DbPassword         string
-	DbHost             string
-	DbPort             int
-	DbName             string
+	DataSourceURL      string
 	MigrationSourceURL string
 }
 
@@ -160,15 +154,4 @@ func migrateDb(dataSource, migrationSourceUrl string) error {
 	}
 
 	return nil
-}
-
-func insecureDataSourceStr(dbConfig DbConfig) string {
-	return fmt.Sprintf(
-		insecureDataSourceTemplate,
-		dbConfig.DbUser,
-		dbConfig.DbPassword,
-		dbConfig.DbHost,
-		dbConfig.DbPort,
-		dbConfig.DbName,
-	)
 }

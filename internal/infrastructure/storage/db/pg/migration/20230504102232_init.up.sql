@@ -50,7 +50,7 @@ CREATE TABLE trade_fee (
 );
 
 CREATE TABLE swap (
-    id TEXT PRIMARY KEY,
+    id VARCHAR(255) PRIMARY KEY,
     message BYTEA NOT NULL,
     timestamp BIGINT NOT NULL,
     type VARCHAR(10) NOT NULL CHECK (type IN ('request', 'accept', 'complete', 'fail')),
