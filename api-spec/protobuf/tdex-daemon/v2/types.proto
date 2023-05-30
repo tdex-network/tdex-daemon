@@ -154,6 +154,14 @@ message TradeInfo {
   string expiry_date = 16;
   // The trade type either BUY or SELL.
   tdex.v2.TradeType trade_type = 17;
+  // The id of the transaction in blockchain.
+  string txid = 18;
+  // The hex of the transaction if requested.
+  string tx_hex = 19;
+  // The asset in which trading fees have been paid.
+  string fee_asset = 20;
+  // The total trading fee amount charged to the counter-party.
+  uint64 fee_amount = 21;
 }
 
 message FeeInfo {

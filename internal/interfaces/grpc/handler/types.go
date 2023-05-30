@@ -181,12 +181,16 @@ func (i tradeTypeInfo) IsSell() bool {
 
 type tradesInfo []ports.Trade
 
-func (i tradesInfo) toProto() []*daemonv2.TradeInfo {
+func (i tradesInfo) toProto(withHex bool) []*daemonv2.TradeInfo {
 	list := make([]*daemonv2.TradeInfo, 0, len(i))
 	for _, info := range i {
 		tradeType := tdexv2.TradeType_TRADE_TYPE_BUY
 		if info.GetType().IsSell() {
 			tradeType = tdexv2.TradeType_TRADE_TYPE_SELL
+		}
+		txHex := ""
+		if withHex {
+			txHex = info.GetTxHex()
 		}
 		list = append(list, &daemonv2.TradeInfo{
 			TradeId:   info.GetId(),
@@ -211,6 +215,10 @@ func (i tradesInfo) toProto() []*daemonv2.TradeInfo {
 			CompleteDate:      timestampToString(info.GetCompleteTimestamp()),
 			SettleDate:        timestampToString(info.GetSettleTimestamp()),
 			ExpiryDate:        timestampToString(info.GetExpiryTimestamp()),
+			Txid:              info.GetTxid(),
+			TxHex:             txHex,
+			FeeAsset:          info.GetFeeAsset(),
+			FeeAmount:         info.GetFeeAmount(),
 		})
 	}
 	return list

@@ -409,6 +409,8 @@ message ListTradesRequest {
   tdex.v2.Market market = 1;
   // The page for a paginated reply.
   Page page = 2;
+  // Optional, return also the raw transaction in hex format for each trade.
+  bool with_hex = 3;
 }
 message ListTradesResponse {
   // The list of info about all trades or all trades for a market depending on

@@ -144,6 +144,10 @@ type Trade interface {
 	GetMarketPercentageFee() MarketFee
 	GetMarketFixedFee() MarketFee
 	GetMarketPrice() MarketPrice
+	GetTxid() string
+	GetTxHex() string
+	GetFeeAsset() string
+	GetFeeAmount() uint64
 }
 
 type TradePreview interface {
