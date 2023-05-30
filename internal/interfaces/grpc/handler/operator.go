@@ -870,7 +870,7 @@ func (h *operatorHandler) listTrades(
 	}
 
 	return &daemonv2.ListTradesResponse{
-		Trades: tradesInfo(trades).toProto(),
+		Trades: tradesInfo(trades).toProto(req.GetWithHex()),
 	}, nil
 }
 

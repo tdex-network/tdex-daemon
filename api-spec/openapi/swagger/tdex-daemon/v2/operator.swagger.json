@@ -666,6 +666,23 @@
         "tradeType": {
           "$ref": "#/definitions/tdexv2TradeType",
           "description": "The trade type either BUY or SELL."
+        },
+        "txid": {
+          "type": "string",
+          "description": "The id of the transaction in blockchain."
+        },
+        "txHex": {
+          "type": "string",
+          "description": "The hex of the transaction if requested."
+        },
+        "feeAsset": {
+          "type": "string",
+          "description": "The asset in which trading fees have been paid."
+        },
+        "feeAmount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total trading fee amount charged to the counter-party."
         }
       }
     },

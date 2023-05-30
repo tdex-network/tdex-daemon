@@ -214,6 +214,18 @@ func (i tradeInfo) GetMarket() ports.Market {
 func (i tradeInfo) GetMarketPrice() ports.MarketPrice {
 	return i.MarketPrice
 }
+func (i tradeInfo) GetTxid() string {
+	return i.Trade.TxId
+}
+func (i tradeInfo) GetTxHex() string {
+	return i.Trade.TxHex
+}
+func (i tradeInfo) GetFeeAsset() string {
+	return i.Trade.FeeAsset
+}
+func (i tradeInfo) GetFeeAmount() uint64 {
+	return i.Trade.FeeAmount
+}
 
 type marketStrategyInfo int
 
