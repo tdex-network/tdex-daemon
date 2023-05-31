@@ -72,16 +72,6 @@
         }
       }
     },
-    "tdex_daemonv1ActionType": {
-      "type": "string",
-      "enum": [
-        "ACTION_TYPE_TRADE_SETTLED",
-        "ACTION_TYPE_ACCOUNT_LOW_BALANCE",
-        "ACTION_TYPE_ACCOUNT_WITHDRAW",
-        "ACTION_TYPE_ALL_ACTIONS"
-      ],
-      "default": "ACTION_TYPE_TRADE_SETTLED"
-    },
     "tdex_daemonv1AddWebhookResponse": {
       "type": "object",
       "properties": {
@@ -803,7 +793,7 @@
           "description": "Whether the outgoing requests are authenticated."
         },
         "actionType": {
-          "$ref": "#/definitions/tdex_daemonv1ActionType",
+          "$ref": "#/definitions/v1ActionType",
           "description": "The type of the action."
         }
       }
@@ -902,6 +892,16 @@
           "format": "double"
         }
       }
+    },
+    "v1ActionType": {
+      "type": "string",
+      "enum": [
+        "ACTION_TYPE_TRADE_SETTLED",
+        "ACTION_TYPE_ACCOUNT_LOW_BALANCE",
+        "ACTION_TYPE_ACCOUNT_WITHDRAW",
+        "ACTION_TYPE_ALL_ACTIONS"
+      ],
+      "default": "ACTION_TYPE_TRADE_SETTLED"
     },
     "v1AddressWithBlindingKey": {
       "type": "object",

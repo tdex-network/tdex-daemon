@@ -90,12 +90,6 @@ type OperatorServiceClient interface {
 	ListTrades(ctx context.Context, in *ListTradesRequest, opts ...grpc.CallOption) (*ListTradesResponse, error)
 	// Returns all the utxos, whether unspents, spents or locked.
 	ListUtxos(ctx context.Context, in *ListUtxosRequest, opts ...grpc.CallOption) (*ListUtxosResponse, error)
-	// Adds a webhook registered for some kind of event.
-	AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookResponse, error)
-	// Removes some previously added webhook.
-	RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookResponse, error)
-	// Returns registered webhooks
-	ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksResponse, error)
 	// Returns the list of all claimed deposits for the given account.
 	ListDeposits(ctx context.Context, in *ListDepositsRequest, opts ...grpc.CallOption) (*ListDepositsResponse, error)
 	// Returns the list of all withdrawals made for the given account.
@@ -435,33 +429,6 @@ func (c *operatorServiceClient) ListUtxos(ctx context.Context, in *ListUtxosRequ
 	return out, nil
 }
 
-func (c *operatorServiceClient) AddWebhook(ctx context.Context, in *AddWebhookRequest, opts ...grpc.CallOption) (*AddWebhookResponse, error) {
-	out := new(AddWebhookResponse)
-	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.OperatorService/AddWebhook", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *operatorServiceClient) RemoveWebhook(ctx context.Context, in *RemoveWebhookRequest, opts ...grpc.CallOption) (*RemoveWebhookResponse, error) {
-	out := new(RemoveWebhookResponse)
-	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.OperatorService/RemoveWebhook", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *operatorServiceClient) ListWebhooks(ctx context.Context, in *ListWebhooksRequest, opts ...grpc.CallOption) (*ListWebhooksResponse, error) {
-	out := new(ListWebhooksResponse)
-	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.OperatorService/ListWebhooks", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *operatorServiceClient) ListDeposits(ctx context.Context, in *ListDepositsRequest, opts ...grpc.CallOption) (*ListDepositsResponse, error) {
 	out := new(ListDepositsResponse)
 	err := c.cc.Invoke(ctx, "/tdex_daemon.v2.OperatorService/ListDeposits", in, out, opts...)
@@ -552,12 +519,6 @@ type OperatorServiceServer interface {
 	ListTrades(context.Context, *ListTradesRequest) (*ListTradesResponse, error)
 	// Returns all the utxos, whether unspents, spents or locked.
 	ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosResponse, error)
-	// Adds a webhook registered for some kind of event.
-	AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookResponse, error)
-	// Removes some previously added webhook.
-	RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookResponse, error)
-	// Returns registered webhooks
-	ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksResponse, error)
 	// Returns the list of all claimed deposits for the given account.
 	ListDeposits(context.Context, *ListDepositsRequest) (*ListDepositsResponse, error)
 	// Returns the list of all withdrawals made for the given account.
@@ -660,15 +621,6 @@ func (UnimplementedOperatorServiceServer) ListTrades(context.Context, *ListTrade
 }
 func (UnimplementedOperatorServiceServer) ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUtxos not implemented")
-}
-func (UnimplementedOperatorServiceServer) AddWebhook(context.Context, *AddWebhookRequest) (*AddWebhookResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddWebhook not implemented")
-}
-func (UnimplementedOperatorServiceServer) RemoveWebhook(context.Context, *RemoveWebhookRequest) (*RemoveWebhookResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveWebhook not implemented")
-}
-func (UnimplementedOperatorServiceServer) ListWebhooks(context.Context, *ListWebhooksRequest) (*ListWebhooksResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListWebhooks not implemented")
 }
 func (UnimplementedOperatorServiceServer) ListDeposits(context.Context, *ListDepositsRequest) (*ListDepositsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListDeposits not implemented")
@@ -1252,60 +1204,6 @@ func _OperatorService_ListUtxos_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _OperatorService_AddWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddWebhookRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OperatorServiceServer).AddWebhook(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/tdex_daemon.v2.OperatorService/AddWebhook",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServiceServer).AddWebhook(ctx, req.(*AddWebhookRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OperatorService_RemoveWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveWebhookRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OperatorServiceServer).RemoveWebhook(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/tdex_daemon.v2.OperatorService/RemoveWebhook",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServiceServer).RemoveWebhook(ctx, req.(*RemoveWebhookRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OperatorService_ListWebhooks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListWebhooksRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OperatorServiceServer).ListWebhooks(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/tdex_daemon.v2.OperatorService/ListWebhooks",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OperatorServiceServer).ListWebhooks(ctx, req.(*ListWebhooksRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _OperatorService_ListDeposits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListDepositsRequest)
 	if err := dec(in); err != nil {
@@ -1464,18 +1362,6 @@ var OperatorService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListUtxos",
 			Handler:    _OperatorService_ListUtxos_Handler,
-		},
-		{
-			MethodName: "AddWebhook",
-			Handler:    _OperatorService_AddWebhook_Handler,
-		},
-		{
-			MethodName: "RemoveWebhook",
-			Handler:    _OperatorService_RemoveWebhook_Handler,
-		},
-		{
-			MethodName: "ListWebhooks",
-			Handler:    _OperatorService_ListWebhooks_Handler,
 		},
 		{
 			MethodName: "ListDeposits",

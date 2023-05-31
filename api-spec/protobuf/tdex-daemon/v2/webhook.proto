@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package tdex_daemon.v2;
+
+import "tdex-daemon/v2/types.proto";
+
+/**
+ * Service for operators to manage webhooks.
+ */
+service WebhookService {
+  // Adds a webhook registered for some kind of event.
+  rpc AddWebhook(AddWebhookRequest) returns(AddWebhookResponse){}
+
+  // Removes some previously added webhook.
+  rpc RemoveWebhook(RemoveWebhookRequest) returns(RemoveWebhookResponse){}
+
+  // Returns registered webhooks
+  rpc ListWebhooks(ListWebhooksRequest) returns(ListWebhooksResponse){}
+}
+
+message AddWebhookRequest {
+  // The endpoint of the webhook to call whenever the target event occurs.
+  string endpoint = 1;
+  // The event for which the webhook endpoint should be called.
+  WebhookEvent event = 2;
+  // The secret to use to generate an OAuth token for making authenticated
+  // requests to the webhook endpoint.
+  string secret = 3;
+}
+message AddWebhookResponse {
+  // The id of the new webhook.
+  string id = 1;
+}
+
+message RemoveWebhookRequest {
+  // The id of the webhook to remove.
+  string id = 1;
+}
+message RemoveWebhookResponse {}
+
+message ListWebhooksRequest {
+  // Filter the list of webhooks by event.
+  WebhookEvent event = 1;
+}
+message ListWebhooksResponse {
+  // The list of info about the webhooks.
+  repeated WebhookInfo webhook_info = 1;
+}
