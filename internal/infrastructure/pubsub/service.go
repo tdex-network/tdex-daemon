@@ -85,7 +85,7 @@ func (ws *service) removeSubscription(subID string) error {
 		return err
 	}
 	if buf == nil {
-		return nil
+		return fmt.Errorf("webhook not found")
 	}
 
 	if err := ws.store.db().RemoveFromBucket(subsBucket, []byte(subID)); err != nil {

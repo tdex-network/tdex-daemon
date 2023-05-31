@@ -1,6 +1,8 @@
 package pubsub
 
-import "github.com/tdex-network/tdex-daemon/pkg/securestore"
+import (
+	"github.com/tdex-network/tdex-daemon/pkg/securestore"
+)
 
 var (
 	subsBucket        = []byte("subscriptions")
@@ -41,7 +43,33 @@ func (s store) Lock() {
 
 func (s store) Unlock(password string) error {
 	pwd := []byte(password)
-	return s.store.CreateUnlock(&pwd)
+	if err := s.store.CreateUnlock(&pwd); err != nil {
+		return err
+	}
+	buckets, err := s.store.ListBuckets()
+	if err != nil {
+		return err
+	}
+	subsBucketFound, subsByEventBucketFound := false, false
+	for _, bucket := range buckets {
+		if string(bucket) == string(subsBucket) {
+			subsBucketFound = true
+		}
+		if string(bucket) == string(subsByEventBucket) {
+			subsByEventBucketFound = true
+		}
+	}
+	if !subsBucketFound {
+		if err := s.store.CreateBucket(subsBucket); err != nil {
+			return err
+		}
+	}
+	if !subsByEventBucketFound {
+		if err := s.store.CreateBucket(subsByEventBucket); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s store) ChangePassword(oldPwd, newPwd string) error {
