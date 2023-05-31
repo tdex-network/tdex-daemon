@@ -1,0 +1,105 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "tdex-daemon/v2/webhook.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "WebhookService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "googlerpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "tdex_daemonv2AddWebhookResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the new webhook."
+        }
+      }
+    },
+    "tdex_daemonv2ListWebhooksResponse": {
+      "type": "object",
+      "properties": {
+        "webhookInfo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tdex_daemonv2WebhookInfo"
+          },
+          "description": "The list of info about the webhooks."
+        }
+      }
+    },
+    "tdex_daemonv2RemoveWebhookResponse": {
+      "type": "object"
+    },
+    "tdex_daemonv2WebhookInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the webhook."
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "The endpoint of the external service to reach."
+        },
+        "isSecured": {
+          "type": "boolean",
+          "description": "Whether the outgoing requests are authenticated."
+        },
+        "event": {
+          "$ref": "#/definitions/v2WebhookEvent",
+          "description": "The target event for which the webhook endpoint is called."
+        }
+      }
+    },
+    "v2WebhookEvent": {
+      "type": "string",
+      "enum": [
+        "WEBHOOK_EVENT_UNSPECIFIED",
+        "WEBHOOK_EVENT_TRADE_SETTLED",
+        "WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE",
+        "WEBHOOK_EVENT_ACCOUNT_WITHDRAW",
+        "WEBHOOK_EVENT_ACCOUNT_DEPOSIT",
+        "WEBHOOK_EVENT_ANY"
+      ],
+      "default": "WEBHOOK_EVENT_UNSPECIFIED"
+    }
+  }
+}

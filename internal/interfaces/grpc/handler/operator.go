@@ -220,23 +220,6 @@ func (h *operatorHandler) ListUtxos(
 	return h.listUtxos(ctx, req)
 }
 
-func (h *operatorHandler) AddWebhook(
-	ctx context.Context, req *daemonv2.AddWebhookRequest,
-) (*daemonv2.AddWebhookResponse, error) {
-	return h.addWebhook(ctx, req)
-}
-
-func (h *operatorHandler) RemoveWebhook(
-	ctx context.Context, req *daemonv2.RemoveWebhookRequest,
-) (*daemonv2.RemoveWebhookResponse, error) {
-	return h.removeWebhook(ctx, req)
-}
-func (h *operatorHandler) ListWebhooks(
-	ctx context.Context, req *daemonv2.ListWebhooksRequest,
-) (*daemonv2.ListWebhooksResponse, error) {
-	return h.listWebhooks(ctx, req)
-}
-
 func (h *operatorHandler) ListDeposits(
 	ctx context.Context, req *daemonv2.ListDepositsRequest,
 ) (*daemonv2.ListDepositsResponse, error) {
@@ -911,46 +894,6 @@ func (h *operatorHandler) listUtxos(
 	return &daemonv2.ListUtxosResponse{
 		SpendableUtxos: utxosInfo(spendableUtxosInfo).toProto(),
 		LockedUtxos:    utxosInfo(lockedUtxosInfo).toProto(),
-	}, nil
-}
-
-func (h *operatorHandler) addWebhook(
-	ctx context.Context, req *daemonv2.AddWebhookRequest,
-) (*daemonv2.AddWebhookResponse, error) {
-	webhook, err := parseWebhook(req)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	hookID, err := h.operatorSvc.AddWebhook(ctx, webhook)
-	if err != nil {
-		return nil, err
-	}
-	return &daemonv2.AddWebhookResponse{Id: hookID}, nil
-}
-
-func (h *operatorHandler) removeWebhook(
-	ctx context.Context, req *daemonv2.RemoveWebhookRequest,
-) (*daemonv2.RemoveWebhookResponse, error) {
-	if err := h.operatorSvc.RemoveWebhook(ctx, req.GetId()); err != nil {
-		return nil, err
-	}
-	return &daemonv2.RemoveWebhookResponse{}, nil
-}
-
-func (h *operatorHandler) listWebhooks(
-	ctx context.Context, req *daemonv2.ListWebhooksRequest,
-) (*daemonv2.ListWebhooksResponse, error) {
-	actionType, err := parseWebhookActionType(req.GetAction())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	hooks, err := h.operatorSvc.ListWebhooks(ctx, actionType)
-	if err != nil {
-		return nil, err
-	}
-	return &daemonv2.ListWebhooksResponse{
-		WebhookInfo: hooksInfo(hooks).toProto(),
 	}, nil
 }
 

@@ -44,26 +44,6 @@
       },
       "additionalProperties": {}
     },
-    "tdex_daemonv2ActionType": {
-      "type": "string",
-      "enum": [
-        "ACTION_TYPE_UNSPECIFIED",
-        "ACTION_TYPE_TRADE_SETTLED",
-        "ACTION_TYPE_ACCOUNT_LOW_BALANCE",
-        "ACTION_TYPE_ACCOUNT_WITHDRAW",
-        "ACTION_TYPE_ALL_ACTIONS"
-      ],
-      "default": "ACTION_TYPE_UNSPECIFIED"
-    },
-    "tdex_daemonv2AddWebhookResponse": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The id of the new webhook."
-        }
-      }
-    },
     "tdex_daemonv2Balance": {
       "type": "object",
       "properties": {
@@ -308,18 +288,6 @@
         }
       }
     },
-    "tdex_daemonv2ListWebhooksResponse": {
-      "type": "object",
-      "properties": {
-        "webhookInfo": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/tdex_daemonv2WebhookInfo"
-          },
-          "description": "The list of info about the webhooks regitered for an action."
-        }
-      }
-    },
     "tdex_daemonv2ListWithdrawalsResponse": {
       "type": "object",
       "properties": {
@@ -505,9 +473,6 @@
         "PREDEFINED_PERIOD_ALL"
       ],
       "default": "PREDEFINED_PERIOD_UNSPECIFIED"
-    },
-    "tdex_daemonv2RemoveWebhookResponse": {
-      "type": "object"
     },
     "tdex_daemonv2StrategyType": {
       "type": "string",
@@ -775,27 +740,6 @@
         "asset": {
           "type": "string",
           "description": "The unblinded asset."
-        }
-      }
-    },
-    "tdex_daemonv2WebhookInfo": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The id of the webhook."
-        },
-        "endpoint": {
-          "type": "string",
-          "description": "The endpoint of the external service to reach."
-        },
-        "isSecured": {
-          "type": "boolean",
-          "description": "Whether the outgoing requests are authenticated."
-        },
-        "actionType": {
-          "$ref": "#/definitions/tdex_daemonv2ActionType",
-          "description": "The type of the action."
         }
       }
     },

@@ -261,7 +261,7 @@ func (s *Service) makeTradeSettledOrExpired(
 				balance, _ := s.wallet.Account().GetBalance(
 					context.Background(), trade.MarketName,
 				)
-				if err := s.pubsub.PublishTradeSettledTopic(
+				if err := s.pubsub.PublishTradeSettledEvent(
 					trade.MarketName, balance, *trade,
 				); err != nil {
 					log.WithError(err).Warnf(

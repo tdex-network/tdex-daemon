@@ -21,7 +21,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	oceanwallet "github.com/tdex-network/tdex-daemon/internal/infrastructure/ocean-wallet"
-	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
+	pubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub"
 	swap_parser "github.com/tdex-network/tdex-daemon/internal/infrastructure/swap-parser"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpcinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc"
@@ -69,7 +69,7 @@ func main() {
 		log.WithError(err).Fatal("failed to connect to ocean wallet")
 	}
 
-	pubsub, err := newWebhookPubSubService(dbDir)
+	pubsub, err := newPubSubService(dbDir)
 	if err != nil {
 		log.WithError(err).Fatal("failed to initialize pubsub service")
 	}
@@ -163,12 +163,12 @@ func (bd buildData) GetDate() string {
 	return date
 }
 
-func newWebhookPubSubService(datadir string) (ports.SecurePubSub, error) {
+func newPubSubService(datadir string) (ports.SecurePubSub, error) {
 	secureStore, err := boltsecurestore.NewSecureStorage(datadir, "pubsub.db")
 	if err != nil {
 		return nil, err
 	}
-	return webhookpubsub.NewWebhookPubSubService(secureStore)
+	return pubsub.NewService(secureStore)
 }
 
 func newPriceFeederService() (ports.PriceFeeder, error) {

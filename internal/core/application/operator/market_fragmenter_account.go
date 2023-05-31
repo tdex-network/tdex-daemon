@@ -107,8 +107,13 @@ func (s *service) MarketFragmenterSplitFunds(
 		}
 		return
 	}
-	baseBalance := bb.GetConfirmedBalance()
-	quoteBalance := qb.GetConfirmedBalance()
+	var baseBalance, quoteBalance uint64
+	if bb != nil {
+		baseBalance = bb.GetConfirmedBalance()
+	}
+	if qb != nil {
+		quoteBalance = qb.GetConfirmedBalance()
+	}
 	if baseBalance < minMarketFragmentAmount &&
 		quoteBalance < minMarketFragmentAmount {
 		chRes <- fragmenterReply{
@@ -171,10 +176,11 @@ func (s *service) MarketFragmenterSplitFunds(
 			), nil,
 		}
 
+		offset := (len(outputs))
 		for n, percentage := range fragmentationMap {
 			amount := percentageAmount(baseBalance, percentage)
 			for i := 0; i < n; i++ {
-				addr := addresses[len(outputs)+i]
+				addr := addresses[offset+i]
 				outputs = append(outputs, output{market.BaseAsset, amount, addr})
 			}
 		}
@@ -188,7 +194,7 @@ func (s *service) MarketFragmenterSplitFunds(
 			), nil,
 		}
 
-		offset := (len(outputs) - 1)
+		offset := (len(outputs))
 		for n, percentage := range fragmentationMap {
 			amount := percentageAmount(quoteBalance, percentage)
 			for i := 0; i < n; i++ {

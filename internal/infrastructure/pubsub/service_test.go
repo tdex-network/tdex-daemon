@@ -1,4 +1,4 @@
-package webhookpubsub_test
+package pubsub_test
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
+	pubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
 )
@@ -27,10 +27,10 @@ var (
 	testMessage = `{"txid":"0000000000000000000000000000000000000000000000000000000000000000","swap":{"amount_p":10000,"asset_p":"LBTC","amount_r":450000000,"asset_r":"USDT"},"price":{"base_price":"0.000025","quote_price":"40000"}}`
 
 	tradesettleEndpoint = fmt.Sprintf("%s/tradesettle", serverURL)
-	allactionsEndpoint  = fmt.Sprintf("%s/allactions", serverURL)
+	alleventsEndpoint   = fmt.Sprintf("%s/allevents", serverURL)
 )
 
-func TestWebhookPubSubService(t *testing.T) {
+func TestPubSubService(t *testing.T) {
 	pubsubSvc, err := newTestService()
 	require.NoError(t, err)
 
@@ -71,25 +71,25 @@ func TestWebhookPubSubService(t *testing.T) {
 
 	require.False(t, pubsubSvc.Store().IsLocked())
 
-	testHooks := newTestHooks()
-	for _, hook := range testHooks {
-		hookID, err := pubsubSvc.Subscribe(hook.ActionType.String(), hook.Endpoint, hook.Secret)
+	testSubs := newTestSubs()
+	for _, sub := range testSubs {
+		subID, err := pubsubSvc.Subscribe(sub.Topic(), sub.Endpoint, sub.Secret)
 		require.NoError(t, err)
-		require.NotNil(t, hookID)
+		require.NotNil(t, subID)
 	}
 
-	subs := pubsubSvc.ListSubscriptionsForTopic(webhookpubsub.TradeSettled.String())
-	require.Len(t, subs, len(testHooks))
+	subs := pubsubSvc.ListSubscriptionsForTopic("test")
+	require.Len(t, subs, len(testSubs))
 	require.Condition(t, func() bool {
-		for i, expectedHook := range testHooks {
+		for i, expectedSub := range testSubs {
 			sub := subs[i]
 			if sub.Id() == "" {
 				return false
 			}
-			if sub.NotifyAt() != expectedHook.Endpoint {
+			if sub.NotifyAt() != expectedSub.Endpoint {
 				return false
 			}
-			if len(expectedHook.Secret) > 0 && !sub.IsSecured() {
+			if len(expectedSub.Secret) > 0 && !sub.IsSecured() {
 				return false
 			}
 		}
@@ -97,23 +97,23 @@ func TestWebhookPubSubService(t *testing.T) {
 	})
 
 	// Should invoke all hooks.
-	err = pubsubSvc.Publish(webhookpubsub.TradeSettled.String(), testMessage)
+	err = pubsubSvc.Publish("test", testMessage)
 	require.NoError(t, err)
 
 	for i, s := range subs {
-		err := pubsubSvc.Unsubscribe(s.Topic().Label(), s.Id())
+		err := pubsubSvc.Unsubscribe(s.Topic(), s.Id())
 		require.NoError(t, err)
 
-		if s.Topic().Code() == webhookpubsub.AllActions.Code() {
-			subs := pubsubSvc.ListSubscriptionsForTopic(webhookpubsub.AllActions.String())
+		if s.Topic() == ports.AnyTopic {
+			subs := pubsubSvc.ListSubscriptionsForTopic(ports.AnyTopic)
 			require.Len(t, subs, 0)
 		}
-		subs := pubsubSvc.ListSubscriptionsForTopic(s.Topic().Label())
-		require.Len(t, subs, len(testHooks)-1-i)
+		subs := pubsubSvc.ListSubscriptionsForTopic(s.Topic())
+		require.Len(t, subs, len(testSubs)-1-i)
 	}
 
 	// Checks that it's all ok if there are no hooks to invoke.
-	err = pubsubSvc.Publish(webhookpubsub.AccountLowBalance.String(), testMessage)
+	err = pubsubSvc.Publish("test1", testMessage)
 	require.NoError(t, err)
 }
 
@@ -122,7 +122,7 @@ func newTestService() (ports.SecurePubSub, error) {
 	if err != nil {
 		return nil, err
 	}
-	return webhookpubsub.NewWebhookPubSubService(store)
+	return pubsub.NewService(store)
 }
 
 func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, error) {
@@ -133,24 +133,24 @@ func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, 
 	return store, nil
 }
 
-func newTestHooks() []*webhookpubsub.Webhook {
-	hooksDetails := []struct {
-		actionType webhookpubsub.WebhookAction
-		endpoint   string
-		secret     string
+func newTestSubs() []*pubsub.Subscription {
+	subsDetails := []struct {
+		topic    string
+		endpoint string
+		secret   string
 	}{
-		{webhookpubsub.TradeSettled, tradesettleEndpoint, randomSecret()},
-		{webhookpubsub.TradeSettled, tradesettleEndpoint, randomSecret()},
-		{webhookpubsub.TradeSettled, tradesettleEndpoint, randomSecret()},
-		{webhookpubsub.AllActions, allactionsEndpoint, ""},
+		{"test", tradesettleEndpoint, randomSecret()},
+		{"test", tradesettleEndpoint, randomSecret()},
+		{"test", tradesettleEndpoint, randomSecret()},
+		{"*", alleventsEndpoint, ""},
 	}
-	hooks := make([]*webhookpubsub.Webhook, 0, len(hooksDetails))
-	for _, d := range hooksDetails {
-		hook, _ := webhookpubsub.NewWebhook(d.actionType, d.endpoint, d.secret)
-		hook.ID = ""
-		hooks = append(hooks, hook)
+	subs := make([]*pubsub.Subscription, 0, len(subsDetails))
+	for _, d := range subsDetails {
+		sub, _ := pubsub.NewSubscription(d.topic, d.endpoint, d.secret)
+		sub.ID = ""
+		subs = append(subs, sub)
 	}
-	return hooks
+	return subs
 }
 
 func newTestWebServer(t *testing.T) *http.Server {
@@ -180,7 +180,7 @@ func newTestWebServer(t *testing.T) *http.Server {
 		t.Logf("request info: %+v", info)
 	}
 	http.HandleFunc("/tradesettle", handleFn)
-	http.HandleFunc("/allactions", handleFn)
+	http.HandleFunc("/allevents", handleFn)
 	return srv
 }
 

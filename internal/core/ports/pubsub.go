@@ -1,12 +1,10 @@
 package ports
 
-type Topic interface {
-	Code() int
-	Label() string
-}
+const AnyTopic = "*"
+const UnspecifiedTopic = ""
 
 type Subscription interface {
-	Topic() Topic
+	Topic() string
 	Id() string
 	IsSecured() bool
 	NotifyAt() string
@@ -37,7 +35,7 @@ type SecurePubSub interface {
 	// Store returns the internal store.
 	Store() PubSubStore
 	// Subscribes some client for a topic.
-	Subscribe(topic string, args ...interface{}) (string, error)
+	Subscribe(topic, endpoint, secret string) (string, error)
 	// Unsubscribe removes some client defined by its id for a topic.
 	Unsubscribe(topic, id string) error
 	// ListSubscriptionsForTopic returns the info of all clients subscribed for
@@ -46,10 +44,4 @@ type SecurePubSub interface {
 	// Publish publishes a message for a certain topic. All clients subscribed
 	// for such topic will receive the message.
 	Publish(topic string, message string) error
-	// TopicsByCode returns the all the topics supported by the service mapped by their
-	// code.
-	TopicsByCode() map[int]Topic
-	// TopicsByLabel returns the all the topics supported by the service mapped by their
-	// label.
-	TopicsByLabel() map[string]Topic
 }

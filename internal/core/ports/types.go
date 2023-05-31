@@ -240,14 +240,23 @@ type Withdrawal interface {
 }
 
 type Webhook interface {
-	GetActionType() int
+	GetEvent() WebhookEvent
 	GetEndpoint() string
 	GetSecret() string
 }
 
+type WebhookEvent interface {
+	IsUnspecified() bool
+	IsTradeSettled() bool
+	IsAccountLowBalance() bool
+	IsAccountWithdraw() bool
+	IsAccountDeposit() bool
+	IsAny() bool
+}
+
 type WebhookInfo interface {
 	GetId() string
-	GetActionType() int
+	GetEvent() WebhookEvent
 	GetEndpoint() string
 	IsSecured() bool
 }

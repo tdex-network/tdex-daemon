@@ -309,10 +309,12 @@ func (s *serviceOnePort) newServer(
 		feederHandler := grpchandler.NewFeederHandler(
 			s.opts.AppConfig.FeederService(),
 		)
+		webhookHandler := grpchandler.NewWebhookHandler(s.opts.AppConfig.OperatorService())
 		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
 		tdexv2.RegisterTransportServiceServer(grpcServer, transportHandler)
 		tdexv2.RegisterTradeServiceServer(grpcServer, tradeHandler)
 		daemonv2.RegisterFeederServiceServer(grpcServer, feederHandler)
+		daemonv2.RegisterWebhookServiceServer(grpcServer, webhookHandler)
 
 		dialOpts := make([]grpc.DialOption, 0)
 		if len(s.opts.TLSCert) <= 0 {

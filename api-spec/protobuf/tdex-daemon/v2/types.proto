@@ -20,12 +20,13 @@ enum TradeStatus {
   TRADE_STATUS_EXPIRED = 5;
 }
 
-enum ActionType {
-  ACTION_TYPE_UNSPECIFIED = 0;
-  ACTION_TYPE_TRADE_SETTLED = 1;
-  ACTION_TYPE_ACCOUNT_LOW_BALANCE = 2;
-  ACTION_TYPE_ACCOUNT_WITHDRAW = 3;
-  ACTION_TYPE_ALL_ACTIONS = 4;
+enum WebhookEvent {
+  WEBHOOK_EVENT_UNSPECIFIED = 0;
+  WEBHOOK_EVENT_TRADE_SETTLED = 1;
+  WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE = 2;
+  WEBHOOK_EVENT_ACCOUNT_WITHDRAW = 3;
+  WEBHOOK_EVENT_ACCOUNT_DEPOSIT = 4;
+  WEBHOOK_EVENT_ANY = 5;
 }
 
 enum PredefinedPeriod {
@@ -217,8 +218,8 @@ message WebhookInfo {
   string endpoint = 2;
   // Whether the outgoing requests are authenticated.
   bool is_secured = 3;
-  // The type of the action.
-  ActionType action_type = 4;
+  // The target event for which the webhook endpoint is called.
+  WebhookEvent event = 4;
 }
 
 message Transaction {

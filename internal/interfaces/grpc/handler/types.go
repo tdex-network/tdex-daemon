@@ -367,16 +367,29 @@ func (i utxoInfo) toProto() *daemonv2.UtxoInfo {
 	}
 }
 
-type hooksInfo []ports.WebhookInfo
+type webhooksInfo []ports.WebhookInfo
 
-func (i hooksInfo) toProto() []*daemonv2.WebhookInfo {
+func (i webhooksInfo) toProto() []*daemonv2.WebhookInfo {
 	list := make([]*daemonv2.WebhookInfo, 0, len(i))
 	for _, info := range i {
+		event := daemonv2.WebhookEvent_WEBHOOK_EVENT_UNSPECIFIED
+		switch {
+		case info.GetEvent().IsTradeSettled():
+			event = daemonv2.WebhookEvent_WEBHOOK_EVENT_TRADE_SETTLED
+		case info.GetEvent().IsAccountLowBalance():
+			event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE
+		case info.GetEvent().IsAccountWithdraw():
+			event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_WITHDRAW
+		case info.GetEvent().IsAccountDeposit():
+			event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_DEPOSIT
+		case info.GetEvent().IsAny():
+			event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ANY
+		}
 		list = append(list, &daemonv2.WebhookInfo{
-			Id:         info.GetId(),
-			Endpoint:   info.GetEndpoint(),
-			IsSecured:  info.IsSecured(),
-			ActionType: daemonv2.ActionType(info.GetActionType()),
+			Id:        info.GetId(),
+			Endpoint:  info.GetEndpoint(),
+			IsSecured: info.IsSecured(),
+			Event:     event,
 		})
 	}
 	return list
@@ -386,8 +399,31 @@ type webhookInfo struct {
 	*daemonv2.AddWebhookRequest
 }
 
-func (i webhookInfo) GetActionType() int {
-	return int(i.AddWebhookRequest.Action)
+func (i webhookInfo) GetEvent() ports.WebhookEvent {
+	return webhookEventInfo{i.AddWebhookRequest.GetEvent()}
+}
+
+type webhookEventInfo struct {
+	daemonv2.WebhookEvent
+}
+
+func (i webhookEventInfo) IsUnspecified() bool {
+	return i.WebhookEvent == daemonv2.WebhookEvent_WEBHOOK_EVENT_UNSPECIFIED
+}
+func (i webhookEventInfo) IsTradeSettled() bool {
+	return i.WebhookEvent == daemonv2.WebhookEvent_WEBHOOK_EVENT_TRADE_SETTLED
+}
+func (i webhookEventInfo) IsAccountLowBalance() bool {
+	return i.WebhookEvent == daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE
+}
+func (i webhookEventInfo) IsAccountWithdraw() bool {
+	return i.WebhookEvent == daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_WITHDRAW
+}
+func (i webhookEventInfo) IsAccountDeposit() bool {
+	return i.WebhookEvent == daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_DEPOSIT
+}
+func (i webhookEventInfo) IsAny() bool {
+	return i.WebhookEvent == daemonv2.WebhookEvent_WEBHOOK_EVENT_ANY
 }
 
 type depositsInfo []ports.Deposit

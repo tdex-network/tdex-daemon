@@ -1,4 +1,4 @@
-package webhookpubsub
+package pubsub
 
 import (
 	"io"
