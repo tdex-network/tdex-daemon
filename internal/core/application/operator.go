@@ -117,7 +117,9 @@ type OperatorService interface {
 	// Webhook
 	AddWebhook(ctx context.Context, hook ports.Webhook) (string, error)
 	RemoveWebhook(ctx context.Context, id string) error
-	ListWebhooks(ctx context.Context, actionType int) ([]ports.WebhookInfo, error)
+	ListWebhooks(
+		ctx context.Context, event ports.WebhookEvent,
+	) ([]ports.WebhookInfo, error)
 }
 
 func NewOperatorService(

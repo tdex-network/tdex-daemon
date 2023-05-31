@@ -143,7 +143,7 @@ func (s *service) checkAccountsLowBalance() func(ports.WalletTxNotification) boo
 		publishTopic := func(
 			account string, balance map[string]ports.Balance, mktInfo *marketInfo,
 		) {
-			if err := s.pubsub.PublisAccountLowBalanceTopic(
+			if err := s.pubsub.PublisAccountLowBalanceEvent(
 				account, balance, mktInfo,
 			); err != nil {
 				log.WithError(err).Warnf(
@@ -179,8 +179,8 @@ func (s *service) checkAccountsLowBalance() func(ports.WalletTxNotification) boo
 						isLowBalance := len(balance) <= 0 ||
 							balance[market.BaseAsset] == nil ||
 							balance[market.QuoteAsset] == nil ||
-							balance[market.BaseAsset].GetTotalBalance() < baseThreshold ||
-							balance[market.QuoteAsset].GetTotalBalance() < quoteThreshold
+							balance[market.BaseAsset].GetTotalBalance() <= baseThreshold ||
+							balance[market.QuoteAsset].GetTotalBalance() <= quoteThreshold
 						if isLowBalance {
 							publishTopic(market.Name, balance, &marketInfo{*market, nil})
 						}
@@ -254,6 +254,33 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 				} else {
 					if count > 0 {
 						log.Debugf("added %d new deposit(s)", count)
+
+						// Spawn go routine to publish event for account's deposit.
+						go func() {
+							for _, deposit := range deposits {
+								accountName := deposit.AccountName
+								// Skip fragmenters account, we just don't want to publish
+								// events for these auxiliary accounts.
+								if accountName == domain.FeeFragmenterAccount ||
+									accountName == domain.MarketFragmenterAccount {
+									continue
+								}
+
+								balance, _ := s.wallet.Account().GetBalance(ctx, deposit.AccountName)
+								var market ports.Market = nil
+								if accountName != domain.FeeAccount {
+									mkt, _ := s.repoManager.MarketRepository().GetMarketByName(
+										ctx, accountName,
+									)
+									market = marketInfo{*mkt, balance}
+								}
+								if err := s.pubsub.PublisAccountDepositEvent(
+									deposit.AccountName, balance, deposit, market,
+								); err != nil {
+									log.WithError(err).Warn("failed to publish acount deposit event")
+								}
+							}
+						}()
 					}
 				}
 			}
@@ -265,6 +292,33 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 				} else {
 					if count > 0 {
 						log.Debugf("added %d new withdrawal(s)", count)
+
+						// Spawn go routine to publish event for account's withdrawal.
+						go func() {
+							for _, withdrawal := range withdrawals {
+								accountName := withdrawal.AccountName
+								// Skip fragmenters account, we just don't want to publish
+								// events for these auxiliary accounts.
+								if accountName == domain.FeeFragmenterAccount ||
+									accountName == domain.MarketFragmenterAccount {
+									continue
+								}
+
+								balance, _ := s.wallet.Account().GetBalance(ctx, withdrawal.AccountName)
+								var market ports.Market = nil
+								if accountName != domain.FeeAccount {
+									mkt, _ := s.repoManager.MarketRepository().GetMarketByName(
+										ctx, accountName,
+									)
+									market = marketInfo{*mkt, balance}
+								}
+								if err := s.pubsub.PublisAccountWithdrawEvent(
+									withdrawal.AccountName, balance, withdrawal, market,
+								); err != nil {
+									log.WithError(err).Warn("failed to publish acount withdraw event")
+								}
+							}
+						}()
 					}
 				}
 			}

@@ -5,10 +5,22 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 )
 
-func getEventPayload(topic ports.Topic) map[string]interface{} {
-	return map[string]interface{}{
-		"code":  topic.Code(),
-		"label": topic.Label(),
+func topicForEvent(event ports.WebhookEvent) string {
+	switch {
+	case event.IsTradeSettled():
+		return eventTradeSettled
+	case event.IsAccountLowBalance():
+		return eventAccountLowBalance
+	case event.IsAccountWithdraw():
+		return eventAccountWithdraw
+	case event.IsAccountDeposit():
+		return eventAccountDeposit
+	case event.IsAny():
+		return ports.AnyTopic
+	case event.IsUnspecified():
+		fallthrough
+	default:
+		return ports.UnspecifiedTopic
 	}
 }
 
