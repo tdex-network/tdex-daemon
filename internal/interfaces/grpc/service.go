@@ -437,11 +437,15 @@ func (s *service) newOperatorServer(
 		operatorHandler := grpchandler.NewOperatorHandler(
 			s.opts.AppConfig.OperatorService(),
 		)
+		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
 		feederHandler := grpchandler.NewFeederHandler(
 			s.opts.AppConfig.FeederService(),
 		)
-		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
 		daemonv2.RegisterFeederServiceServer(grpcServer, feederHandler)
+		webhookHandler := grpchandler.NewWebhookHandler(
+			s.opts.AppConfig.OperatorService(),
+		)
+		daemonv2.RegisterWebhookServiceServer(grpcServer, webhookHandler)
 	}
 	healthHandler := grpchandler.NewHealthHandler()
 	grpchealth.RegisterHealthServer(grpcServer, healthHandler)

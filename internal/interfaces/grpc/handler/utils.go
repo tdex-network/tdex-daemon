@@ -233,8 +233,11 @@ func parsePage(page *daemonv2.Page) (ports.Page, error) {
 }
 
 func parseWebhook(hook *daemonv2.AddWebhookRequest) (ports.Webhook, error) {
-	if _, err := parseWebhookActionType(hook.GetAction()); err != nil {
+	if _, err := parseWebhookEvent(hook.GetEvent()); err != nil {
 		return nil, err
+	}
+	if hook.GetEvent() == daemonv2.WebhookEvent_WEBHOOK_EVENT_UNSPECIFIED {
+		return nil, errors.New("invalid event")
 	}
 	if len(hook.GetEndpoint()) <= 0 {
 		return nil, errors.New("missing webhook endpoint")
@@ -242,11 +245,11 @@ func parseWebhook(hook *daemonv2.AddWebhookRequest) (ports.Webhook, error) {
 	return webhookInfo{hook}, nil
 }
 
-func parseWebhookActionType(actionType daemonv2.ActionType) (int, error) {
-	if actionType <= daemonv2.ActionType_ACTION_TYPE_UNSPECIFIED {
-		return -1, errors.New("invalid action type")
+func parseWebhookEvent(event daemonv2.WebhookEvent) (ports.WebhookEvent, error) {
+	if _, ok := daemonv2.WebhookEvent_name[int32(event)]; !ok {
+		return nil, errors.New("invalid event")
 	}
-	return int(actionType), nil
+	return webhookEventInfo{event}, nil
 }
 
 func parseId(id string) (string, error) {
