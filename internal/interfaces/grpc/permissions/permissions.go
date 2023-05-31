@@ -22,59 +22,8 @@ const (
 	EntityTransport  = "transport"
 	EntityReflection = "reflection"
 	EntityHealth     = "health"
+	EntityFeeder     = "feeder"
 )
-
-func Validate() error {
-	methodsThatNeedsAuth := AllPermissionsByMethod()
-	publicRoutes := Whitelist()
-
-	unhandledMethods := findUnhandledMethods(publicRoutes, methodsThatNeedsAuth)
-	if len(unhandledMethods) > 0 {
-		return fmt.Errorf("unhandled permissions for following methods: %v", unhandledMethods)
-	}
-
-	return nil
-}
-
-// findUnhandledMethods returns RPC methods that are not included in public routes
-// nor in routes for which invocation some kind of auth is needed
-// purpose of this check is to prevent forgetting adding of new rpc methods to public/auth map
-func findUnhandledMethods(publicRoutes, methodsThatNeedsAuth map[string][]bakery.Op) []string {
-	result := make([]string, 0)
-	allMethods := make([]string, 0)
-
-	for _, v := range daemonv2.OperatorService_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv2.OperatorService_ServiceDesc.ServiceName, v.MethodName))
-	}
-
-	for _, v := range daemonv2.WalletService_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv2.WalletService_ServiceDesc.ServiceName, v.MethodName))
-	}
-
-	for _, v := range tdexv2.TradeService_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv2.TradeService_ServiceDesc.ServiceName, v.MethodName))
-	}
-
-	for _, v := range tdexv2.TransportService_ServiceDesc.Methods {
-		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", tdexv2.TransportService_ServiceDesc.ServiceName, v.MethodName))
-	}
-
-	for _, v := range allMethods {
-		_, ok := publicRoutes[v]
-		if ok {
-			continue
-		}
-
-		_, ok = methodsThatNeedsAuth[v]
-		if ok {
-			continue
-		}
-
-		result = append(result, v)
-	}
-
-	return result
-}
 
 // MarketPermissions returns the permissions of the macaroon market.macaroon.
 // This grants access to all actions for the market and price entities.
@@ -136,6 +85,10 @@ func ReadOnlyPermissions() []bakery.Op {
 		},
 		{
 			Entity: EntityWebhook,
+			Action: "read",
+		},
+		{
+			Entity: EntityFeeder,
 			Action: "read",
 		},
 	}
@@ -213,6 +166,14 @@ func AdminPermissions() []bakery.Op {
 		},
 		{
 			Entity: EntityWallet,
+			Action: "write",
+		},
+		{
+			Entity: EntityFeeder,
+			Action: "read",
+		},
+		{
+			Entity: EntityFeeder,
 			Action: "write",
 		},
 	}
@@ -425,16 +386,48 @@ func AllPermissionsByMethod() map[string][]bakery.Op {
 			Entity: EntityOperator,
 			Action: "read",
 		}},
-		fmt.Sprintf("/%s/AddWebhook", daemonv2.OperatorService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/AddWebhook", daemonv2.WebhookService_ServiceDesc.ServiceName): {{
 			Entity: EntityWebhook,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/RemoveWebhook", daemonv2.OperatorService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/RemoveWebhook", daemonv2.WebhookService_ServiceDesc.ServiceName): {{
 			Entity: EntityWebhook,
 			Action: "write",
 		}},
-		fmt.Sprintf("/%s/ListWebhooks", daemonv2.OperatorService_ServiceDesc.ServiceName): {{
+		fmt.Sprintf("/%s/ListWebhooks", daemonv2.WebhookService_ServiceDesc.ServiceName): {{
 			Entity: EntityWebhook,
+			Action: "read",
+		}},
+		fmt.Sprintf("/%s/AddPriceFeed", daemonv2.FeederService_ServiceDesc.ServiceName): {{
+			Entity: EntityFeeder,
+			Action: "write",
+		}},
+		fmt.Sprintf("/%s/StartPriceFeed", daemonv2.FeederService_ServiceDesc.ServiceName): {{
+			Entity: EntityFeeder,
+			Action: "write",
+		}},
+		fmt.Sprintf("/%s/StopPriceFeed", daemonv2.FeederService_ServiceDesc.ServiceName): {{
+			Entity: EntityFeeder,
+			Action: "write",
+		}},
+		fmt.Sprintf("/%s/UpdatePriceFeed", daemonv2.FeederService_ServiceDesc.ServiceName): {{
+			Entity: EntityFeeder,
+			Action: "write",
+		}},
+		fmt.Sprintf("/%s/RemovePriceFeed", daemonv2.FeederService_ServiceDesc.ServiceName): {{
+			Entity: EntityFeeder,
+			Action: "write",
+		}},
+		fmt.Sprintf("/%s/GetPriceFeed", daemonv2.FeederService_ServiceDesc.ServiceName): {{
+			Entity: EntityFeeder,
+			Action: "read",
+		}},
+		fmt.Sprintf("/%s/ListPriceFeeds", daemonv2.FeederService_ServiceDesc.ServiceName): {{
+			Entity: EntityFeeder,
+			Action: "read",
+		}},
+		fmt.Sprintf("/%s/ListSupportedPriceSources", daemonv2.FeederService_ServiceDesc.ServiceName): {{
+			Entity: EntityFeeder,
 			Action: "read",
 		}},
 	}

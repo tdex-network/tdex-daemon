@@ -18,6 +18,12 @@ func TestRestrictedMethods(t *testing.T) {
 	for _, m := range daemonv2.OperatorService_ServiceDesc.Methods {
 		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv2.OperatorService_ServiceDesc.ServiceName, m.MethodName))
 	}
+	for _, m := range daemonv2.WebhookService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv2.WebhookService_ServiceDesc.ServiceName, m.MethodName))
+	}
+	for _, m := range daemonv2.FeederService_ServiceDesc.Methods {
+		allMethods = append(allMethods, fmt.Sprintf("/%s/%s", daemonv2.FeederService_ServiceDesc.ServiceName, m.MethodName))
+	}
 
 	allPermissions := permissions.AllPermissionsByMethod()
 	for _, method := range allMethods {
@@ -42,11 +48,5 @@ func TestWhitelistedMethods(t *testing.T) {
 	for _, m := range allMethods {
 		_, ok := whitelist[m]
 		require.True(t, ok, fmt.Sprintf("missing %s in whitelist", m))
-	}
-}
-
-func TestValidatePermissions(t *testing.T) {
-	if err := permissions.Validate(); err != nil {
-		t.Fatal(err)
 	}
 }

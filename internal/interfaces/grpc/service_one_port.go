@@ -24,7 +24,6 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpchandler "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/handler"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/interceptor"
-	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 	httpinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/http"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 	"golang.org/x/net/http2"
@@ -152,9 +151,6 @@ func NewServiceOnePort(opts ServiceOptsOnePort) (interfaces.Service, error) {
 		macaroonSvc, _ = macaroons.NewService(
 			opts.dbDatadir(), Location, DBFile, false, macaroons.IPLockChecker,
 		)
-		if err := permissions.Validate(); err != nil {
-			return nil, err
-		}
 	}
 
 	var password string
