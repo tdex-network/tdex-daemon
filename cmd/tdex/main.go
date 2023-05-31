@@ -83,8 +83,7 @@ func main() {
 		&listmarkets,
 		&listtrades,
 		&listutxos,
-		&addwebhook,
-		&removewebhook,
+		&webhook,
 		&listwebhooks,
 		&listdeposits,
 		&listwithdrawals,
@@ -229,6 +228,16 @@ func getOperatorClient(ctx *cli.Context) (daemonv2.OperatorServiceClient, func()
 	cleanup := func() { conn.Close() }
 
 	return daemonv2.NewOperatorServiceClient(conn), cleanup, nil
+}
+
+func getWebhookClient(ctx *cli.Context) (daemonv2.WebhookServiceClient, func(), error) {
+	conn, err := getClientConn(false)
+	if err != nil {
+		return nil, nil, err
+	}
+	cleanup := func() { conn.Close() }
+
+	return daemonv2.NewWebhookServiceClient(conn), cleanup, nil
 }
 
 func getWalletClient(ctx *cli.Context) (daemonv2.WalletServiceClient, func(), error) {
