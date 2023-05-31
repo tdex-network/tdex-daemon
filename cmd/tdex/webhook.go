@@ -21,10 +21,30 @@ var (
 		Name:  "webhooks",
 		Usage: "list all webhooks, optionally filtered by target event",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "event",
-				Usage: "filter webhooks by target event",
-				Value: daemonv2.WebhookEvent_WEBHOOK_EVENT_UNSPECIFIED.String(),
+			&cli.BoolFlag{
+				Name:  "trade_settled_event",
+				Usage: "triggers the webhook endpoint whenever a trade is settled",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "account_low_balance_event",
+				Usage: "triggers the webhook endpoint whenever a wallet account's balance goes under a threshold configured at startup",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "account_withdraw_event",
+				Usage: "triggers the webhook endpoint whenever a withdrawal from a wallet account is made",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "account_deposit_event",
+				Usage: "triggers the webhook endpoint whenever a deposit to a wallet account is made",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "any_event",
+				Usage: "triggers the webhook endpoint whenever any event occurs",
+				Value: false,
 			},
 		},
 		Action: listWebhooksAction,
@@ -97,34 +117,9 @@ func addWebhookAction(ctx *cli.Context) error {
 
 	endpoint := ctx.String("endpoint")
 	secret := ctx.String("secret")
-	event := daemonv2.WebhookEvent_WEBHOOK_EVENT_UNSPECIFIED
-	events := []bool{
-		ctx.Bool("trade_settled_event"),
-		ctx.Bool("account_low_balance_event"),
-		ctx.Bool("account_withdraw_event"),
-		ctx.Bool("account_deposit_event"),
-		ctx.Bool("any_event"),
-	}
-	trues := 0
-	for _, e := range events {
-		if e {
-			trues++
-		}
-	}
-	if trues > 1 {
-		return fmt.Errorf("only one event can be set for a webhook")
-	}
-	switch {
-	case ctx.Bool("trade_settled_event"):
-		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_TRADE_SETTLED
-	case ctx.Bool("account_low_balance_event"):
-		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE
-	case ctx.Bool("account_withdraw_event"):
-		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_WITHDRAW
-	case ctx.Bool("account_deposit_event"):
-		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_DEPOSIT
-	case ctx.Bool("any_event"):
-		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ANY
+	event, err := parseEvent(ctx)
+	if err != nil {
+		return err
 	}
 	if event == daemonv2.WebhookEvent_WEBHOOK_EVENT_UNSPECIFIED {
 		return fmt.Errorf("missing event")
@@ -133,7 +128,7 @@ func addWebhookAction(ctx *cli.Context) error {
 	reply, err := client.AddWebhook(
 		context.Background(), &daemonv2.AddWebhookRequest{
 			Endpoint: endpoint,
-			Event:    daemonv2.WebhookEvent(event),
+			Event:    event,
 			Secret:   secret,
 		},
 	)
@@ -175,14 +170,14 @@ func listWebhooksAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	event, ok := daemonv2.WebhookEvent_value[ctx.String("event")]
-	if !ok {
-		return fmt.Errorf("unknown event")
+	event, err := parseEvent(ctx)
+	if err != nil {
+		return err
 	}
 
 	reply, err := client.ListWebhooks(
 		context.Background(), &daemonv2.ListWebhooksRequest{
-			Event: daemonv2.WebhookEvent(event),
+			Event: event,
 		},
 	)
 	if err != nil {
@@ -192,4 +187,38 @@ func listWebhooksAction(ctx *cli.Context) error {
 	printRespJSON(reply)
 
 	return nil
+}
+
+func parseEvent(ctx *cli.Context) (daemonv2.WebhookEvent, error) {
+	event := daemonv2.WebhookEvent_WEBHOOK_EVENT_UNSPECIFIED
+	events := []bool{
+		ctx.Bool("trade_settled_event"),
+		ctx.Bool("account_low_balance_event"),
+		ctx.Bool("account_withdraw_event"),
+		ctx.Bool("account_deposit_event"),
+		ctx.Bool("any_event"),
+	}
+	trues := 0
+	for _, e := range events {
+		if e {
+			trues++
+		}
+	}
+	if trues > 1 {
+		return -1, fmt.Errorf("only one event can be set for a webhook")
+	}
+	switch {
+	case ctx.Bool("trade_settled_event"):
+		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_TRADE_SETTLED
+	case ctx.Bool("account_low_balance_event"):
+		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE
+	case ctx.Bool("account_withdraw_event"):
+		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_WITHDRAW
+	case ctx.Bool("account_deposit_event"):
+		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_DEPOSIT
+	case ctx.Bool("any_event"):
+		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ANY
+	}
+
+	return event, nil
 }
