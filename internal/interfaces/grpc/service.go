@@ -254,9 +254,6 @@ func NewService(opts ServiceOpts) (interfaces.Service, error) {
 		macaroonSvc, _ = macaroons.NewService(
 			opts.dbDatadir(), Location, DBFile, false, macaroons.IPLockChecker,
 		)
-		if err := permissions.Validate(); err != nil {
-			return nil, err
-		}
 	}
 
 	if !opts.NoOperatorTls {
