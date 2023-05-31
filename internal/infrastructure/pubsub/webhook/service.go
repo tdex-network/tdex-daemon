@@ -1,9 +1,10 @@
-package webhookpubsub
+package pubsub
 
 import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -14,121 +15,72 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type webhookService struct {
-	store      webhookStore
+type service struct {
+	store      store
 	httpClient *client
 	cb         *gobreaker.CircuitBreaker
 }
 
-func NewWebhookPubSubService(
-	store securestore.SecureStorage,
+func NewService(
+	secureStore securestore.SecureStorage,
 ) (ports.SecurePubSub, error) {
-	if store == nil {
-		return nil, ErrNullSecureStore
+	if secureStore == nil {
+		return nil, fmt.Errorf("missing secure store")
 	}
 
-	return &webhookService{
-		store:      webhookStore{store},
+	return &service{
+		store:      store{secureStore},
 		httpClient: newHTTPClient(15 * time.Second),
 		cb:         circuitbreaker.NewCircuitBreaker(),
 	}, nil
 }
 
-func (ws *webhookService) Store() ports.PubSubStore {
+func (ws *service) Store() ports.PubSubStore {
 	return ws.store
 }
 
-func (ws *webhookService) Subscribe(topic string, args ...interface{}) (string, error) {
-	actionType, ok := stringToAction[topic]
-	if !ok {
-		return "", ErrInvalidTopic
-	}
-	if len(args) != 2 {
-		return "", ErrInvalidArgs
-	}
-	endpoint, ok := args[0].(string)
-	if !ok {
-		return "", ErrInvalidArgType
-	}
-	secret, ok := args[1].(string)
-	if !ok {
-		return "", ErrInvalidArgType
-	}
-
-	hook, err := NewWebhook(actionType, endpoint, secret)
+func (ws *service) Subscribe(topic, endpoint, secret string) (string, error) {
+	sub, err := NewSubscription(topic, endpoint, secret)
 	if err != nil {
 		return "", err
 	}
 
-	return ws.addWebhook(hook)
+	return ws.addSubscription(sub)
 }
 
-func (ws *webhookService) Unsubscribe(_, id string) error {
-	return ws.removeWebhook(id)
+func (ws *service) Unsubscribe(_, id string) error {
+	return ws.removeSubscription(id)
 }
 
-func (ws *webhookService) ListSubscriptionsForTopic(topic string) []ports.Subscription {
-	actionType, ok := WebhookActionFromString(topic)
-	if !ok {
-		return nil
-	}
-	return ws.listWebhooksForAction(actionType)
+func (ws *service) ListSubscriptionsForTopic(topic string) []ports.Subscription {
+	return ws.listSubscriptionsForTopic(topic).toPortable()
 }
 
-func (ws *webhookService) Publish(topic string, message string) error {
-	actionType, ok := WebhookActionFromString(topic)
-	if !ok {
-		return ErrUnknownWebhookAction
-	}
-	return ws.invokeWebhooksForAction(actionType, message)
+func (ws *service) Publish(topic string, message string) error {
+	return ws.publishForTopic(topic, message)
 }
 
-func (ws *webhookService) TopicsByCode() map[int]ports.Topic {
-	topics := make(map[int]ports.Topic)
-	for action := range actionToString {
-		topics[int(action)] = action
-	}
-	return topics
-}
-
-func (ws *webhookService) TopicsByLabel() map[string]ports.Topic {
-	topics := make(map[string]ports.Topic)
-	for label, action := range stringToAction {
-		topics[label] = action
-	}
-	return topics
-}
-
-// AddWebhook adds the provided hook to those managed by the handler.
-// If another hook with the same id already exists, the method returns
-// preventing overwrites/duplications.
-// NOTE: The generation of the hook ID can be assumed enough random to infer
-// that if 2 hooks have the same id, then they are the same.
-func (ws *webhookService) addWebhook(hook *Webhook) (string, error) {
-	hookID := []byte(hook.ID)
-	hh, err := ws.store.db().GetFromBucket(hooksBucket, hookID)
+func (ws *service) addSubscription(sub *Subscription) (string, error) {
+	subID := []byte(sub.ID)
+	ss, err := ws.store.db().GetFromBucket(subsBucket, subID)
 	if err != nil {
 		return "", err
 	}
-	// there's already a webhook with the same id, so let's avoid duplicates.
-	if hh != nil {
-		return hook.ID, nil
+	if ss != nil {
+		return sub.ID, nil
 	}
 
-	if err := ws.store.db().AddToBucket(hooksBucket, hookID, hook.Serialize()); err != nil {
+	if err := ws.store.db().AddToBucket(subsBucket, subID, sub.Serialize()); err != nil {
 		return "", err
 	}
-	if err := ws.addHookByAction(hook); err != nil {
+	if err := ws.addSubscriptionForTopic(sub); err != nil {
 		return "", err
 	}
-	return hook.ID, nil
+	return sub.ID, nil
 }
 
-// RemoveWebhhìook attempts to remove the hook identified by an ID from those
-// managed by the handler. Nothing is done in case the hook does not actually
-// exist in the handler's store.db().
-func (ws *webhookService) removeWebhook(hookID string) error {
-	buf, err := ws.store.db().GetFromBucket(hooksBucket, []byte(hookID))
+func (ws *service) removeSubscription(subID string) error {
+	buf, err := ws.store.db().GetFromBucket(subsBucket, []byte(subID))
 	if err != nil {
 		return err
 	}
@@ -136,109 +88,109 @@ func (ws *webhookService) removeWebhook(hookID string) error {
 		return nil
 	}
 
-	if err := ws.store.db().RemoveFromBucket(hooksBucket, []byte(hookID)); err != nil {
+	if err := ws.store.db().RemoveFromBucket(subsBucket, []byte(subID)); err != nil {
 		return err
 	}
 
-	hook, _ := NewWebhookFromBytes(buf)
-	return ws.removeHookByAction(hook)
+	sub, _ := NewSubscriptionFromBytes(buf)
+	return ws.removeSubscriptionForTopic(sub)
 }
 
-func (ws *webhookService) listWebhooksForAction(actionType WebhookAction) []ports.Subscription {
-	hooks := ws.getHooksByAction(actionType)
-	if actionType != AllActions {
-		hooksForAllActions := ws.getHooksByAction(AllActions)
-		hooks = append(hooks, hooksForAllActions...)
-	}
-	subs := make([]ports.Subscription, len(hooks))
-	for i, h := range hooks {
-		subs[i] = h
+func (ws *service) listSubscriptionsForTopic(topic string) subscriptions {
+	subs := ws.getSubscriptionsForTopic(topic)
+	if topic != ports.AnyTopic && topic != ports.UnspecifiedTopic {
+		subsForAnyTopic := ws.getSubscriptionsForTopic(ports.AnyTopic)
+		subs = append(subs, subsForAnyTopic...)
 	}
 	return subs
 }
 
-// InvokeWebhooksByAction makes a POST request to every webhook endpoint
-// registered for the given action.
-// This method adopts a circuit breaker approach in order to maximize the
-// chances that every webhook gets invoked without errors.
-func (ws *webhookService) invokeWebhooksForAction(actionType WebhookAction, message string) error {
-	hooks := ws.getHooksByAction(actionType)
-	if actionType != AllActions {
-		hooksForAllActions := ws.getHooksByAction(AllActions)
-		hooks = append(hooks, hooksForAllActions...)
-	}
+func (ws *service) publishForTopic(topic, message string) error {
+	subs := ws.listSubscriptionsForTopic(topic)
 
 	eg := &errgroup.Group{}
-	for i := range hooks {
-		hook := hooks[i]
-		eg.Go(func() error { return ws.doRequest(hook, message) })
+	for i := range subs {
+		sub := subs[i]
+		eg.Go(func() error { return ws.doRequest(sub, message) })
 	}
 	return eg.Wait()
 }
 
-func (ws *webhookService) addHookByAction(hook *Webhook) error {
-	key := []byte{byte(hook.ActionType)}
-	hooks := ws.getSerializedHooks(hook.ActionType)
-	hooks = append(hooks, hook.Serialize())
-	updatedHooks := bytes.Join(hooks, separator)
-	return ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
+func (ws *service) addSubscriptionForTopic(sub *Subscription) error {
+	key := []byte(sub.Event)
+	subs := ws.getSerializedSubscriptions(sub.Event)
+	subs = append(subs, sub.Serialize())
+	updatedHooks := bytes.Join(subs, separator)
+	return ws.store.db().AddToBucket(subsByEventBucket, key, updatedHooks)
 }
 
-func (ws *webhookService) removeHookByAction(hook *Webhook) error {
-	rawHooks := ws.getSerializedHooks(hook.ActionType)
+func (ws *service) removeSubscriptionForTopic(sub *Subscription) error {
+	subs := ws.getSerializedSubscriptions(sub.Event)
 
 	var index int
-	for i, buf := range rawHooks {
-		hh, _ := NewWebhookFromBytes(buf)
-		if hh.ID == hook.ID {
+	for i, buf := range subs {
+		ss, _ := NewSubscriptionFromBytes(buf)
+		if ss.ID == sub.ID {
 			index = i
 			break
 		}
 	}
 
-	key := []byte{byte(hook.ActionType)}
-	rawHooks = append(rawHooks[:index], rawHooks[index+1:]...)
+	key := []byte(sub.Event)
+	subs = append(subs[:index], subs[index+1:]...)
 
-	if len(rawHooks) <= 0 {
-		return ws.store.db().RemoveFromBucket(hooksByActionBucket, key)
+	if len(subs) <= 0 {
+		return ws.store.db().RemoveFromBucket(subsByEventBucket, key)
 	}
 
-	updatedHooks := bytes.Join(rawHooks, separator)
-	return ws.store.db().AddToBucket(hooksByActionBucket, key, updatedHooks)
+	updatedHooks := bytes.Join(subs, separator)
+	return ws.store.db().AddToBucket(subsByEventBucket, key, updatedHooks)
 }
 
-func (ws *webhookService) getHooksByAction(actionType WebhookAction) []*Webhook {
-	rawHooks := ws.getSerializedHooks(actionType)
-	hooks := make([]*Webhook, 0, len(rawHooks))
-	for _, buf := range rawHooks {
-		hook, _ := NewWebhookFromBytes(buf)
-		hooks = append(hooks, hook)
+func (ws *service) getSubscriptionsForTopic(topic string) subscriptions {
+	rawSubs := ws.getSerializedSubscriptions(topic)
+	subs := make(subscriptions, 0, len(rawSubs))
+	for _, buf := range rawSubs {
+		sub, _ := NewSubscriptionFromBytes(buf)
+		subs = append(subs, *sub)
 	}
-	return hooks
+	sort.SliceStable(subs, func(i, j int) bool {
+		return subs[i].ID < subs[j].ID
+	})
+	return subs
 }
 
-func (ws *webhookService) getSerializedHooks(actionType WebhookAction) [][]byte {
-	key := []byte{byte(actionType)}
-	hooks, _ := ws.store.db().GetFromBucket(hooksByActionBucket, key)
-	if len(hooks) <= 0 {
+func (ws *service) getSerializedSubscriptions(topic string) [][]byte {
+	if topic == ports.UnspecifiedTopic {
+		subs := make([][]byte, 0)
+		subsByTopic, _ := ws.store.db().GetAllFromBucket(subsByEventBucket)
+		for _, list := range subsByTopic {
+			subs = append(subs, bytes.Split(list, separator)...)
+		}
+		return subs
+	}
+
+	key := []byte(topic)
+	subs, _ := ws.store.db().GetFromBucket(subsByEventBucket, key)
+	if len(subs) <= 0 {
 		return nil
 	}
-	return bytes.Split(hooks, separator)
+	return bytes.Split(subs, separator)
 }
 
-func (ws *webhookService) doRequest(hook *Webhook, payload string) error {
+func (ws *service) doRequest(sub Subscription, payload string) error {
 	_, err := ws.cb.Execute(func() (interface{}, error) {
 		headers := map[string]string{
 			"Content-Type": "application/json",
 		}
-		if hook.IsSecured() {
+		if sub.IsSecured() {
 			token := jwt.New(jwt.SigningMethodHS256)
-			secret := []byte(hook.Secret)
+			secret := []byte(sub.Secret)
 			tokenString, _ := token.SignedString(secret)
 			headers["Authorization"] = fmt.Sprintf("Bearer %s", tokenString)
 		}
 
-		status, resp, err := ws.httpClient.post(hook.Endpoint, payload, headers)
+		status, resp, err := ws.httpClient.post(sub.Endpoint, payload, headers)
 		if err != nil {
 			return nil, err
 		}
