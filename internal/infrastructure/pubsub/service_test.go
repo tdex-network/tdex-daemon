@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
-	webhookpubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
+	pubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub"
 	"github.com/tdex-network/tdex-daemon/pkg/securestore"
 	boltsecurestore "github.com/tdex-network/tdex-daemon/pkg/securestore/bolt"
 )
@@ -30,7 +30,7 @@ var (
 	alleventsEndpoint   = fmt.Sprintf("%s/allevents", serverURL)
 )
 
-func TestWebhookPubSubService(t *testing.T) {
+func TestPubSubService(t *testing.T) {
 	pubsubSvc, err := newTestService()
 	require.NoError(t, err)
 
@@ -122,7 +122,7 @@ func newTestService() (ports.SecurePubSub, error) {
 	if err != nil {
 		return nil, err
 	}
-	return webhookpubsub.NewService(store)
+	return pubsub.NewService(store)
 }
 
 func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, error) {
@@ -133,7 +133,7 @@ func newTestSecureStorage(datadir, filename string) (securestore.SecureStorage, 
 	return store, nil
 }
 
-func newTestSubs() []*webhookpubsub.Subscription {
+func newTestSubs() []*pubsub.Subscription {
 	subsDetails := []struct {
 		topic    string
 		endpoint string
@@ -144,9 +144,9 @@ func newTestSubs() []*webhookpubsub.Subscription {
 		{"test", tradesettleEndpoint, randomSecret()},
 		{"*", alleventsEndpoint, ""},
 	}
-	subs := make([]*webhookpubsub.Subscription, 0, len(subsDetails))
+	subs := make([]*pubsub.Subscription, 0, len(subsDetails))
 	for _, d := range subsDetails {
-		sub, _ := webhookpubsub.NewSubscription(d.topic, d.endpoint, d.secret)
+		sub, _ := pubsub.NewSubscription(d.topic, d.endpoint, d.secret)
 		sub.ID = ""
 		subs = append(subs, sub)
 	}

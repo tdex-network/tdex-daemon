@@ -21,7 +21,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	oceanwallet "github.com/tdex-network/tdex-daemon/internal/infrastructure/ocean-wallet"
-	pubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub/webhook"
+	pubsub "github.com/tdex-network/tdex-daemon/internal/infrastructure/pubsub"
 	swap_parser "github.com/tdex-network/tdex-daemon/internal/infrastructure/swap-parser"
 	"github.com/tdex-network/tdex-daemon/internal/interfaces"
 	grpcinterface "github.com/tdex-network/tdex-daemon/internal/interfaces/grpc"
