@@ -14,6 +14,20 @@ import (
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 )
 
+func TestWithdrawalRepositoryPgImplementation(t *testing.T) {
+	if err := SetupPgDb(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := TearDownPgDb()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	testAddAndGetWithdrawals(t, repoManager.WithdrawalRepository())
+}
+
 func TestWithdrawalRepositoryImplementations(t *testing.T) {
 	repositories := createWithdrawalRepositories(t)
 
@@ -24,14 +38,15 @@ func TestWithdrawalRepositoryImplementations(t *testing.T) {
 			t.Parallel()
 
 			t.Run("add_and_get_withdrawals", func(t *testing.T) {
-				testAddAndGetWithdrawals(t, repo)
+				testAddAndGetWithdrawals(t, repo.Repository)
 			})
 		})
 	}
 }
 
-func testAddAndGetWithdrawals(t *testing.T, repo withdrawalRepository) {
-	withdrawalRepository := repo.Repository
+func testAddAndGetWithdrawals(
+	t *testing.T, withdrawalRepository domain.WithdrawalRepository,
+) {
 	ctx := context.Background()
 	withdrawals := makeRandomWithdrawals(20)
 

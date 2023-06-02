@@ -60,7 +60,7 @@ func randomTimestamp() int64 {
 }
 
 func randomHex(len int) string {
-	return hex.EncodeToString(randomBytes(32))
+	return hex.EncodeToString(randomBytes(len))
 }
 
 func randomId() string {

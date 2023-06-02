@@ -5,11 +5,60 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
+
+	"github.com/stretchr/testify/require"
+	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
+
+func TestTradeRepositoryPgImplementation(t *testing.T) {
+	if err := SetupPgDb(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := TearDownPgDb()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	marketName := "market_1"
+	market, err := domain.NewMarket(
+		randomHex(32),
+		randomHex(32),
+		marketName,
+		4,
+		3,
+		20,
+		10,
+		8,
+		8,
+		1,
+	)
+	require.NoError(t, err)
+	err = repoManager.MarketRepository().AddMarket(ctx, market)
+	require.NoError(t, err)
+	market.Price.BasePrice = "0.0001"
+	market.Price.QuotePrice = "0.0002"
+
+	trade := domain.NewTrade()
+	trade.MarketBaseAsset = market.BaseAsset
+	trade.MarketQuoteAsset = market.QuoteAsset
+	trade.MarketName = marketName
+	trade.SwapRequest = &domain.Swap{
+		Id:        randomId(),
+		Message:   []byte("swap message"),
+		Timestamp: 0,
+	}
+	trade.MarketFixedFee = market.FixedFee
+	trade.MarketPercentageFee = market.PercentageFee
+	trade.MarketPrice = market.Price
+
+	testAddAndGetTrade(t, repoManager.TradeRepository(), trade)
+	testUpdateTrade(t, repoManager.TradeRepository())
+	testGetCompletedTrades(t, repoManager.TradeRepository())
+}
 
 func TestTradeRepositoryImplementations(t *testing.T) {
 	repositories := createTradeRepositories(t)
@@ -21,7 +70,8 @@ func TestTradeRepositoryImplementations(t *testing.T) {
 			t.Parallel()
 
 			t.Run("add_get_trade", func(t *testing.T) {
-				testAddAndGetTrade(t, repo.Repository)
+				trade := makeRandomTrade()
+				testAddAndGetTrade(t, repo.Repository, trade)
 			})
 
 			t.Run("update_trade", func(t *testing.T) {
@@ -35,9 +85,10 @@ func TestTradeRepositoryImplementations(t *testing.T) {
 	}
 }
 
-func testAddAndGetTrade(t *testing.T, repo domain.TradeRepository) {
+func testAddAndGetTrade(
+	t *testing.T, repo domain.TradeRepository, trade *domain.Trade,
+) {
 	ctx := context.Background()
-	trade := makeRandomTrade()
 
 	allTrades, err := repo.GetAllTrades(ctx, nil)
 	require.NoError(t, err)
@@ -83,7 +134,11 @@ func testUpdateTrade(t *testing.T, repo domain.TradeRepository) {
 	err = repo.UpdateTrade(
 		ctx, trade.Id, func(tt *domain.Trade) (*domain.Trade, error) {
 			tt.Status.Code = domain.TradeStatusCodeCompleted
-			tt.SwapAccept = &domain.Swap{Id: randomId()}
+			tt.SwapAccept = &domain.Swap{
+				Id:        randomId(),
+				Message:   []byte("swap message"),
+				Timestamp: 0,
+			}
 			tt.TxId = randomHex(32)
 			return tt, nil
 		},

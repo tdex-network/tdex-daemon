@@ -12,6 +12,24 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/inmemory"
 )
 
+func TestMarketRepositoryPgImplementation(t *testing.T) {
+	if err := SetupPgDb(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := TearDownPgDb()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	testAddAndGetMarket(t, repoManager.MarketRepository())
+	testUpdateMarket(t, repoManager.MarketRepository())
+	testUpdateMarketPrice(t, repoManager.MarketRepository())
+	testOpenCloseMarket(t, repoManager.MarketRepository())
+	testDeleteMarket(t, repoManager.MarketRepository())
+}
+
 func TestMarketRepositoryImplementations(t *testing.T) {
 	repositories := createMarketRepositories(t)
 

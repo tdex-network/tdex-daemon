@@ -83,3 +83,84 @@ integrationtest:
 mock:
 	@echo "Generating mocks for unit tests..."
 	@mockery --dir=internal/core/domain --name=SwapParser --structname=MockSwapParser --filename=swap.go --output=internal/core/domain/mocks
+
+######## PG_DB ########
+## pg: starts postgres db inside docker container
+pg:
+	@echo "Starting postgres container..."
+	@docker run --name tdexd-pg -p 5432:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=tdexd -d postgres
+
+## droppg: stop and remove postgres container
+droppg:
+	@echo "Stopping and removing postgres container..."
+	@docker stop tdexd-pg
+	@docker rm tdexd-pg
+
+## createdb: create db inside docker container
+createdb:
+	@echo "Creating db..."
+	@docker exec tdexd-pg createdb --username=root --owner=root tdexd
+
+## createtestdb: create test db inside docker container
+createtestdb:
+	@echo "Creating test db..."
+	@docker exec tdexd-pg createdb --username=root --owner=root tdexd-test
+
+## recreatedb: drop and create main db
+recreatedb: dropdb createdb
+
+## recreatetestdb: drop and create main and test db
+recreatetestdb: droptestdb createtestdb
+
+## pgcreatetestdb: starts docker container and creates test db, used in CI
+pgcreatetestdb: pg sleep createtestdb
+	@echo "Starting postgres container with test db..."
+
+## dropdb: drops db inside docker container
+dropdb:
+	@echo "Dropping db..."
+	@docker exec tdexd-pg dropdb tdexd
+
+## droptestdb: drops test db inside docker container
+droptestdb:
+	@echo "Dropping test db..."
+	@docker exec tdexd-pg dropdb tdexd-test
+
+## mig_file: creates pg migration file(eg. make FILE=init mig_file)
+mig_file:
+	@echo "creating migration file..."
+	@migrate create -ext sql -dir ./internal/infrastructure/storage/db/pg/migration $(FILE)
+
+## mig_up_test: creates test db schema
+mig_up_test:
+	@echo "creating test db schema..."
+	@echo "creating db schema..."
+	@migrate -database "postgres://root:secret@localhost:5432/tdexd-test?sslmode=disable" -path ./internal/infrastructure/storage/db/pg/migration up
+
+## mig_up: creates db schema
+mig_up:
+	@echo "creating db schema..."
+	@migrate -database "postgres://root:secret@localhost:5432/tdexd?sslmode=disable" -path ./internal/infrastructure/storage/db/pg/migration up
+
+## mig_down_test: apply down migration on test db
+mig_down_test:
+	@echo "migration down on test db..."
+	@migrate -database "postgres://root:secret@localhost:5432/tdexd-test?sslmode=disable" -path ./internal/infrastructure/storage/db/pg/migration down
+
+## mig_down: apply down migration without prompt
+mig_down:
+	@echo "migration down..."
+	@"yes" | migrate -database "postgres://root:secret@localhost:5432/tdexd?sslmode=disable" -path ./internal/infrastructure/storage/db/pg/migration down
+
+## vet_db: check if mig_up and mig_down are ok
+vet_db: recreatedb mig_up mig_down
+	@echo "vet db migration scripts..."
+
+## sqlc: gen sql
+sqlc:
+	@echo "gen sql..."
+	@cd ./internal/infrastructure/storage/db/pg; sqlc generate
+
+sleep:
+	@echo "sleeping for 3 seconds..."
+	@sleep 3

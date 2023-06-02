@@ -5,15 +5,18 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 	dbbadger "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/badger"
+	postgresdb "github.com/tdex-network/tdex-daemon/internal/infrastructure/storage/db/pg"
 )
 
 const (
-	DBBadger = "badger"
+	DBBadger   = "badger"
+	DBPostgres = "postgres"
 )
 
 var (
 	SupportedDBType = map[string]struct{}{
-		DBBadger: {},
+		DBBadger:   {},
+		DBPostgres: {},
 	}
 )
 
@@ -84,14 +87,23 @@ func (c *Config) FeederService() FeederService {
 
 func (c *Config) repoManager() (ports.RepoManager, error) {
 	if c.repo == nil {
-		if c.DBType == DBBadger {
+		switch c.DBType {
+		case DBBadger:
 			datadir := c.DBConfig.(string)
 			repoManager, err := dbbadger.NewRepoManager(datadir, log.New())
 			if err != nil {
 				return nil, err
 			}
 			c.repo = repoManager
+		case DBPostgres:
+			dbConfig := c.DBConfig.(postgresdb.DbConfig)
+			rm, err := postgresdb.NewService(dbConfig)
+			if err != nil {
+				return nil, err
+			}
+			c.repo = rm
 		}
+
 	}
 	return c.repo, nil
 }

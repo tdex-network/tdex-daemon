@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS fee;
+
+DROP TABLE IF EXISTS swap;
+
+DROP TABLE IF EXISTS transaction_asset_amount;
+
+DROP TABLE IF EXISTS transaction;
+
+DROP TABLE IF EXISTS trade;
+
+DROP TABLE IF EXISTS market;
