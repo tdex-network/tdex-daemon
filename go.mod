@@ -12,6 +12,7 @@ require (
 	github.com/btcsuite/btcd v0.23.2
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0
 	github.com/btcsuite/btcd/btcutil v1.1.0
+	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.1
@@ -39,8 +40,10 @@ require (
 	github.com/thanhpk/randstr v1.0.4
 	github.com/timshannon/badgerhold/v3 v3.0.0 // indirect
 	github.com/timshannon/badgerhold/v4 v4.0.2
+	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/vulpemventures/go-elements v0.4.1
+	golang.org/x/crypto v0.10.0
 	golang.org/x/net v0.11.0
 	golang.org/x/sync v0.1.0
 	google.golang.org/genproto v0.0.0-20230223222841-637eb2293923

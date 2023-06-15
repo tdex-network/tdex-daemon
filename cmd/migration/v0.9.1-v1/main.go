@@ -1,9 +1,11 @@
 package main
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 
 	"github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/mapper"
 	v091domain "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v091-domain"
@@ -15,10 +17,6 @@ import (
 
 const (
 	dbDir = "db"
-)
-
-var (
-	ctx = context.Background()
 )
 
 func main() {
@@ -40,14 +38,19 @@ func main() {
 		log.Error(err)
 	}
 
-	v091DataDir := fmt.Sprintf("%v/%v", currentDir, "cmd/migration/v0.9.1-v1/v091-datadir")
-	v1DataDir := fmt.Sprintf("%v/%v", currentDir, "cmd/migration/v0.9.1-v1/v1-datadir")
+	network := "regtest"
+	v091DataDir := path.Join(currentDir, "cmd/migration/v0.9.1-v1/v091-datadir")
+	v1OceanDataDir := path.Join(currentDir, "cmd/migration/v0.9.1-v1/v1-oceandatadir", network)
+	v1TdexdDataDir := path.Join(currentDir, "cmd/migration/v0.9.1-v1/v1-tdexddatadir")
+	v091VaultPassword := "ciaociao"
 
 	migrateTls()
 	migrateMacaroons()
 	migrateStats()
 	migrateWebhooks()
-	if err := migrateDomain(v091DataDir, v1DataDir); err != nil {
+	if err := migrateDomain(
+		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword,
+	); err != nil {
 		log.Error(err)
 	}
 }
@@ -68,32 +71,54 @@ func migrateWebhooks() {
 	fmt.Println("webhooks migration not implemented")
 }
 
-func migrateDomain(fromDir, toDir string) error {
-	if err := migrateMasterVaultToOceanWallet(fromDir, toDir); err != nil {
+func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
+	v091RepoManager, err := v091domain.NewRepositoryImpl(filepath.Join(fromDir, dbDir), nil)
+	if err != nil {
+		return err
+	}
+
+	vault, err := v091RepoManager.GetVaultRepository().GetVault()
+	if err != nil {
+		return err
+	}
+
+	if !vault.IsValidPassword(vaultPass) {
+		return errors.New("invalid vault password")
+	}
+
+	oceanToDbDir := filepath.Join(oceanToDir, dbDir)
+	tdexdToDbDir := filepath.Join(tdexdToDir, dbDir)
+	v1RepoManager, err := v1domain.NewRepositoryImpl(oceanToDbDir, tdexdToDbDir, nil)
+	if err != nil {
+		return err
+	}
+
+	mapperSvc := mapper.NewService(v091RepoManager)
+
+	if err := migrateV091VaultToOceanWallet(
+		v091RepoManager, v1RepoManager, mapperSvc, vaultPass,
+	); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func migrateMasterVaultToOceanWallet(fromDir, toDir string) error {
-	dbDataDir := fmt.Sprintf("%v/%v", fromDir, dbDir)
-	v091RepoManager, err := v091domain.NewRepositoryImpl(dbDataDir, nil)
+func migrateV091VaultToOceanWallet(
+	v091RepoManager v091domain.Repository,
+	v1RepoManager v1domain.Repository,
+	mapperSvc mapper.Service,
+	vaultPass string,
+) error {
+	v091Vault, err := v091RepoManager.GetVaultRepository().GetVault()
 	if err != nil {
 		return err
 	}
 
-	v091Vault, err := v091RepoManager.GetVaultRepository().GetVault(ctx)
+	wallet, err := mapperSvc.FromV091VaultToV1Wallet(*v091Vault, vaultPass)
 	if err != nil {
 		return err
 	}
 
-	v1RepoManager, err := v1domain.NewRepositoryImpl(toDir, nil)
-	if err != nil {
-		return err
-	}
-
-	return v1RepoManager.GetWalletRepository().InsertWallet(
-		context.Background(), mapper.FromV091VaultToV1Wallet(*v091Vault),
-	)
+	return v1RepoManager.GetWalletRepository().InsertWallet(wallet)
 }

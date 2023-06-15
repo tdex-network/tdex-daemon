@@ -1,13 +1,11 @@
 package v091domain
 
 import (
-	"context"
-
 	"github.com/sekulicd/badgerhold/v2"
 )
 
 type VaultRepository interface {
-	GetVault(ctx context.Context) (*Vault, error)
+	GetVault() (*Vault, error)
 }
 
 type vaultRepositoryImpl struct {
@@ -18,9 +16,7 @@ func NewVaultRepositoryImpl(store *badgerhold.Store) VaultRepository {
 	return &vaultRepositoryImpl{store}
 }
 
-func (v *vaultRepositoryImpl) GetVault(
-	ctx context.Context,
-) (*Vault, error) {
+func (v *vaultRepositoryImpl) GetVault() (*Vault, error) {
 	var vault Vault
 	if err := v.store.Get(vaultKey, &vault); err != nil {
 		if err == badgerhold.ErrNotFound {

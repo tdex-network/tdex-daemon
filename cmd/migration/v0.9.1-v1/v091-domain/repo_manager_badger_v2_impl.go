@@ -1,6 +1,7 @@
 package v091domain
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/sekulicd/badger/v2"
@@ -15,10 +16,12 @@ const (
 
 type Repository interface {
 	GetVaultRepository() VaultRepository
+	MarketRepository() MarketRepository
 }
 
 type repoManager struct {
-	vaultRepository VaultRepository
+	vaultRepository  VaultRepository
+	marketRepository MarketRepository
 }
 
 func NewRepositoryImpl(
@@ -26,16 +29,26 @@ func NewRepositoryImpl(
 ) (Repository, error) {
 	mainDb, err := createDb(filepath.Join(dbDir, "main"), logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("opening main db: %w", err)
+	}
+
+	pricesDb, err := createDb(filepath.Join(dbDir, "prices"), logger)
+	if err != nil {
+		return nil, fmt.Errorf("opening prices db: %w", err)
 	}
 
 	return &repoManager{
-		vaultRepository: NewVaultRepositoryImpl(mainDb),
+		vaultRepository:  NewVaultRepositoryImpl(mainDb),
+		marketRepository: NewMarketRepositoryImpl(mainDb, pricesDb),
 	}, nil
 }
 
 func (r *repoManager) GetVaultRepository() VaultRepository {
 	return r.vaultRepository
+}
+
+func (r *repoManager) MarketRepository() MarketRepository {
+	return r.marketRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {

@@ -1,6 +1,9 @@
 package v1domain
 
 import (
+	"fmt"
+	"path/filepath"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/timshannon/badgerhold/v4"
@@ -19,25 +22,15 @@ type repoManager struct {
 }
 
 func NewRepositoryImpl(
-	dbDir string, logger badger.Logger,
+	oceanDbDir, tdexdDbDir string, logger badger.Logger,
 ) (Repository, error) {
-	//TODO ocean datadir
-	opts := badger.DefaultOptions(dbDir)
-	opts.Logger = logger
-	opts.Compression = options.ZSTD
-
-	store, err := badgerhold.Open(badgerhold.Options{
-		Encoder:          badgerhold.DefaultEncode,
-		Decoder:          badgerhold.DefaultDecode,
-		SequenceBandwith: 100,
-		Options:          opts,
-	})
+	walletDb, err := createDb(filepath.Join(oceanDbDir, "wallet"), logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("opening wallet db: %w", err)
 	}
 
 	return &repoManager{
-		walletRepository: NewWalletRepositoryImpl(store),
+		walletRepository: NewWalletRepositoryImpl(walletDb),
 	}, nil
 }
 
