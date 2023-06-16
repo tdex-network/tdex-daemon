@@ -16,13 +16,15 @@ const (
 type Repository interface {
 	GetWalletRepository() WalletRepository
 	GetTradeRepository() TradeRepository
-	GetDepositsRepository() DepositRepository
+	GetDepositRepository() DepositRepository
+	GetWithdrawalRepository() WithdrawalsRepository
 }
 
 type repoManager struct {
-	walletRepository   WalletRepository
-	tradeRepository    TradeRepository
-	depositsRepository DepositRepository
+	walletRepository     WalletRepository
+	tradeRepository      TradeRepository
+	depositRepository    DepositRepository
+	withdrawalRepository WithdrawalsRepository
 }
 
 func NewRepositoryImpl(
@@ -44,9 +46,10 @@ func NewRepositoryImpl(
 	}
 
 	return &repoManager{
-		walletRepository:   NewWalletRepositoryImpl(walletDb),
-		tradeRepository:    NewTradeRepositoryImpl(tradeDb),
-		depositsRepository: NewDepositRepositoryImpl(txDb),
+		walletRepository:     NewWalletRepositoryImpl(walletDb),
+		tradeRepository:      NewTradeRepositoryImpl(tradeDb),
+		depositRepository:    NewDepositRepositoryImpl(txDb),
+		withdrawalRepository: NewWithdrawalsRepositoryImpl(txDb),
 	}, nil
 }
 
@@ -58,8 +61,12 @@ func (r *repoManager) GetTradeRepository() TradeRepository {
 	return r.tradeRepository
 }
 
-func (r *repoManager) GetDepositsRepository() DepositRepository {
-	return r.depositsRepository
+func (r *repoManager) GetDepositRepository() DepositRepository {
+	return r.depositRepository
+}
+
+func (r *repoManager) GetWithdrawalRepository() WithdrawalsRepository {
+	return r.withdrawalRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {

@@ -16,6 +16,9 @@ type Service interface {
 	FromV091DepositsToV1Deposits(
 		deposits []*v091domain.Deposit,
 	) ([]*domain.Deposit, error)
+	FromV091WithdrawalsToV1Withdrawals(
+		withdrawals []*v091domain.Withdrawal,
+	) ([]*domain.Withdrawal, error)
 }
 
 type mapperService struct {

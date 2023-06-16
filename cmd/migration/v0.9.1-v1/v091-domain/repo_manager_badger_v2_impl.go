@@ -19,13 +19,15 @@ type Repository interface {
 	MarketRepository() MarketRepository
 	GetTradeRepository() TradeRepository
 	GetDepositRepository() DepositRepository
+	GetWithdrawalRepository() WithdrawalRepository
 }
 
 type repoManager struct {
-	vaultRepository   VaultRepository
-	marketRepository  MarketRepository
-	tradeRepository   TradeRepository
-	depositRepository DepositRepository
+	vaultRepository      VaultRepository
+	marketRepository     MarketRepository
+	tradeRepository      TradeRepository
+	depositRepository    DepositRepository
+	withdrawalRepository WithdrawalRepository
 }
 
 func NewRepositoryImpl(
@@ -42,10 +44,11 @@ func NewRepositoryImpl(
 	}
 
 	return &repoManager{
-		vaultRepository:   NewVaultRepositoryImpl(mainDb),
-		marketRepository:  NewMarketRepositoryImpl(mainDb, pricesDb),
-		tradeRepository:   NewTradeRepositoryImpl(mainDb),
-		depositRepository: NewDepositRepositoryImpl(mainDb),
+		vaultRepository:      NewVaultRepositoryImpl(mainDb),
+		marketRepository:     NewMarketRepositoryImpl(mainDb, pricesDb),
+		tradeRepository:      NewTradeRepositoryImpl(mainDb),
+		depositRepository:    NewDepositRepositoryImpl(mainDb),
+		withdrawalRepository: NewWithdrawalRepositoryImpl(mainDb),
 	}, nil
 }
 
@@ -57,12 +60,17 @@ func (r *repoManager) MarketRepository() MarketRepository {
 	return r.marketRepository
 }
 
+func (r *repoManager) GetTradeRepository() TradeRepository {
+	return r.tradeRepository
+}
+
 func (r *repoManager) GetDepositRepository() DepositRepository {
 	return r.depositRepository
 }
 
-func (r *repoManager) GetTradeRepository() TradeRepository {
-	return r.tradeRepository
+func (r *repoManager) GetWithdrawalRepository() WithdrawalRepository {
+	//TODO implement me
+	panic("implement me")
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
