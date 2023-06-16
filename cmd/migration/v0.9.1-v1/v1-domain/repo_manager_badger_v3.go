@@ -15,10 +15,12 @@ const (
 
 type Repository interface {
 	GetWalletRepository() WalletRepository
+	GetTradeRepository() TradeRepository
 }
 
 type repoManager struct {
 	walletRepository WalletRepository
+	tradeRepository  TradeRepository
 }
 
 func NewRepositoryImpl(
@@ -29,13 +31,23 @@ func NewRepositoryImpl(
 		return nil, fmt.Errorf("opening wallet db: %w", err)
 	}
 
+	tradeDb, err := createDb(filepath.Join(tdexdDbDir, "trades"), logger)
+	if err != nil {
+		return nil, fmt.Errorf("opening unspents db: %w", err)
+	}
+
 	return &repoManager{
 		walletRepository: NewWalletRepositoryImpl(walletDb),
+		tradeRepository:  NewTradeRepositoryImpl(tradeDb),
 	}, nil
 }
 
 func (r *repoManager) GetWalletRepository() WalletRepository {
 	return r.walletRepository
+}
+
+func (r *repoManager) GetTradeRepository() TradeRepository {
+	return r.tradeRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {

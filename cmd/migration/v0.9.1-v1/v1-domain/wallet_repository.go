@@ -1,8 +1,6 @@
 package v1domain
 
 import (
-	"fmt"
-
 	"github.com/timshannon/badgerhold/v4"
 )
 
@@ -21,9 +19,6 @@ func NewWalletRepositoryImpl(store *badgerhold.Store) WalletRepository {
 
 func (w *walletRepositoryImpl) InsertWallet(wallet *Wallet) error {
 	if err := w.store.Insert(walletKey, *wallet); err != nil {
-		if err == badgerhold.ErrKeyExists {
-			return fmt.Errorf("wallet is already initialized")
-		}
 		return err
 	}
 
@@ -33,9 +28,6 @@ func (w *walletRepositoryImpl) InsertWallet(wallet *Wallet) error {
 func (w *walletRepositoryImpl) GetWallet() (*Wallet, error) {
 	var wallet Wallet
 	if err := w.store.Get(walletKey, &wallet); err != nil {
-		if err == badgerhold.ErrNotFound {
-			return nil, fmt.Errorf("wallet is not initialized")
-		}
 		return nil, err
 	}
 

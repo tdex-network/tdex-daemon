@@ -101,6 +101,12 @@ func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
 		return err
 	}
 
+	if err := migrateV091TradesToOceanTrades(
+		v091RepoManager, v1RepoManager, mapperSvc,
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -121,4 +127,22 @@ func migrateV091VaultToOceanWallet(
 	}
 
 	return v1RepoManager.GetWalletRepository().InsertWallet(wallet)
+}
+
+func migrateV091TradesToOceanTrades(
+	v091RepoManager v091domain.Repository,
+	v1RepoManager v1domain.Repository,
+	mapperSvc mapper.Service,
+) error {
+	v091Trades, err := v091RepoManager.GetTradeRepository().GetAllTrades()
+	if err != nil {
+		return err
+	}
+
+	v1Trades, err := mapperSvc.FromV091TradesToV1Trades(v091Trades)
+	if err != nil {
+		return err
+	}
+
+	return v1RepoManager.GetTradeRepository().InsertTrades(v1Trades)
 }

@@ -6,6 +6,7 @@ import (
 
 type MarketRepository interface {
 	GetMarketByAccount(accountIndex int) (*Market, error)
+	GetMarketByAssets(baseAsset, quoteAsset string) (*Market, error)
 }
 
 type marketRepositoryImpl struct {
@@ -40,6 +41,13 @@ func (m *marketRepositoryImpl) GetMarketByAccount(
 	restoreStrategy(&market)
 
 	return &market, nil
+}
+
+func (m *marketRepositoryImpl) GetMarketByAssets(
+	baseAsset, quoteAsset string,
+) (*Market, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m *marketRepositoryImpl) getPriceByAccountIndex(

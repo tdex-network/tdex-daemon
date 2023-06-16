@@ -10,10 +10,9 @@ import (
 
 const (
 	FeeAccount = iota
-	WalletAccount
+	PersonalAccount
 	FeeFragmenterAccount
 	MarketFragmenterAccount
-	UnusedAccount3
 
 	nameSpaceFormat = "bip84-account%d'"
 )
@@ -57,7 +56,7 @@ func (m *mapperService) FromV091VaultToV1Wallet(
 				Label:     label,
 				Xpub:      xpub,
 				DerivationPath: fmt.Sprintf(
-					"%s/%d", v091domain.RootPath, v.AccountIndex,
+					"%s/%d'", v091domain.RootPath, v.AccountIndex,
 				),
 			},
 			Index:                  uint32(v.AccountIndex),
@@ -86,14 +85,12 @@ func (m *mapperService) getLabel(accountIndex int) (string, error) {
 	switch accountIndex {
 	case FeeAccount:
 		return "fee_account", nil
-	case WalletAccount:
-		return "wallet_account", nil
+	case PersonalAccount:
+		return "personal_account", nil
 	case FeeFragmenterAccount:
 		return "fee_fragmenter_account", nil
 	case MarketFragmenterAccount:
 		return "market_fragmenter_account", nil
-	case UnusedAccount3:
-		return "unused3", nil
 	default:
 		market, err := m.v091RepoManager.MarketRepository().
 			GetMarketByAccount(accountIndex)

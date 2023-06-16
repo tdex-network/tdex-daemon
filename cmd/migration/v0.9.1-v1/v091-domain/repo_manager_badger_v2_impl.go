@@ -17,11 +17,13 @@ const (
 type Repository interface {
 	GetVaultRepository() VaultRepository
 	MarketRepository() MarketRepository
+	GetTradeRepository() TradeRepository
 }
 
 type repoManager struct {
 	vaultRepository  VaultRepository
 	marketRepository MarketRepository
+	tradeRepository  TradeRepository
 }
 
 func NewRepositoryImpl(
@@ -40,6 +42,7 @@ func NewRepositoryImpl(
 	return &repoManager{
 		vaultRepository:  NewVaultRepositoryImpl(mainDb),
 		marketRepository: NewMarketRepositoryImpl(mainDb, pricesDb),
+		tradeRepository:  NewTradeRepositoryImpl(mainDb),
 	}, nil
 }
 
@@ -49,6 +52,10 @@ func (r *repoManager) GetVaultRepository() VaultRepository {
 
 func (r *repoManager) MarketRepository() MarketRepository {
 	return r.marketRepository
+}
+
+func (r *repoManager) GetTradeRepository() TradeRepository {
+	return r.tradeRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {

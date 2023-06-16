@@ -19,9 +19,6 @@ func NewVaultRepositoryImpl(store *badgerhold.Store) VaultRepository {
 func (v *vaultRepositoryImpl) GetVault() (*Vault, error) {
 	var vault Vault
 	if err := v.store.Get(vaultKey, &vault); err != nil {
-		if err == badgerhold.ErrNotFound {
-			return nil, nil
-		}
 		return nil, err
 	}
 
