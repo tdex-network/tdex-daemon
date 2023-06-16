@@ -9,16 +9,16 @@ type TradeRepository interface {
 }
 
 type tradeRepositoryImpl struct {
-	store *badgerhold.Store
+	tradeDb *badgerhold.Store
 }
 
-func NewTradeRepositoryImpl(store *badgerhold.Store) TradeRepository {
-	return &tradeRepositoryImpl{store}
+func NewTradeRepositoryImpl(tradeDb *badgerhold.Store) TradeRepository {
+	return &tradeRepositoryImpl{tradeDb}
 }
 
-func (t tradeRepositoryImpl) GetAllTrades() ([]*Trade, error) {
+func (t *tradeRepositoryImpl) GetAllTrades() ([]*Trade, error) {
 	var tr []Trade
-	if err := t.store.Find(&tr, nil); err != nil {
+	if err := t.tradeDb.Find(&tr, nil); err != nil {
 		return nil, err
 	}
 

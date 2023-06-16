@@ -107,6 +107,12 @@ func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
 		return err
 	}
 
+	if err := migrateV091DepositsToOceanDeposits(
+		v091RepoManager, v1RepoManager, mapperSvc,
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -145,4 +151,22 @@ func migrateV091TradesToOceanTrades(
 	}
 
 	return v1RepoManager.GetTradeRepository().InsertTrades(v1Trades)
+}
+
+func migrateV091DepositsToOceanDeposits(
+	v091RepoManager v091domain.Repository,
+	v1RepoManager v1domain.Repository,
+	mapperSvc mapper.Service,
+) error {
+	v091Deposits, err := v091RepoManager.GetDepositRepository().GetAllDeposits()
+	if err != nil {
+		return err
+	}
+
+	v1Deposits, err := mapperSvc.FromV091DepositsToV1Deposits(v091Deposits)
+	if err != nil {
+		return err
+	}
+
+	return v1RepoManager.GetDepositsRepository().InsertDeposits(v1Deposits)
 }

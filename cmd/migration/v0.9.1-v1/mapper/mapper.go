@@ -13,6 +13,9 @@ type Service interface {
 	FromV091TradesToV1Trades(
 		trades []*v091domain.Trade,
 	) ([]*domain.Trade, error)
+	FromV091DepositsToV1Deposits(
+		deposits []*v091domain.Deposit,
+	) ([]*domain.Deposit, error)
 }
 
 type mapperService struct {

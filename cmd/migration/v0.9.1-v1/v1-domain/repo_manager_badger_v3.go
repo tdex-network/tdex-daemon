@@ -16,11 +16,13 @@ const (
 type Repository interface {
 	GetWalletRepository() WalletRepository
 	GetTradeRepository() TradeRepository
+	GetDepositsRepository() DepositRepository
 }
 
 type repoManager struct {
-	walletRepository WalletRepository
-	tradeRepository  TradeRepository
+	walletRepository   WalletRepository
+	tradeRepository    TradeRepository
+	depositsRepository DepositRepository
 }
 
 func NewRepositoryImpl(
@@ -36,9 +38,15 @@ func NewRepositoryImpl(
 		return nil, fmt.Errorf("opening unspents db: %w", err)
 	}
 
+	txDb, err := createDb(filepath.Join(tdexdDbDir, "transactions"), logger)
+	if err != nil {
+		return nil, fmt.Errorf("opening unspents db: %w", err)
+	}
+
 	return &repoManager{
-		walletRepository: NewWalletRepositoryImpl(walletDb),
-		tradeRepository:  NewTradeRepositoryImpl(tradeDb),
+		walletRepository:   NewWalletRepositoryImpl(walletDb),
+		tradeRepository:    NewTradeRepositoryImpl(tradeDb),
+		depositsRepository: NewDepositRepositoryImpl(txDb),
 	}, nil
 }
 
@@ -48,6 +56,10 @@ func (r *repoManager) GetWalletRepository() WalletRepository {
 
 func (r *repoManager) GetTradeRepository() TradeRepository {
 	return r.tradeRepository
+}
+
+func (r *repoManager) GetDepositsRepository() DepositRepository {
+	return r.depositsRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {

@@ -18,12 +18,14 @@ type Repository interface {
 	GetVaultRepository() VaultRepository
 	MarketRepository() MarketRepository
 	GetTradeRepository() TradeRepository
+	GetDepositRepository() DepositRepository
 }
 
 type repoManager struct {
-	vaultRepository  VaultRepository
-	marketRepository MarketRepository
-	tradeRepository  TradeRepository
+	vaultRepository   VaultRepository
+	marketRepository  MarketRepository
+	tradeRepository   TradeRepository
+	depositRepository DepositRepository
 }
 
 func NewRepositoryImpl(
@@ -40,9 +42,10 @@ func NewRepositoryImpl(
 	}
 
 	return &repoManager{
-		vaultRepository:  NewVaultRepositoryImpl(mainDb),
-		marketRepository: NewMarketRepositoryImpl(mainDb, pricesDb),
-		tradeRepository:  NewTradeRepositoryImpl(mainDb),
+		vaultRepository:   NewVaultRepositoryImpl(mainDb),
+		marketRepository:  NewMarketRepositoryImpl(mainDb, pricesDb),
+		tradeRepository:   NewTradeRepositoryImpl(mainDb),
+		depositRepository: NewDepositRepositoryImpl(mainDb),
 	}, nil
 }
 
@@ -52,6 +55,10 @@ func (r *repoManager) GetVaultRepository() VaultRepository {
 
 func (r *repoManager) MarketRepository() MarketRepository {
 	return r.marketRepository
+}
+
+func (r *repoManager) GetDepositRepository() DepositRepository {
+	return r.depositRepository
 }
 
 func (r *repoManager) GetTradeRepository() TradeRepository {

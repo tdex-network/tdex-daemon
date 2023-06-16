@@ -17,7 +17,7 @@ func NewTradeRepositoryImpl(store *badgerhold.Store) TradeRepository {
 	return &tradeRepositoryImpl{store}
 }
 
-func (t tradeRepositoryImpl) InsertTrades(trades []*domain.Trade) error {
+func (t *tradeRepositoryImpl) InsertTrades(trades []*domain.Trade) error {
 	for _, trade := range trades {
 		if err := t.store.Insert(trade.Id, *trade); err != nil {
 			return err
