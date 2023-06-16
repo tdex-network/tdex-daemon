@@ -39,7 +39,7 @@ func (v Vault) IsValidPassword(password string) bool {
 }
 
 func (v Vault) MasterKey(password string) (*hdkeychain.ExtendedKey, error) {
-	mnemonic, err := Decrypt([]byte(v.EncryptedMnemonic), []byte(password))
+	mnemonic, err := Decrypt(v.EncryptedMnemonic, password)
 	if err != nil {
 		return nil, err
 	}
@@ -231,29 +231,31 @@ var (
 	ErrMalformedDerivationPath        = fmt.Errorf("path must not start or end with a '/'")
 )
 
-func Decrypt(encryptedMnemonic, password []byte) ([]byte, error) {
-	data, _ := base64.StdEncoding.DecodeString(string(encryptedMnemonic))
+func Decrypt(encryptedMnemonic, password string) (string, error) {
+	defer debug.FreeOSMemory()
+
+	data, _ := base64.StdEncoding.DecodeString(encryptedMnemonic)
 	salt, data := data[len(data)-32:], data[:len(data)-32]
 
-	key, _, err := deriveKey(password, salt)
+	key, _, err := deriveKey([]byte(password), salt)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	blockCipher, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	gcm, err := cipher.NewGCM(blockCipher)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	nonce, text := data[:gcm.NonceSize()], data[gcm.NonceSize():]
 	plaintext, err := gcm.Open(nil, nonce, text, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt mnemonic: %v", err)
+		return "", fmt.Errorf("invalid password")
 	}
-	return plaintext, nil
+	return string(plaintext), nil
 }
 
 func Encrypt(text, password string) (string, error) {
@@ -280,7 +282,7 @@ func Encrypt(text, password string) (string, error) {
 	ciphertext := gcm.Seal(nonce, nonce, []byte(text), nil)
 	ciphertext = append(ciphertext, salt...)
 
-	return string(ciphertext), nil
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
 func deriveKey(password, salt []byte) ([]byte, []byte, error) {

@@ -1,6 +1,7 @@
 package mapper
 
 import (
+	"encoding/base64"
 	"fmt"
 
 	v091domain "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v091-domain"
@@ -67,23 +68,10 @@ func (m *mapperService) FromV091VaultToV1Wallet(
 		}
 	}
 
-	mnemonic, err := v091domain.Decrypt(
-		[]byte(vault.EncryptedMnemonic), []byte(walletPass),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	//there is slight difference between how v1 and v091 wallet encrypt/decrypt
-	//the mnemonic, in order to be compatible with the v1 wallet, we need to
-	//encrypt it again same way v1 does
-	encryptedMnemonic, err := v091domain.Encrypt(string(mnemonic), walletPass)
-	if err != nil {
-		return nil, err
-	}
+	encryptedMnemonic, _ := base64.StdEncoding.DecodeString(vault.EncryptedMnemonic)
 
 	return &v1domain.Wallet{
-		EncryptedMnemonic:   []byte(encryptedMnemonic),
+		EncryptedMnemonic:   encryptedMnemonic,
 		PasswordHash:        vault.PassphraseHash,
 		BirthdayBlockHeight: 0,
 		RootPath:            v091domain.RootPath,
