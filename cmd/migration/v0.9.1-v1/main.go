@@ -7,6 +7,10 @@ import (
 	"path"
 	"path/filepath"
 
+	v1subscription "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v1-subscription"
+
+	v091webhook "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v091-webhook"
+
 	"github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/mapper"
 	v091domain "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v091-domain"
 
@@ -45,9 +49,15 @@ func main() {
 	v091VaultPassword := "ciaociao"
 
 	migrateTls()
+
 	migrateMacaroons()
+
 	migrateStats()
-	migrateWebhooks()
+
+	if err := migrateWebhooks(v091DataDir, v1TdexdDataDir); err != nil {
+		log.Error(err)
+	}
+
 	if err := migrateDomain(
 		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword,
 	); err != nil {
@@ -67,8 +77,33 @@ func migrateStats() {
 	fmt.Println("stats migration not implemented")
 }
 
-func migrateWebhooks() {
-	fmt.Println("webhooks migration not implemented")
+func migrateWebhooks(fromDir, toDir string) error {
+	v091WebhookRepoManager, err := v091webhook.NewWebhookRepository(
+		filepath.Join(fromDir, dbDir),
+	)
+	if err != nil {
+		return err
+	}
+
+	v091Webhooks, err := v091WebhookRepoManager.GetAllWebhooks()
+	if err != nil {
+		return err
+	}
+
+	mapperSvc := mapper.NewService(nil)
+	v1Webhooks, err := mapperSvc.FromV091WebhooksToV1Subscriptions(v091Webhooks)
+	if err != nil {
+		return err
+	}
+
+	v1WebhookRepoManager, err := v1subscription.NewSubscriptionRepository(
+		filepath.Join(toDir, dbDir),
+	)
+	if err != nil {
+		return err
+	}
+
+	return v1WebhookRepoManager.InsertSubscriptions(v1Webhooks)
 }
 
 func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {

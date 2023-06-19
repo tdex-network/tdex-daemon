@@ -2,7 +2,9 @@ package mapper
 
 import (
 	v091domain "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v091-domain"
+	v091webhook "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v091-webhook"
 	v1domain "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v1-domain"
+	v1subscription "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v1-subscription"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
@@ -19,6 +21,9 @@ type Service interface {
 	FromV091WithdrawalsToV1Withdrawals(
 		withdrawals []*v091domain.Withdrawal,
 	) ([]*domain.Withdrawal, error)
+	FromV091WebhooksToV1Subscriptions(
+		webhooks []*v091webhook.Webhook,
+	) ([]v1subscription.Subscription, error)
 }
 
 type mapperService struct {
