@@ -10,7 +10,7 @@ func (m *mapperService) FromV091WebhooksToV1Subscriptions(
 ) ([]v1subscription.Subscription, error) {
 	res := make([]v1subscription.Subscription, 0, len(webhooks))
 	for _, v := range webhooks {
-		subscription, err := m.fromV091WebhookToV1Subscription(v)
+		subscription, err := m.fromV091WebhookToV1Subscription(*v)
 		if err != nil {
 			return nil, err
 		}
