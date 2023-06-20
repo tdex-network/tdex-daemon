@@ -292,7 +292,7 @@ func (s *service) Start() error {
 	}
 
 	if s.opts.WalletUnlockPasswordFile != "" {
-		if err := s.opts.AppConfig.WalletService().Wallet().Unlock(
+		if err := s.opts.AppConfig.UnlockerService().UnlockWallet(
 			context.Background(), s.password,
 		); err != nil {
 			return fmt.Errorf("failed to auto unlock wallet: %s", err)
@@ -306,9 +306,9 @@ func (s *service) Start() error {
 
 func (s *service) Stop() {
 	if s.password != "" {
-		walletSvc := s.opts.AppConfig.WalletService().Wallet()
-		//nolint
-		walletSvc.Lock(context.Background(), s.password)
+		s.opts.AppConfig.UnlockerService().LockWallet(
+			context.Background(), s.password,
+		)
 	}
 	stopMacaroonSvc := true
 	s.stop(stopMacaroonSvc)
