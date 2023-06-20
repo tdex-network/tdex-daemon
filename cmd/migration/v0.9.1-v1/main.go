@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -20,7 +21,10 @@ import (
 )
 
 const (
-	dbDir = "db"
+	dbDir                  = "db"
+	tlsDir                 = "tls"
+	macaroonsDbFile        = "macaroons.db"
+	macaroonsPermissionDir = "macaroons"
 )
 
 func main() {
@@ -48,9 +52,13 @@ func main() {
 	v1TdexdDataDir := path.Join(currentDir, "cmd/migration/v0.9.1-v1/v1-tdexddatadir")
 	v091VaultPassword := "ciaociao"
 
-	migrateTls()
+	if err := migrateTls(v091DataDir, v1TdexdDataDir); err != nil {
+		log.Error(err)
+	}
 
-	migrateMacaroons()
+	if err := migrateMacaroons(v091DataDir, v1TdexdDataDir); err != nil {
+		log.Error(err)
+	}
 
 	migrateStats()
 
@@ -65,12 +73,123 @@ func main() {
 	}
 }
 
-func migrateTls() {
-	fmt.Println("tls migration not implemented")
+func migrateTls(fromDir, toDir string) error {
+	destDir := filepath.Join(toDir, tlsDir)
+	if _, err := os.Stat(destDir); os.IsNotExist(err) {
+		errDir := os.MkdirAll(destDir, 0755)
+		if errDir != nil {
+			return fmt.Errorf("failed to create directory: %s, error: %w", destDir, errDir)
+		}
+	}
+
+	tlsLoc := filepath.Join(fromDir, tlsDir)
+	files := make([]string, 0)
+	if err := filepath.Walk(
+		tlsLoc, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				files = append(files, path)
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			return fmt.Errorf("source file does not exist: %s", file)
+		}
+
+		if err := copyFile(
+			file, filepath.Join(toDir, tlsDir, filepath.Base(file)),
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func migrateMacaroons() {
-	fmt.Println("macaroons migration not implemented")
+func migrateMacaroons(fromDir, toDir string) error {
+	macaroonDB := filepath.Join(fromDir, dbDir, macaroonsDbFile)
+	macaroonPermissions := filepath.Join(fromDir, macaroonsPermissionDir)
+
+	if _, err := os.Stat(macaroonDB); os.IsNotExist(err) {
+		return fmt.Errorf("source file does not exist: %s", macaroonDB)
+	}
+
+	destDir := filepath.Join(toDir, dbDir)
+	if _, err := os.Stat(destDir); os.IsNotExist(err) {
+		errDir := os.MkdirAll(destDir, 0755)
+		if errDir != nil {
+			return fmt.Errorf("failed to create directory: %s, error: %w", destDir, errDir)
+		}
+	}
+
+	destDir = filepath.Join(toDir, macaroonsPermissionDir)
+	if _, err := os.Stat(destDir); os.IsNotExist(err) {
+		errDir := os.MkdirAll(destDir, 0755)
+		if errDir != nil {
+			return fmt.Errorf("failed to create directory: %s, error: %w", destDir, errDir)
+		}
+	}
+
+	if err := copyFile(
+		macaroonDB, filepath.Join(toDir, dbDir, macaroonsDbFile),
+	); err != nil {
+		return err
+	}
+
+	files := make([]string, 0)
+	if err := filepath.Walk(
+		macaroonPermissions, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				files = append(files, path)
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			return fmt.Errorf("source file does not exist: %s", file)
+		}
+
+		if err := copyFile(
+			file, filepath.Join(toDir, macaroonsPermissionDir, filepath.Base(file)),
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+
+	return out.Close()
 }
 
 func migrateStats() {
