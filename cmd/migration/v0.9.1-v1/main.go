@@ -52,25 +52,33 @@ func main() {
 	v1TdexdDataDir := path.Join(currentDir, "cmd/migration/v0.9.1-v1/v1-tdexddatadir")
 	v091VaultPassword := "ciaociao"
 
+	log.Info("tls migration started")
 	if err := migrateTls(v091DataDir, v1TdexdDataDir); err != nil {
 		log.Error(err)
 	}
+	log.Info("tls migration completed")
 
+	log.Info("macaroons migration started")
 	if err := migrateMacaroons(v091DataDir, v1TdexdDataDir); err != nil {
 		log.Error(err)
 	}
+	log.Info("macaroons migration completed")
 
 	migrateStats()
 
+	log.Info("webhook migration started")
 	if err := migrateWebhooks(v091DataDir, v1TdexdDataDir); err != nil {
 		log.Error(err)
 	}
+	log.Info("webhook migration completed")
 
+	log.Info("core domain migration started")
 	if err := migrateDomain(
 		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword,
 	); err != nil {
 		log.Error(err)
 	}
+	log.Info("core domain migration completed")
 }
 
 func migrateTls(fromDir, toDir string) error {
@@ -249,29 +257,37 @@ func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
 
 	mapperSvc := mapper.NewService(v091RepoManager)
 
+	log.Info("vault to wallet migration started")
 	if err := migrateV091VaultToOceanWallet(
 		v091RepoManager, v1RepoManager, mapperSvc, vaultPass,
 	); err != nil {
 		return err
 	}
+	log.Info("vault to wallet migration completed")
 
+	log.Info("trades migration started")
 	if err := migrateV091TradesToOceanTrades(
 		v091RepoManager, v1RepoManager, mapperSvc,
 	); err != nil {
 		return err
 	}
+	log.Info("trades migration completed")
 
+	log.Info("deposits migration started")
 	if err := migrateV091DepositsToOceanDeposits(
 		v091RepoManager, v1RepoManager, mapperSvc,
 	); err != nil {
 		return err
 	}
+	log.Info("deposits migration completed")
 
+	log.Info("withdrawals migration started")
 	if err := migrateV091WithdrawalsToOceanWithdrawals(
 		v091RepoManager, v1RepoManager, mapperSvc,
 	); err != nil {
 		return err
 	}
+	log.Info("withdrawals migration completed")
 
 	return nil
 }
