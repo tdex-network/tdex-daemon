@@ -258,33 +258,6 @@ func Decrypt(encryptedMnemonic, password string) (string, error) {
 	return string(plaintext), nil
 }
 
-func Encrypt(text, password string) (string, error) {
-	defer debug.FreeOSMemory()
-
-	key, salt, err := deriveKey([]byte(password), nil)
-	if err != nil {
-		return "", err
-	}
-
-	blockCipher, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-	gcm, err := cipher.NewGCM(blockCipher)
-	if err != nil {
-		return "", err
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = rand.Read(nonce); err != nil {
-		return "", err
-	}
-
-	ciphertext := gcm.Seal(nonce, nonce, []byte(text), nil)
-	ciphertext = append(ciphertext, salt...)
-
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
 func deriveKey(password, salt []byte) ([]byte, []byte, error) {
 	if salt == nil {
 		salt = make([]byte, 32)

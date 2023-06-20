@@ -69,8 +69,7 @@ func (r *repoManager) GetDepositRepository() DepositRepository {
 }
 
 func (r *repoManager) GetWithdrawalRepository() WithdrawalRepository {
-	//TODO implement me
-	panic("implement me")
+	return r.withdrawalRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {

@@ -1,8 +1,6 @@
 package v091domain
 
-import (
-	"github.com/sekulicd/badgerhold/v2"
-)
+import "github.com/sekulicd/badgerhold/v2"
 
 type MarketRepository interface {
 	GetMarketByAccount(accountIndex int) (*Market, error)
@@ -46,8 +44,19 @@ func (m *marketRepositoryImpl) GetMarketByAccount(
 func (m *marketRepositoryImpl) GetMarketByAssets(
 	baseAsset, quoteAsset string,
 ) (*Market, error) {
-	//TODO implement me
-	panic("implement me")
+	query := badgerhold.
+		Where("BaseAsset").Eq(baseAsset).And("QuoteAsset").Eq(quoteAsset)
+	markets, err := m.findMarkets(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var market *Market
+	if len(markets) > 0 {
+		market = &markets[0]
+	}
+
+	return market, nil
 }
 
 func (m *marketRepositoryImpl) getPriceByAccountIndex(
@@ -71,4 +80,27 @@ func restoreStrategy(market *Market) {
 		strategy = NewStrategyFromFormula(PluggableStrategy{})
 	}
 	market.Strategy = strategy
+}
+
+func (m marketRepositoryImpl) findMarkets(
+	query *badgerhold.Query,
+) ([]Market, error) {
+	var markets []Market
+	var err error
+
+	if err = m.mainDb.Find(&markets, query); err != nil {
+		return nil, err
+	}
+
+	for i, mkt := range markets {
+		price, err := m.getPriceByAccountIndex(mkt.AccountIndex)
+		if err != nil {
+			return nil, err
+		}
+		mkt.Price = *price
+		restoreStrategy(&mkt)
+		markets[i] = mkt
+	}
+
+	return markets, err
 }

@@ -8,14 +8,13 @@ import (
 )
 
 var (
-	hooksBucket         = []byte("hooks")
-	hooksByActionBucket = []byte("hooksbyaction")
-
-	separator = []byte{255}
+	hooksBucket  = []byte("hooks")
+	pubSubDbFile = "pubsub.db"
 )
 
 type Repository interface {
 	GetAllWebhooks() ([]*Webhook, error)
+	Unlock(password string) error
 }
 
 type webhookRepository struct {
@@ -23,7 +22,7 @@ type webhookRepository struct {
 }
 
 func NewWebhookRepository(datadir string) (Repository, error) {
-	store, err := boltsecurestore.NewSecureStorage(datadir, "pubsub.db")
+	store, err := boltsecurestore.NewSecureStorage(datadir, pubSubDbFile)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +47,11 @@ func (w *webhookRepository) GetAllWebhooks() ([]*Webhook, error) {
 	}
 
 	return webhooks, nil
+}
+
+func (w *webhookRepository) Unlock(password string) error {
+	pwd := []byte(password)
+	return w.store.CreateUnlock(&pwd)
 }
 
 func newWebhookFromBytes(buf []byte) (*Webhook, error) {

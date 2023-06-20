@@ -9,11 +9,6 @@ import (
 )
 
 const (
-	FeeAccount = iota
-	PersonalAccount
-	FeeFragmenterAccount
-	MarketFragmenterAccount
-
 	nameSpaceFormat = "bip84-account%d'"
 )
 
@@ -83,13 +78,13 @@ func (m *mapperService) FromV091VaultToV1Wallet(
 
 func (m *mapperService) getLabel(accountIndex int) (string, error) {
 	switch accountIndex {
-	case FeeAccount:
+	case v091domain.FeeAccount:
 		return "fee_account", nil
-	case PersonalAccount:
+	case v091domain.PersonalAccount:
 		return "personal_account", nil
-	case FeeFragmenterAccount:
+	case v091domain.FeeFragmenterAccount:
 		return "fee_fragmenter_account", nil
-	case MarketFragmenterAccount:
+	case v091domain.MarketFragmenterAccount:
 		return "market_fragmenter_account", nil
 	default:
 		market, err := m.v091RepoManager.MarketRepository().

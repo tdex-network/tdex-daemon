@@ -27,9 +27,7 @@ func (m *mapperService) FromV091DepositsToV1Deposits(
 			}
 		}
 
-		market, err := m.v091RepoManager.MarketRepository().GetMarketByAccount(
-			v[0].AccountIndex,
-		)
+		label, err := m.getLabel(v[0].AccountIndex)
 		if err != nil {
 			return nil, err
 		}
@@ -37,7 +35,7 @@ func (m *mapperService) FromV091DepositsToV1Deposits(
 		res = append(
 			res,
 			&domain.Deposit{
-				AccountName:       market.AccountName(),
+				AccountName:       label,
 				TxID:              k,
 				TotAmountPerAsset: amountPerAsset,
 				Timestamp:         int64(v[0].Timestamp),

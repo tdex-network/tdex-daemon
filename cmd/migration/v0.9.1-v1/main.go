@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -28,47 +29,53 @@ const (
 )
 
 func main() {
-	//v091 := flag.String("v091", "", "The v0.9.1 data directory that will be migrated to v1")
-	//v1 := flag.String("v1", "", "The v1 data directory location")
-	//
-	//flag.Parse()
-	//
-	//if *v091 == "" || *v1 == "" {
-	//	fmt.Println("Both 'v091' and 'v1' arguments are required")
-	//	flag.PrintDefaults()
-	//	return
-	//}
-	// v091DataDir := *v091
-	// v1DataDir := *v1
+	networkFlag := flag.String("network", "", "The network")
+	v091DataDirFlag := flag.String("v091DataDir", "", "The v0.9.1 data directory that will be migrated to v1")
+	v1OceanDataDirFlag := flag.String("v1OceanDataDir", "", "The v1 ocean data directory")
+	v1TdexdDataDirFlag := flag.String("v1TdexdDataDir", "", "The v1 tdexd data directory")
+	v091VaultPasswordFlag := flag.String("v091VaultPassword", "", "The v0.9.1 vault password")
 
-	currentDir, err := os.Getwd()
-	if err != nil {
-		log.Error(err)
+	flag.Parse()
+
+	if *networkFlag == "" || *v091DataDirFlag == "" || *v1OceanDataDirFlag ==
+		"" || *v1TdexdDataDirFlag == "" || *v091VaultPasswordFlag == "" {
+		log.Fatal(errors.New("missing required flags"))
+	}
+	network := *networkFlag
+	v091DataDir := *v091DataDirFlag
+	v1OceanDataDir := path.Join(*v1OceanDataDirFlag, network)
+	v1TdexdDataDir := *v1TdexdDataDirFlag
+	v091VaultPassword := *v091VaultPasswordFlag
+
+	if err := migrate(
+		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword,
+	); err != nil {
+		log.Fatal(err)
 	}
 
-	network := "regtest"
-	v091DataDir := path.Join(currentDir, "cmd/migration/v0.9.1-v1/v091-datadir")
-	v1OceanDataDir := path.Join(currentDir, "cmd/migration/v0.9.1-v1/v1-oceandatadir", network)
-	v1TdexdDataDir := path.Join(currentDir, "cmd/migration/v0.9.1-v1/v1-tdexddatadir")
-	v091VaultPassword := "ciaociao"
+	log.Info("migration completed")
+}
 
+func migrate(
+	v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword string,
+) error {
 	log.Info("tls migration started")
 	if err := migrateTls(v091DataDir, v1TdexdDataDir); err != nil {
-		log.Error(err)
+		log.Errorf("error while migrating tls: %s", err)
 	}
 	log.Info("tls migration completed")
 
 	log.Info("macaroons migration started")
 	if err := migrateMacaroons(v091DataDir, v1TdexdDataDir); err != nil {
-		log.Error(err)
+		log.Errorf("error while migrating macaroons: %s", err)
 	}
 	log.Info("macaroons migration completed")
 
 	migrateStats()
 
 	log.Info("webhook migration started")
-	if err := migrateWebhooks(v091DataDir, v1TdexdDataDir); err != nil {
-		log.Error(err)
+	if err := migrateWebhooks(v091DataDir, v1TdexdDataDir, v091VaultPassword); err != nil {
+		log.Errorf("error while migrating webhooks: %s", err)
 	}
 	log.Info("webhook migration completed")
 
@@ -76,9 +83,11 @@ func main() {
 	if err := migrateDomain(
 		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword,
 	); err != nil {
-		log.Error(err)
+		return err
 	}
 	log.Info("core domain migration completed")
+
+	return nil
 }
 
 func migrateTls(fromDir, toDir string) error {
@@ -204,11 +213,15 @@ func migrateStats() {
 	fmt.Println("stats migration not implemented")
 }
 
-func migrateWebhooks(fromDir, toDir string) error {
+func migrateWebhooks(fromDir, toDir, vaultPass string) error {
 	v091WebhookRepoManager, err := v091webhook.NewWebhookRepository(
 		filepath.Join(fromDir, dbDir),
 	)
 	if err != nil {
+		return err
+	}
+
+	if err := v091WebhookRepoManager.Unlock(vaultPass); err != nil {
 		return err
 	}
 

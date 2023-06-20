@@ -8,7 +8,14 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const BalancedReservesType = 1
+const (
+	FeeAccount = iota
+	PersonalAccount
+	FeeFragmenterAccount
+	MarketFragmenterAccount
+
+	BalancedReservesType = 1
+)
 
 type Market struct {
 	AccountIndex        int
