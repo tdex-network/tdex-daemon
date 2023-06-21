@@ -89,6 +89,11 @@ func migrate(
 }
 
 func migrateTls(fromDir, toDir string) error {
+	tlsLoc := filepath.Join(fromDir, tlsDir)
+	if _, err := os.Stat(tlsLoc); os.IsNotExist(err) {
+		return nil
+	}
+
 	destDir := filepath.Join(toDir, tlsDir)
 	if _, err := os.Stat(destDir); os.IsNotExist(err) {
 		errDir := os.MkdirAll(destDir, 0755)
@@ -97,7 +102,6 @@ func migrateTls(fromDir, toDir string) error {
 		}
 	}
 
-	tlsLoc := filepath.Join(fromDir, tlsDir)
 	files := make([]string, 0)
 	if err := filepath.Walk(
 		tlsLoc, func(path string, info os.FileInfo, err error) error {
@@ -132,7 +136,7 @@ func migrateMacaroons(fromDir, toDir string) error {
 	macaroonPermissions := filepath.Join(fromDir, macaroonsPermissionDir)
 
 	if _, err := os.Stat(macaroonDB); os.IsNotExist(err) {
-		return fmt.Errorf("source file does not exist: %s", macaroonDB)
+		return nil
 	}
 
 	destDir := filepath.Join(toDir, dbDir)
