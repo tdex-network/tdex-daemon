@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tdex-network/tdex-daemon/internal/core/application"
+
 	"github.com/tdex-network/tdex-daemon/internal/interfaces/grpc/permissions"
 	"github.com/tdex-network/tdex-daemon/pkg/macaroons"
 	"google.golang.org/grpc"
@@ -68,4 +70,56 @@ func checkMacaroon(
 	}
 	// Now that we know what validator to use, let it do its work.
 	return validator.ValidateMacaroon(ctx, uriPermissions, fullMethod)
+}
+
+func unaryWalletLockerAuthHandler(
+	walletUnlockerSvc application.UnlockerService,
+) grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		if _, ok := permissions.Whitelist()[info.FullMethod]; ok {
+			return handler(ctx, req)
+		}
+
+		status, err := walletUnlockerSvc.Status(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if !status.IsUnlocked() {
+			return nil, fmt.Errorf("wallet is locked")
+		}
+
+		return handler(ctx, req)
+	}
+}
+
+func streamWalletLockerAuthHandler(
+	walletUnlockerSvc application.UnlockerService,
+) grpc.StreamServerInterceptor {
+	return func(
+		srv interface{},
+		ss grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
+		if _, ok := permissions.Whitelist()[info.FullMethod]; ok {
+			return handler(srv, ss)
+		}
+
+		status, err := walletUnlockerSvc.Status(context.Background())
+		if err != nil {
+			return err
+		}
+
+		if !status.IsUnlocked() {
+			return fmt.Errorf("wallet is locked")
+		}
+
+		return handler(srv, ss)
+	}
 }

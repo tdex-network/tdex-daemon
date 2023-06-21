@@ -265,8 +265,12 @@ func (s *serviceOnePort) newServer(
 	tlsConfig *tls.Config, withWalletOnly bool,
 ) (*http.Server, error) {
 	serverOpts := []grpc.ServerOption{
-		interceptor.UnaryInterceptor(s.macaroonSvc),
-		interceptor.StreamInterceptor(s.macaroonSvc),
+		interceptor.UnaryInterceptor(
+			s.macaroonSvc, s.opts.AppConfig.UnlockerService(),
+		),
+		interceptor.StreamInterceptor(
+			s.macaroonSvc, s.opts.AppConfig.UnlockerService(),
+		),
 	}
 
 	creds := insecure.NewCredentials()
@@ -427,8 +431,8 @@ func (s *serviceOnePort) onUnlock(password string) {
 		}
 	}
 
-	stopMacaroonSvc := true
-	s.stop(!stopMacaroonSvc)
+	stopMacaroonSvc := false
+	s.stop(stopMacaroonSvc)
 
 	withWalletOnly := true
 	if err := s.start(!withWalletOnly); err != nil {
@@ -437,12 +441,7 @@ func (s *serviceOnePort) onUnlock(password string) {
 }
 
 func (s *serviceOnePort) onLock(_ string) {
-	if !s.withMacaroons() {
-		return
-	}
-	if err := s.macaroonSvc.Close(); err != nil {
-		log.WithError(err).Warn("failed to close macaroon store")
-	}
+	return
 }
 
 func (s *serviceOnePort) onChangePwd(oldPassword, newPassword string) {

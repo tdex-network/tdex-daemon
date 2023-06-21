@@ -403,8 +403,12 @@ func (s *service) newOperatorServer(
 	tlsConfig *tls.Config, withOperatorHandler bool,
 ) (*http.Server, error) {
 	serverOpts := []grpc.ServerOption{
-		interceptor.UnaryInterceptor(s.macaroonSvc),
-		interceptor.StreamInterceptor(s.macaroonSvc),
+		interceptor.UnaryInterceptor(
+			s.macaroonSvc, s.opts.AppConfig.UnlockerService(),
+		),
+		interceptor.StreamInterceptor(
+			s.macaroonSvc, s.opts.AppConfig.UnlockerService(),
+		),
 	}
 
 	creds := insecure.NewCredentials()
@@ -489,8 +493,12 @@ func (s *service) newOperatorServer(
 
 func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 	serverOpts := []grpc.ServerOption{
-		interceptor.UnaryInterceptor(s.macaroonSvc),
-		interceptor.StreamInterceptor(s.macaroonSvc),
+		interceptor.UnaryInterceptor(
+			s.macaroonSvc, s.opts.AppConfig.UnlockerService(),
+		),
+		interceptor.StreamInterceptor(
+			s.macaroonSvc, s.opts.AppConfig.UnlockerService(),
+		),
 	}
 
 	creds := insecure.NewCredentials()
@@ -605,8 +613,8 @@ func (s *service) onUnlock(password string) {
 		}
 	}
 
-	stopMacaroonSvc := true
-	s.stop(!stopMacaroonSvc)
+	stopMacaroonSvc := false
+	s.stop(stopMacaroonSvc)
 
 	withWalletOnly := true
 	if err := s.start(!withWalletOnly); err != nil {
@@ -615,7 +623,7 @@ func (s *service) onUnlock(password string) {
 }
 
 func (s *service) onLock(_ string) {
-	stopMacaroonSvc := true
+	stopMacaroonSvc := false
 	s.stop(stopMacaroonSvc)
 	withWalletOnly := true
 	//nolint
