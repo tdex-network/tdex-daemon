@@ -437,12 +437,11 @@ func (s *serviceOnePort) onUnlock(password string) {
 }
 
 func (s *serviceOnePort) onLock(_ string) {
-	if !s.withMacaroons() {
-		return
-	}
-	if err := s.macaroonSvc.Close(); err != nil {
-		log.WithError(err).Warn("failed to close macaroon store")
-	}
+	stopMacaroonSvc := false
+	s.stop(stopMacaroonSvc)
+	withWalletOnly := true
+	//nolint
+	s.start(withWalletOnly)
 }
 
 func (s *serviceOnePort) onChangePwd(oldPassword, newPassword string) {

@@ -615,7 +615,7 @@ func (s *service) onUnlock(password string) {
 }
 
 func (s *service) onLock(_ string) {
-	stopMacaroonSvc := true
+	stopMacaroonSvc := false
 	s.stop(stopMacaroonSvc)
 	withWalletOnly := true
 	//nolint
