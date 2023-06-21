@@ -29,7 +29,6 @@ const (
 )
 
 func main() {
-	networkFlag := flag.String("network", "", "The network")
 	v091DataDirFlag := flag.String("v091DataDir", "", "The v0.9.1 data directory that will be migrated to v1")
 	v1OceanDataDirFlag := flag.String("v1OceanDataDir", "", "The v1 ocean data directory")
 	v1TdexdDataDirFlag := flag.String("v1TdexdDataDir", "", "The v1 tdexd data directory")
@@ -37,13 +36,12 @@ func main() {
 
 	flag.Parse()
 
-	if *networkFlag == "" || *v091DataDirFlag == "" || *v1OceanDataDirFlag ==
-		"" || *v1TdexdDataDirFlag == "" || *v091VaultPasswordFlag == "" {
+	if *v091DataDirFlag == "" || *v1OceanDataDirFlag == "" ||
+		*v1TdexdDataDirFlag == "" || *v091VaultPasswordFlag == "" {
 		log.Fatal(errors.New("missing required flags"))
 	}
-	network := *networkFlag
 	v091DataDir := *v091DataDirFlag
-	v1OceanDataDir := path.Join(*v1OceanDataDirFlag, network)
+	v1OceanDataDir := *v1OceanDataDirFlag
 	v1TdexdDataDir := *v1TdexdDataDirFlag
 	v091VaultPassword := *v091VaultPasswordFlag
 
@@ -261,7 +259,7 @@ func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
 		return errors.New("invalid vault password")
 	}
 
-	oceanToDbDir := filepath.Join(oceanToDir, dbDir)
+	oceanToDbDir := filepath.Join(path.Join(oceanToDir, vault.Network.Name), dbDir)
 	tdexdToDbDir := filepath.Join(tdexdToDir, dbDir)
 	v1RepoManager, err := v1domain.NewRepositoryImpl(oceanToDbDir, tdexdToDbDir, nil)
 	if err != nil {
