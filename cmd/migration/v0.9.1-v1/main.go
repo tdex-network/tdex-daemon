@@ -69,8 +69,6 @@ func migrate(
 	}
 	log.Info("macaroons migration completed")
 
-	migrateStats()
-
 	log.Info("webhook migration started")
 	if err := migrateWebhooks(v091DataDir, v1TdexdDataDir, v091VaultPassword); err != nil {
 		log.Errorf("error while migrating webhooks: %s", err)
@@ -209,10 +207,6 @@ func copyFile(src, dst string) error {
 	}
 
 	return out.Close()
-}
-
-func migrateStats() {
-	fmt.Println("stats migration not implemented")
 }
 
 func migrateWebhooks(fromDir, toDir, vaultPass string) error {
