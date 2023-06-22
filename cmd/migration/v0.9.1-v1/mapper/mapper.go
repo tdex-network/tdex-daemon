@@ -27,6 +27,9 @@ type Service interface {
 	FromV091MarketsToV1Markets(
 		markets []*v091domain.Market,
 	) ([]domain.Market, error)
+	FromV091UnspentsToV1Utxos(
+		unspents []*v091domain.Unspent,
+	) ([]*v1domain.Utxo, error)
 }
 
 type mapperService struct {

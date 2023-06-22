@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -26,12 +27,36 @@ const (
 	RootPath = "m/84'/0'"
 )
 
+var (
+	ErrVaultAccountNotFound = errors.New("account not found")
+)
+
 type Vault struct {
 	EncryptedMnemonic      string
 	PassphraseHash         []byte
 	Accounts               map[int]*Account
 	AccountAndKeyByAddress map[string]AccountAndKey
 	Network                *network.Network
+}
+
+func (v *Vault) AccountByAddress(addr string) (*Account, int, error) {
+	info, ok := v.AccountAndKeyByAddress[addr]
+	if !ok {
+		return nil, -1, ErrVaultAccountNotFound
+	}
+	account, err := v.AccountByIndex(info.AccountIndex)
+	if err != nil {
+		return nil, -1, err
+	}
+	return account, info.AccountIndex, nil
+}
+
+func (v *Vault) AccountByIndex(accountIndex int) (*Account, error) {
+	account, ok := v.Accounts[accountIndex]
+	if !ok {
+		return nil, ErrVaultAccountNotFound
+	}
+	return account, nil
 }
 
 func (v Vault) IsValidPassword(password string) bool {

@@ -320,15 +320,22 @@ func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
 	}
 	log.Info("vault to wallet migration completed")
 
+	log.Info("utxo migration started")
+	if err := migrateV091UtxosToV1Utxos(
+		v091RepoManager, v1RepoManager, mapperSvc,
+	); err != nil {
+		return err
+	}
+
 	log.Info("markets migration started")
-	if err := migrateV091MarketsToOceanMarkets(
+	if err := migrateV091MarketsToV1Markets(
 		v091RepoManager, v1RepoManager, mapperSvc,
 	); err != nil {
 		return err
 	}
 
 	log.Info("trades migration started")
-	if err := migrateV091TradesToOceanTrades(
+	if err := migrateV091TradesToV1Trades(
 		v091RepoManager, v1RepoManager, mapperSvc,
 	); err != nil {
 		return err
@@ -336,7 +343,7 @@ func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
 	log.Info("trades migration completed")
 
 	log.Info("deposits migration started")
-	if err := migrateV091DepositsToOceanDeposits(
+	if err := migrateV091DepositsToV1Deposits(
 		v091RepoManager, v1RepoManager, mapperSvc,
 	); err != nil {
 		return err
@@ -344,7 +351,7 @@ func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
 	log.Info("deposits migration completed")
 
 	log.Info("withdrawals migration started")
-	if err := migrateV091WithdrawalsToOceanWithdrawals(
+	if err := migrateV091WithdrawalsToV1Withdrawals(
 		v091RepoManager, v1RepoManager, mapperSvc,
 	); err != nil {
 		return err
@@ -373,7 +380,7 @@ func migrateV091VaultToOceanWallet(
 	return v1RepoManager.GetWalletRepository().InsertWallet(wallet)
 }
 
-func migrateV091TradesToOceanTrades(
+func migrateV091TradesToV1Trades(
 	v091RepoManager v091domain.Repository,
 	v1RepoManager v1domain.Repository,
 	mapperSvc mapper.Service,
@@ -391,7 +398,7 @@ func migrateV091TradesToOceanTrades(
 	return v1RepoManager.GetTradeRepository().InsertTrades(v1Trades)
 }
 
-func migrateV091DepositsToOceanDeposits(
+func migrateV091DepositsToV1Deposits(
 	v091RepoManager v091domain.Repository,
 	v1RepoManager v1domain.Repository,
 	mapperSvc mapper.Service,
@@ -409,7 +416,7 @@ func migrateV091DepositsToOceanDeposits(
 	return v1RepoManager.GetDepositRepository().InsertDeposits(v1Deposits)
 }
 
-func migrateV091WithdrawalsToOceanWithdrawals(
+func migrateV091WithdrawalsToV1Withdrawals(
 	v091RepoManager v091domain.Repository,
 	v1RepoManager v1domain.Repository,
 	mapperSvc mapper.Service,
@@ -427,7 +434,7 @@ func migrateV091WithdrawalsToOceanWithdrawals(
 	return v1RepoManager.GetWithdrawalRepository().InsertWithdrawals(v1Withdrawals)
 }
 
-func migrateV091MarketsToOceanMarkets(
+func migrateV091MarketsToV1Markets(
 	v091RepoManager v091domain.Repository,
 	v1RepoManager v1domain.Repository,
 	mapperSvc mapper.Service,
@@ -443,4 +450,22 @@ func migrateV091MarketsToOceanMarkets(
 	}
 
 	return v1RepoManager.GetMarketRepository().InsertMarkets(v1Markets)
+}
+
+func migrateV091UtxosToV1Utxos(
+	v091RepoManager v091domain.Repository,
+	v1RepoManager v1domain.Repository,
+	mapperSvc mapper.Service,
+) error {
+	v091Utxos, err := v091RepoManager.GetUnspentRepository().GetAllUnspents()
+	if err != nil {
+		return err
+	}
+
+	v1Utxos, err := mapperSvc.FromV091UnspentsToV1Utxos(v091Utxos)
+	if err != nil {
+		return err
+	}
+
+	return v1RepoManager.GetUtxoRepository().InsertUtxos(v1Utxos)
 }

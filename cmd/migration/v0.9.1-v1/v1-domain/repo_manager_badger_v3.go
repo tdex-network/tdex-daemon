@@ -19,6 +19,7 @@ type Repository interface {
 	GetDepositRepository() DepositRepository
 	GetWithdrawalRepository() WithdrawalsRepository
 	GetMarketRepository() MarketRepository
+	GetUtxoRepository() UtxoRepository
 }
 
 type repoManager struct {
@@ -27,6 +28,7 @@ type repoManager struct {
 	depositRepository    DepositRepository
 	withdrawalRepository WithdrawalsRepository
 	marketRepository     MarketRepository
+	utxoRepository       UtxoRepository
 }
 
 func NewRepositoryImpl(
@@ -35,6 +37,11 @@ func NewRepositoryImpl(
 	walletDb, err := createDb(filepath.Join(oceanDbDir, "wallet"), logger)
 	if err != nil {
 		return nil, fmt.Errorf("opening wallet db: %w", err)
+	}
+
+	utxoDb, err := createDb(filepath.Join(oceanDbDir, "utxos"), logger)
+	if err != nil {
+		return nil, fmt.Errorf("opening utxo db: %w", err)
 	}
 
 	tradeDb, err := createDb(filepath.Join(tdexdDbDir, "trades"), logger)
@@ -63,6 +70,7 @@ func NewRepositoryImpl(
 		depositRepository:    NewDepositRepositoryImpl(txDb),
 		withdrawalRepository: NewWithdrawalsRepositoryImpl(txDb),
 		marketRepository:     NewMarketRepositoryImpl(marketDb, priceDb),
+		utxoRepository:       NewUtxoRepositoryImpl(utxoDb),
 	}, nil
 }
 
@@ -84,6 +92,10 @@ func (r *repoManager) GetWithdrawalRepository() WithdrawalsRepository {
 
 func (r *repoManager) GetMarketRepository() MarketRepository {
 	return r.marketRepository
+}
+
+func (r *repoManager) GetUtxoRepository() UtxoRepository {
+	return r.utxoRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {
