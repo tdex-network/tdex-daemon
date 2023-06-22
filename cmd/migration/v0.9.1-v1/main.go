@@ -19,6 +19,8 @@ import (
 	v1domain "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v1-domain"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/btcsuite/btcd/btcutil"
 )
 
 const (
@@ -26,6 +28,17 @@ const (
 	tlsDir                 = "tls"
 	macaroonsDbFile        = "macaroons.db"
 	macaroonsPermissionDir = "macaroons"
+	tdexdDataDirName       = "tdex-daemon"
+	oceanDataDirName       = "oceand"
+	legacyTdexdDataDirName = "tdex-daemon-v0"
+	tempTdexdV1DataDirName = "tdex-daemon-v1-tmp"
+)
+
+var (
+	defaultTdexdDataDir = btcutil.AppDataDir(tdexdDataDirName, false)
+	defaultOceanDataDir = btcutil.AppDataDir(oceanDataDirName, false)
+	tempTdexdV1DataDir  = btcutil.AppDataDir(tempTdexdV1DataDirName, false)
+	legacyTdexdDataDir  = btcutil.AppDataDir(legacyTdexdDataDirName, false)
 )
 
 func main() {
@@ -36,19 +49,52 @@ func main() {
 
 	flag.Parse()
 
-	if *v091DataDirFlag == "" || *v1OceanDataDirFlag == "" ||
-		*v1TdexdDataDirFlag == "" || *v091VaultPasswordFlag == "" {
-		log.Fatal(errors.New("missing required flags"))
+	if *v091VaultPasswordFlag == "" {
+		log.Fatal(errors.New("missing required v091VaultPassword flag"))
 	}
-	v091DataDir := *v091DataDirFlag
-	v1OceanDataDir := *v1OceanDataDirFlag
-	v1TdexdDataDir := *v1TdexdDataDirFlag
 	v091VaultPassword := *v091VaultPasswordFlag
+
+	v091DataDir := defaultTdexdDataDir
+	if *v091DataDirFlag != "" {
+		v091DataDir = *v091DataDirFlag
+	}
+
+	v1OceanDataDir := defaultOceanDataDir
+	if *v1OceanDataDirFlag != "" {
+		v1OceanDataDir = *v1OceanDataDirFlag
+	}
+
+	v1TdexdDataDir := tempTdexdV1DataDir
+	renameV1DataDir := true
+	if *v1TdexdDataDirFlag != "" {
+		renameV1DataDir = false
+		v1TdexdDataDir = *v1TdexdDataDirFlag
+	}
+
+	if _, err := os.Stat(v091DataDir); os.IsNotExist(err) {
+		log.Fatalf("v0.9.1 data directory does not exist: %s", v091DataDir)
+	}
+
+	if v091DataDir == v1TdexdDataDir {
+		log.Fatal("v0.9.1 data directory and v1 data directory cannot be the same")
+	}
 
 	if err := migrate(
 		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword,
 	); err != nil {
 		log.Fatal(err)
+	}
+
+	err := os.Rename(defaultTdexdDataDir, legacyTdexdDataDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if renameV1DataDir {
+		err = os.Rename(v1TdexdDataDir, defaultTdexdDataDir)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	log.Info("migration completed")
