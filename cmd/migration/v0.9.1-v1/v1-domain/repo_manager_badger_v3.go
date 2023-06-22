@@ -18,6 +18,7 @@ type Repository interface {
 	GetTradeRepository() TradeRepository
 	GetDepositRepository() DepositRepository
 	GetWithdrawalRepository() WithdrawalsRepository
+	GetMarketRepository() MarketRepository
 }
 
 type repoManager struct {
@@ -25,6 +26,7 @@ type repoManager struct {
 	tradeRepository      TradeRepository
 	depositRepository    DepositRepository
 	withdrawalRepository WithdrawalsRepository
+	marketRepository     MarketRepository
 }
 
 func NewRepositoryImpl(
@@ -45,11 +47,22 @@ func NewRepositoryImpl(
 		return nil, fmt.Errorf("opening unspents db: %w", err)
 	}
 
+	marketDb, err := createDb(filepath.Join(tdexdDbDir, "markets"), logger)
+	if err != nil {
+		return nil, fmt.Errorf("opening main db: %w", err)
+	}
+
+	priceDb, err := createDb(filepath.Join(tdexdDbDir, "prices"), logger)
+	if err != nil {
+		return nil, fmt.Errorf("opening prices db: %w", err)
+	}
+
 	return &repoManager{
 		walletRepository:     NewWalletRepositoryImpl(walletDb),
 		tradeRepository:      NewTradeRepositoryImpl(tradeDb),
 		depositRepository:    NewDepositRepositoryImpl(txDb),
 		withdrawalRepository: NewWithdrawalsRepositoryImpl(txDb),
+		marketRepository:     NewMarketRepositoryImpl(marketDb, priceDb),
 	}, nil
 }
 
@@ -67,6 +80,10 @@ func (r *repoManager) GetDepositRepository() DepositRepository {
 
 func (r *repoManager) GetWithdrawalRepository() WithdrawalsRepository {
 	return r.withdrawalRepository
+}
+
+func (r *repoManager) GetMarketRepository() MarketRepository {
+	return r.marketRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {

@@ -320,6 +320,13 @@ func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
 	}
 	log.Info("vault to wallet migration completed")
 
+	log.Info("markets migration started")
+	if err := migrateV091MarketsToOceanMarkets(
+		v091RepoManager, v1RepoManager, mapperSvc,
+	); err != nil {
+		return err
+	}
+
 	log.Info("trades migration started")
 	if err := migrateV091TradesToOceanTrades(
 		v091RepoManager, v1RepoManager, mapperSvc,
@@ -418,4 +425,22 @@ func migrateV091WithdrawalsToOceanWithdrawals(
 	}
 
 	return v1RepoManager.GetWithdrawalRepository().InsertWithdrawals(v1Withdrawals)
+}
+
+func migrateV091MarketsToOceanMarkets(
+	v091RepoManager v091domain.Repository,
+	v1RepoManager v1domain.Repository,
+	mapperSvc mapper.Service,
+) error {
+	v091Markets, err := v091RepoManager.GetMarketRepository().GetAllMarkets()
+	if err != nil {
+		return err
+	}
+
+	v1Markets, err := mapperSvc.FromV091MarketsToV1Markets(v091Markets)
+	if err != nil {
+		return err
+	}
+
+	return v1RepoManager.GetMarketRepository().InsertMarkets(v1Markets)
 }

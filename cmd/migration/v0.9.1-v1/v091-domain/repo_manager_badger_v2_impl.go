@@ -20,6 +20,7 @@ type Repository interface {
 	GetTradeRepository() TradeRepository
 	GetDepositRepository() DepositRepository
 	GetWithdrawalRepository() WithdrawalRepository
+	GetMarketRepository() MarketRepository
 }
 
 type repoManager struct {
@@ -70,6 +71,10 @@ func (r *repoManager) GetDepositRepository() DepositRepository {
 
 func (r *repoManager) GetWithdrawalRepository() WithdrawalRepository {
 	return r.withdrawalRepository
+}
+
+func (r *repoManager) GetMarketRepository() MarketRepository {
+	return r.marketRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {

@@ -24,6 +24,9 @@ type Service interface {
 	FromV091WebhooksToV1Subscriptions(
 		webhooks []*v091webhook.Webhook,
 	) ([]v1subscription.Subscription, error)
+	FromV091MarketsToV1Markets(
+		markets []v091domain.Market,
+	) ([]domain.Market, error)
 }
 
 type mapperService struct {
