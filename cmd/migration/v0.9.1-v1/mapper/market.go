@@ -6,11 +6,11 @@ import (
 )
 
 func (m *mapperService) FromV091MarketsToV1Markets(
-	markets []v091domain.Market,
+	markets []*v091domain.Market,
 ) ([]domain.Market, error) {
 	res := make([]domain.Market, 0, len(markets))
 	for _, v := range markets {
-		market, err := m.fromV091MarketToV1Market(&v)
+		market, err := m.fromV091MarketToV1Market(v)
 		if err != nil {
 			return nil, err
 		}

@@ -5,7 +5,7 @@ import "github.com/sekulicd/badgerhold/v2"
 type MarketRepository interface {
 	GetMarketByAccount(accountIndex int) (*Market, error)
 	GetMarketByAssets(baseAsset, quoteAsset string) (*Market, error)
-	GetAllMarkets() ([]Market, error)
+	GetAllMarkets() ([]*Market, error)
 }
 
 type marketRepositoryImpl struct {
@@ -54,13 +54,13 @@ func (m *marketRepositoryImpl) GetMarketByAssets(
 
 	var market *Market
 	if len(markets) > 0 {
-		market = &markets[0]
+		market = markets[0]
 	}
 
 	return market, nil
 }
 
-func (m *marketRepositoryImpl) GetAllMarkets() ([]Market, error) {
+func (m *marketRepositoryImpl) GetAllMarkets() ([]*Market, error) {
 	query := badgerhold.Where("AccountIndex").Ge(FeeAccount)
 
 	return m.findMarkets(query)
@@ -91,7 +91,7 @@ func restoreStrategy(market *Market) {
 
 func (m *marketRepositoryImpl) findMarkets(
 	query *badgerhold.Query,
-) ([]Market, error) {
+) ([]*Market, error) {
 	var markets []Market
 	var err error
 
@@ -109,5 +109,11 @@ func (m *marketRepositoryImpl) findMarkets(
 		markets[i] = mkt
 	}
 
-	return markets, err
+	resp := make([]*Market, 0, len(markets))
+	for i := range markets {
+		mkt := markets[i]
+		resp = append(resp, &mkt)
+	}
+
+	return resp, err
 }

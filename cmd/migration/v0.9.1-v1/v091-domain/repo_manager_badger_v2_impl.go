@@ -21,6 +21,7 @@ type Repository interface {
 	GetDepositRepository() DepositRepository
 	GetWithdrawalRepository() WithdrawalRepository
 	GetMarketRepository() MarketRepository
+	GetUnspentRepository() UnspentRepository
 }
 
 type repoManager struct {
@@ -29,6 +30,7 @@ type repoManager struct {
 	tradeRepository      TradeRepository
 	depositRepository    DepositRepository
 	withdrawalRepository WithdrawalRepository
+	unspentRepository    UnspentRepository
 }
 
 func NewRepositoryImpl(
@@ -44,12 +46,18 @@ func NewRepositoryImpl(
 		return nil, fmt.Errorf("opening prices db: %w", err)
 	}
 
+	unspentDb, err := createDb(filepath.Join(dbDir, "unspents"), logger)
+	if err != nil {
+		return nil, fmt.Errorf("opening unspents db: %w", err)
+	}
+
 	return &repoManager{
 		vaultRepository:      NewVaultRepositoryImpl(mainDb),
 		marketRepository:     NewMarketRepositoryImpl(mainDb, pricesDb),
 		tradeRepository:      NewTradeRepositoryImpl(mainDb),
 		depositRepository:    NewDepositRepositoryImpl(mainDb),
 		withdrawalRepository: NewWithdrawalRepositoryImpl(mainDb),
+		unspentRepository:    NewUnspentRepositoryImpl(unspentDb, mainDb),
 	}, nil
 }
 
@@ -75,6 +83,10 @@ func (r *repoManager) GetWithdrawalRepository() WithdrawalRepository {
 
 func (r *repoManager) GetMarketRepository() MarketRepository {
 	return r.marketRepository
+}
+
+func (r *repoManager) GetUnspentRepository() UnspentRepository {
+	return r.unspentRepository
 }
 
 func createDb(dbDir string, logger badger.Logger) (*badgerhold.Store, error) {

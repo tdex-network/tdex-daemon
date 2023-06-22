@@ -25,7 +25,7 @@ type Service interface {
 		webhooks []*v091webhook.Webhook,
 	) ([]v1subscription.Subscription, error)
 	FromV091MarketsToV1Markets(
-		markets []v091domain.Market,
+		markets []*v091domain.Market,
 	) ([]domain.Market, error)
 }
 
