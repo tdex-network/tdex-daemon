@@ -46,6 +46,7 @@ func main() {
 	v1OceanDataDirFlag := flag.String("v1OceanDataDir", "", "The v1 ocean data directory")
 	v1TdexdDataDirFlag := flag.String("v1TdexdDataDir", "", "The v1 tdexd data directory")
 	v091VaultPasswordFlag := flag.String("v091VaultPassword", "", "The v0.9.1 vault password")
+	esploraUrlFlag := flag.String("esploraUrl", "", "The esplora url")
 
 	flag.Parse()
 
@@ -71,6 +72,11 @@ func main() {
 		v1TdexdDataDir = *v1TdexdDataDirFlag
 	}
 
+	esploraUrl := "https://blockstream.info/liquid/api"
+	if *esploraUrlFlag != "" {
+		esploraUrl = *esploraUrlFlag
+	}
+
 	if _, err := os.Stat(v091DataDir); os.IsNotExist(err) {
 		log.Fatalf("v0.9.1 data directory does not exist: %s", v091DataDir)
 	}
@@ -80,7 +86,7 @@ func main() {
 	}
 
 	if err := migrate(
-		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword,
+		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword, esploraUrl,
 	); err != nil {
 		log.Fatal(err)
 	}
@@ -101,7 +107,7 @@ func main() {
 }
 
 func migrate(
-	v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword string,
+	v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword, esploraUrl string,
 ) error {
 	log.Info("tls migration started")
 	if err := migrateTls(v091DataDir, v1TdexdDataDir); err != nil {
@@ -116,14 +122,16 @@ func migrate(
 	log.Info("macaroons migration completed")
 
 	log.Info("webhook migration started")
-	if err := migrateWebhooks(v091DataDir, v1TdexdDataDir, v091VaultPassword); err != nil {
+	if err := migrateWebhooks(
+		v091DataDir, v1TdexdDataDir, v091VaultPassword, esploraUrl,
+	); err != nil {
 		log.Errorf("error while migrating webhooks: %s", err)
 	}
 	log.Info("webhook migration completed")
 
 	log.Info("core domain migration started")
 	if err := migrateDomain(
-		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword,
+		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword, esploraUrl,
 	); err != nil {
 		return err
 	}
@@ -255,7 +263,7 @@ func copyFile(src, dst string) error {
 	return out.Close()
 }
 
-func migrateWebhooks(fromDir, toDir, vaultPass string) error {
+func migrateWebhooks(fromDir, toDir, vaultPass, esploraUrl string) error {
 	v091WebhookRepoManager, err := v091webhook.NewWebhookRepository(
 		filepath.Join(fromDir, dbDir),
 	)
@@ -272,7 +280,7 @@ func migrateWebhooks(fromDir, toDir, vaultPass string) error {
 		return err
 	}
 
-	mapperSvc := mapper.NewService(nil)
+	mapperSvc := mapper.NewService(nil, esploraUrl)
 	v1Webhooks, err := mapperSvc.FromV091WebhooksToV1Subscriptions(v091Webhooks)
 	if err != nil {
 		return err
@@ -288,7 +296,7 @@ func migrateWebhooks(fromDir, toDir, vaultPass string) error {
 	return v1WebhookRepoManager.InsertSubscriptions(v1Webhooks)
 }
 
-func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
+func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass, esploraUrl string) error {
 	v091RepoManager, err := v091domain.NewRepositoryImpl(filepath.Join(fromDir, dbDir), nil)
 	if err != nil {
 		return err
@@ -310,7 +318,7 @@ func migrateDomain(fromDir, oceanToDir, tdexdToDir, vaultPass string) error {
 		return err
 	}
 
-	mapperSvc := mapper.NewService(v091RepoManager)
+	mapperSvc := mapper.NewService(v091RepoManager, esploraUrl)
 
 	log.Info("vault to wallet migration started")
 	if err := migrateV091VaultToOceanWallet(

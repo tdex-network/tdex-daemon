@@ -30,14 +30,19 @@ type Service interface {
 	FromV091UnspentsToV1Utxos(
 		unspents []*v091domain.Unspent,
 	) ([]*v1domain.Utxo, error)
+	GetUnspentStatus(txid string, index uint32) (*UtxoStatus, error)
 }
 
 type mapperService struct {
 	v091RepoManager v091domain.Repository
+	esploraUrl      string
 }
 
-func NewService(v091RepoManager v091domain.Repository) Service {
+func NewService(
+	v091RepoManager v091domain.Repository, esploraUrl string,
+) Service {
 	return &mapperService{
 		v091RepoManager: v091RepoManager,
+		esploraUrl:      esploraUrl,
 	}
 }

@@ -3,6 +3,7 @@ package mapper
 import (
 	v091domain "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v091-domain"
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
+	swap_parser "github.com/tdex-network/tdex-daemon/internal/infrastructure/swap-parser"
 )
 
 func (m *mapperService) FromV091TradesToV1Trades(
@@ -30,9 +31,19 @@ func (m *mapperService) fromV091TradeToV1Trade(
 		return nil, err
 	}
 
+	swapParser := swap_parser.NewService()
+	swapRequest := swapParser.DeserializeRequest(
+		trade.SwapRequest.Message, "", 0,
+	)
+
+	tradeType := domain.TradeSell
+	if swapRequest.AssetR == trade.MarketBaseAsset {
+		tradeType = domain.TradeBuy
+	}
+
 	return &domain.Trade{
 		Id:               trade.ID.String(),
-		Type:             0, // TODO
+		Type:             tradeType,
 		MarketName:       market.AccountName(),
 		MarketBaseAsset:  trade.MarketBaseAsset,
 		MarketQuoteAsset: trade.MarketQuoteAsset,
@@ -41,15 +52,15 @@ func (m *mapperService) fromV091TradeToV1Trade(
 			QuotePrice: trade.MarketPrice.QuotePrice.String(),
 		},
 		MarketPercentageFee: domain.MarketFee{
-			BaseAsset:  0, // TODO
-			QuoteAsset: 0, // TODO
+			BaseAsset:  uint64(trade.MarketFee),
+			QuoteAsset: uint64(trade.MarketFee),
 		},
 		MarketFixedFee: domain.MarketFee{
 			BaseAsset:  uint64(trade.MarketFixedBaseFee),
 			QuoteAsset: uint64(trade.MarketFixedQuoteFee),
 		},
-		FeeAsset:     trade.MarketBaseAsset, // TODO ?
-		FeeAmount:    0,                     // TODO
+		FeeAsset:     "", // TODO
+		FeeAmount:    0,  // TODO
 		TraderPubkey: trade.TraderPubkey,
 		Status: domain.TradeStatus{
 			Code:   trade.Status.Code,

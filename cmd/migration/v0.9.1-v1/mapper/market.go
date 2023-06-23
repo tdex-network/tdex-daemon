@@ -23,6 +23,16 @@ func (m *mapperService) FromV091MarketsToV1Markets(
 func (m *mapperService) fromV091MarketToV1Market(
 	market *v091domain.Market,
 ) (*domain.Market, error) {
+	basePrice := ""
+	if !market.Price.BasePrice.IsZero() {
+		basePrice = market.Price.BasePrice.String()
+	}
+
+	quotePrice := ""
+	if !market.Price.QuotePrice.IsZero() {
+		basePrice = market.Price.QuotePrice.String()
+	}
+
 	return &domain.Market{
 		BaseAsset:           market.BaseAsset,
 		QuoteAsset:          market.QuoteAsset,
@@ -30,18 +40,18 @@ func (m *mapperService) fromV091MarketToV1Market(
 		BaseAssetPrecision:  market.BaseAssetPrecision,
 		QuoteAssetPrecision: market.QuoteAssetPrecision,
 		PercentageFee: domain.MarketFee{
-			BaseAsset:  0,
-			QuoteAsset: 0,
+			BaseAsset:  uint64(market.Fee),
+			QuoteAsset: uint64(market.Fee),
 		},
 		FixedFee: domain.MarketFee{
 			BaseAsset:  uint64(market.FixedFee.BaseFee),
 			QuoteAsset: uint64(market.FixedFee.QuoteFee),
 		},
 		Tradable:     market.Tradable,
-		StrategyType: market.Strategy.Type,
+		StrategyType: market.Strategy.Type + 1,
 		Price: domain.MarketPrice{
-			BasePrice:  market.Price.BasePrice.String(),
-			QuotePrice: market.Price.QuotePrice.String(),
+			BasePrice:  basePrice,
+			QuotePrice: quotePrice,
 		},
 	}, nil
 }

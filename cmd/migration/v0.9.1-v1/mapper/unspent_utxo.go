@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"time"
+
 	v091domain "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v091-domain"
 	v1domain "github.com/tdex-network/tdex-daemon/cmd/migration/v0.9.1-v1/v1-domain"
 )
@@ -34,6 +36,33 @@ func (m *mapperService) fromV091UnspentToV1Utxo(
 		return nil, err
 	}
 
+	lockTimestamp := int64(0)
+	LockExpiryTimestamp := int64(0)
+	if unspent.IsLocked() {
+		lockTimestamp = time.Now().Unix()
+		LockExpiryTimestamp = time.Now().Add(time.Minute).Unix()
+	}
+
+	spentStatus := v1domain.UtxoStatus{}
+	confirmedStatus := v1domain.UtxoStatus{}
+	if unspent.Spent {
+		utxoStatus, err := m.GetUnspentStatus(unspent.TxID, unspent.VOut)
+		if err != nil {
+			return nil, err
+		}
+
+		spentStatus.Txid = utxoStatus.Txid
+		spentStatus.BlockHash = utxoStatus.Status.BlockHash
+		spentStatus.BlockHeight = uint64(utxoStatus.Status.BlockHeight)
+		spentStatus.BlockTime = int64(utxoStatus.Status.BlockTime)
+		if utxoStatus.Status.Confirmed {
+			confirmedStatus.Txid = utxoStatus.Txid
+			confirmedStatus.BlockHash = utxoStatus.Status.BlockHash
+			confirmedStatus.BlockHeight = uint64(utxoStatus.Status.BlockHeight)
+			confirmedStatus.BlockTime = int64(utxoStatus.Status.BlockTime)
+		}
+	}
+
 	return &v1domain.Utxo{
 		UtxoKey: v1domain.UtxoKey{
 			TxID: unspent.TxID,
@@ -50,9 +79,9 @@ func (m *mapperService) fromV091UnspentToV1Utxo(
 		RangeProof:          unspent.RangeProof,
 		SurjectionProof:     unspent.SurjectionProof,
 		AccountName:         market.AccountName(),
-		LockTimestamp:       0,                     //TODO
-		LockExpiryTimestamp: 0,                     //TODO
-		SpentStatus:         v1domain.UtxoStatus{}, //TODO
-		ConfirmedStatus:     v1domain.UtxoStatus{}, //TODO
+		LockTimestamp:       lockTimestamp,
+		LockExpiryTimestamp: LockExpiryTimestamp,
+		SpentStatus:         spentStatus,
+		ConfirmedStatus:     confirmedStatus,
 	}, nil
 }

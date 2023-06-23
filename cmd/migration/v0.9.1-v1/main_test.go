@@ -13,6 +13,9 @@ func TestMigrate(t *testing.T) {
 	v1OceanDataDir := "v1-oceandatadir"
 	v1TdexdDataDir := "v1-datadir"
 	v091VaultPassword := "ciaociao"
-	err := migrate(v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword)
+	esploraUrl := "http://localhost:3001"
+	err := migrate(
+		v091DataDir, v1OceanDataDir, v1TdexdDataDir, v091VaultPassword, esploraUrl,
+	)
 	require.NoError(t, err)
 }

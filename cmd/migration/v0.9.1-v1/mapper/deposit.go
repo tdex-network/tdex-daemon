@@ -20,11 +20,7 @@ func (m *mapperService) FromV091DepositsToV1Deposits(
 	for k, v := range depositsPerTxId {
 		amountPerAsset := make(map[string]uint64)
 		for _, vv := range v {
-			if _, ok := amountPerAsset[vv.Asset]; !ok {
-				amountPerAsset[vv.Asset] = vv.Value
-			} else {
-				amountPerAsset[vv.Asset] += vv.Value
-			}
+			amountPerAsset[vv.Asset] += vv.Value
 		}
 
 		label, err := m.getLabel(v[0].AccountIndex)
