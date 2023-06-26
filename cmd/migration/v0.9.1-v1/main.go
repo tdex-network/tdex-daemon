@@ -148,7 +148,7 @@ func migrateTls(fromDir, toDir string) error {
 
 	destDir := filepath.Join(toDir, tlsDir)
 	if _, err := os.Stat(destDir); os.IsNotExist(err) {
-		errDir := os.MkdirAll(destDir, 0755)
+		errDir := os.MkdirAll(destDir, 0766)
 		if errDir != nil {
 			return fmt.Errorf("failed to create directory: %s, error: %w", destDir, errDir)
 		}
@@ -193,7 +193,7 @@ func migrateMacaroons(fromDir, toDir string) error {
 
 	destDir := filepath.Join(toDir, dbDir)
 	if _, err := os.Stat(destDir); os.IsNotExist(err) {
-		errDir := os.MkdirAll(destDir, 0755)
+		errDir := os.MkdirAll(destDir, 0766)
 		if errDir != nil {
 			return fmt.Errorf("failed to create directory: %s, error: %w", destDir, errDir)
 		}
@@ -201,7 +201,7 @@ func migrateMacaroons(fromDir, toDir string) error {
 
 	destDir = filepath.Join(toDir, macaroonsPermissionDir)
 	if _, err := os.Stat(destDir); os.IsNotExist(err) {
-		errDir := os.MkdirAll(destDir, 0755)
+		errDir := os.MkdirAll(destDir, 0766)
 		if errDir != nil {
 			return fmt.Errorf("failed to create directory: %s, error: %w", destDir, errDir)
 		}
