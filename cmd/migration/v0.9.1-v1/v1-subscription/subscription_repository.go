@@ -25,6 +25,7 @@ var (
 
 type Repository interface {
 	InsertSubscriptions(subscriptions []Subscription) error
+	Init(password string) error
 }
 
 type subscriptionRepository struct {
@@ -46,6 +47,23 @@ func (s *subscriptionRepository) InsertSubscriptions(subscriptions []Subscriptio
 		if _, err := s.addSubscription(&sub); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (s *subscriptionRepository) Init(password string) error {
+	pwd := []byte(password)
+	if err := s.store.CreateUnlock(&pwd); err != nil {
+		return err
+	}
+
+	if err := s.store.CreateBucket(subsBucket); err != nil {
+		return err
+	}
+
+	if err := s.store.CreateBucket(subsByEventBucket); err != nil {
+		return err
 	}
 
 	return nil

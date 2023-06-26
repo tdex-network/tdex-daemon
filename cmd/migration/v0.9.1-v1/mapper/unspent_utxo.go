@@ -16,7 +16,10 @@ func (m *mapperService) FromV091UnspentsToV1Utxos(
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, unspent)
+
+		if unspent != nil {
+			res = append(res, unspent)
+		}
 	}
 
 	return res, nil
@@ -31,7 +34,7 @@ func (m *mapperService) fromV091UnspentToV1Utxo(
 		return nil, err
 	}
 
-	market, err := m.v091RepoManager.MarketRepository().GetMarketByAccount(accountIndex)
+	accountName, err := m.getLabel(accountIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -46,21 +49,7 @@ func (m *mapperService) fromV091UnspentToV1Utxo(
 	spentStatus := v1domain.UtxoStatus{}
 	confirmedStatus := v1domain.UtxoStatus{}
 	if unspent.Spent {
-		utxoStatus, err := m.GetUnspentStatus(unspent.TxID, unspent.VOut)
-		if err != nil {
-			return nil, err
-		}
-
-		spentStatus.Txid = utxoStatus.Txid
-		spentStatus.BlockHash = utxoStatus.Status.BlockHash
-		spentStatus.BlockHeight = uint64(utxoStatus.Status.BlockHeight)
-		spentStatus.BlockTime = int64(utxoStatus.Status.BlockTime)
-		if utxoStatus.Status.Confirmed {
-			confirmedStatus.Txid = utxoStatus.Txid
-			confirmedStatus.BlockHash = utxoStatus.Status.BlockHash
-			confirmedStatus.BlockHeight = uint64(utxoStatus.Status.BlockHeight)
-			confirmedStatus.BlockTime = int64(utxoStatus.Status.BlockTime)
-		}
+		return nil, nil
 	}
 
 	return &v1domain.Utxo{
@@ -78,7 +67,7 @@ func (m *mapperService) fromV091UnspentToV1Utxo(
 		Nonce:               unspent.Nonce,
 		RangeProof:          unspent.RangeProof,
 		SurjectionProof:     unspent.SurjectionProof,
-		AccountName:         market.AccountName(),
+		AccountName:         accountName,
 		LockTimestamp:       lockTimestamp,
 		LockExpiryTimestamp: LockExpiryTimestamp,
 		SpentStatus:         spentStatus,
