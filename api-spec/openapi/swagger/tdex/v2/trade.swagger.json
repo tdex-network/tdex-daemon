@@ -331,11 +331,15 @@
         "minTradableAmount": {
           "type": "string",
           "format": "uint64"
+        },
+        "balance": {
+          "$ref": "#/definitions/tdexv2Balance"
         }
       },
       "required": [
         "spotPrice",
-        "minTradableAmount"
+        "minTradableAmount",
+        "balance"
       ]
     },
     "tdexv2ListMarketsResponse": {

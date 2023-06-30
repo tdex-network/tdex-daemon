@@ -44,7 +44,23 @@ func (t tradeHandler) GetMarketBalance(
 func (t tradeHandler) GetMarketPrice(
 	ctx context.Context, req *tdexv2.GetMarketPriceRequest,
 ) (*tdexv2.GetMarketPriceResponse, error) {
-	return t.getMarketPrice(ctx, req)
+	marketPrice, err := t.getMarketPrice(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	marketBalance, err := t.getMarketBalance(ctx, &tdexv2.GetMarketBalanceRequest{
+		Market: req.GetMarket(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &tdexv2.GetMarketPriceResponse{
+		SpotPrice:         marketPrice.SpotPrice,
+		MinTradableAmount: marketPrice.MinTradableAmount,
+		Balance:           marketBalance.Balance,
+	}, nil
 }
 
 func (t tradeHandler) PreviewTrade(
