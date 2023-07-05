@@ -27,7 +27,7 @@ var (
 		Usage: "generate some address(es) to receive funds",
 		Flags: []cli.Flag{
 			&cli.UintFlag{
-				Name:  "num_of_addresses",
+				Name:  "num-of-addresses",
 				Usage: "the number of addresses to generate",
 			},
 		},
@@ -91,7 +91,7 @@ func feeDepositAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	numOfAddresses := ctx.Int64("num_of_addresses")
+	numOfAddresses := ctx.Int64("num-of-addresses")
 	reply, err := client.DeriveFeeAddresses(
 		context.Background(), &daemonv2.DeriveFeeAddressesRequest{
 			NumOfAddresses: numOfAddresses,
