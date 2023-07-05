@@ -12,7 +12,7 @@ var listdeposits = cli.Command{
 	Usage: "get a list of all deposits for a wallet account",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "account_name",
+			Name:     "account-name",
 			Usage:    "the name of the account for which listing deposits",
 			Required: true,
 		},
@@ -21,7 +21,7 @@ var listdeposits = cli.Command{
 			Usage: "the number of the page to be listed. If omitted, the entire list is returned",
 		},
 		&cli.Int64Flag{
-			Name:  "page_size",
+			Name:  "page-size",
 			Usage: "the size of the page",
 			Value: 10,
 		},
@@ -36,9 +36,9 @@ func listDepositsAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	accountName := ctx.String("account_name")
+	accountName := ctx.String("account-name")
 	pageNumber := ctx.Int64("page")
-	pageSize := ctx.Int64("page_size")
+	pageSize := ctx.Int64("page-size")
 	var page *daemonv2.Page
 	if pageNumber > 0 {
 		page = &daemonv2.Page{

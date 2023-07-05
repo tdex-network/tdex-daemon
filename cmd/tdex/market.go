@@ -29,12 +29,12 @@ var (
 		Usage: "create a new market",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "base_asset",
+				Name:  "base-asset",
 				Usage: "the hash of the base asset of the market",
 				Value: "",
 			},
 			&cli.StringFlag{
-				Name:  "quote_asset",
+				Name:  "quote-asset",
 				Usage: "the hash of the quote asset of the market",
 				Value: "",
 			},
@@ -44,32 +44,32 @@ var (
 				Value: "",
 			},
 			&cli.Uint64Flag{
-				Name:  "percentage_base_fee",
+				Name:  "percentage-base-fee",
 				Usage: "the percentage fee on base asset",
 				Value: 0,
 			},
 			&cli.Uint64Flag{
-				Name:  "percentage_quote_fee",
+				Name:  "percentage-quote-fee",
 				Usage: "the percentage fee on quote asset",
 				Value: 0,
 			},
 			&cli.Uint64Flag{
-				Name:  "fixed_base_fee",
+				Name:  "fixed-base-fee",
 				Usage: "the fixed fee on base asset",
 				Value: 0,
 			},
 			&cli.Uint64Flag{
-				Name:  "fixed_quote_fee",
+				Name:  "fixed-quote-fee",
 				Usage: "the fixed fee on quote asset",
 				Value: 0,
 			},
 			&cli.UintFlag{
-				Name:  "base_asset_precision",
+				Name:  "base-asset-precision",
 				Usage: "the precision for the base asset",
 				Value: 0,
 			},
 			&cli.UintFlag{
-				Name:  "quote_asset_precision",
+				Name:  "quote-asset-precision",
 				Usage: "the precision for the quote asset",
 				Value: 0,
 			},
@@ -91,7 +91,7 @@ var (
 		Usage: "generate some address(es) to deposit funds for a market",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
-				Name:  "num_of_addresses",
+				Name:  "num-of-addresses",
 				Usage: "the number of addresses to generate for the market",
 			},
 		},
@@ -143,12 +143,12 @@ var (
 		Usage: "updates the current market fixed fee",
 		Flags: []cli.Flag{
 			&cli.Int64Flag{
-				Name:  "base_fee",
+				Name:  "base-fee",
 				Usage: "set the fixed fee for base asset",
 				Value: -1,
 			},
 			&cli.Int64Flag{
-				Name:  "quote_fee",
+				Name:  "quote-fee",
 				Usage: "set the fixed fee for quote asset",
 				Value: -1,
 			},
@@ -160,12 +160,12 @@ var (
 		Usage: "updates the current market percentage fee",
 		Flags: []cli.Flag{
 			&cli.Int64Flag{
-				Name:  "base_fee",
+				Name:  "base-fee",
 				Usage: "set the percentage fee for base asset",
 				Value: -1,
 			},
 			&cli.Int64Flag{
-				Name:  "quote_fee",
+				Name:  "quote-fee",
 				Usage: "set the percentage fee for quote asset",
 				Value: -1,
 			},
@@ -195,12 +195,12 @@ var (
 		Usage: "updates the precision of one or both market assets",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
-				Name:  "base_asset",
+				Name:  "base-asset",
 				Usage: "the precision for the base asset",
 				Value: -1,
 			},
 			&cli.IntFlag{
-				Name:  "quote_asset",
+				Name:  "quote-asset",
 				Usage: "the precision for the quote asset",
 				Value: -1,
 			},
@@ -212,12 +212,12 @@ var (
 		Usage: "updates the price of a market",
 		Flags: []cli.Flag{
 			&cli.Float64Flag{
-				Name:     "base_price",
+				Name:     "base-price",
 				Usage:    "the base price, or the amount of quote asset needed to buy 1 BTC of base asset",
 				Required: true,
 			},
 			&cli.Float64Flag{
-				Name:     "quote_price",
+				Name:     "quote-price",
 				Usage:    "the quote price, or the amount of base asset need to buy 1 BTC of quote asset",
 				Required: true,
 			},
@@ -239,7 +239,7 @@ var (
 				Usage: "fetch balances from specific time in the past til end date, use with start flag",
 			},
 			&cli.IntFlag{
-				Name: "predefined_period",
+				Name: "predefined-period",
 				Usage: "time predefined periods:\n" +
 					"       1 -> last hour\n" +
 					"       2 -> last day\n" +
@@ -261,14 +261,14 @@ func newMarketAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	name := ctx.String("name")
-	baseAsset := ctx.String("base_asset")
-	quoteAsset := ctx.String("quote_asset")
-	basePrecision := ctx.Uint("base_asset_precision")
-	quotePrecision := ctx.Uint("quote_asset_precision")
-	basePercentageFee := ctx.Uint64("percentage_base_fee")
-	quotePercentageFee := ctx.Uint64("percentage_quote_fee")
-	baseFixedFee := ctx.Uint64("fixed_base_fee")
-	quoteFixedFee := ctx.Uint64("fixed_quote_fee")
+	baseAsset := ctx.String("base-asset")
+	quoteAsset := ctx.String("quote-asset")
+	basePrecision := ctx.Uint("base-asset-precision")
+	quotePrecision := ctx.Uint("quote-asset-precision")
+	basePercentageFee := ctx.Uint64("percentage-base-fee")
+	quotePercentageFee := ctx.Uint64("percentage-quote-fee")
+	baseFixedFee := ctx.Uint64("fixed-base-fee")
+	quoteFixedFee := ctx.Uint64("fixed-quote-fee")
 	strategy := ctx.String("strategy")
 	strategyType := daemonv2.StrategyType_STRATEGY_TYPE_UNSPECIFIED
 	if len(strategy) > 0 {
@@ -353,7 +353,7 @@ func marketDepositAction(ctx *cli.Context) error {
 		return err
 	}
 
-	numOfAddresses := ctx.Int64("num_of_addresses")
+	numOfAddresses := ctx.Int64("num-of-addresses")
 	resp, err := client.DeriveMarketAddresses(
 		context.Background(),
 		&daemonv2.DeriveMarketAddressesRequest{
@@ -540,8 +540,8 @@ func marketUpdateFixedFeeAction(ctx *cli.Context) error {
 		return err
 	}
 
-	baseFee := ctx.Int64("base_fee")
-	quoteFee := ctx.Int64("quote_fee")
+	baseFee := ctx.Int64("base-fee")
+	quoteFee := ctx.Int64("quote-fee")
 	req := &daemonv2.UpdateMarketFixedFeeRequest{
 		Market: &tdexv2.Market{
 			BaseAsset:  baseAsset,
@@ -576,8 +576,8 @@ func marketUpdatePercentageFeeAction(ctx *cli.Context) error {
 		return err
 	}
 
-	baseFee := ctx.Int64("base_fee")
-	quoteFee := ctx.Int64("quote_fee")
+	baseFee := ctx.Int64("base-fee")
+	quoteFee := ctx.Int64("quote-fee")
 	req := &daemonv2.UpdateMarketPercentageFeeRequest{
 		Market: &tdexv2.Market{
 			BaseAsset:  baseAsset,
@@ -659,8 +659,8 @@ func marketUpdatePriceAction(ctx *cli.Context) error {
 				QuoteAsset: quoteAsset,
 			},
 			Price: &tdexv2.Price{
-				BasePrice:  ctx.Float64("base_price"),
-				QuotePrice: ctx.Float64("quote_price"),
+				BasePrice:  ctx.Float64("base-price"),
+				QuotePrice: ctx.Float64("quote-price"),
 			},
 		},
 	)
@@ -696,7 +696,7 @@ func marketReportAction(ctx *cli.Context) error {
 	}
 
 	var predefinedPeriod daemonv2.PredefinedPeriod
-	pp := ctx.Int("predefined_period")
+	pp := ctx.Int("predefined-period")
 	if pp > 0 {
 		predefinedPeriod = daemonv2.PredefinedPeriod(pp)
 	}
@@ -734,8 +734,8 @@ func marketUpdateAssetsPrecision(ctx *cli.Context) error {
 		return err
 	}
 
-	basePrecision := ctx.Int("base_asset")
-	quotePrecision := ctx.Int("quote_asset")
+	basePrecision := ctx.Int("base-asset")
+	quotePrecision := ctx.Int("quote-asset")
 
 	if _, err := client.UpdateMarketAssetsPrecision(
 		context.Background(), &daemonv2.UpdateMarketAssetsPrecisionRequest{

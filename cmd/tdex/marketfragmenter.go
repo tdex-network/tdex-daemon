@@ -34,7 +34,7 @@ var (
 		Usage: "generate some addresses to receive funds",
 		Flags: []cli.Flag{
 			&cli.UintFlag{
-				Name:  "num_of_addresses",
+				Name:  "num-of-addresses",
 				Usage: "the number of addresses to generate",
 			},
 		},
@@ -100,7 +100,7 @@ func marketFragmenterDepositAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	numOfAddresses := ctx.Int64("num_of_addresses")
+	numOfAddresses := ctx.Int64("num-of-addresses")
 	resp, err := client.DeriveMarketFragmenterAddresses(
 		context.Background(), &daemonv2.DeriveMarketFragmenterAddressesRequest{
 			NumOfAddresses: numOfAddresses,

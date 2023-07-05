@@ -30,7 +30,7 @@ var (
 		Usage: "generate some address(es) to receive funds",
 		Flags: []cli.Flag{
 			&cli.UintFlag{
-				Name:  "num_of_addresses",
+				Name:  "num-of-addresses",
 				Usage: "the number of addresses to generate",
 			},
 		},
@@ -46,7 +46,7 @@ var (
 		Usage: "split fee fragmenter funds and make them deposits of the fee account",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
-				Name:  "num_fragments",
+				Name:  "num-fragments",
 				Usage: "Number of fragmented utxos to generate from fee fragmenter account balance",
 			},
 		},
@@ -101,7 +101,7 @@ func feeFragmenterDepositAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	numOfAddresses := ctx.Int64("num_of_addresses")
+	numOfAddresses := ctx.Int64("num-of-addresses")
 	resp, err := client.DeriveFeeFragmenterAddresses(
 		context.Background(), &daemonv2.DeriveFeeFragmenterAddressesRequest{
 			NumOfAddresses: numOfAddresses,
@@ -140,7 +140,7 @@ func feeFragmenterSplitFundsAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	numFragments := ctx.Int("num_fragments")
+	numFragments := ctx.Int("num-fragments")
 
 	stream, err := client.FeeFragmenterSplitFunds(
 		context.Background(), &daemonv2.FeeFragmenterSplitFundsRequest{
