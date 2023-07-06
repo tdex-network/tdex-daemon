@@ -60,7 +60,7 @@ func main() {
 	time.Sleep(5 * time.Second)
 
 	log.Info("configuring tdex CLI...")
-	if _, err := runCLICommand("config", "init", "--no_tls", "--no_macaroons"); err != nil {
+	if _, err := runCLICommand("config", "init", "--no-tls", "--no-macaroons"); err != nil {
 		log.WithError(err).Fatal("failed to config tdex CLI")
 	}
 	log.Infof("done\n\n")
@@ -113,16 +113,16 @@ func main() {
 	// create a LBTC/USDT market
 	log.Info("creating new market...")
 	if _, err = runCLICommand(
-		"market", "new", "--base_asset", lbtc, "--quote_asset", usdt,
-		"--base_asset_precision", "8", "--quote_asset_precision", "8",
+		"market", "new", "--base-asset", lbtc, "--quote-asset", usdt,
+		"--base-asset-precision", "8", "--quote-asset-precision", "8",
 	); err != nil {
 		log.WithError(err).Fatal("failed to create new market")
 	}
 
-	if _, err := runCLICommand("config", "set", "base_asset", lbtc); err != nil {
+	if _, err := runCLICommand("config", "set", "base-asset", lbtc); err != nil {
 		log.WithError(err).Fatal("failed to configure market base asset")
 	}
-	if _, err := runCLICommand("config", "set", "quote_asset", usdt); err != nil {
+	if _, err := runCLICommand("config", "set", "quote-asset", usdt); err != nil {
 		log.WithError(err).Fatal("failed to configure market quote asset")
 	}
 	log.Infof("done\n\n")
@@ -156,12 +156,12 @@ func main() {
 	// setup market fees
 	log.Info("setting trading fees for the market...")
 	if _, err := runCLICommand(
-		"market", "percentagefee", "--base_fee", "100", "--quote_fee", "50",
+		"market", "percentagefee", "--base-fee", "100", "--quote-fee", "50",
 	); err != nil {
 		log.WithError(err).Fatal("failed to set market percentage fee")
 	}
 	if _, err := runCLICommand(
-		"market", "fixedfee", "--base_fee", "500", "--quote_fee", "1000000",
+		"market", "fixedfee", "--base-fee", "500", "--quote-fee", "1000000",
 	); err != nil {
 		log.WithError(err).Fatal("failed to set market fixed fee")
 	}
@@ -188,7 +188,7 @@ func main() {
 	// TODO: remove this step and restore usage of price feed
 	log.Info("setting market price (TODO: remove this step)...")
 	if _, err := runCLICommand(
-		"market", "price", "--base_price", "0.00004", "--quote_price", "25000",
+		"market", "price", "--base-price", "0.00004", "--quote-price", "25000",
 	); err != nil {
 		log.WithError(err).Fatal("failed to update market price")
 	}

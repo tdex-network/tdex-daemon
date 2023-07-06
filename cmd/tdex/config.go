@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	noMacaroonsKey   = "no_macaroons"
-	macaroonsPathKey = "macaroons_path"
-	tlsCertPathKey   = "tls_cert_path"
-	noTlsKey         = "no_tls"
+	noMacaroonsKey   = "no-macaroons"
+	macaroonsPathKey = "macaroons-path"
+	tlsCertPathKey   = "tls-cert-path"
+	noTlsKey         = "no-tls"
 )
 
 var (
@@ -116,10 +116,10 @@ func configInitAction(c *cli.Context) error {
 	return setState(map[string]string{
 		"network":        c.String("network"),
 		"rpcserver":      c.String("rpcserver"),
-		"no_macaroons":   c.String(noMacaroonsKey),
-		"no_tls":         c.String(noTlsKey),
-		"tls_cert_path":  cleanAndExpandPath(c.String(tlsCertPathKey)),
-		"macaroons_path": cleanAndExpandPath(c.String(macaroonsPathKey)),
+		noMacaroonsKey:   c.String(noMacaroonsKey),
+		noTlsKey:         c.String(noTlsKey),
+		tlsCertPathKey:   cleanAndExpandPath(c.String(tlsCertPathKey)),
+		macaroonsPathKey: cleanAndExpandPath(c.String(macaroonsPathKey)),
 	})
 }
 
@@ -197,11 +197,11 @@ func configConnectAction(c *cli.Context) (err error) {
 
 	if err = setState(map[string]string{
 		"proto":          proto,
-		"no_tls":         strconv.FormatBool(proto == "http"),
+		noTlsKey:         strconv.FormatBool(proto == "http"),
 		"rpcserver":      rpcServerAddr,
-		"no_macaroons":   noMacaroons,
-		"tls_cert_path":  tlsCertPath,
-		"macaroons_path": macaroonsPath,
+		noMacaroonsKey:   noMacaroons,
+		tlsCertPathKey:   tlsCertPath,
+		macaroonsPathKey: macaroonsPath,
 	}); err != nil {
 		return
 	}

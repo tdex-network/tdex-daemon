@@ -88,21 +88,21 @@ func initWalletAction(ctx *cli.Context) error {
 		fmt.Println("admin.macaroon", message)
 		// In case the CLI has been configured with a tdexdconnect URL,
 		// the macaroon is written to a file in the CLI's datadir and the
-		// macaroons_path is updated in the config file.
+		// macaroons-path is updated in the config file.
 		// To know that, let's check if the TLS certificate file is inside the
 		// CLI's datadir. This suggests that the 'connect' command was used.
-		tlsCertPath := state["tls_cert_path"]
+		tlsCertPath := state[tlsCertPathKey]
 		if ok, _ := filepath.Match(tdexDataDir, filepath.Dir(tlsCertPath)); ok {
 			macPath := filepath.Join(tdexDataDir, "admin.macaroon")
 			if err := os.WriteFile(macPath, macaroon, 0644); err != nil {
 				return fmt.Errorf("failed to write macaroon to file: %s", err)
 			}
 			if err := setState(
-				map[string]string{"macaroons_path": macPath},
+				map[string]string{macaroonsPathKey: macPath},
 			); err != nil {
 				return fmt.Errorf(
-					"an error occurred while setting 'macaroons_path' in config: %s.\n"+
-						"Please run 'tdex config set macaroons_path %s'", err, macPath,
+					"an error occurred while setting 'macaroons-path' in config: %s.\n"+
+						"Please run 'tdex config set macaroons-path %s'", err, macPath,
 				)
 			}
 		}
