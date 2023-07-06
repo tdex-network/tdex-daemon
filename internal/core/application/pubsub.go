@@ -11,6 +11,7 @@ import (
 type PubSubService interface {
 	SecurePubSub() ports.SecurePubSub
 	AddWebhook(ctx context.Context, hook ports.Webhook) (string, error)
+	AddWebhookWithID(ctx context.Context, hook ports.Webhook) (string, error)
 	RemoveWebhook(ctx context.Context, id string) error
 	ListWebhooks(
 		ctx context.Context, event ports.WebhookEvent,

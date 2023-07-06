@@ -14,7 +14,7 @@ services:
       - OCEAN_ELECTRUM_URL=tcp://electrs-liquid:50001
       - OCEAN_NETWORK=regtest
       - OCEAN_UTXO_EXPIRY_DURATION_IN_SECONDS=60
-      - OCEAN_DB_HOST=oceand-regtest-db
+      - OCEAN_DB_TYPE=badger
     ports:
       - "18000:18000"
     volumes:
@@ -50,16 +50,6 @@ services:
       - tdexd
     volumes:
       - ../volumes/feederd/config.json:/config.json
-  oceand-db:
-    container_name: oceand-regtest-db
-    image: postgres
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=secret
-      - POSTGRES_DB=oceand-db
-    ports:
-      - "5432:5432"
 
 networks:
   default:

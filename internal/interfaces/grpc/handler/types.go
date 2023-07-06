@@ -402,6 +402,9 @@ type webhookInfo struct {
 func (i webhookInfo) GetEvent() ports.WebhookEvent {
 	return webhookEventInfo{i.AddWebhookRequest.GetEvent()}
 }
+func (i webhookInfo) GetId() string {
+	return ""
+}
 
 type webhookEventInfo struct {
 	daemonv2.WebhookEvent

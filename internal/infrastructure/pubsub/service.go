@@ -48,6 +48,23 @@ func (ws *service) Subscribe(topic, endpoint, secret string) (string, error) {
 	return ws.addSubscription(sub)
 }
 
+func (ws *service) SubscribeWithID(
+	id, topic, endpoint, secret string,
+) (string, error) {
+	// Let's validate the given param with the subscription factory.
+	if _, err := NewSubscription(topic, endpoint, secret); err != nil {
+		return "", err
+	}
+	if len(id) <= 0 {
+		return "", fmt.Errorf("missing subscription id")
+	}
+	sub := &Subscription{id, topic, endpoint, secret}
+
+	// In this case, we want to return error if the subscription has a duplicated
+	// id.
+	return ws.addSubscriptionSafe(sub)
+}
+
 func (ws *service) Unsubscribe(_, id string) error {
 	return ws.removeSubscription(id)
 }
@@ -68,6 +85,25 @@ func (ws *service) addSubscription(sub *Subscription) (string, error) {
 	}
 	if ss != nil {
 		return sub.ID, nil
+	}
+
+	if err := ws.store.db().AddToBucket(subsBucket, subID, sub.Serialize()); err != nil {
+		return "", err
+	}
+	if err := ws.addSubscriptionForTopic(sub); err != nil {
+		return "", err
+	}
+	return sub.ID, nil
+}
+
+func (ws *service) addSubscriptionSafe(sub *Subscription) (string, error) {
+	subID := []byte(sub.ID)
+	ss, err := ws.store.db().GetFromBucket(subsBucket, subID)
+	if err != nil {
+		return "", err
+	}
+	if ss != nil {
+		return "", fmt.Errorf("subscription with id %s already exist", sub.ID)
 	}
 
 	if err := ws.store.db().AddToBucket(subsBucket, subID, sub.Serialize()); err != nil {

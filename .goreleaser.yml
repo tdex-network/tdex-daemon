@@ -71,6 +71,19 @@ builds:
       - arm64
     binary: tdex
 
+  # Migration
+  - id: "tdex-migration"
+    main: ./cmd/migration
+    ldflags:
+      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    binary: tdex-migration
+
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
   prerelease: auto
@@ -113,6 +126,12 @@ archives:
       - tdex
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
+  - id: tdex-migration
+    format: binary
+    builds:
+      - tdex-migration
+    name_template: "tdex-migration-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+
 dockers:
   ###########################
   # tag latest & prerelease #
@@ -127,6 +146,7 @@ dockers:
     ids:
       - tdex
       - tdexd-linux-amd64
+      - tdex-migration
     dockerfile: goreleaser.Dockerfile
     # GOOS of the built binaries/packages that should be used.
     goos: linux
@@ -152,6 +172,7 @@ dockers:
     ids:
       - tdex
       - tdexd-linux-arm64
+      - tdex-migration
     dockerfile: goreleaser.Dockerfile
     # GOOS of the built binaries/packages that should be used.
     goos: linux
