@@ -61,7 +61,7 @@ var (
 				Usage: "list of withdrawal receivers as  {aseet, amount, address}",
 			},
 			&cli.Uint64Flag{
-				Name:  "milli-sats-per-byte",
+				Name:  "millisats-per-byte",
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
 			},
@@ -176,7 +176,7 @@ func feeFragmenterWithdrawAction(ctx *cli.Context) error {
 
 	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
-	mSatsPerByte := ctx.Uint64("milli-sats-per-byte")
+	mSatsPerByte := ctx.Uint64("millisats-per-byte")
 	outputs, err := parseOutputs(receivers)
 	if err != nil {
 		return err
