@@ -5,7 +5,7 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/domain"
 )
 
-func (m mapperService) FromV091TransactionsToV1Transactions(
+func (m *mapperService) FromV091TransactionsToV1Transactions(
 	trades []*domain.Trade, deposits []*domain.Deposit,
 	withdrawals []*domain.Withdrawal, accountsByLabel map[string]string,
 ) map[string]*v1domain.Transaction {
