@@ -116,10 +116,10 @@ func configInitAction(c *cli.Context) error {
 	return setState(map[string]string{
 		"network":        c.String("network"),
 		"rpcserver":      c.String("rpcserver"),
-		noMacaroonsKey:   c.String(noMacaroonsKey),
-		noTlsKey:         c.String(noTlsKey),
-		tlsCertPathKey:   cleanAndExpandPath(c.String(tlsCertPathKey)),
-		macaroonsPathKey: cleanAndExpandPath(c.String(macaroonsPathKey)),
+		"no_macaroons":   c.String(noMacaroonsKey),
+		"no_tls":         c.String(noTlsKey),
+		"tls_cert_path":  cleanAndExpandPath(c.String(tlsCertPathKey)),
+		"macaroons_path": cleanAndExpandPath(c.String(macaroonsPathKey)),
 	})
 }
 
@@ -197,11 +197,11 @@ func configConnectAction(c *cli.Context) (err error) {
 
 	if err = setState(map[string]string{
 		"proto":          proto,
-		noTlsKey:         strconv.FormatBool(proto == "http"),
+		"no_tls":         strconv.FormatBool(proto == "http"),
 		"rpcserver":      rpcServerAddr,
-		noMacaroonsKey:   noMacaroons,
-		tlsCertPathKey:   tlsCertPath,
-		macaroonsPathKey: macaroonsPath,
+		"no_macaroons":   noMacaroons,
+		"tls_cert_path":  tlsCertPath,
+		"macaroons_path": macaroonsPath,
 	}); err != nil {
 		return
 	}

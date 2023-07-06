@@ -41,9 +41,9 @@ var (
 	initialState = map[string]string{
 		"network":        defaultNetwork,
 		"rpcserver":      defaultRPCServer,
-		noMacaroonsKey:   strconv.FormatBool(defaultNoMacaroonsAuth),
-		tlsCertPathKey:   defaultTLSCertPath,
-		macaroonsPathKey: defaultMacaroonsPath,
+		"no_macaroons":   strconv.FormatBool(defaultNoMacaroonsAuth),
+		"tls_cert_path":  defaultTLSCertPath,
+		"macaroons_path": defaultMacaroonsPath,
 	}
 )
 
@@ -275,7 +275,7 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 	if noTls {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
-		certPath := state[tlsCertPathKey]
+		certPath := state["tls_cert_path"]
 		dialOpt := grpc.WithTransportCredentials(credentials.NewTLS(nil))
 		if certPath != "" {
 			tlsCreds, err := credentials.NewClientTLSFromFile(certPath, "")
@@ -289,15 +289,15 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 		opts = append(opts, dialOpt)
 	}
 
-	noMacaroons, _ := strconv.ParseBool(state[noMacaroonsKey])
+	noMacaroons, _ := strconv.ParseBool(state["no_macaroons"])
 	if !noMacaroons {
 		// Load macaroons and add credentials to dialer
 		if !skipMacaroon {
-			macPath, ok := state[macaroonsPathKey]
+			macPath, ok := state["macaroons_path"]
 			if !ok {
 				return nil, fmt.Errorf(
 					"macaroons filepath is missing. Try " +
-						"'tdex config set macaroons-path path/to/macaroon",
+						"'tdex config set macaroons_path path/to/macaroon",
 				)
 			}
 			macBytes, err := os.ReadFile(macPath)
