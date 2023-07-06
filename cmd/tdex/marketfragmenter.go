@@ -60,7 +60,7 @@ var (
 				Required: true,
 			},
 			&cli.Uint64Flag{
-				Name:  "millisatsperbyte",
+				Name:  "milli-sats-per-byte",
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
 			},
@@ -182,7 +182,7 @@ func marketFragmenterWithdrawAction(ctx *cli.Context) error {
 
 	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
-	mSatsPerByte := ctx.Uint64("millisatsperbyte")
+	mSatsPerByte := ctx.Uint64("milli-sats-per-byte")
 
 	outputs, err := parseOutputs(receivers)
 	if err != nil {

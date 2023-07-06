@@ -18,7 +18,7 @@ var (
 			marketNewCmd, marketInfoCmd, marketListAddressesCmd,
 			marketDepositCmd, marketWithdrawCmd,
 			marketOpenCmd, marketCloseCmd, marketDropCmd,
-			marketUpdateFixedFeeCmd, marketUpdatePercentageFeeCmd, marketReportFeeCmd,
+			marketUpdateFixedFeeCmd, marketUpdatePercentageFeeCmd,
 			marketUpdateStrategyCmd, marketUpdatePriceCmd, marketReportCmd,
 			marketUpdateAssetsPrecisionCmd,
 		},
@@ -111,7 +111,7 @@ var (
 				Usage: "list of withdrawal receivers as {asset, amount, address}",
 			},
 			&cli.Uint64Flag{
-				Name:  "millisatsperbyte",
+				Name:  "milli-sats-per-byte",
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
 			},
@@ -171,12 +171,6 @@ var (
 			},
 		},
 		Action: marketUpdatePercentageFeeAction,
-	}
-	marketReportFeeCmd = &cli.Command{
-		Name:   "reportfee",
-		Usage:  "get a report of the fees collected for the trades of a market.",
-		Flags:  []cli.Flag{},
-		Action: marketReportFeeAction,
 	}
 	marketUpdateStrategyCmd = &cli.Command{
 		Name:  "strategy",
@@ -336,11 +330,6 @@ func marketInfoAction(ctx *cli.Context) error {
 	return nil
 }
 
-func marketBalanceAction(ctx *cli.Context) error {
-	printDeprecatedWarn("tdex market info")
-	return nil
-}
-
 func marketDepositAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
@@ -400,11 +389,6 @@ func marketListAddressesAction(ctx *cli.Context) error {
 	return nil
 }
 
-func marketClaimAction(ctx *cli.Context) error {
-	printDeprecatedWarn("")
-	return nil
-}
-
 func marketWithdrawAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
@@ -418,7 +402,7 @@ func marketWithdrawAction(ctx *cli.Context) error {
 	}
 	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
-	mSatsPerByte := ctx.Uint64("millisatsperbyte")
+	mSatsPerByte := ctx.Uint64("milli-sats-per-byte")
 	outputs, err := parseOutputs(receivers)
 	if err != nil {
 		return err
@@ -597,11 +581,6 @@ func marketUpdatePercentageFeeAction(ctx *cli.Context) error {
 
 	fmt.Println()
 	fmt.Println("market fees have been updated")
-	return nil
-}
-
-func marketReportFeeAction(ctx *cli.Context) error {
-	printDeprecatedWarn("tdex market report")
 	return nil
 }
 

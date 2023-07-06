@@ -12,8 +12,7 @@ var (
 		Name:  "fee",
 		Usage: "manage the fee account of the daemon's wallet",
 		Subcommands: []*cli.Command{
-			feeBalanceCmd, feeDepositCmd, feeListAddressesCmd, feeClaimCmd,
-			feeWithdrawCmd,
+			feeBalanceCmd, feeDepositCmd, feeListAddressesCmd, feeWithdrawCmd,
 		},
 	}
 
@@ -38,11 +37,6 @@ var (
 		Usage:  "list all the derived deposit addresses of the fee account",
 		Action: feeListAddressesAction,
 	}
-	feeClaimCmd = &cli.Command{
-		Name:   "claim",
-		Usage:  "DEPRECATED: claim deposits for the fee account",
-		Action: feeClaimAction,
-	}
 	feeWithdrawCmd = &cli.Command{
 		Name:  "withdraw",
 		Usage: "withdraw funds from fee account",
@@ -53,7 +47,7 @@ var (
 				Required: true,
 			},
 			&cli.Uint64Flag{
-				Name:  "millisatsperbyte",
+				Name:  "milli-sats-per-byte",
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
 			},
@@ -123,11 +117,6 @@ func feeListAddressesAction(ctx *cli.Context) error {
 	return nil
 }
 
-func feeClaimAction(ctx *cli.Context) error {
-	printDeprecatedWarn("")
-	return nil
-}
-
 func feeWithdrawAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
@@ -137,7 +126,7 @@ func feeWithdrawAction(ctx *cli.Context) error {
 
 	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
-	mSatsPerByte := ctx.Uint64("millisatsperbyte")
+	mSatsPerByte := ctx.Uint64("milli-sats-per-byte")
 	outputs, err := parseOutputs(receivers)
 	if err != nil {
 		return err
