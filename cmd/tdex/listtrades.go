@@ -18,7 +18,7 @@ var listtrades = cli.Command{
 			Usage: "the number of the page to be listed. If omitted, the entire list is returned",
 		},
 		&cli.Uint64Flag{
-			Name:  "page_size",
+			Name:  "page-size",
 			Usage: "the size of the page",
 			Value: 10,
 		},
@@ -34,7 +34,7 @@ func listTradesAction(ctx *cli.Context) error {
 	defer cleanup()
 
 	pageNumber := ctx.Int64("page")
-	pageSize := ctx.Int64("page_size")
+	pageSize := ctx.Int64("page-size")
 	var page *daemonv2.Page
 	if pageNumber > 0 {
 		page = &daemonv2.Page{

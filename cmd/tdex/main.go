@@ -75,7 +75,6 @@ func main() {
 		&status,
 		&changepassword,
 		&getwalletinfo,
-		&walletAccount,
 		&feeAccount,
 		&feeFragmenterAccount,
 		&marketAccount,
@@ -347,14 +346,6 @@ func cleanAndExpandPath(path string) string {
 	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
 	// but the variables can still be expanded via POSIX-style $VARIABLE.
 	return filepath.Clean(os.ExpandEnv(path))
-}
-
-func printDeprecatedWarn(newCmd string) {
-	colorYellow := "\033[33m"
-	fmt.Println(fmt.Sprintf(
-		"%sWarning: this command is deprecated and will be removed in the next "+
-			"version.\nInstead, use the new command '%s'", string(colorYellow), newCmd,
-	))
 }
 
 type invalidUsageError struct {

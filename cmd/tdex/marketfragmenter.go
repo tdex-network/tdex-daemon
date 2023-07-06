@@ -34,7 +34,7 @@ var (
 		Usage: "generate some addresses to receive funds",
 		Flags: []cli.Flag{
 			&cli.UintFlag{
-				Name:  "num_of_addresses",
+				Name:  "num-of-addresses",
 				Usage: "the number of addresses to generate",
 			},
 		},
@@ -60,7 +60,7 @@ var (
 				Required: true,
 			},
 			&cli.Uint64Flag{
-				Name:  "millisatsperbyte",
+				Name:  "millisats-per-byte",
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
 			},
@@ -100,7 +100,7 @@ func marketFragmenterDepositAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	numOfAddresses := ctx.Int64("num_of_addresses")
+	numOfAddresses := ctx.Int64("num-of-addresses")
 	resp, err := client.DeriveMarketFragmenterAddresses(
 		context.Background(), &daemonv2.DeriveMarketFragmenterAddressesRequest{
 			NumOfAddresses: numOfAddresses,
@@ -182,7 +182,7 @@ func marketFragmenterWithdrawAction(ctx *cli.Context) error {
 
 	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
-	mSatsPerByte := ctx.Uint64("millisatsperbyte")
+	mSatsPerByte := ctx.Uint64("millisats-per-byte")
 
 	outputs, err := parseOutputs(receivers)
 	if err != nil {

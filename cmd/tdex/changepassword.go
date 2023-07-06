@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	curPwdFlagName = "current_password"
-	newPwdFlagName = "new_password"
+	curPwdFlagName = "current-password"
+	newPwdFlagName = "new-password"
 )
 
 var changepassword = cli.Command{
@@ -23,7 +23,7 @@ var changepassword = cli.Command{
 			Value: "",
 		},
 		&cli.StringFlag{
-			Name:  "new_password",
+			Name:  "new-password",
 			Usage: "the new password that replaces the old one",
 			Value: "",
 		},

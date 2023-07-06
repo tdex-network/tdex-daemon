@@ -12,8 +12,7 @@ var (
 		Name:  "fee",
 		Usage: "manage the fee account of the daemon's wallet",
 		Subcommands: []*cli.Command{
-			feeBalanceCmd, feeDepositCmd, feeListAddressesCmd, feeClaimCmd,
-			feeWithdrawCmd,
+			feeBalanceCmd, feeDepositCmd, feeListAddressesCmd, feeWithdrawCmd,
 		},
 	}
 
@@ -27,7 +26,7 @@ var (
 		Usage: "generate some address(es) to receive funds",
 		Flags: []cli.Flag{
 			&cli.UintFlag{
-				Name:  "num_of_addresses",
+				Name:  "num-of-addresses",
 				Usage: "the number of addresses to generate",
 			},
 		},
@@ -37,11 +36,6 @@ var (
 		Name:   "addresses",
 		Usage:  "list all the derived deposit addresses of the fee account",
 		Action: feeListAddressesAction,
-	}
-	feeClaimCmd = &cli.Command{
-		Name:   "claim",
-		Usage:  "DEPRECATED: claim deposits for the fee account",
-		Action: feeClaimAction,
 	}
 	feeWithdrawCmd = &cli.Command{
 		Name:  "withdraw",
@@ -53,7 +47,7 @@ var (
 				Required: true,
 			},
 			&cli.Uint64Flag{
-				Name:  "millisatsperbyte",
+				Name:  "millisats-per-byte",
 				Usage: "the mSat/byte to pay for the transaction",
 				Value: 100,
 			},
@@ -91,7 +85,7 @@ func feeDepositAction(ctx *cli.Context) error {
 	}
 	defer cleanup()
 
-	numOfAddresses := ctx.Int64("num_of_addresses")
+	numOfAddresses := ctx.Int64("num-of-addresses")
 	reply, err := client.DeriveFeeAddresses(
 		context.Background(), &daemonv2.DeriveFeeAddressesRequest{
 			NumOfAddresses: numOfAddresses,
@@ -123,11 +117,6 @@ func feeListAddressesAction(ctx *cli.Context) error {
 	return nil
 }
 
-func feeClaimAction(ctx *cli.Context) error {
-	printDeprecatedWarn("")
-	return nil
-}
-
 func feeWithdrawAction(ctx *cli.Context) error {
 	client, cleanup, err := getOperatorClient(ctx)
 	if err != nil {
@@ -137,7 +126,7 @@ func feeWithdrawAction(ctx *cli.Context) error {
 
 	receivers := ctx.StringSlice("receivers")
 	password := ctx.String("password")
-	mSatsPerByte := ctx.Uint64("millisatsperbyte")
+	mSatsPerByte := ctx.Uint64("millisats-per-byte")
 	outputs, err := parseOutputs(receivers)
 	if err != nil {
 		return err

@@ -22,27 +22,27 @@ var (
 		Usage: "list all webhooks, optionally filtered by target event",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:  "trade_settled_event",
+				Name:  "trade-settled-event",
 				Usage: "triggers the webhook endpoint whenever a trade is settled",
 				Value: false,
 			},
 			&cli.BoolFlag{
-				Name:  "account_low_balance_event",
+				Name:  "account-low-balance-event",
 				Usage: "triggers the webhook endpoint whenever a wallet account's balance goes under a threshold configured at startup",
 				Value: false,
 			},
 			&cli.BoolFlag{
-				Name:  "account_withdraw_event",
+				Name:  "account-withdraw-event",
 				Usage: "triggers the webhook endpoint whenever a withdrawal from a wallet account is made",
 				Value: false,
 			},
 			&cli.BoolFlag{
-				Name:  "account_deposit_event",
+				Name:  "account-deposit-event",
 				Usage: "triggers the webhook endpoint whenever a deposit to a wallet account is made",
 				Value: false,
 			},
 			&cli.BoolFlag{
-				Name:  "any_event",
+				Name:  "any-event",
 				Usage: "triggers the webhook endpoint whenever any event occurs",
 				Value: false,
 			},
@@ -66,27 +66,27 @@ var (
 				Value: "",
 			},
 			&cli.BoolFlag{
-				Name:  "trade_settled_event",
+				Name:  "trade-settled-event",
 				Usage: "triggers the webhook endpoint whenever a trade is settled",
 				Value: false,
 			},
 			&cli.BoolFlag{
-				Name:  "account_low_balance_event",
+				Name:  "account-low-balance-event",
 				Usage: "triggers the webhook endpoint whenever a wallet account's balance goes under a threshold configured at startup",
 				Value: false,
 			},
 			&cli.BoolFlag{
-				Name:  "account_withdraw_event",
+				Name:  "account-withdraw-event",
 				Usage: "triggers the webhook endpoint whenever a withdrawal from a wallet account is made",
 				Value: false,
 			},
 			&cli.BoolFlag{
-				Name:  "account_deposit_event",
+				Name:  "account-deposit-event",
 				Usage: "triggers the webhook endpoint whenever a deposit to a wallet account is made",
 				Value: false,
 			},
 			&cli.BoolFlag{
-				Name:  "any_event",
+				Name:  "any-event",
 				Usage: "triggers the webhook endpoint whenever any event occurs",
 				Value: false,
 			},
@@ -192,11 +192,11 @@ func listWebhooksAction(ctx *cli.Context) error {
 func parseEvent(ctx *cli.Context) (daemonv2.WebhookEvent, error) {
 	event := daemonv2.WebhookEvent_WEBHOOK_EVENT_UNSPECIFIED
 	events := []bool{
-		ctx.Bool("trade_settled_event"),
-		ctx.Bool("account_low_balance_event"),
-		ctx.Bool("account_withdraw_event"),
-		ctx.Bool("account_deposit_event"),
-		ctx.Bool("any_event"),
+		ctx.Bool("trade-settled-event"),
+		ctx.Bool("account-low-balance-event"),
+		ctx.Bool("account-withdraw-event"),
+		ctx.Bool("account-deposit-event"),
+		ctx.Bool("any-event"),
 	}
 	trues := 0
 	for _, e := range events {
@@ -208,15 +208,15 @@ func parseEvent(ctx *cli.Context) (daemonv2.WebhookEvent, error) {
 		return -1, fmt.Errorf("only one event can be set for a webhook")
 	}
 	switch {
-	case ctx.Bool("trade_settled_event"):
+	case ctx.Bool("trade-settled-event"):
 		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_TRADE_SETTLED
-	case ctx.Bool("account_low_balance_event"):
+	case ctx.Bool("account-low-balance-event"):
 		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE
-	case ctx.Bool("account_withdraw_event"):
+	case ctx.Bool("account-withdraw-event"):
 		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_WITHDRAW
-	case ctx.Bool("account_deposit_event"):
+	case ctx.Bool("account-deposit-event"):
 		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ACCOUNT_DEPOSIT
-	case ctx.Bool("any_event"):
+	case ctx.Bool("any-event"):
 		event = daemonv2.WebhookEvent_WEBHOOK_EVENT_ANY
 	}
 
