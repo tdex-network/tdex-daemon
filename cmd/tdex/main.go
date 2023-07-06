@@ -137,21 +137,21 @@ func setState(data map[string]string) error {
 		return err
 	}
 
-	noMacaroons, ok := data["no_macaroons"]
+	noMacaroons, ok := data[noMacaroonsKey]
 	if ok {
 		noMac, err := strconv.ParseBool(noMacaroons)
 		if err != nil {
-			return fmt.Errorf("invalid bool value for %s: %s", "no_macaroons", err)
+			return fmt.Errorf("invalid bool value for %s: %s", noMacaroonsKey, err)
 		}
 		if noMac {
 			data[macaroonsPathKey] = ""
 		}
 	}
-	noTls, ok := data["no_tls"]
+	noTls, ok := data[noTlsKey]
 	if ok {
 		notls, err := strconv.ParseBool(noTls)
 		if err != nil {
-			return fmt.Errorf("invalid bool value for %s: %s", "no_tls", err)
+			return fmt.Errorf("invalid bool value for %s: %s", noTlsKey, err)
 		}
 		if notls {
 			data[tlsCertPathKey] = ""
@@ -271,7 +271,7 @@ func getClientConn(skipMacaroon bool) (*grpc.ClientConn, error) {
 
 	opts := []grpc.DialOption{grpc.WithDefaultCallOptions(maxMsgRecvSize)}
 
-	noTls, _ := strconv.ParseBool(state["no_tls"])
+	noTls, _ := strconv.ParseBool(state[noTlsKey])
 	if noTls {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {

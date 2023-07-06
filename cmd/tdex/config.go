@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/tdex-network/tdex-daemon/pkg/tdexdconnect"
@@ -15,10 +16,10 @@ import (
 )
 
 const (
-	noMacaroonsKey   = "no-macaroons"
-	macaroonsPathKey = "macaroons-path"
-	tlsCertPathKey   = "tls-cert-path"
-	noTlsKey         = "no-tls"
+	noMacaroonsKey   = "no_macaroons"
+	macaroonsPathKey = "macaroons_path"
+	tlsCertPathKey   = "tls_cert_path"
+	noTlsKey         = "no_tls"
 )
 
 var (
@@ -30,6 +31,11 @@ var (
 	defaultTLSCertPath     = filepath.Join(daemonDatadir, "tls", "cert.pem")
 	defaultMacaroonsPath   = filepath.Join(daemonDatadir, "macaroons", "admin.macaroon")
 	defaultNoTLS           = false
+
+	noMacaroonsFlagName   = strings.Replace(noMacaroonsKey, "_", "-", -1)
+	macaroonsPathFlagName = strings.Replace(macaroonsPathKey, "_", "-", -1)
+	tlsCertPathFlagName   = strings.Replace(tlsCertPathKey, "_", "-", -1)
+	noTlsFlagName         = strings.Replace(noTlsKey, "_", "-", -1)
 
 	networkFlag = cli.StringFlag{
 		Name:  "network, n",
@@ -44,25 +50,25 @@ var (
 	}
 
 	tlsCertFlag = cli.StringFlag{
-		Name:  tlsCertPathKey,
+		Name:  tlsCertPathFlagName,
 		Usage: "the path of the TLS certificate file to use",
 		Value: defaultTLSCertPath,
 	}
 
 	noTlsFlag = cli.BoolFlag{
-		Name:  noTlsKey,
+		Name:  noTlsFlagName,
 		Usage: "used to disable operator TLS certificate",
 		Value: defaultNoTLS,
 	}
 
 	noMacaroonsFlag = cli.BoolFlag{
-		Name:  noMacaroonsKey,
+		Name:  noMacaroonsFlagName,
 		Usage: "used to start the daemon without macaroon auth",
 		Value: defaultNoMacaroonsAuth,
 	}
 
 	macaroonsFlag = cli.StringFlag{
-		Name:  macaroonsPathKey,
+		Name:  macaroonsPathFlagName,
 		Usage: "the path of the macaroons file to use",
 		Value: defaultMacaroonsPath,
 	}
@@ -116,10 +122,10 @@ func configInitAction(c *cli.Context) error {
 	return setState(map[string]string{
 		"network":        c.String("network"),
 		"rpcserver":      c.String("rpcserver"),
-		"no_macaroons":   c.String(noMacaroonsKey),
-		"no_tls":         c.String(noTlsKey),
-		"tls_cert_path":  cleanAndExpandPath(c.String(tlsCertPathKey)),
-		"macaroons_path": cleanAndExpandPath(c.String(macaroonsPathKey)),
+		noMacaroonsKey:   c.String(noMacaroonsFlagName),
+		noTlsKey:         c.String(noTlsFlagName),
+		tlsCertPathKey:   cleanAndExpandPath(c.String(tlsCertPathFlagName)),
+		macaroonsPathKey: cleanAndExpandPath(c.String(macaroonsPathFlagName)),
 	})
 }
 

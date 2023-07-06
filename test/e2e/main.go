@@ -119,10 +119,10 @@ func main() {
 		log.WithError(err).Fatal("failed to create new market")
 	}
 
-	if _, err := runCLICommand("config", "set", "base-asset", lbtc); err != nil {
+	if _, err := runCLICommand("config", "set", "base_asset", lbtc); err != nil {
 		log.WithError(err).Fatal("failed to configure market base asset")
 	}
-	if _, err := runCLICommand("config", "set", "quote-asset", usdt); err != nil {
+	if _, err := runCLICommand("config", "set", "quote_asset", usdt); err != nil {
 		log.WithError(err).Fatal("failed to configure market quote asset")
 	}
 	log.Infof("done\n\n")
