@@ -17,29 +17,38 @@ var statuses = map[int]int{
 	v0domain.Expired:   domain.TradeStatusCodeExpired,
 }
 
-func (m *mapperService) FromV091TradesToV1Trades(
-	trades []*v0domain.Trade,
+func (m *mapperService) FromV0TradesToV1Trades(
+	trades []*v0domain.Trade, net string,
 ) ([]*domain.Trade, error) {
 	res := make([]*domain.Trade, 0, len(trades))
 	for _, v := range trades {
-		trade, err := m.fromV091TradeToV1Trade(v)
+		trade, err := m.fromV0TradeToV1Trade(v, net)
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, trade)
+		if trade != nil {
+			res = append(res, trade)
+		}
 	}
 
 	return res, nil
 }
 
-func (m *mapperService) fromV091TradeToV1Trade(
-	trade *v0domain.Trade,
+func (m *mapperService) fromV0TradeToV1Trade(
+	trade *v0domain.Trade, net string,
 ) (*domain.Trade, error) {
+	baseAsset := trade.MarketBaseAsset
+	if len(baseAsset) <= 0 {
+		baseAsset = lbtcByNetwork[net]
+	}
 	market, err := m.v0RepoManager.MarketRepository().GetMarketByAssets(
-		trade.MarketBaseAsset, trade.MarketQuoteAsset,
+		baseAsset, trade.MarketQuoteAsset,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if market == nil {
+		return nil, nil
 	}
 
 	swapParser := swap_parser.NewService()
@@ -48,7 +57,7 @@ func (m *mapperService) fromV091TradeToV1Trade(
 	)
 
 	tradeType := domain.TradeSell
-	if swapRequest.AssetR == trade.MarketBaseAsset {
+	if swapRequest.AssetR == baseAsset {
 		tradeType = domain.TradeBuy
 	}
 
@@ -75,7 +84,7 @@ func (m *mapperService) fromV091TradeToV1Trade(
 		Id:               trade.ID.String(),
 		Type:             tradeType,
 		MarketName:       market.AccountName(),
-		MarketBaseAsset:  trade.MarketBaseAsset,
+		MarketBaseAsset:  baseAsset,
 		MarketQuoteAsset: trade.MarketQuoteAsset,
 		MarketPrice: domain.MarketPrice{
 			BasePrice:  trade.MarketPrice.BasePrice.String(),

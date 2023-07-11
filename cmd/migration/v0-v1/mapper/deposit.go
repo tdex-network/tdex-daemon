@@ -5,7 +5,7 @@ import (
 	v0domain "github.com/tdex-network/tdex-daemon/old-v0"
 )
 
-func (m *mapperService) FromV091DepositsToV1Deposits(
+func (m *mapperService) FromV0DepositsToV1Deposits(
 	deposits []*v0domain.Deposit,
 ) ([]domain.Deposit, error) {
 	res := make([]domain.Deposit, 0, len(deposits))
@@ -26,6 +26,9 @@ func (m *mapperService) FromV091DepositsToV1Deposits(
 		label, err := m.getLabel(v[0].AccountIndex)
 		if err != nil {
 			return nil, err
+		}
+		if len(label) <= 0 {
+			continue
 		}
 
 		res = append(res, domain.Deposit{

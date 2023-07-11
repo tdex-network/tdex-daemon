@@ -5,12 +5,12 @@ import (
 	"github.com/tdex-network/tdex-daemon/internal/core/ports"
 )
 
-func (m *mapperService) FromV091WebhooksToV1Subscriptions(
+func (m *mapperService) FromV0WebhooksToV1Subscriptions(
 	webhooks []*v0webhook.Webhook,
 ) ([]ports.Webhook, error) {
 	res := make([]ports.Webhook, 0, len(webhooks))
 	for _, v := range webhooks {
-		subscription, err := m.fromV091WebhookToV1Subscription(*v)
+		subscription, err := m.fromV0WebhookToV1Subscription(*v)
 		if err != nil {
 			return nil, err
 		}
@@ -20,7 +20,7 @@ func (m *mapperService) FromV091WebhooksToV1Subscriptions(
 	return res, nil
 }
 
-func (m *mapperService) fromV091WebhookToV1Subscription(
+func (m *mapperService) fromV0WebhookToV1Subscription(
 	webhook v0webhook.Webhook,
 ) (ports.Webhook, error) {
 	return webhookV1(webhook), nil

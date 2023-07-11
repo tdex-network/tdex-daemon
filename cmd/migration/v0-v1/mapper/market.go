@@ -11,12 +11,12 @@ var strategies = map[int]int{
 	v0domain.StrategyTypeUnbalanced: domain.StrategyTypeUnbalanced,
 }
 
-func (m *mapperService) FromV091MarketsToV1Markets(
+func (m *mapperService) FromV0MarketsToV1Markets(
 	markets []*v0domain.Market,
 ) ([]*domain.Market, error) {
 	res := make([]*domain.Market, 0, len(markets))
 	for _, v := range markets {
-		market, err := m.fromV091MarketToV1Market(v)
+		market, err := m.fromV0MarketToV1Market(v)
 		if err != nil {
 			return nil, err
 		}
@@ -26,7 +26,7 @@ func (m *mapperService) FromV091MarketsToV1Markets(
 	return res, nil
 }
 
-func (m *mapperService) fromV091MarketToV1Market(
+func (m *mapperService) fromV0MarketToV1Market(
 	market *v0domain.Market,
 ) (*domain.Market, error) {
 	basePrice := ""

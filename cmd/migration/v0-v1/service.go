@@ -93,15 +93,15 @@ func (s *service) Migrate() error {
 	if v1Datadir != v0Datadir {
 		if _, err := os.Stat(v1Datadir); err == nil {
 			return fmt.Errorf(
-				"v1 datadir already existing, either delete it or change the output " +
-					"path with --v1-datadir flag",
+				"v1 datadir already existing, either delete it or change the " +
+					"output path with --v1-datadir flag",
 			)
 		}
 	}
 	if _, err := os.Stat(oceanDatadir); err == nil {
 		return fmt.Errorf(
-			"ocean datadir already existing, either delete it or change the output " +
-				"path with --ocean-datadir flag",
+			"ocean datadir already existing, either delete it or change the " +
+				"output path with --ocean-datadir flag",
 		)
 	}
 
@@ -117,7 +117,9 @@ func (s *service) Migrate() error {
 			return fmt.Errorf("failed to move vo datadir into v1: %s", err)
 		}
 		if err := archiveAndCompress(v0DatadirDest); err != nil {
-			return fmt.Errorf("failed to created compressed archive of v0 datadir: %s", err)
+			return fmt.Errorf(
+				"failed to created compressed archive of v0 datadir: %s", err,
+			)
 		}
 		os.RemoveAll(v0DatadirDest)
 	}
@@ -262,7 +264,7 @@ func migrateWebhooks(fromDir, toDir, password string) error {
 	}
 
 	mapperSvc := mapper.NewService(nil)
-	v1Webhooks, err := mapperSvc.FromV091WebhooksToV1Subscriptions(v0Webhooks)
+	v1Webhooks, err := mapperSvc.FromV0WebhooksToV1Subscriptions(v0Webhooks)
 	if err != nil {
 		return err
 	}
@@ -279,7 +281,9 @@ func migrateWebhooks(fromDir, toDir, password string) error {
 	return nil
 }
 
-func migrateDomain(v0Datadir, v1Datadir, oceanDatadir, password string) error {
+func migrateDomain(
+	v0Datadir, v1Datadir, oceanDatadir, password string,
+) error {
 	log.Info("migrating db...")
 	start := time.Now()
 
@@ -299,7 +303,9 @@ func migrateDomain(v0Datadir, v1Datadir, oceanDatadir, password string) error {
 		return fmt.Errorf("invalid password")
 	}
 
-	oceanDbDir := filepath.Join(path.Join(oceanDatadir, vault.Network.Name), dbDir)
+	oceanDbDir := filepath.Join(
+		path.Join(oceanDatadir, vault.Network.Name), dbDir,
+	)
 	oceanRepoManager, err := v1domain.NewOceanRepoManager(oceanDbDir)
 	if err != nil {
 		return err
@@ -314,7 +320,7 @@ func migrateDomain(v0Datadir, v1Datadir, oceanDatadir, password string) error {
 	mapperSvc := mapper.NewService(v0RepoManager)
 
 	log.Infof("--> migrating wallet...")
-	net, err := migrateV091VaultToOceanWallet(
+	net, err := migrateV0VaultToOceanWallet(
 		v0RepoManager, oceanRepoManager, mapperSvc, password,
 	)
 	if err != nil {
@@ -323,7 +329,7 @@ func migrateDomain(v0Datadir, v1Datadir, oceanDatadir, password string) error {
 	log.Infof("--> done")
 
 	log.Infof("--> migrating utxo set...")
-	if err := migrateV091UtxosToV1Utxos(
+	if err := migrateV0UtxosToV1Utxos(
 		v0RepoManager, oceanRepoManager, mapperSvc, net,
 	); err != nil {
 		return err
@@ -331,7 +337,7 @@ func migrateDomain(v0Datadir, v1Datadir, oceanDatadir, password string) error {
 	log.Infof("--> done")
 
 	log.Info("--> migrating markets...")
-	if err := migrateV091MarketsToV1Markets(
+	if err := migrateV0MarketsToV1Markets(
 		v0RepoManager, v1RepoManager, mapperSvc,
 	); err != nil {
 		return err
@@ -339,8 +345,8 @@ func migrateDomain(v0Datadir, v1Datadir, oceanDatadir, password string) error {
 	log.Infof("--> done")
 
 	log.Info("--> migrating trades...")
-	trades, err := migrateV091TradesToV1Trades(
-		v0RepoManager, v1RepoManager, mapperSvc,
+	trades, err := migrateV0TradesToV1Trades(
+		v0RepoManager, v1RepoManager, mapperSvc, net,
 	)
 	if err != nil {
 		return err
@@ -348,7 +354,7 @@ func migrateDomain(v0Datadir, v1Datadir, oceanDatadir, password string) error {
 	log.Infof("--> done")
 
 	log.Info("--> migrating deposits...")
-	deposits, err := migrateV091DepositsToV1Deposits(
+	deposits, err := migrateV0DepositsToV1Deposits(
 		v0RepoManager, v1RepoManager, mapperSvc,
 	)
 	if err != nil {
@@ -357,8 +363,8 @@ func migrateDomain(v0Datadir, v1Datadir, oceanDatadir, password string) error {
 	log.Infof("--> done")
 
 	log.Info("--> migrating withdrawals...")
-	withdrawals, err := migrateV091WithdrawalsToV1Withdrawals(
-		v0RepoManager, v1RepoManager, mapperSvc,
+	withdrawals, err := migrateV0WithdrawalsToV1Withdrawals(
+		v0RepoManager, v1RepoManager, mapperSvc, net,
 	)
 	if err != nil {
 		return err
@@ -378,18 +384,16 @@ func migrateDomain(v0Datadir, v1Datadir, oceanDatadir, password string) error {
 	return nil
 }
 
-func migrateV091VaultToOceanWallet(
-	v0RepoManager v0domain.TdexRepoManager,
-	v1RepoManager v1domain.OceanRepoManager,
-	mapperSvc mapper.Service,
-	vaultPass string,
+func migrateV0VaultToOceanWallet(
+	v0RepoManager v0domain.TdexRepoManager, v1RepoManager v1domain.OceanRepoManager,
+	mapperSvc mapper.Service, vaultPass string,
 ) (string, error) {
 	v0Vault, err := v0RepoManager.GetVaultRepository().GetVault()
 	if err != nil {
 		return "", err
 	}
 
-	wallet, err := mapperSvc.FromV091VaultToV1Wallet(*v0Vault, vaultPass)
+	wallet, err := mapperSvc.FromV0VaultToV1Wallet(*v0Vault, vaultPass)
 	if err != nil {
 		return "", err
 	}
@@ -400,17 +404,16 @@ func migrateV091VaultToOceanWallet(
 	return v0Vault.Network.Name, nil
 }
 
-func migrateV091TradesToV1Trades(
-	v0RepoManager v0domain.TdexRepoManager,
-	v1RepoManager ports.RepoManager,
-	mapperSvc mapper.Service,
+func migrateV0TradesToV1Trades(
+	v0RepoManager v0domain.TdexRepoManager, v1RepoManager ports.RepoManager,
+	mapperSvc mapper.Service, net string,
 ) ([]*domain.Trade, error) {
 	v0Trades, err := v0RepoManager.GetTradeRepository().GetAllTrades()
 	if err != nil {
 		return nil, err
 	}
 
-	v1Trades, err := mapperSvc.FromV091TradesToV1Trades(v0Trades)
+	v1Trades, err := mapperSvc.FromV0TradesToV1Trades(v0Trades, net)
 	if err != nil {
 		return nil, err
 	}
@@ -424,9 +427,8 @@ func migrateV091TradesToV1Trades(
 	return v1Trades, nil
 }
 
-func migrateV091DepositsToV1Deposits(
-	v0RepoManager v0domain.TdexRepoManager,
-	v1RepoManager ports.RepoManager,
+func migrateV0DepositsToV1Deposits(
+	v0RepoManager v0domain.TdexRepoManager, v1RepoManager ports.RepoManager,
 	mapperSvc mapper.Service,
 ) ([]*domain.Deposit, error) {
 	v0Deposits, err := v0RepoManager.GetDepositRepository().GetAllDeposits()
@@ -434,7 +436,7 @@ func migrateV091DepositsToV1Deposits(
 		return nil, err
 	}
 
-	v1Deposits, err := mapperSvc.FromV091DepositsToV1Deposits(v0Deposits)
+	v1Deposits, err := mapperSvc.FromV0DepositsToV1Deposits(v0Deposits)
 	if err != nil {
 		return nil, err
 	}
@@ -454,17 +456,19 @@ func migrateV091DepositsToV1Deposits(
 	return deposits, nil
 }
 
-func migrateV091WithdrawalsToV1Withdrawals(
-	v0RepoManager v0domain.TdexRepoManager,
-	v1RepoManager ports.RepoManager,
-	mapperSvc mapper.Service,
+func migrateV0WithdrawalsToV1Withdrawals(
+	v0RepoManager v0domain.TdexRepoManager, v1RepoManager ports.RepoManager,
+	mapperSvc mapper.Service, net string,
 ) ([]*domain.Withdrawal, error) {
-	v0Withdrawals, err := v0RepoManager.GetWithdrawalRepository().GetAllWithdrawals()
+	v0Withdrawals, err := v0RepoManager.GetWithdrawalRepository().
+		GetAllWithdrawals()
 	if err != nil {
 		return nil, err
 	}
 
-	v1Withdrawals, err := mapperSvc.FromV091WithdrawalsToV1Withdrawals(v0Withdrawals)
+	v1Withdrawals, err := mapperSvc.FromV0WithdrawalsToV1Withdrawals(
+		v0Withdrawals, net,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +488,7 @@ func migrateV091WithdrawalsToV1Withdrawals(
 	return withdrawals, nil
 }
 
-func migrateV091MarketsToV1Markets(
+func migrateV0MarketsToV1Markets(
 	v0RepoManager v0domain.TdexRepoManager,
 	v1RepoManager ports.RepoManager,
 	mapperSvc mapper.Service,
@@ -494,7 +498,7 @@ func migrateV091MarketsToV1Markets(
 		return err
 	}
 
-	v1Markets, err := mapperSvc.FromV091MarketsToV1Markets(v0Markets)
+	v1Markets, err := mapperSvc.FromV0MarketsToV1Markets(v0Markets)
 	if err != nil {
 		return err
 	}
@@ -508,7 +512,7 @@ func migrateV091MarketsToV1Markets(
 	return nil
 }
 
-func migrateV091UtxosToV1Utxos(
+func migrateV0UtxosToV1Utxos(
 	v0RepoManager v0domain.TdexRepoManager,
 	v1RepoManager v1domain.OceanRepoManager,
 	mapperSvc mapper.Service,
@@ -519,23 +523,29 @@ func migrateV091UtxosToV1Utxos(
 		return err
 	}
 
-	v1Utxos, err := mapperSvc.FromV091UnspentsToV1Utxos(v0Utxos)
+	v1Utxos, err := mapperSvc.FromV0UnspentsToV1Utxos(v0Utxos)
 	if err != nil {
 		return err
 	}
 
+	// Unfortunately, v0 daemons might store utxos that have never been
+	// included in blockchain, resulting  forever unconfirmed utxos that
+	// pollute info like account balances.
+	// Let's make sure unconfirmed utxos actually exist otherwise we remove them
+	// from the v1 utxo set.
+	// unconfirmedUtxos := make(map[string][]*v1domain.Utxo)
 	confirmedUtxos := make(map[string][]*v1domain.Utxo)
 	spentUtxos := make(map[string]map[int]*v1domain.Utxo)
-	indexedUtxos := make(map[string][]int)
+	indexedSpentUtxos := make(map[string][]int)
 	txids := make(map[string]struct{})
 	empty := v1domain.UtxoStatus{}
 	for i := range v1Utxos {
 		u := v1Utxos[i]
 		if u.SpentStatus != empty {
-			if len(indexedUtxos[u.TxID]) <= 0 {
-				indexedUtxos[u.TxID] = make([]int, 0)
+			if len(indexedSpentUtxos[u.TxID]) <= 0 {
+				indexedSpentUtxos[u.TxID] = make([]int, 0)
 			}
-			indexedUtxos[u.TxID] = append(indexedUtxos[u.TxID], int(u.VOut))
+			indexedSpentUtxos[u.TxID] = append(indexedSpentUtxos[u.TxID], int(u.VOut))
 			if spentUtxos[u.TxID] == nil {
 				spentUtxos[u.TxID] = make(map[int]*v1domain.Utxo)
 			}
@@ -569,7 +579,7 @@ func migrateV091UtxosToV1Utxos(
 
 	limiter = ratelimit.New(5)
 	spentStatuses := make(map[string][]v1domain.UtxoStatus)
-	for txid := range indexedUtxos {
+	for txid := range indexedSpentUtxos {
 		limiter.Take()
 		statuses, err := getSpentStatus(net, txid)
 		if err != nil {
@@ -578,7 +588,7 @@ func migrateV091UtxosToV1Utxos(
 		spentStatuses[txid] = statuses
 	}
 
-	for txid, vouts := range indexedUtxos {
+	for txid, vouts := range indexedSpentUtxos {
 		for _, vout := range vouts {
 			spentUtxos[txid][vout].SpentStatus = spentStatuses[txid][vout]
 		}
@@ -597,7 +607,7 @@ func migrateTransactions(
 		return err
 	}
 
-	indexedTxs := mapperSvc.FromV091TransactionsToV1Transactions(
+	indexedTxs := mapperSvc.FromV0TransactionsToV1Transactions(
 		trades, deposits, withdrawals, wallet.AccountsByLabel,
 	)
 
@@ -627,7 +637,9 @@ func migrateTransactions(
 func getConfirmationStatus(
 	net, txid string,
 ) (*v1domain.UtxoStatus, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/tx/%s/status", explorerByNetwork[net], txid))
+	resp, err := http.Get(
+		fmt.Sprintf("%s/tx/%s/status", explorerByNetwork[net], txid),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -643,17 +655,31 @@ func getConfirmationStatus(
 
 	m := make(map[string]interface{})
 	json.Unmarshal(body, &m)
+	var blockHash string
+	if v, ok := m["block_hash"].(string); ok {
+		blockHash = v
+	}
+	var blockHeight uint64
+	if v, ok := m["block_height"].(float64); ok {
+		blockHeight = uint64(v)
+	}
+	var blockTime int64
+	if v, ok := m["block_time"].(float64); ok {
+		blockTime = int64(v)
+	}
 	return &v1domain.UtxoStatus{
-		BlockHash:   m["block_hash"].(string),
-		BlockHeight: uint64(m["block_height"].(float64)),
-		BlockTime:   int64(m["block_time"].(float64)),
+		BlockHash:   blockHash,
+		BlockHeight: blockHeight,
+		BlockTime:   blockTime,
 	}, nil
 }
 
 func getSpentStatus(
 	net, txid string,
 ) ([]v1domain.UtxoStatus, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/tx/%s/outspends", explorerByNetwork[net], txid))
+	resp, err := http.Get(
+		fmt.Sprintf("%s/tx/%s/outspends", explorerByNetwork[net], txid),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -688,7 +714,9 @@ func getSpentStatus(
 }
 
 func getTxHex(net, txid string) (string, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/tx/%s/hex", explorerByNetwork[net], txid))
+	resp, err := http.Get(
+		fmt.Sprintf("%s/tx/%s/hex", explorerByNetwork[net], txid),
+	)
 	if err != nil {
 		return "", err
 	}
@@ -742,7 +770,9 @@ func archiveAndCompress(dir string) error {
 				}
 
 				if baseDir != "" {
-					header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, source))
+					header.Name = filepath.Join(
+						baseDir, strings.TrimPrefix(path, source),
+					)
 				}
 
 				if err := tarball.WriteHeader(header); err != nil {

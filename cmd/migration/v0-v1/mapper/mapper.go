@@ -9,28 +9,28 @@ import (
 )
 
 type Service interface {
-	FromV091VaultToV1Wallet(
+	FromV0VaultToV1Wallet(
 		vault v0domain.Vault, walletPass string,
 	) (*v1domain.Wallet, error)
-	FromV091TradesToV1Trades(
-		trades []*v0domain.Trade,
+	FromV0TradesToV1Trades(
+		trades []*v0domain.Trade, net string,
 	) ([]*domain.Trade, error)
-	FromV091DepositsToV1Deposits(
+	FromV0DepositsToV1Deposits(
 		deposits []*v0domain.Deposit,
 	) ([]domain.Deposit, error)
-	FromV091WithdrawalsToV1Withdrawals(
-		withdrawals []*v0domain.Withdrawal,
+	FromV0WithdrawalsToV1Withdrawals(
+		withdrawals []*v0domain.Withdrawal, net string,
 	) ([]domain.Withdrawal, error)
-	FromV091WebhooksToV1Subscriptions(
+	FromV0WebhooksToV1Subscriptions(
 		webhooks []*v0webhook.Webhook,
 	) ([]ports.Webhook, error)
-	FromV091MarketsToV1Markets(
+	FromV0MarketsToV1Markets(
 		markets []*v0domain.Market,
 	) ([]*domain.Market, error)
-	FromV091UnspentsToV1Utxos(
+	FromV0UnspentsToV1Utxos(
 		unspents []*v0domain.Unspent,
 	) ([]*v1domain.Utxo, error)
-	FromV091TransactionsToV1Transactions(
+	FromV0TransactionsToV1Transactions(
 		trades []*domain.Trade, deposits []*domain.Deposit,
 		withdrawals []*domain.Withdrawal, accountsByLabel map[string]string,
 	) map[string]*v1domain.Transaction

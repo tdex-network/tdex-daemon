@@ -12,7 +12,7 @@ const (
 	nameSpaceFormat = "bip84-account%d"
 )
 
-func (m *mapperService) FromV091VaultToV1Wallet(
+func (m *mapperService) FromV0VaultToV1Wallet(
 	vault v0domain.Vault, password string,
 ) (*v1domain.Wallet, error) {
 	accounts := make(map[string]*v1domain.Account)
@@ -91,6 +91,9 @@ func (m *mapperService) getLabel(accountIndex int) (string, error) {
 			return "", err
 		}
 
+		if market == nil {
+			return "", nil
+		}
 		return market.AccountName(), nil
 	}
 }
