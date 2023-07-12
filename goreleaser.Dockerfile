@@ -11,8 +11,8 @@ RUN set -ex \
   && if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then export TARGETPLATFORM=amd64; fi \
   && if [ "${TARGETPLATFORM}" = "linux/arm64" ]; then export TARGETPLATFORM=arm64; fi \
   && mv tdex /usr/local/bin/tdex \
-  && mv tdex-migration /usr/local/bin/tdex-migration \
-  && mv "tdexd-linux-$TARGETPLATFORM" /usr/local/bin/tdexd
+  && mv "tdexd-linux-$TARGETPLATFORM" /usr/local/bin/tdexd \
+  && mv "tdex-migration-linux-$TARGETPLATFORM" /usr/local/bin/tdex-migration
 
 
 # $USER name, and data $DIR to be used in the `final` image
