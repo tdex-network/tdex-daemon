@@ -22,7 +22,7 @@ $ alias migration=./build/migration-<os>-<arch>
   ```sh
   # Pull the latest image
   $ docker pull ghcr.io/tdex-network/tdexd:latest
-  $ docker run --rm --volume path/to/datadir:/home/tdex/.tdex-daemon --entrypoint 'tdex-migration' ghcr.io/tdex-network/tdexd:latest --password <wallet_password> --/home/tdex/.tdex-daemon/oceand
+  $ docker run --rm --volume path/to/datadir:/home/tdex/.tdex-daemon --entrypoint 'tdex-migration' ghcr.io/tdex-network/tdexd:latest --password <wallet_password> --ocean-datadir /home/tdex/.tdex-daemon/oceand
   ```
 
 You can get more info about the usage of the flags by running `tdex-migration --help` at anytime.
