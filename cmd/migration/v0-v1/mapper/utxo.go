@@ -1,6 +1,7 @@
 package mapper
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -58,6 +59,9 @@ func (m *mapperService) fromV0UnspentToV1Utxo(
 		spentStatus = v1domain.UtxoStatus{BlockHeight: 1}
 	}
 
+	valueCommitment, _ := hex.DecodeString(utxo.ValueCommitment)
+	assetCommitment, _ := hex.DecodeString(utxo.AssetCommitment)
+
 	return &v1domain.Utxo{
 		UtxoKey: v1domain.UtxoKey{
 			TxID: utxo.TxID,
@@ -65,8 +69,8 @@ func (m *mapperService) fromV0UnspentToV1Utxo(
 		},
 		Value:               utxo.Value,
 		Asset:               utxo.AssetHash,
-		ValueCommitment:     []byte(utxo.ValueCommitment),
-		AssetCommitment:     []byte(utxo.AssetCommitment),
+		ValueCommitment:     valueCommitment,
+		AssetCommitment:     assetCommitment,
 		ValueBlinder:        utxo.ValueBlinder,
 		AssetBlinder:        utxo.AssetBlinder,
 		Script:              utxo.ScriptPubKey,

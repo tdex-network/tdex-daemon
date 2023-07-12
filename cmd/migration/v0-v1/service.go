@@ -112,35 +112,18 @@ func (s *service) Migrate() error {
 	}
 
 	if !*noBackupFlag {
-		v0DatadirDest := filepath.Join(v1DatadirTemp, "tdex-daemon-v0")
-		if err := os.Rename(v0Datadir, v0DatadirDest); err != nil {
-			return fmt.Errorf("failed to move vo datadir into v1: %s", err)
-		}
-		if err := archiveAndCompress(v0DatadirDest); err != nil {
+		if err := archiveAndCompress(v0Datadir, v1DatadirTemp); err != nil {
 			return fmt.Errorf(
 				"failed to created compressed archive of v0 datadir: %s", err,
 			)
 		}
-		os.RemoveAll(v0DatadirDest)
 	}
 
 	// Let's delete the datadir if it has to be overwritten.
-	if v0Datadir == v1Datadir {
-		os.RemoveAll(v0Datadir)
-	}
+	os.RemoveAll(v0Datadir)
 
-	list, _ := os.ReadDir(v1DatadirTemp)
-	for _, v := range list {
-		source := filepath.Join(v1DatadirTemp, v.Name())
-		dest := filepath.Join(v1Datadir, v.Name())
-		// if err := os.Rename(source, dest); err != nil {
-		// 	if strings.Contains(err.Error(), "cross-device link") {
-		if err := copyDir(source, dest); err != nil {
-			return err
-		}
-		// }
-		// return err
-		// }
+	if err := copyDir(v1DatadirTemp, v1Datadir); err != nil {
+		return err
 	}
 	if err := copyDir(oceanDatadirTemp, oceanDatadir); err != nil {
 		return err
@@ -733,7 +716,7 @@ func getTxHex(net, txid string) (string, error) {
 	return string(body), nil
 }
 
-func archiveAndCompress(dir string) error {
+func archiveAndCompress(source, dest string) error {
 	start := time.Now()
 	log.Info("making compressed archive out of the v0 datadir...")
 
@@ -816,14 +799,13 @@ func archiveAndCompress(dir string) error {
 		return err
 	}
 
-	baseDir := filepath.Dir(dir)
-	if err := tar(dir, baseDir); err != nil {
+	if err := tar(source, dest); err != nil {
 		return err
 	}
-	if err := gzip(fmt.Sprintf("%s.tar", dir), baseDir); err != nil {
-		return err
-	}
-	if err := os.RemoveAll(fmt.Sprintf("%s.tar", dir)); err != nil {
+	tarfile := filepath.Join(dest, fmt.Sprintf("%s.tar", strings.ToLower(filepath.Base(source))))
+	defer os.RemoveAll(tarfile)
+
+	if err := gzip(tarfile, dest); err != nil {
 		return err
 	}
 
