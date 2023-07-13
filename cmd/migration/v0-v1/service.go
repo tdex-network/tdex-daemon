@@ -895,16 +895,14 @@ func copyDir(src string, dst string) (err error) {
 	}
 
 	_, err = os.Stat(dst)
-	if err != nil && !os.IsNotExist(err) {
-		return
-	}
-	if err == nil {
-		return fmt.Errorf("destination already exists")
-	}
-
-	err = os.MkdirAll(dst, si.Mode())
 	if err != nil {
-		return
+		if !os.IsNotExist(err) {
+			return
+		}
+		err = os.MkdirAll(dst, si.Mode())
+		if err != nil {
+			return
+		}
 	}
 
 	entries, err := os.ReadDir(src)
