@@ -15,6 +15,11 @@ build-cli:
 	@echo "Building tdex binary..." 
 	@bash ./scripts/build-cli
 
+## build-migration: build migration
+build-migration:
+	@echo "Building migration binary..."
+	@bash ./scripts/build-migration
+
 ## proto: compile proto stubs
 proto: proto-lint
 	@echo "Compiling stubs..."

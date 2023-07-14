@@ -1,5 +1,5 @@
 # first image used to build the sources
-FROM golang:1.18-buster AS builder
+FROM golang:1.19-buster AS builder
 
 ARG VERSION
 ARG COMMIT
@@ -14,7 +14,7 @@ RUN go mod download
 
 RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o bin/tdexd cmd/tdexd/*
 RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o bin/tdex cmd/tdex/*
-
+RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.date=${DATE}'" -o bin/tdex-migration cmd/migration/main.go
 
 # Second image, running the tdexd executable
 FROM debian:buster-slim

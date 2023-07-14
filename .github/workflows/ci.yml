@@ -51,3 +51,4 @@ jobs:
         run: |
           make build
           make build-cli
+          make build-migration

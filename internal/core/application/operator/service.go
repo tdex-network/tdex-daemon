@@ -192,7 +192,7 @@ func (s *service) checkAccountsLowBalance() func(ports.WalletTxNotification) boo
 					balance := map[string]ports.Balance{
 						s.wallet.NativeAsset(): bal,
 					}
-					publishTopic(account, balance, nil)
+					publishTopic(domain.FeeAccount, balance, nil)
 				}
 			}
 		}
@@ -253,7 +253,7 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 					log.WithError(err).Warn("failed to add deposit txs")
 				} else {
 					if count > 0 {
-						log.Debugf("added %d new deposit(s)", count)
+						log.Debugf("added %d new deposit(s) for account %s", count, deposits[0].AccountName)
 
 						// Spawn go routine to publish event for account's deposit.
 						go func() {
@@ -277,7 +277,7 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 								if err := s.pubsub.PublisAccountDepositEvent(
 									deposit.AccountName, balance, deposit, market,
 								); err != nil {
-									log.WithError(err).Warn("failed to publish acount deposit event")
+									log.WithError(err).Warn("failed to publish account deposit event")
 								}
 							}
 						}()
@@ -291,7 +291,7 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 					log.WithError(err).Warn("failed to add withdrawal txs")
 				} else {
 					if count > 0 {
-						log.Debugf("added %d new withdrawal(s)", count)
+						log.Debugf("added %d new withdrawal(s) for account %s", count, withdrawals[0].AccountName)
 
 						// Spawn go routine to publish event for account's withdrawal.
 						go func() {
@@ -315,7 +315,7 @@ func (s *service) classifyAndStoreTx() func(ports.WalletTxNotification) bool {
 								if err := s.pubsub.PublisAccountWithdrawEvent(
 									withdrawal.AccountName, balance, withdrawal, market,
 								); err != nil {
-									log.WithError(err).Warn("failed to publish acount withdraw event")
+									log.WithError(err).Warn("failed to publish account withdraw event")
 								}
 							}
 						}()

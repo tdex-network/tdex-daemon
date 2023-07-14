@@ -71,6 +71,65 @@ builds:
       - arm64
     binary: tdex
 
+  # Migration
+
+  ### Linux
+  - id: "tdex-migration-linux-amd64"
+    main: ./cmd/migration
+    ldflags:
+      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    binary: tdex-migration-linux-amd64
+
+  - id: "tdex-migration-linux-arm64"
+    main: ./cmd/migration
+    ldflags:
+      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+      - CXX=aarch64-linux-gnu-g++
+    goos:
+      - linux
+    goarch:
+      - arm64
+    binary: tdex-migration-linux-arm64
+
+  ### Darwin
+
+  - id: "tdex-migration-darwin-amd64"
+    main: ./cmd/migration
+    ldflags:
+      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/osxcross/target/bin/o64-clang
+      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    binary: tdex-migration-darwin-amd64
+
+  - id: "tdex-migration-darwin-arm64"
+    main: ./cmd/migration
+    ldflags:
+      - -s -X 'main.version={{.Version}}' -X 'main.commit={{.Commit}}' -X 'main.date={{.Date}}'
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/osxcross/target/bin/oa64-clang
+      - CXX=/home/runner/work/osxcross/target/bin/oa64-clang++
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    binary: tdex-migration-darwin-arm64
+
 ## flag the semver v**.**.**-<tag>.* as pre-release on Github
 release:
   prerelease: auto
@@ -113,6 +172,15 @@ archives:
       - tdex
     name_template: "tdex-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 
+  - id: tdex-migration
+    format: binary
+    builds:
+      - tdex-migration-linux-amd64
+      - tdex-migration-linux-arm64
+      - tdex-migration-darwin-amd64
+      - tdex-migration-darwin-arm64
+    name_template: "tdex-migration-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+
 dockers:
   ###########################
   # tag latest & prerelease #
@@ -127,6 +195,7 @@ dockers:
     ids:
       - tdex
       - tdexd-linux-amd64
+      - tdex-migration-linux-amd64
     dockerfile: goreleaser.Dockerfile
     # GOOS of the built binaries/packages that should be used.
     goos: linux
@@ -152,6 +221,7 @@ dockers:
     ids:
       - tdex
       - tdexd-linux-arm64
+      - tdex-migration-linux-arm64
     dockerfile: goreleaser.Dockerfile
     # GOOS of the built binaries/packages that should be used.
     goos: linux

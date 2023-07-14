@@ -240,6 +240,7 @@ type Withdrawal interface {
 }
 
 type Webhook interface {
+	GetId() string
 	GetEvent() WebhookEvent
 	GetEndpoint() string
 	GetSecret() string

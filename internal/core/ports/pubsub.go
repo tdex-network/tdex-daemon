@@ -34,8 +34,11 @@ type PubSubStore interface {
 type SecurePubSub interface {
 	// Store returns the internal store.
 	Store() PubSubStore
-	// Subscribes some client for a topic.
+	// Subscribe adds a new subscription for the requested topic.
 	Subscribe(topic, endpoint, secret string) (string, error)
+	// SubscribeWithID adds a subscription for the requested topic by using the
+	// given id instead of assinging a new one.
+	SubscribeWithID(id, topic, endpoint, secret string) (string, error)
 	// Unsubscribe removes some client defined by its id for a topic.
 	Unsubscribe(topic, id string) error
 	// ListSubscriptionsForTopic returns the info of all clients subscribed for

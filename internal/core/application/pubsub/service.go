@@ -39,6 +39,21 @@ func (s *Service) AddWebhook(
 	return s.pubsub.Subscribe(topic, webhook.GetEndpoint(), webhook.GetSecret())
 }
 
+func (s *Service) AddWebhookWithID(
+	_ context.Context, webhook ports.Webhook,
+) (string, error) {
+	if webhook.GetEvent().IsUnspecified() {
+		return "", fmt.Errorf("invalid webhook event type")
+	}
+	if len(webhook.GetId()) <= 0 {
+		return "", fmt.Errorf("missing webhook id")
+	}
+	topic := topicForEvent(webhook.GetEvent())
+	return s.pubsub.SubscribeWithID(
+		webhook.GetId(), topic, webhook.GetEndpoint(), webhook.GetSecret(),
+	)
+}
+
 func (s *Service) RemoveWebhook(_ context.Context, id string) error {
 	return s.pubsub.Unsubscribe(ports.UnspecifiedTopic, id)
 }
