@@ -125,10 +125,11 @@ type OperatorService interface {
 func NewOperatorService(
 	walletSvc WalletService, pubsubSvc PubSubService,
 	repoManager ports.RepoManager, feeAccountBalanceThreshold uint64,
+	satsPerByte decimal.Decimal,
 ) (OperatorService, error) {
 	w := walletSvc.(*wallet.Service)
 	p := pubsubSvc.(*pubsub.Service)
 	return operator.NewService(
-		w, p, repoManager, feeAccountBalanceThreshold,
+		w, p, repoManager, feeAccountBalanceThreshold, satsPerByte,
 	)
 }

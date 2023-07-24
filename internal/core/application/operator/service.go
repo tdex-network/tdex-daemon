@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/tdex-daemon/internal/core/application/pubsub"
 	"github.com/tdex-network/tdex-daemon/internal/core/application/wallet"
@@ -21,6 +22,11 @@ import (
 	"github.com/vulpemventures/go-elements/transaction"
 )
 
+var (
+	minSatsPerByte = decimal.NewFromFloat(0.1)
+	maxSatsPerByte = decimal.NewFromInt(10000)
+)
+
 type service struct {
 	wallet      *wallet.Service
 	pubsub      *pubsub.Service
@@ -29,11 +35,13 @@ type service struct {
 	feeAccountBalanceThreshold uint64
 	network                    network.Network
 	accounts                   *accountMap
+	milliSatsPerByte           uint64
 }
 
 func NewService(
 	walletSvc *wallet.Service, pubsubSvc *pubsub.Service,
 	repoManager ports.RepoManager, feeAccountBalanceThreshold uint64,
+	satsPerByte decimal.Decimal,
 ) (*service, error) {
 	if walletSvc == nil {
 		return nil, fmt.Errorf("missing wallet service")
@@ -44,6 +52,14 @@ func NewService(
 	if repoManager == nil {
 		return nil, fmt.Errorf("missing repo manager")
 	}
+	if satsPerByte.LessThan(minSatsPerByte) ||
+		satsPerByte.GreaterThan(maxSatsPerByte) {
+		return nil, fmt.Errorf(
+			"sats per byte ratio must be in range [%s, %s]",
+			minSatsPerByte, maxSatsPerByte,
+		)
+	}
+	msatsPerByte := satsPerByte.Mul(decimal.NewFromInt(1000)).BigInt().Uint64()
 	info, err := walletSvc.Wallet().Info(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to wallet: %s", err)
@@ -57,7 +73,7 @@ func NewService(
 
 	svc := &service{
 		walletSvc, pubsubSvc, repoManager, feeAccountBalanceThreshold,
-		walletSvc.Network(), accounts,
+		walletSvc.Network(), accounts, msatsPerByte,
 	}
 
 	svc.wallet.RegisterHandlerForTxEvent(svc.classifyAndStoreTx())

@@ -26,7 +26,7 @@ type Config struct {
 	PriceFeederSvc      ports.PriceFeeder
 	FeeBalanceThreshold uint64
 	TradePriceSlippage  decimal.Decimal
-	TradeSatsPerByte    decimal.Decimal
+	TxSatsPerByte       decimal.Decimal
 
 	repo     ports.RepoManager
 	pubsub   PubSubService
@@ -133,7 +133,7 @@ func (c *Config) operatorService() (OperatorService, error) {
 		pubsub, _ := c.pubsubService()
 		repo, _ := c.repoManager()
 		operator, err := NewOperatorService(
-			wallet, pubsub, repo, c.FeeBalanceThreshold,
+			wallet, pubsub, repo, c.FeeBalanceThreshold, c.TxSatsPerByte,
 		)
 		if err != nil {
 			return nil, err
@@ -149,7 +149,7 @@ func (c *Config) tradeService() (TradeService, error) {
 		pubsub, _ := c.pubsubService()
 		repo, _ := c.repoManager()
 		trade, err := NewTradeService(
-			wallet, pubsub, repo, c.TradePriceSlippage, c.TradeSatsPerByte,
+			wallet, pubsub, repo, c.TradePriceSlippage, c.TxSatsPerByte,
 		)
 		if err != nil {
 			return nil, err

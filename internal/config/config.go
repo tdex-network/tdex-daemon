@@ -25,8 +25,8 @@ const (
 	FeeAccountBalanceThresholdKey = "FEE_ACCOUNT_BALANCE_THRESHOLD"
 	// TradeExpiryTimeKey is the duration in seconds of lock on unspents we reserve for accepted trades, before eventually double spending it
 	TradeExpiryTimeKey = "TRADE_EXPIRY_TIME"
-	// TradeSatsPerByte is the sats per byte ratio to use for paying for trades' network fees
-	TradeSatsPerByte = "TRADE_SATS_PER_BYTE"
+	// TxSatsPerByteKey is the sats per byte ratio used to pay for txs' newtwork fees
+	TxSatsPerByteKey = "TX_SATS_PER_BYTE"
 	// PriceSlippageKey is the percentage of the slipage for accepting trades compared to current spot price
 	PriceSlippageKey = "PRICE_SLIPPAGE"
 	// TradeTLSKeyKey is the path of the the TLS key for the Trade interface
@@ -85,7 +85,7 @@ func InitConfig() error {
 	vip.SetDefault(LogLevelKey, 4)
 	vip.SetDefault(FeeAccountBalanceThresholdKey, 5000)
 	vip.SetDefault(TradeExpiryTimeKey, 120)
-	vip.SetDefault(TradeSatsPerByte, 0.1)
+	vip.SetDefault(TxSatsPerByteKey, 0.11)
 	vip.SetDefault(DatadirKey, defaultDatadir)
 	vip.SetDefault(PriceSlippageKey, 0.05)
 	vip.SetDefault(EnableProfilerKey, false)
@@ -147,9 +147,9 @@ func validate() error {
 		)
 	}
 
-	satsPerByte := GetFloat(TradeSatsPerByte)
+	satsPerByte := GetFloat(TxSatsPerByteKey)
 	if satsPerByte < 0.1 {
-		return fmt.Errorf("%s must be equal or greater than 0.1", TradeSatsPerByte)
+		return fmt.Errorf("%s must be equal or greater than 0.1", TxSatsPerByteKey)
 	}
 
 	if !vip.IsSet(OceanWalletAddrKey) {
