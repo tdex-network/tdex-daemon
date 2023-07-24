@@ -48,6 +48,17 @@ services:
       - tdexd
     volumes:
       - ../volumes/feederd/config.json:/config.json
+  # not used in dev mode
+  oceand-db:
+    container_name: oceand-regtest-db
+    image: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=oceand-db
+    ports:
+      - "5432:5432"
 
 networks:
   default:
