@@ -38,6 +38,12 @@ var (
 func main() {
 	log.RegisterExitHandler(clear)
 
+	log.Info("minting a block...")
+	if err := mintBlock(); err != nil {
+		log.WithError(err).Fatal("failed to mint new block")
+	}
+	log.Infof("done\n\n")
+
 	if err := makeDirectoryIfNotExists(volumesPath); err != nil {
 		log.WithError(err).Fatal("failed to create volume dir")
 	}
@@ -57,7 +63,7 @@ func main() {
 	log.Infof("asset: %s", usdt)
 	log.Infof("done\n\n")
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	log.Info("configuring tdex CLI...")
 	if _, err := runCLICommand("config", "init", "--no-tls", "--no-macaroons"); err != nil {
@@ -97,6 +103,8 @@ func main() {
 	}
 	log.Infof("done\n\n")
 
+	time.Sleep(20 * time.Second)
+
 	log.Info("splitting and depositing funds to fee account...")
 	if _, err := runCLICommand("feefragmenter", "split"); err != nil {
 		log.WithError(err).Fatal("failed to split and deposit feefragmnenter account funds to fee one")
@@ -109,6 +117,8 @@ func main() {
 		log.WithError(err).Fatal("failed to mint block")
 	}
 	log.Infof("done\n\n")
+
+	time.Sleep(20 * time.Second)
 
 	// create a LBTC/USDT market
 	log.Info("creating new market...")
@@ -140,6 +150,8 @@ func main() {
 	}
 	log.Infof("done\n\n")
 
+	time.Sleep(20 * time.Second)
+
 	log.Info("splitting and depositing funds to market account...")
 	if _, err := runCLICommand("marketfragmenter", "split"); err != nil {
 		log.WithError(err).Fatal("failed to split and deposit marketfragmenter account funds to market one")
@@ -152,6 +164,8 @@ func main() {
 		log.WithError(err).Fatal("failed to mint block")
 	}
 	log.Infof("done\n\n")
+
+	time.Sleep(20 * time.Second)
 
 	// setup market fees
 	log.Info("setting trading fees for the market...")
@@ -169,30 +183,26 @@ func main() {
 
 	// before opening the market, let's set its strategy to pluggable and also
 	// start the feeder service.
-	// log.Info("switching to pluggable market strategy...")
-	// if _, err := runCLICommand("market", "strategy", "--pluggable"); err != nil {
-	// 	log.WithError(err).Fatal("failed to update market strategy")
-	// }
-	// log.Infof("done\n\n")
-
-	// TODO: restore using feeder once it supports tdex-daemon/v2 proto.
-	// For now let's manually set a price for the market 1 LBTC = 20k USDT.
-
-	// log.Info("starting feeder...")
-	// if err := setupFeeder(); err != nil {
-	// 	log.WithError(err).Fatal("failed to start feeder service")
-	// }
-	// time.Sleep(7 * time.Second)
-	// log.Infof("done\n\n")
-
-	// TODO: remove this step and restore usage of price feed
-	log.Info("setting market price (TODO: remove this step)...")
-	if _, err := runCLICommand(
-		"market", "price", "--base-price", "0.00004", "--quote-price", "25000",
-	); err != nil {
-		log.WithError(err).Fatal("failed to update market price")
+	log.Info("switching to pluggable market strategy...")
+	if _, err := runCLICommand("market", "strategy", "--pluggable"); err != nil {
+		log.WithError(err).Fatal("failed to update market strategy")
 	}
 	log.Infof("done\n\n")
+
+	log.Info("setting up market feeder...")
+	out, err = runCLICommand(
+		"feeder", "add", "--source", "kraken", "--ticker", "XBT/USDT",
+	)
+	if err != nil {
+		log.WithError(err).Fatal("failed to add market feeder")
+	}
+	feederId := feederIdFromStdout(out)
+	if _, err = runCLICommand("feeder", "start", "--id", feederId); err != nil {
+		log.WithError(err).Fatal("failed to start market feeder")
+	}
+	log.Infof("done\n\n")
+
+	time.Sleep(20 * time.Second)
 
 	// open the market
 	log.Info("opening market...")
@@ -201,7 +211,7 @@ func main() {
 	}
 	log.Infof("done\n\n")
 
-	time.Sleep(15 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	// trade on market
 	log.Infof("trading on market:\n\n")
@@ -216,6 +226,8 @@ func main() {
 	}
 	log.Infof("done\n\n")
 
+	time.Sleep(20 * time.Second)
+
 	if err = examples.BuyExample(daemonAddr, explorerAddr); err != nil {
 		log.WithError(err).Fatal("failed to buy lbtc for usd")
 	}
@@ -227,56 +239,6 @@ func main() {
 	}
 	log.Infof("done\n\n")
 
-	// log.Info("setting up traders' wallets...")
-	// client, _ := setupTraderClient()
-
-	// wallets := make([]*trade.Wallet, 0, numOfConcurrentTrades)
-	// assets := make([]string, 0, numOfConcurrentTrades)
-	// for i := 0; i < numOfConcurrentTrades; i++ {
-	// 	w, _ := trade.NewRandomWallet(&network.Regtest)
-	// 	faucetAmount, asset := 0.0004, lbtc // 0.0004 LBTC
-	// 	if i%2 != 0 {
-	// 		faucetAmount, asset = 20, usdt // 20 USDT
-	// 	}
-	// 	if _, err := explorerSvc.Faucet(w.Address(), faucetAmount, asset); err != nil {
-	// 		log.WithError(err).Fatal("failed to fund traders' wallets")
-	// 	}
-
-	// 	wallets = append(wallets, w)
-	// 	assets = append(assets, asset)
-	// }
-
-	// time.Sleep(7 * time.Second)
-	// log.Infof("done\n\n")
-
-	// // start trading against the market
-	// log.Info("start trading on market...")
-	// TODO: restore concurrent trades when fixing issues in Ocean wallet on
-	// getting non-wallet utxos. For now consecutive trades are made instead.
-
-	// var eg errgroup.Group
-	// for i := 0; i < numOfConcurrentTrades; i++ {
-	// 	wallet := wallets[i]
-	// 	asset := assets[i]
-	// 	eg.Go(func() error {
-	// 		if err := tradeOnMarket(client, wallet, asset); err != nil {
-	// 			return err
-	// 		}
-	// 		return mintBlock()
-	// 	})
-	// }
-
-	// if err := eg.Wait(); err != nil {
-	// 	log.WithError(err).Fatal("failed to trade on LBTC/USDT market")
-	// }
-	// for i := 0; i < numOfConcurrentTrades; i++ {
-	// 	if err := tradeOnMarket(client, wallets[i], assets[i]); err != nil {
-	// 		log.WithError(err).Fatal("failed to trade on LBTC/USDT market")
-	// 	}
-	// 	if err := mintBlock(); err != nil {
-	// 		log.WithError(err).Fatal("failed to mint new block")
-	// 	}
-	// }
 	log.Info("test succeeded")
 	log.Exit(0)
 }
@@ -300,6 +262,9 @@ func runCommand(name string, arg ...string) (string, error) {
 	errb := new(strings.Builder)
 	cmd := newCommand(outb, errb, name, arg...)
 	if err := cmd.Run(); err != nil {
+		if len(outb.String()) > 0 {
+			return "", fmt.Errorf(outb.String())
+		}
 		return "", err
 	}
 	if errMsg := errb.String(); len(errMsg) > 0 {
@@ -332,6 +297,11 @@ func addressesFromStdout(out string) []string {
 	return addresses
 }
 
+func feederIdFromStdout(out string) string {
+	s := strings.Split(out, ":")
+	return strings.Trim(s[1], " ")
+}
+
 func fundFeeFragmenterAccount(addresses []string) error {
 	// fund every address with 5000 sats
 	for _, addr := range addresses {
@@ -339,7 +309,6 @@ func fundFeeFragmenterAccount(addresses []string) error {
 			return err
 		}
 	}
-	time.Sleep(10 * time.Second)
 	return nil
 }
 
@@ -350,7 +319,6 @@ func fundMarketFragmenterAccount(addresses []string) error {
 		//nolint
 		explorerSvc.Faucet(addr, marketQuoteDepositAmount, usdt)
 	}
-	time.Sleep(10 * time.Second)
 	return nil
 }
 

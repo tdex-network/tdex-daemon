@@ -5,8 +5,6 @@ services:
     container_name: oceand
     image: ghcr.io/vulpemventures/oceand:latest
     restart: unless-stopped
-    depends_on:
-      - oceand-db
     environment:
       - OCEAN_LOG_LEVEL=5
       - OCEAN_NO_TLS=true
