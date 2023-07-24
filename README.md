@@ -22,15 +22,18 @@ In-depth documentation for installing and using the tdex-daemon is available at 
 
 ## 🖥 Local Development
 
-Below is a list of commands you will probably find useful for development.
+Below is a list of commands you will likely find useful for development.
 
 ### Requirements
 
-* Go (^1.16.*)
+* [Golang](https://go.dev/) (^1.16.*)
+* [Ocean wallet](https://github.com/vulpemventures/ocean)
 
-### Run daemon
+### Run daemon (dev mode)
 
-Builds `tdexd` as static binary and runs the project with default configuration.
+[Start](https://github.com/vulpemventures/ocean/#local-run) the ocean wallet.
+
+Start the daemon:
 
 ```bash
 $ make run
@@ -38,7 +41,7 @@ $ make run
 
 ### Build daemon
 
-Builds `tdexd` as static binary in the `./build` folder
+Build `tdexd` as a static binary in the `./build` folder
 
 ```bash
 $ make build
@@ -46,7 +49,7 @@ $ make build
 
 ### Build CLI
 
-Builds `tdex` as static binary in the `./build` folder
+Build `tdex` as a static binary in the `./build` folder
 
 ```bash
 $ make build-cli
@@ -54,35 +57,36 @@ $ make build-cli
 
 ### Build and Run with docker
 
-Build and use `tdex` with docker.
+Start oceand and tdexd services as docker contaniner.
 
-#### Build tdexd docker image
+#### Start oceand and tdexd
 
-_At the root of the repository_
-
-```bash
-$ docker build --pull --rm -f "Dockerfile" -t tdexd:latest "."
-```
-
-#### Run the daemon
+Start `oceand` and `tdexd` containters:
 
 ```bash
-$ docker run -d -it --name tdexd -p 9945:9945 -p 9000:9000 -v `pwd`/tdexd:/.tdex-daemon tdexd:latest
+$ docker-compose -f resources/compose/docker-compose.yml up -d oceand tdexd
 ```
 
 #### Use the CLI
 
 ```bash
-$ alias tdex="docker exec -it tdexd tdex"
+$ alias tdex="docker exec tdexd tdex"
+
+# Configure the CLI
+$ tdex config init --no-tls --no-macaroons
+
+# Use the CLI
+$ tdex status
+$ tdex --help
 ```
 
 ### Test
 
 ```bash
-# Short testing
+# Unit testing
 $ make test
 
-# integration testing
+# Integration testing
 $ make integrationtest
 ```
 
