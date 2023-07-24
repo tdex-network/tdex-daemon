@@ -208,7 +208,9 @@ func (s *service) MarketFragmenterSplitFunds(
 		"crafting and broadcasting transaction to send funds to market account",
 		nil,
 	}
-	txid, err := s.wallet.SendToMany(domain.MarketFragmenterAccount, outputs, 100)
+	txid, err := s.wallet.SendToMany(
+		domain.MarketFragmenterAccount, outputs, s.milliSatsPerByte,
+	)
 	if err != nil {
 		chRes <- fragmenterReply{
 			"", fmt.Errorf("failed to send funds to market account: %s", err),

@@ -85,7 +85,7 @@ func main() {
 		PriceFeederSvc:      priceFeederSvc,
 		FeeBalanceThreshold: feeBalanceThreshold,
 		TradePriceSlippage:  pricesSlippagePercentage,
-		TradeSatsPerByte:    satsPerByte,
+		TxSatsPerByte:       satsPerByte,
 		DBType:              dbType,
 		DBConfig:            dbDir,
 	}
@@ -142,7 +142,7 @@ func loadConfig() error {
 	dbType = config.GetString(config.DBTypeKey)
 	// App services config
 	pricesSlippagePercentage = decimal.NewFromFloat(config.GetFloat(config.PriceSlippageKey))
-	satsPerByte = decimal.NewFromFloat(config.GetFloat(config.TradeSatsPerByte))
+	satsPerByte = decimal.NewFromFloat(config.GetFloat(config.TxSatsPerByteKey))
 	feeBalanceThreshold = uint64(config.GetInt(config.FeeAccountBalanceThresholdKey))
 	tradeSvcPort = config.GetInt(config.TradeListeningPortKey)
 	operatorSvcPort = config.GetInt(config.OperatorListeningPortKey)

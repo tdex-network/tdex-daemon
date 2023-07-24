@@ -127,7 +127,7 @@ func (s *service) FeeFragmenterSplitFunds(
 	}
 
 	txHex, err := s.wallet.Transaction().Transfer(
-		ctx, domain.FeeFragmenterAccount, outputs, 100,
+		ctx, domain.FeeFragmenterAccount, outputs, s.milliSatsPerByte,
 	)
 	if err != nil {
 		chRes <- fragmenterReply{"", err}
