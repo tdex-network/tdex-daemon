@@ -16,7 +16,7 @@ services:
     ports:
       - "18000:18000"
     volumes:
-      - ../volumes/oceand/data:/home/ocean/.ocean-wallet
+      - ../volumes/oceand/data:/home/ocean/.oceand
       - ../volumes/oceand/cli:/home/ocean/.ocean-cli
   tdexd:
     container_name: tdexd
@@ -27,7 +27,6 @@ services:
     depends_on:
       - oceand
     environment:
-      - TDEX_NETWORK=regtest
       - TDEX_WALLET_ADDR=oceand:18000
       - TDEX_LOG_LEVEL=5
       - TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000
