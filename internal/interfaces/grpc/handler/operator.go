@@ -485,13 +485,13 @@ func (h *operatorHandler) getMarketReport(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	groupByTimeFrame, err := parseTimeFrame(req.GetTimeFrame())
+	timeFrame, err := parseTimeFrame(req.GetTimeFrame())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	report, err := h.operatorSvc.GetMarketReport(
-		ctx, market, timeRange, groupByTimeFrame,
+		ctx, market, timeRange, timeFrame,
 	)
 	if err != nil {
 		return nil, err

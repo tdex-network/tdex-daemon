@@ -109,12 +109,19 @@ func (s *service) ListMarketExternalAddresses(
 
 func (s *service) GetMarketReport(
 	ctx context.Context, market ports.Market,
-	timeRange ports.TimeRange, groupByHours int,
+	timeRange ports.TimeRange, timeFrame int,
 ) (ports.MarketReport, error) {
-	rangeStart, rangeEnd := timeRangeToDates(timeRange)
+	rangeStart, rangeEnd, err := timeRangeToDates(timeRange)
+	if err != nil {
+		return nil, err
+	}
 
-	if int(rangeEnd.Sub(rangeStart).Hours()) <= groupByHours {
-		return nil, fmt.Errorf("time range too small for given grouping period")
+	if timeFrame == 0 {
+		timeFrame = getDefaultTimeFrameForRange(rangeStart, rangeEnd)
+	}
+
+	if int(rangeEnd.Sub(rangeStart).Hours()) < timeFrame {
+		return nil, fmt.Errorf("time range must be larger than time frame")
 	}
 
 	mkt, err := s.repoManager.MarketRepository().GetMarketByAssets(
@@ -136,7 +143,7 @@ func (s *service) GetMarketReport(
 		return trades[i].SwapRequest.Timestamp > trades[j].SwapRequest.Timestamp
 	})
 
-	subVolumes := splitTimeRange(rangeStart, rangeEnd, groupByHours)
+	subVolumes := splitTimeRange(rangeStart, rangeEnd, timeFrame)
 	tradesFee := make([]tradeFeeInfo, 0)
 	for _, trade := range trades {
 		if isInTimeRange(trade.SwapRequest.Timestamp, rangeStart, rangeEnd) {
@@ -375,15 +382,21 @@ func (s *service) UpdateMarketStrategy(
 	)
 }
 
-func timeRangeToDates(tr ports.TimeRange) (startTime, endTime time.Time) {
+func timeRangeToDates(tr ports.TimeRange) (startTime, endTime time.Time, err error) {
 	now := time.Now()
 	endTime = now
 
 	if p := tr.GetCustomPeriod(); p != nil {
-		startTime, _ = time.Parse(time.RFC3339, p.GetStartDate())
+		startTime, err = time.Parse(time.RFC3339, p.GetStartDate())
+		if err != nil {
+			return
+		}
 
 		if p.GetEndDate() != "" {
-			endTime, _ = time.Parse(time.RFC3339, p.GetEndDate())
+			endTime, err = time.Parse(time.RFC3339, p.GetEndDate())
+			if err != nil {
+				return
+			}
 		}
 		return
 	}
@@ -420,10 +433,10 @@ func timeRangeToDates(tr ports.TimeRange) (startTime, endTime time.Time) {
 	return
 }
 
-// initGroupedVolume splits the given time range (start, end) into a list of
-// MarketVolume, ie. smaller consecutive time ranges of numHours hours in
-// descending order. Example:
-// in: 2009-11-10 19:00:00 (start), 2009-11-11 00:00:00 (end), 2 (numHours)
+// splitTimeRange splits the given time range (start, end) into a list of
+// sub-ranges of frame hours, ordered from end to start.
+// Example:
+// in: 2009-11-10 19:00:00 (start), 2009-11-11 00:00:00 (end), 1 (frame)
 // out: [
 //
 //	{end: 2009-11-11 00:00:00, start: 2009-11-10 22:00:01},
@@ -432,19 +445,19 @@ func timeRangeToDates(tr ports.TimeRange) (startTime, endTime time.Time) {
 //
 // ]
 func splitTimeRange(
-	start, end time.Time, groupByHours int,
+	start, end time.Time, frame int,
 ) marketVolumeInfoList {
-	groupedVolume := make([]*marketVolumeInfo, 0)
+	subRanges := make([]*marketVolumeInfo, 0)
 	for {
 		if end.Equal(start) || end.Before(start) {
-			return groupedVolume
+			return subRanges
 		} else {
-			nextEnd := end.Add(-time.Hour * time.Duration(groupByHours))
+			nextEnd := end.Add(-time.Hour * time.Duration(frame))
 			nextStart := start
 			if nextEnd.Sub(start).Seconds() > 0 {
 				nextStart = nextEnd.Add(time.Second)
 			}
-			groupedVolume = append(groupedVolume, &marketVolumeInfo{
+			subRanges = append(subRanges, &marketVolumeInfo{
 				start: nextStart, end: end,
 			})
 			end = nextEnd
@@ -455,4 +468,29 @@ func splitTimeRange(
 func isInTimeRange(t int64, start, end time.Time) bool {
 	tt := time.Unix(t, 0)
 	return !tt.Before(start) && !tt.After(end)
+}
+
+// getDefaultTimeFrameForRange returns the appropriate time frame (tf)
+// based on the delta in days between start and end.
+// - delta >= 5y -> tf = 1m
+// - delta >= 1y -> tf = 7d
+// - delta >= 3m -> tf = 1d
+// - delta >= 7d -> tf = 4h
+// - otherwise tf = 1h
+func getDefaultTimeFrameForRange(start, end time.Time) int {
+	delta := int64(end.Sub(start).Hours() / 24)
+
+	if delta >= 365*5 {
+		return 24 * 30
+	}
+	if delta >= 365 {
+		return 24 * 7
+	}
+	if delta >= 88 {
+		return 24
+	}
+	if delta >= 7 {
+		return 4
+	}
+	return 1
 }
