@@ -5,6 +5,7 @@ services:
     container_name: oceand
     image: ghcr.io/vulpemventures/oceand:latest
     restart: unless-stopped
+    user: 0:0
     environment:
       - OCEAN_LOG_LEVEL=5
       - OCEAN_NO_TLS=true
@@ -24,6 +25,7 @@ services:
       context: ../../
       dockerfile: Dockerfile
     restart: unless-stopped
+    user: 0:0
     depends_on:
       - oceand
     environment:
@@ -43,6 +45,7 @@ services:
     container_name: feederd
     image: ghcr.io/tdex-network/feederd:latest
     restart: unless-stopped
+    user: 0:0
     depends_on:
       - tdexd
     volumes:
