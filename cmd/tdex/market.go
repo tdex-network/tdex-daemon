@@ -177,8 +177,13 @@ var (
 		Usage: "updates the current market making strategy, either automated or pluggable market making",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
+				Name:  "balanced",
+				Usage: "set the strategy to balanced AMM",
+				Value: false,
+			},
+			&cli.BoolFlag{
 				Name:  "pluggable",
-				Usage: "set the strategy as pluggable",
+				Usage: "set the strategy to pluggable",
 				Value: false,
 			},
 		},
@@ -226,22 +231,46 @@ var (
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "start",
-				Usage: "fetch balances from specific time in the past, please provide end flag also",
+				Usage: "custom start date expressed in RFC3339 format",
 			},
 			&cli.StringFlag{
 				Name:  "end",
-				Usage: "fetch balances from specific time in the past til end date, use with start flag",
+				Usage: "custom end date expressed in RFC3339 format",
 			},
-			&cli.IntFlag{
-				Name: "predefined-period",
-				Usage: "time predefined periods:\n" +
-					"       1 -> last hour\n" +
-					"       2 -> last day\n" +
-					"       3 -> last month\n" +
-					"       4 -> last 3 months\n" +
-					"       5 -> year to date\n" +
-					"       6 -> all",
-				Value: 2,
+			&cli.BoolFlag{
+				Name:  "last-hour",
+				Usage: "get a market report for the last hour",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "last-day",
+				Usage: "get a market report for the last 24 hours",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "last-month",
+				Usage: "get a market report for the last month",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "last-three-months",
+				Usage: "get a market report for the last 3 months",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "last-year",
+				Usage: "get a market report for the last year",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "year-to-date",
+				Usage: "get a market report from the beginning of the year until now",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "all",
+				Usage: "get a market report including all trades",
+				Value: false,
 			},
 		},
 	}
@@ -596,9 +625,21 @@ func marketUpdateStrategyAction(ctx *cli.Context) error {
 		return err
 	}
 
-	strategy := daemonv2.StrategyType_STRATEGY_TYPE_BALANCED
-	if ctx.Bool("pluggable") {
+	pluggable := ctx.Bool("pluggable")
+	balanced := ctx.Bool("balanced")
+	if pluggable && balanced {
+		return fmt.Errorf("only one strategy type must be specified")
+	}
+	if !pluggable && !balanced {
+		return fmt.Errorf("missing strategy type")
+	}
+
+	var strategy daemonv2.StrategyType
+	if pluggable {
 		strategy = daemonv2.StrategyType_STRATEGY_TYPE_PLUGGABLE
+	}
+	if balanced {
+		strategy = daemonv2.StrategyType_STRATEGY_TYPE_BALANCED
 	}
 
 	_, err = client.UpdateMarketStrategy(
@@ -665,19 +706,42 @@ func marketReportAction(ctx *cli.Context) error {
 	}
 
 	var customPeriod *daemonv2.CustomPeriod
+	var predefinedPeriod daemonv2.PredefinedPeriod
 	start := ctx.String("start")
 	end := ctx.String("end")
+	if ctx.IsSet("start") != ctx.IsSet("end") {
+		return fmt.Errorf("both start and end dates must defined for a custom period")
+	}
 	if start != "" && end != "" {
 		customPeriod = &daemonv2.CustomPeriod{
 			StartDate: start,
 			EndDate:   end,
 		}
-	}
-
-	var predefinedPeriod daemonv2.PredefinedPeriod
-	pp := ctx.Int("predefined-period")
-	if pp > 0 {
-		predefinedPeriod = daemonv2.PredefinedPeriod(pp)
+	} else {
+		pp := map[daemonv2.PredefinedPeriod]bool{
+			daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_HOUR:         ctx.Bool("last-hour"),
+			daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_DAY:          ctx.Bool("last-day"),
+			daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_MONTH:        ctx.Bool("last-month"),
+			daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_THREE_MONTHS: ctx.Bool("last-three-months"),
+			daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_LAST_YEAR:         ctx.Bool("last-year"),
+			daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_YEAR_TO_DATE:      ctx.Bool("year-to-date"),
+			daemonv2.PredefinedPeriod_PREDEFINED_PERIOD_ALL:               ctx.Bool("all"),
+		}
+		count := 0
+		for period, isSet := range pp {
+			if isSet {
+				predefinedPeriod = period
+				count++
+			}
+		}
+		if count == 0 {
+			return fmt.Errorf(
+				"missing time range, specifiy either a predefined or a custom one",
+			)
+		}
+		if count > 1 {
+			return fmt.Errorf("only one predefined period must be specified")
+		}
 	}
 
 	reply, err := client.GetMarketReport(

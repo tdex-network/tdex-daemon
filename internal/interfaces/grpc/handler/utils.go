@@ -294,7 +294,9 @@ func parseTimeRange(timeRange *daemonv2.TimeRange) (ports.TimeRange, error) {
 
 func parseTimeFrame(timeFrame daemonv2.TimeFrame) (int, error) {
 	switch timeFrame {
-	case daemonv2.TimeFrame_TIME_FRAME_UNSPECIFIED, daemonv2.TimeFrame_TIME_FRAME_HOUR:
+	case daemonv2.TimeFrame_TIME_FRAME_UNSPECIFIED:
+		return 0, nil
+	case daemonv2.TimeFrame_TIME_FRAME_HOUR:
 		return 1, nil
 	case daemonv2.TimeFrame_TIME_FRAME_FOUR_HOURS:
 		return 4, nil
@@ -303,9 +305,7 @@ func parseTimeFrame(timeFrame daemonv2.TimeFrame) (int, error) {
 	case daemonv2.TimeFrame_TIME_FRAME_WEEK:
 		return 24 * 7, nil
 	case daemonv2.TimeFrame_TIME_FRAME_MONTH:
-		year, month, _ := time.Now().Date()
-		numOfDaysForCurrentMont := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
-		return numOfDaysForCurrentMont, nil
+		return 24 * 30, nil
 	default:
 		return -1, fmt.Errorf("unknown time frame")
 	}

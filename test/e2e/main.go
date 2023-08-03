@@ -19,7 +19,6 @@ import (
 var (
 	composePath = "resources/compose/docker-compose.yml"
 	volumesPath = "resources/volumes"
-	// feederConfigJSON = fmt.Sprintf("%s/feederd/config.json", volumesPath)
 
 	daemonAddr     = "localhost:9945"
 	explorerAddr   = "http://localhost:3001"
@@ -29,7 +28,6 @@ var (
 	feeFragmenterDepositAmount = 0.001
 	marketBaseDepositAmount    = 1.0
 	marketQuoteDepositAmount   = float64(25000)
-	// numOfConcurrentTrades      = 4
 
 	lbtc = network.Regtest.AssetID
 	usdt string

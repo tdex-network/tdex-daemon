@@ -5,6 +5,7 @@ services:
     container_name: oceand
     image: ghcr.io/vulpemventures/oceand:latest
     restart: unless-stopped
+    user: 0:0
     environment:
       - OCEAN_LOG_LEVEL=5
       - OCEAN_NO_TLS=true
@@ -16,7 +17,7 @@ services:
     ports:
       - "18000:18000"
     volumes:
-      - ../volumes/oceand/data:/home/ocean/.ocean-wallet
+      - ../volumes/oceand/data:/home/ocean/.oceand
       - ../volumes/oceand/cli:/home/ocean/.ocean-cli
   tdexd:
     container_name: tdexd
@@ -24,10 +25,10 @@ services:
       context: ../../
       dockerfile: Dockerfile
     restart: unless-stopped
+    user: 0:0
     depends_on:
       - oceand
     environment:
-      - TDEX_NETWORK=regtest
       - TDEX_WALLET_ADDR=oceand:18000
       - TDEX_LOG_LEVEL=5
       - TDEX_FEE_ACCOUNT_BALANCE_THRESHOLD=1000
@@ -44,6 +45,7 @@ services:
     container_name: feederd
     image: ghcr.io/tdex-network/feederd:latest
     restart: unless-stopped
+    user: 0:0
     depends_on:
       - tdexd
     volumes:
