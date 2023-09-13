@@ -32,6 +32,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/macaroon-bakery.v2/bakery"
 
 	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
@@ -445,7 +446,18 @@ func (s *service) newOperatorServer(
 		return nil, err
 	}
 	// Reverse proxy grpc-gateway.
-	gwmux := runtime.NewServeMux(runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)))
+	gwmux := runtime.NewServeMux(
+		runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)),
+		runtime.WithMarshalerOption("application/json", &runtime.JSONPb{
+			MarshalOptions: protojson.MarshalOptions{
+				Indent:    "  ",
+				Multiline: true, // Optional, implied by presence of "Indent".
+			},
+			UnmarshalOptions: protojson.UnmarshalOptions{
+				DiscardUnknown: true,
+			},
+		}),
+	)
 
 	// Register wallet interface.
 	walletHandler := grpchandler.NewWalletHandler(
