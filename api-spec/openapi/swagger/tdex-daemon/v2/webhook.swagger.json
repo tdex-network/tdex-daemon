@@ -82,6 +82,47 @@
         ]
       }
     },
+    "/v2/webhooks": {
+      "get": {
+        "summary": "Returns registered webhooks",
+        "operationId": "WebhookService_ListWebhooks2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListWebhooksResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "event",
+            "description": "Filter the list of webhooks by event.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "WEBHOOK_EVENT_UNSPECIFIED",
+              "WEBHOOK_EVENT_TRADE_SETTLED",
+              "WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE",
+              "WEBHOOK_EVENT_ACCOUNT_WITHDRAW",
+              "WEBHOOK_EVENT_ACCOUNT_DEPOSIT",
+              "WEBHOOK_EVENT_ANY"
+            ],
+            "default": "WEBHOOK_EVENT_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "WebhookService"
+        ]
+      }
+    },
     "/v2/webhooks/{event}": {
       "get": {
         "summary": "Returns registered webhooks",

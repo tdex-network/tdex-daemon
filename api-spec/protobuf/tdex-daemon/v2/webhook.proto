@@ -29,6 +29,7 @@ service WebhookService {
   rpc ListWebhooks(ListWebhooksRequest) returns(ListWebhooksResponse) {
     option (google.api.http) = {
       get: "/v2/webhooks/{event}"
+      additional_bindings { get: "/v2/webhooks" }
     };
   };
 }
