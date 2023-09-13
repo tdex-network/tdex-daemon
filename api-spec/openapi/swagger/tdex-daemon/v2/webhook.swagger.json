@@ -15,9 +15,125 @@
   "produces": [
     "application/json"
   ],
-  "paths": {},
+  "paths": {
+    "/v2/webhook": {
+      "post": {
+        "summary": "Adds a webhook registered for some kind of event.",
+        "operationId": "WebhookService_AddWebhook",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2AddWebhookResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2AddWebhookRequest"
+            }
+          }
+        ],
+        "tags": [
+          "WebhookService"
+        ]
+      }
+    },
+    "/v2/webhook/drop": {
+      "post": {
+        "summary": "Removes some previously added webhook.",
+        "operationId": "WebhookService_RemoveWebhook",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2RemoveWebhookResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2RemoveWebhookRequest"
+            }
+          }
+        ],
+        "tags": [
+          "WebhookService"
+        ]
+      }
+    },
+    "/v2/webhooks/{event}": {
+      "get": {
+        "summary": "Returns registered webhooks",
+        "operationId": "WebhookService_ListWebhooks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListWebhooksResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "event",
+            "description": "Filter the list of webhooks by event.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "enum": [
+              "WEBHOOK_EVENT_UNSPECIFIED",
+              "WEBHOOK_EVENT_TRADE_SETTLED",
+              "WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE",
+              "WEBHOOK_EVENT_ACCOUNT_WITHDRAW",
+              "WEBHOOK_EVENT_ACCOUNT_DEPOSIT",
+              "WEBHOOK_EVENT_ANY"
+            ]
+          }
+        ],
+        "tags": [
+          "WebhookService"
+        ]
+      }
+    }
+  },
   "definitions": {
-    "googlerpcStatus": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
       "type": "object",
       "properties": {
         "code": {
@@ -35,16 +151,24 @@
         }
       }
     },
-    "protobufAny": {
+    "v2AddWebhookRequest": {
       "type": "object",
       "properties": {
-        "@type": {
-          "type": "string"
+        "endpoint": {
+          "type": "string",
+          "description": "The endpoint of the webhook to call whenever the target event occurs."
+        },
+        "event": {
+          "$ref": "#/definitions/v2WebhookEvent",
+          "description": "The event for which the webhook endpoint should be called."
+        },
+        "secret": {
+          "type": "string",
+          "description": "The secret to use to generate an OAuth token for making authenticated\nrequests to the webhook endpoint."
         }
-      },
-      "additionalProperties": {}
+      }
     },
-    "tdex_daemonv2AddWebhookResponse": {
+    "v2AddWebhookResponse": {
       "type": "object",
       "properties": {
         "id": {
@@ -53,22 +177,43 @@
         }
       }
     },
-    "tdex_daemonv2ListWebhooksResponse": {
+    "v2ListWebhooksResponse": {
       "type": "object",
       "properties": {
         "webhookInfo": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv2WebhookInfo"
+            "$ref": "#/definitions/v2WebhookInfo"
           },
           "description": "The list of info about the webhooks."
         }
       }
     },
-    "tdex_daemonv2RemoveWebhookResponse": {
+    "v2RemoveWebhookRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the webhook to remove."
+        }
+      }
+    },
+    "v2RemoveWebhookResponse": {
       "type": "object"
     },
-    "tdex_daemonv2WebhookInfo": {
+    "v2WebhookEvent": {
+      "type": "string",
+      "enum": [
+        "WEBHOOK_EVENT_UNSPECIFIED",
+        "WEBHOOK_EVENT_TRADE_SETTLED",
+        "WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE",
+        "WEBHOOK_EVENT_ACCOUNT_WITHDRAW",
+        "WEBHOOK_EVENT_ACCOUNT_DEPOSIT",
+        "WEBHOOK_EVENT_ANY"
+      ],
+      "default": "WEBHOOK_EVENT_UNSPECIFIED"
+    },
+    "v2WebhookInfo": {
       "type": "object",
       "properties": {
         "id": {
@@ -88,18 +233,6 @@
           "description": "The target event for which the webhook endpoint is called."
         }
       }
-    },
-    "v2WebhookEvent": {
-      "type": "string",
-      "enum": [
-        "WEBHOOK_EVENT_UNSPECIFIED",
-        "WEBHOOK_EVENT_TRADE_SETTLED",
-        "WEBHOOK_EVENT_ACCOUNT_LOW_BALANCE",
-        "WEBHOOK_EVENT_ACCOUNT_WITHDRAW",
-        "WEBHOOK_EVENT_ACCOUNT_DEPOSIT",
-        "WEBHOOK_EVENT_ANY"
-      ],
-      "default": "WEBHOOK_EVENT_UNSPECIFIED"
     }
   }
 }

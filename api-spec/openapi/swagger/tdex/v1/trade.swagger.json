@@ -24,7 +24,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1GetMarketBalanceResponse"
+              "$ref": "#/definitions/v1GetMarketBalanceResponse"
             }
           },
           "default": {
@@ -40,7 +40,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1GetMarketBalanceRequest"
+              "$ref": "#/definitions/v1GetMarketBalanceRequest"
             }
           }
         ],
@@ -57,7 +57,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1GetMarketPriceResponse"
+              "$ref": "#/definitions/v1GetMarketPriceResponse"
             }
           },
           "default": {
@@ -73,7 +73,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1GetMarketPriceRequest"
+              "$ref": "#/definitions/v1GetMarketPriceRequest"
             }
           }
         ],
@@ -90,7 +90,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1ListMarketsResponse"
+              "$ref": "#/definitions/v1ListMarketsResponse"
             }
           },
           "default": {
@@ -113,7 +113,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1CompleteTradeResponse"
+              "$ref": "#/definitions/v1CompleteTradeResponse"
             }
           },
           "default": {
@@ -129,7 +129,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1CompleteTradeRequest"
+              "$ref": "#/definitions/v1CompleteTradeRequest"
             }
           }
         ],
@@ -147,7 +147,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1PreviewTradeResponse"
+              "$ref": "#/definitions/v1PreviewTradeResponse"
             }
           },
           "default": {
@@ -163,7 +163,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1PreviewTradeRequest"
+              "$ref": "#/definitions/v1PreviewTradeRequest"
             }
           }
         ],
@@ -180,7 +180,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1ProposeTradeResponse"
+              "$ref": "#/definitions/v1ProposeTradeResponse"
             }
           },
           "default": {
@@ -196,7 +196,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv1ProposeTradeRequest"
+              "$ref": "#/definitions/v1ProposeTradeRequest"
             }
           }
         ],
@@ -234,7 +234,7 @@
         }
       }
     },
-    "tdexv1Balance": {
+    "v1Balance": {
       "type": "object",
       "properties": {
         "baseAmount": {
@@ -247,29 +247,40 @@
         }
       }
     },
-    "tdexv1CompleteTradeRequest": {
+    "v1BalanceWithFee": {
       "type": "object",
       "properties": {
-        "swapComplete": {
-          "$ref": "#/definitions/tdexv1SwapComplete"
+        "balance": {
+          "$ref": "#/definitions/v1Balance"
         },
-        "swapFail": {
-          "$ref": "#/definitions/tdexv1SwapFail"
+        "fee": {
+          "$ref": "#/definitions/v1Fee"
         }
       }
     },
-    "tdexv1CompleteTradeResponse": {
+    "v1CompleteTradeRequest": {
+      "type": "object",
+      "properties": {
+        "swapComplete": {
+          "$ref": "#/definitions/v1SwapComplete"
+        },
+        "swapFail": {
+          "$ref": "#/definitions/v1SwapFail"
+        }
+      }
+    },
+    "v1CompleteTradeResponse": {
       "type": "object",
       "properties": {
         "txid": {
           "type": "string"
         },
         "swapFail": {
-          "$ref": "#/definitions/tdexv1SwapFail"
+          "$ref": "#/definitions/v1SwapFail"
         }
       }
     },
-    "tdexv1Fee": {
+    "v1Fee": {
       "type": "object",
       "properties": {
         "basisPoint": {
@@ -282,15 +293,28 @@
       },
       "title": "Custom Types"
     },
-    "tdexv1GetMarketBalanceRequest": {
+    "v1Fixed": {
       "type": "object",
       "properties": {
-        "market": {
-          "$ref": "#/definitions/tdexv1Market"
+        "baseFee": {
+          "type": "string",
+          "format": "int64"
+        },
+        "quoteFee": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },
-    "tdexv1GetMarketBalanceResponse": {
+    "v1GetMarketBalanceRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        }
+      }
+    },
+    "v1GetMarketBalanceResponse": {
       "type": "object",
       "properties": {
         "balance": {
@@ -298,15 +322,15 @@
         }
       }
     },
-    "tdexv1GetMarketPriceRequest": {
+    "v1GetMarketPriceRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market"
+          "$ref": "#/definitions/v1Market"
         }
       }
     },
-    "tdexv1GetMarketPriceResponse": {
+    "v1GetMarketPriceResponse": {
       "type": "object",
       "properties": {
         "spotPrice": {
@@ -319,18 +343,18 @@
         }
       }
     },
-    "tdexv1ListMarketsResponse": {
+    "v1ListMarketsResponse": {
       "type": "object",
       "properties": {
         "markets": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdexv1MarketWithFee"
+            "$ref": "#/definitions/v1MarketWithFee"
           }
         }
       }
     },
-    "tdexv1Market": {
+    "v1Market": {
       "type": "object",
       "properties": {
         "baseAsset": {
@@ -341,25 +365,25 @@
         }
       }
     },
-    "tdexv1MarketWithFee": {
+    "v1MarketWithFee": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market"
+          "$ref": "#/definitions/v1Market"
         },
         "fee": {
-          "$ref": "#/definitions/tdexv1Fee"
+          "$ref": "#/definitions/v1Fee"
         }
       }
     },
-    "tdexv1Preview": {
+    "v1Preview": {
       "type": "object",
       "properties": {
         "price": {
-          "$ref": "#/definitions/tdexv1Price"
+          "$ref": "#/definitions/v1Price"
         },
         "fee": {
-          "$ref": "#/definitions/tdexv1Fee"
+          "$ref": "#/definitions/v1Fee"
         },
         "amount": {
           "type": "string",
@@ -369,18 +393,18 @@
           "type": "string"
         },
         "balance": {
-          "$ref": "#/definitions/tdexv1Balance"
+          "$ref": "#/definitions/v1Balance"
         }
       }
     },
-    "tdexv1PreviewTradeRequest": {
+    "v1PreviewTradeRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market"
+          "$ref": "#/definitions/v1Market"
         },
         "type": {
-          "$ref": "#/definitions/tdexv1TradeType"
+          "$ref": "#/definitions/v1TradeType"
         },
         "amount": {
           "type": "string",
@@ -391,18 +415,18 @@
         }
       }
     },
-    "tdexv1PreviewTradeResponse": {
+    "v1PreviewTradeResponse": {
       "type": "object",
       "properties": {
         "previews": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdexv1Preview"
+            "$ref": "#/definitions/v1Preview"
           }
         }
       }
     },
-    "tdexv1Price": {
+    "v1Price": {
       "type": "object",
       "properties": {
         "basePrice": {
@@ -415,28 +439,28 @@
         }
       }
     },
-    "tdexv1ProposeTradeRequest": {
+    "v1ProposeTradeRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market"
+          "$ref": "#/definitions/v1Market"
         },
         "type": {
-          "$ref": "#/definitions/tdexv1TradeType"
+          "$ref": "#/definitions/v1TradeType"
         },
         "swapRequest": {
-          "$ref": "#/definitions/tdexv1SwapRequest"
+          "$ref": "#/definitions/v1SwapRequest"
         }
       }
     },
-    "tdexv1ProposeTradeResponse": {
+    "v1ProposeTradeResponse": {
       "type": "object",
       "properties": {
         "swapAccept": {
-          "$ref": "#/definitions/tdexv1SwapAccept"
+          "$ref": "#/definitions/v1SwapAccept"
         },
         "swapFail": {
-          "$ref": "#/definitions/tdexv1SwapFail"
+          "$ref": "#/definitions/v1SwapFail"
         },
         "expiryTimeUnix": {
           "type": "string",
@@ -444,7 +468,7 @@
         }
       }
     },
-    "tdexv1SwapAccept": {
+    "v1SwapAccept": {
       "type": "object",
       "properties": {
         "id": {
@@ -477,7 +501,7 @@
         }
       }
     },
-    "tdexv1SwapComplete": {
+    "v1SwapComplete": {
       "type": "object",
       "properties": {
         "id": {
@@ -494,7 +518,7 @@
         }
       }
     },
-    "tdexv1SwapFail": {
+    "v1SwapFail": {
       "type": "object",
       "properties": {
         "id": {
@@ -516,7 +540,7 @@
         }
       }
     },
-    "tdexv1SwapRequest": {
+    "v1SwapRequest": {
       "type": "object",
       "properties": {
         "id": {
@@ -563,37 +587,13 @@
         }
       }
     },
-    "tdexv1TradeType": {
+    "v1TradeType": {
       "type": "string",
       "enum": [
         "TRADE_TYPE_BUY",
         "TRADE_TYPE_SELL"
       ],
       "default": "TRADE_TYPE_BUY"
-    },
-    "v1BalanceWithFee": {
-      "type": "object",
-      "properties": {
-        "balance": {
-          "$ref": "#/definitions/tdexv1Balance"
-        },
-        "fee": {
-          "$ref": "#/definitions/tdexv1Fee"
-        }
-      }
-    },
-    "v1Fixed": {
-      "type": "object",
-      "properties": {
-        "baseFee": {
-          "type": "string",
-          "format": "int64"
-        },
-        "quoteFee": {
-          "type": "string",
-          "format": "int64"
-        }
-      }
     }
   }
 }

@@ -23,7 +23,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv1SupportedContentTypesResponse"
+              "$ref": "#/definitions/v1SupportedContentTypesResponse"
             }
           },
           "default": {
@@ -67,7 +67,7 @@
         }
       }
     },
-    "tdexv1ContentType": {
+    "v1ContentType": {
       "type": "string",
       "enum": [
         "CONTENT_TYPE_JSON",
@@ -77,13 +77,13 @@
       ],
       "default": "CONTENT_TYPE_JSON"
     },
-    "tdexv1SupportedContentTypesResponse": {
+    "v1SupportedContentTypesResponse": {
       "type": "object",
       "properties": {
         "acceptedTypes": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdexv1ContentType"
+            "$ref": "#/definitions/v1ContentType"
           }
         }
       }
