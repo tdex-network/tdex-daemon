@@ -8,12 +8,6 @@ import (
 )
 
 var (
-	balancedWeightIn  = decimal.NewFromInt(50)
-	balancedWeightOut = decimal.NewFromInt(50)
-	tenThousands      = decimal.NewFromInt(10000)
-)
-
-var (
 	// ErrInvalidBalancedReservesOptsType ...
 	ErrInvalidBalancedReservesOptsType = errors.New(
 		"opts must be of type BalancedReservesOpts",

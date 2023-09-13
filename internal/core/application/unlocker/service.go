@@ -39,6 +39,7 @@ func (s *service) InitWallet(
 	); err != nil {
 		return err
 	}
+	// nolint
 	s.pubsub.SecurePubSub().Store().Init(password)
 	return nil
 }
@@ -51,6 +52,7 @@ func (s *service) RestoreWallet(
 	); err != nil {
 		return err
 	}
+	// nolint
 	s.pubsub.SecurePubSub().Store().Init(password)
 	return nil
 }
@@ -59,6 +61,7 @@ func (s *service) UnlockWallet(ctx context.Context, password string) error {
 	if err := s.wallet.Wallet().Unlock(ctx, password); err != nil {
 		return err
 	}
+	// nolint
 	s.pubsub.SecurePubSub().Store().Unlock(password)
 	return nil
 }
@@ -77,6 +80,7 @@ func (s *service) ChangePassword(
 	if err := s.wallet.Wallet().ChangePassword(ctx, oldPwd, newPwd); err != nil {
 		return err
 	}
+	// nolint
 	s.pubsub.SecurePubSub().Store().ChangePassword(oldPwd, newPwd)
 	return nil
 }

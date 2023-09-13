@@ -563,9 +563,14 @@ func TestPreview(t *testing.T) {
 			market := newTestMarketWithAssetsPrecision(
 				tt.baseAssetPrecision, tt.quoteAssetPrecision,
 			)
-			market.ChangePercentageFee(tt.basePercentageFee, tt.quotePercentageFee)
-			market.ChangeFixedFee(tt.baseFixedFee, tt.quoteFixedFee)
-			market.MakeTradable()
+			err := market.ChangePercentageFee(tt.basePercentageFee, tt.quotePercentageFee)
+			require.NoError(t, err)
+
+			err = market.ChangeFixedFee(tt.baseFixedFee, tt.quoteFixedFee)
+			require.NoError(t, err)
+
+			err = market.MakeTradable()
+			require.NoError(t, err)
 
 			preview, err := market.Preview(
 				tt.baseBalance, tt.quoteBalance,
@@ -701,11 +706,17 @@ func TestPreview(t *testing.T) {
 			market := newTestMarketWithAssetsPrecision(
 				tt.baseAssetPrecision, tt.quoteAssetPrecision,
 			)
-			market.MakeStrategyPluggable()
-			market.ChangePercentageFee(tt.basePercentageFee, tt.quotePercentageFee)
-			market.ChangeFixedFee(tt.baseFixedFee, tt.quoteFixedFee)
-			market.ChangePrice(price.GetBasePrice(), price.GetQuotePrice())
-			market.MakeTradable()
+
+			err := market.MakeStrategyPluggable()
+			require.NoError(t, err)
+			err = market.ChangePercentageFee(tt.basePercentageFee, tt.quotePercentageFee)
+			require.NoError(t, err)
+			err = market.ChangeFixedFee(tt.baseFixedFee, tt.quoteFixedFee)
+			require.NoError(t, err)
+			err = market.ChangePrice(price.GetBasePrice(), price.GetQuotePrice())
+			require.NoError(t, err)
+			err = market.MakeTradable()
+			require.NoError(t, err)
 
 			preview, err := market.Preview(
 				tt.baseBalance, tt.quoteBalance,
@@ -1290,12 +1301,14 @@ func newTestMarketWithAssetsPrecision(bp, qp uint) *domain.Market {
 
 func newTestMarketTradable() *domain.Market {
 	m := newTestMarketWithAssetsPrecision(8, 8)
+	// nolint
 	m.MakeTradable()
 	return m
 }
 
 func newTestMarketWithPluggableStrategy() *domain.Market {
 	m := newTestMarketWithAssetsPrecision(8, 8)
+	// nolint
 	m.MakeStrategyPluggable()
 	return m
 }

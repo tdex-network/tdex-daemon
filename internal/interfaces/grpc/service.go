@@ -310,6 +310,7 @@ func (s *service) Start() error {
 
 func (s *service) Stop() {
 	if s.password != "" {
+		// nolint
 		s.opts.AppConfig.UnlockerService().LockWallet(
 			context.Background(), s.password,
 		)

@@ -195,6 +195,7 @@ func (s *serviceOnePort) Start() error {
 
 func (s *serviceOnePort) Stop() {
 	if s.password != "" {
+		// nolint
 		s.opts.AppConfig.UnlockerService().LockWallet(
 			context.Background(), s.password,
 		)

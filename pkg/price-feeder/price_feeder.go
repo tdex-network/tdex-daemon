@@ -4,10 +4,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const (
-	maxReconnectionAttempts = 3
-)
-
 type PriceFeed struct {
 	Market Market
 	Price  Price

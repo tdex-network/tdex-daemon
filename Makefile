@@ -1,9 +1,4 @@
-.PHONY: build build-cli build-unlocker proto proto-lint clean cov fmt help install integrationtest mock run test trade-cert vet
-
-install:
-	@echo "Installing deps..."
-	@go mod download
-	@go mod tidy
+.PHONY: build build-cli build-unlocker proto proto-lint clean cov help lint lint-fix integrationtest mock run test trade-cert vet
 
 ## build: build for all platforms
 build:
@@ -47,17 +42,19 @@ cov:
 	@echo "Coverage..."
 	go test -cover ./...
 
-## fmt: Go Format
-fmt:
-	@echo "Checking code format..."
-	@if [ -n "$(gofmt -l .)" ]; then echo "Go code is not formatted"; exit 1; fi
-
-
 ## help: prints this help message
 help:
 	@echo "Usage: \n"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 
+## lint: check code format
+lint: 
+	@echo "Check linting..."
+	golangci-lint run
+
+lint-fix:
+	@echo "Linting code..."
+	golangci-lint run --fix
 ## run: Run locally with default configuration in regtest
 run: clean
 	export TDEX_WALLET_ADDR=localhost:18000; \
