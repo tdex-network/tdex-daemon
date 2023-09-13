@@ -129,6 +129,7 @@ func generateOperatorTLSKeyCert(
 		KeyUsage: x509.KeyUsageKeyEncipherment |
 			x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
+		IsCA:                  true,
 
 		DNSNames:    dnsNames,
 		IPAddresses: ipAddresses,
@@ -287,20 +288,16 @@ func router(
 		}
 
 		if isHttpRequest(r) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 			if handler, ok := httpHandlers[r.URL.Path]; ok {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Access-Control-Allow-Headers", "*")
-				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 				handler(w, r)
 				return
 			}
-			if grpcGateway != nil {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Access-Control-Allow-Headers", "*")
-				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-				grpcGateway.ServeHTTP(w, r)
-				return
-			}
+
+			grpcGateway.ServeHTTP(w, r)
+			return
 		}
 		grpcServer.ServeHTTP(w, r)
 	})
