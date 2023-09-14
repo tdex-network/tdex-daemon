@@ -72,7 +72,7 @@ vet:
 	@go vet ./...
 
 ## test: runs unit and component tests
-test: fmt
+test:
 	@echo "Running unit tests..."
 	@go test -v -count=1 -race ./...
 
