@@ -448,10 +448,10 @@ func (s *service) newOperatorServer(
 	// Reverse proxy grpc-gateway.
 	gwmux := runtime.NewServeMux(
 		runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)),
-		runtime.WithMarshalerOption("application/json", &runtime.JSONPb{
+		runtime.WithMarshalerOption("application/json+pretty", &runtime.JSONPb{
 			MarshalOptions: protojson.MarshalOptions{
 				Indent:    "  ",
-				Multiline: true, // Optional, implied by presence of "Indent".
+				Multiline: true,
 			},
 			UnmarshalOptions: protojson.UnmarshalOptions{
 				DiscardUnknown: true,
@@ -595,7 +595,18 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	gwmux := runtime.NewServeMux(runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)))
+	gwmux := runtime.NewServeMux(
+		runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)),
+		runtime.WithMarshalerOption("application/json+pretty", &runtime.JSONPb{
+			MarshalOptions: protojson.MarshalOptions{
+				Indent:    "  ",
+				Multiline: true,
+			},
+			UnmarshalOptions: protojson.UnmarshalOptions{
+				DiscardUnknown: true,
+			},
+		}),
+	)
 	if err := tdexv2.RegisterTransportServiceHandler(
 		ctx, gwmux, conn,
 	); err != nil {

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
@@ -303,7 +304,18 @@ func (s *serviceOnePort) newServer(
 		return nil, err
 	}
 	// Reverse proxy grpc-gateway.
-	gwmux := runtime.NewServeMux(runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)))
+	gwmux := runtime.NewServeMux(
+		runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)),
+		runtime.WithMarshalerOption("application/json+pretty", &runtime.JSONPb{
+			MarshalOptions: protojson.MarshalOptions{
+				Indent:    "  ",
+				Multiline: true,
+			},
+			UnmarshalOptions: protojson.UnmarshalOptions{
+				DiscardUnknown: true,
+			},
+		}),
+	)
 
 	// Register wallet interface.
 	walletHandler := grpchandler.NewWalletHandler(
