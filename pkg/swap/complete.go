@@ -79,7 +79,9 @@ func Complete(opts CompleteOpts) (string, []byte, error) {
 	switch {
 	case opts.forV1():
 		var msgAccept tdexv1.SwapAccept
-		proto.Unmarshal(opts.Message, &msgAccept)
+		if err := proto.Unmarshal(opts.Message, &msgAccept); err != nil {
+			return "", nil, err
+		}
 
 		if ptx, _ := pset.NewPsetFromBase64(opts.Transaction); ptx != nil {
 			ok, err := ptx.ValidateAllSignatures()
@@ -100,7 +102,9 @@ func Complete(opts CompleteOpts) (string, []byte, error) {
 		fallthrough
 	default:
 		var msgAccept tdexv2.SwapAccept
-		proto.Unmarshal(opts.Message, &msgAccept)
+		if err := proto.Unmarshal(opts.Message, &msgAccept); err != nil {
+			return "", nil, err
+		}
 
 		if ptx, _ := psetv2.NewPsetFromBase64(opts.Transaction); ptx != nil {
 			ok, err := ptx.ValidateAllSignatures()

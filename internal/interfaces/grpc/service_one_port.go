@@ -10,13 +10,14 @@ import (
 	"path/filepath"
 
 	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	reflectionv1 "github.com/tdex-network/reflection/api-spec/protobuf/gen/reflection/v1"
 	daemonv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex-daemon/v2"
 	tdexv2 "github.com/tdex-network/tdex-daemon/api-spec/protobuf/gen/tdex/v2"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	log "github.com/sirupsen/logrus"
 	"github.com/tdex-network/reflection"
 	"github.com/tdex-network/tdex-daemon/internal/core/application"
@@ -195,6 +196,7 @@ func (s *serviceOnePort) Start() error {
 
 func (s *serviceOnePort) Stop() {
 	if s.password != "" {
+		// nolint
 		s.opts.AppConfig.UnlockerService().LockWallet(
 			context.Background(), s.password,
 		)
@@ -282,8 +284,40 @@ func (s *serviceOnePort) newServer(
 		)
 	}
 
+	// Server grpc.
 	grpcServer := grpc.NewServer(serverOpts...)
 
+	// Creds for grpc gateway reverse proxy.
+	gatewayCreds := insecure.NewCredentials()
+	if s.opts.withTls() {
+		// #nosec
+		gatewayCreds = credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true,
+		})
+	}
+	ctx := context.Background()
+	gatewayOpts := grpc.WithTransportCredentials(gatewayCreds)
+	conn, err := grpc.DialContext(
+		ctx, s.opts.clientAddr(), gatewayOpts,
+	)
+	if err != nil {
+		return nil, err
+	}
+	// Reverse proxy grpc-gateway.
+	gwmux := runtime.NewServeMux(
+		runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)),
+		runtime.WithMarshalerOption("application/json+pretty", &runtime.JSONPb{
+			MarshalOptions: protojson.MarshalOptions{
+				Indent:    "  ",
+				Multiline: true,
+			},
+			UnmarshalOptions: protojson.UnmarshalOptions{
+				DiscardUnknown: true,
+			},
+		}),
+	)
+
+	// Register wallet interface.
 	walletHandler := grpchandler.NewWalletHandler(
 		s.opts.AppConfig.UnlockerService(), s.opts.BuildData, adminMacaroonPath,
 		s.onInit, s.onUnlock, s.onLock, s.onChangePwd,
@@ -291,73 +325,79 @@ func (s *serviceOnePort) newServer(
 	daemonv2.RegisterWalletServiceServer(
 		grpcServer, walletHandler,
 	)
+	if err := daemonv2.RegisterWalletServiceHandler(
+		ctx, gwmux, conn,
+	); err != nil {
+		return nil, err
+	}
+
+	// Register healthz and reflection.
 	healthHandler := grpchandler.NewHealthHandler()
 	grpchealth.RegisterHealthServer(grpcServer, healthHandler)
 	reflection.Register(grpcServer)
+	if err := reflectionv1.RegisterReflectionServiceHandler(
+		ctx, gwmux, conn,
+	); err != nil {
+		return nil, err
+	}
 
-	var grpcGateway http.Handler
+	// Register operator, feeder, webhook, transport and trade interfaces if
+	// needed.
 	if !withWalletOnly {
 		operatorHandler := grpchandler.NewOperatorHandler(
 			s.opts.AppConfig.OperatorService(),
 		)
-		transportHandler := grpchandler.NewTransportHandler()
-		tradeHandler := grpchandler.NewTradeHandler(s.opts.AppConfig.TradeService())
+		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
+		if err := daemonv2.RegisterOperatorServiceHandler(
+			ctx, gwmux, conn,
+		); err != nil {
+			return nil, err
+		}
+
 		feederHandler := grpchandler.NewFeederHandler(
 			s.opts.AppConfig.FeederService(),
 		)
-		webhookHandler := grpchandler.NewWebhookHandler(s.opts.AppConfig.OperatorService())
-		daemonv2.RegisterOperatorServiceServer(grpcServer, operatorHandler)
-		tdexv2.RegisterTransportServiceServer(grpcServer, transportHandler)
-		tdexv2.RegisterTradeServiceServer(grpcServer, tradeHandler)
 		daemonv2.RegisterFeederServiceServer(grpcServer, feederHandler)
-		daemonv2.RegisterWebhookServiceServer(grpcServer, webhookHandler)
-
-		dialOpts := make([]grpc.DialOption, 0)
-		if len(s.opts.TLSCert) <= 0 {
-			dialOpts = append(dialOpts, grpc.WithTransportCredentials(
-				insecure.NewCredentials(),
-			))
-		} else {
-			dialOpts = append(dialOpts, grpc.WithTransportCredentials(
-				// #nosec
-				credentials.NewTLS(&tls.Config{
-					InsecureSkipVerify: true,
-				}),
-			))
-		}
-		ctx := context.Background()
-		conn, err := grpc.DialContext(
-			ctx, s.opts.clientAddr(), dialOpts...,
-		)
-		if err != nil {
+		if err := daemonv2.RegisterFeederServiceHandler(
+			ctx, gwmux, conn,
+		); err != nil {
 			return nil, err
 		}
-		gwmux := runtime.NewServeMux(runtime.WithHealthzEndpoint(grpchealth.NewHealthClient(conn)))
+
+		webhookHandler := grpchandler.NewWebhookHandler(s.opts.AppConfig.OperatorService())
+		daemonv2.RegisterWebhookServiceServer(grpcServer, webhookHandler)
+		if err := daemonv2.RegisterWebhookServiceHandler(
+			ctx, gwmux, conn,
+		); err != nil {
+			return nil, err
+		}
+
+		transportHandler := grpchandler.NewTransportHandler()
+		tdexv2.RegisterTransportServiceServer(grpcServer, transportHandler)
 		if err := tdexv2.RegisterTransportServiceHandler(
 			ctx, gwmux, conn,
 		); err != nil {
 			return nil, err
 		}
+
+		tradeHandler := grpchandler.NewTradeHandler(s.opts.AppConfig.TradeService())
+		tdexv2.RegisterTradeServiceServer(grpcServer, tradeHandler)
 		if err := tdexv2.RegisterTradeServiceHandler(
 			ctx, gwmux, conn,
 		); err != nil {
 			return nil, err
 		}
-		if err := reflectionv1.RegisterReflectionServiceHandler(
-			ctx, gwmux, conn,
-		); err != nil {
-			return nil, err
-		}
-		grpcGateway = http.Handler(gwmux)
 	}
+	grpcGateway := http.Handler(gwmux)
 
-	// grpcweb wrapped server
+	// Wrapped server grpc-web.
 	grpcWebServer := grpcweb.WrapServer(
 		grpcServer,
 		grpcweb.WithCorsForRegisteredEndpointsOnly(false),
 		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
 	)
 
+	// Custom tdexconnect endpoints.
 	tdexConnectSvc, err := httpinterface.NewTdexConnectService(
 		s.opts.AppConfig.WalletService().Wallet(),
 		adminMacaroonPath,
@@ -368,12 +408,12 @@ func (s *serviceOnePort) newServer(
 	if err != nil {
 		return nil, err
 	}
-
 	httpHandlers := map[string]http.HandlerFunc{
 		"/":             tdexConnectSvc.RootHandler,
 		"/tdexdconnect": tdexConnectSvc.AuthHandler,
 	}
 
+	// Server mux.
 	handler := router(grpcServer, grpcWebServer, grpcGateway, httpHandlers)
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)

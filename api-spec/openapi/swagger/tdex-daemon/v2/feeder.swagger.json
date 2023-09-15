@@ -15,9 +15,262 @@
   "produces": [
     "application/json"
   ],
-  "paths": {},
+  "paths": {
+    "/v2/feeder": {
+      "post": {
+        "summary": "AddPriceFeed creates a new price feed for the given market.",
+        "operationId": "FeederService_AddPriceFeed",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2AddPriceFeedResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2AddPriceFeedRequest"
+            }
+          }
+        ],
+        "tags": [
+          "FeederService"
+        ]
+      }
+    },
+    "/v2/feeder/drop": {
+      "post": {
+        "summary": "RemovePriceFeed removes the price feed with the given id.",
+        "operationId": "FeederService_RemovePriceFeed",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2RemovePriceFeedResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2RemovePriceFeedRequest"
+            }
+          }
+        ],
+        "tags": [
+          "FeederService"
+        ]
+      }
+    },
+    "/v2/feeder/sources": {
+      "get": {
+        "summary": "ListSupportedPriceSources returns the list of supported price sources.",
+        "operationId": "FeederService_ListSupportedPriceSources",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListSupportedPriceSourcesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "FeederService"
+        ]
+      }
+    },
+    "/v2/feeder/start": {
+      "post": {
+        "summary": "StartPriceFeed starts the price feed with the given id.",
+        "operationId": "FeederService_StartPriceFeed",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2StartPriceFeedResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2StartPriceFeedRequest"
+            }
+          }
+        ],
+        "tags": [
+          "FeederService"
+        ]
+      }
+    },
+    "/v2/feeder/stop": {
+      "post": {
+        "summary": "StopPriceFeed stops the price feed with the given id.",
+        "operationId": "FeederService_StopPriceFeed",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2StopPriceFeedResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2StopPriceFeedRequest"
+            }
+          }
+        ],
+        "tags": [
+          "FeederService"
+        ]
+      }
+    },
+    "/v2/feeder/update": {
+      "post": {
+        "summary": "UpdatePriceFeed allows to change source and/or ticker of the given price feed.",
+        "operationId": "FeederService_UpdatePriceFeed",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2UpdatePriceFeedResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2UpdatePriceFeedRequest"
+            }
+          }
+        ],
+        "tags": [
+          "FeederService"
+        ]
+      }
+    },
+    "/v2/feeder/{id}": {
+      "get": {
+        "summary": "GetPriceFeed returns the price feed for the given market.",
+        "operationId": "FeederService_GetPriceFeed",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2GetPriceFeedResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "id of the price field to get info about.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "FeederService"
+        ]
+      }
+    },
+    "/v2/feeders": {
+      "get": {
+        "summary": "ListPriceFeeds returns the list of price feeds of all markets.",
+        "operationId": "FeederService_ListPriceFeeds",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListPriceFeedsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "FeederService"
+        ]
+      }
+    }
+  },
   "definitions": {
-    "googlerpcStatus": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
       "type": "object",
       "properties": {
         "code": {
@@ -35,29 +288,22 @@
         }
       }
     },
-    "protobufAny": {
+    "v2AddPriceFeedRequest": {
       "type": "object",
       "properties": {
-        "@type": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": {}
-    },
-    "tdexv2Market": {
-      "type": "object",
-      "properties": {
-        "baseAsset": {
-          "type": "string"
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "title": "market for which the price feed is created"
         },
-        "quoteAsset": {
-          "type": "string"
+        "source": {
+          "type": "string",
+          "description": "source is the name of the price source to use, e.g. kraken, bitfinex, coinbase etc."
+        },
+        "ticker": {
+          "type": "string",
+          "description": "ticker is the ticker of the market, e.g. \"XBT/USDT\", \"XBT/EUR\" etc."
         }
-      },
-      "required": [
-        "baseAsset",
-        "quoteAsset"
-      ]
+      }
     },
     "v2AddPriceFeedResponse": {
       "type": "object",
@@ -101,6 +347,27 @@
         }
       }
     },
+    "v2Market": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string",
+          "required": [
+            "base_asset"
+          ]
+        },
+        "quoteAsset": {
+          "type": "string",
+          "required": [
+            "quote_asset"
+          ]
+        }
+      },
+      "required": [
+        "baseAsset",
+        "quoteAsset"
+      ]
+    },
     "v2PriceFeed": {
       "type": "object",
       "properties": {
@@ -109,7 +376,7 @@
           "description": "id is the id of the price feed."
         },
         "market": {
-          "$ref": "#/definitions/tdexv2Market",
+          "$ref": "#/definitions/v2Market",
           "description": "market is the market for which the price feed is created."
         },
         "source": {
@@ -126,14 +393,58 @@
         }
       }
     },
+    "v2RemovePriceFeedRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "id is the id of the price feed."
+        }
+      }
+    },
     "v2RemovePriceFeedResponse": {
       "type": "object"
+    },
+    "v2StartPriceFeedRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "id is the id of the price feed."
+        }
+      }
     },
     "v2StartPriceFeedResponse": {
       "type": "object"
     },
+    "v2StopPriceFeedRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "id is the id of the price feed."
+        }
+      }
+    },
     "v2StopPriceFeedResponse": {
       "type": "object"
+    },
+    "v2UpdatePriceFeedRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "id is the id of the price feed."
+        },
+        "source": {
+          "type": "string",
+          "description": "source is the name of the price source to use."
+        },
+        "ticker": {
+          "type": "string",
+          "description": "ticker is the ticker of the asset to use as price source."
+        }
+      }
     },
     "v2UpdatePriceFeedResponse": {
       "type": "object"

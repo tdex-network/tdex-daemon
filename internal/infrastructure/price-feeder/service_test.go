@@ -112,6 +112,7 @@ func randomMarket() ports.Market {
 
 func randomAsset() string {
 	b := make([]byte, 32)
+	// nolint
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }

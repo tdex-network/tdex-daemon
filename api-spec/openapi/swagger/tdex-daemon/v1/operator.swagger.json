@@ -44,7 +44,7 @@
       },
       "additionalProperties": {}
     },
-    "tdex_daemonv1AccountInfo": {
+    "v1AccountInfo": {
       "type": "object",
       "properties": {
         "accountIndex": {
@@ -72,7 +72,17 @@
         }
       }
     },
-    "tdex_daemonv1AddWebhookResponse": {
+    "v1ActionType": {
+      "type": "string",
+      "enum": [
+        "ACTION_TYPE_TRADE_SETTLED",
+        "ACTION_TYPE_ACCOUNT_LOW_BALANCE",
+        "ACTION_TYPE_ACCOUNT_WITHDRAW",
+        "ACTION_TYPE_ALL_ACTIONS"
+      ],
+      "default": "ACTION_TYPE_TRADE_SETTLED"
+    },
+    "v1AddWebhookResponse": {
       "type": "object",
       "properties": {
         "id": {
@@ -81,7 +91,53 @@
         }
       }
     },
-    "tdex_daemonv1BuildInfo": {
+    "v1AddressWithBlindingKey": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "The confidential address encoded using a blech32 format."
+        },
+        "blinding": {
+          "type": "string",
+          "title": "The blinding private key for the given address encoded in hex format"
+        }
+      }
+    },
+    "v1Balance": {
+      "type": "object",
+      "properties": {
+        "baseAmount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "quoteAmount": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1BalanceInfo": {
+      "type": "object",
+      "properties": {
+        "totalBalance": {
+          "type": "string",
+          "format": "uint64",
+          "title": "The balance of the wallet"
+        },
+        "confirmedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "title": "The confirmed balance of a wallet(with \u003e= 1 confirmations)"
+        },
+        "unconfirmedBalance": {
+          "type": "string",
+          "format": "uint64",
+          "title": "The unconfirmed balance of a wallet(with 0 confirmations)"
+        }
+      }
+    },
+    "v1BuildInfo": {
       "type": "object",
       "properties": {
         "version": {
@@ -98,10 +154,16 @@
         }
       }
     },
-    "tdex_daemonv1CloseMarketResponse": {
+    "v1ClaimFeeDepositsResponse": {
       "type": "object"
     },
-    "tdex_daemonv1CustomPeriod": {
+    "v1ClaimMarketDepositsResponse": {
+      "type": "object"
+    },
+    "v1CloseMarketResponse": {
+      "type": "object"
+    },
+    "v1CustomPeriod": {
       "type": "object",
       "properties": {
         "startDate": {
@@ -114,10 +176,41 @@
         }
       }
     },
-    "tdex_daemonv1DropMarketResponse": {
+    "v1Deposit": {
+      "type": "object",
+      "properties": {
+        "utxo": {
+          "$ref": "#/definitions/v1UtxoInfo",
+          "description": "The utxo deposited."
+        },
+        "timestampUnix": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The timestamp of the deposit transaction in Unix format."
+        },
+        "timestampUtc": {
+          "type": "string",
+          "description": "The timestamp of the deposit transaction in UTC format."
+        }
+      }
+    },
+    "v1DropMarketResponse": {
       "type": "object"
     },
-    "tdex_daemonv1FeeFragmenterSplitFundsResponse": {
+    "v1Fee": {
+      "type": "object",
+      "properties": {
+        "basisPoint": {
+          "type": "string",
+          "format": "int64"
+        },
+        "fixed": {
+          "$ref": "#/definitions/v1Fixed"
+        }
+      },
+      "title": "Custom Types"
+    },
+    "v1FeeFragmenterSplitFundsResponse": {
       "type": "object",
       "properties": {
         "message": {
@@ -126,7 +219,7 @@
         }
       }
     },
-    "tdex_daemonv1FeeInfo": {
+    "v1FeeInfo": {
       "type": "object",
       "properties": {
         "tradeId": {
@@ -159,7 +252,32 @@
         }
       }
     },
-    "tdex_daemonv1GetFeeBalanceResponse": {
+    "v1Fixed": {
+      "type": "object",
+      "properties": {
+        "baseFee": {
+          "type": "string",
+          "format": "int64"
+        },
+        "quoteFee": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1GetFeeAddressResponse": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          },
+          "description": "The list of new confidential addresses and related private blinding keys."
+        }
+      }
+    },
+    "v1GetFeeBalanceResponse": {
       "type": "object",
       "properties": {
         "availableBalance": {
@@ -174,7 +292,18 @@
         }
       }
     },
-    "tdex_daemonv1GetFeeFragmenterBalanceResponse": {
+    "v1GetFeeFragmenterAddressResponse": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          }
+        }
+      }
+    },
+    "v1GetFeeFragmenterBalanceResponse": {
       "type": "object",
       "properties": {
         "balance": {
@@ -186,7 +315,7 @@
         }
       }
     },
-    "tdex_daemonv1GetInfoResponse": {
+    "v1GetInfoResponse": {
       "type": "object",
       "properties": {
         "rootPath": {
@@ -200,7 +329,7 @@
         "accountInfo": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv1AccountInfo"
+            "$ref": "#/definitions/v1AccountInfo"
           },
           "description": "The list of info related to every account."
         },
@@ -209,7 +338,7 @@
           "title": "Network daemon running on"
         },
         "buildData": {
-          "$ref": "#/definitions/tdex_daemonv1BuildInfo",
+          "$ref": "#/definitions/v1BuildInfo",
           "title": "Daemon build information"
         },
         "fixedBaseAsset": {
@@ -222,7 +351,63 @@
         }
       }
     },
-    "tdex_daemonv1GetMarketFragmenterBalanceResponse": {
+    "v1GetMarketAddressResponse": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          },
+          "description": "The list of new confidential addresses and related private blinding keys."
+        }
+      }
+    },
+    "v1GetMarketBalanceResponse": {
+      "type": "object",
+      "properties": {
+        "availableBalance": {
+          "$ref": "#/definitions/v1Balance",
+          "description": "The balance of all unlocked unspents."
+        },
+        "totalBalance": {
+          "$ref": "#/definitions/v1Balance",
+          "description": "The balance of all unspents included those locked."
+        }
+      }
+    },
+    "v1GetMarketCollectedSwapFeesResponse": {
+      "type": "object",
+      "properties": {
+        "collectedFees": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1FeeInfo"
+          },
+          "description": "The list of info about the collected fees per each trade."
+        },
+        "totalCollectedFeesPerAsset": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "int64"
+          },
+          "description": "The map of total fees collected per asset."
+        }
+      }
+    },
+    "v1GetMarketFragmenterAddressResponse": {
+      "type": "object",
+      "properties": {
+        "addressWithBlindingKey": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1AddressWithBlindingKey"
+          }
+        }
+      }
+    },
+    "v1GetMarketFragmenterBalanceResponse": {
       "type": "object",
       "properties": {
         "balance": {
@@ -234,24 +419,24 @@
         }
       }
     },
-    "tdex_daemonv1GetMarketInfoResponse": {
+    "v1GetMarketInfoResponse": {
       "type": "object",
       "properties": {
         "info": {
-          "$ref": "#/definitions/tdex_daemonv1MarketInfo"
+          "$ref": "#/definitions/v1MarketInfo"
         }
       }
     },
-    "tdex_daemonv1GetMarketReportResponse": {
+    "v1GetMarketReportResponse": {
       "type": "object",
       "properties": {
         "report": {
-          "$ref": "#/definitions/tdex_daemonv1MarketReport",
+          "$ref": "#/definitions/v1MarketReport",
           "title": "MarketReport holds info about volume and collected fees"
         }
       }
     },
-    "tdex_daemonv1ListDepositsResponse": {
+    "v1ListDepositsResponse": {
       "type": "object",
       "properties": {
         "accountIndex": {
@@ -268,7 +453,7 @@
         }
       }
     },
-    "tdex_daemonv1ListFeeAddressesResponse": {
+    "v1ListFeeAddressesResponse": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -280,7 +465,7 @@
         }
       }
     },
-    "tdex_daemonv1ListFeeFragmenterAddressesResponse": {
+    "v1ListFeeFragmenterAddressesResponse": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -291,7 +476,7 @@
         }
       }
     },
-    "tdex_daemonv1ListMarketAddressesResponse": {
+    "v1ListMarketAddressesResponse": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -303,7 +488,7 @@
         }
       }
     },
-    "tdex_daemonv1ListMarketFragmenterAddressesResponse": {
+    "v1ListMarketFragmenterAddressesResponse": {
       "type": "object",
       "properties": {
         "addressWithBlindingKey": {
@@ -314,69 +499,69 @@
         }
       }
     },
-    "tdex_daemonv1ListMarketsResponse": {
+    "v1ListMarketsResponse": {
       "type": "object",
       "properties": {
         "markets": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv1MarketInfo"
+            "$ref": "#/definitions/v1MarketInfo"
           },
           "description": "The list of info about all the created markets."
         }
       }
     },
-    "tdex_daemonv1ListTradesResponse": {
+    "v1ListTradesResponse": {
       "type": "object",
       "properties": {
         "trades": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv1TradeInfo"
+            "$ref": "#/definitions/v1TradeInfo"
           },
           "description": "The list of info about all trades or all trades for a market depending on\nthe request."
         }
       }
     },
-    "tdex_daemonv1ListUtxosResponse": {
+    "v1ListUtxosResponse": {
       "type": "object",
       "properties": {
         "unspents": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv1UtxoInfo"
+            "$ref": "#/definitions/v1UtxoInfo"
           },
           "description": "The list of all unspent utxos."
         },
         "spents": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv1UtxoInfo"
+            "$ref": "#/definitions/v1UtxoInfo"
           },
           "description": "The list of all spent utxos."
         },
         "locks": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv1UtxoInfo"
+            "$ref": "#/definitions/v1UtxoInfo"
           },
           "description": "The list of all currently locked utxos."
         }
       }
     },
-    "tdex_daemonv1ListWebhooksResponse": {
+    "v1ListWebhooksResponse": {
       "type": "object",
       "properties": {
         "webhookInfo": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv1WebhookInfo"
+            "$ref": "#/definitions/v1WebhookInfo"
           },
           "description": "The list of info about the webhooks regitered for an action."
         }
       }
     },
-    "tdex_daemonv1ListWithdrawalsResponse": {
+    "v1ListWithdrawalsResponse": {
       "type": "object",
       "properties": {
         "accountIndex": {
@@ -393,7 +578,18 @@
         }
       }
     },
-    "tdex_daemonv1MarketCollectedFees": {
+    "v1Market": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string"
+        },
+        "quoteAsset": {
+          "type": "string"
+        }
+      }
+    },
+    "v1MarketCollectedFees": {
       "type": "object",
       "properties": {
         "baseAmount": {
@@ -414,7 +610,7 @@
         }
       }
     },
-    "tdex_daemonv1MarketFragmenterSplitFundsResponse": {
+    "v1MarketFragmenterSplitFundsResponse": {
       "type": "object",
       "properties": {
         "message": {
@@ -423,15 +619,15 @@
         }
       }
     },
-    "tdex_daemonv1MarketInfo": {
+    "v1MarketInfo": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv1Market",
+          "$ref": "#/definitions/v1Market",
           "title": "The asset pair of the market"
         },
         "fee": {
-          "$ref": "#/definitions/tdexv1Fee",
+          "$ref": "#/definitions/v1Fee",
           "title": "The percentage and fixed fees"
         },
         "tradable": {
@@ -439,7 +635,7 @@
           "description": "Whether the market is opened or closed."
         },
         "strategyType": {
-          "$ref": "#/definitions/tdex_daemonv1StrategyType",
+          "$ref": "#/definitions/v1StrategyType",
           "description": "The making strategy."
         },
         "accountIndex": {
@@ -448,11 +644,11 @@
           "description": "The index of the wallet account."
         },
         "price": {
-          "$ref": "#/definitions/tdexv1Price",
+          "$ref": "#/definitions/v1Price",
           "description": "The current price in case the strategy is PLUGGABLE."
         },
         "balance": {
-          "$ref": "#/definitions/tdexv1Balance",
+          "$ref": "#/definitions/v1Balance",
           "description": "The current unlocked balance."
         },
         "baseAssetPrecision": {
@@ -467,24 +663,24 @@
         }
       }
     },
-    "tdex_daemonv1MarketReport": {
+    "v1MarketReport": {
       "type": "object",
       "properties": {
         "totalCollectedFees": {
-          "$ref": "#/definitions/tdex_daemonv1MarketCollectedFees"
+          "$ref": "#/definitions/v1MarketCollectedFees"
         },
         "totalVolume": {
-          "$ref": "#/definitions/tdex_daemonv1MarketVolume"
+          "$ref": "#/definitions/v1MarketVolume"
         },
         "groupedVolume": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv1MarketVolume"
+            "$ref": "#/definitions/v1MarketVolume"
           }
         }
       }
     },
-    "tdex_daemonv1MarketVolume": {
+    "v1MarketVolume": {
       "type": "object",
       "properties": {
         "baseVolume": {
@@ -505,13 +701,24 @@
         }
       }
     },
-    "tdex_daemonv1NewMarketResponse": {
+    "v1MarketWithFee": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v1Market"
+        },
+        "fee": {
+          "$ref": "#/definitions/v1Fee"
+        }
+      }
+    },
+    "v1NewMarketResponse": {
       "type": "object"
     },
-    "tdex_daemonv1OpenMarketResponse": {
+    "v1OpenMarketResponse": {
       "type": "object"
     },
-    "tdex_daemonv1Outpoint": {
+    "v1Outpoint": {
       "type": "object",
       "properties": {
         "hash": {
@@ -525,7 +732,7 @@
         }
       }
     },
-    "tdex_daemonv1Page": {
+    "v1Page": {
       "type": "object",
       "properties": {
         "pageNumber": {
@@ -540,7 +747,7 @@
         }
       }
     },
-    "tdex_daemonv1PredefinedPeriod": {
+    "v1PredefinedPeriod": {
       "type": "string",
       "enum": [
         "PREDEFINED_PERIOD_UNSPECIFIED",
@@ -555,10 +762,26 @@
       ],
       "default": "PREDEFINED_PERIOD_UNSPECIFIED"
     },
-    "tdex_daemonv1RemoveWebhookResponse": {
+    "v1Price": {
+      "type": "object",
+      "properties": {
+        "basePrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "v1ReloadUtxosResponse": {
       "type": "object"
     },
-    "tdex_daemonv1StrategyType": {
+    "v1RemoveWebhookResponse": {
+      "type": "object"
+    },
+    "v1StrategyType": {
       "type": "string",
       "enum": [
         "STRATEGY_TYPE_PLUGGABLE",
@@ -567,7 +790,7 @@
       ],
       "default": "STRATEGY_TYPE_PLUGGABLE"
     },
-    "tdex_daemonv1SwapFailInfo": {
+    "v1SwapFailInfo": {
       "type": "object",
       "properties": {
         "failureCode": {
@@ -581,7 +804,7 @@
         }
       }
     },
-    "tdex_daemonv1SwapInfo": {
+    "v1SwapInfo": {
       "type": "object",
       "properties": {
         "amountP": {
@@ -604,7 +827,7 @@
         }
       }
     },
-    "tdex_daemonv1TimeFrame": {
+    "v1TimeFrame": {
       "type": "string",
       "enum": [
         "TIME_FRAME_HOUR",
@@ -615,21 +838,21 @@
       ],
       "default": "TIME_FRAME_HOUR"
     },
-    "tdex_daemonv1TimeRange": {
+    "v1TimeRange": {
       "type": "object",
       "properties": {
         "predefinedPeriod": {
-          "$ref": "#/definitions/tdex_daemonv1PredefinedPeriod",
+          "$ref": "#/definitions/v1PredefinedPeriod",
           "title": "predefined time_period till now"
         },
         "customPeriod": {
-          "$ref": "#/definitions/tdex_daemonv1CustomPeriod",
+          "$ref": "#/definitions/v1CustomPeriod",
           "title": "custom time range"
         }
       },
       "description": "TimeRange is flexible type used to determine time span for which specific\napi will fetch data, either one of predefined_period or custom_period should be provided."
     },
-    "tdex_daemonv1TradeInfo": {
+    "v1TradeInfo": {
       "type": "object",
       "properties": {
         "tradeId": {
@@ -637,19 +860,19 @@
           "description": "The id of the trade."
         },
         "status": {
-          "$ref": "#/definitions/tdex_daemonv1TradeStatusInfo",
+          "$ref": "#/definitions/v1TradeStatusInfo",
           "description": "The info about the status of the trade."
         },
         "swapInfo": {
-          "$ref": "#/definitions/tdex_daemonv1SwapInfo",
+          "$ref": "#/definitions/v1SwapInfo",
           "description": "The info about the swap."
         },
         "failInfo": {
-          "$ref": "#/definitions/tdex_daemonv1SwapFailInfo",
+          "$ref": "#/definitions/v1SwapFailInfo",
           "description": "The info of an eventually failed swap."
         },
         "marketWithFee": {
-          "$ref": "#/definitions/tdexv1MarketWithFee",
+          "$ref": "#/definitions/v1MarketWithFee",
           "description": "The collected fee on the current swap."
         },
         "price": {
@@ -707,7 +930,20 @@
         }
       }
     },
-    "tdex_daemonv1TradeStatus": {
+    "v1TradePrice": {
+      "type": "object",
+      "properties": {
+        "basePrice": {
+          "type": "number",
+          "format": "double"
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "v1TradeStatus": {
       "type": "string",
       "enum": [
         "TRADE_STATUS_UNDEFINED",
@@ -719,11 +955,11 @@
       ],
       "default": "TRADE_STATUS_UNDEFINED"
     },
-    "tdex_daemonv1TradeStatusInfo": {
+    "v1TradeStatusInfo": {
       "type": "object",
       "properties": {
         "status": {
-          "$ref": "#/definitions/tdex_daemonv1TradeStatus",
+          "$ref": "#/definitions/v1TradeStatus",
           "description": "The status of the trade."
         },
         "failed": {
@@ -732,38 +968,38 @@
         }
       }
     },
-    "tdex_daemonv1UpdateMarketAssetsPrecisionResponse": {
+    "v1UpdateMarketAssetsPrecisionResponse": {
       "type": "object"
     },
-    "tdex_daemonv1UpdateMarketFixedFeeResponse": {
+    "v1UpdateMarketFixedFeeResponse": {
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/tdexv1MarketWithFee",
+          "$ref": "#/definitions/v1MarketWithFee",
           "description": "The market with updated fees."
         }
       }
     },
-    "tdex_daemonv1UpdateMarketPercentageFeeResponse": {
+    "v1UpdateMarketPercentageFeeResponse": {
       "type": "object",
       "properties": {
         "marketWithFee": {
-          "$ref": "#/definitions/tdexv1MarketWithFee",
+          "$ref": "#/definitions/v1MarketWithFee",
           "description": "The market with updated fees."
         }
       }
     },
-    "tdex_daemonv1UpdateMarketPriceResponse": {
+    "v1UpdateMarketPriceResponse": {
       "type": "object"
     },
-    "tdex_daemonv1UpdateMarketStrategyResponse": {
+    "v1UpdateMarketStrategyResponse": {
       "type": "object"
     },
-    "tdex_daemonv1UtxoInfo": {
+    "v1UtxoInfo": {
       "type": "object",
       "properties": {
         "outpoint": {
-          "$ref": "#/definitions/tdex_daemonv1Outpoint",
+          "$ref": "#/definitions/v1Outpoint",
           "title": "The outpoint \u003chash, index\u003e"
         },
         "value": {
@@ -777,7 +1013,7 @@
         }
       }
     },
-    "tdex_daemonv1WebhookInfo": {
+    "v1WebhookInfo": {
       "type": "object",
       "properties": {
         "id": {
@@ -798,7 +1034,7 @@
         }
       }
     },
-    "tdex_daemonv1WithdrawFeeFragmenterResponse": {
+    "v1WithdrawFeeFragmenterResponse": {
       "type": "object",
       "properties": {
         "txid": {
@@ -806,24 +1042,7 @@
         }
       }
     },
-    "tdex_daemonv1WithdrawFeeResponse": {
-      "type": "object",
-      "properties": {
-        "txid": {
-          "type": "string",
-          "description": "The transaction hash in mempool/blockchain."
-        }
-      }
-    },
-    "tdex_daemonv1WithdrawMarketFragmenterResponse": {
-      "type": "object",
-      "properties": {
-        "txid": {
-          "type": "string"
-        }
-      }
-    },
-    "tdex_daemonv1WithdrawMarketResponse": {
+    "v1WithdrawFeeResponse": {
       "type": "object",
       "properties": {
         "txid": {
@@ -832,239 +1051,20 @@
         }
       }
     },
-    "tdexv1Balance": {
+    "v1WithdrawMarketFragmenterResponse": {
       "type": "object",
       "properties": {
-        "baseAmount": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "quoteAmount": {
-          "type": "string",
-          "format": "uint64"
-        }
-      }
-    },
-    "tdexv1Fee": {
-      "type": "object",
-      "properties": {
-        "basisPoint": {
-          "type": "string",
-          "format": "int64"
-        },
-        "fixed": {
-          "$ref": "#/definitions/v1Fixed"
-        }
-      },
-      "title": "Custom Types"
-    },
-    "tdexv1Market": {
-      "type": "object",
-      "properties": {
-        "baseAsset": {
-          "type": "string"
-        },
-        "quoteAsset": {
+        "txid": {
           "type": "string"
         }
       }
     },
-    "tdexv1MarketWithFee": {
+    "v1WithdrawMarketResponse": {
       "type": "object",
       "properties": {
-        "market": {
-          "$ref": "#/definitions/tdexv1Market"
-        },
-        "fee": {
-          "$ref": "#/definitions/tdexv1Fee"
-        }
-      }
-    },
-    "tdexv1Price": {
-      "type": "object",
-      "properties": {
-        "basePrice": {
-          "type": "number",
-          "format": "double"
-        },
-        "quotePrice": {
-          "type": "number",
-          "format": "double"
-        }
-      }
-    },
-    "v1ActionType": {
-      "type": "string",
-      "enum": [
-        "ACTION_TYPE_TRADE_SETTLED",
-        "ACTION_TYPE_ACCOUNT_LOW_BALANCE",
-        "ACTION_TYPE_ACCOUNT_WITHDRAW",
-        "ACTION_TYPE_ALL_ACTIONS"
-      ],
-      "default": "ACTION_TYPE_TRADE_SETTLED"
-    },
-    "v1AddressWithBlindingKey": {
-      "type": "object",
-      "properties": {
-        "address": {
+        "txid": {
           "type": "string",
-          "description": "The confidential address encoded using a blech32 format."
-        },
-        "blinding": {
-          "type": "string",
-          "title": "The blinding private key for the given address encoded in hex format"
-        }
-      }
-    },
-    "v1BalanceInfo": {
-      "type": "object",
-      "properties": {
-        "totalBalance": {
-          "type": "string",
-          "format": "uint64",
-          "title": "The balance of the wallet"
-        },
-        "confirmedBalance": {
-          "type": "string",
-          "format": "uint64",
-          "title": "The confirmed balance of a wallet(with \u003e= 1 confirmations)"
-        },
-        "unconfirmedBalance": {
-          "type": "string",
-          "format": "uint64",
-          "title": "The unconfirmed balance of a wallet(with 0 confirmations)"
-        }
-      }
-    },
-    "v1ClaimFeeDepositsResponse": {
-      "type": "object"
-    },
-    "v1ClaimMarketDepositsResponse": {
-      "type": "object"
-    },
-    "v1Deposit": {
-      "type": "object",
-      "properties": {
-        "utxo": {
-          "$ref": "#/definitions/tdex_daemonv1UtxoInfo",
-          "description": "The utxo deposited."
-        },
-        "timestampUnix": {
-          "type": "string",
-          "format": "uint64",
-          "description": "The timestamp of the deposit transaction in Unix format."
-        },
-        "timestampUtc": {
-          "type": "string",
-          "description": "The timestamp of the deposit transaction in UTC format."
-        }
-      }
-    },
-    "v1Fixed": {
-      "type": "object",
-      "properties": {
-        "baseFee": {
-          "type": "string",
-          "format": "int64"
-        },
-        "quoteFee": {
-          "type": "string",
-          "format": "int64"
-        }
-      }
-    },
-    "v1GetFeeAddressResponse": {
-      "type": "object",
-      "properties": {
-        "addressWithBlindingKey": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1AddressWithBlindingKey"
-          },
-          "description": "The list of new confidential addresses and related private blinding keys."
-        }
-      }
-    },
-    "v1GetFeeFragmenterAddressResponse": {
-      "type": "object",
-      "properties": {
-        "addressWithBlindingKey": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1AddressWithBlindingKey"
-          }
-        }
-      }
-    },
-    "v1GetMarketAddressResponse": {
-      "type": "object",
-      "properties": {
-        "addressWithBlindingKey": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1AddressWithBlindingKey"
-          },
-          "description": "The list of new confidential addresses and related private blinding keys."
-        }
-      }
-    },
-    "v1GetMarketBalanceResponse": {
-      "type": "object",
-      "properties": {
-        "availableBalance": {
-          "$ref": "#/definitions/tdexv1Balance",
-          "description": "The balance of all unlocked unspents."
-        },
-        "totalBalance": {
-          "$ref": "#/definitions/tdexv1Balance",
-          "description": "The balance of all unspents included those locked."
-        }
-      }
-    },
-    "v1GetMarketCollectedSwapFeesResponse": {
-      "type": "object",
-      "properties": {
-        "collectedFees": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/tdex_daemonv1FeeInfo"
-          },
-          "description": "The list of info about the collected fees per each trade."
-        },
-        "totalCollectedFeesPerAsset": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "format": "int64"
-          },
-          "description": "The map of total fees collected per asset."
-        }
-      }
-    },
-    "v1GetMarketFragmenterAddressResponse": {
-      "type": "object",
-      "properties": {
-        "addressWithBlindingKey": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1AddressWithBlindingKey"
-          }
-        }
-      }
-    },
-    "v1ReloadUtxosResponse": {
-      "type": "object"
-    },
-    "v1TradePrice": {
-      "type": "object",
-      "properties": {
-        "basePrice": {
-          "type": "number",
-          "format": "double"
-        },
-        "quotePrice": {
-          "type": "number",
-          "format": "double"
+          "description": "The transaction hash in mempool/blockchain."
         }
       }
     },
@@ -1076,7 +1076,7 @@
           "description": "The hash of the transaction included in mempool/blockchain."
         },
         "balance": {
-          "$ref": "#/definitions/tdexv1Balance",
+          "$ref": "#/definitions/v1Balance",
           "description": "The balance withdrawn from the wallet account."
         },
         "address": {

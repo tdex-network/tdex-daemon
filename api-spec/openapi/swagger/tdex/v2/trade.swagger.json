@@ -24,7 +24,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv2GetMarketBalanceResponse"
+              "$ref": "#/definitions/v2GetMarketBalanceResponse"
             }
           },
           "default": {
@@ -40,7 +40,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv2GetMarketBalanceRequest"
+              "$ref": "#/definitions/v2GetMarketBalanceRequest"
             }
           }
         ],
@@ -57,7 +57,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv2GetMarketPriceResponse"
+              "$ref": "#/definitions/v2GetMarketPriceResponse"
             }
           },
           "default": {
@@ -73,7 +73,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv2GetMarketPriceRequest"
+              "$ref": "#/definitions/v2GetMarketPriceRequest"
             }
           }
         ],
@@ -90,7 +90,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv2ListMarketsResponse"
+              "$ref": "#/definitions/v2ListMarketsResponse"
             }
           },
           "default": {
@@ -113,7 +113,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv2CompleteTradeResponse"
+              "$ref": "#/definitions/v2CompleteTradeResponse"
             }
           },
           "default": {
@@ -129,7 +129,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv2CompleteTradeRequest"
+              "$ref": "#/definitions/v2CompleteTradeRequest"
             }
           }
         ],
@@ -147,7 +147,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv2PreviewTradeResponse"
+              "$ref": "#/definitions/v2PreviewTradeResponse"
             }
           },
           "default": {
@@ -163,7 +163,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv2PreviewTradeRequest"
+              "$ref": "#/definitions/v2PreviewTradeRequest"
             }
           }
         ],
@@ -180,7 +180,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tdexv2ProposeTradeResponse"
+              "$ref": "#/definitions/v2ProposeTradeResponse"
             }
           },
           "default": {
@@ -196,7 +196,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tdexv2ProposeTradeRequest"
+              "$ref": "#/definitions/v2ProposeTradeRequest"
             }
           }
         ],
@@ -234,16 +234,22 @@
         }
       }
     },
-    "tdexv2Balance": {
+    "v2Balance": {
       "type": "object",
       "properties": {
         "baseAmount": {
           "type": "string",
-          "format": "uint64"
+          "format": "uint64",
+          "required": [
+            "base_amount"
+          ]
         },
         "quoteAmount": {
           "type": "string",
-          "format": "uint64"
+          "format": "uint64",
+          "required": [
+            "quote_amount"
+          ]
         }
       },
       "required": [
@@ -251,29 +257,29 @@
         "quoteAmount"
       ]
     },
-    "tdexv2CompleteTradeRequest": {
+    "v2CompleteTradeRequest": {
       "type": "object",
       "properties": {
         "swapComplete": {
-          "$ref": "#/definitions/tdexv2SwapComplete"
+          "$ref": "#/definitions/v2SwapComplete"
         },
         "swapFail": {
-          "$ref": "#/definitions/tdexv2SwapFail"
+          "$ref": "#/definitions/v2SwapFail"
         }
       }
     },
-    "tdexv2CompleteTradeResponse": {
+    "v2CompleteTradeResponse": {
       "type": "object",
       "properties": {
         "txid": {
           "type": "string"
         },
         "swapFail": {
-          "$ref": "#/definitions/tdexv2SwapFail"
+          "$ref": "#/definitions/v2SwapFail"
         }
       }
     },
-    "tdexv2Fee": {
+    "v2Fee": {
       "type": "object",
       "properties": {
         "percentageFee": {
@@ -284,83 +290,86 @@
           "$ref": "#/definitions/v2MarketFee",
           "description": "Fixed fee on both assets of the market in satoshi."
         }
-      },
-      "required": [
-        "percentageFee",
-        "fixedFee"
-      ]
+      }
     },
-    "tdexv2GetMarketBalanceRequest": {
+    "v2GetMarketBalanceRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv2Market"
+          "$ref": "#/definitions/v2Market"
         }
       }
     },
-    "tdexv2GetMarketBalanceResponse": {
+    "v2GetMarketBalanceResponse": {
       "type": "object",
       "properties": {
         "balance": {
-          "$ref": "#/definitions/tdexv2Balance"
+          "$ref": "#/definitions/v2Balance"
         },
         "fee": {
-          "$ref": "#/definitions/tdexv2Fee"
-        }
-      },
-      "required": [
-        "balance",
-        "fee"
-      ]
-    },
-    "tdexv2GetMarketPriceRequest": {
-      "type": "object",
-      "properties": {
-        "market": {
-          "$ref": "#/definitions/tdexv2Market"
+          "$ref": "#/definitions/v2Fee"
         }
       }
     },
-    "tdexv2GetMarketPriceResponse": {
+    "v2GetMarketPriceRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market"
+        }
+      }
+    },
+    "v2GetMarketPriceResponse": {
       "type": "object",
       "properties": {
         "spotPrice": {
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "required": [
+            "spot_price"
+          ]
         },
         "minTradableAmount": {
           "type": "string",
-          "format": "uint64"
+          "format": "uint64",
+          "required": [
+            "min_tradable_amount"
+          ]
         },
         "balance": {
-          "$ref": "#/definitions/tdexv2Balance"
+          "$ref": "#/definitions/v2Balance"
         }
       },
       "required": [
         "spotPrice",
-        "minTradableAmount",
-        "balance"
+        "minTradableAmount"
       ]
     },
-    "tdexv2ListMarketsResponse": {
+    "v2ListMarketsResponse": {
       "type": "object",
       "properties": {
         "markets": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdexv2MarketWithFee"
+            "$ref": "#/definitions/v2MarketWithFee"
           }
         }
       }
     },
-    "tdexv2Market": {
+    "v2Market": {
       "type": "object",
       "properties": {
         "baseAsset": {
-          "type": "string"
+          "type": "string",
+          "required": [
+            "base_asset"
+          ]
         },
         "quoteAsset": {
-          "type": "string"
+          "type": "string",
+          "required": [
+            "quote_asset"
+          ]
         }
       },
       "required": [
@@ -368,68 +377,97 @@
         "quoteAsset"
       ]
     },
-    "tdexv2MarketWithFee": {
+    "v2MarketFee": {
       "type": "object",
       "properties": {
-        "market": {
-          "$ref": "#/definitions/tdexv2Market"
+        "baseAsset": {
+          "type": "string",
+          "format": "int64",
+          "required": [
+            "base_asset"
+          ]
         },
-        "fee": {
-          "$ref": "#/definitions/tdexv2Fee"
+        "quoteAsset": {
+          "type": "string",
+          "format": "int64",
+          "required": [
+            "quote_asset"
+          ]
         }
       },
       "required": [
-        "market",
-        "fee"
+        "baseAsset",
+        "quoteAsset"
       ]
     },
-    "tdexv2Preview": {
+    "v2MarketWithFee": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market"
+        },
+        "fee": {
+          "$ref": "#/definitions/v2Fee"
+        }
+      }
+    },
+    "v2Preview": {
       "type": "object",
       "properties": {
         "price": {
-          "$ref": "#/definitions/tdexv2Price",
+          "$ref": "#/definitions/v2Price",
           "description": "The price of the market."
         },
         "fee": {
-          "$ref": "#/definitions/tdexv2Fee",
+          "$ref": "#/definitions/v2Fee",
           "description": "The fees of the market."
         },
         "amount": {
           "type": "string",
           "format": "uint64",
-          "description": "The previewd amount (fees excluded)."
+          "description": "The previewd amount (fees excluded).",
+          "required": [
+            "amount"
+          ]
         },
         "asset": {
           "type": "string",
-          "description": "The asset of the previewed amount (fees excluded)."
+          "description": "The asset of the previewed amount (fees excluded).",
+          "required": [
+            "asset"
+          ]
         },
         "feeAmount": {
           "type": "string",
           "format": "uint64",
-          "title": "The previewed fee amount,"
+          "title": "The previewed fee amount,",
+          "required": [
+            "fee_amount"
+          ]
         },
         "feeAsset": {
           "type": "string",
-          "title": "The asset of the previewed fee amount,"
+          "title": "The asset of the previewed fee amount,",
+          "required": [
+            "fee_asset"
+          ]
         }
       },
       "required": [
-        "price",
-        "fee",
         "amount",
         "asset",
         "feeAmount",
         "feeAsset"
       ]
     },
-    "tdexv2PreviewTradeRequest": {
+    "v2PreviewTradeRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv2Market"
+          "$ref": "#/definitions/v2Market"
         },
         "type": {
-          "$ref": "#/definitions/tdexv2TradeType"
+          "$ref": "#/definitions/v2TradeType"
         },
         "amount": {
           "type": "string",
@@ -443,27 +481,33 @@
         }
       }
     },
-    "tdexv2PreviewTradeResponse": {
+    "v2PreviewTradeResponse": {
       "type": "object",
       "properties": {
         "previews": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdexv2Preview"
+            "$ref": "#/definitions/v2Preview"
           }
         }
       }
     },
-    "tdexv2Price": {
+    "v2Price": {
       "type": "object",
       "properties": {
         "basePrice": {
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "required": [
+            "base_price"
+          ]
         },
         "quotePrice": {
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "required": [
+            "quote_price"
+          ]
         }
       },
       "required": [
@@ -471,17 +515,17 @@
         "quotePrice"
       ]
     },
-    "tdexv2ProposeTradeRequest": {
+    "v2ProposeTradeRequest": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv2Market"
+          "$ref": "#/definitions/v2Market"
         },
         "type": {
-          "$ref": "#/definitions/tdexv2TradeType"
+          "$ref": "#/definitions/v2TradeType"
         },
         "swapRequest": {
-          "$ref": "#/definitions/tdexv2SwapRequest"
+          "$ref": "#/definitions/v2SwapRequest"
         },
         "feeAmount": {
           "type": "string",
@@ -492,14 +536,14 @@
         }
       }
     },
-    "tdexv2ProposeTradeResponse": {
+    "v2ProposeTradeResponse": {
       "type": "object",
       "properties": {
         "swapAccept": {
-          "$ref": "#/definitions/tdexv2SwapAccept"
+          "$ref": "#/definitions/v2SwapAccept"
         },
         "swapFail": {
-          "$ref": "#/definitions/tdexv2SwapFail"
+          "$ref": "#/definitions/v2SwapFail"
         },
         "expiryTimeUnix": {
           "type": "string",
@@ -507,27 +551,39 @@
         }
       }
     },
-    "tdexv2SwapAccept": {
+    "v2SwapAccept": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "title": "Random unique identifier for the current message"
+          "title": "Random unique identifier for the current message",
+          "required": [
+            "id"
+          ]
         },
         "requestId": {
           "type": "string",
-          "title": "indetifier of the SwapRequest message"
+          "title": "indetifier of the SwapRequest message",
+          "required": [
+            "request_id"
+          ]
         },
         "transaction": {
           "type": "string",
-          "title": "The partial signed transaction base64 encoded containing the Responder's\nsigned inputs in a PSBT format"
+          "title": "The partial signed transaction base64 encoded containing the Responder's\nsigned inputs in a PSBT format",
+          "required": [
+            "transaction"
+          ]
         },
         "unblindedInputs": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v2UnblindedInput"
           },
-          "description": "In case of psetv2 transaction, the original list of trader's unblinded inputs,\nincluding also those of the inputs added by the provider."
+          "description": "In case of psetv2 transaction, the original list of trader's unblinded inputs,\nincluding also those of the inputs added by the provider.",
+          "required": [
+            "unblinded_inputs"
+          ]
         }
       },
       "required": [
@@ -537,20 +593,29 @@
         "unblindedInputs"
       ]
     },
-    "tdexv2SwapComplete": {
+    "v2SwapComplete": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "title": "Random unique identifier for the current message"
+          "title": "Random unique identifier for the current message",
+          "required": [
+            "id"
+          ]
         },
         "acceptId": {
           "type": "string",
-          "title": "indetifier of the SwapAccept message"
+          "title": "indetifier of the SwapAccept message",
+          "required": [
+            "accept_id"
+          ]
         },
         "transaction": {
           "type": "string",
-          "title": "The signed transaction base64 encoded containing the Proposers's signed\ninputs in a PSBT format"
+          "title": "The signed transaction base64 encoded containing the Proposers's signed\ninputs in a PSBT format",
+          "required": [
+            "transaction"
+          ]
         }
       },
       "required": [
@@ -559,25 +624,37 @@
         "transaction"
       ]
     },
-    "tdexv2SwapFail": {
+    "v2SwapFail": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "title": "Random unique identifier for the current message"
+          "title": "Random unique identifier for the current message",
+          "required": [
+            "id"
+          ]
         },
         "messageId": {
           "type": "string",
-          "title": "indetifier of either SwapRequest or SwapAccept message. It can be empty"
+          "title": "indetifier of either SwapRequest or SwapAccept message. It can be empty",
+          "required": [
+            "message_id"
+          ]
         },
         "failureCode": {
           "type": "integer",
           "format": "int64",
-          "title": "The failure code. It can be empty"
+          "title": "The failure code. It can be empty",
+          "required": [
+            "failure_code"
+          ]
         },
         "failureMessage": {
           "type": "string",
-          "title": "The failure reason messaged"
+          "title": "The failure reason messaged",
+          "required": [
+            "failure_message"
+          ]
         }
       },
       "required": [
@@ -587,41 +664,62 @@
         "failureMessage"
       ]
     },
-    "tdexv2SwapRequest": {
+    "v2SwapRequest": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "title": "Random unique identifier for the current message"
+          "title": "Random unique identifier for the current message",
+          "required": [
+            "id"
+          ]
         },
         "amountP": {
           "type": "string",
           "format": "uint64",
-          "title": "The proposer's quantity"
+          "title": "The proposer's quantity",
+          "required": [
+            "amount_p"
+          ]
         },
         "assetP": {
           "type": "string",
-          "title": "The proposer's asset hash"
+          "title": "The proposer's asset hash",
+          "required": [
+            "asset_p"
+          ]
         },
         "amountR": {
           "type": "string",
           "format": "uint64",
-          "title": "The responder's quantity"
+          "title": "The responder's quantity",
+          "required": [
+            "amount_r"
+          ]
         },
         "assetR": {
           "type": "string",
-          "title": "The responder's asset hash"
+          "title": "The responder's asset hash",
+          "required": [
+            "asset_r"
+          ]
         },
         "transaction": {
           "type": "string",
-          "title": "The proposer's unsigned transaction in PSET v2 format (base64 string)"
+          "title": "The proposer's unsigned transaction in PSET v2 format (base64 string)",
+          "required": [
+            "transaction"
+          ]
         },
         "unblindedInputs": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v2UnblindedInput"
           },
-          "description": "The list of trader's unblinded inputs data, even in case they are\nunconfidential."
+          "description": "The list of trader's unblinded inputs data, even in case they are\nunconfidential.",
+          "required": [
+            "unblinded_inputs"
+          ]
         }
       },
       "required": [
@@ -634,7 +732,7 @@
         "unblindedInputs"
       ]
     },
-    "tdexv2TradeType": {
+    "v2TradeType": {
       "type": "string",
       "enum": [
         "TRADE_TYPE_BUY",
@@ -642,47 +740,45 @@
       ],
       "default": "TRADE_TYPE_BUY"
     },
-    "v2MarketFee": {
-      "type": "object",
-      "properties": {
-        "baseAsset": {
-          "type": "string",
-          "format": "int64"
-        },
-        "quoteAsset": {
-          "type": "string",
-          "format": "int64"
-        }
-      },
-      "required": [
-        "baseAsset",
-        "quoteAsset"
-      ]
-    },
     "v2UnblindedInput": {
       "type": "object",
       "properties": {
         "index": {
           "type": "integer",
           "format": "int64",
-          "description": "Index of the transaction input of reference."
+          "description": "Index of the transaction input of reference.",
+          "required": [
+            "index"
+          ]
         },
         "asset": {
           "type": "string",
-          "description": "Unblinded asset."
+          "description": "Unblinded asset.",
+          "required": [
+            "asset"
+          ]
         },
         "amount": {
           "type": "string",
           "format": "uint64",
-          "description": "Unblinded amount."
+          "description": "Unblinded amount.",
+          "required": [
+            "amount"
+          ]
         },
         "assetBlinder": {
           "type": "string",
-          "description": "Asset blinider when blinding the prevout."
+          "description": "Asset blinider when blinding the prevout.",
+          "required": [
+            "asset_blinder"
+          ]
         },
         "amountBlinder": {
           "type": "string",
-          "description": "Amount blinider used when blinding the prevout."
+          "description": "Amount blinider used when blinding the prevout.",
+          "required": [
+            "amount_blinder"
+          ]
         }
       },
       "required": [

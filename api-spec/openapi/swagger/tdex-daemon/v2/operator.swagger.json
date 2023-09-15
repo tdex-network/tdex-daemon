@@ -15,9 +15,1056 @@
   "produces": [
     "application/json"
   ],
-  "paths": {},
+  "paths": {
+    "/v2/deposits": {
+      "post": {
+        "summary": "Returns the list of all claimed deposits for the given account.",
+        "operationId": "OperatorService_ListDeposits",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListDepositsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2ListDepositsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/fee/addresses": {
+      "get": {
+        "summary": "Returns the list of all derived addresses for the fee account.",
+        "operationId": "OperatorService_ListFeeAddresses",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListFeeAddressesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/fee/balance": {
+      "get": {
+        "summary": "Returns the LBTC balance of the fee account.",
+        "operationId": "OperatorService_GetFeeBalance",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2GetFeeBalanceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/fee/derive": {
+      "post": {
+        "summary": "Derives new addresses from the fee account.\nThis account is only used to deposit LBTC funds to subsidize network fees.",
+        "operationId": "OperatorService_DeriveFeeAddresses",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2DeriveFeeAddressesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2DeriveFeeAddressesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/fee/withdraw": {
+      "post": {
+        "summary": "Withdraws LBTC funds from the fee account.",
+        "operationId": "OperatorService_WithdrawFee",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2WithdrawFeeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2WithdrawFeeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/feefragmenter/addresses": {
+      "get": {
+        "summary": "Returns the list of all derived addresses for the fee fragmenter account.",
+        "operationId": "OperatorService_ListFeeFragmenterAddresses",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListFeeFragmenterAddressesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/feefragmenter/balance": {
+      "get": {
+        "summary": "Returns the balance of the fee fragmenter account.",
+        "operationId": "OperatorService_GetFeeFragmenterBalance",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2GetFeeFragmenterBalanceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/feefragmenter/derive": {
+      "post": {
+        "summary": "Derives new addresses for the fee fragmenter account.",
+        "operationId": "OperatorService_DeriveFeeFragmenterAddresses",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2DeriveFeeFragmenterAddressesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2DeriveFeeFragmenterAddressesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/feefragmenter/split": {
+      "post": {
+        "summary": "Splits the funds sent to the fee fragmenter account into multiple\nfragments that are then deposited to the Fee account.",
+        "operationId": "OperatorService_FeeFragmenterSplitFunds",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/v2FeeFragmenterSplitFundsResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of v2FeeFragmenterSplitFundsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2FeeFragmenterSplitFundsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/feefragmenter/withdraw": {
+      "post": {
+        "summary": "Withdraws funds from the fee fragmenter account.",
+        "operationId": "OperatorService_WithdrawFeeFragmenter",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2WithdrawFeeFragmenterResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2WithdrawFeeFragmenterRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market": {
+      "post": {
+        "summary": "Creates a new market and the related wallet account.",
+        "operationId": "OperatorService_NewMarket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2NewMarketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2NewMarketRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/addresses": {
+      "post": {
+        "summary": "Returns the list of all derived addresses for the given market.",
+        "operationId": "OperatorService_ListMarketAddresses",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListMarketAddressesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2ListMarketAddressesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/close": {
+      "post": {
+        "summary": "Makes the given market NOT tradabale.",
+        "operationId": "OperatorService_CloseMarket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2CloseMarketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2CloseMarketRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/derive": {
+      "post": {
+        "summary": "Derives new addresses for the market.",
+        "operationId": "OperatorService_DeriveMarketAddresses",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2DeriveMarketAddressesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2DeriveMarketAddressesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/drop": {
+      "post": {
+        "summary": "Deletes a market.",
+        "operationId": "OperatorService_DropMarket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2DropMarketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2DropMarketRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/fees/fixed": {
+      "post": {
+        "summary": "Changes the Liquidity provider fixed fees for the given market.",
+        "operationId": "OperatorService_UpdateMarketFixedFee",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketFixedFeeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketFixedFeeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/fees/percentage": {
+      "post": {
+        "summary": "Changes the Liquidity Provider percentage fee for the given market.",
+        "operationId": "OperatorService_UpdateMarketPercentageFee",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketPercentageFeeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketPercentageFeeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/info": {
+      "post": {
+        "summary": "Returns info about the given market.",
+        "operationId": "OperatorService_GetMarketInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2GetMarketInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2GetMarketInfoRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/open": {
+      "post": {
+        "summary": "Makes the given market tradable.",
+        "operationId": "OperatorService_OpenMarket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2OpenMarketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2OpenMarketRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/precision": {
+      "post": {
+        "summary": "Changes the Liquidity provider asset(s) precision for the given market.",
+        "operationId": "OperatorService_UpdateMarketAssetsPrecision",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketAssetsPrecisionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketAssetsPrecisionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/price": {
+      "post": {
+        "summary": "Updates the price for the given market.",
+        "operationId": "OperatorService_UpdateMarketPrice",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketPriceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketPriceRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/report": {
+      "post": {
+        "summary": "Returns a report with volume and collected fees for the given market in\nthe specified time range.",
+        "operationId": "OperatorService_GetMarketReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2GetMarketReportResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2GetMarketReportRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/strategy": {
+      "post": {
+        "summary": "Updates the current market making strategy, either using an automated\nmarket making formula or a pluggable price feed.",
+        "operationId": "OperatorService_UpdateMarketStrategy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketStrategyResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2UpdateMarketStrategyRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/market/withdraw": {
+      "post": {
+        "summary": "Withdraw funds from the given market.",
+        "operationId": "OperatorService_WithdrawMarket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2WithdrawMarketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2WithdrawMarketRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/marketfragmenter/addresses": {
+      "get": {
+        "summary": "Returns the list of all derived addresses for the market fragmenter account.",
+        "operationId": "OperatorService_ListMarketFragmenterAddresses",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListMarketFragmenterAddressesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/marketfragmenter/balance": {
+      "get": {
+        "summary": "Returns the balance of the market fragmenter account.",
+        "operationId": "OperatorService_GetMarketFragmenterBalance",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2GetMarketFragmenterBalanceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/marketfragmenter/derive": {
+      "post": {
+        "summary": "Derives new addresses for the market fragmenter account.",
+        "operationId": "OperatorService_DeriveMarketFragmenterAddresses",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2DeriveMarketFragmenterAddressesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2DeriveMarketFragmenterAddressesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/marketfragmenter/split": {
+      "post": {
+        "summary": "Splits the funds sent to the market fragmenter account into multiple\nfragments that are then deposited to the given market.",
+        "operationId": "OperatorService_MarketFragmenterSplitFunds",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/v2MarketFragmenterSplitFundsResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of v2MarketFragmenterSplitFundsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2MarketFragmenterSplitFundsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/marketfragmenter/withdraw": {
+      "post": {
+        "summary": "Withdraws funds from the market fragmenter account.",
+        "operationId": "OperatorService_WithdrawMarketFragmenter",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2WithdrawMarketFragmenterResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2WithdrawMarketFragmenterRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/markets": {
+      "get": {
+        "summary": "Get info about all markets.",
+        "operationId": "OperatorService_ListMarkets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListMarketsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/trades": {
+      "post": {
+        "summary": "Returs all the trades processed by the daemon (ongoing, completed and\nfailed/rejected) or all those filtered by market.",
+        "operationId": "OperatorService_ListTrades",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListTradesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2ListTradesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/utxos": {
+      "post": {
+        "summary": "Returns all the utxos, whether unspents, spents or locked.",
+        "operationId": "OperatorService_ListUtxos",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListUtxosResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2ListUtxosRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    },
+    "/v2/withdrawals": {
+      "post": {
+        "summary": "Returns the list of all withdrawals made for the given account.",
+        "operationId": "OperatorService_ListWithdrawals",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2ListWithdrawalsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2ListWithdrawalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OperatorService"
+        ]
+      }
+    }
+  },
   "definitions": {
-    "googlerpcStatus": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
       "type": "object",
       "properties": {
         "code": {
@@ -34,15 +1081,6 @@
           }
         }
       }
-    },
-    "protobufAny": {
-      "type": "object",
-      "properties": {
-        "@type": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": {}
     },
     "tdex_daemonv2Balance": {
       "type": "object",
@@ -69,10 +1107,19 @@
         }
       }
     },
-    "tdex_daemonv2CloseMarketResponse": {
+    "v2CloseMarketRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market to be made not tradable."
+        }
+      }
+    },
+    "v2CloseMarketResponse": {
       "type": "object"
     },
-    "tdex_daemonv2CustomPeriod": {
+    "v2CustomPeriod": {
       "type": "object",
       "properties": {
         "startDate": {
@@ -85,10 +1132,133 @@
         }
       }
     },
-    "tdex_daemonv2DropMarketResponse": {
+    "v2DeriveFeeAddressesRequest": {
+      "type": "object",
+      "properties": {
+        "numOfAddresses": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of addresses to generate."
+        }
+      }
+    },
+    "v2DeriveFeeAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of new confidential addresses."
+        }
+      }
+    },
+    "v2DeriveFeeFragmenterAddressesRequest": {
+      "type": "object",
+      "properties": {
+        "numOfAddresses": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v2DeriveFeeFragmenterAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v2DeriveMarketAddressesRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market for which deriving new addresses."
+        },
+        "numOfAddresses": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of addresses to generate."
+        }
+      }
+    },
+    "v2DeriveMarketAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of new confidential addresses."
+        }
+      }
+    },
+    "v2DeriveMarketFragmenterAddressesRequest": {
+      "type": "object",
+      "properties": {
+        "numOfAddresses": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v2DeriveMarketFragmenterAddressesResponse": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v2DropMarketRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market"
+        }
+      }
+    },
+    "v2DropMarketResponse": {
       "type": "object"
     },
-    "tdex_daemonv2FeeFragmenterSplitFundsResponse": {
+    "v2Fee": {
+      "type": "object",
+      "properties": {
+        "percentageFee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "Percentage fee on both assets of the market in basis point."
+        },
+        "fixedFee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "Fixed fee on both assets of the market in satoshi."
+        }
+      }
+    },
+    "v2FeeFragmenterSplitFundsRequest": {
+      "type": "object",
+      "properties": {
+        "maxFragments": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The max number of fragments the fragmenter can generate when splitting\nits funds."
+        },
+        "millisatsPerByte": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v2FeeFragmenterSplitFundsResponse": {
       "type": "object",
       "properties": {
         "message": {
@@ -97,7 +1267,7 @@
         }
       }
     },
-    "tdex_daemonv2FeeInfo": {
+    "v2FeeInfo": {
       "type": "object",
       "properties": {
         "tradeId": {
@@ -134,7 +1304,7 @@
         }
       }
     },
-    "tdex_daemonv2GetFeeBalanceResponse": {
+    "v2GetFeeBalanceResponse": {
       "type": "object",
       "properties": {
         "balance": {
@@ -142,7 +1312,7 @@
         }
       }
     },
-    "tdex_daemonv2GetFeeFragmenterBalanceResponse": {
+    "v2GetFeeFragmenterBalanceResponse": {
       "type": "object",
       "properties": {
         "balance": {
@@ -154,7 +1324,7 @@
         }
       }
     },
-    "tdex_daemonv2GetMarketFragmenterBalanceResponse": {
+    "v2GetMarketFragmenterBalanceResponse": {
       "type": "object",
       "properties": {
         "balance": {
@@ -166,24 +1336,62 @@
         }
       }
     },
-    "tdex_daemonv2GetMarketInfoResponse": {
+    "v2GetMarketInfoRequest": {
       "type": "object",
       "properties": {
-        "info": {
-          "$ref": "#/definitions/tdex_daemonv2MarketInfo"
+        "market": {
+          "$ref": "#/definitions/v2Market"
         }
       }
     },
-    "tdex_daemonv2GetMarketReportResponse": {
+    "v2GetMarketInfoResponse": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/v2MarketInfo"
+        }
+      }
+    },
+    "v2GetMarketReportRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market for which returning the report of collected fees."
+        },
+        "timeRange": {
+          "$ref": "#/definitions/v2TimeRange",
+          "title": "time_range fetch market report from time range"
+        },
+        "timeFrame": {
+          "$ref": "#/definitions/v2TimeFrame",
+          "title": "used to group volume by time_frame for the specified time_range"
+        }
+      }
+    },
+    "v2GetMarketReportResponse": {
       "type": "object",
       "properties": {
         "report": {
-          "$ref": "#/definitions/tdex_daemonv2MarketReport",
+          "$ref": "#/definitions/v2MarketReport",
           "title": "MarketReport holds info about volume and collected fees"
         }
       }
     },
-    "tdex_daemonv2ListDepositsResponse": {
+    "v2ListDepositsRequest": {
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "The name of the wallet account for which listing the deposits."
+        },
+        "page": {
+          "$ref": "#/definitions/v2Page",
+          "description": "The page for a paginated reply."
+        }
+      }
+    },
+    "v2ListDepositsResponse": {
       "type": "object",
       "properties": {
         "accountName": {
@@ -199,7 +1407,7 @@
         }
       }
     },
-    "tdex_daemonv2ListFeeAddressesResponse": {
+    "v2ListFeeAddressesResponse": {
       "type": "object",
       "properties": {
         "addresses": {
@@ -211,7 +1419,7 @@
         }
       }
     },
-    "tdex_daemonv2ListFeeFragmenterAddressesResponse": {
+    "v2ListFeeFragmenterAddressesResponse": {
       "type": "object",
       "properties": {
         "addresses": {
@@ -222,7 +1430,16 @@
         }
       }
     },
-    "tdex_daemonv2ListMarketAddressesResponse": {
+    "v2ListMarketAddressesRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The Market for which listing all derived addresses."
+        }
+      }
+    },
+    "v2ListMarketAddressesResponse": {
       "type": "object",
       "properties": {
         "addresses": {
@@ -234,7 +1451,7 @@
         }
       }
     },
-    "tdex_daemonv2ListMarketFragmenterAddressesResponse": {
+    "v2ListMarketFragmenterAddressesResponse": {
       "type": "object",
       "properties": {
         "addresses": {
@@ -245,50 +1462,93 @@
         }
       }
     },
-    "tdex_daemonv2ListMarketsResponse": {
+    "v2ListMarketsResponse": {
       "type": "object",
       "properties": {
         "markets": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv2MarketInfo"
+            "$ref": "#/definitions/v2MarketInfo"
           },
           "description": "The list of info about all the created markets."
         }
       }
     },
-    "tdex_daemonv2ListTradesResponse": {
+    "v2ListTradesRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "Market for which listing trades."
+        },
+        "page": {
+          "$ref": "#/definitions/v2Page",
+          "description": "The page for a paginated reply."
+        },
+        "withHex": {
+          "type": "boolean",
+          "description": "Optional, return also the raw transaction in hex format for each trade."
+        }
+      }
+    },
+    "v2ListTradesResponse": {
       "type": "object",
       "properties": {
         "trades": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv2TradeInfo"
+            "$ref": "#/definitions/v2TradeInfo"
           },
           "description": "The list of info about all trades or all trades for a market depending on\nthe request."
         }
       }
     },
-    "tdex_daemonv2ListUtxosResponse": {
+    "v2ListUtxosRequest": {
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "Name of the account for which listing utxos."
+        },
+        "page": {
+          "$ref": "#/definitions/v2Page",
+          "description": "The page for a paginated reply."
+        }
+      }
+    },
+    "v2ListUtxosResponse": {
       "type": "object",
       "properties": {
         "spendableUtxos": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv2UtxoInfo"
+            "$ref": "#/definitions/v2UtxoInfo"
           },
           "description": "The list of all spendable utxos."
         },
         "lockedUtxos": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv2UtxoInfo"
+            "$ref": "#/definitions/v2UtxoInfo"
           },
           "description": "The list of all locked utxos."
         }
       }
     },
-    "tdex_daemonv2ListWithdrawalsResponse": {
+    "v2ListWithdrawalsRequest": {
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "The name of the wallet account for which listing the withdrawals."
+        },
+        "page": {
+          "$ref": "#/definitions/v2Page",
+          "description": "The page for a paginated reply."
+        }
+      }
+    },
+    "v2ListWithdrawalsResponse": {
       "type": "object",
       "properties": {
         "accountName": {
@@ -304,7 +1564,28 @@
         }
       }
     },
-    "tdex_daemonv2MarketCollectedFees": {
+    "v2Market": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string",
+          "required": [
+            "base_asset"
+          ]
+        },
+        "quoteAsset": {
+          "type": "string",
+          "required": [
+            "quote_asset"
+          ]
+        }
+      },
+      "required": [
+        "baseAsset",
+        "quoteAsset"
+      ]
+    },
+    "v2MarketCollectedFees": {
       "type": "object",
       "properties": {
         "baseAmount": {
@@ -318,7 +1599,7 @@
         "feesPerTrade": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv2FeeInfo"
+            "$ref": "#/definitions/v2FeeInfo"
           }
         },
         "startDate": {
@@ -331,7 +1612,43 @@
         }
       }
     },
-    "tdex_daemonv2MarketFragmenterSplitFundsResponse": {
+    "v2MarketFee": {
+      "type": "object",
+      "properties": {
+        "baseAsset": {
+          "type": "string",
+          "format": "int64",
+          "required": [
+            "base_asset"
+          ]
+        },
+        "quoteAsset": {
+          "type": "string",
+          "format": "int64",
+          "required": [
+            "quote_asset"
+          ]
+        }
+      },
+      "required": [
+        "baseAsset",
+        "quoteAsset"
+      ]
+    },
+    "v2MarketFragmenterSplitFundsRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market to which to deposit the fragmented funds owned by the market\nfragmenter."
+        },
+        "millisatsPerByte": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v2MarketFragmenterSplitFundsResponse": {
       "type": "object",
       "properties": {
         "message": {
@@ -340,15 +1657,15 @@
         }
       }
     },
-    "tdex_daemonv2MarketInfo": {
+    "v2MarketInfo": {
       "type": "object",
       "properties": {
         "market": {
-          "$ref": "#/definitions/tdexv2Market",
+          "$ref": "#/definitions/v2Market",
           "title": "The asset pair of the market"
         },
         "fee": {
-          "$ref": "#/definitions/tdexv2Fee",
+          "$ref": "#/definitions/v2Fee",
           "title": "The percentage and fixed fees"
         },
         "tradable": {
@@ -356,7 +1673,7 @@
           "description": "Whether the market is opened or closed."
         },
         "strategyType": {
-          "$ref": "#/definitions/tdex_daemonv2StrategyType",
+          "$ref": "#/definitions/v2StrategyType",
           "description": "The making strategy."
         },
         "name": {
@@ -364,7 +1681,7 @@
           "description": "The optional name given to the market."
         },
         "price": {
-          "$ref": "#/definitions/tdexv2Price",
+          "$ref": "#/definitions/v2Price",
           "description": "The current price in case the strategy is PLUGGABLE."
         },
         "balance": {
@@ -386,24 +1703,24 @@
         }
       }
     },
-    "tdex_daemonv2MarketReport": {
+    "v2MarketReport": {
       "type": "object",
       "properties": {
         "totalCollectedFees": {
-          "$ref": "#/definitions/tdex_daemonv2MarketCollectedFees"
+          "$ref": "#/definitions/v2MarketCollectedFees"
         },
         "totalVolume": {
-          "$ref": "#/definitions/tdex_daemonv2MarketVolume"
+          "$ref": "#/definitions/v2MarketVolume"
         },
         "volumesPerFrame": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/tdex_daemonv2MarketVolume"
+            "$ref": "#/definitions/v2MarketVolume"
           }
         }
       }
     },
-    "tdex_daemonv2MarketVolume": {
+    "v2MarketVolume": {
       "type": "object",
       "properties": {
         "baseVolume": {
@@ -424,13 +1741,68 @@
         }
       }
     },
-    "tdex_daemonv2NewMarketResponse": {
+    "v2MarketWithFee": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market"
+        },
+        "fee": {
+          "$ref": "#/definitions/v2Fee"
+        }
+      }
+    },
+    "v2NewMarketRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The asset pair for which creating a new account in the daemon's wallet."
+        },
+        "baseAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the base asset."
+        },
+        "quoteAssetPrecision": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The precision of the quote asset."
+        },
+        "percentageFee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "The percentage fee for the market."
+        },
+        "fixedFee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "The fixed fee for the market."
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional human-readable name for the market."
+        },
+        "strategyType": {
+          "$ref": "#/definitions/v2StrategyType",
+          "description": "The market-making strategy to use."
+        }
+      }
+    },
+    "v2NewMarketResponse": {
       "type": "object"
     },
-    "tdex_daemonv2OpenMarketResponse": {
+    "v2OpenMarketRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market to be made tradable."
+        }
+      }
+    },
+    "v2OpenMarketResponse": {
       "type": "object"
     },
-    "tdex_daemonv2Outpoint": {
+    "v2Outpoint": {
       "type": "object",
       "properties": {
         "hash": {
@@ -444,7 +1816,7 @@
         }
       }
     },
-    "tdex_daemonv2Page": {
+    "v2Page": {
       "type": "object",
       "properties": {
         "number": {
@@ -459,7 +1831,7 @@
         }
       }
     },
-    "tdex_daemonv2PredefinedPeriod": {
+    "v2PredefinedPeriod": {
       "type": "string",
       "enum": [
         "PREDEFINED_PERIOD_UNSPECIFIED",
@@ -474,7 +1846,30 @@
       ],
       "default": "PREDEFINED_PERIOD_UNSPECIFIED"
     },
-    "tdex_daemonv2StrategyType": {
+    "v2Price": {
+      "type": "object",
+      "properties": {
+        "basePrice": {
+          "type": "number",
+          "format": "double",
+          "required": [
+            "base_price"
+          ]
+        },
+        "quotePrice": {
+          "type": "number",
+          "format": "double",
+          "required": [
+            "quote_price"
+          ]
+        }
+      },
+      "required": [
+        "basePrice",
+        "quotePrice"
+      ]
+    },
+    "v2StrategyType": {
       "type": "string",
       "enum": [
         "STRATEGY_TYPE_UNSPECIFIED",
@@ -484,7 +1879,7 @@
       ],
       "default": "STRATEGY_TYPE_UNSPECIFIED"
     },
-    "tdex_daemonv2SwapFailInfo": {
+    "v2SwapFailInfo": {
       "type": "object",
       "properties": {
         "failureCode": {
@@ -498,7 +1893,7 @@
         }
       }
     },
-    "tdex_daemonv2SwapInfo": {
+    "v2SwapInfo": {
       "type": "object",
       "properties": {
         "amountP": {
@@ -530,7 +1925,7 @@
         }
       }
     },
-    "tdex_daemonv2TimeFrame": {
+    "v2TimeFrame": {
       "type": "string",
       "enum": [
         "TIME_FRAME_UNSPECIFIED",
@@ -542,21 +1937,21 @@
       ],
       "default": "TIME_FRAME_UNSPECIFIED"
     },
-    "tdex_daemonv2TimeRange": {
+    "v2TimeRange": {
       "type": "object",
       "properties": {
         "predefinedPeriod": {
-          "$ref": "#/definitions/tdex_daemonv2PredefinedPeriod",
+          "$ref": "#/definitions/v2PredefinedPeriod",
           "title": "predefined time_period till now"
         },
         "customPeriod": {
-          "$ref": "#/definitions/tdex_daemonv2CustomPeriod",
+          "$ref": "#/definitions/v2CustomPeriod",
           "title": "custom time range"
         }
       },
       "description": "TimeRange is flexible type used to determine time span for which specific\napi will fetch data, either one of predefined_period or custom_period should be provided."
     },
-    "tdex_daemonv2TradeInfo": {
+    "v2TradeInfo": {
       "type": "object",
       "properties": {
         "tradeId": {
@@ -564,23 +1959,23 @@
           "description": "The id of the trade."
         },
         "status": {
-          "$ref": "#/definitions/tdex_daemonv2TradeStatusInfo",
+          "$ref": "#/definitions/v2TradeStatusInfo",
           "description": "The info about the status of the trade."
         },
         "swapInfo": {
-          "$ref": "#/definitions/tdex_daemonv2SwapInfo",
+          "$ref": "#/definitions/v2SwapInfo",
           "description": "The info about the swap."
         },
         "failInfo": {
-          "$ref": "#/definitions/tdex_daemonv2SwapFailInfo",
+          "$ref": "#/definitions/v2SwapFailInfo",
           "description": "The info of an eventually failed swap."
         },
         "marketWithFee": {
-          "$ref": "#/definitions/tdexv2MarketWithFee",
+          "$ref": "#/definitions/v2MarketWithFee",
           "description": "The collected fee on the current swap."
         },
         "price": {
-          "$ref": "#/definitions/tdexv2Price",
+          "$ref": "#/definitions/v2Price",
           "description": "The prices of the trade at request time."
         },
         "requestTimestamp": {
@@ -629,7 +2024,7 @@
           "description": "The timestamp of the expiration date in RFC3339 format."
         },
         "tradeType": {
-          "$ref": "#/definitions/tdexv2TradeType",
+          "$ref": "#/definitions/v2TradeType",
           "description": "The trade type either BUY or SELL."
         },
         "txid": {
@@ -651,7 +2046,7 @@
         }
       }
     },
-    "tdex_daemonv2TradeStatus": {
+    "v2TradeStatus": {
       "type": "string",
       "enum": [
         "TRADE_STATUS_UNSPECIFIED",
@@ -663,11 +2058,11 @@
       ],
       "default": "TRADE_STATUS_UNSPECIFIED"
     },
-    "tdex_daemonv2TradeStatusInfo": {
+    "v2TradeStatusInfo": {
       "type": "object",
       "properties": {
         "status": {
-          "$ref": "#/definitions/tdex_daemonv2TradeStatus",
+          "$ref": "#/definitions/v2TradeStatus",
           "description": "The status of the trade."
         },
         "failed": {
@@ -676,241 +2071,13 @@
         }
       }
     },
-    "tdex_daemonv2TxOutput": {
-      "type": "object",
-      "properties": {
-        "asset": {
-          "type": "string",
-          "description": "Asset hash."
-        },
-        "amount": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Spending amount."
-        },
-        "script": {
-          "type": "string",
-          "description": "Destination output script."
-        },
-        "blindingKey": {
-          "type": "string",
-          "description": "Blinding key for confidential output."
-        }
-      }
-    },
-    "tdex_daemonv2UpdateMarketAssetsPrecisionResponse": {
-      "type": "object"
-    },
-    "tdex_daemonv2UpdateMarketFixedFeeResponse": {
-      "type": "object",
-      "properties": {
-        "marketWithFee": {
-          "$ref": "#/definitions/tdexv2MarketWithFee",
-          "description": "The market with updated fees."
-        }
-      }
-    },
-    "tdex_daemonv2UpdateMarketPercentageFeeResponse": {
-      "type": "object",
-      "properties": {
-        "marketWithFee": {
-          "$ref": "#/definitions/tdexv2MarketWithFee",
-          "description": "The market with updated fees."
-        }
-      }
-    },
-    "tdex_daemonv2UpdateMarketPriceResponse": {
-      "type": "object"
-    },
-    "tdex_daemonv2UpdateMarketStrategyResponse": {
-      "type": "object"
-    },
-    "tdex_daemonv2UtxoInfo": {
-      "type": "object",
-      "properties": {
-        "outpoint": {
-          "$ref": "#/definitions/tdex_daemonv2Outpoint",
-          "title": "The outpoint \u003chash, index\u003e"
-        },
-        "value": {
-          "type": "string",
-          "format": "uint64",
-          "description": "The unblinded value."
-        },
-        "asset": {
-          "type": "string",
-          "description": "The unblinded asset."
-        }
-      }
-    },
-    "tdex_daemonv2WithdrawFeeFragmenterResponse": {
-      "type": "object",
-      "properties": {
-        "txid": {
-          "type": "string"
-        }
-      }
-    },
-    "tdex_daemonv2WithdrawFeeResponse": {
-      "type": "object",
-      "properties": {
-        "txid": {
-          "type": "string",
-          "description": "The transaction hash in mempool/blockchain."
-        }
-      }
-    },
-    "tdex_daemonv2WithdrawMarketFragmenterResponse": {
-      "type": "object",
-      "properties": {
-        "txid": {
-          "type": "string"
-        }
-      }
-    },
-    "tdex_daemonv2WithdrawMarketResponse": {
-      "type": "object",
-      "properties": {
-        "txid": {
-          "type": "string",
-          "description": "The transaction hash in mempool/blockchain."
-        }
-      }
-    },
-    "tdexv2Fee": {
-      "type": "object",
-      "properties": {
-        "percentageFee": {
-          "$ref": "#/definitions/v2MarketFee",
-          "description": "Percentage fee on both assets of the market in basis point."
-        },
-        "fixedFee": {
-          "$ref": "#/definitions/v2MarketFee",
-          "description": "Fixed fee on both assets of the market in satoshi."
-        }
-      },
-      "required": [
-        "percentageFee",
-        "fixedFee"
-      ]
-    },
-    "tdexv2Market": {
-      "type": "object",
-      "properties": {
-        "baseAsset": {
-          "type": "string"
-        },
-        "quoteAsset": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "baseAsset",
-        "quoteAsset"
-      ]
-    },
-    "tdexv2MarketWithFee": {
-      "type": "object",
-      "properties": {
-        "market": {
-          "$ref": "#/definitions/tdexv2Market"
-        },
-        "fee": {
-          "$ref": "#/definitions/tdexv2Fee"
-        }
-      },
-      "required": [
-        "market",
-        "fee"
-      ]
-    },
-    "tdexv2Price": {
-      "type": "object",
-      "properties": {
-        "basePrice": {
-          "type": "number",
-          "format": "double"
-        },
-        "quotePrice": {
-          "type": "number",
-          "format": "double"
-        }
-      },
-      "required": [
-        "basePrice",
-        "quotePrice"
-      ]
-    },
-    "tdexv2TradeType": {
+    "v2TradeType": {
       "type": "string",
       "enum": [
         "TRADE_TYPE_BUY",
         "TRADE_TYPE_SELL"
       ],
       "default": "TRADE_TYPE_BUY"
-    },
-    "v2DeriveFeeAddressesResponse": {
-      "type": "object",
-      "properties": {
-        "addresses": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "The list of new confidential addresses."
-        }
-      }
-    },
-    "v2DeriveFeeFragmenterAddressesResponse": {
-      "type": "object",
-      "properties": {
-        "addresses": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v2DeriveMarketAddressesResponse": {
-      "type": "object",
-      "properties": {
-        "addresses": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "The list of new confidential addresses."
-        }
-      }
-    },
-    "v2DeriveMarketFragmenterAddressesResponse": {
-      "type": "object",
-      "properties": {
-        "addresses": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v2MarketFee": {
-      "type": "object",
-      "properties": {
-        "baseAsset": {
-          "type": "string",
-          "format": "int64"
-        },
-        "quoteAsset": {
-          "type": "string",
-          "format": "int64"
-        }
-      },
-      "required": [
-        "baseAsset",
-        "quoteAsset"
-      ]
     },
     "v2Transaction": {
       "type": "object",
@@ -935,6 +2102,270 @@
         "date": {
           "type": "string",
           "description": "The timestamp of the deposit transaction in RFC3339 format."
+        }
+      }
+    },
+    "v2TxOutput": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "description": "Asset hash."
+        },
+        "amount": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Spending amount."
+        },
+        "script": {
+          "type": "string",
+          "description": "Destination output script."
+        },
+        "blindingKey": {
+          "type": "string",
+          "description": "Blinding key for confidential output."
+        }
+      }
+    },
+    "v2UpdateMarketAssetsPrecisionRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market for which updating the fixed fee."
+        },
+        "baseAssetPrecision": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The new base asset precision. A negative value is used to skip updating this field."
+        },
+        "quoteAssetPrecision": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The new quote asset precision. A negative value is used to skip updating this field."
+        }
+      }
+    },
+    "v2UpdateMarketAssetsPrecisionResponse": {
+      "type": "object"
+    },
+    "v2UpdateMarketFixedFeeRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market for which updating the fixed fee."
+        },
+        "fee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "The new fixed fee for base and quote asset expressed in satoshi."
+        }
+      }
+    },
+    "v2UpdateMarketFixedFeeResponse": {
+      "type": "object",
+      "properties": {
+        "marketWithFee": {
+          "$ref": "#/definitions/v2MarketWithFee",
+          "description": "The market with updated fees."
+        }
+      }
+    },
+    "v2UpdateMarketPercentageFeeRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market for which updating the percentage fee."
+        },
+        "fee": {
+          "$ref": "#/definitions/v2MarketFee",
+          "description": "The new percentage fee for base and quote assets expressed in basis point."
+        }
+      }
+    },
+    "v2UpdateMarketPercentageFeeResponse": {
+      "type": "object",
+      "properties": {
+        "marketWithFee": {
+          "$ref": "#/definitions/v2MarketWithFee",
+          "description": "The market with updated fees."
+        }
+      }
+    },
+    "v2UpdateMarketPriceRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The arket for which updating the price."
+        },
+        "price": {
+          "$ref": "#/definitions/v2Price",
+          "description": "The new price for base and quote asset."
+        }
+      }
+    },
+    "v2UpdateMarketPriceResponse": {
+      "type": "object"
+    },
+    "v2UpdateMarketStrategyRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market for which changing the strategy."
+        },
+        "strategyType": {
+          "$ref": "#/definitions/v2StrategyType",
+          "description": "The new making strategy to use."
+        },
+        "metadata": {
+          "type": "string",
+          "description": "The JSON string representing additional metadata about the new strategy."
+        }
+      }
+    },
+    "v2UpdateMarketStrategyResponse": {
+      "type": "object"
+    },
+    "v2UtxoInfo": {
+      "type": "object",
+      "properties": {
+        "outpoint": {
+          "$ref": "#/definitions/v2Outpoint",
+          "title": "The outpoint \u003chash, index\u003e"
+        },
+        "value": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The unblinded value."
+        },
+        "asset": {
+          "type": "string",
+          "description": "The unblinded asset."
+        }
+      }
+    },
+    "v2WithdrawFeeFragmenterRequest": {
+      "type": "object",
+      "properties": {
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2TxOutput"
+          },
+          "description": "List of receivers."
+        },
+        "millisatsPerByte": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The number of millisatoshis per byte that should be paid for network fees."
+        },
+        "password": {
+          "type": "string",
+          "description": "The password that unlocks the internal wallet."
+        }
+      }
+    },
+    "v2WithdrawFeeFragmenterResponse": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string"
+        }
+      }
+    },
+    "v2WithdrawFeeRequest": {
+      "type": "object",
+      "properties": {
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2TxOutput"
+          },
+          "description": "List of receivers."
+        },
+        "millisatsPerByte": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The number of millisatoshis per byte that should be paid for network fees."
+        },
+        "password": {
+          "type": "string",
+          "description": "The password that unlocks the internal wallet."
+        }
+      }
+    },
+    "v2WithdrawFeeResponse": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string",
+          "description": "The transaction hash in mempool/blockchain."
+        }
+      }
+    },
+    "v2WithdrawMarketFragmenterRequest": {
+      "type": "object",
+      "properties": {
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2TxOutput"
+          },
+          "description": "List of receivers."
+        },
+        "millisatsPerByte": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The number of millisatoshis per byte that should be paid for network fees."
+        },
+        "password": {
+          "type": "string",
+          "description": "The password that unlocks the internal wallet."
+        }
+      }
+    },
+    "v2WithdrawMarketFragmenterResponse": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string"
+        }
+      }
+    },
+    "v2WithdrawMarketRequest": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "$ref": "#/definitions/v2Market",
+          "description": "The market from which funds should be withdrawn."
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v2TxOutput"
+          },
+          "description": "List of receivers."
+        },
+        "millisatsPerByte": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The number of millisatoshis per byte that should be paid for network fees."
+        },
+        "password": {
+          "type": "string",
+          "description": "The password that unlocks the internal wallet."
+        }
+      }
+    },
+    "v2WithdrawMarketResponse": {
+      "type": "object",
+      "properties": {
+        "txid": {
+          "type": "string",
+          "description": "The transaction hash in mempool/blockchain."
         }
       }
     }

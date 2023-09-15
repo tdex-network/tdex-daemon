@@ -3,19 +3,35 @@ syntax = "proto3";
 package tdex_daemon.v2;
 
 import "tdex-daemon/v2/types.proto";
+import "google/api/annotations.proto";
 
 /**
  * Service for operators to manage webhooks.
  */
 service WebhookService {
   // Adds a webhook registered for some kind of event.
-  rpc AddWebhook(AddWebhookRequest) returns(AddWebhookResponse){}
+  rpc AddWebhook(AddWebhookRequest) returns(AddWebhookResponse) {
+    option (google.api.http) = {
+      post: "/v2/webhook"
+      body: "*"
+    };
+  };
 
   // Removes some previously added webhook.
-  rpc RemoveWebhook(RemoveWebhookRequest) returns(RemoveWebhookResponse){}
+  rpc RemoveWebhook(RemoveWebhookRequest) returns(RemoveWebhookResponse) {
+    option (google.api.http) = {
+      post: "/v2/webhook/drop"
+      body: "*"
+    };
+  };
 
   // Returns registered webhooks
-  rpc ListWebhooks(ListWebhooksRequest) returns(ListWebhooksResponse){}
+  rpc ListWebhooks(ListWebhooksRequest) returns(ListWebhooksResponse) {
+    option (google.api.http) = {
+      get: "/v2/webhooks/{event}"
+      additional_bindings { get: "/v2/webhooks" }
+    };
+  };
 }
 
 message AddWebhookRequest {

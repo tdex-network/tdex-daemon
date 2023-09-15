@@ -637,6 +637,7 @@ func getConfirmationStatus(
 	}
 
 	m := make(map[string]interface{})
+	// nolint
 	json.Unmarshal(body, &m)
 	var blockHash string
 	if v, ok := m["block_hash"].(string); ok {
@@ -677,6 +678,7 @@ func getSpentStatus(
 	}
 
 	m := make([]interface{}, 0)
+	// nolint
 	json.Unmarshal(body, &m)
 	statuses := make([]v1domain.UtxoStatus, 0)
 	for i := range m {

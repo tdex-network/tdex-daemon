@@ -4,8 +4,10 @@ deps:
   - remote: buf.build
     owner: googleapis
     repository: googleapis
-    commit: 5ae7f88519b04fe1965da0f8a375a088
+    commit: 28151c0d0a1641bf938a7672c500e01d
+    digest: shake256:49215edf8ef57f7863004539deff8834cfb2195113f0b890dd1f67815d9353e28e668019165b9d872395871eeafcbab3ccfdb2b5f11734d3cca95be9e8d139de
   - remote: buf.build
     owner: tdex-network
     repository: tdex-protobuf
-    commit: fd441f3da9b64677a66a9ffbcf5f7206
+    commit: 63aa439f2f124d7aaf79c4d5b7a415c0
+    digest: shake256:6a9f868a853fd7c3b68dc9eb5d9ac601003bbd576a0e3f0c48269a0fb24431fe58345d569d7697b3036361f5316c88f40ee9216b11e62cdb34d2c7a135dd1507
