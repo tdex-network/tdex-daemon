@@ -25,6 +25,8 @@ type TransactionServiceClient interface {
 	// Selected utxos are locked for predefined amount of time to prevent
 	// double-spending them.
 	SelectUtxos(ctx context.Context, in *SelectUtxosRequest, opts ...grpc.CallOption) (*SelectUtxosResponse, error)
+	// LockUtxos allows to manually select utxos to spend by a subsequent tx.
+	LockUtxos(ctx context.Context, in *LockUtxosRequest, opts ...grpc.CallOption) (*LockUtxosResponse, error)
 	// EstimateFees returns the fee amount to pay for a tx containing the given
 	// inputs and outputs.
 	EstimateFees(ctx context.Context, in *EstimateFeesRequest, opts ...grpc.CallOption) (*EstimateFeesResponse, error)
@@ -56,6 +58,9 @@ type TransactionServiceClient interface {
 	// ClaimPegIn returns a transaction to claim funds pegged on the Bitcoin
 	// main-chain to have them available on the Liquid side-chain.
 	ClaimPegIn(ctx context.Context, in *ClaimPegInRequest, opts ...grpc.CallOption) (*ClaimPegInResponse, error)
+	// SignPsetWithSchnorrKey signs all taproot inputs of the provided tx with
+	// the key at the given derivation path.
+	SignPsetWithSchnorrKey(ctx context.Context, in *SignPsetWithSchnorrKeyRequest, opts ...grpc.CallOption) (*SignPsetWithSchnorrKeyResponse, error)
 }
 
 type transactionServiceClient struct {
@@ -78,6 +83,15 @@ func (c *transactionServiceClient) GetTransaction(ctx context.Context, in *GetTr
 func (c *transactionServiceClient) SelectUtxos(ctx context.Context, in *SelectUtxosRequest, opts ...grpc.CallOption) (*SelectUtxosResponse, error) {
 	out := new(SelectUtxosResponse)
 	err := c.cc.Invoke(ctx, "/ocean.v1.TransactionService/SelectUtxos", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *transactionServiceClient) LockUtxos(ctx context.Context, in *LockUtxosRequest, opts ...grpc.CallOption) (*LockUtxosResponse, error) {
+	out := new(LockUtxosResponse)
+	err := c.cc.Invoke(ctx, "/ocean.v1.TransactionService/LockUtxos", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +215,15 @@ func (c *transactionServiceClient) ClaimPegIn(ctx context.Context, in *ClaimPegI
 	return out, nil
 }
 
+func (c *transactionServiceClient) SignPsetWithSchnorrKey(ctx context.Context, in *SignPsetWithSchnorrKeyRequest, opts ...grpc.CallOption) (*SignPsetWithSchnorrKeyResponse, error) {
+	out := new(SignPsetWithSchnorrKeyResponse)
+	err := c.cc.Invoke(ctx, "/ocean.v1.TransactionService/SignPsetWithSchnorrKey", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TransactionServiceServer is the server API for TransactionService service.
 // All implementations should embed UnimplementedTransactionServiceServer
 // for forward compatibility
@@ -212,6 +235,8 @@ type TransactionServiceServer interface {
 	// Selected utxos are locked for predefined amount of time to prevent
 	// double-spending them.
 	SelectUtxos(context.Context, *SelectUtxosRequest) (*SelectUtxosResponse, error)
+	// LockUtxos allows to manually select utxos to spend by a subsequent tx.
+	LockUtxos(context.Context, *LockUtxosRequest) (*LockUtxosResponse, error)
 	// EstimateFees returns the fee amount to pay for a tx containing the given
 	// inputs and outputs.
 	EstimateFees(context.Context, *EstimateFeesRequest) (*EstimateFeesResponse, error)
@@ -243,6 +268,9 @@ type TransactionServiceServer interface {
 	// ClaimPegIn returns a transaction to claim funds pegged on the Bitcoin
 	// main-chain to have them available on the Liquid side-chain.
 	ClaimPegIn(context.Context, *ClaimPegInRequest) (*ClaimPegInResponse, error)
+	// SignPsetWithSchnorrKey signs all taproot inputs of the provided tx with
+	// the key at the given derivation path.
+	SignPsetWithSchnorrKey(context.Context, *SignPsetWithSchnorrKeyRequest) (*SignPsetWithSchnorrKeyResponse, error)
 }
 
 // UnimplementedTransactionServiceServer should be embedded to have forward compatible implementations.
@@ -254,6 +282,9 @@ func (UnimplementedTransactionServiceServer) GetTransaction(context.Context, *Ge
 }
 func (UnimplementedTransactionServiceServer) SelectUtxos(context.Context, *SelectUtxosRequest) (*SelectUtxosResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SelectUtxos not implemented")
+}
+func (UnimplementedTransactionServiceServer) LockUtxos(context.Context, *LockUtxosRequest) (*LockUtxosResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LockUtxos not implemented")
 }
 func (UnimplementedTransactionServiceServer) EstimateFees(context.Context, *EstimateFeesRequest) (*EstimateFeesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EstimateFees not implemented")
@@ -293,6 +324,9 @@ func (UnimplementedTransactionServiceServer) PegInAddress(context.Context, *PegI
 }
 func (UnimplementedTransactionServiceServer) ClaimPegIn(context.Context, *ClaimPegInRequest) (*ClaimPegInResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClaimPegIn not implemented")
+}
+func (UnimplementedTransactionServiceServer) SignPsetWithSchnorrKey(context.Context, *SignPsetWithSchnorrKeyRequest) (*SignPsetWithSchnorrKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SignPsetWithSchnorrKey not implemented")
 }
 
 // UnsafeTransactionServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -338,6 +372,24 @@ func _TransactionService_SelectUtxos_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TransactionServiceServer).SelectUtxos(ctx, req.(*SelectUtxosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TransactionService_LockUtxos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LockUtxosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TransactionServiceServer).LockUtxos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ocean.v1.TransactionService/LockUtxos",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TransactionServiceServer).LockUtxos(ctx, req.(*LockUtxosRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -576,6 +628,24 @@ func _TransactionService_ClaimPegIn_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TransactionService_SignPsetWithSchnorrKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignPsetWithSchnorrKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TransactionServiceServer).SignPsetWithSchnorrKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ocean.v1.TransactionService/SignPsetWithSchnorrKey",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TransactionServiceServer).SignPsetWithSchnorrKey(ctx, req.(*SignPsetWithSchnorrKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TransactionService_ServiceDesc is the grpc.ServiceDesc for TransactionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -590,6 +660,10 @@ var TransactionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SelectUtxos",
 			Handler:    _TransactionService_SelectUtxos_Handler,
+		},
+		{
+			MethodName: "LockUtxos",
+			Handler:    _TransactionService_LockUtxos_Handler,
 		},
 		{
 			MethodName: "EstimateFees",
@@ -642,6 +716,10 @@ var TransactionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClaimPegIn",
 			Handler:    _TransactionService_ClaimPegIn_Handler,
+		},
+		{
+			MethodName: "SignPsetWithSchnorrKey",
+			Handler:    _TransactionService_SignPsetWithSchnorrKey_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

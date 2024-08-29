@@ -168,6 +168,15 @@
         }
       }
     },
+    "v1LockUtxosResponse": {
+      "type": "object",
+      "properties": {
+        "expirationDate": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "v1MintResponse": {
       "type": "object",
       "properties": {
@@ -257,6 +266,14 @@
         "pset": {
           "type": "string",
           "description": "Signed partial transaction in base64 format."
+        }
+      }
+    },
+    "v1SignPsetWithSchnorrKeyResponse": {
+      "type": "object",
+      "properties": {
+        "signedTx": {
+          "type": "string"
         }
       }
     },

@@ -17,8 +17,8 @@ services:
     ports:
       - "18000:18000"
     volumes:
-      - ../volumes/oceand/data:/home/ocean/.oceand
-      - ../volumes/oceand/cli:/home/ocean/.ocean-cli
+      - ../volumes/oceand/data:/app/data/oceand
+      - ../volumes/oceand/cli:/app/data/ocean
   tdexd:
     container_name: tdexd
     build: 
@@ -41,15 +41,6 @@ services:
     volumes:
       - ../volumes/tdexd/data:/home/tdex/.tdex-daemon
       - ../volumes/tdexd/cli:/home/tdex/.tdex-operator
-  feederd:
-    container_name: feederd
-    image: ghcr.io/tdex-network/feederd:latest
-    restart: unless-stopped
-    user: 0:0
-    depends_on:
-      - tdexd
-    volumes:
-      - ../volumes/feederd/config.json:/config.json
   # not used in dev mode
   oceand-db:
     container_name: oceand-regtest-db
