@@ -15,7 +15,7 @@ service WalletService {
   // wallet.
   rpc GenSeed(GenSeedRequest) returns (GenSeedResponse) {
     option (google.api.http) = {
-      get: "/v2/wallet/seed"
+      get: "/v2/admin/wallet/seed"
     };
   };
 
@@ -30,7 +30,7 @@ service WalletService {
   // to manage the daemon for operations like depositing funds or opening a market.
   rpc InitWallet(InitWalletRequest) returns (stream InitWalletResponse) {
     option (google.api.http) = {
-      post: "/v2/wallet/init"
+      post: "/v2/admin/wallet/init"
       body: "*"
     };
   };
@@ -39,7 +39,7 @@ service WalletService {
   // the wallet.
   rpc UnlockWallet(UnlockWalletRequest) returns (UnlockWalletResponse) {
     option (google.api.http) = {
-      post: "/v2/wallet/unlock"
+      post: "/v2/admin/wallet/unlock"
       body: "*"
     };
   };
@@ -48,7 +48,7 @@ service WalletService {
   // provided by this service.
   rpc LockWallet(LockWalletRequest) returns (LockWalletResponse) {
     option (google.api.http) = {
-      post: "/v2/wallet/lock"
+      post: "/v2/admin/wallet/lock"
       body: "*"
     };
   };
@@ -59,7 +59,7 @@ service WalletService {
   // unlock the walket with UnlockWallet RPC after this operation succeeds.
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
     option (google.api.http) = {
-      post: "/v2/wallet/password"
+      post: "/v2/admin/wallet/password"
       body: "*"
     };
   };
@@ -72,14 +72,14 @@ service WalletService {
   // finished.
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse) {
     option (google.api.http) = {
-      get: "/v2/wallet/status"
+      get: "/v2/admin/wallet/status"
     };
   };
   
   // GetInfo returns info about the configuration and the internal wallet of tdexd.
   rpc GetInfo(GetInfoRequest) returns (GetInfoResponse) {
     option (google.api.http) = {
-      get: "/v2/wallet/info"
+      get: "/v2/admin/wallet/info"
     };
   };
 }

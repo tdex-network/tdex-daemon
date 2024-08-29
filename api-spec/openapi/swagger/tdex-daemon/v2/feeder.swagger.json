@@ -16,7 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/v2/feeder": {
+    "/v2/admin/feeder": {
       "post": {
         "summary": "AddPriceFeed creates a new price feed for the given market.",
         "operationId": "FeederService_AddPriceFeed",
@@ -49,7 +49,7 @@
         ]
       }
     },
-    "/v2/feeder/drop": {
+    "/v2/admin/feeder/drop": {
       "post": {
         "summary": "RemovePriceFeed removes the price feed with the given id.",
         "operationId": "FeederService_RemovePriceFeed",
@@ -82,7 +82,7 @@
         ]
       }
     },
-    "/v2/feeder/sources": {
+    "/v2/admin/feeder/sources": {
       "get": {
         "summary": "ListSupportedPriceSources returns the list of supported price sources.",
         "operationId": "FeederService_ListSupportedPriceSources",
@@ -105,7 +105,7 @@
         ]
       }
     },
-    "/v2/feeder/start": {
+    "/v2/admin/feeder/start": {
       "post": {
         "summary": "StartPriceFeed starts the price feed with the given id.",
         "operationId": "FeederService_StartPriceFeed",
@@ -138,7 +138,7 @@
         ]
       }
     },
-    "/v2/feeder/stop": {
+    "/v2/admin/feeder/stop": {
       "post": {
         "summary": "StopPriceFeed stops the price feed with the given id.",
         "operationId": "FeederService_StopPriceFeed",
@@ -171,7 +171,7 @@
         ]
       }
     },
-    "/v2/feeder/update": {
+    "/v2/admin/feeder/update": {
       "post": {
         "summary": "UpdatePriceFeed allows to change source and/or ticker of the given price feed.",
         "operationId": "FeederService_UpdatePriceFeed",
@@ -204,7 +204,7 @@
         ]
       }
     },
-    "/v2/feeder/{id}": {
+    "/v2/admin/feeder/{id}": {
       "get": {
         "summary": "GetPriceFeed returns the price feed for the given market.",
         "operationId": "FeederService_GetPriceFeed",
@@ -236,7 +236,7 @@
         ]
       }
     },
-    "/v2/feeders": {
+    "/v2/admin/feeders": {
       "get": {
         "summary": "ListPriceFeeds returns the list of price feeds of all markets.",
         "operationId": "FeederService_ListPriceFeeds",

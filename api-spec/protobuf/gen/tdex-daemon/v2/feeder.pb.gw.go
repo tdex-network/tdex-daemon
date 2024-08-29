@@ -301,7 +301,7 @@ func RegisterFeederServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/AddPriceFeed", runtime.WithHTTPPathPattern("/v2/feeder"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/AddPriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -324,7 +324,7 @@ func RegisterFeederServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/StartPriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/start"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/StartPriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/start"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -347,7 +347,7 @@ func RegisterFeederServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/StopPriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/stop"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/StopPriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/stop"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -370,7 +370,7 @@ func RegisterFeederServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/UpdatePriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/update"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/UpdatePriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/update"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -393,7 +393,7 @@ func RegisterFeederServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/RemovePriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/drop"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/RemovePriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/drop"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -416,7 +416,7 @@ func RegisterFeederServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/GetPriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/{id}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/GetPriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -439,7 +439,7 @@ func RegisterFeederServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/ListPriceFeeds", runtime.WithHTTPPathPattern("/v2/feeders"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/ListPriceFeeds", runtime.WithHTTPPathPattern("/v2/admin/feeders"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -462,7 +462,7 @@ func RegisterFeederServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/ListSupportedPriceSources", runtime.WithHTTPPathPattern("/v2/feeder/sources"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/ListSupportedPriceSources", runtime.WithHTTPPathPattern("/v2/admin/feeder/sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -524,7 +524,7 @@ func RegisterFeederServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/AddPriceFeed", runtime.WithHTTPPathPattern("/v2/feeder"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/AddPriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -544,7 +544,7 @@ func RegisterFeederServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/StartPriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/start"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/StartPriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/start"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -564,7 +564,7 @@ func RegisterFeederServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/StopPriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/stop"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/StopPriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/stop"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -584,7 +584,7 @@ func RegisterFeederServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/UpdatePriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/update"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/UpdatePriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/update"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -604,7 +604,7 @@ func RegisterFeederServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/RemovePriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/drop"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/RemovePriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/drop"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -624,7 +624,7 @@ func RegisterFeederServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/GetPriceFeed", runtime.WithHTTPPathPattern("/v2/feeder/{id}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/GetPriceFeed", runtime.WithHTTPPathPattern("/v2/admin/feeder/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -644,7 +644,7 @@ func RegisterFeederServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/ListPriceFeeds", runtime.WithHTTPPathPattern("/v2/feeders"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/ListPriceFeeds", runtime.WithHTTPPathPattern("/v2/admin/feeders"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -664,7 +664,7 @@ func RegisterFeederServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/ListSupportedPriceSources", runtime.WithHTTPPathPattern("/v2/feeder/sources"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.FeederService/ListSupportedPriceSources", runtime.WithHTTPPathPattern("/v2/admin/feeder/sources"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -684,21 +684,21 @@ func RegisterFeederServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 }
 
 var (
-	pattern_FeederService_AddPriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "feeder"}, ""))
+	pattern_FeederService_AddPriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "feeder"}, ""))
 
-	pattern_FeederService_StartPriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feeder", "start"}, ""))
+	pattern_FeederService_StartPriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feeder", "start"}, ""))
 
-	pattern_FeederService_StopPriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feeder", "stop"}, ""))
+	pattern_FeederService_StopPriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feeder", "stop"}, ""))
 
-	pattern_FeederService_UpdatePriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feeder", "update"}, ""))
+	pattern_FeederService_UpdatePriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feeder", "update"}, ""))
 
-	pattern_FeederService_RemovePriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feeder", "drop"}, ""))
+	pattern_FeederService_RemovePriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feeder", "drop"}, ""))
 
-	pattern_FeederService_GetPriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v2", "feeder", "id"}, ""))
+	pattern_FeederService_GetPriceFeed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "admin", "feeder", "id"}, ""))
 
-	pattern_FeederService_ListPriceFeeds_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "feeders"}, ""))
+	pattern_FeederService_ListPriceFeeds_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "feeders"}, ""))
 
-	pattern_FeederService_ListSupportedPriceSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feeder", "sources"}, ""))
+	pattern_FeederService_ListSupportedPriceSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feeder", "sources"}, ""))
 )
 
 var (

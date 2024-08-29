@@ -15,7 +15,7 @@ service OperatorService {
   rpc DeriveFeeAddresses(DeriveFeeAddressesRequest)
     returns (DeriveFeeAddressesResponse) {
       option (google.api.http) = {
-        post: "/v2/fee/derive"
+        post: "/v2/admin/fee/derive"
         body: "*"
       };
     }
@@ -24,21 +24,21 @@ service OperatorService {
   rpc ListFeeAddresses(ListFeeAddressesRequest)
     returns (ListFeeAddressesResponse) {
       option (google.api.http) = {
-        get: "/v2/fee/addresses"
+        get: "/v2/admin/fee/addresses"
       };
     }
 
   // Returns the LBTC balance of the fee account.
   rpc GetFeeBalance(GetFeeBalanceRequest) returns (GetFeeBalanceResponse) {
     option (google.api.http) = {
-      get: "/v2/fee/balance"
+      get: "/v2/admin/fee/balance"
     };
   }
 
   // Withdraws LBTC funds from the fee account.
   rpc WithdrawFee(WithdrawFeeRequest) returns (WithdrawFeeResponse) {
     option (google.api.http) = {
-      post: "/v2/fee/withdraw"
+      post: "/v2/admin/fee/withdraw"
       body: "*"
     };
   }
@@ -46,7 +46,7 @@ service OperatorService {
   // Creates a new market and the related wallet account.
   rpc NewMarket(NewMarketRequest) returns (NewMarketResponse) {
     option (google.api.http) = {
-      post: "/v2/market"
+      post: "/v2/admin/market"
       body: "*"
     };
   }
@@ -54,7 +54,7 @@ service OperatorService {
   // Returns info about the given market.
   rpc GetMarketInfo(GetMarketInfoRequest) returns (GetMarketInfoResponse) {
     option (google.api.http) = {
-      post: "/v2/market/info"
+      post: "/v2/admin/market/info"
       body: "*"
     };
   }
@@ -63,7 +63,7 @@ service OperatorService {
   rpc DeriveMarketAddresses(DeriveMarketAddressesRequest)
     returns (DeriveMarketAddressesResponse) {
       option (google.api.http) = {
-        post: "/v2/market/derive"
+        post: "/v2/admin/market/derive"
         body: "*"
       };
     }
@@ -72,7 +72,7 @@ service OperatorService {
   rpc ListMarketAddresses(ListMarketAddressesRequest)
     returns (ListMarketAddressesResponse) {
       option (google.api.http) = {
-        post: "/v2/market/addresses"
+        post: "/v2/admin/market/addresses"
         body: "*"
       };
     }
@@ -80,7 +80,7 @@ service OperatorService {
   // Makes the given market tradable.
   rpc OpenMarket(OpenMarketRequest) returns (OpenMarketResponse) {
     option (google.api.http) = {
-      post: "/v2/market/open"
+      post: "/v2/admin/market/open"
       body: "*"
     };
   }
@@ -88,7 +88,7 @@ service OperatorService {
   // Makes the given market NOT tradabale.
   rpc CloseMarket(CloseMarketRequest) returns (CloseMarketResponse) {
     option (google.api.http) = {
-      post: "/v2/market/close"
+      post: "/v2/admin/market/close"
       body: "*"
     };
   }
@@ -96,7 +96,7 @@ service OperatorService {
   // Deletes a market.
   rpc DropMarket(DropMarketRequest) returns(DropMarketResponse) {
     option (google.api.http) = {
-      post: "/v2/market/drop"
+      post: "/v2/admin/market/drop"
       body: "*"
     };
   }
@@ -104,7 +104,7 @@ service OperatorService {
   // Withdraw funds from the given market.
   rpc WithdrawMarket(WithdrawMarketRequest) returns (WithdrawMarketResponse) {
     option (google.api.http) = {
-      post: "/v2/market/withdraw"
+      post: "/v2/admin/market/withdraw"
       body: "*"
     };
   }
@@ -113,7 +113,7 @@ service OperatorService {
   // the specified time range.
   rpc GetMarketReport(GetMarketReportRequest) returns(GetMarketReportResponse) {
     option (google.api.http) = {
-      post: "/v2/market/report"
+      post: "/v2/admin/market/report"
       body: "*"
     };
   }
@@ -122,7 +122,7 @@ service OperatorService {
   rpc UpdateMarketPercentageFee(UpdateMarketPercentageFeeRequest)
     returns (UpdateMarketPercentageFeeResponse) {
       option (google.api.http) = {
-        post: "/v2/market/fees/percentage"
+        post: "/v2/admin/market/fees/percentage"
         body: "*"
       };
     }
@@ -131,7 +131,7 @@ service OperatorService {
   rpc UpdateMarketFixedFee(UpdateMarketFixedFeeRequest)
     returns (UpdateMarketFixedFeeResponse) {
       option (google.api.http) = {
-        post: "/v2/market/fees/fixed"
+        post: "/v2/admin/market/fees/fixed"
         body: "*"
       };
     }
@@ -140,7 +140,7 @@ service OperatorService {
   rpc UpdateMarketAssetsPrecision(UpdateMarketAssetsPrecisionRequest)
     returns (UpdateMarketAssetsPrecisionResponse) {
       option (google.api.http) = {
-        post: "/v2/market/precision"
+        post: "/v2/admin/market/precision"
         body: "*"
       };
     }
@@ -149,7 +149,7 @@ service OperatorService {
   rpc UpdateMarketPrice(UpdateMarketPriceRequest)
     returns (UpdateMarketPriceResponse) {
       option (google.api.http) = {
-        post: "/v2/market/price"
+        post: "/v2/admin/market/price"
         body: "*"
       };
     }
@@ -159,7 +159,7 @@ service OperatorService {
   rpc UpdateMarketStrategy(UpdateMarketStrategyRequest)
       returns (UpdateMarketStrategyResponse) {
         option (google.api.http) = {
-          post: "/v2/market/strategy"
+          post: "/v2/admin/market/strategy"
           body: "*"
         };
       }
@@ -168,7 +168,7 @@ service OperatorService {
   rpc DeriveFeeFragmenterAddresses(DeriveFeeFragmenterAddressesRequest)
     returns(DeriveFeeFragmenterAddressesResponse) {
       option (google.api.http) = {
-        post: "/v2/feefragmenter/derive"
+        post: "/v2/admin/feefragmenter/derive"
         body: "*"
       };
     }
@@ -177,7 +177,7 @@ service OperatorService {
   rpc ListFeeFragmenterAddresses(ListFeeFragmenterAddressesRequest)
     returns(ListFeeFragmenterAddressesResponse) {
       option (google.api.http) = {
-        get: "/v2/feefragmenter/addresses"
+        get: "/v2/admin/feefragmenter/addresses"
       };
     }
 
@@ -185,7 +185,7 @@ service OperatorService {
   rpc GetFeeFragmenterBalance(GetFeeFragmenterBalanceRequest)
     returns(GetFeeFragmenterBalanceResponse) {
       option (google.api.http) = {
-        get: "/v2/feefragmenter/balance"
+        get: "/v2/admin/feefragmenter/balance"
       };
     }
 
@@ -194,7 +194,7 @@ service OperatorService {
   rpc FeeFragmenterSplitFunds(FeeFragmenterSplitFundsRequest)
     returns (stream FeeFragmenterSplitFundsResponse) {
       option (google.api.http) = {
-        post: "/v2/feefragmenter/split"
+        post: "/v2/admin/feefragmenter/split"
         body: "*"
       };
     }
@@ -203,7 +203,7 @@ service OperatorService {
   rpc WithdrawFeeFragmenter(WithdrawFeeFragmenterRequest)
     returns (WithdrawFeeFragmenterResponse) {
       option (google.api.http) = {
-        post: "/v2/feefragmenter/withdraw"
+        post: "/v2/admin/feefragmenter/withdraw"
         body: "*"
       };
     }
@@ -212,7 +212,7 @@ service OperatorService {
   rpc DeriveMarketFragmenterAddresses(DeriveMarketFragmenterAddressesRequest)
     returns(DeriveMarketFragmenterAddressesResponse) {
       option (google.api.http) = {
-        post: "/v2/marketfragmenter/derive"
+        post: "/v2/admin/marketfragmenter/derive"
         body: "*"
       };
     }
@@ -221,7 +221,7 @@ service OperatorService {
   rpc ListMarketFragmenterAddresses(ListMarketFragmenterAddressesRequest)
     returns(ListMarketFragmenterAddressesResponse) {
       option (google.api.http) = {
-        get: "/v2/marketfragmenter/addresses"
+        get: "/v2/admin/marketfragmenter/addresses"
       };
     }
 
@@ -229,7 +229,7 @@ service OperatorService {
   rpc GetMarketFragmenterBalance(GetMarketFragmenterBalanceRequest)
     returns(GetMarketFragmenterBalanceResponse) {
       option (google.api.http) = {
-        get: "/v2/marketfragmenter/balance"
+        get: "/v2/admin/marketfragmenter/balance"
       };
     }
 
@@ -238,7 +238,7 @@ service OperatorService {
   rpc MarketFragmenterSplitFunds(MarketFragmenterSplitFundsRequest)
     returns (stream MarketFragmenterSplitFundsResponse) {
       option (google.api.http) = {
-        post: "/v2/marketfragmenter/split"
+        post: "/v2/admin/marketfragmenter/split"
         body: "*"
       };
     }
@@ -247,7 +247,7 @@ service OperatorService {
   rpc WithdrawMarketFragmenter(WithdrawMarketFragmenterRequest)
     returns (WithdrawMarketFragmenterResponse) {
       option (google.api.http) = {
-        post: "/v2/marketfragmenter/withdraw"
+        post: "/v2/admin/marketfragmenter/withdraw"
         body: "*"
       };
     }
@@ -255,7 +255,7 @@ service OperatorService {
   // Get info about all markets.
   rpc ListMarkets(ListMarketsRequest) returns (ListMarketsResponse) {
     option (google.api.http) = {
-      get: "/v2/markets"
+      get: "/v2/admin/markets"
     };
   }
 
@@ -263,7 +263,7 @@ service OperatorService {
   // failed/rejected) or all those filtered by market.
   rpc ListTrades(ListTradesRequest) returns (ListTradesResponse) {
     option (google.api.http) = {
-      post: "/v2/trades"
+      post: "/v2/admin/trades"
       body: "*"
     };
   }
@@ -271,7 +271,7 @@ service OperatorService {
   // Returns all the utxos, whether unspents, spents or locked.
   rpc ListUtxos(ListUtxosRequest) returns(ListUtxosResponse) {
     option (google.api.http) = {
-      post: "/v2/utxos"
+      post: "/v2/admin/utxos"
       body: "*"
     };
   }
@@ -279,7 +279,7 @@ service OperatorService {
   // Returns the list of all claimed deposits for the given account.
   rpc ListDeposits(ListDepositsRequest) returns(ListDepositsResponse) {
     option (google.api.http) = {
-      post: "/v2/deposits"
+      post: "/v2/admin/deposits"
       body: "*"
     };
   }
@@ -287,7 +287,7 @@ service OperatorService {
   // Returns the list of all withdrawals made for the given account.
   rpc ListWithdrawals(ListWithdrawalsRequest) returns(ListWithdrawalsResponse) {
     option (google.api.http) = {
-      post: "/v2/withdrawals"
+      post: "/v2/admin/withdrawals"
       body: "*"
     };
   }

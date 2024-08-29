@@ -16,7 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/v2/webhook": {
+    "/v2/admin/webhook": {
       "post": {
         "summary": "Adds a webhook registered for some kind of event.",
         "operationId": "WebhookService_AddWebhook",
@@ -49,7 +49,7 @@
         ]
       }
     },
-    "/v2/webhook/drop": {
+    "/v2/admin/webhook/drop": {
       "post": {
         "summary": "Removes some previously added webhook.",
         "operationId": "WebhookService_RemoveWebhook",
@@ -82,7 +82,7 @@
         ]
       }
     },
-    "/v2/webhooks": {
+    "/v2/admin/webhooks": {
       "get": {
         "summary": "Returns registered webhooks",
         "operationId": "WebhookService_ListWebhooks2",
@@ -123,7 +123,7 @@
         ]
       }
     },
-    "/v2/webhooks/{event}": {
+    "/v2/admin/webhooks/{event}": {
       "get": {
         "summary": "Returns registered webhooks",
         "operationId": "WebhookService_ListWebhooks",

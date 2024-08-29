@@ -126,6 +126,9 @@
       "default": "TX_EVENT_TYPE_UNSPECIFIED",
       "description": " - TX_EVENT_TYPE_BROADCASTED: Tx broadcasted.\n - TX_EVENT_TYPE_UNCONFIRMED: Tx unconfirmed.\n - TX_EVENT_TYPE_CONFIRMED: Tx confirmed."
     },
+    "v1UnwatchExternalScriptResponse": {
+      "type": "object"
+    },
     "v1Utxo": {
       "type": "object",
       "properties": {
@@ -185,7 +188,8 @@
         "UTXO_EVENT_TYPE_CONFIRMED",
         "UTXO_EVENT_TYPE_LOCKED",
         "UTXO_EVENT_TYPE_UNLOCKED",
-        "UTXO_EVENT_TYPE_SPENT"
+        "UTXO_EVENT_TYPE_SPENT",
+        "UTXO_EVENT_TYPE_CONFIRMED_SPENT"
       ],
       "default": "UTXO_EVENT_TYPE_UNSPECIFIED"
     },
@@ -216,6 +220,14 @@
             "$ref": "#/definitions/v1Utxo"
           },
           "description": "List of utxos for which occured the event."
+        }
+      }
+    },
+    "v1WatchExternalScriptResponse": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
         }
       }
     },

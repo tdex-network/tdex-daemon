@@ -12,7 +12,7 @@ service WebhookService {
   // Adds a webhook registered for some kind of event.
   rpc AddWebhook(AddWebhookRequest) returns(AddWebhookResponse) {
     option (google.api.http) = {
-      post: "/v2/webhook"
+      post: "/v2/admin/webhook"
       body: "*"
     };
   };
@@ -20,7 +20,7 @@ service WebhookService {
   // Removes some previously added webhook.
   rpc RemoveWebhook(RemoveWebhookRequest) returns(RemoveWebhookResponse) {
     option (google.api.http) = {
-      post: "/v2/webhook/drop"
+      post: "/v2/admin/webhook/drop"
       body: "*"
     };
   };
@@ -28,8 +28,8 @@ service WebhookService {
   // Returns registered webhooks
   rpc ListWebhooks(ListWebhooksRequest) returns(ListWebhooksResponse) {
     option (google.api.http) = {
-      get: "/v2/webhooks/{event}"
-      additional_bindings { get: "/v2/webhooks" }
+      get: "/v2/admin/webhooks/{event}"
+      additional_bindings { get: "/v2/admin/webhooks" }
     };
   };
 }

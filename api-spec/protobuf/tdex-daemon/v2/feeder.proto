@@ -11,55 +11,55 @@ service FeederService {
   // AddPriceFeed creates a new price feed for the given market.
   rpc AddPriceFeed(AddPriceFeedRequest) returns (AddPriceFeedResponse) {
     option (google.api.http) = {
-      post: "/v2/feeder"
+      post: "/v2/admin/feeder"
       body: "*"
     };
   };
   // StartPriceFeed starts the price feed with the given id.
   rpc StartPriceFeed(StartPriceFeedRequest) returns (StartPriceFeedResponse) {
     option (google.api.http) = {
-      post: "/v2/feeder/start"
+      post: "/v2/admin/feeder/start"
       body: "*"
     };
   };
   // StopPriceFeed stops the price feed with the given id.
   rpc StopPriceFeed(StopPriceFeedRequest) returns (StopPriceFeedResponse) {
     option (google.api.http) = {
-      post: "/v2/feeder/stop"
+      post: "/v2/admin/feeder/stop"
       body: "*"
     };
   };
   // UpdatePriceFeed allows to change source and/or ticker of the given price feed.
   rpc UpdatePriceFeed(UpdatePriceFeedRequest) returns (UpdatePriceFeedResponse) {
     option (google.api.http) = {
-      post: "/v2/feeder/update"
+      post: "/v2/admin/feeder/update"
       body: "*"
     };
   };
   // RemovePriceFeed removes the price feed with the given id.
   rpc RemovePriceFeed(RemovePriceFeedRequest) returns (RemovePriceFeedResponse) {
     option (google.api.http) = {
-      post: "/v2/feeder/drop"
+      post: "/v2/admin/feeder/drop"
       body: "*"
     };
   };
   // GetPriceFeed returns the price feed for the given market.
   rpc GetPriceFeed(GetPriceFeedRequest) returns (GetPriceFeedResponse) {
     option (google.api.http) = {
-      get: "/v2/feeder/{id}"
+      get: "/v2/admin/feeder/{id}"
     };
   };
   // ListPriceFeeds returns the list of price feeds of all markets.
   rpc ListPriceFeeds(ListPriceFeedsRequest) returns (ListPriceFeedsResponse) {
     option (google.api.http) = {
-      get: "/v2/feeders"
+      get: "/v2/admin/feeders"
     };
   };
   // ListSupportedPriceSources returns the list of supported price sources.
   rpc ListSupportedPriceSources(ListSupportedPriceSourcesRequest)
     returns (ListSupportedPriceSourcesResponse) {
       option (google.api.http) = {
-        get: "/v2/feeder/sources"
+        get: "/v2/admin/feeder/sources"
       };
     };
 }

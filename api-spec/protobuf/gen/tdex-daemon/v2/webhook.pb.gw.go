@@ -205,7 +205,7 @@ func RegisterWebhookServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/AddWebhook", runtime.WithHTTPPathPattern("/v2/webhook"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/AddWebhook", runtime.WithHTTPPathPattern("/v2/admin/webhook"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -228,7 +228,7 @@ func RegisterWebhookServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/RemoveWebhook", runtime.WithHTTPPathPattern("/v2/webhook/drop"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/RemoveWebhook", runtime.WithHTTPPathPattern("/v2/admin/webhook/drop"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -251,7 +251,7 @@ func RegisterWebhookServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/ListWebhooks", runtime.WithHTTPPathPattern("/v2/webhooks/{event}"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/ListWebhooks", runtime.WithHTTPPathPattern("/v2/admin/webhooks/{event}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -274,7 +274,7 @@ func RegisterWebhookServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/ListWebhooks", runtime.WithHTTPPathPattern("/v2/webhooks"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/ListWebhooks", runtime.WithHTTPPathPattern("/v2/admin/webhooks"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -336,7 +336,7 @@ func RegisterWebhookServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/AddWebhook", runtime.WithHTTPPathPattern("/v2/webhook"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/AddWebhook", runtime.WithHTTPPathPattern("/v2/admin/webhook"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -356,7 +356,7 @@ func RegisterWebhookServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/RemoveWebhook", runtime.WithHTTPPathPattern("/v2/webhook/drop"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/RemoveWebhook", runtime.WithHTTPPathPattern("/v2/admin/webhook/drop"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -376,7 +376,7 @@ func RegisterWebhookServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/ListWebhooks", runtime.WithHTTPPathPattern("/v2/webhooks/{event}"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/ListWebhooks", runtime.WithHTTPPathPattern("/v2/admin/webhooks/{event}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -396,7 +396,7 @@ func RegisterWebhookServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/ListWebhooks", runtime.WithHTTPPathPattern("/v2/webhooks"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.WebhookService/ListWebhooks", runtime.WithHTTPPathPattern("/v2/admin/webhooks"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -416,13 +416,13 @@ func RegisterWebhookServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 }
 
 var (
-	pattern_WebhookService_AddWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "webhook"}, ""))
+	pattern_WebhookService_AddWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "webhook"}, ""))
 
-	pattern_WebhookService_RemoveWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "webhook", "drop"}, ""))
+	pattern_WebhookService_RemoveWebhook_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "webhook", "drop"}, ""))
 
-	pattern_WebhookService_ListWebhooks_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v2", "webhooks", "event"}, ""))
+	pattern_WebhookService_ListWebhooks_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "admin", "webhooks", "event"}, ""))
 
-	pattern_WebhookService_ListWebhooks_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "webhooks"}, ""))
+	pattern_WebhookService_ListWebhooks_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "webhooks"}, ""))
 )
 
 var (

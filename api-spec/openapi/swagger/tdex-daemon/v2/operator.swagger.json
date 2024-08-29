@@ -16,7 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/v2/deposits": {
+    "/v2/admin/deposits": {
       "post": {
         "summary": "Returns the list of all claimed deposits for the given account.",
         "operationId": "OperatorService_ListDeposits",
@@ -49,7 +49,7 @@
         ]
       }
     },
-    "/v2/fee/addresses": {
+    "/v2/admin/fee/addresses": {
       "get": {
         "summary": "Returns the list of all derived addresses for the fee account.",
         "operationId": "OperatorService_ListFeeAddresses",
@@ -72,7 +72,7 @@
         ]
       }
     },
-    "/v2/fee/balance": {
+    "/v2/admin/fee/balance": {
       "get": {
         "summary": "Returns the LBTC balance of the fee account.",
         "operationId": "OperatorService_GetFeeBalance",
@@ -95,7 +95,7 @@
         ]
       }
     },
-    "/v2/fee/derive": {
+    "/v2/admin/fee/derive": {
       "post": {
         "summary": "Derives new addresses from the fee account.\nThis account is only used to deposit LBTC funds to subsidize network fees.",
         "operationId": "OperatorService_DeriveFeeAddresses",
@@ -128,7 +128,7 @@
         ]
       }
     },
-    "/v2/fee/withdraw": {
+    "/v2/admin/fee/withdraw": {
       "post": {
         "summary": "Withdraws LBTC funds from the fee account.",
         "operationId": "OperatorService_WithdrawFee",
@@ -161,7 +161,7 @@
         ]
       }
     },
-    "/v2/feefragmenter/addresses": {
+    "/v2/admin/feefragmenter/addresses": {
       "get": {
         "summary": "Returns the list of all derived addresses for the fee fragmenter account.",
         "operationId": "OperatorService_ListFeeFragmenterAddresses",
@@ -184,7 +184,7 @@
         ]
       }
     },
-    "/v2/feefragmenter/balance": {
+    "/v2/admin/feefragmenter/balance": {
       "get": {
         "summary": "Returns the balance of the fee fragmenter account.",
         "operationId": "OperatorService_GetFeeFragmenterBalance",
@@ -207,7 +207,7 @@
         ]
       }
     },
-    "/v2/feefragmenter/derive": {
+    "/v2/admin/feefragmenter/derive": {
       "post": {
         "summary": "Derives new addresses for the fee fragmenter account.",
         "operationId": "OperatorService_DeriveFeeFragmenterAddresses",
@@ -240,7 +240,7 @@
         ]
       }
     },
-    "/v2/feefragmenter/split": {
+    "/v2/admin/feefragmenter/split": {
       "post": {
         "summary": "Splits the funds sent to the fee fragmenter account into multiple\nfragments that are then deposited to the Fee account.",
         "operationId": "OperatorService_FeeFragmenterSplitFunds",
@@ -282,7 +282,7 @@
         ]
       }
     },
-    "/v2/feefragmenter/withdraw": {
+    "/v2/admin/feefragmenter/withdraw": {
       "post": {
         "summary": "Withdraws funds from the fee fragmenter account.",
         "operationId": "OperatorService_WithdrawFeeFragmenter",
@@ -315,7 +315,7 @@
         ]
       }
     },
-    "/v2/market": {
+    "/v2/admin/market": {
       "post": {
         "summary": "Creates a new market and the related wallet account.",
         "operationId": "OperatorService_NewMarket",
@@ -348,7 +348,7 @@
         ]
       }
     },
-    "/v2/market/addresses": {
+    "/v2/admin/market/addresses": {
       "post": {
         "summary": "Returns the list of all derived addresses for the given market.",
         "operationId": "OperatorService_ListMarketAddresses",
@@ -381,7 +381,7 @@
         ]
       }
     },
-    "/v2/market/close": {
+    "/v2/admin/market/close": {
       "post": {
         "summary": "Makes the given market NOT tradabale.",
         "operationId": "OperatorService_CloseMarket",
@@ -414,7 +414,7 @@
         ]
       }
     },
-    "/v2/market/derive": {
+    "/v2/admin/market/derive": {
       "post": {
         "summary": "Derives new addresses for the market.",
         "operationId": "OperatorService_DeriveMarketAddresses",
@@ -447,7 +447,7 @@
         ]
       }
     },
-    "/v2/market/drop": {
+    "/v2/admin/market/drop": {
       "post": {
         "summary": "Deletes a market.",
         "operationId": "OperatorService_DropMarket",
@@ -480,7 +480,7 @@
         ]
       }
     },
-    "/v2/market/fees/fixed": {
+    "/v2/admin/market/fees/fixed": {
       "post": {
         "summary": "Changes the Liquidity provider fixed fees for the given market.",
         "operationId": "OperatorService_UpdateMarketFixedFee",
@@ -513,7 +513,7 @@
         ]
       }
     },
-    "/v2/market/fees/percentage": {
+    "/v2/admin/market/fees/percentage": {
       "post": {
         "summary": "Changes the Liquidity Provider percentage fee for the given market.",
         "operationId": "OperatorService_UpdateMarketPercentageFee",
@@ -546,7 +546,7 @@
         ]
       }
     },
-    "/v2/market/info": {
+    "/v2/admin/market/info": {
       "post": {
         "summary": "Returns info about the given market.",
         "operationId": "OperatorService_GetMarketInfo",
@@ -579,7 +579,7 @@
         ]
       }
     },
-    "/v2/market/open": {
+    "/v2/admin/market/open": {
       "post": {
         "summary": "Makes the given market tradable.",
         "operationId": "OperatorService_OpenMarket",
@@ -612,7 +612,7 @@
         ]
       }
     },
-    "/v2/market/precision": {
+    "/v2/admin/market/precision": {
       "post": {
         "summary": "Changes the Liquidity provider asset(s) precision for the given market.",
         "operationId": "OperatorService_UpdateMarketAssetsPrecision",
@@ -645,7 +645,7 @@
         ]
       }
     },
-    "/v2/market/price": {
+    "/v2/admin/market/price": {
       "post": {
         "summary": "Updates the price for the given market.",
         "operationId": "OperatorService_UpdateMarketPrice",
@@ -678,7 +678,7 @@
         ]
       }
     },
-    "/v2/market/report": {
+    "/v2/admin/market/report": {
       "post": {
         "summary": "Returns a report with volume and collected fees for the given market in\nthe specified time range.",
         "operationId": "OperatorService_GetMarketReport",
@@ -711,7 +711,7 @@
         ]
       }
     },
-    "/v2/market/strategy": {
+    "/v2/admin/market/strategy": {
       "post": {
         "summary": "Updates the current market making strategy, either using an automated\nmarket making formula or a pluggable price feed.",
         "operationId": "OperatorService_UpdateMarketStrategy",
@@ -744,7 +744,7 @@
         ]
       }
     },
-    "/v2/market/withdraw": {
+    "/v2/admin/market/withdraw": {
       "post": {
         "summary": "Withdraw funds from the given market.",
         "operationId": "OperatorService_WithdrawMarket",
@@ -777,7 +777,7 @@
         ]
       }
     },
-    "/v2/marketfragmenter/addresses": {
+    "/v2/admin/marketfragmenter/addresses": {
       "get": {
         "summary": "Returns the list of all derived addresses for the market fragmenter account.",
         "operationId": "OperatorService_ListMarketFragmenterAddresses",
@@ -800,7 +800,7 @@
         ]
       }
     },
-    "/v2/marketfragmenter/balance": {
+    "/v2/admin/marketfragmenter/balance": {
       "get": {
         "summary": "Returns the balance of the market fragmenter account.",
         "operationId": "OperatorService_GetMarketFragmenterBalance",
@@ -823,7 +823,7 @@
         ]
       }
     },
-    "/v2/marketfragmenter/derive": {
+    "/v2/admin/marketfragmenter/derive": {
       "post": {
         "summary": "Derives new addresses for the market fragmenter account.",
         "operationId": "OperatorService_DeriveMarketFragmenterAddresses",
@@ -856,7 +856,7 @@
         ]
       }
     },
-    "/v2/marketfragmenter/split": {
+    "/v2/admin/marketfragmenter/split": {
       "post": {
         "summary": "Splits the funds sent to the market fragmenter account into multiple\nfragments that are then deposited to the given market.",
         "operationId": "OperatorService_MarketFragmenterSplitFunds",
@@ -898,7 +898,7 @@
         ]
       }
     },
-    "/v2/marketfragmenter/withdraw": {
+    "/v2/admin/marketfragmenter/withdraw": {
       "post": {
         "summary": "Withdraws funds from the market fragmenter account.",
         "operationId": "OperatorService_WithdrawMarketFragmenter",
@@ -931,7 +931,7 @@
         ]
       }
     },
-    "/v2/markets": {
+    "/v2/admin/markets": {
       "get": {
         "summary": "Get info about all markets.",
         "operationId": "OperatorService_ListMarkets",
@@ -954,7 +954,7 @@
         ]
       }
     },
-    "/v2/trades": {
+    "/v2/admin/trades": {
       "post": {
         "summary": "Returs all the trades processed by the daemon (ongoing, completed and\nfailed/rejected) or all those filtered by market.",
         "operationId": "OperatorService_ListTrades",
@@ -987,7 +987,7 @@
         ]
       }
     },
-    "/v2/utxos": {
+    "/v2/admin/utxos": {
       "post": {
         "summary": "Returns all the utxos, whether unspents, spents or locked.",
         "operationId": "OperatorService_ListUtxos",
@@ -1020,7 +1020,7 @@
         ]
       }
     },
-    "/v2/withdrawals": {
+    "/v2/admin/withdrawals": {
       "post": {
         "summary": "Returns the list of all withdrawals made for the given account.",
         "operationId": "OperatorService_ListWithdrawals",

@@ -1035,7 +1035,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveFeeAddresses", runtime.WithHTTPPathPattern("/v2/fee/derive"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveFeeAddresses", runtime.WithHTTPPathPattern("/v2/admin/fee/derive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1058,7 +1058,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListFeeAddresses", runtime.WithHTTPPathPattern("/v2/fee/addresses"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListFeeAddresses", runtime.WithHTTPPathPattern("/v2/admin/fee/addresses"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1081,7 +1081,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetFeeBalance", runtime.WithHTTPPathPattern("/v2/fee/balance"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetFeeBalance", runtime.WithHTTPPathPattern("/v2/admin/fee/balance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1104,7 +1104,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawFee", runtime.WithHTTPPathPattern("/v2/fee/withdraw"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawFee", runtime.WithHTTPPathPattern("/v2/admin/fee/withdraw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1127,7 +1127,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/NewMarket", runtime.WithHTTPPathPattern("/v2/market"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/NewMarket", runtime.WithHTTPPathPattern("/v2/admin/market"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1150,7 +1150,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketInfo", runtime.WithHTTPPathPattern("/v2/market/info"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketInfo", runtime.WithHTTPPathPattern("/v2/admin/market/info"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1173,7 +1173,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveMarketAddresses", runtime.WithHTTPPathPattern("/v2/market/derive"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveMarketAddresses", runtime.WithHTTPPathPattern("/v2/admin/market/derive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1196,7 +1196,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarketAddresses", runtime.WithHTTPPathPattern("/v2/market/addresses"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarketAddresses", runtime.WithHTTPPathPattern("/v2/admin/market/addresses"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1219,7 +1219,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/OpenMarket", runtime.WithHTTPPathPattern("/v2/market/open"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/OpenMarket", runtime.WithHTTPPathPattern("/v2/admin/market/open"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1242,7 +1242,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/CloseMarket", runtime.WithHTTPPathPattern("/v2/market/close"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/CloseMarket", runtime.WithHTTPPathPattern("/v2/admin/market/close"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1265,7 +1265,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DropMarket", runtime.WithHTTPPathPattern("/v2/market/drop"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DropMarket", runtime.WithHTTPPathPattern("/v2/admin/market/drop"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1288,7 +1288,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawMarket", runtime.WithHTTPPathPattern("/v2/market/withdraw"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawMarket", runtime.WithHTTPPathPattern("/v2/admin/market/withdraw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1311,7 +1311,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketReport", runtime.WithHTTPPathPattern("/v2/market/report"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketReport", runtime.WithHTTPPathPattern("/v2/admin/market/report"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1334,7 +1334,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketPercentageFee", runtime.WithHTTPPathPattern("/v2/market/fees/percentage"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketPercentageFee", runtime.WithHTTPPathPattern("/v2/admin/market/fees/percentage"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1357,7 +1357,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketFixedFee", runtime.WithHTTPPathPattern("/v2/market/fees/fixed"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketFixedFee", runtime.WithHTTPPathPattern("/v2/admin/market/fees/fixed"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1380,7 +1380,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketAssetsPrecision", runtime.WithHTTPPathPattern("/v2/market/precision"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketAssetsPrecision", runtime.WithHTTPPathPattern("/v2/admin/market/precision"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1403,7 +1403,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketPrice", runtime.WithHTTPPathPattern("/v2/market/price"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketPrice", runtime.WithHTTPPathPattern("/v2/admin/market/price"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1426,7 +1426,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketStrategy", runtime.WithHTTPPathPattern("/v2/market/strategy"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketStrategy", runtime.WithHTTPPathPattern("/v2/admin/market/strategy"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1449,7 +1449,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveFeeFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/feefragmenter/derive"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveFeeFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/admin/feefragmenter/derive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1472,7 +1472,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListFeeFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/feefragmenter/addresses"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListFeeFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/admin/feefragmenter/addresses"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1495,7 +1495,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetFeeFragmenterBalance", runtime.WithHTTPPathPattern("/v2/feefragmenter/balance"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetFeeFragmenterBalance", runtime.WithHTTPPathPattern("/v2/admin/feefragmenter/balance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1525,7 +1525,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawFeeFragmenter", runtime.WithHTTPPathPattern("/v2/feefragmenter/withdraw"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawFeeFragmenter", runtime.WithHTTPPathPattern("/v2/admin/feefragmenter/withdraw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1548,7 +1548,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveMarketFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/marketfragmenter/derive"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveMarketFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/admin/marketfragmenter/derive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1571,7 +1571,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarketFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/marketfragmenter/addresses"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarketFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/admin/marketfragmenter/addresses"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1594,7 +1594,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketFragmenterBalance", runtime.WithHTTPPathPattern("/v2/marketfragmenter/balance"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketFragmenterBalance", runtime.WithHTTPPathPattern("/v2/admin/marketfragmenter/balance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1624,7 +1624,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawMarketFragmenter", runtime.WithHTTPPathPattern("/v2/marketfragmenter/withdraw"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawMarketFragmenter", runtime.WithHTTPPathPattern("/v2/admin/marketfragmenter/withdraw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1647,7 +1647,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarkets", runtime.WithHTTPPathPattern("/v2/markets"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarkets", runtime.WithHTTPPathPattern("/v2/admin/markets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1670,7 +1670,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListTrades", runtime.WithHTTPPathPattern("/v2/trades"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListTrades", runtime.WithHTTPPathPattern("/v2/admin/trades"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1693,7 +1693,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListUtxos", runtime.WithHTTPPathPattern("/v2/utxos"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListUtxos", runtime.WithHTTPPathPattern("/v2/admin/utxos"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1716,7 +1716,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListDeposits", runtime.WithHTTPPathPattern("/v2/deposits"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListDeposits", runtime.WithHTTPPathPattern("/v2/admin/deposits"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1739,7 +1739,7 @@ func RegisterOperatorServiceHandlerServer(ctx context.Context, mux *runtime.Serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListWithdrawals", runtime.WithHTTPPathPattern("/v2/withdrawals"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListWithdrawals", runtime.WithHTTPPathPattern("/v2/admin/withdrawals"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1801,7 +1801,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveFeeAddresses", runtime.WithHTTPPathPattern("/v2/fee/derive"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveFeeAddresses", runtime.WithHTTPPathPattern("/v2/admin/fee/derive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1821,7 +1821,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListFeeAddresses", runtime.WithHTTPPathPattern("/v2/fee/addresses"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListFeeAddresses", runtime.WithHTTPPathPattern("/v2/admin/fee/addresses"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1841,7 +1841,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetFeeBalance", runtime.WithHTTPPathPattern("/v2/fee/balance"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetFeeBalance", runtime.WithHTTPPathPattern("/v2/admin/fee/balance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1861,7 +1861,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawFee", runtime.WithHTTPPathPattern("/v2/fee/withdraw"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawFee", runtime.WithHTTPPathPattern("/v2/admin/fee/withdraw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1881,7 +1881,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/NewMarket", runtime.WithHTTPPathPattern("/v2/market"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/NewMarket", runtime.WithHTTPPathPattern("/v2/admin/market"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1901,7 +1901,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketInfo", runtime.WithHTTPPathPattern("/v2/market/info"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketInfo", runtime.WithHTTPPathPattern("/v2/admin/market/info"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1921,7 +1921,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveMarketAddresses", runtime.WithHTTPPathPattern("/v2/market/derive"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveMarketAddresses", runtime.WithHTTPPathPattern("/v2/admin/market/derive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1941,7 +1941,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarketAddresses", runtime.WithHTTPPathPattern("/v2/market/addresses"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarketAddresses", runtime.WithHTTPPathPattern("/v2/admin/market/addresses"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1961,7 +1961,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/OpenMarket", runtime.WithHTTPPathPattern("/v2/market/open"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/OpenMarket", runtime.WithHTTPPathPattern("/v2/admin/market/open"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1981,7 +1981,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/CloseMarket", runtime.WithHTTPPathPattern("/v2/market/close"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/CloseMarket", runtime.WithHTTPPathPattern("/v2/admin/market/close"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2001,7 +2001,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DropMarket", runtime.WithHTTPPathPattern("/v2/market/drop"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DropMarket", runtime.WithHTTPPathPattern("/v2/admin/market/drop"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2021,7 +2021,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawMarket", runtime.WithHTTPPathPattern("/v2/market/withdraw"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawMarket", runtime.WithHTTPPathPattern("/v2/admin/market/withdraw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2041,7 +2041,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketReport", runtime.WithHTTPPathPattern("/v2/market/report"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketReport", runtime.WithHTTPPathPattern("/v2/admin/market/report"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2061,7 +2061,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketPercentageFee", runtime.WithHTTPPathPattern("/v2/market/fees/percentage"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketPercentageFee", runtime.WithHTTPPathPattern("/v2/admin/market/fees/percentage"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2081,7 +2081,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketFixedFee", runtime.WithHTTPPathPattern("/v2/market/fees/fixed"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketFixedFee", runtime.WithHTTPPathPattern("/v2/admin/market/fees/fixed"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2101,7 +2101,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketAssetsPrecision", runtime.WithHTTPPathPattern("/v2/market/precision"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketAssetsPrecision", runtime.WithHTTPPathPattern("/v2/admin/market/precision"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2121,7 +2121,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketPrice", runtime.WithHTTPPathPattern("/v2/market/price"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketPrice", runtime.WithHTTPPathPattern("/v2/admin/market/price"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2141,7 +2141,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketStrategy", runtime.WithHTTPPathPattern("/v2/market/strategy"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/UpdateMarketStrategy", runtime.WithHTTPPathPattern("/v2/admin/market/strategy"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2161,7 +2161,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveFeeFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/feefragmenter/derive"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveFeeFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/admin/feefragmenter/derive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2181,7 +2181,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListFeeFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/feefragmenter/addresses"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListFeeFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/admin/feefragmenter/addresses"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2201,7 +2201,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetFeeFragmenterBalance", runtime.WithHTTPPathPattern("/v2/feefragmenter/balance"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetFeeFragmenterBalance", runtime.WithHTTPPathPattern("/v2/admin/feefragmenter/balance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2221,7 +2221,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/FeeFragmenterSplitFunds", runtime.WithHTTPPathPattern("/v2/feefragmenter/split"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/FeeFragmenterSplitFunds", runtime.WithHTTPPathPattern("/v2/admin/feefragmenter/split"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2241,7 +2241,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawFeeFragmenter", runtime.WithHTTPPathPattern("/v2/feefragmenter/withdraw"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawFeeFragmenter", runtime.WithHTTPPathPattern("/v2/admin/feefragmenter/withdraw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2261,7 +2261,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveMarketFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/marketfragmenter/derive"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/DeriveMarketFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/admin/marketfragmenter/derive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2281,7 +2281,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarketFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/marketfragmenter/addresses"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarketFragmenterAddresses", runtime.WithHTTPPathPattern("/v2/admin/marketfragmenter/addresses"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2301,7 +2301,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketFragmenterBalance", runtime.WithHTTPPathPattern("/v2/marketfragmenter/balance"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/GetMarketFragmenterBalance", runtime.WithHTTPPathPattern("/v2/admin/marketfragmenter/balance"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2321,7 +2321,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/MarketFragmenterSplitFunds", runtime.WithHTTPPathPattern("/v2/marketfragmenter/split"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/MarketFragmenterSplitFunds", runtime.WithHTTPPathPattern("/v2/admin/marketfragmenter/split"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2341,7 +2341,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawMarketFragmenter", runtime.WithHTTPPathPattern("/v2/marketfragmenter/withdraw"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/WithdrawMarketFragmenter", runtime.WithHTTPPathPattern("/v2/admin/marketfragmenter/withdraw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2361,7 +2361,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarkets", runtime.WithHTTPPathPattern("/v2/markets"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListMarkets", runtime.WithHTTPPathPattern("/v2/admin/markets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2381,7 +2381,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListTrades", runtime.WithHTTPPathPattern("/v2/trades"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListTrades", runtime.WithHTTPPathPattern("/v2/admin/trades"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2401,7 +2401,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListUtxos", runtime.WithHTTPPathPattern("/v2/utxos"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListUtxos", runtime.WithHTTPPathPattern("/v2/admin/utxos"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2421,7 +2421,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListDeposits", runtime.WithHTTPPathPattern("/v2/deposits"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListDeposits", runtime.WithHTTPPathPattern("/v2/admin/deposits"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2441,7 +2441,7 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListWithdrawals", runtime.WithHTTPPathPattern("/v2/withdrawals"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/tdex_daemon.v2.OperatorService/ListWithdrawals", runtime.WithHTTPPathPattern("/v2/admin/withdrawals"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2461,71 +2461,71 @@ func RegisterOperatorServiceHandlerClient(ctx context.Context, mux *runtime.Serv
 }
 
 var (
-	pattern_OperatorService_DeriveFeeAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "fee", "derive"}, ""))
+	pattern_OperatorService_DeriveFeeAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "fee", "derive"}, ""))
 
-	pattern_OperatorService_ListFeeAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "fee", "addresses"}, ""))
+	pattern_OperatorService_ListFeeAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "fee", "addresses"}, ""))
 
-	pattern_OperatorService_GetFeeBalance_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "fee", "balance"}, ""))
+	pattern_OperatorService_GetFeeBalance_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "fee", "balance"}, ""))
 
-	pattern_OperatorService_WithdrawFee_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "fee", "withdraw"}, ""))
+	pattern_OperatorService_WithdrawFee_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "fee", "withdraw"}, ""))
 
-	pattern_OperatorService_NewMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "market"}, ""))
+	pattern_OperatorService_NewMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "market"}, ""))
 
-	pattern_OperatorService_GetMarketInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "info"}, ""))
+	pattern_OperatorService_GetMarketInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "info"}, ""))
 
-	pattern_OperatorService_DeriveMarketAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "derive"}, ""))
+	pattern_OperatorService_DeriveMarketAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "derive"}, ""))
 
-	pattern_OperatorService_ListMarketAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "addresses"}, ""))
+	pattern_OperatorService_ListMarketAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "addresses"}, ""))
 
-	pattern_OperatorService_OpenMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "open"}, ""))
+	pattern_OperatorService_OpenMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "open"}, ""))
 
-	pattern_OperatorService_CloseMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "close"}, ""))
+	pattern_OperatorService_CloseMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "close"}, ""))
 
-	pattern_OperatorService_DropMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "drop"}, ""))
+	pattern_OperatorService_DropMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "drop"}, ""))
 
-	pattern_OperatorService_WithdrawMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "withdraw"}, ""))
+	pattern_OperatorService_WithdrawMarket_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "withdraw"}, ""))
 
-	pattern_OperatorService_GetMarketReport_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "report"}, ""))
+	pattern_OperatorService_GetMarketReport_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "report"}, ""))
 
-	pattern_OperatorService_UpdateMarketPercentageFee_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "market", "fees", "percentage"}, ""))
+	pattern_OperatorService_UpdateMarketPercentageFee_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v2", "admin", "market", "fees", "percentage"}, ""))
 
-	pattern_OperatorService_UpdateMarketFixedFee_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "market", "fees", "fixed"}, ""))
+	pattern_OperatorService_UpdateMarketFixedFee_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"v2", "admin", "market", "fees", "fixed"}, ""))
 
-	pattern_OperatorService_UpdateMarketAssetsPrecision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "precision"}, ""))
+	pattern_OperatorService_UpdateMarketAssetsPrecision_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "precision"}, ""))
 
-	pattern_OperatorService_UpdateMarketPrice_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "price"}, ""))
+	pattern_OperatorService_UpdateMarketPrice_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "price"}, ""))
 
-	pattern_OperatorService_UpdateMarketStrategy_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "market", "strategy"}, ""))
+	pattern_OperatorService_UpdateMarketStrategy_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "market", "strategy"}, ""))
 
-	pattern_OperatorService_DeriveFeeFragmenterAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feefragmenter", "derive"}, ""))
+	pattern_OperatorService_DeriveFeeFragmenterAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feefragmenter", "derive"}, ""))
 
-	pattern_OperatorService_ListFeeFragmenterAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feefragmenter", "addresses"}, ""))
+	pattern_OperatorService_ListFeeFragmenterAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feefragmenter", "addresses"}, ""))
 
-	pattern_OperatorService_GetFeeFragmenterBalance_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feefragmenter", "balance"}, ""))
+	pattern_OperatorService_GetFeeFragmenterBalance_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feefragmenter", "balance"}, ""))
 
-	pattern_OperatorService_FeeFragmenterSplitFunds_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feefragmenter", "split"}, ""))
+	pattern_OperatorService_FeeFragmenterSplitFunds_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feefragmenter", "split"}, ""))
 
-	pattern_OperatorService_WithdrawFeeFragmenter_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "feefragmenter", "withdraw"}, ""))
+	pattern_OperatorService_WithdrawFeeFragmenter_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "feefragmenter", "withdraw"}, ""))
 
-	pattern_OperatorService_DeriveMarketFragmenterAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "marketfragmenter", "derive"}, ""))
+	pattern_OperatorService_DeriveMarketFragmenterAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "marketfragmenter", "derive"}, ""))
 
-	pattern_OperatorService_ListMarketFragmenterAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "marketfragmenter", "addresses"}, ""))
+	pattern_OperatorService_ListMarketFragmenterAddresses_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "marketfragmenter", "addresses"}, ""))
 
-	pattern_OperatorService_GetMarketFragmenterBalance_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "marketfragmenter", "balance"}, ""))
+	pattern_OperatorService_GetMarketFragmenterBalance_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "marketfragmenter", "balance"}, ""))
 
-	pattern_OperatorService_MarketFragmenterSplitFunds_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "marketfragmenter", "split"}, ""))
+	pattern_OperatorService_MarketFragmenterSplitFunds_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "marketfragmenter", "split"}, ""))
 
-	pattern_OperatorService_WithdrawMarketFragmenter_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "marketfragmenter", "withdraw"}, ""))
+	pattern_OperatorService_WithdrawMarketFragmenter_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "admin", "marketfragmenter", "withdraw"}, ""))
 
-	pattern_OperatorService_ListMarkets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "markets"}, ""))
+	pattern_OperatorService_ListMarkets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "markets"}, ""))
 
-	pattern_OperatorService_ListTrades_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "trades"}, ""))
+	pattern_OperatorService_ListTrades_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "trades"}, ""))
 
-	pattern_OperatorService_ListUtxos_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "utxos"}, ""))
+	pattern_OperatorService_ListUtxos_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "utxos"}, ""))
 
-	pattern_OperatorService_ListDeposits_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "deposits"}, ""))
+	pattern_OperatorService_ListDeposits_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "deposits"}, ""))
 
-	pattern_OperatorService_ListWithdrawals_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "withdrawals"}, ""))
+	pattern_OperatorService_ListWithdrawals_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "admin", "withdrawals"}, ""))
 )
 
 var (
