@@ -11,7 +11,7 @@ require (
 	github.com/timshannon/badgerhold/v2 v2.0.0-20201228162759-17050a01e34c
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/vulpemventures/go-elements v0.4.5
-	golang.org/x/crypto v0.10.0
+	golang.org/x/crypto v0.14.0
 )
 
 require (
@@ -26,7 +26,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.12.3 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 	google.golang.org/protobuf v1.23.0 // indirect
 )
