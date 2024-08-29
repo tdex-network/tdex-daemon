@@ -432,9 +432,8 @@ func (s *service) newOperatorServer(
 	// Creds for grpc gateway reverse proxy.
 	gatewayCreds := insecure.NewCredentials()
 	if !s.opts.NoOperatorTls {
-		// #nosec
 		gatewayCreds = credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec
 		})
 	}
 	ctx := context.Background()
@@ -582,9 +581,8 @@ func (s *service) newTradeServer(tlsConfig *tls.Config) (*http.Server, error) {
 	// Reverse proxy grpc-gateway.
 	gatewayCreds := insecure.NewCredentials()
 	if len(s.opts.TradeTLSCert) > 0 {
-		// #nosec
 		gatewayCreds = credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec
 		})
 	}
 	gatewayOpts := grpc.WithTransportCredentials(gatewayCreds)

@@ -290,9 +290,8 @@ func (s *serviceOnePort) newServer(
 	// Creds for grpc gateway reverse proxy.
 	gatewayCreds := insecure.NewCredentials()
 	if s.opts.withTls() {
-		// #nosec
 		gatewayCreds = credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec
 		})
 	}
 	ctx := context.Background()
