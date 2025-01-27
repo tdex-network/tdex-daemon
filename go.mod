@@ -25,7 +25,6 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/glog v1.1.1 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
@@ -41,7 +40,7 @@ require (
 	github.com/sony/gobreaker v0.4.1
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.12.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	github.com/tdex-network/reflection v1.1.0
 	github.com/tdex-network/tdex-daemon/old-v0 v0.0.0-00010101000000-000000000000
 	github.com/tdex-network/tdex-daemon/pkg/explorer v0.0.0-20211001103242-a11e4485705a
@@ -56,8 +55,8 @@ require (
 	go.uber.org/ratelimit v0.2.0
 	golang.org/x/net v0.17.0
 	golang.org/x/sync v0.1.0
-	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
-	google.golang.org/grpc v1.53.0
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
+	google.golang.org/grpc v1.56.3
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/macaroon-bakery.v2 v2.3.0
 	gopkg.in/macaroon.v2 v2.1.0
